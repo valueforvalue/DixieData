@@ -1,0 +1,91 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/valueforvalue/DixieData/internal/models"
+)
+
+templ SoldierCard(s models.Soldier) {
+	<div class="card rounded p-3 mb-2">
+		<div class="flex justify-between items-start">
+			<div>
+				<span class="gold text-sm font-bold">{ s.DisplayID }</span>
+				<p class="font-semibold">{ s.Rank } { s.FirstName } { s.LastName }</p>
+				<p class="text-xs text-gray-400">{ s.Unit }</p>
+				if s.DeathMonth > 0 {
+					<p class="text-xs text-gray-500">d. { deathDate(s) }</p>
+				}
+			</div>
+			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) }
+			   class="text-xs gold hover:underline">View</a>
+		</div>
+	</div>
+}
+
+func deathDate(s models.Soldier) string {
+	if s.DeathDay > 0 {
+		return fmt.Sprintf("%s %d, %d", monthName(s.DeathMonth), s.DeathDay, s.DeathYear)
+	}
+	return fmt.Sprintf("%s %d", monthName(s.DeathMonth), s.DeathYear)
+}
+
+templ SoldierList(soldiers []models.Soldier, page, total int) {
+	@Layout("Soldiers") {
+		<div class="flex justify-between items-center mb-4">
+			<h2 class="text-2xl gold font-bold">Soldier Records</h2>
+			<div class="flex gap-2 items-center">
+				<input type="text" placeholder="Search..." name="q"
+					hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
+					class="bg-gray-800 border border-gray-600 rounded px-3 py-1 text-sm"/>
+				<a href="/soldiers/new" class="bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">+ Add</a>
+			</div>
+		</div>
+		<div id="soldier-list">
+			for _, s := range soldiers {
+				@SoldierCard(s)
+			}
+		</div>
+		<div class="mt-4 text-sm text-gray-400">
+			Total: { fmt.Sprintf("%d", total) } records | Page { fmt.Sprintf("%d", page) }
+			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers?page=%d", page+1)) } class="ml-2 gold hover:underline">Next →</a>
+		</div>
+	}
+}
+
+templ SoldierDetail(s models.Soldier) {
+	@Layout(s.FirstName + " " + s.LastName) {
+		<div class="max-w-2xl mx-auto">
+			<div class="card rounded p-6">
+				<div class="flex justify-between mb-4">
+					<h2 class="text-2xl font-bold">{ s.Rank } { s.FirstName } { s.LastName }</h2>
+					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
+				</div>
+				<dl class="grid grid-cols-2 gap-2 text-sm">
+					<dt class="text-gray-400">Unit</dt><dd>{ s.Unit }</dd>
+					<dt class="text-gray-400">Death</dt><dd>{ deathDate(s) }</dd>
+					<dt class="text-gray-400">Birth Info</dt><dd>{ s.BirthInfo }</dd>
+				</dl>
+				if s.Notes != "" {
+					<p class="mt-4 text-sm text-gray-300">{ s.Notes }</p>
+				}
+				<div class="mt-4 flex gap-2">
+					<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">Edit</a>
+					<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this record?" hx-target="body" class="bg-red-900 hover:bg-red-800 text-white px-3 py-1 rounded text-sm">Delete</button>
+					<a href="/soldiers" class="text-gray-400 hover:text-white px-3 py-1 text-sm">← Back</a>
+				</div>
+				if len(s.Records) > 0 {
+					<h3 class="mt-6 text-lg gold">Records</h3>
+					for _, r := range s.Records {
+						<div class="card rounded p-2 mt-2 text-sm">
+							<span class="gold">{ r.RecordType }</span>
+							if r.AppID != "" {
+								<span class="ml-2 text-gray-400">App: { r.AppID }</span>
+							}
+							<p class="text-gray-300 mt-1">{ r.Details }</p>
+						</div>
+					}
+				}
+			</div>
+		</div>
+	}
+}

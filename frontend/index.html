@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>DixieData</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    body { background-color: #1a1a2e; color: #e2d9c9; }
+  </style>
+</head>
+<body hx-get="/" hx-trigger="load" hx-target="body" hx-swap="outerHTML">
+  <div class="flex items-center justify-center h-screen">
+    <p class="text-yellow-400">Loading DixieData...</p>
+  </div>
+</body>
+</html>
