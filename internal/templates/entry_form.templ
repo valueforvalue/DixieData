@@ -1,0 +1,136 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/valueforvalue/DixieData/internal/models"
+)
+
+templ EntryForm(s models.Soldier, isEdit bool) {
+	@Layout(formTitle(isEdit)) {
+		<div class="max-w-2xl mx-auto">
+			<h2 class="text-2xl gold font-bold mb-6">{ formTitle(isEdit) }</h2>
+			<form
+				if isEdit {
+					hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
+				} else {
+					hx-post="/soldiers"
+				}
+				hx-target="body"
+				class="card rounded p-6 space-y-4"
+			>
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Pension/Record ID (leave blank for CSA-ID)</label>
+						<input type="text" name="display_id" value={ s.DisplayID }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Rank</label>
+						<input type="text" name="rank" value={ s.Rank }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">First Name</label>
+						<input type="text" name="first_name" value={ s.FirstName }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Last Name</label>
+						<input type="text" name="last_name" value={ s.LastName }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-gray-400 mb-1">Unit</label>
+						<input type="text" name="unit" value={ s.Unit }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Death Year</label>
+						<input type="number" name="death_year" value={ fmt.Sprintf("%d", s.DeathYear) }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Death Month (1-12, 0=unknown)</label>
+						<input type="number" name="death_month" value={ fmt.Sprintf("%d", s.DeathMonth) } min="0" max="12"
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Death Day (1-31, 0=unknown)</label>
+						<input type="number" name="death_day" value={ fmt.Sprintf("%d", s.DeathDay) } min="0" max="31"
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div>
+						<label class="block text-sm text-gray-400 mb-1">Birth Info</label>
+						<input type="text" name="birth_info" value={ s.BirthInfo }
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-gray-400 mb-1">Notes</label>
+						<textarea name="notes" rows="4"
+							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm">{ s.Notes }</textarea>
+					</div>
+				</div>
+				<div class="flex gap-2 pt-2">
+					<button type="submit" class="bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-2 rounded">
+						if isEdit {
+							Save Changes
+						} else {
+							Create Record
+						}
+					</button>
+					<a href="/soldiers" class="text-gray-400 hover:text-white px-4 py-2 text-sm">Cancel</a>
+				</div>
+			</form>
+		</div>
+	}
+}
+
+func formTitle(isEdit bool) string {
+	if isEdit {
+		return "Edit Soldier Record"
+	}
+	return "New Soldier Record"
+}
+
+templ ExportView() {
+	@Layout("Export") {
+		<div class="max-w-md mx-auto">
+			<h2 class="text-2xl gold font-bold mb-6">Export Data</h2>
+			<div class="card rounded p-6 space-y-4">
+				<div class="flex flex-col gap-3">
+					<button hx-post="/export/json" hx-target="#export-status"
+						class="bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-3 rounded text-left">
+						<div class="font-bold">Export JSON</div>
+						<div class="text-xs text-gray-300">Full hierarchical export (soldiers, records, images)</div>
+					</button>
+					<button hx-post="/export/csv" hx-target="#export-status"
+						class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-3 rounded text-left">
+						<div class="font-bold">Export CSV</div>
+						<div class="text-xs text-gray-300">Flat spreadsheet format</div>
+					</button>
+				</div>
+				<div id="export-status" class="text-sm text-gray-400"></div>
+			</div>
+		</div>
+	}
+}
+
+templ SearchResults(soldiers []models.Soldier) {
+	for _, s := range soldiers {
+		@SoldierCard(s)
+	}
+	if len(soldiers) == 0 {
+		<p class="text-gray-500 text-sm">No results found.</p>
+	}
+}
+
+templ AnniversaryPartial(soldiers []models.Soldier, month, day int) {
+	<h4 class="gold font-bold mb-2">{ monthName(month) } { fmt.Sprintf("%d", day) }</h4>
+	if len(soldiers) == 0 {
+		<p class="text-gray-500 text-sm">No records for this date.</p>
+	} else {
+		for _, s := range soldiers {
+			@SoldierCard(s)
+		}
+	}
+}
