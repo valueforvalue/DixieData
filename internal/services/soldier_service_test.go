@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -155,7 +156,7 @@ func TestSoldierService_List(t *testing.T) {
 	}
 }
 
-func TestSoldierService_Search(t *testing.T) {
+func TestSoldierService_SearchPage(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 
@@ -171,19 +172,109 @@ func TestSoldierService_Search(t *testing.T) {
 		FirstName: "Joseph",
 		LastName:  "Johnston",
 		Unit:      "Army of Tennessee",
+		DisplayID: "PENSION-4242",
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	results, err := svc.Search("Forrest")
+	results, total, err := svc.SearchPage("Forrest", 1, 10)
 	if err != nil {
-		t.Fatalf("Search: %v", err)
+		t.Fatalf("SearchPage: %v", err)
 	}
 	if len(results) != 1 {
-		t.Errorf("Search returned %d results, want 1", len(results))
+		t.Errorf("SearchPage returned %d results, want 1", len(results))
+	}
+	if total != 1 {
+		t.Errorf("SearchPage total=%d, want 1", total)
 	}
 	if results[0].LastName != "Forrest" {
 		t.Errorf("got %s, want Forrest", results[0].LastName)
+	}
+
+	displayIDResults, total, err := svc.SearchPage("4242", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage display_id: %v", err)
+	}
+	if total != 1 || len(displayIDResults) != 1 {
+		t.Fatalf("display_id search got total=%d len=%d, want 1/1", total, len(displayIDResults))
+	}
+	if displayIDResults[0].DisplayID != "PENSION-4242" {
+		t.Fatalf("got display_id %q, want PENSION-4242", displayIDResults[0].DisplayID)
+	}
+}
+
+func TestSoldierService_SearchPagePaginates(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	for i := 0; i < 5; i++ {
+		_, err := svc.Create(models.Soldier{
+			FirstName: "Searchable",
+			LastName:  "Soldier",
+			Unit:      "Archive Unit",
+			DisplayID: fmt.Sprintf("PENSION-%04d", i),
+		})
+		if err != nil {
+			t.Fatalf("Create %d: %v", i, err)
+		}
+	}
+
+	results, total, err := svc.SearchPage("Searchable", 2, 2)
+	if err != nil {
+		t.Fatalf("SearchPage: %v", err)
+	}
+	if total != 5 {
+		t.Fatalf("total=%d want 5", total)
+	}
+	if len(results) != 2 {
+		t.Fatalf("len=%d want 2", len(results))
+	}
+}
+
+func TestSoldierService_AdvancedSearch(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	_, err := svc.Create(models.Soldier{
+		DisplayID:  "PENSION-2024",
+		FirstName:  "Robert",
+		LastName:   "Taylor",
+		Rank:       "Captain",
+		Unit:       "1st Georgia Infantry",
+		DeathYear:  1864,
+		DeathMonth: 5,
+		DeathDay:   6,
+	})
+	if err != nil {
+		t.Fatalf("Create matching soldier: %v", err)
+	}
+	_, err = svc.Create(models.Soldier{
+		DisplayID: "PENSION-2025",
+		FirstName: "Henry",
+		LastName:  "Walker",
+		Rank:      "Private",
+		Unit:      "7th Texas Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create non-matching soldier: %v", err)
+	}
+
+	results, total, err := svc.AdvancedSearch(models.SoldierSearch{
+		Mode:       "advanced",
+		DisplayID:  "2024",
+		Rank:       "Captain",
+		DeathYear:  "1864",
+		DeathMonth: "5",
+		DeathDay:   "6",
+	}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("AdvancedSearch total=%d len=%d", total, len(results))
+	}
+	if results[0].DisplayID != "PENSION-2024" {
+		t.Fatalf("got display_id %q", results[0].DisplayID)
 	}
 }

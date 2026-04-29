@@ -18,6 +18,19 @@ type Soldier struct {
 	Images      []Image  `json:"images,omitempty"`
 }
 
+type SoldierSearch struct {
+	Mode       string
+	Query      string
+	DisplayID  string
+	FirstName  string
+	LastName   string
+	Rank       string
+	Unit       string
+	DeathYear  string
+	DeathMonth string
+	DeathDay   string
+}
+
 type Record struct {
 	ID         int64  `json:"id"`
 	SoldierID  int64  `json:"soldier_id"`

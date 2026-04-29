@@ -2,6 +2,9 @@ package templates
 
 import (
 	"fmt"
+	"net/url"
+	"path/filepath"
+	"strings"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -29,25 +32,68 @@ func deathDate(s models.Soldier) string {
 	return fmt.Sprintf("%s %d", monthName(s.DeathMonth), s.DeathYear)
 }
 
-templ SoldierList(soldiers []models.Soldier, page, total int) {
+templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 	@Layout("Soldiers") {
-		<div class="flex justify-between items-center mb-4">
-			<h2 class="text-2xl gold font-bold">Soldier Records</h2>
-			<div class="flex gap-2 items-center">
-				<input type="text" placeholder="Search..." name="q"
-					hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
-					class="bg-gray-800 border border-gray-600 rounded px-3 py-1 text-sm"/>
+		<div class="mb-4">
+			<div class="flex justify-between items-center mb-4">
+				<h2 class="text-2xl gold font-bold">Soldier Records</h2>
 				<a href="/soldiers/new" class="bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm">+ Add</a>
 			</div>
+			<div class="flex gap-2 mb-3">
+				<button type="button" data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
+					class="px-3 py-2 rounded border gold-border text-sm hover:bg-yellow-900">Quick Search</button>
+				<button type="button" data-tab-group="soldier-search" data-tab-target="advanced"
+					class="px-3 py-2 rounded border gold-border text-sm hover:bg-yellow-900">Advanced Search</button>
+			</div>
+			<div data-tab-panel="soldier-search" data-tab-id="basic" class="space-y-2">
+				<input type="text" placeholder="Search by name, unit, rank, or record ID..." name="q"
+					value={ query }
+					hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
+					class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				<p class="text-xs text-gray-500">Quick search matches names, units, ranks, and record numbers.</p>
+			</div>
+			<form data-tab-panel="soldier-search" data-tab-id="advanced" class="hidden card rounded p-4 grid grid-cols-2 gap-4"
+				hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">Record ID</label>
+					<input type="text" name="display_id" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">Rank</label>
+					<input type="text" name="rank" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">First Name</label>
+					<input type="text" name="first_name" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">Last Name</label>
+					<input type="text" name="last_name" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div class="col-span-2">
+					<label class="block text-sm text-gray-400 mb-1">Unit</label>
+					<input type="text" name="unit" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">Death Year</label>
+					<input type="number" name="death_year" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">Death Month</label>
+					<input type="number" name="death_month" min="0" max="12" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div>
+					<label class="block text-sm text-gray-400 mb-1">Death Day</label>
+					<input type="number" name="death_day" min="0" max="31" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+				</div>
+				<div class="col-span-2 flex gap-2 items-center">
+					<button type="submit" class="bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm">Run Advanced Search</button>
+					<button type="reset" class="text-gray-400 hover:text-white px-4 py-2 text-sm">Reset Filters</button>
+				</div>
+			</form>
 		</div>
 		<div id="soldier-list">
-			for _, s := range soldiers {
-				@SoldierCard(s)
-			}
-		</div>
-		<div class="mt-4 text-sm text-gray-400">
-			Total: { fmt.Sprintf("%d", total) } records | Page { fmt.Sprintf("%d", page) }
-			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers?page=%d", page+1)) } class="ml-2 gold hover:underline">Next →</a>
+			@SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Query: query}, page, total, 50)
 		</div>
 	}
 }
@@ -85,7 +131,121 @@ templ SoldierDetail(s models.Soldier) {
 						</div>
 					}
 				}
+				if len(s.Images) > 0 {
+					<h3 class="mt-6 text-lg gold">Images</h3>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+						for _, img := range s.Images {
+							<a href={ imageURL(img.FilePath) } target="_blank" class="card rounded p-3 hover:border-yellow-600 block">
+								<img src={ imageURL(img.FilePath) } alt={ img.Caption }
+									class="w-full h-40 object-cover rounded mb-2 bg-gray-900"/>
+								<div class="text-sm gold">{ img.Caption }</div>
+								<div class="text-xs text-gray-400 break-all">{ img.FileName }</div>
+							</a>
+						}
+					</div>
+				}
 			</div>
 		</div>
 	}
+}
+
+func pageHref(search models.SoldierSearch, page int) templ.SafeURL {
+	if search.Mode != "advanced" && strings.TrimSpace(search.Query) == "" {
+		return templ.SafeURL(fmt.Sprintf("/soldiers?page=%d", page))
+	}
+	return templ.SafeURL(pageRequestURL(search, page))
+}
+
+func pageRequestURL(search models.SoldierSearch, page int) string {
+	params := searchParams(search)
+	params.Set("page", fmt.Sprintf("%d", page))
+	if search.Mode == "advanced" {
+		return "/soldiers/search/advanced?" + params.Encode()
+	}
+	return "/soldiers/search?" + params.Encode()
+}
+
+func searchParams(search models.SoldierSearch) url.Values {
+	values := url.Values{}
+	if search.Mode == "advanced" {
+		if strings.TrimSpace(search.DisplayID) != "" {
+			values.Set("display_id", search.DisplayID)
+		}
+		if strings.TrimSpace(search.FirstName) != "" {
+			values.Set("first_name", search.FirstName)
+		}
+		if strings.TrimSpace(search.LastName) != "" {
+			values.Set("last_name", search.LastName)
+		}
+		if strings.TrimSpace(search.Rank) != "" {
+			values.Set("rank", search.Rank)
+		}
+		if strings.TrimSpace(search.Unit) != "" {
+			values.Set("unit", search.Unit)
+		}
+		if strings.TrimSpace(search.DeathYear) != "" {
+			values.Set("death_year", search.DeathYear)
+		}
+		if strings.TrimSpace(search.DeathMonth) != "" {
+			values.Set("death_month", search.DeathMonth)
+		}
+		if strings.TrimSpace(search.DeathDay) != "" {
+			values.Set("death_day", search.DeathDay)
+		}
+		return values
+	}
+	if strings.TrimSpace(search.Query) != "" {
+		values.Set("q", search.Query)
+	}
+	return values
+}
+
+func searchSummary(search models.SoldierSearch) string {
+	if search.Mode != "advanced" {
+		if strings.TrimSpace(search.Query) == "" {
+			return "All records"
+		}
+		return fmt.Sprintf("Search: %q", search.Query)
+	}
+
+	parts := []string{}
+	if search.DisplayID != "" {
+		parts = append(parts, "Record ID "+search.DisplayID)
+	}
+	if search.FirstName != "" {
+		parts = append(parts, "First name "+search.FirstName)
+	}
+	if search.LastName != "" {
+		parts = append(parts, "Last name "+search.LastName)
+	}
+	if search.Rank != "" {
+		parts = append(parts, "Rank "+search.Rank)
+	}
+	if search.Unit != "" {
+		parts = append(parts, "Unit "+search.Unit)
+	}
+	if search.DeathYear != "" {
+		parts = append(parts, "Death year "+search.DeathYear)
+	}
+	if search.DeathMonth != "" {
+		parts = append(parts, "Death month "+search.DeathMonth)
+	}
+	if search.DeathDay != "" {
+		parts = append(parts, "Death day "+search.DeathDay)
+	}
+	if len(parts) == 0 {
+		return "Advanced search"
+	}
+	return "Advanced filters: " + strings.Join(parts, ", ")
+}
+
+func imageURL(filePath string) templ.SafeURL {
+	cleaned := filepath.ToSlash(strings.TrimSpace(filePath))
+	if cleaned == "" {
+		return templ.SafeURL("#")
+	}
+	if filepath.IsAbs(filePath) {
+		return templ.SafeURL("file:///" + strings.TrimPrefix(cleaned, "/"))
+	}
+	return templ.SafeURL("/media/" + strings.TrimPrefix(cleaned, "/"))
 }

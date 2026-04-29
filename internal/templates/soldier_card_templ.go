@@ -11,6 +11,9 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"net/url"
+	"path/filepath"
+	"strings"
 )
 
 func SoldierCard(s models.Soldier) templ.Component {
@@ -41,7 +44,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 12, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 15, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -54,7 +57,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(s.Rank)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 13, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 16, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -67,7 +70,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(s.FirstName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 13, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 16, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -80,7 +83,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(s.LastName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 13, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 16, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -93,7 +96,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(s.Unit)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 14, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 17, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -111,7 +114,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(deathDate(s))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 16, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 19, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -129,7 +132,7 @@ func SoldierCard(s models.Soldier) templ.Component {
 		var templ_7745c5c3_Var8 templ.SafeURL
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 19, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 22, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -150,7 +153,7 @@ func deathDate(s models.Soldier) string {
 	return fmt.Sprintf("%s %d", monthName(s.DeathMonth), s.DeathYear)
 }
 
-func SoldierList(soldiers []models.Soldier, page, total int) templ.Component {
+func SoldierList(soldiers []models.Soldier, page, total int, query string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -183,56 +186,28 @@ func SoldierList(soldiers []models.Soldier, page, total int) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex justify-between items-center mb-4\"><h2 class=\"text-2xl gold font-bold\">Soldier Records</h2><div class=\"flex gap-2 items-center\"><input type=\"text\" placeholder=\"Search...\" name=\"q\" hx-get=\"/soldiers/search\" hx-target=\"#soldier-list\" hx-trigger=\"keyup changed delay:300ms\" class=\"bg-gray-800 border border-gray-600 rounded px-3 py-1 text-sm\"> <a href=\"/soldiers/new\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm\">+ Add</a></div></div><div id=\"soldier-list\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			for _, s := range soldiers {
-				templ_7745c5c3_Err = SoldierCard(s).Render(ctx, templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><div class=\"mt-4 text-sm text-gray-400\">Total: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"mb-4\"><div class=\"flex justify-between items-center mb-4\"><h2 class=\"text-2xl gold font-bold\">Soldier Records</h2><a href=\"/soldiers/new\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm\">+ Add</a></div><div class=\"flex gap-2 mb-3\"><button type=\"button\" data-tab-group=\"soldier-search\" data-tab-target=\"basic\" data-tab-default=\"true\" class=\"px-3 py-2 rounded border gold-border text-sm hover:bg-yellow-900\">Quick Search</button> <button type=\"button\" data-tab-group=\"soldier-search\" data-tab-target=\"advanced\" class=\"px-3 py-2 rounded border gold-border text-sm hover:bg-yellow-900\">Advanced Search</button></div><div data-tab-panel=\"soldier-search\" data-tab-id=\"basic\" class=\"space-y-2\"><input type=\"text\" placeholder=\"Search by name, unit, rank, or record ID...\" name=\"q\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", total))
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(query)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 49, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 50, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " records | Page ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" hx-get=\"/soldiers/search\" hx-target=\"#soldier-list\" hx-trigger=\"keyup changed delay:300ms\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"><p class=\"text-xs text-gray-500\">Quick search matches names, units, ranks, and record numbers.</p></div><form data-tab-panel=\"soldier-search\" data-tab-id=\"advanced\" class=\"hidden card rounded p-4 grid grid-cols-2 gap-4\" hx-get=\"/soldiers/search/advanced\" hx-target=\"#soldier-list\"><div><label class=\"block text-sm text-gray-400 mb-1\">Record ID</label> <input type=\"text\" name=\"display_id\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Rank</label> <input type=\"text\" name=\"rank\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-gray-400 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Death Year</label> <input type=\"number\" name=\"death_year\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Death Month</label> <input type=\"number\" name=\"death_month\" min=\"0\" max=\"12\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Death Day</label> <input type=\"number\" name=\"death_day\" min=\"0\" max=\"31\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div class=\"col-span-2 flex gap-2 items-center\"><button type=\"submit\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-2 rounded text-sm\">Run Advanced Search</button> <button type=\"reset\" class=\"text-gray-400 hover:text-white px-4 py-2 text-sm\">Reset Filters</button></div></form></div><div id=\"soldier-list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", page))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 49, Col: 79}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			templ_7745c5c3_Err = SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Query: query}, page, total, 50).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " <a href=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var13 templ.SafeURL
-			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers?page=%d", page+1)))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 50, Col: 68}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" class=\"ml-2 gold hover:underline\">Next →</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -262,12 +237,12 @@ func SoldierDetail(s models.Soldier) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var14 == nil {
-			templ_7745c5c3_Var14 = templ.NopComponent
+		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var12 == nil {
+			templ_7745c5c3_Var12 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var15 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var13 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -279,223 +254,405 @@ func SoldierDetail(s models.Soldier) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"max-w-2xl mx-auto\"><div class=\"card rounded p-6\"><div class=\"flex justify-between mb-4\"><h2 class=\"text-2xl font-bold\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"max-w-2xl mx-auto\"><div class=\"card rounded p-6\"><div class=\"flex justify-between mb-4\"><h2 class=\"text-2xl font-bold\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var14 string
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(s.Rank)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 106, Col: 44}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(s.FirstName)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 106, Col: 60}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
-			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(s.Rank)
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(s.LastName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 60, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 106, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</h2><span class=\"gold text-lg font-mono\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(s.FirstName)
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 60, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 107, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, " ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</span></div><dl class=\"grid grid-cols-2 gap-2 text-sm\"><dt class=\"text-gray-400\">Unit</dt><dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(s.LastName)
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(s.Unit)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 60, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 110, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</h2><span class=\"gold text-lg font-mono\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</dd><dt class=\"text-gray-400\">Death</dt><dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(deathDate(s))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 61, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 111, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span></div><dl class=\"grid grid-cols-2 gap-2 text-sm\"><dt class=\"text-gray-400\">Unit</dt><dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</dd><dt class=\"text-gray-400\">Birth Info</dt><dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(s.Unit)
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(s.BirthInfo)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 64, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 112, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</dd><dt class=\"text-gray-400\">Death</dt><dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</dd></dl>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var21 string
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(deathDate(s))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 65, Col: 59}
+			if s.Notes != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"mt-4 text-sm text-gray-300\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var21 string
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(s.Notes)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 115, Col: 52}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"mt-4 flex gap-2\"><a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</dd><dt class=\"text-gray-400\">Birth Info</dt><dd>")
+			var templ_7745c5c3_Var22 templ.SafeURL
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var22 string
-			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(s.BirthInfo)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 66, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 118, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</dd></dl>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm\">Edit</a> <button hx-delete=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if s.Notes != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"mt-4 text-sm text-gray-300\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var23 string
-				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(s.Notes)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 69, Col: 52}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</p>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+			var templ_7745c5c3_Var23 string
+			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", s.ID))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 119, Col: 58}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"mt-4 flex gap-2\"><a href=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var24 templ.SafeURL
-			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 72, Col: 68}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm\">Edit</a> <button hx-delete=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var25 string
-			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", s.ID))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 73, Col: 58}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" hx-confirm=\"Delete this record?\" hx-target=\"body\" class=\"bg-red-900 hover:bg-red-800 text-white px-3 py-1 rounded text-sm\">Delete</button> <a href=\"/soldiers\" class=\"text-gray-400 hover:text-white px-3 py-1 text-sm\">← Back</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" hx-confirm=\"Delete this record?\" hx-target=\"body\" class=\"bg-red-900 hover:bg-red-800 text-white px-3 py-1 rounded text-sm\">Delete</button> <a href=\"/soldiers\" class=\"text-gray-400 hover:text-white px-3 py-1 text-sm\">← Back</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(s.Records) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<h3 class=\"mt-6 text-lg gold\">Records</h3>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<h3 class=\"mt-6 text-lg gold\">Records</h3>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for _, r := range s.Records {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"card rounded p-2 mt-2 text-sm\"><span class=\"gold\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"card rounded p-2 mt-2 text-sm\"><span class=\"gold\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var24 string
+					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(r.RecordType)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 126, Col: 40}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span> ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if r.AppID != "" {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<span class=\"ml-2 text-gray-400\">App: ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var25 string
+						templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(r.AppID)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 128, Col: 55}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<p class=\"text-gray-300 mt-1\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var26 string
-					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(r.RecordType)
+					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(r.Details)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 80, Col: 40}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 130, Col: 48}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span> ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if r.AppID != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"ml-2 text-gray-400\">App: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var27 string
-						templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(r.AppID)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 82, Col: 55}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-gray-300 mt-1\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var28 string
-					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(r.Details)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 84, Col: 48}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</p></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div></div>")
+			if len(s.Images) > 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<h3 class=\"mt-6 text-lg gold\">Images</h3><div class=\"grid grid-cols-1 md:grid-cols-2 gap-4 mt-2\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				for _, img := range s.Images {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<a href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var27 templ.SafeURL
+					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinURLErrs(imageURL(img.FilePath))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 138, Col: 39}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" target=\"_blank\" class=\"card rounded p-3 hover:border-yellow-600 block\"><img src=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var28 string
+					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(imageURL(img.FilePath))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 139, Col: 41}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" alt=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var29 string
+					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(img.Caption)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 139, Col: 61}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"w-full h-40 object-cover rounded mb-2 bg-gray-900\"><div class=\"text-sm gold\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var30 string
+					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(img.Caption)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 141, Col: 47}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div><div class=\"text-xs text-gray-400 break-all\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var31 string
+					templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(img.FileName)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 142, Col: 67}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div></a>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Layout(s.FirstName+" "+s.LastName).Render(templ.WithChildren(ctx, templ_7745c5c3_Var15), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Layout(s.FirstName+" "+s.LastName).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+func pageHref(search models.SoldierSearch, page int) templ.SafeURL {
+	if search.Mode != "advanced" && strings.TrimSpace(search.Query) == "" {
+		return templ.SafeURL(fmt.Sprintf("/soldiers?page=%d", page))
+	}
+	return templ.SafeURL(pageRequestURL(search, page))
+}
+
+func pageRequestURL(search models.SoldierSearch, page int) string {
+	params := searchParams(search)
+	params.Set("page", fmt.Sprintf("%d", page))
+	if search.Mode == "advanced" {
+		return "/soldiers/search/advanced?" + params.Encode()
+	}
+	return "/soldiers/search?" + params.Encode()
+}
+
+func searchParams(search models.SoldierSearch) url.Values {
+	values := url.Values{}
+	if search.Mode == "advanced" {
+		if strings.TrimSpace(search.DisplayID) != "" {
+			values.Set("display_id", search.DisplayID)
+		}
+		if strings.TrimSpace(search.FirstName) != "" {
+			values.Set("first_name", search.FirstName)
+		}
+		if strings.TrimSpace(search.LastName) != "" {
+			values.Set("last_name", search.LastName)
+		}
+		if strings.TrimSpace(search.Rank) != "" {
+			values.Set("rank", search.Rank)
+		}
+		if strings.TrimSpace(search.Unit) != "" {
+			values.Set("unit", search.Unit)
+		}
+		if strings.TrimSpace(search.DeathYear) != "" {
+			values.Set("death_year", search.DeathYear)
+		}
+		if strings.TrimSpace(search.DeathMonth) != "" {
+			values.Set("death_month", search.DeathMonth)
+		}
+		if strings.TrimSpace(search.DeathDay) != "" {
+			values.Set("death_day", search.DeathDay)
+		}
+		return values
+	}
+	if strings.TrimSpace(search.Query) != "" {
+		values.Set("q", search.Query)
+	}
+	return values
+}
+
+func searchSummary(search models.SoldierSearch) string {
+	if search.Mode != "advanced" {
+		if strings.TrimSpace(search.Query) == "" {
+			return "All records"
+		}
+		return fmt.Sprintf("Search: %q", search.Query)
+	}
+
+	parts := []string{}
+	if search.DisplayID != "" {
+		parts = append(parts, "Record ID "+search.DisplayID)
+	}
+	if search.FirstName != "" {
+		parts = append(parts, "First name "+search.FirstName)
+	}
+	if search.LastName != "" {
+		parts = append(parts, "Last name "+search.LastName)
+	}
+	if search.Rank != "" {
+		parts = append(parts, "Rank "+search.Rank)
+	}
+	if search.Unit != "" {
+		parts = append(parts, "Unit "+search.Unit)
+	}
+	if search.DeathYear != "" {
+		parts = append(parts, "Death year "+search.DeathYear)
+	}
+	if search.DeathMonth != "" {
+		parts = append(parts, "Death month "+search.DeathMonth)
+	}
+	if search.DeathDay != "" {
+		parts = append(parts, "Death day "+search.DeathDay)
+	}
+	if len(parts) == 0 {
+		return "Advanced search"
+	}
+	return "Advanced filters: " + strings.Join(parts, ", ")
+}
+
+func imageURL(filePath string) templ.SafeURL {
+	cleaned := filepath.ToSlash(strings.TrimSpace(filePath))
+	if cleaned == "" {
+		return templ.SafeURL("#")
+	}
+	if filepath.IsAbs(filePath) {
+		return templ.SafeURL("file:///" + strings.TrimPrefix(cleaned, "/"))
+	}
+	return templ.SafeURL("/media/" + strings.TrimPrefix(cleaned, "/"))
 }
 
 var _ = templruntime.GeneratedTemplate
