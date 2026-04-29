@@ -8,7 +8,7 @@ templ Layout(title string) {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>{ title } - DixieData</title>
 		<script src="https://cdn.tailwindcss.com"></script>
-		<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+		<script defer src="/app.js"></script>
 		<style>
 			body { background-color: #1a1a2e; color: #e2d9c9; }
 			.gold { color: #c9a227; }
@@ -19,7 +19,7 @@ templ Layout(title string) {
 	<body class="min-h-screen font-serif">
 		<nav class="border-b border-yellow-900 bg-gray-900 px-6 py-3 flex items-center gap-6">
 			<span class="text-xl font-bold gold">⚔ DixieData</span>
-			<a href="/" class="hover:text-yellow-400 text-sm">Calendar</a>
+			<a href="/calendar" class="hover:text-yellow-400 text-sm">Calendar</a>
 			<a href="/soldiers" class="hover:text-yellow-400 text-sm">Soldiers</a>
 			<a href="/soldiers/new" class="hover:text-yellow-400 text-sm">Add Record</a>
 			<a href="/export" class="hover:text-yellow-400 text-sm">Export</a>
