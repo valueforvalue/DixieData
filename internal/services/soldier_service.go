@@ -106,8 +106,8 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 		return err
 	}
 
-	_, err = tx.Exec(`INSERT INTO soldiers_fts(soldiers_fts, rowid, first_name, last_name, unit, rank) VALUES('delete', ?, ?, ?, ?, ?)`,
-		soldier.ID, soldier.FirstName, soldier.LastName, soldier.Unit, soldier.Rank)
+	_, err = tx.Exec(`INSERT INTO soldiers_fts(soldiers_fts, rowid) VALUES('delete', ?)`,
+		soldier.ID)
 	if err != nil {
 		return err
 	}
