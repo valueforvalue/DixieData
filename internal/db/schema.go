@@ -1,5 +1,7 @@
 package db
 
+import "strings"
+
 const schema = `
 CREATE TABLE IF NOT EXISTS soldiers (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -13,6 +15,7 @@ CREATE TABLE IF NOT EXISTS soldiers (
     death_month  INTEGER,
     death_day    INTEGER,
     birth_info   TEXT,
+    buried_in    TEXT,
     notes        TEXT,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,6 +45,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS soldiers_fts USING fts5(
 `
 
 func applySchema(db *DB) error {
-	_, err := db.conn.Exec(schema)
-	return err
+	if _, err := db.conn.Exec(schema); err != nil {
+		return err
+	}
+	if _, err := db.conn.Exec(`ALTER TABLE soldiers ADD COLUMN buried_in TEXT`); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+		return err
+	}
+	return nil
 }

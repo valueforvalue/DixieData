@@ -10,23 +10,144 @@ templ Layout(title string) {
 		<script src="https://cdn.tailwindcss.com"></script>
 		<script defer src="/app.js"></script>
 		<style>
-			body { background-color: #1a1a2e; color: #e2d9c9; }
-			.gold { color: #c9a227; }
-			.gold-border { border-color: #c9a227; }
-			.card { background-color: #16213e; border: 1px solid #2d2d4e; }
+			:root {
+				color-scheme: light;
+			}
+			body {
+				background:
+					radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 26%),
+					radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 18%),
+					repeating-linear-gradient(135deg, rgba(34,45,57,0.025) 0, rgba(34,45,57,0.025) 6px, transparent 6px, transparent 18px),
+					linear-gradient(180deg, #d7d2c9 0%, #c9c2b5 42%, #b9b1a3 100%);
+				color: #22303d;
+				font-family: "Helvetica Neue", Arial, sans-serif;
+			}
+			.gold {
+				color: #a88a46;
+				font-family: Georgia, "Times New Roman", serif;
+			}
+			.gold-border { border-color: #8d7440; }
+			.card {
+				background: rgba(223, 228, 234, 0.92);
+				border: 1px solid rgba(141, 116, 64, 0.85);
+				box-shadow: 0 16px 32px rgba(23, 33, 43, 0.16);
+			}
+			.field-input {
+				width: 100%;
+				background: rgba(245, 242, 236, 0.96);
+				border: 1px solid rgba(141, 116, 64, 0.82);
+				border-radius: 0.8rem;
+				padding: 0.65rem 0.9rem;
+				font-size: 0.95rem;
+				color: #22303d;
+			}
+			.field-input:focus {
+				outline: none;
+				border-color: #a88a46;
+				box-shadow: 0 0 0 3px rgba(168, 138, 70, 0.2);
+			}
+			.primary-button,
+			.secondary-button,
+			.danger-button,
+			.pill-link {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 9999px;
+				padding: 0.55rem 0.95rem;
+				font-size: 0.82rem;
+				font-weight: 600;
+			}
+			.primary-button {
+				background: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
+				color: #1f2b38;
+				border: 1px solid #8d7440;
+			}
+			.primary-button:hover { background: linear-gradient(180deg, #d1b676 0%, #b08f45 100%); }
+			.secondary-button,
+			.pill-link {
+				background: rgba(246, 241, 228, 0.92);
+				color: #22303d;
+				border: 1px solid rgba(141, 116, 64, 0.85);
+			}
+			.secondary-button:hover,
+			.pill-link:hover { background: rgba(255, 247, 231, 0.98); }
+			.danger-button {
+				background: #6f2c26;
+				color: #fff8e7;
+				border: 1px solid #54211d;
+			}
+			.danger-button:hover { background: #54211d; }
+			.ghost-link {
+				color: #324253;
+				font-size: 0.9rem;
+				font-weight: 500;
+			}
+			.ghost-link:hover { color: #1f2b38; }
+			.google-progress-shell {
+				display: flex;
+				flex-direction: column;
+				gap: 0.45rem;
+				padding: 0.8rem 0.95rem;
+				border-radius: 1rem;
+				border: 1px solid rgba(141, 116, 64, 0.55);
+				background: rgba(36, 48, 61, 0.08);
+				color: #324253;
+			}
+			.google-progress-head {
+				display: flex;
+				justify-content: space-between;
+				gap: 0.75rem;
+				font-size: 0.76rem;
+				font-weight: 600;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+			}
+			.google-progress-track {
+				position: relative;
+				overflow: hidden;
+				height: 0.65rem;
+				border-radius: 9999px;
+				background: rgba(141, 116, 64, 0.18);
+			}
+			.google-progress-fill {
+				position: absolute;
+				inset: 0;
+				width: 42%;
+				border-radius: 9999px;
+				background: linear-gradient(90deg, #c5ab68 0%, #eddca6 50%, #a5853f 100%);
+				box-shadow: 0 0 18px rgba(197, 171, 104, 0.45);
+				animation: google-progress-indeterminate 1.45s ease-in-out infinite;
+			}
+			[aria-busy="true"] {
+				opacity: 0.72;
+				pointer-events: none;
+			}
+			@keyframes google-progress-indeterminate {
+				0% { transform: translateX(-120%); }
+				50% { transform: translateX(85%); }
+				100% { transform: translateX(220%); }
+			}
 		</style>
 	</head>
-	<body class="min-h-screen font-serif">
-		<nav class="border-b border-yellow-900 bg-gray-900 px-6 py-3 flex items-center gap-6">
-			<span class="text-xl font-bold gold">⚔ DixieData</span>
-			<a href="/calendar" class="hover:text-yellow-400 text-sm">Calendar</a>
-			<a href="/soldiers" class="hover:text-yellow-400 text-sm">Soldiers</a>
-			<a href="/soldiers/new" class="hover:text-yellow-400 text-sm">Add Record</a>
-			<a href="/export" class="hover:text-yellow-400 text-sm">Export</a>
-		</nav>
-		<main class="p-6">
-			{ children... }
-		</main>
+	<body class="min-h-screen">
+		<div class="mx-auto max-w-6xl px-8 py-8">
+			<header class="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_20px_40px_rgba(21,29,38,0.2)]">
+				<div>
+					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Soldier Archive</p>
+					<p class="gold text-3xl leading-none mt-2">DixieData</p>
+				</div>
+				<nav class="flex flex-wrap items-center gap-2">
+					<a href="/calendar" class="pill-link">Calendar</a>
+					<a href="/soldiers" class="pill-link">Soldiers</a>
+					<a href="/soldiers/new" class="pill-link">Add Record</a>
+					<a href="/export" class="pill-link">Export</a>
+				</nav>
+			</header>
+			<main>
+				{ children... }
+			</main>
+		</div>
 	</body>
 	</html>
 }

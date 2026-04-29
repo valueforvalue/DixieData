@@ -1,0 +1,94 @@
+{
+  "civil_war_quotes": [
+    {
+      "author": "Robert E. Lee",
+      "text": "It is well that war is so terrible, or we should get too fond of it.",
+      "context": "Spoken to James Longstreet during the Battle of Fredericksburg, 1862.",
+      "tags": ["war", "reflection"]
+    },
+    {
+      "author": "Thomas 'Stonewall' Jackson",
+      "text": "Let us cross over the river, and rest under the shade of the trees.",
+      "context": "Final words, May 10, 1863.",
+      "tags": ["final words", "peace"]
+    },
+    {
+      "author": "James Longstreet",
+      "text": "I do not think the day is far distant when we shall be as good friends as ever.",
+      "context": "Post-war reflection on national reconciliation.",
+      "tags": ["reconciliation", "future"]
+    },
+    {
+      "author": "J.E.B. Stuart",
+      "text": "I had rather die a thousand deaths than betray my country or any part of it.",
+      "context": "Written in a letter to his wife, Flora Stuart.",
+      "tags": ["loyalty", "duty"]
+    },
+    {
+      "author": "Patrick Cleburne",
+      "text": "If this nation dies, the monument expected to commemorate its glorious institutions will be a monument to our failure.",
+      "context": "From his 1864 memorandum to the Army of Tennessee.",
+      "tags": ["legacy", "warning"]
+    },
+    {
+      "author": "Nathan Bedford Forrest",
+      "text": "Whenever you meet the enemy no matter how few there are of you or how many of them, show fight.",
+      "context": "Attributed tactical philosophy regarding aggressive engagement.",
+      "tags": ["tactics", "resolve"]
+    },
+    {
+      "author": "Joseph E. Johnston",
+      "text": "An army is simply a vast community on legs... here one day, and the next day gone.",
+      "context": "Reflecting on the nature of logistics and movement in the field.",
+      "tags": ["military", "logistics"]
+    },
+    {
+      "author": "P.G.T. Beauregard",
+      "text": "No people ever yet lost their liberties who had the courage to defend them.",
+      "context": "Proclamation to the people of Louisiana, 1862.",
+      "tags": ["liberty", "courage"]
+    },
+    {
+      "author": "Richard S. Ewell",
+      "text": "It is better to be a dead lion than a living dog.",
+      "context": "Attributed remark regarding the spirit of the infantry.",
+      "tags": ["honor", "valor"]
+    },
+    {
+      "author": "Thomas 'Stonewall' Jackson",
+      "text": "My duty is to obey orders.",
+      "context": "Jackson's core military philosophy during the Valley Campaign.",
+      "tags": ["duty", "discipline"]
+    },
+    {
+      "author": "Robert E. Lee",
+      "text": "Duty, then, is the sublimest word in our language. Do your duty in all things. You cannot do more, you should never wish to do less.",
+      "context": "Letter to his son, G.W. Custis Lee.",
+      "tags": ["duty", "philosophy"]
+    },
+    {
+      "author": "James Longstreet",
+      "text": "The ground was covered with the dead and dying... it was a scene that I never want to see again.",
+      "context": "Account of the aftermath of the Battle of Antietam.",
+      "tags": ["war", "reality"]
+    },
+    {
+      "author": "John Bell Hood",
+      "text": "The time for talking has passed; the time for fighting has come.",
+      "context": "Spoken during the defense of Atlanta, 1864.",
+      "tags": ["action", "resolve"]
+    },
+    {
+      "author": "A.P. Hill",
+      "text": "Tell Hill he must come up!",
+      "context": "Both Lee and Jackson reportedly called for Hill on their deathbeds, reflecting his reliability.",
+      "tags": ["legacy", "reliability"]
+    },
+    {
+      "author": "Patrick Cleburne",
+      "text": "Every man should be a soldier. This is not the time to be a gentleman.",
+      "context": "Attributed to Cleburne regarding the total commitment required for war.",
+      "tags": ["war", "commitment"]
+    }
+  ]
+}
