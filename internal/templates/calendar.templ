@@ -1,0 +1,79 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/valueforvalue/DixieData/internal/models"
+)
+
+templ Calendar(month int, calendar map[int][]models.Soldier) {
+	@Layout("Calendar") {
+		<div class="flex gap-6">
+			<div class="flex-1">
+				<div class="flex items-center gap-4 mb-4">
+					<h2 class="text-2xl gold font-bold">{ monthName(month) }</h2>
+					<div class="flex gap-2">
+						for _, m := range monthNumbers() {
+							<a href={ templ.SafeURL(fmt.Sprintf("/calendar/%d", m)) }
+							   class="px-2 py-1 text-xs border gold-border rounded hover:bg-yellow-900">
+								{ fmt.Sprintf("%d", m) }
+							</a>
+						}
+					</div>
+				</div>
+				<div class="grid grid-cols-7 gap-1">
+					for _, day := range days31() {
+						<div
+							class="card p-2 min-h-16 cursor-pointer hover:border-yellow-600 rounded"
+							hx-get={ fmt.Sprintf("/anniversary/%d/%d", month, day) }
+							hx-target="#details-pane"
+							hx-swap="innerHTML"
+						>
+							<div class="text-xs gold font-bold mb-1">{ fmt.Sprintf("%d", day) }</div>
+							if soldiers, ok := calendar[day]; ok {
+								<div class="text-xs text-gray-400">{ fmt.Sprintf("%d", len(soldiers)) } record(s)</div>
+							}
+						</div>
+					}
+				</div>
+			</div>
+			<div class="w-80">
+				<h3 class="gold font-bold mb-2">Month-Wide Anniversaries</h3>
+				if soldiers, ok := calendar[0]; ok {
+					for _, s := range soldiers {
+						@SoldierCard(s)
+					}
+				} else {
+					<p class="text-gray-500 text-sm">None recorded.</p>
+				}
+				<div id="details-pane" class="mt-4">
+					<p class="text-gray-500 text-sm">Click a day to see anniversaries.</p>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+func monthName(m int) string {
+	names := []string{"", "January", "February", "March", "April", "May", "June",
+		"July", "August", "September", "October", "November", "December"}
+	if m >= 1 && m <= 12 {
+		return names[m]
+	}
+	return "Unknown"
+}
+
+func monthNumbers() []int {
+	n := make([]int, 12)
+	for i := range n {
+		n[i] = i + 1
+	}
+	return n
+}
+
+func days31() []int {
+	n := make([]int, 31)
+	for i := range n {
+		n[i] = i + 1
+	}
+	return n
+}
