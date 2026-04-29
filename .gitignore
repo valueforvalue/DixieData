@@ -20,3 +20,5 @@ Thumbs.db
 
 # Go test cache
 *.test
+google-oauth-defaults.json
+release/

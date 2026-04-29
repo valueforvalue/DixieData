@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -162,5 +165,47 @@ func TestSelectQuoteOfDayUsesDayOfYear(t *testing.T) {
 	}, time.Date(2026, time.January, 2, 12, 0, 0, 0, time.UTC))
 	if quote.Author != "Two" {
 		t.Fatalf("quote author = %q", quote.Author)
+	}
+}
+
+func TestInitializeLocalDataRecreatesFreshArchive(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+
+	if _, err := app.soldiers.Create(models.Soldier{FirstName: "Demo", LastName: "Soldier"}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	imageDir := filepath.Join(dataDir, "images", "demo")
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(imageDir, "sample.txt"), []byte("demo"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := app.initializeLocalData(); err != nil {
+		t.Fatalf("initializeLocalData: %v", err)
+	}
+	defer app.shutdown(context.Background())
+
+	soldiers, total, err := app.soldiers.List(1, 50)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(soldiers) != 0 || total != 0 {
+		t.Fatalf("expected fresh archive, got %d soldiers total=%d", len(soldiers), total)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "images", "demo", "sample.txt")); !os.IsNotExist(err) {
+		t.Fatalf("expected image tree to be removed, stat err=%v", err)
 	}
 }

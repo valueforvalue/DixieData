@@ -41,6 +41,8 @@ type App struct {
 	dataDir     string
 }
 
+const initializeDataConfirmationWord = "INITIALIZE"
+
 func NewApp() *App {
 	return &App{}
 }
@@ -94,8 +96,11 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
 	mux.HandleFunc("/export", a.handleExport)
+	mux.HandleFunc("/settings", a.handleSettings)
+	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
+	mux.HandleFunc("/export/ical", a.handleExportICalendar)
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
 	mux.HandleFunc("/import/backup", a.handleImportBackup)
 	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
@@ -391,6 +396,34 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request) {
 	templates.ExportView(status).Render(r.Context(), w)
 }
 
+func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	templates.SettingsView(initializeDataConfirmationWord).Render(r.Context(), w)
+}
+
+func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(r.FormValue("confirmation_word")) != initializeDataConfirmationWord {
+		fmt.Fprintf(w, "Initialization cancelled. Type %s to confirm.", initializeDataConfirmationWord)
+		return
+	}
+	if err := a.initializeLocalData(); err != nil {
+		fmt.Fprintf(w, "Initialization failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, "Local archive reset. A fresh database and folder tree were created.")
+}
+
 func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -433,6 +466,28 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "✓ Exported to %s", path)
+}
+
+func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "dixiedata-anniversaries.ics",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "iCalendar", Pattern: "*.ics"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "iCalendar export cancelled.")
+		return
+	}
+	if err := a.export.ExportICalendar(path); err != nil {
+		fmt.Fprintf(w, "iCalendar export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("iCalendar ready:", path))
 }
 
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
@@ -957,6 +1012,20 @@ func (a *App) reloadServices() error {
 	a.backup = services.NewBackupService(a.soldiers)
 	a.google = services.NewGoogleService(a.dataDir)
 	return nil
+}
+
+func (a *App) initializeLocalData() error {
+	if filepath.Base(a.dataDir) != ".dixiedata" {
+		return fmt.Errorf("refusing to initialize unexpected data directory: %s", a.dataDir)
+	}
+	if a.database != nil {
+		a.database.Close()
+		a.database = nil
+	}
+	if err := os.RemoveAll(a.dataDir); err != nil {
+		return err
+	}
+	return a.reopenDatabase()
 }
 
 func (a *App) reopenDatabase() error {

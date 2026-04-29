@@ -2,7 +2,9 @@ package services
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -28,7 +30,7 @@ func TestGoogleService_SaveAndLoadSettings(t *testing.T) {
 	}
 }
 
-func TestGoogleCalendarEventBuildsYearlyAllDayEvent(t *testing.T) {
+func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 	event := googleCalendarEvent(models.Soldier{
 		DisplayID:  "PENSION-42",
 		FirstName:  "Robert",
@@ -41,11 +43,18 @@ func TestGoogleCalendarEventBuildsYearlyAllDayEvent(t *testing.T) {
 		DeathDay:   13,
 	})
 
-	if event.Start == nil || event.Start.Date != "1862-05-13" {
+	expectedDate := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 5, DeathDay: 13}, time.Now()).Format("2006-01-02")
+	if event.Start == nil || event.Start.DateTime == "" || !strings.HasPrefix(event.Start.DateTime, expectedDate+"T09:00:00") {
 		t.Fatalf("start = %#v", event.Start)
+	}
+	if event.End == nil || event.End.DateTime == "" {
+		t.Fatalf("end = %#v", event.End)
 	}
 	if len(event.Recurrence) != 1 || event.Recurrence[0] != "RRULE:FREQ=YEARLY" {
 		t.Fatalf("recurrence = %#v", event.Recurrence)
+	}
+	if event.Reminders == nil || event.Reminders.UseDefault || len(event.Reminders.Overrides) != 2 {
+		t.Fatalf("reminders = %#v", event.Reminders)
 	}
 	if event.ExtendedProperties == nil || event.ExtendedProperties.Private["dixiedata_display_id"] != "PENSION-42" {
 		t.Fatalf("extended properties = %#v", event.ExtendedProperties)

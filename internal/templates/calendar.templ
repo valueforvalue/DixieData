@@ -21,8 +21,6 @@ templ Calendar(month int, calendar map[int][]models.Soldier, total int, quote mo
 					}
 				</select>
 				<button hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" class="ghost-link px-4 py-2">Export Month PDF</button>
-				<button hx-post="/integrations/google/calendar/sync" hx-target="#calendar-export-status" data-progress-label="Syncing Google Calendar..." class="ghost-link px-4 py-2">Sync Google Calendar</button>
-				<button hx-post="/integrations/google/calendar/unsync" hx-target="#calendar-export-status" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing Google Calendar..." class="ghost-link px-4 py-2">Unsync Google Calendar</button>
 			</div>
 		</div>
 		<div class="mb-6 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_16px_34px_rgba(21,29,38,0.18)]">
