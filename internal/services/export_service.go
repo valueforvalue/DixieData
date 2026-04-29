@@ -1,12 +1,20 @@
 package services
 
 import (
+	"archive/zip"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 
+	"github.com/go-pdf/fpdf"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/models"
 )
 
 const exportBatchSize = 500
@@ -86,7 +94,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	w := csv.NewWriter(f)
 	defer w.Flush()
 
-	header := []string{"id", "display_id", "is_generated", "first_name", "last_name", "rank", "unit", "death_year", "death_month", "death_day", "birth_info", "notes", "created_at"}
+	header := []string{"id", "display_id", "is_generated", "first_name", "last_name", "rank", "unit", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -114,6 +122,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				fmt.Sprintf("%d", s.DeathMonth),
 				fmt.Sprintf("%d", s.DeathDay),
 				s.BirthInfo,
+				s.BuriedIn,
 				s.Notes,
 				s.CreatedAt,
 			}
@@ -132,4 +141,243 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 		page++
 	}
 	return nil
+}
+
+func (e *ExportService) ExportImages(outputPath string, images []models.Image) error {
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	zipWriter := zip.NewWriter(f)
+	defer zipWriter.Close()
+
+	for _, image := range images {
+		source, err := os.Open(image.FilePath)
+		if err != nil {
+			return err
+		}
+
+		entryName := image.FileName
+		if entryName == "" {
+			entryName = filepath.Base(image.FilePath)
+		}
+
+		entry, err := zipWriter.Create(entryName)
+		if err != nil {
+			source.Close()
+			return err
+		}
+
+		if _, err := io.Copy(entry, source); err != nil {
+			source.Close()
+			return err
+		}
+		source.Close()
+	}
+
+	return nil
+}
+
+func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier) error {
+	pdf := newPDFDocument()
+	pdf.AddPage()
+
+	pdf.SetFont("Times", "B", 20)
+	pdf.CellFormat(0, 12, soldierDisplayName(soldier), "", 1, "", false, 0, "")
+	pdf.SetFont("Times", "", 12)
+	pdf.CellFormat(0, 8, fmt.Sprintf("Database Number: %s", soldier.DisplayID), "", 1, "", false, 0, "")
+	pdf.Ln(2)
+
+	writePDFField(pdf, "Rank", soldier.Rank)
+	writePDFField(pdf, "Unit", soldier.Unit)
+	writePDFField(pdf, "Death", soldierDeathLine(soldier))
+	writePDFField(pdf, "Birth Info", soldier.BirthInfo)
+	writePDFField(pdf, "Buried In", soldier.BuriedIn)
+	writePDFSection(pdf, "Notes")
+	writePDFBody(pdf, soldier.Notes)
+
+	if len(soldier.Records) > 0 {
+		writePDFSection(pdf, "Records")
+		for _, record := range soldier.Records {
+			line := record.RecordType
+			if strings.TrimSpace(record.AppID) != "" {
+				line += fmt.Sprintf(" (App: %s)", record.AppID)
+			}
+			writePDFBullet(pdf, line)
+			if strings.TrimSpace(record.Details) != "" {
+				writePDFBody(pdf, record.Details)
+			}
+		}
+	}
+
+	if len(soldier.Images) > 0 {
+		writePDFSection(pdf, "Images")
+		for _, image := range soldier.Images {
+			writePDFImageRow(pdf, image)
+		}
+	}
+
+	return pdf.OutputFileAndClose(outputPath)
+}
+
+func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier) error {
+	pdf := newPDFDocument()
+	pdf.AddPage()
+
+	title := fmt.Sprintf("%s Anniversary Report", monthLabel(month))
+	pdf.SetFont("Times", "B", 20)
+	pdf.CellFormat(0, 12, title, "", 1, "", false, 0, "")
+	pdf.SetFont("Times", "", 12)
+	pdf.CellFormat(0, 8, "Includes soldier names and database numbers for the selected month.", "", 1, "", false, 0, "")
+	pdf.Ln(2)
+
+	days := make([]int, 0, len(calendar))
+	for day := range calendar {
+		if day == 0 {
+			continue
+		}
+		days = append(days, day)
+	}
+	sort.Ints(days)
+
+	if len(days) == 0 {
+		writePDFBody(pdf, "No soldiers are recorded for this month.")
+		return pdf.OutputFileAndClose(outputPath)
+	}
+
+	for _, day := range days {
+		soldiers := append([]models.Soldier(nil), calendar[day]...)
+		sort.Slice(soldiers, func(i, j int) bool {
+			left := strings.ToLower(soldierDisplayName(soldiers[i]))
+			right := strings.ToLower(soldierDisplayName(soldiers[j]))
+			return left < right
+		})
+
+		writePDFSection(pdf, fmt.Sprintf("%s %d", monthLabel(month), day))
+		for _, soldier := range soldiers {
+			writePDFBullet(pdf, fmt.Sprintf("%s - %s", soldierDisplayName(soldier), soldier.DisplayID))
+		}
+	}
+
+	return pdf.OutputFileAndClose(outputPath)
+}
+
+func newPDFDocument() *fpdf.Fpdf {
+	pdf := fpdf.New("P", "mm", "Letter", "")
+	pdf.SetTitle("DixieData Report", false)
+	pdf.SetAuthor("DixieData", false)
+	pdf.SetMargins(16, 16, 16)
+	pdf.SetAutoPageBreak(true, 16)
+	pdf.SetCompression(false)
+	return pdf
+}
+
+func writePDFSection(pdf *fpdf.Fpdf, title string) {
+	pdf.Ln(4)
+	pdf.SetFont("Times", "B", 15)
+	pdf.CellFormat(0, 8, title, "", 1, "", false, 0, "")
+	pdf.SetFont("Times", "", 12)
+}
+
+func writePDFField(pdf *fpdf.Fpdf, label, value string) {
+	pdf.SetFont("Times", "B", 12)
+	pdf.CellFormat(34, 8, label+":", "", 0, "", false, 0, "")
+	pdf.SetFont("Times", "", 12)
+	pdf.MultiCell(0, 8, emptyPDFValue(value), "", "", false)
+}
+
+func writePDFBody(pdf *fpdf.Fpdf, text string) {
+	pdf.SetFont("Times", "", 12)
+	pdf.MultiCell(0, 7, emptyPDFValue(text), "", "", false)
+}
+
+func writePDFBullet(pdf *fpdf.Fpdf, text string) {
+	pdf.SetFont("Times", "", 12)
+	pdf.CellFormat(6, 7, "-", "", 0, "", false, 0, "")
+	pdf.MultiCell(0, 7, emptyPDFValue(text), "", "", false)
+}
+
+func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {
+	const thumbnailWidth = 34.0
+	const rowHeight = 36.0
+
+	_, pageHeight := pdf.GetPageSize()
+	if pdf.GetY()+rowHeight > pageHeight-16 {
+		pdf.AddPage()
+	}
+
+	x := pdf.GetX()
+	y := pdf.GetY()
+	imagePath := imagePathForPDF(image)
+
+	if imagePath != "" {
+		pdf.ImageOptions(imagePath, x, y, thumbnailWidth, 0, false, fpdf.ImageOptions{
+			ImageType: strings.TrimPrefix(strings.ToLower(filepath.Ext(imagePath)), "."),
+		}, 0, "")
+	} else {
+		pdf.Rect(x, y, thumbnailWidth, 22, "D")
+	}
+
+	pdf.SetXY(x+thumbnailWidth+4, y)
+	title := image.FileName
+	if strings.TrimSpace(image.Caption) != "" {
+		title = fmt.Sprintf("%s - %s", image.FileName, image.Caption)
+	}
+	pdf.SetFont("Times", "", 12)
+	pdf.MultiCell(0, 6, emptyPDFValue(title), "", "", false)
+	pdf.SetXY(x+thumbnailWidth+4, y+10)
+	pdf.MultiCell(0, 6, "DB Path: "+emptyPDFValue(image.FilePath), "", "", false)
+	pdf.SetXY(x+thumbnailWidth+4, y+18)
+	pdf.MultiCell(0, 6, "Full Path: "+emptyPDFValue(strings.TrimSpace(image.ResolvedPath)), "", "", false)
+
+	if pdf.GetY() < y+rowHeight {
+		pdf.SetY(y + rowHeight)
+	}
+}
+
+func emptyPDFValue(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "Not recorded"
+	}
+	return value
+}
+
+func soldierDisplayName(soldier models.Soldier) string {
+	return strings.TrimSpace(strings.TrimSpace(soldier.Rank) + " " + strings.TrimSpace(soldier.FirstName+" "+soldier.LastName))
+}
+
+func soldierDeathLine(soldier models.Soldier) string {
+	if soldier.DeathMonth == 0 && soldier.DeathYear == 0 {
+		return ""
+	}
+	if soldier.DeathMonth == 0 {
+		return fmt.Sprintf("%d", soldier.DeathYear)
+	}
+	if soldier.DeathDay > 0 {
+		return fmt.Sprintf("%s %d, %d", monthLabel(soldier.DeathMonth), soldier.DeathDay, soldier.DeathYear)
+	}
+	return fmt.Sprintf("%s %d", monthLabel(soldier.DeathMonth), soldier.DeathYear)
+}
+
+func monthLabel(month int) string {
+	if month < 1 || month > 12 {
+		return "Unknown"
+	}
+	return time.Month(month).String()
+}
+
+func imagePathForPDF(image models.Image) string {
+	candidate := strings.TrimSpace(image.ResolvedPath)
+	if candidate == "" {
+		candidate = strings.TrimSpace(image.FilePath)
+	}
+	if candidate == "" {
+		return ""
+	}
+	if _, err := os.Stat(candidate); err != nil {
+		return ""
+	}
+	return candidate
 }

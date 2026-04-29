@@ -17,78 +17,98 @@ templ EntryForm(s models.Soldier, isEdit bool) {
 				}
 				hx-target="body"
 				enctype="multipart/form-data"
-				class="card rounded p-6 space-y-4"
+				class="card rounded-3xl p-8 space-y-5"
 			>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Pension/Record ID (leave blank for CSA-ID)</label>
+						<label class="block text-sm text-slate-500 mb-1">Pension/Record ID (leave blank for CSA-ID)</label>
 						<input type="text" name="display_id" value={ s.DisplayID }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Rank</label>
+						<label class="block text-sm text-slate-500 mb-1">Rank</label>
 						<input type="text" name="rank" value={ s.Rank }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">First Name</label>
+						<label class="block text-sm text-slate-500 mb-1">First Name</label>
 						<input type="text" name="first_name" value={ s.FirstName }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Last Name</label>
+						<label class="block text-sm text-slate-500 mb-1">Last Name</label>
 						<input type="text" name="last_name" value={ s.LastName }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div class="col-span-2">
-						<label class="block text-sm text-gray-400 mb-1">Unit</label>
+						<label class="block text-sm text-slate-500 mb-1">Unit</label>
 						<input type="text" name="unit" value={ s.Unit }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Death Year</label>
+						<label class="block text-sm text-slate-500 mb-1">Death Year</label>
 						<input type="number" name="death_year" value={ fmt.Sprintf("%d", s.DeathYear) }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Death Month (1-12, 0=unknown)</label>
+						<label class="block text-sm text-slate-500 mb-1">Death Month (1-12, 0=unknown)</label>
 						<input type="number" name="death_month" value={ fmt.Sprintf("%d", s.DeathMonth) } min="0" max="12"
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Death Day (1-31, 0=unknown)</label>
+						<label class="block text-sm text-slate-500 mb-1">Death Day (1-31, 0=unknown)</label>
 						<input type="number" name="death_day" value={ fmt.Sprintf("%d", s.DeathDay) } min="0" max="31"
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-gray-400 mb-1">Birth Info</label>
+						<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
 						<input type="text" name="birth_info" value={ s.BirthInfo }
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
+							class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
+						<input type="text" name="buried_in" value={ s.BuriedIn }
+							class="field-input"/>
 					</div>
 					<div class="col-span-2">
-						<label class="block text-sm text-gray-400 mb-1">Notes</label>
+						<div class="mb-3 flex items-center justify-between gap-3">
+							<label class="block text-sm text-slate-500">Records</label>
+							<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Record</button>
+						</div>
+						<div data-record-list class="space-y-3">
+							for _, record := range formRecords(s.Records) {
+								@RecordInputRow(record)
+							}
+						</div>
+						<template data-record-template>
+							@RecordInputRow(models.Record{})
+						</template>
+						<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
+					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Notes</label>
 						<textarea name="notes" rows="4"
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm">{ s.Notes }</textarea>
+							class="field-input min-h-32">{ s.Notes }</textarea>
 					</div>
 					<div class="col-span-2">
-						<label class="block text-sm text-gray-400 mb-1">Upload Images</label>
+						<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
 						<input type="file" name="images" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*"
-							class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"/>
-						<p class="text-xs text-gray-500 mt-2">Images are stored in a folder named after the soldier's record number.</p>
+							class="field-input"/>
+						<p class="text-xs text-slate-500 mt-2">Images are stored in a folder named after the soldier's record number.</p>
 						if isEdit && len(s.Images) > 0 {
-							<p class="text-xs text-gray-500 mt-1">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
+							<p class="text-xs text-slate-500 mt-1">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
 						}
 					</div>
 				</div>
 				<div class="flex gap-2 pt-2">
-					<button type="submit" class="bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-2 rounded">
+					<button type="submit" class="primary-button">
 						if isEdit {
 							Save Changes
 						} else {
 							Create Record
 						}
 					</button>
-					<a href="/soldiers" class="text-gray-400 hover:text-white px-4 py-2 text-sm">Cancel</a>
+					<a href="/soldiers" class="ghost-link px-4 py-2">Cancel</a>
 				</div>
 			</form>
 		</div>
@@ -102,62 +122,152 @@ func formTitle(isEdit bool) string {
 	return "New Soldier Record"
 }
 
-templ ExportView() {
+templ RecordInputRow(record models.Record) {
+	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+		<div class="mb-3 flex items-center justify-between gap-3">
+			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Record Entry</span>
+			<button type="button" data-record-remove class="pill-link">Remove</button>
+		</div>
+		<div class="grid grid-cols-2 gap-4">
+			<div>
+				<label class="mb-1 block text-sm text-slate-500">Record Type</label>
+				<input type="text" name="record_type" value={ record.RecordType } class="field-input"/>
+			</div>
+			<div>
+				<label class="mb-1 block text-sm text-slate-500">App / Record Number</label>
+				<input type="text" name="record_app_id" value={ record.AppID } class="field-input"/>
+			</div>
+			<div class="col-span-2">
+				<label class="mb-1 block text-sm text-slate-500">Details</label>
+				<textarea name="record_details" rows="3" class="field-input min-h-24">{ record.Details }</textarea>
+			</div>
+		</div>
+	</div>
+}
+
+func formRecords(records []models.Record) []models.Record {
+	if len(records) == 0 {
+		return []models.Record{{}}
+	}
+	return records
+}
+
+templ ExportView(status models.GoogleStatus) {
 	@Layout("Export") {
-		<div class="max-w-md mx-auto">
+		<div class="mx-auto max-w-2xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Export Data</h2>
-			<div class="card rounded p-6 space-y-4">
+			<div class="card rounded-3xl p-8 space-y-4">
 				<div class="flex flex-col gap-3">
 					<button hx-post="/export/json" hx-target="#export-status"
-						class="bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-3 rounded text-left">
+						class="primary-button justify-start text-left">
 						<div class="font-bold">Export JSON</div>
-						<div class="text-xs text-gray-300">Full hierarchical export (soldiers, records, images)</div>
+						<div class="text-xs text-slate-300">Full hierarchical export (soldiers, records, images)</div>
 					</button>
 					<button hx-post="/export/csv" hx-target="#export-status"
-						class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-3 rounded text-left">
+						class="secondary-button justify-start text-left">
 						<div class="font-bold">Export CSV</div>
-						<div class="text-xs text-gray-300">Flat spreadsheet format</div>
+						<div class="text-xs text-slate-500">Flat spreadsheet format</div>
+					</button>
+					<button hx-post="/export/backup" hx-target="#export-status"
+						class="primary-button justify-start text-left">
+						<div class="font-bold">Export Backup</div>
+						<div class="text-xs text-slate-300">ZIP archive with manifest, soldier data, and all images</div>
+					</button>
+					<button hx-post="/import/backup" hx-target="#export-status" hx-confirm="Load a backup and replace the current local archive?"
+						class="secondary-button justify-start text-left">
+						<div class="font-bold">Load Backup</div>
+						<div class="text-xs text-slate-500">Validates the manifest, then restores soldiers, records, and images</div>
 					</button>
 				</div>
-				<div id="export-status" class="text-sm text-gray-400"></div>
+				<div id="export-status" class="text-sm text-slate-500"></div>
+			</div>
+			<div class="card rounded-3xl p-8 space-y-4">
+				<div>
+					<h3 class="text-xl gold font-bold">Google Integration</h3>
+					<p class="mt-2 text-sm text-slate-500">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
+					if status.SharedClientAvailable {
+						<p class="mt-1 text-xs text-slate-500">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p>
+						<p class="mt-1 text-xs text-slate-500">Loaded from: <code>{ status.SharedClientSource }</code></p>
+					} else {
+						<p class="mt-1 text-xs text-slate-500">Save settings first, then connect the account in your browser.</p>
+						<p class="mt-1 text-xs text-slate-500">If you want shared settings, place <code>google-oauth-defaults.json</code> next to <code>DixieData.exe</code>.</p>
+					}
+				</div>
+				<div class="grid grid-cols-2 gap-4">
+					<div class="col-span-2 flex flex-wrap gap-3">
+						<button type="button" hx-post="/integrations/google/connect" hx-target="#google-status" class="primary-button">Connect Google Account</button>
+						<button type="button" hx-post="/integrations/google/disconnect" hx-target="#google-status" class="secondary-button">Disconnect</button>
+					</div>
+					<div class="col-span-2 flex flex-wrap gap-3">
+						<button type="button" hx-post="/integrations/google/backup" hx-target="#google-status" class="primary-button">Upload Backup to Google Drive</button>
+						<button type="button" hx-post="/integrations/google/calendar/sync" hx-target="#google-status" data-progress-label="Syncing Google Calendar..." class="secondary-button">Sync Google Calendar</button>
+						<button type="button" hx-post="/integrations/google/calendar/unsync" hx-target="#google-status" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing Google Calendar..." class="secondary-button">Unsync Google Calendar</button>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600">
+					Status:
+					if status.Connected {
+						<strong class="ml-1 text-[#22303d]">Connected</strong>
+					} else {
+						<strong class="ml-1 text-[#6f2c26]">Not connected</strong>
+					}
+					if status.UsingSharedClient {
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">using shared OAuth app</span>
+					} else if status.SharedClientAvailable {
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">shared OAuth app available</span>
+					}
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
+					Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.
+				</div>
+				<div id="google-status" class="text-sm text-slate-500"></div>
 			</div>
 		</div>
 	}
 }
 
 templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int) {
+	if hasActiveSearch(search) {
+		<div class="mb-4 rounded-2xl border border-[rgba(197,171,104,0.9)] bg-[rgba(245,241,230,0.94)] px-4 py-3 shadow-[0_0_28px_rgba(197,171,104,0.15)]">
+			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Matched Results</p>
+			<p class="mt-2 text-sm font-medium text-[#22303d]">{ searchSummary(search) }</p>
+			if search.Mode == "advanced" {
+				<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
+			}
+		</div>
+	}
 	if len(soldiers) == 0 {
 		if search.Mode == "advanced" {
-			<p class="text-gray-500 text-sm">No records matched the advanced filters.</p>
+			<p class="text-slate-500 text-sm">No records matched the advanced filters.</p>
 		} else if search.Query != "" {
-			<p class="text-gray-500 text-sm">No results found for "{ search.Query }".</p>
+			<p class="text-slate-500 text-sm">No results found for "{ search.Query }".</p>
 		} else {
-			<p class="text-gray-500 text-sm">No records found.</p>
+			<p class="text-slate-500 text-sm">No records found.</p>
 		}
 	} else {
 		for _, s := range soldiers {
-			@SoldierCard(s)
+			@SoldierCard(s, hasActiveSearch(search))
 		}
 	}
-	<div class="mt-4 text-sm text-gray-400">
+	<div class="mt-4 text-sm text-slate-500">
 		{ searchSummary(search) } | { fmt.Sprintf("%d", total) } matches
 		| Page { fmt.Sprintf("%d", page) }
 		if page > 1 {
-			<a href={ pageHref(search, page-1) } hx-get={ pageRequestURL(search, page-1) } hx-target="#soldier-list" class="ml-2 gold hover:underline">← Prev</a>
+			<a href={ pageHref(search, page-1) } hx-get={ pageRequestURL(search, page-1) } hx-target="#soldier-list" class="ml-2 pill-link">← Prev</a>
 		}
 		if page*pageSize < total {
-			<a href={ pageHref(search, page+1) } hx-get={ pageRequestURL(search, page+1) } hx-target="#soldier-list" class="ml-2 gold hover:underline">Next →</a>
+			<a href={ pageHref(search, page+1) } hx-get={ pageRequestURL(search, page+1) } hx-target="#soldier-list" class="ml-2 pill-link">Next →</a>
 		}
 	</div>
 }
 
 templ AnniversaryPartial(soldiers []models.Soldier, month, day int) {
-	<h4 class="gold font-bold mb-2">{ monthName(month) } { fmt.Sprintf("%d", day) }</h4>
+	<h4 class="gold text-4xl leading-none mb-4">{ monthName(month) } { fmt.Sprintf("%d", day) }</h4>
 	if len(soldiers) == 0 {
-		<p class="text-gray-500 text-sm">No records for this date.</p>
+		<p class="text-lg leading-relaxed text-[#6e4f22]">No records for this date.</p>
 	} else {
 		for _, s := range soldiers {
-			@SoldierCard(s)
+			@SoldierCard(s, false)
 		}
 	}
 }

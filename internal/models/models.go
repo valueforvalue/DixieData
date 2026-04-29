@@ -12,6 +12,7 @@ type Soldier struct {
 	DeathMonth  int      `json:"death_month"`
 	DeathDay    int      `json:"death_day"`
 	BirthInfo   string   `json:"birth_info"`
+	BuriedIn    string   `json:"buried_in"`
 	Notes       string   `json:"notes"`
 	CreatedAt   string   `json:"created_at"`
 	Records     []Record `json:"records,omitempty"`
@@ -26,6 +27,7 @@ type SoldierSearch struct {
 	LastName   string
 	Rank       string
 	Unit       string
+	BuriedIn   string
 	DeathYear  string
 	DeathMonth string
 	DeathDay   string
@@ -40,9 +42,35 @@ type Record struct {
 }
 
 type Image struct {
-	ID        int64  `json:"id"`
-	SoldierID int64  `json:"soldier_id"`
-	FileName  string `json:"file_name"`
-	FilePath  string `json:"file_path"`
-	Caption   string `json:"caption"`
+	ID           int64  `json:"id"`
+	SoldierID    int64  `json:"soldier_id"`
+	FileName     string `json:"file_name"`
+	FilePath     string `json:"file_path"`
+	Caption      string `json:"caption"`
+	ResolvedPath string `json:"-"`
+}
+
+type Quote struct {
+	Author  string   `json:"author"`
+	Text    string   `json:"text"`
+	Context string   `json:"context"`
+	Tags    []string `json:"tags,omitempty"`
+}
+
+type GoogleSettings struct {
+	ClientID      string `json:"client_id"`
+	ClientSecret  string `json:"client_secret"`
+	CalendarID    string `json:"calendar_id"`
+	DriveFolderID string `json:"drive_folder_id"`
+}
+
+type GoogleStatus struct {
+	Settings              GoogleSettings
+	Connected             bool
+	HasClientID           bool
+	HasSecret             bool
+	HasToken              bool
+	SharedClientAvailable bool
+	SharedClientSource    string
+	UsingSharedClient     bool
 }

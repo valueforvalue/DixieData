@@ -30,6 +30,7 @@ var (
 	units         = []string{"1st Georgia Infantry", "4th Alabama Cavalry", "7th Texas Infantry", "12th Virginia Artillery", "15th Tennessee Infantry", "18th Mississippi Cavalry", "22nd North Carolina Infantry", "31st Louisiana Infantry", "3rd Arkansas Mounted Rifles", "5th South Carolina Infantry"}
 	states        = []string{"Georgia", "Alabama", "Virginia", "Texas", "Mississippi", "Tennessee", "North Carolina", "South Carolina", "Louisiana", "Arkansas"}
 	counties      = []string{"Madison County", "Jefferson County", "Franklin County", "Randolph County", "Monroe County", "Jackson County", "Warren County", "Marion County", "Lee County", "Greene County"}
+	cemeteries    = []string{"Oakwood Cemetery, Richmond", "Magnolia Cemetery, Mobile", "Hollywood Cemetery, Richmond", "Elmwood Cemetery, Memphis", "Rose Hill Cemetery, Macon", "Confederate Rest, Helena", "Stonewall Cemetery, Winchester", "Greenwood Cemetery, New Orleans"}
 	recordTypes   = []string{"Service Record", "Hospital Ledger", "Parole Note", "Pension Application", "Unit Roster", "Burial Ledger"}
 	recordDetails = []string{
 		"Filed from county records with marginal notes on service and discharge.",
@@ -179,6 +180,7 @@ func buildSoldier(rng *rand.Rand, index int) models.Soldier {
 		DeathMonth: month,
 		DeathDay:   day,
 		BirthInfo:  fmt.Sprintf("Born %d in %s, %s.", 1818+rng.Intn(25), county, state),
+		BuriedIn:   cemeteries[rng.Intn(len(cemeteries))],
 		Notes:      fmt.Sprintf("Generated test entry %03d for UI and export testing.", index+1),
 	}
 

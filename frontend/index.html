@@ -6,12 +6,24 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="/app.js"></script>
   <style>
-    body { background-color: #1a1a2e; color: #e2d9c9; }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 26%),
+        radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 18%),
+        repeating-linear-gradient(135deg, rgba(34,45,57,0.025) 0, rgba(34,45,57,0.025) 6px, transparent 6px, transparent 18px),
+        linear-gradient(180deg, #d7d2c9 0%, #c9c2b5 42%, #b9b1a3 100%);
+      color: #22303d;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+    }
   </style>
 </head>
 <body hx-get="/calendar" hx-trigger="load" hx-target="body" hx-swap="outerHTML">
   <div class="flex items-center justify-center h-screen">
-    <p class="text-yellow-400">Loading DixieData...</p>
+    <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
+      <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Soldier Archive</p>
+      <p class="text-2xl font-semibold text-[#f2ede1]">Loading DixieData...</p>
+      <p class="mt-2 text-sm text-[#d8cfbc]">Preparing the archive workspace.</p>
+    </div>
   </div>
 </body>
 </html>

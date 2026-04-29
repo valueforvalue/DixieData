@@ -1,5 +1,15 @@
 (() => {
   const timers = new WeakMap();
+  const imageViewerState = {
+    baseScale: 1,
+    zoom: 1,
+    x: 0,
+    y: 0,
+    dragging: false,
+    lastPointerX: 0,
+    lastPointerY: 0,
+    fileName: "",
+  };
 
   function getMethod(el) {
     if (el.hasAttribute("hx-post")) {
@@ -78,8 +88,12 @@
 
     document.querySelectorAll(`[data-tab-group="${group}"]`).forEach((button) => {
       const active = button === trigger;
-      button.classList.toggle("bg-yellow-900", active);
-      button.classList.toggle("text-white", active);
+      button.classList.toggle("bg-[#22303d]", active);
+      button.classList.toggle("text-[#f4ead0]", active);
+      button.classList.toggle("border-[#8d7440]", active);
+      button.classList.toggle("shadow-[0_0_18px_rgba(168,138,70,0.18)]", active);
+      button.classList.toggle("bg-[rgba(246,241,228,0.92)]", !active);
+      button.classList.toggle("text-[#22303d]", !active);
     });
 
     document.querySelectorAll(`[data-tab-panel="${group}"]`).forEach((panel) => {
@@ -96,6 +110,268 @@
       }
     });
     defaults.forEach((button) => activateTab(button));
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function ensureImageViewer() {
+    let viewer = document.getElementById("image-viewer");
+    if (viewer) {
+      return viewer;
+    }
+
+    viewer = document.createElement("div");
+    viewer.id = "image-viewer";
+    viewer.className = "fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-6";
+    viewer.innerHTML = `
+      <div class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-slate-700 bg-slate-950 shadow-2xl">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4 text-slate-200">
+          <div>
+            <p data-image-caption class="text-sm font-semibold tracking-[0.14em] text-slate-100"></p>
+            <p data-image-file class="mt-1 text-xs text-slate-400"></p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span data-image-zoom-label class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">100%</span>
+            <button type="button" data-image-zoom-out class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">-</button>
+            <button type="button" data-image-zoom-in class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">+</button>
+            <button type="button" data-image-reset class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Reset</button>
+            <button type="button" data-image-screenshot class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Screenshot</button>
+            <button type="button" data-image-close class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Close</button>
+          </div>
+        </div>
+        <div data-image-stage class="relative h-[78vh] overflow-hidden bg-slate-900">
+          <img data-image-element class="absolute left-1/2 top-1/2 max-w-none select-none rounded-2xl bg-white shadow-2xl" alt="" draggable="false" />
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-5 py-3 text-xs text-slate-400">
+          <p>Mouse wheel zooms. Drag to move when zoomed in.</p>
+          <p data-image-status></p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(viewer);
+    return viewer;
+  }
+
+  function imageViewerElements() {
+    const viewer = ensureImageViewer();
+    return {
+      viewer,
+      stage: viewer.querySelector("[data-image-stage]"),
+      image: viewer.querySelector("[data-image-element]"),
+      caption: viewer.querySelector("[data-image-caption]"),
+      file: viewer.querySelector("[data-image-file]"),
+      zoomLabel: viewer.querySelector("[data-image-zoom-label]"),
+      status: viewer.querySelector("[data-image-status]"),
+    };
+  }
+
+  function setImageViewerStatus(message) {
+    const { status } = imageViewerElements();
+    if (status) {
+      status.textContent = message || "";
+    }
+  }
+
+  function stopImageViewerDrag() {
+    imageViewerState.dragging = false;
+    updateImageViewerTransform();
+  }
+
+  function updateImageViewerTransform() {
+    const { stage, image, zoomLabel } = imageViewerElements();
+    if (!(stage instanceof HTMLElement) || !(image instanceof HTMLImageElement) || !image.naturalWidth || !image.naturalHeight) {
+      return;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    if (!stageRect.width || !stageRect.height) {
+      return;
+    }
+
+    const totalScale = imageViewerState.baseScale * imageViewerState.zoom;
+    const scaledWidth = image.naturalWidth * totalScale;
+    const scaledHeight = image.naturalHeight * totalScale;
+    const maxX = Math.max(0, (scaledWidth - stageRect.width) / 2);
+    const maxY = Math.max(0, (scaledHeight - stageRect.height) / 2);
+
+    imageViewerState.x = clamp(imageViewerState.x, -maxX, maxX);
+    imageViewerState.y = clamp(imageViewerState.y, -maxY, maxY);
+
+    image.style.transform = `translate(-50%, -50%) translate(${imageViewerState.x}px, ${imageViewerState.y}px) scale(${totalScale})`;
+    image.style.cursor = imageViewerState.zoom > 1 ? (imageViewerState.dragging ? "grabbing" : "grab") : "default";
+
+    if (zoomLabel) {
+      zoomLabel.textContent = `${Math.round(imageViewerState.zoom * 100)}%`;
+    }
+  }
+
+  function resetImageViewerTransform() {
+    const { stage, image } = imageViewerElements();
+    if (!(stage instanceof HTMLElement) || !(image instanceof HTMLImageElement) || !image.naturalWidth || !image.naturalHeight) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const stageRect = stage.getBoundingClientRect();
+      if (!stageRect.width || !stageRect.height) {
+        return;
+      }
+
+      const widthScale = stageRect.width / image.naturalWidth;
+      const heightScale = stageRect.height / image.naturalHeight;
+      imageViewerState.baseScale = Math.min(widthScale, heightScale);
+      if (!Number.isFinite(imageViewerState.baseScale) || imageViewerState.baseScale <= 0) {
+        imageViewerState.baseScale = 1;
+      }
+      imageViewerState.zoom = 1;
+      imageViewerState.x = 0;
+      imageViewerState.y = 0;
+      updateImageViewerTransform();
+    });
+  }
+
+  function setImageViewerZoom(nextZoom, pointerX = 0, pointerY = 0) {
+    const { image } = imageViewerElements();
+    if (!(image instanceof HTMLImageElement) || !image.naturalWidth || !image.naturalHeight) {
+      return;
+    }
+
+    const oldTotalScale = imageViewerState.baseScale * imageViewerState.zoom;
+    imageViewerState.zoom = clamp(nextZoom, 1, 6);
+    const newTotalScale = imageViewerState.baseScale * imageViewerState.zoom;
+
+    if (oldTotalScale > 0 && newTotalScale > 0) {
+      imageViewerState.x = pointerX - ((pointerX - imageViewerState.x) / oldTotalScale) * newTotalScale;
+      imageViewerState.y = pointerY - ((pointerY - imageViewerState.y) / oldTotalScale) * newTotalScale;
+    }
+
+    updateImageViewerTransform();
+  }
+
+  async function saveImageViewerScreenshot() {
+    const { stage, image } = imageViewerElements();
+    if (!(stage instanceof HTMLElement) || !(image instanceof HTMLImageElement) || !image.complete || !image.naturalWidth || !image.naturalHeight) {
+      return;
+    }
+
+    const width = Math.max(1, Math.round(stage.clientWidth));
+    const height = Math.max(1, Math.round(stage.clientHeight));
+    const dpr = window.devicePixelRatio || 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * dpr));
+    canvas.height = Math.max(1, Math.round(height * dpr));
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setImageViewerStatus("Screenshot failed.");
+      return;
+    }
+
+    context.scale(dpr, dpr);
+    context.fillStyle = "#0f172a";
+    context.fillRect(0, 0, width, height);
+
+    const totalScale = imageViewerState.baseScale * imageViewerState.zoom;
+    const drawWidth = image.naturalWidth * totalScale;
+    const drawHeight = image.naturalHeight * totalScale;
+    const drawX = width / 2 - drawWidth / 2 + imageViewerState.x;
+    const drawY = height / 2 - drawHeight / 2 + imageViewerState.y;
+
+    context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    setImageViewerStatus("Saving screenshot...");
+
+    try {
+      const response = await fetch("/images/screenshot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "DixieData",
+        },
+        body: JSON.stringify({
+          imageData: canvas.toDataURL("image/png"),
+          fileName: imageViewerState.fileName,
+        }),
+      });
+      const text = await response.text();
+      setImageViewerStatus(text);
+    } catch (error) {
+      setImageViewerStatus("Screenshot failed.");
+    }
+  }
+
+  function openImageViewer(url, caption, fileName) {
+    const { viewer, image, caption: text, file } = imageViewerElements();
+    if (!(image instanceof HTMLImageElement) || !text || !file) {
+      return;
+    }
+
+    imageViewerState.fileName = fileName || "";
+    image.onload = () => resetImageViewerTransform();
+    image.setAttribute("src", url);
+    image.setAttribute("alt", caption || fileName || "Archive image");
+    text.textContent = caption || fileName || "Archive image";
+    file.textContent = fileName || "";
+    setImageViewerStatus("");
+    viewer.classList.remove("hidden");
+    viewer.classList.add("flex");
+
+    if (image.complete) {
+      resetImageViewerTransform();
+    }
+  }
+
+  function closeImageViewer() {
+    const { viewer } = imageViewerElements();
+    if (!viewer) {
+      return;
+    }
+    imageViewerState.dragging = false;
+    viewer.classList.add("hidden");
+    viewer.classList.remove("flex");
+  }
+
+  function toggleCheckboxGroup(group, checked) {
+    document.querySelectorAll(`[data-checkbox-group="${group}"]`).forEach((checkbox) => {
+      if (checkbox instanceof HTMLInputElement) {
+        checkbox.checked = checked;
+      }
+    });
+  }
+
+  function addRecordRow(button) {
+    const container = button.closest("form");
+    if (!(container instanceof HTMLFormElement)) {
+      return;
+    }
+    const recordList = container.querySelector("[data-record-list]");
+    const template = container.querySelector("[data-record-template]");
+    if (!(recordList instanceof HTMLElement) || !(template instanceof HTMLTemplateElement)) {
+      return;
+    }
+    recordList.appendChild(template.content.cloneNode(true));
+  }
+
+  function removeRecordRow(button) {
+    const row = button.closest("[data-record-row]");
+    if (!(row instanceof HTMLElement)) {
+      return;
+    }
+    const recordList = row.parentElement;
+    if (!(recordList instanceof HTMLElement)) {
+      return;
+    }
+    const rows = recordList.querySelectorAll("[data-record-row]");
+    if (rows.length <= 1) {
+      row.querySelectorAll("input, textarea").forEach((field) => {
+        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+          field.value = "";
+        }
+      });
+      return;
+    }
+    row.remove();
   }
 
   function renderDocument(html) {
@@ -127,6 +403,42 @@
     }
 
     target.innerHTML = html;
+  }
+
+  function showProgress(el) {
+    const target = getTarget(el);
+    if (!(target instanceof HTMLElement) || target === document.body) {
+      return;
+    }
+    const label = el.getAttribute("data-progress-label") || "Working...";
+    target.innerHTML = `
+      <div class="google-progress-shell">
+        <div class="google-progress-head">
+          <span>${label}</span>
+          <span>Please wait...</span>
+        </div>
+        <div class="google-progress-track">
+          <div class="google-progress-fill"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function setBusyState(el, busy) {
+    if (!(el instanceof HTMLElement)) {
+      return;
+    }
+    if (busy) {
+      el.setAttribute("aria-busy", "true");
+      if (el instanceof HTMLButtonElement) {
+        el.disabled = true;
+      }
+      return;
+    }
+    el.removeAttribute("aria-busy");
+    if (el instanceof HTMLButtonElement) {
+      el.disabled = false;
+    }
   }
 
   async function request(el) {
@@ -165,9 +477,17 @@
       }
     }
 
-    const response = await fetch(requestUrl, options);
-    const html = await response.text();
-    applyResponse(el, html);
+    showProgress(el);
+    setBusyState(el, true);
+    try {
+      const response = await fetch(requestUrl, options);
+      const html = await response.text();
+      applyResponse(el, html);
+    } catch (error) {
+      applyResponse(el, "Request failed.");
+    } finally {
+      setBusyState(el, false);
+    }
   }
 
   function queueRequest(el) {
@@ -192,6 +512,54 @@
   });
 
   document.addEventListener("click", (event) => {
+    const imageTrigger = event.target.closest("[data-image-preview]");
+    if (imageTrigger) {
+      event.preventDefault();
+      openImageViewer(
+        imageTrigger.getAttribute("data-image-preview"),
+        imageTrigger.getAttribute("data-image-caption"),
+        imageTrigger.getAttribute("data-image-file"),
+      );
+      return;
+    }
+    if (event.target.closest("[data-image-zoom-in]")) {
+      event.preventDefault();
+      setImageViewerZoom(imageViewerState.zoom * 1.2);
+      return;
+    }
+    if (event.target.closest("[data-image-zoom-out]")) {
+      event.preventDefault();
+      setImageViewerZoom(imageViewerState.zoom / 1.2);
+      return;
+    }
+    if (event.target.closest("[data-image-reset]")) {
+      event.preventDefault();
+      resetImageViewerTransform();
+      return;
+    }
+    if (event.target.closest("[data-image-screenshot]")) {
+      event.preventDefault();
+      saveImageViewerScreenshot();
+      return;
+    }
+    const recordAdd = event.target.closest("[data-record-add]");
+    if (recordAdd) {
+      event.preventDefault();
+      addRecordRow(recordAdd);
+      return;
+    }
+    const recordRemove = event.target.closest("[data-record-remove]");
+    if (recordRemove) {
+      event.preventDefault();
+      removeRecordRow(recordRemove);
+      return;
+    }
+    const imageClose = event.target.closest("[data-image-close]");
+    if (imageClose || event.target.id === "image-viewer") {
+      event.preventDefault();
+      closeImageViewer();
+      return;
+    }
     const tab = event.target.closest("[data-tab-group][data-tab-target]");
     if (tab) {
       event.preventDefault();
@@ -211,7 +579,7 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    if (!form.hasAttribute("hx-post") && !form.hasAttribute("hx-put")) {
+    if (!form.hasAttribute("hx-get") && !form.hasAttribute("hx-post") && !form.hasAttribute("hx-put")) {
       return;
     }
     event.preventDefault();
@@ -232,4 +600,62 @@
 
   document.addEventListener("input", triggerInputRequest);
   document.addEventListener("change", triggerInputRequest);
+  document.addEventListener("change", (event) => {
+    const selectAll = event.target.closest("[data-select-all]");
+    if (!(selectAll instanceof HTMLInputElement)) {
+      return;
+    }
+    toggleCheckboxGroup(selectAll.getAttribute("data-select-all"), selectAll.checked);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeImageViewer();
+    }
+  });
+  document.addEventListener("mousedown", (event) => {
+    const stage = event.target.closest("[data-image-stage]");
+    if (!(stage instanceof HTMLElement) || imageViewerState.zoom <= 1) {
+      return;
+    }
+    event.preventDefault();
+    imageViewerState.dragging = true;
+    imageViewerState.lastPointerX = event.clientX;
+    imageViewerState.lastPointerY = event.clientY;
+    updateImageViewerTransform();
+  });
+  document.addEventListener("mousemove", (event) => {
+    if (!imageViewerState.dragging) {
+      return;
+    }
+    imageViewerState.x += event.clientX - imageViewerState.lastPointerX;
+    imageViewerState.y += event.clientY - imageViewerState.lastPointerY;
+    imageViewerState.lastPointerX = event.clientX;
+    imageViewerState.lastPointerY = event.clientY;
+    updateImageViewerTransform();
+  });
+  document.addEventListener("mouseup", stopImageViewerDrag);
+  document.addEventListener("mouseleave", stopImageViewerDrag);
+  window.addEventListener("blur", stopImageViewerDrag);
+  window.addEventListener("resize", () => {
+    const viewer = document.getElementById("image-viewer");
+    if (viewer && !viewer.classList.contains("hidden")) {
+      resetImageViewerTransform();
+    }
+  });
+  document.addEventListener(
+    "wheel",
+    (event) => {
+      const stage = event.target.closest("[data-image-stage]");
+      if (!(stage instanceof HTMLElement)) {
+        return;
+      }
+      event.preventDefault();
+      const rect = stage.getBoundingClientRect();
+      const pointerX = event.clientX - rect.left - rect.width / 2;
+      const pointerY = event.clientY - rect.top - rect.height / 2;
+      const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+      setImageViewerZoom(imageViewerState.zoom * zoomFactor, pointerX, pointerY);
+    },
+    { passive: false },
+  );
 })();

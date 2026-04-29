@@ -1,11 +1,13 @@
 package services
 
 import (
+	"archive/zip"
 	"encoding/csv"
 	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -77,12 +79,136 @@ func TestExportService_ExportCSV(t *testing.T) {
 	// Verify header contains expected columns
 	expected := map[string]bool{
 		"id": true, "display_id": true, "first_name": true,
-		"last_name": true, "death_year": true,
+		"last_name": true, "death_year": true, "buried_in": true,
 	}
 	for _, col := range header {
 		delete(expected, col)
 	}
 	if len(expected) > 0 {
 		t.Errorf("CSV missing columns: %v", expected)
+	}
+}
+
+func TestExportService_ExportImages(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	tempDir := t.TempDir()
+	firstPath := filepath.Join(tempDir, "front.png")
+	secondPath := filepath.Join(tempDir, "back.png")
+	if err := os.WriteFile(firstPath, []byte("front-image"), 0o644); err != nil {
+		t.Fatalf("write first image: %v", err)
+	}
+	if err := os.WriteFile(secondPath, []byte("back-image"), 0o644); err != nil {
+		t.Fatalf("write second image: %v", err)
+	}
+
+	outPath := filepath.Join(tempDir, "images.zip")
+	err := exportSvc.ExportImages(outPath, []models.Image{
+		{FileName: "front.png", FilePath: firstPath},
+		{FileName: "back.png", FilePath: secondPath},
+	})
+	if err != nil {
+		t.Fatalf("ExportImages: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	defer reader.Close()
+
+	if len(reader.File) != 2 {
+		t.Fatalf("zip contains %d files, want 2", len(reader.File))
+	}
+
+	names := map[string]bool{}
+	for _, file := range reader.File {
+		names[file.Name] = true
+	}
+	if !names["front.png"] || !names["back.png"] {
+		t.Fatalf("zip missing expected image names: %v", names)
+	}
+}
+
+func TestExportService_ExportSoldierPDF(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "soldier.pdf")
+	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
+		DisplayID: "PENSION-42",
+		FirstName: "Robert",
+		LastName:  "Lee",
+		Rank:      "General",
+		Unit:      "Army of Northern Virginia",
+		BuriedIn:  "Hollywood Cemetery",
+		Records:   []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880."}},
+		Images:    []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
+	})
+	if err != nil {
+		t.Fatalf("ExportSoldierPDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if len(data) == 0 || string(data[:4]) != "%PDF" {
+		t.Fatalf("output is not a PDF")
+	}
+	text := string(data)
+	if !strings.Contains(text, "DB Path: images\\\\pension-42\\\\portrait.png") {
+		t.Fatalf("pdf missing image db path: %q", text)
+	}
+	if !strings.Contains(text, "Full Path:") || !strings.Contains(text, "portrait.png") {
+		t.Fatalf("pdf missing full image path")
+	}
+	if !strings.Contains(text, "Hollywood Cemetery") {
+		t.Fatalf("pdf missing buried-in text")
+	}
+}
+
+func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	outPath := filepath.Join(t.TempDir(), "monthly.pdf")
+	err := exportSvc.ExportMonthlyAnniversaryPDF(outPath, 4, map[int][]models.Soldier{
+		9: {
+			{DisplayID: "DD-1", FirstName: "John", LastName: "Smith"},
+			{DisplayID: "DD-2", FirstName: "James", LastName: "Brown"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("ExportMonthlyAnniversaryPDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if len(data) == 0 || string(data[:4]) != "%PDF" {
+		t.Fatalf("output is not a PDF")
+	}
+}
+
+func pngFixture() []byte {
+	return []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01,
+		0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0x99, 0x63,
+		0xf8, 0xcf, 0xc0, 0x00, 0x00, 0x03, 0x01, 0x01, 0x00, 0xc9, 0xfe, 0x92,
+		0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
+		0x82,
 	}
 }

@@ -87,7 +87,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " hx-target=\"body\" enctype=\"multipart/form-data\" class=\"card rounded p-6 space-y-4\"><div class=\"grid grid-cols-2 gap-4\"><div><label class=\"block text-sm text-gray-400 mb-1\">Pension/Record ID (leave blank for CSA-ID)</label> <input type=\"text\" name=\"display_id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " hx-target=\"body\" enctype=\"multipart/form-data\" class=\"card rounded-3xl p-8 space-y-5\"><div class=\"grid grid-cols-2 gap-4\"><div><label class=\"block text-sm text-slate-500 mb-1\">Pension/Record ID (leave blank for CSA-ID)</label> <input type=\"text\" name=\"display_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -100,7 +100,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Rank</label> <input type=\"text\" name=\"rank\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank</label> <input type=\"text\" name=\"rank\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -113,7 +113,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -126,7 +126,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -139,7 +139,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-gray-400 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"field-input\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -152,7 +152,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Death Year</label> <input type=\"number\" name=\"death_year\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Year</label> <input type=\"number\" name=\"death_year\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -165,7 +165,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Death Month (1-12, 0=unknown)</label> <input type=\"number\" name=\"death_month\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Month (1-12, 0=unknown)</label> <input type=\"number\" name=\"death_month\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -178,7 +178,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" min=\"0\" max=\"12\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Death Day (1-31, 0=unknown)</label> <input type=\"number\" name=\"death_day\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" min=\"0\" max=\"12\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Day (1-31, 0=unknown)</label> <input type=\"number\" name=\"death_day\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -191,7 +191,7 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" min=\"0\" max=\"31\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div><label class=\"block text-sm text-gray-400 mb-1\">Birth Info</label> <input type=\"text\" name=\"birth_info\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" min=\"0\" max=\"31\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Info</label> <input type=\"text\" name=\"birth_info\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -204,58 +204,89 @@ func EntryForm(s models.Soldier, isEdit bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-gray-400 mb-1\">Notes</label> <textarea name=\"notes\" rows=\"4\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Buried In</label> <input type=\"text\" name=\"buried_in\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var14 string
-			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(s.Notes)
+			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(s.BuriedIn)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 71, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 70, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</textarea></div><div class=\"col-span-2\"><label class=\"block text-sm text-gray-400 mb-1\">Upload Images</label> <input type=\"file\" name=\"images\" multiple accept=\".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*\" class=\"w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm\"><p class=\"text-xs text-gray-500 mt-2\">Images are stored in a folder named after the soldier's record number.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"field-input\"></div><div class=\"col-span-2\"><div class=\"mb-3 flex items-center justify-between gap-3\"><label class=\"block text-sm text-slate-500\">Records</label> <button type=\"button\" data-record-add class=\"ghost-link px-4 py-2\">+ Add Record</button></div><div data-record-list class=\"space-y-3\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, record := range formRecords(s.Records) {
+				templ_7745c5c3_Err = RecordInputRow(record).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</div><template data-record-template>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = RecordInputRow(models.Record{}).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</template><p class=\"mt-2 text-xs text-slate-500\">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Notes</label> <textarea name=\"notes\" rows=\"4\" class=\"field-input min-h-32\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var15 string
+			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(s.Notes)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 91, Col: 45}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</textarea></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Upload Images</label> <input type=\"file\" name=\"images\" multiple accept=\".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*\" class=\"field-input\"><p class=\"text-xs text-slate-500 mt-2\">Images are stored in a folder named after the soldier's record number.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if isEdit && len(s.Images) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<p class=\"text-xs text-gray-500 mt-1\">Existing images: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"text-xs text-slate-500 mt-1\">Existing images: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var15 string
-				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(s.Images)))
+				var templ_7745c5c3_Var16 string
+				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(s.Images)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 79, Col: 96}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 99, Col: 97}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div><div class=\"flex gap-2 pt-2\"><button type=\"submit\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-2 rounded\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></div><div class=\"flex gap-2 pt-2\"><button type=\"submit\" class=\"primary-button\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if isEdit {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "Save Changes")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "Save Changes")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "Create Record")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "Create Record")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</button> <a href=\"/soldiers\" class=\"text-gray-400 hover:text-white px-4 py-2 text-sm\">Cancel</a></div></form></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</button> <a href=\"/soldiers\" class=\"ghost-link px-4 py-2\">Cancel</a></div></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -276,7 +307,7 @@ func formTitle(isEdit bool) string {
 	return "New Soldier Record"
 }
 
-func ExportView() templ.Component {
+func RecordInputRow(record models.Record) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -292,12 +323,87 @@ func ExportView() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var16 == nil {
-			templ_7745c5c3_Var16 = templ.NopComponent
+		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var17 == nil {
+			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Var17 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div data-record-row class=\"rounded-2xl border border-slate-200 bg-white/70 p-4\"><div class=\"mb-3 flex items-center justify-between gap-3\"><span class=\"text-xs font-semibold uppercase tracking-[0.24em] text-slate-500\">Record Entry</span> <button type=\"button\" data-record-remove class=\"pill-link\">Remove</button></div><div class=\"grid grid-cols-2 gap-4\"><div><label class=\"mb-1 block text-sm text-slate-500\">Record Type</label> <input type=\"text\" name=\"record_type\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(record.RecordType)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 134, Col: 67}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" class=\"field-input\"></div><div><label class=\"mb-1 block text-sm text-slate-500\">App / Record Number</label> <input type=\"text\" name=\"record_app_id\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(record.AppID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 138, Col: 64}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" class=\"field-input\"></div><div class=\"col-span-2\"><label class=\"mb-1 block text-sm text-slate-500\">Details</label> <textarea name=\"record_details\" rows=\"3\" class=\"field-input min-h-24\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var20 string
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(record.Details)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 142, Col: 90}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</textarea></div></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func formRecords(records []models.Record) []models.Record {
+	if len(records) == 0 {
+		return []models.Record{{}}
+	}
+	return records
+}
+
+func ExportView(status models.GoogleStatus) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var21 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var21 == nil {
+			templ_7745c5c3_Var21 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Var22 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -309,13 +415,67 @@ func ExportView() templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"max-w-md mx-auto\"><h2 class=\"text-2xl gold font-bold mb-6\">Export Data</h2><div class=\"card rounded p-6 space-y-4\"><div class=\"flex flex-col gap-3\"><button hx-post=\"/export/json\" hx-target=\"#export-status\" class=\"bg-yellow-800 hover:bg-yellow-700 text-white px-4 py-3 rounded text-left\"><div class=\"font-bold\">Export JSON</div><div class=\"text-xs text-gray-300\">Full hierarchical export (soldiers, records, images)</div></button> <button hx-post=\"/export/csv\" hx-target=\"#export-status\" class=\"bg-blue-900 hover:bg-blue-800 text-white px-4 py-3 rounded text-left\"><div class=\"font-bold\">Export CSV</div><div class=\"text-xs text-gray-300\">Flat spreadsheet format</div></button></div><div id=\"export-status\" class=\"text-sm text-gray-400\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"mx-auto max-w-2xl space-y-6\"><h2 class=\"text-2xl gold font-bold mb-6\">Export Data</h2><div class=\"card rounded-3xl p-8 space-y-4\"><div class=\"flex flex-col gap-3\"><button hx-post=\"/export/json\" hx-target=\"#export-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Export JSON</div><div class=\"text-xs text-slate-300\">Full hierarchical export (soldiers, records, images)</div></button> <button hx-post=\"/export/csv\" hx-target=\"#export-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export CSV</div><div class=\"text-xs text-slate-500\">Flat spreadsheet format</div></button> <button hx-post=\"/export/backup\" hx-target=\"#export-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Export Backup</div><div class=\"text-xs text-slate-300\">ZIP archive with manifest, soldier data, and all images</div></button> <button hx-post=\"/import/backup\" hx-target=\"#export-status\" hx-confirm=\"Load a backup and replace the current local archive?\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Load Backup</div><div class=\"text-xs text-slate-500\">Validates the manifest, then restores soldiers, records, and images</div></button></div><div id=\"export-status\" class=\"text-sm text-slate-500\"></div></div><div class=\"card rounded-3xl p-8 space-y-4\"><div><h3 class=\"text-xl gold font-bold\">Google Integration</h3><p class=\"mt-2 text-sm text-slate-500\">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if status.SharedClientAvailable {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"mt-1 text-xs text-slate-500\">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p><p class=\"mt-1 text-xs text-slate-500\">Loaded from: <code>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var23 string
+				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(status.SharedClientSource)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 190, Col: 91}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</code></p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"mt-1 text-xs text-slate-500\">Save settings first, then connect the account in your browser.</p><p class=\"mt-1 text-xs text-slate-500\">If you want shared settings, place <code>google-oauth-defaults.json</code> next to <code>DixieData.exe</code>.</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div><div class=\"grid grid-cols-2 gap-4\"><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/connect\" hx-target=\"#google-status\" class=\"primary-button\">Connect Google Account</button> <button type=\"button\" hx-post=\"/integrations/google/disconnect\" hx-target=\"#google-status\" class=\"secondary-button\">Disconnect</button></div><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/backup\" hx-target=\"#google-status\" class=\"primary-button\">Upload Backup to Google Drive</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync\" hx-target=\"#google-status\" data-progress-label=\"Syncing Google Calendar...\" class=\"secondary-button\">Sync Google Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync\" hx-target=\"#google-status\" hx-confirm=\"Remove all Google Calendar events previously created by DixieData?\" data-progress-label=\"Unsyncing Google Calendar...\" class=\"secondary-button\">Unsync Google Calendar</button></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600\">Status: ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if status.Connected {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<strong class=\"ml-1 text-[#22303d]\">Connected</strong> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<strong class=\"ml-1 text-[#6f2c26]\">Not connected</strong> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			if status.UsingSharedClient {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]\">using shared OAuth app</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else if status.SharedClientAvailable {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<span class=\"ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]\">shared OAuth app available</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\">Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.</div><div id=\"google-status\" class=\"text-sm text-slate-500\"></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Layout("Export").Render(templ.WithChildren(ctx, templ_7745c5c3_Var17), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Layout("Export").Render(templ.WithChildren(ctx, templ_7745c5c3_Var22), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -339,157 +499,186 @@ func SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page,
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var18 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var18 == nil {
-			templ_7745c5c3_Var18 = templ.NopComponent
+		templ_7745c5c3_Var24 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var24 == nil {
+			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		if hasActiveSearch(search) {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div class=\"mb-4 rounded-2xl border border-[rgba(197,171,104,0.9)] bg-[rgba(245,241,230,0.94)] px-4 py-3 shadow-[0_0_28px_rgba(197,171,104,0.15)]\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Matched Results</p><p class=\"mt-2 text-sm font-medium text-[#22303d]\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var25 string
+			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(searchSummary(search))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 233, Col: 77}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if search.Mode == "advanced" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"mt-1 text-xs text-slate-500\">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
 		if len(soldiers) == 0 {
 			if search.Mode == "advanced" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-gray-500 text-sm\">No records matched the advanced filters.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<p class=\"text-slate-500 text-sm\">No records matched the advanced filters.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else if search.Query != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-gray-500 text-sm\">No results found for \"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<p class=\"text-slate-500 text-sm\">No results found for \"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var19 string
-				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(search.Query)
+				var templ_7745c5c3_Var26 string
+				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(search.Query)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 133, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 243, Col: 73}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\".</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\".</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-gray-500 text-sm\">No records found.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"text-slate-500 text-sm\">No records found.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		} else {
 			for _, s := range soldiers {
-				templ_7745c5c3_Err = SoldierCard(s).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = SoldierCard(s, hasActiveSearch(search)).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"mt-4 text-sm text-gray-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<div class=\"mt-4 text-sm text-slate-500\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(searchSummary(search))
+		var templ_7745c5c3_Var27 string
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(searchSummary(search))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 143, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 253, Col: 25}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " | ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", total))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 143, Col: 56}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, " | ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, " matches | Page ")
+		var templ_7745c5c3_Var28 string
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", total))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 253, Col: 56}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", page))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 144, Col: 34}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, " matches | Page ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, " ")
+		var templ_7745c5c3_Var29 string
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", page))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 254, Col: 34}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, " ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if page > 1 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var23 templ.SafeURL
-			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinURLErrs(pageHref(search, page-1))
+			var templ_7745c5c3_Var30 templ.SafeURL
+			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinURLErrs(pageHref(search, page-1))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 146, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 256, Col: 37}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" hx-get=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var24 string
-			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(pageRequestURL(search, page-1))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 146, Col: 79}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" hx-target=\"#soldier-list\" class=\"ml-2 gold hover:underline\">← Prev</a> ")
+			var templ_7745c5c3_Var31 string
+			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(pageRequestURL(search, page-1))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 256, Col: 79}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" hx-target=\"#soldier-list\" class=\"ml-2 pill-link\">← Prev</a> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if page*pageSize < total {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var25 templ.SafeURL
-			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinURLErrs(pageHref(search, page+1))
+			var templ_7745c5c3_Var32 templ.SafeURL
+			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinURLErrs(pageHref(search, page+1))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 149, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 259, Col: 37}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" hx-get=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var26 string
-			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(pageRequestURL(search, page+1))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 149, Col: 79}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\" hx-target=\"#soldier-list\" class=\"ml-2 gold hover:underline\">Next →</a>")
+			var templ_7745c5c3_Var33 string
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(pageRequestURL(search, page+1))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 259, Col: 79}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\" hx-target=\"#soldier-list\" class=\"ml-2 pill-link\">Next →</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -513,49 +702,49 @@ func AnniversaryPartial(soldiers []models.Soldier, month, day int) templ.Compone
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var27 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var27 == nil {
-			templ_7745c5c3_Var27 = templ.NopComponent
+		templ_7745c5c3_Var34 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var34 == nil {
+			templ_7745c5c3_Var34 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<h4 class=\"gold font-bold mb-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<h4 class=\"gold text-4xl leading-none mb-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(monthName(month))
+		var templ_7745c5c3_Var35 string
+		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(monthName(month))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 155, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 265, Col: 63}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " ")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var29 string
-		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", day))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 155, Col: 78}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, " ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</h4>")
+		var templ_7745c5c3_Var36 string
+		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", day))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 265, Col: 90}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</h4>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(soldiers) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"text-gray-500 text-sm\">No records for this date.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<p class=\"text-lg leading-relaxed text-[#6e4f22]\">No records for this date.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
 			for _, s := range soldiers {
-				templ_7745c5c3_Err = SoldierCard(s).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = SoldierCard(s, false).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

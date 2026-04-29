@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -12,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	_ "embed"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -20,12 +24,18 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+//go:embed quotes.json
+var embeddedQuotes []byte
+
 type App struct {
 	ctx         context.Context
 	database    *db.DB
 	soldiers    *services.SoldierService
 	anniversary *services.AnniversaryService
 	export      *services.ExportService
+	backup      *services.BackupService
+	google      *services.GoogleService
+	quotes      []models.Quote
 	mux         *http.ServeMux
 	startupErr  error
 	dataDir     string
@@ -38,8 +48,15 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.dataDir = appdata.DefaultDir()
-
 	var err error
+	a.quotes, err = loadQuotes(embeddedQuotes)
+	if err != nil {
+		a.startupErr = fmt.Errorf("failed to load quotes: %w", err)
+		fmt.Println(a.startupErr)
+		a.setupRoutes()
+		return
+	}
+
 	a.database, err = db.Open(a.dataDir)
 	if err != nil {
 		a.startupErr = fmt.Errorf("failed to open database: %w", err)
@@ -48,9 +65,12 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	a.soldiers = services.NewSoldierService(a.database)
-	a.anniversary = services.NewAnniversaryService(a.database)
-	a.export = services.NewExportService(a.database, a.soldiers)
+	if err := a.reloadServices(); err != nil {
+		a.startupErr = err
+		fmt.Println(a.startupErr)
+		a.setupRoutes()
+		return
+	}
 
 	a.setupRoutes()
 }
@@ -76,6 +96,14 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export", a.handleExport)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
+	mux.HandleFunc("/export/backup", a.handleExportBackup)
+	mux.HandleFunc("/import/backup", a.handleImportBackup)
+	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
+	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
+	mux.HandleFunc("/integrations/google/backup", a.handleGoogleBackup)
+	mux.HandleFunc("/integrations/google/calendar/sync", a.handleGoogleCalendarSync)
+	mux.HandleFunc("/integrations/google/calendar/unsync", a.handleGoogleCalendarUnsync)
+	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
 	mux.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(a.dataDir))))
 
 	a.mux = mux
@@ -108,15 +136,24 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar).Render(r.Context(), w)
+	_, total, err := a.soldiers.List(1, 1)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	templates.Calendar(month, calendar, total, selectQuoteOfDay(a.quotes, time.Now())).Render(r.Context(), w)
 }
 
 func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/calendar/"), "/")
+	if len(parts) > 2 && parts[1] == "report" && parts[2] == "pdf" {
+		a.handleCalendarPDF(w, r, parts[0])
+		return
+	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/calendar/"), "/")
 	month, err := parseBoundedInt(parts[0], "month", 1, 12)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -127,7 +164,12 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar).Render(r.Context(), w)
+	_, total, err := a.soldiers.List(1, 1)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	templates.Calendar(month, calendar, total, selectQuoteOfDay(a.quotes, time.Now())).Render(r.Context(), w)
 }
 
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
@@ -218,6 +260,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		LastName:   r.URL.Query().Get("last_name"),
 		Rank:       r.URL.Query().Get("rank"),
 		Unit:       r.URL.Query().Get("unit"),
+		BuriedIn:   r.URL.Query().Get("buried_in"),
 		DeathYear:  r.URL.Query().Get("death_year"),
 		DeathMonth: r.URL.Query().Get("death_month"),
 		DeathDay:   r.URL.Query().Get("death_day"),
@@ -272,6 +315,14 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 
 	if len(parts) > 1 && parts[1] == "edit" {
 		a.handleEditSoldier(w, r, id)
+		return
+	}
+	if len(parts) > 1 && parts[1] == "pdf" {
+		a.handleSoldierPDF(w, r, id)
+		return
+	}
+	if len(parts) > 2 && parts[1] == "images" && parts[2] == "download" {
+		a.handleDownloadSoldierImages(w, r, id)
 		return
 	}
 
@@ -332,7 +383,12 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	templates.ExportView().Render(r.Context(), w)
+	status, err := a.google.Status()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.ExportView(status).Render(r.Context(), w)
 }
 
 func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
@@ -379,6 +435,316 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "✓ Exported to %s", path)
 }
 
+func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: backupArchiveName(time.Now()),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Backup archive", Pattern: "*.zip"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Backup export cancelled.")
+		return
+	}
+
+	manifest, err := a.backup.Export(path, a.dataDir)
+	if err != nil {
+		fmt.Fprintf(w, "Backup export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Backup ready (%d soldiers, %d images):", manifest.Soldiers, manifest.Images), path))
+}
+
+func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Backup archive", Pattern: "*.zip"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Backup import cancelled.")
+		return
+	}
+
+	if a.database != nil {
+		a.database.Close()
+		a.database = nil
+	}
+
+	manifest, err := a.backup.Import(path, a.dataDir)
+	if err != nil {
+		if reopenErr := a.reopenDatabase(); reopenErr != nil {
+			http.Error(w, fmt.Sprintf("backup import failed: %v (and reopen failed: %v)", err, reopenErr), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprintf(w, "Backup import failed: %v", err)
+		return
+	}
+	if err := a.reopenDatabase(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, "Backup loaded: %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images)
+}
+
+func (a *App) handleGoogleConnect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.google.Connect(r.Context()); err != nil {
+		fmt.Fprintf(w, "Google connect failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, "Google account connected.")
+}
+
+func (a *App) handleGoogleDisconnect(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.google.Disconnect(); err != nil {
+		fmt.Fprintf(w, "Google disconnect failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, "Google account disconnected.")
+}
+
+func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tempDir, err := os.MkdirTemp("", "dixiedata-drive-backup-*")
+	if err != nil {
+		fmt.Fprintf(w, "Google Drive upload failed: %v", err)
+		return
+	}
+	defer os.RemoveAll(tempDir)
+
+	backupPath := filepath.Join(tempDir, backupArchiveName(time.Now()))
+	manifest, err := a.backup.Export(backupPath, a.dataDir)
+	if err != nil {
+		fmt.Fprintf(w, "Google Drive upload failed: %v", err)
+		return
+	}
+	uploaded, err := a.google.UploadBackup(r.Context(), backupPath)
+	if err != nil {
+		fmt.Fprintf(w, "Google Drive upload failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, externalLinkMarkup(
+		fmt.Sprintf("Backup uploaded to Google Drive (%d soldiers, %d images):", manifest.Soldiers, manifest.Images),
+		uploaded.WebViewLink,
+		uploaded.Name,
+	))
+}
+
+func (a *App) handleGoogleCalendarSync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	settings, _, _, _, err := a.google.LoadEffectiveSettings()
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		return
+	}
+	soldiers, err := a.listAllSoldiers()
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		return
+	}
+	result, err := a.google.SyncCalendar(r.Context(), settings, soldiers)
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "Google Calendar synced: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped)
+}
+
+func (a *App) handleGoogleCalendarUnsync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	result, err := a.google.UnsyncCalendar(r.Context())
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar unsync failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "Google Calendar unsynced: %d event(s) removed.", result.Deleted)
+}
+
+func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	soldier, err := a.soldiers.GetByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	for i := range soldier.Images {
+		soldier.Images[i].ResolvedPath = filepath.Join(a.dataDir, filepath.FromSlash(soldier.Images[i].FilePath))
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: soldierPDFName(*soldier),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "PDF export cancelled.")
+		return
+	}
+	if err := a.export.ExportSoldierPDF(path, *soldier); err != nil {
+		fmt.Fprintf(w, "PDF export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("PDF ready:", path))
+}
+
+func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	month, err := parseBoundedInt(monthValue, "month", 1, 12)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	calendar, err := a.anniversary.GetMonthCalendar(month)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: monthPDFName(month),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Monthly PDF export cancelled.")
+		return
+	}
+	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar); err != nil {
+		fmt.Fprintf(w, "Monthly PDF export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("Monthly PDF ready:", path))
+}
+
+func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		ImageData string `json:"imageData"`
+		FileName  string `json:"fileName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid screenshot payload", http.StatusBadRequest)
+		return
+	}
+
+	imageData := strings.TrimSpace(payload.ImageData)
+	if !strings.HasPrefix(imageData, "data:image/png;base64,") {
+		http.Error(w, "invalid screenshot image", http.StatusBadRequest)
+		return
+	}
+
+	data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(imageData, "data:image/png;base64,"))
+	if err != nil {
+		http.Error(w, "invalid screenshot image", http.StatusBadRequest)
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: imageScreenshotName(payload.FileName),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PNG image", Pattern: "*.png"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Screenshot cancelled.")
+		return
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		fmt.Fprintf(w, "Screenshot failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "✓ Saved screenshot to %s", path)
+}
+
+func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	soldier, err := a.soldiers.GetByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if len(soldier.Images) == 0 {
+		fmt.Fprint(w, "No images are attached to this record.")
+		return
+	}
+
+	selected, err := selectedSoldierImages(*soldier, r.Form["image_ids"], a.dataDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(selected) == 0 {
+		fmt.Fprint(w, "Select at least one image to download.")
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: imageArchiveName(*soldier),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "ZIP archive", Pattern: "*.zip"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Download cancelled.")
+		return
+	}
+	if err := a.export.ExportImages(path, selected); err != nil {
+		fmt.Fprintf(w, "Download failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "✓ Saved %d image(s) to %s", len(selected), path)
+}
+
 func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 	contentType := r.Header.Get("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
@@ -412,10 +778,12 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		Rank:       r.FormValue("rank"),
 		Unit:       r.FormValue("unit"),
 		BirthInfo:  r.FormValue("birth_info"),
+		BuriedIn:   r.FormValue("buried_in"),
 		Notes:      r.FormValue("notes"),
 		DeathYear:  deathYear,
 		DeathMonth: deathMonth,
 		DeathDay:   deathDay,
+		Records:    parseRecordInputs(r),
 	}, nil
 }
 
@@ -448,6 +816,197 @@ func parseBoundedInt(value, field string, min, max int) (int, error) {
 		return 0, fmt.Errorf("invalid %s", field)
 	}
 	return parsed, nil
+}
+
+func selectedSoldierImages(soldier models.Soldier, selectedIDs []string, dataDir string) ([]models.Image, error) {
+	selectedSet := make(map[int64]struct{}, len(selectedIDs))
+	for _, value := range selectedIDs {
+		id, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid image selection")
+		}
+		selectedSet[id] = struct{}{}
+	}
+
+	var selected []models.Image
+	for _, image := range soldier.Images {
+		if _, ok := selectedSet[image.ID]; !ok {
+			continue
+		}
+		image.FilePath = filepath.Join(dataDir, filepath.FromSlash(image.FilePath))
+		selected = append(selected, image)
+	}
+	return selected, nil
+}
+
+func imageArchiveName(soldier models.Soldier) string {
+	base := strings.TrimSpace(soldier.DisplayID)
+	if base == "" {
+		base = fmt.Sprintf("%s-%s", soldier.FirstName, soldier.LastName)
+	}
+	return sanitizedFileStem(base, "soldier-images") + "-images.zip"
+}
+
+func imageScreenshotName(fileName string) string {
+	base := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	return sanitizedFileStem(base, "archive-image") + "-screenshot.png"
+}
+
+func soldierPDFName(soldier models.Soldier) string {
+	base := strings.TrimSpace(soldier.DisplayID)
+	if base == "" {
+		base = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
+	}
+	return sanitizedFileStem(base, "soldier-record") + ".pdf"
+}
+
+func monthPDFName(month int) string {
+	return sanitizedFileStem(fmt.Sprintf("%s report", monthNameValue(month)), "monthly-report") + ".pdf"
+}
+
+func backupArchiveName(now time.Time) string {
+	return fmt.Sprintf("dixiedata-backup-%s.zip", now.Format("2006-01-02"))
+}
+
+func sanitizedFileStem(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	value = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r
+		case r >= '0' && r <= '9':
+			return r
+		case r == '-' || r == '_':
+			return r
+		case r == ' ':
+			return '-'
+		default:
+			return '-'
+		}
+	}, value)
+	value = strings.Trim(value, "-")
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+func monthNameValue(month int) string {
+	months := []string{"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+	if month < 1 || month > 12 {
+		return "Unknown"
+	}
+	return months[month]
+}
+
+func parseRecordInputs(r *http.Request) []models.Record {
+	recordTypes := r.Form["record_type"]
+	appIDs := r.Form["record_app_id"]
+	details := r.Form["record_details"]
+
+	count := len(recordTypes)
+	if len(appIDs) > count {
+		count = len(appIDs)
+	}
+	if len(details) > count {
+		count = len(details)
+	}
+
+	records := make([]models.Record, 0, count)
+	for i := 0; i < count; i++ {
+		record := models.Record{}
+		if i < len(recordTypes) {
+			record.RecordType = recordTypes[i]
+		}
+		if i < len(appIDs) {
+			record.AppID = appIDs[i]
+		}
+		if i < len(details) {
+			record.Details = details[i]
+		}
+		records = append(records, record)
+	}
+	return records
+}
+
+func exportLinkMarkup(label, path string) string {
+	fileURL := "file:///" + strings.TrimPrefix(filepath.ToSlash(path), "/")
+	return fmt.Sprintf(
+		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">%s <a href="%s" class="pill-link" target="_blank" rel="noreferrer">%s</a></div>`,
+		html.EscapeString(label),
+		html.EscapeString(fileURL),
+		html.EscapeString(path),
+	)
+}
+
+func externalLinkMarkup(label, href, text string) string {
+	return fmt.Sprintf(
+		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">%s <a href="%s" class="pill-link" target="_blank" rel="noreferrer">%s</a></div>`,
+		html.EscapeString(label),
+		html.EscapeString(href),
+		html.EscapeString(text),
+	)
+}
+
+func (a *App) reloadServices() error {
+	a.soldiers = services.NewSoldierService(a.database)
+	a.anniversary = services.NewAnniversaryService(a.database)
+	a.export = services.NewExportService(a.database, a.soldiers)
+	a.backup = services.NewBackupService(a.soldiers)
+	a.google = services.NewGoogleService(a.dataDir)
+	return nil
+}
+
+func (a *App) reopenDatabase() error {
+	database, err := db.Open(a.dataDir)
+	if err != nil {
+		return err
+	}
+	a.database = database
+	return a.reloadServices()
+}
+
+func loadQuotes(data []byte) ([]models.Quote, error) {
+	var payload struct {
+		Quotes []models.Quote `json:"civil_war_quotes"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, err
+	}
+	if payload.Quotes == nil {
+		payload.Quotes = []models.Quote{}
+	}
+	return payload.Quotes, nil
+}
+
+func (a *App) listAllSoldiers() ([]models.Soldier, error) {
+	var soldiers []models.Soldier
+	page := 1
+	for {
+		batch, _, err := a.soldiers.List(page, 500)
+		if err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		soldiers = append(soldiers, batch...)
+		if len(batch) < 500 {
+			break
+		}
+		page++
+	}
+	return soldiers, nil
+}
+
+func selectQuoteOfDay(quotes []models.Quote, now time.Time) models.Quote {
+	if len(quotes) == 0 {
+		return models.Quote{}
+	}
+	index := (now.YearDay() - 1) % len(quotes)
+	return quotes[index]
 }
 
 func parsePage(value string) int {
