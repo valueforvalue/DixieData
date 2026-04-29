@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS images (
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS soldiers_fts USING fts5(
-    first_name, last_name, unit, rank,
+    first_name, last_name, unit, soldier_rank,
     content=soldiers, content_rowid=id
 );
 `

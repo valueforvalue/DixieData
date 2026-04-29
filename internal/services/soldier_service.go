@@ -42,7 +42,7 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	id, _ := res.LastInsertId()
 	soldier.ID = id
 
-	_, err = tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, rank) VALUES (?,?,?,?,?)`,
+	_, err = tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, soldier_rank) VALUES (?,?,?,?,?)`,
 		id, soldier.FirstName, soldier.LastName, soldier.Unit, soldier.Rank)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, rank) VALUES (?,?,?,?,?)`,
+	_, err = tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, soldier_rank) VALUES (?,?,?,?,?)`,
 		soldier.ID, soldier.FirstName, soldier.LastName, soldier.Unit, soldier.Rank)
 	if err != nil {
 		return err
