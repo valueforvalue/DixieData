@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -198,6 +199,67 @@ func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 	}
 	if len(data) == 0 || string(data[:4]) != "%PDF" {
 		t.Fatalf("output is not a PDF")
+	}
+}
+
+func TestExportService_ExportICalendar(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	_, _ = soldierSvc.Create(models.Soldier{
+		DisplayID:  "CSA-1",
+		FirstName:  "John",
+		LastName:   "Smith",
+		Unit:       "1st Virginia",
+		BuriedIn:   "Richmond",
+		DeathYear:  1862,
+		DeathMonth: 4,
+		DeathDay:   9,
+	})
+	_, _ = soldierSvc.Create(models.Soldier{
+		DisplayID:  "CSA-2",
+		FirstName:  "No",
+		LastName:   "Day",
+		DeathYear:  1863,
+		DeathMonth: 0,
+		DeathDay:   0,
+	})
+
+	outPath := filepath.Join(t.TempDir(), "anniversaries.ics")
+	if err := exportSvc.ExportICalendar(outPath); err != nil {
+		t.Fatalf("ExportICalendar: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "BEGIN:VCALENDAR") || !strings.Contains(text, "END:VCALENDAR") {
+		t.Fatalf("ics missing calendar wrapper: %q", text)
+	}
+	if !strings.Contains(text, "SUMMARY:DixieData Anniversary: John Smith") {
+		t.Fatalf("ics missing summary: %q", text)
+	}
+	expectedStart := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now()).Format("20060102") + "T090000"
+	if !strings.Contains(text, "DTSTART:"+expectedStart) {
+		t.Fatalf("ics missing start date: %q", text)
+	}
+	if !strings.Contains(text, "DTEND:"+nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now()).Format("20060102")+"T100000") {
+		t.Fatalf("ics missing end date: %q", text)
+	}
+	if !strings.Contains(text, "RRULE:FREQ=YEARLY") {
+		t.Fatalf("ics missing recurrence rule: %q", text)
+	}
+	if !strings.Contains(text, "STATUS:CONFIRMED") || !strings.Contains(text, "TRANSP:TRANSPARENT") {
+		t.Fatalf("ics missing calendar metadata: %q", text)
+	}
+	if !strings.Contains(text, "BEGIN:VALARM") || !strings.Contains(text, "TRIGGER:-P1D") || !strings.Contains(text, "TRIGGER:-PT1H") {
+		t.Fatalf("ics missing reminder alarms: %q", text)
+	}
+	if strings.Contains(text, "CSA-2") {
+		t.Fatalf("ics should skip soldiers without full month/day")
 	}
 }
 

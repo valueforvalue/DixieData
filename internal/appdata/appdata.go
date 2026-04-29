@@ -20,12 +20,12 @@ func DefaultDir() string {
 		}
 	}
 
-	if wd, err := os.Getwd(); err == nil {
-		return filepath.Join(wd, folderName)
-	}
-
 	if exe, err := os.Executable(); err == nil {
 		return filepath.Join(filepath.Dir(exe), folderName)
+	}
+
+	if wd, err := os.Getwd(); err == nil {
+		return filepath.Join(wd, folderName)
 	}
 
 	return folderName

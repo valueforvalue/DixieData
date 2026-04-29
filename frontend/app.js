@@ -374,6 +374,119 @@
     row.remove();
   }
 
+  function draftKeyForForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return "";
+    }
+    return form.getAttribute("data-draft-key") || "";
+  }
+
+  function persistDraftForForm(form) {
+    const key = draftKeyForForm(form);
+    if (!key) {
+      return;
+    }
+    const payload = {};
+    form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
+        return;
+      }
+      if (!field.name || field.disabled || field instanceof HTMLInputElement && field.type === "file") {
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(payload, field.name)) {
+        payload[field.name] = [];
+      }
+      payload[field.name].push(field.value ?? "");
+    });
+    try {
+      window.localStorage.setItem(`dixiedata:${key}`, JSON.stringify(payload));
+    } catch (error) {
+    }
+  }
+
+  function clearDraftForForm(form) {
+    const key = draftKeyForForm(form);
+    if (!key) {
+      return;
+    }
+    try {
+      window.localStorage.removeItem(`dixiedata:${key}`);
+    } catch (error) {
+    }
+  }
+
+  function ensureRecordRowCount(form, targetCount) {
+    if (!(form instanceof HTMLFormElement) || targetCount < 1) {
+      return;
+    }
+    let rows = form.querySelectorAll("[data-record-row]");
+    while (rows.length < targetCount) {
+      const addButton = form.querySelector("[data-record-add]");
+      if (!(addButton instanceof HTMLElement)) {
+        break;
+      }
+      addRecordRow(addButton);
+      rows = form.querySelectorAll("[data-record-row]");
+    }
+  }
+
+  function restoreDraftForForm(form) {
+    const key = draftKeyForForm(form);
+    if (!key) {
+      return;
+    }
+    let saved;
+    try {
+      saved = window.localStorage.getItem(`dixiedata:${key}`);
+    } catch (error) {
+      return;
+    }
+    if (!saved) {
+      return;
+    }
+    let payload;
+    try {
+      payload = JSON.parse(saved);
+    } catch (error) {
+      return;
+    }
+    const recordCount = Math.max(
+      1,
+      Array.isArray(payload.record_type) ? payload.record_type.length : 0,
+      Array.isArray(payload.record_app_id) ? payload.record_app_id.length : 0,
+      Array.isArray(payload.record_details) ? payload.record_details.length : 0,
+    );
+    ensureRecordRowCount(form, recordCount);
+    const cursors = {};
+    form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
+      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
+        return;
+      }
+      if (!field.name || field.disabled || field instanceof HTMLInputElement && field.type === "file") {
+        return;
+      }
+      const values = payload[field.name];
+      if (!Array.isArray(values) || values.length === 0) {
+        return;
+      }
+      const index = cursors[field.name] || 0;
+      if (index >= values.length) {
+        return;
+      }
+      field.value = values[index] ?? "";
+      cursors[field.name] = index + 1;
+    });
+  }
+
+  function initializeDraftForms() {
+    document.querySelectorAll("form[data-draft-key]").forEach((form) => {
+      if (form instanceof HTMLFormElement) {
+        restoreDraftForForm(form);
+      }
+    });
+  }
+
   function renderDocument(html) {
     document.open();
     document.write(html);
@@ -482,6 +595,9 @@
     try {
       const response = await fetch(requestUrl, options);
       const html = await response.text();
+      if (el instanceof HTMLFormElement && response.ok && response.redirected) {
+        clearDraftForForm(el);
+      }
       applyResponse(el, html);
     } catch (error) {
       applyResponse(el, "Request failed.");
@@ -506,6 +622,7 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     initializeTabs();
+    initializeDraftForms();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -546,12 +663,20 @@
     if (recordAdd) {
       event.preventDefault();
       addRecordRow(recordAdd);
+      const form = recordAdd.closest("form");
+      if (form instanceof HTMLFormElement) {
+        persistDraftForForm(form);
+      }
       return;
     }
     const recordRemove = event.target.closest("[data-record-remove]");
     if (recordRemove) {
       event.preventDefault();
       removeRecordRow(recordRemove);
+      const form = recordRemove.closest("form");
+      if (form instanceof HTMLFormElement) {
+        persistDraftForForm(form);
+      }
       return;
     }
     const imageClose = event.target.closest("[data-image-close]");
@@ -600,6 +725,18 @@
 
   document.addEventListener("input", triggerInputRequest);
   document.addEventListener("change", triggerInputRequest);
+  document.addEventListener("input", (event) => {
+    const form = event.target.closest("form[data-draft-key]");
+    if (form instanceof HTMLFormElement) {
+      persistDraftForForm(form);
+    }
+  });
+  document.addEventListener("change", (event) => {
+    const form = event.target.closest("form[data-draft-key]");
+    if (form instanceof HTMLFormElement) {
+      persistDraftForForm(form);
+    }
+  });
   document.addEventListener("change", (event) => {
     const selectAll = event.target.closest("[data-select-all]");
     if (!(selectAll instanceof HTMLInputElement)) {

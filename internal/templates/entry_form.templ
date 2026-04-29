@@ -14,6 +14,7 @@ templ EntryForm(s models.Soldier, isEdit bool) {
 					hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
 				} else {
 					hx-post="/soldiers"
+					data-draft-key="new-soldier"
 				}
 				hx-target="body"
 				enctype="multipart/form-data"
@@ -95,6 +96,9 @@ templ EntryForm(s models.Soldier, isEdit bool) {
 						<input type="file" name="images" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*"
 							class="field-input"/>
 						<p class="text-xs text-slate-500 mt-2">Images are stored in a folder named after the soldier's record number.</p>
+						if !isEdit {
+							<p class="text-xs text-slate-500 mt-1">This form autosaves locally while you type. Uploaded files still need to be selected again after a reload.</p>
+						}
 						if isEdit && len(s.Images) > 0 {
 							<p class="text-xs text-slate-500 mt-1">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
 						}
@@ -168,6 +172,11 @@ templ ExportView(status models.GoogleStatus) {
 						<div class="font-bold">Export CSV</div>
 						<div class="text-xs text-slate-500">Flat spreadsheet format</div>
 					</button>
+					<button hx-post="/export/ical" hx-target="#export-status"
+						class="secondary-button justify-start text-left">
+						<div class="font-bold">Export iCalendar</div>
+						<div class="text-xs text-slate-500">ICS calendar import for yearly soldier anniversaries</div>
+					</button>
 					<button hx-post="/export/backup" hx-target="#export-status"
 						class="primary-button justify-start text-left">
 						<div class="font-bold">Export Backup</div>
@@ -221,6 +230,32 @@ templ ExportView(status models.GoogleStatus) {
 					Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>
+			</div>
+		</div>
+	}
+}
+
+templ SettingsView(confirmationWord string) {
+	@Layout("Settings") {
+		<div class="mx-auto max-w-2xl space-y-6">
+			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
+			<div class="card rounded-3xl p-8 space-y-4">
+				<div>
+					<h3 class="text-xl gold font-bold">Initialize Data</h3>
+					<p class="mt-2 text-sm text-slate-600">Clear the local archive and rebuild a fresh empty database and folder tree.</p>
+					<p class="mt-1 text-xs text-slate-500">This removes soldiers, records, images, local backups, and Google sync state stored in <code>.dixiedata</code>. The shared <code>google-oauth-defaults.json</code> file next to the app is not touched.</p>
+				</div>
+				<form hx-post="/settings/initialize" hx-target="#settings-status" class="space-y-4">
+					<div>
+						<label class="mb-1 block text-sm text-slate-500">Type { confirmationWord } to confirm</label>
+						<input type="text" name="confirmation_word" class="field-input" autocomplete="off" spellcheck="false"/>
+					</div>
+					<div class="flex flex-wrap gap-3">
+						<button type="submit" class="danger-button">Initialize Data</button>
+						<a href="/calendar" class="ghost-link px-4 py-2">Back</a>
+					</div>
+				</form>
+				<div id="settings-status" class="text-sm text-slate-600"></div>
 			</div>
 		</div>
 	}
