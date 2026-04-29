@@ -1,0 +1,22 @@
+# Build artifacts
+build/bin/
+DixieData
+
+# Database files (user data)
+*.db
+*.db-shm
+*.db-wal
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# User data directory
+.dixiedata/
+
+# Go test cache
+*.test
