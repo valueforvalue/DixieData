@@ -27,7 +27,7 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	defer tx.Rollback()
 
 	if soldier.DisplayID == "" {
-		id, err := s.db.NextCSAID()
+		id, err := s.db.NextDXDID()
 		if err != nil {
 			return nil, err
 		}
@@ -37,8 +37,8 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 
 	soldier.Rank = canonicalRank(soldier)
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, is_generated, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		soldier.DisplayID, soldier.IsGenerated, soldier.FirstName, soldier.MiddleName, soldier.LastName,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		soldier.DisplayID, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.DeathYear, soldier.DeathMonth,
 		soldier.DeathDay, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes)
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 
 func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 	conn := s.db.Conn()
-	row := conn.QueryRow(`SELECT id, display_id, is_generated, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers WHERE id = ?`, id)
+	row := conn.QueryRow(`SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers WHERE id = ?`, id)
 	soldier, err := scanSoldier(row)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 		soldier.Records = append(soldier.Records, r)
 	}
 
-	imgRows, err := conn.Query(`SELECT id, soldier_id, file_name, file_path, caption FROM images WHERE soldier_id = ?`, id)
+	imgRows, err := conn.Query(`SELECT id, soldier_id, file_name, file_path, caption FROM images WHERE soldier_id = ? ORDER BY id`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +110,8 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 
 	soldier.Rank = canonicalRank(soldier)
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, first_name=?, middle_name=?, last_name=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, death_year=?, death_month=?, death_day=?, birth_info=?, buried_in=?, notes=? WHERE id=?`,
-		soldier.DisplayID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState,
+	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, pension_id=?, application_id=?, first_name=?, middle_name=?, last_name=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, death_year=?, death_month=?, death_day=?, birth_info=?, buried_in=?, notes=? WHERE id=?`,
+		soldier.DisplayID, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState,
 		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.ID)
 	if err != nil {
 		return err
@@ -211,26 +211,26 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 	var total int
 	err := conn.QueryRow(`
 		SELECT COUNT(*) FROM (
-			SELECT id FROM soldiers WHERE display_id LIKE ? OR buried_in LIKE ?
+			SELECT id FROM soldiers WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR buried_in LIKE ?
 			UNION
 			SELECT rowid AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
 		) matches
-	`, like, like, query).Scan(&total)
+	`, like, like, like, like, query).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	rows, err := conn.Query(`
-		SELECT id, display_id, is_generated, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at
+		SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at
 		FROM soldiers
 		WHERE id IN (
-			SELECT id FROM soldiers WHERE display_id LIKE ? OR buried_in LIKE ?
+			SELECT id FROM soldiers WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR buried_in LIKE ?
 			UNION
 			SELECT rowid AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
 		)
 		ORDER BY last_name, first_name
 		LIMIT ? OFFSET ?
-	`, like, like, query, pageSize, offset)
+	`, like, like, like, like, query, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -243,22 +243,22 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]models.Soldier, int, error) {
 	conn := s.db.Conn()
 	like := "%" + query + "%"
-	args := []interface{}{like, like, like, like, like, like, like, like, like, like}
+	args := []interface{}{like, like, like, like, like, like, like, like, like, like, like, like}
 
 	var total int
 	err := conn.QueryRow(`
 		SELECT COUNT(*)
 		FROM soldiers
-		WHERE display_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR buried_in LIKE ?
+		WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR buried_in LIKE ?
 	`, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	rows, err := conn.Query(`
-		SELECT id, display_id, is_generated, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at
+		SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at
 		FROM soldiers
-		WHERE display_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR buried_in LIKE ?
+		WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR buried_in LIKE ?
 		ORDER BY last_name, first_name
 		LIMIT ? OFFSET ?
 	`, append(args, pageSize, offset)...)
@@ -362,7 +362,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 
 	offset := (page - 1) * pageSize
 	rows, err := conn.Query(
-		"SELECT id, display_id, is_generated, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
+		"SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
 		append(args, pageSize, offset)...,
 	)
 	if err != nil {
@@ -381,7 +381,7 @@ func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error)
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	rows, err := conn.Query(`SELECT id, display_id, is_generated, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
+	rows, err := conn.Query(`SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -448,28 +448,32 @@ func normalizeRecords(records []models.Record) []models.Record {
 
 func soldierScanDest(s *models.Soldier) []interface{} {
 	var (
-		displayID    sql.NullString
-		firstName    sql.NullString
-		middleName   sql.NullString
-		lastName     sql.NullString
-		rank         sql.NullString
-		rankIn       sql.NullString
-		rankOut      sql.NullString
-		unit         sql.NullString
-		pensionState sql.NullString
-		birthInfo    sql.NullString
-		buriedIn     sql.NullString
-		notes        sql.NullString
-		createdAt    sql.NullString
-		deathYear    sql.NullInt64
-		deathMonth   sql.NullInt64
-		deathDay     sql.NullInt64
+		displayID     sql.NullString
+		pensionID     sql.NullString
+		applicationID sql.NullString
+		firstName     sql.NullString
+		middleName    sql.NullString
+		lastName      sql.NullString
+		rank          sql.NullString
+		rankIn        sql.NullString
+		rankOut       sql.NullString
+		unit          sql.NullString
+		pensionState  sql.NullString
+		birthInfo     sql.NullString
+		buriedIn      sql.NullString
+		notes         sql.NullString
+		createdAt     sql.NullString
+		deathYear     sql.NullInt64
+		deathMonth    sql.NullInt64
+		deathDay      sql.NullInt64
 	)
 
 	return []interface{}{
 		&s.ID,
 		nullStringDest(&s.DisplayID, &displayID),
 		&s.IsGenerated,
+		nullStringDest(&s.PensionID, &pensionID),
+		nullStringDest(&s.ApplicationID, &applicationID),
 		nullStringDest(&s.FirstName, &firstName),
 		nullStringDest(&s.MiddleName, &middleName),
 		nullStringDest(&s.LastName, &lastName),

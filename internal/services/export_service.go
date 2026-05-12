@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,8 @@ import (
 )
 
 const exportBatchSize = 500
+
+var pdfURLPattern = regexp.MustCompile(`https?://[^\s<]+`)
 
 type ExportService struct {
 	db      *db.DB
@@ -167,7 +170,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	w := csv.NewWriter(f)
 	defer w.Flush()
 
-	header := []string{"id", "display_id", "is_generated", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
+	header := []string{"id", "display_id", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -187,6 +190,8 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				fmt.Sprintf("%d", s.ID),
 				s.DisplayID,
 				fmt.Sprintf("%v", s.IsGenerated),
+				s.PensionID,
+				s.ApplicationID,
 				s.FirstName,
 				s.MiddleName,
 				s.LastName,
@@ -271,6 +276,8 @@ func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldi
 	writePDFField(pdf, "Rank Out", displaySoldierRank(soldier))
 	writePDFField(pdf, "Unit", soldier.Unit)
 	writePDFField(pdf, "Pension State", soldier.PensionState)
+	writePDFField(pdf, "Pension ID", soldier.PensionID)
+	writePDFField(pdf, "Application ID", soldier.ApplicationID)
 	writePDFField(pdf, "Death", soldierDeathLine(soldier))
 	writePDFField(pdf, "Birth Info", soldier.BirthInfo)
 	writePDFField(pdf, "Buried In", soldier.BuriedIn)
@@ -429,14 +436,79 @@ func writePDFField(pdf *fpdf.Fpdf, label, value string) {
 }
 
 func writePDFBody(pdf *fpdf.Fpdf, text string) {
-	pdf.SetFont("Times", "", 12)
-	pdf.MultiCell(0, 7, emptyPDFValue(text), "", "", false)
+	writePDFRichText(pdf, emptyPDFValue(text), 7)
 }
 
 func writePDFBullet(pdf *fpdf.Fpdf, text string) {
 	pdf.SetFont("Times", "", 12)
 	pdf.CellFormat(6, 7, "-", "", 0, "", false, 0, "")
 	pdf.MultiCell(0, 7, emptyPDFValue(text), "", "", false)
+}
+
+func writePDFRichText(pdf *fpdf.Fpdf, text string, lineHeight float64) {
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	for lineIndex, line := range lines {
+		segments := pdfTextSegments(line)
+		if len(segments) == 0 {
+			segments = []pdfTextSegment{{Text: ""}}
+		}
+		for _, segment := range segments {
+			if segment.Link != "" {
+				pdf.SetFont("Times", "I", 12)
+				pdf.SetTextColor(48, 87, 122)
+				pdf.WriteLinkString(lineHeight, segment.Text, segment.Link)
+				pdf.SetTextColor(0, 0, 0)
+				pdf.SetFont("Times", "", 12)
+				continue
+			}
+			pdf.SetFont("Times", "", 12)
+			pdf.Write(lineHeight, segment.Text)
+		}
+		if lineIndex < len(lines)-1 {
+			pdf.Ln(lineHeight)
+		}
+	}
+	pdf.Ln(lineHeight)
+}
+
+type pdfTextSegment struct {
+	Text string
+	Link string
+}
+
+func pdfTextSegments(text string) []pdfTextSegment {
+	matches := pdfURLPattern.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return []pdfTextSegment{{Text: text}}
+	}
+
+	segments := make([]pdfTextSegment, 0, len(matches)*2+1)
+	cursor := 0
+	for _, match := range matches {
+		start := match[0]
+		end := match[1]
+		if start > cursor {
+			segments = append(segments, pdfTextSegment{Text: text[cursor:start]})
+		}
+
+		linkText, suffix := splitPDFURLSuffix(text[start:end])
+		if linkText != "" {
+			segments = append(segments, pdfTextSegment{Text: linkText, Link: linkText})
+		}
+		if suffix != "" {
+			segments = append(segments, pdfTextSegment{Text: suffix})
+		}
+		cursor = end
+	}
+	if cursor < len(text) {
+		segments = append(segments, pdfTextSegment{Text: text[cursor:]})
+	}
+	return segments
+}
+
+func splitPDFURLSuffix(value string) (string, string) {
+	trimmed := strings.TrimRight(value, ".,;:!?)]}")
+	return trimmed, value[len(trimmed):]
 }
 
 func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {

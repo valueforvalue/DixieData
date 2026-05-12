@@ -172,20 +172,19 @@ func buildSoldier(rng *rand.Rand, index int) models.Soldier {
 	}
 
 	soldier := models.Soldier{
-		FirstName:  firstName,
-		LastName:   lastName,
-		Rank:       ranks[rng.Intn(len(ranks))],
-		Unit:       units[rng.Intn(len(units))],
-		DeathYear:  1861 + rng.Intn(5),
-		DeathMonth: month,
-		DeathDay:   day,
-		BirthInfo:  fmt.Sprintf("Born %d in %s, %s.", 1818+rng.Intn(25), county, state),
-		BuriedIn:   cemeteries[rng.Intn(len(cemeteries))],
-		Notes:      fmt.Sprintf("Generated test entry %03d for UI and export testing.", index+1),
-	}
-
-	if index%4 == 0 {
-		soldier.DisplayID = fmt.Sprintf("PENSION-%05d", 10000+index)
+		PensionID:     fmt.Sprintf("P%05d", 10000+index),
+		ApplicationID: fmt.Sprintf("A%05d", 10000+index),
+		FirstName:     firstName,
+		LastName:      lastName,
+		Rank:          ranks[rng.Intn(len(ranks))],
+		Unit:          units[rng.Intn(len(units))],
+		PensionState:  state,
+		DeathYear:     1861 + rng.Intn(5),
+		DeathMonth:    month,
+		DeathDay:      day,
+		BirthInfo:     fmt.Sprintf("Born %d in %s, %s.", 1818+rng.Intn(25), county, state),
+		BuriedIn:      cemeteries[rng.Intn(len(cemeteries))],
+		Notes:         fmt.Sprintf("Generated test entry %03d for UI and export testing.", index+1),
 	}
 
 	return soldier

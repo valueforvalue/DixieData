@@ -41,6 +41,14 @@ func TestGenerateCreatesDatabaseRecordsAndImages(t *testing.T) {
 	assertCount(t, database, "records", summary.Records)
 	assertCount(t, database, "images", summary.Images)
 
+	var displayID, pensionID, applicationID string
+	if err := database.Conn().QueryRow("SELECT display_id, pension_id, application_id FROM soldiers ORDER BY id LIMIT 1").Scan(&displayID, &pensionID, &applicationID); err != nil {
+		t.Fatalf("select generated identifiers: %v", err)
+	}
+	if displayID == "" || pensionID == "" || applicationID == "" {
+		t.Fatalf("expected generated identifiers, got display=%q pension=%q application=%q", displayID, pensionID, applicationID)
+	}
+
 	imageFiles := 0
 	if err := filepath.WalkDir(filepath.Join(dataDir, "images"), func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
