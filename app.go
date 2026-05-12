@@ -42,6 +42,7 @@ type App struct {
 	anniversary *services.AnniversaryService
 	export      *services.ExportService
 	backup      *services.BackupService
+	diagnostics *services.DiagnosticsService
 	google      *services.GoogleService
 	quotes      []models.Quote
 	mux         *http.ServeMux
@@ -115,6 +116,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
 	mux.HandleFunc("/export/ical", a.handleExportICalendar)
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
+	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
 	mux.HandleFunc("/import/backup", a.handleImportBackup)
 	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
 	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
@@ -629,6 +631,31 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Backup ready (%d soldiers, %d images):", manifest.Soldiers, manifest.Images), path))
+}
+
+func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: services.DiagnosticsBundleName(time.Now()),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Bug report bundle", Pattern: "*.zip"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Bug report export cancelled.")
+		return
+	}
+
+	manifest, err := a.diagnostics.Export(path, a.dataDir)
+	if err != nil {
+		fmt.Fprintf(w, "Bug report export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Bug report bundle ready (%d soldiers, %d images, %d scratchpad files):", manifest.Soldiers, manifest.Images, manifest.ScratchpadFiles), path))
 }
 
 func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
@@ -1516,6 +1543,7 @@ func (a *App) reloadServices() error {
 	a.anniversary = services.NewAnniversaryService(a.database)
 	a.export = services.NewExportService(a.database, a.soldiers)
 	a.backup = services.NewBackupService(a.database, a.soldiers)
+	a.diagnostics = services.NewDiagnosticsService(a.database, a.soldiers)
 	a.google = services.NewGoogleService(a.dataDir)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
 	return nil

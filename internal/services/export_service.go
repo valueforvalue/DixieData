@@ -5,6 +5,10 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"os"
 	"path/filepath"
@@ -677,5 +681,26 @@ func imagePathForPDF(image models.Image) string {
 	default:
 		return ""
 	}
+	if !validPDFImage(candidate) {
+		return ""
+	}
 	return candidate
+}
+
+func validPDFImage(path string) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	_, format, err := image.DecodeConfig(file)
+	if err != nil {
+		return false
+	}
+	switch strings.ToLower(format) {
+	case "jpeg", "png", "gif":
+		return true
+	default:
+		return false
+	}
 }
