@@ -272,6 +272,16 @@ func TestImagePathForPDFSkipsUnsupportedFormat(t *testing.T) {
 	}
 }
 
+func TestImagePathForPDFSkipsCorruptPNG(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "corrupt.png")
+	if err := os.WriteFile(path, []byte("not-a-real-png"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
+		t.Fatalf("imagePathForPDF returned %q for corrupt PNG", got)
+	}
+}
+
 func TestPDFTextSegments(t *testing.T) {
 	segments := pdfTextSegments("See https://example.com/test, then http://example.org.")
 	if len(segments) != 6 {

@@ -297,6 +297,11 @@ templ ExportView(status models.GoogleStatus) {
 						<div class="font-bold">Export Backup</div>
 						<div class="text-xs text-slate-300">ZIP archive with manifest, DB snapshot, and all images</div>
 					</button>
+					<button hx-post="/export/bug-report" hx-target="#export-status"
+						class="secondary-button justify-start text-left">
+						<div class="font-bold">Export Bug Report Bundle</div>
+						<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
+					</button>
 					<button hx-post="/import/backup" hx-target="#export-status" hx-confirm="Load a backup and replace the current local archive?"
 						class="secondary-button justify-start text-left">
 						<div class="font-bold">Load Backup</div>
