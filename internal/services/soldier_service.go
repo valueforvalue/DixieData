@@ -150,6 +150,26 @@ func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption s
 	return err
 }
 
+func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
+	if len(imageIDs) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(imageIDs))
+	args := make([]interface{}, 0, len(imageIDs)+1)
+	args = append(args, soldierID)
+	for index, imageID := range imageIDs {
+		placeholders[index] = "?"
+		args = append(args, imageID)
+	}
+
+	_, err := s.db.Conn().Exec(
+		fmt.Sprintf(`DELETE FROM images WHERE soldier_id = ? AND id IN (%s)`, strings.Join(placeholders, ",")),
+		args...,
+	)
+	return err
+}
+
 func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1

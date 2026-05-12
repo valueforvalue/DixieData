@@ -510,7 +510,13 @@ func imagePathForPDF(image models.Image) string {
 	if candidate == "" {
 		return ""
 	}
-	if _, err := os.Stat(candidate); err != nil {
+	info, err := os.Stat(candidate)
+	if err != nil || info.IsDir() || info.Size() == 0 {
+		return ""
+	}
+	switch strings.ToLower(filepath.Ext(candidate)) {
+	case ".jpg", ".jpeg", ".png", ".gif":
+	default:
 		return ""
 	}
 	return candidate
