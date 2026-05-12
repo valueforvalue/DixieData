@@ -34,7 +34,6 @@ const (
 	PageSettings                = "page.settings"
 	PanelSettingsInitialize     = "panel.settings.initialize"
 	OverlayImageViewer          = "overlay.image.viewer"
-	OverlaySoldierScratchpad    = "overlay.soldier.scratchpad"
 )
 
 type Surface struct {
@@ -69,7 +68,6 @@ var Registry = []Surface{
 	{ID: PageSettings, Kind: "page", Description: "Settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
-	{ID: OverlaySoldierScratchpad, Kind: "overlay", Description: "Floating scratch pad window for soldier forms."},
 }
 
 func DebugEnabled() bool {

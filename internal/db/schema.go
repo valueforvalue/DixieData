@@ -69,5 +69,8 @@ func applySchema(db *DB) error {
 			return err
 		}
 	}
+	if _, err := db.conn.Exec(`UPDATE soldiers SET is_generated = 1 WHERE is_generated = 0 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`); err != nil {
+		return err
+	}
 	return nil
 }

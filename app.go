@@ -26,6 +26,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/scratchpad"
 	"github.com/valueforvalue/DixieData/internal/services"
 	"github.com/valueforvalue/DixieData/internal/templates"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -46,6 +47,11 @@ type App struct {
 	mux         *http.ServeMux
 	startupErr  error
 	dataDir     string
+	scratchpads scratchpadOpener
+}
+
+type scratchpadOpener interface {
+	Open(displayID, seed string) error
 }
 
 const initializeDataConfirmationWord = "INITIALIZE"
@@ -119,6 +125,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
 	mux.HandleFunc("/images/rotate", a.handleImageRotate)
 	mux.HandleFunc("/open-link", a.handleOpenLink)
+	mux.HandleFunc("/scratchpad/open", a.handleScratchpadOpen)
 	mux.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(a.dataDir))))
 
 	a.mux = mux
@@ -1376,6 +1383,33 @@ func (a *App) handleOpenLink(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (a *App) handleScratchpadOpen(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	if a.scratchpads == nil {
+		http.Error(w, "scratch pad service unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	displayID := strings.TrimSpace(r.FormValue("display_id"))
+	if displayID == "" {
+		http.Error(w, "A Record ID is required before opening the scratch pad.", http.StatusBadRequest)
+		return
+	}
+	seed := r.FormValue("scratchpad_seed")
+	if err := a.scratchpads.Open(displayID, seed); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = fmt.Fprintf(w, "Scratch pad ready for %s.", displayID)
+}
+
 func normalizeChromeOpenTarget(target string) (string, error) {
 	target = strings.TrimSpace(target)
 	if target == "" {
@@ -1442,6 +1476,7 @@ func (a *App) reloadServices() error {
 	a.export = services.NewExportService(a.database, a.soldiers)
 	a.backup = services.NewBackupService(a.soldiers)
 	a.google = services.NewGoogleService(a.dataDir)
+	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
 	return nil
 }
 

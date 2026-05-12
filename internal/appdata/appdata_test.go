@@ -34,3 +34,13 @@ func TestRecordImageDirUsesSanitizedDisplayID(t *testing.T) {
 		t.Fatalf("relative=%q", relative)
 	}
 }
+
+func TestScratchpadPathsUseSanitizedDisplayID(t *testing.T) {
+	textPath, statePath := ScratchpadPaths(`C:\repo\.dixiedata`, `PENSION/42 A`)
+	if textPath != `C:\repo\.dixiedata\scratchpads\PENSION-42-A.txt` {
+		t.Fatalf("textPath=%q", textPath)
+	}
+	if statePath != `C:\repo\.dixiedata\scratchpads\PENSION-42-A.json` {
+		t.Fatalf("statePath=%q", statePath)
+	}
+}
