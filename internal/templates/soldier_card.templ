@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 templ SoldierCard(s models.Soldier, highlighted bool) {
@@ -69,83 +70,97 @@ func emptyDetail(value string) string {
 
 templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 	@Layout("Soldiers") {
-		<div class="mb-4">
-			<div class="flex justify-between items-center mb-4">
-				<h2 class="text-2xl gold font-bold">Soldier Records</h2>
-				<a href="/soldiers/new" class="primary-button">+ Add</a>
+		<div data-ui-id={ uiids.PageSoldiersList } class="relative">
+			@SurfaceBadge(uiids.PageSoldiersList)
+			<div class="mb-4">
+				<div class="flex justify-between items-center mb-4">
+					<h2 class="text-2xl gold font-bold">Soldier Records</h2>
+					<a href="/soldiers/new" class="primary-button">+ Add</a>
+				</div>
+				<div class="flex gap-2 mb-3">
+					<button type="button" data-ui-id={ uiids.TabSoldiersSearchBasic } data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
+						class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">
+						Quick Search
+						@InlineSurfaceBadge(uiids.TabSoldiersSearchBasic)
+					</button>
+					<button type="button" data-ui-id={ uiids.TabSoldiersSearchAdvanced } data-tab-group="soldier-search" data-tab-target="advanced"
+						class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">
+						Advanced Search
+						@InlineSurfaceBadge(uiids.TabSoldiersSearchAdvanced)
+					</button>
+				</div>
+				<div data-ui-id={ uiids.PanelSoldiersSearchBasic } data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
+					@SurfaceBadge(uiids.PanelSoldiersSearchBasic)
+					<input type="text" placeholder="Search by name, unit, rank, record ID, or burial place..." name="q"
+						value={ query }
+						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
+						class="field-input"/>
+					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, burial locations, and record numbers.</p>
+				</div>
+				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="relative hidden card rounded-2xl p-5 grid grid-cols-2 gap-4"
+					hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
+					@SurfaceBadge(uiids.PanelSoldiersSearchAdvanced)
+					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
+						<p class="mt-2 text-sm text-[#22303d]">Use any one field by itself, or combine multiple fields to narrow the result set.</p>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Record ID</label>
+						<input type="text" name="display_id" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Rank</label>
+						<input type="text" name="rank" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">First Name</label>
+						<input type="text" name="first_name" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Last Name</label>
+						<input type="text" name="last_name" class="field-input"/>
+					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Unit</label>
+						<input type="text" name="unit" class="field-input"/>
+					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
+						<input type="text" name="buried_in" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Death Year</label>
+						<input type="number" name="death_year" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Death Month</label>
+						<input type="number" name="death_month" min="0" max="12" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Death Day</label>
+						<input type="number" name="death_day" min="0" max="31" class="field-input"/>
+					</div>
+					<div class="col-span-2 flex gap-2 items-center">
+						<button type="submit" class="primary-button">Run Advanced Search</button>
+						<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
+					</div>
+					<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>contains</strong> matching for text fields. Death year, month, and day are <strong>exact</strong> matches, and all filled filters must match the same soldier.</p>
+				</form>
 			</div>
-			<div class="flex gap-2 mb-3">
-				<button type="button" data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
-					class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">Quick Search</button>
-				<button type="button" data-tab-group="soldier-search" data-tab-target="advanced"
-					class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">Advanced Search</button>
+			<div id="soldier-list" data-ui-id={ uiids.PanelSoldiersResults } class="relative">
+				@SurfaceBadge(uiids.PanelSoldiersResults)
+				@SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Query: query}, page, total, 50)
 			</div>
-			<div data-tab-panel="soldier-search" data-tab-id="basic" class="space-y-2">
-				<input type="text" placeholder="Search by name, unit, rank, record ID, or burial place..." name="q"
-					value={ query }
-					hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
-					class="field-input"/>
-				<p class="text-xs text-slate-500">Quick search matches names, units, ranks, burial locations, and record numbers.</p>
-			</div>
-			<form data-tab-panel="soldier-search" data-tab-id="advanced" class="hidden card rounded-2xl p-5 grid grid-cols-2 gap-4"
-				hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
-				<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
-					<p class="mt-2 text-sm text-[#22303d]">Use any one field by itself, or combine multiple fields to narrow the result set.</p>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Record ID</label>
-					<input type="text" name="display_id" class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Rank</label>
-					<input type="text" name="rank" class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">First Name</label>
-					<input type="text" name="first_name" class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Last Name</label>
-					<input type="text" name="last_name" class="field-input"/>
-				</div>
-				<div class="col-span-2">
-					<label class="block text-sm text-slate-500 mb-1">Unit</label>
-					<input type="text" name="unit" class="field-input"/>
-				</div>
-				<div class="col-span-2">
-					<label class="block text-sm text-slate-500 mb-1">Buried In</label>
-					<input type="text" name="buried_in" class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Year</label>
-					<input type="number" name="death_year" class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Month</label>
-					<input type="number" name="death_month" min="0" max="12" class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Day</label>
-					<input type="number" name="death_day" min="0" max="31" class="field-input"/>
-				</div>
-				<div class="col-span-2 flex gap-2 items-center">
-					<button type="submit" class="primary-button">Run Advanced Search</button>
-					<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
-				</div>
-				<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>contains</strong> matching for text fields. Death year, month, and day are <strong>exact</strong> matches, and all filled filters must match the same soldier.</p>
-			</form>
-		</div>
-		<div id="soldier-list">
-			@SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Query: query}, page, total, 50)
 		</div>
 	}
 }
 
 templ SoldierDetail(s models.Soldier) {
 	@Layout(s.FirstName + " " + s.LastName) {
-		<div class="max-w-2xl mx-auto">
-			<div class="card rounded-3xl p-8">
+		<div data-ui-id={ uiids.PageSoldierDetail } class="relative max-w-2xl mx-auto">
+			@SurfaceBadge(uiids.PageSoldierDetail)
+			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-8">
+				@SurfaceBadge(uiids.PanelSoldierDetailSummary)
 				<div class="flex justify-between mb-4">
 					<h2 class="text-2xl font-bold">{ s.Rank } { s.FirstName } { s.LastName }</h2>
 					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
@@ -171,46 +186,52 @@ templ SoldierDetail(s models.Soldier) {
 				</div>
 				<div id="soldier-export-status" class="mt-3 text-sm text-slate-600"></div>
 				if len(s.Records) > 0 {
-					<h3 class="mt-8 text-lg gold font-semibold">Records</h3>
-					for _, r := range s.Records {
-						<div class="card rounded-2xl p-4 mt-3 text-sm">
-							<span class="gold">{ r.RecordType }</span>
-							if r.AppID != "" {
-								<span class="ml-2 text-slate-500">App: { r.AppID }</span>
-							}
-							<p class="text-slate-600 mt-2 leading-6">{ r.Details }</p>
-						</div>
-					}
+					<section data-ui-id={ uiids.PanelSoldierDetailRecords } class="relative">
+						@SurfaceBadge(uiids.PanelSoldierDetailRecords)
+						<h3 class="mt-8 text-lg gold font-semibold">Records</h3>
+						for _, r := range s.Records {
+							<div class="card rounded-2xl p-4 mt-3 text-sm">
+								<span class="gold">{ r.RecordType }</span>
+								if r.AppID != "" {
+									<span class="ml-2 text-slate-500">App: { r.AppID }</span>
+								}
+								<p class="text-slate-600 mt-2 leading-6">{ r.Details }</p>
+							</div>
+						}
+					</section>
 				}
 				if len(s.Images) > 0 {
-					<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
-					<form hx-post={ fmt.Sprintf("/soldiers/%d/images/download", s.ID) } hx-target="#image-download-status" class="mt-2">
-						<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
-							<label class="inline-flex items-center gap-2 font-medium text-slate-700">
-								<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
-								Select all images
-							</label>
-							<button type="submit" class="primary-button">Download Selected Images</button>
-						</div>
-						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-							for _, img := range s.Images {
-								<div class="card rounded-2xl p-3">
-									<div class="mb-3 flex items-center justify-between gap-3">
-										<label class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
-											<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
-											Select
-										</label>
-										<button type="button" data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
+					<section data-ui-id={ uiids.PanelSoldierDetailImages } class="relative">
+						@SurfaceBadge(uiids.PanelSoldierDetailImages)
+						<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
+						<form hx-post={ fmt.Sprintf("/soldiers/%d/images/download", s.ID) } hx-target="#image-download-status" class="mt-2">
+							<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+								<label class="inline-flex items-center gap-2 font-medium text-slate-700">
+									<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
+									Select all images
+								</label>
+								<button type="submit" class="primary-button">Download Selected Images</button>
+							</div>
+							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+								for _, img := range s.Images {
+									<div class="card rounded-2xl p-3">
+										<div class="mb-3 flex items-center justify-between gap-3">
+											<label class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
+												<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
+												Select
+											</label>
+											<button type="button" data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
+										</div>
+										<img src={ imageURL(img.FilePath) } alt={ img.Caption }
+											class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
+										<div class="text-sm gold font-medium">{ img.Caption }</div>
+										<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
 									</div>
-									<img src={ imageURL(img.FilePath) } alt={ img.Caption }
-										class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
-									<div class="text-sm gold font-medium">{ img.Caption }</div>
-									<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
-								</div>
-							}
-						</div>
-						<div id="image-download-status" class="mt-3 text-sm text-slate-600"></div>
-					</form>
+								}
+							</div>
+							<div id="image-download-status" class="mt-3 text-sm text-slate-600"></div>
+						</form>
+					</section>
 				}
 			</div>
 		</div>
