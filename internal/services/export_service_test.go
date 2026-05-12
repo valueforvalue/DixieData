@@ -80,7 +80,8 @@ func TestExportService_ExportCSV(t *testing.T) {
 	// Verify header contains expected columns
 	expected := map[string]bool{
 		"id": true, "display_id": true, "first_name": true,
-		"last_name": true, "death_year": true, "buried_in": true,
+		"middle_name": true, "last_name": true, "rank_in": true,
+		"rank_out": true, "pension_state": true, "death_year": true, "buried_in": true,
 	}
 	for _, col := range header {
 		delete(expected, col)

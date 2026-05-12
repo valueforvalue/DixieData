@@ -7,6 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -110,6 +114,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/integrations/google/calendar/sync", a.handleGoogleCalendarSync)
 	mux.HandleFunc("/integrations/google/calendar/unsync", a.handleGoogleCalendarUnsync)
 	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
+	mux.HandleFunc("/images/rotate", a.handleImageRotate)
 	mux.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(a.dataDir))))
 
 	a.mux = mux
@@ -300,16 +305,18 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search := models.SoldierSearch{
-		Mode:       "advanced",
-		DisplayID:  r.URL.Query().Get("display_id"),
-		FirstName:  r.URL.Query().Get("first_name"),
-		LastName:   r.URL.Query().Get("last_name"),
-		Rank:       r.URL.Query().Get("rank"),
-		Unit:       r.URL.Query().Get("unit"),
-		BuriedIn:   r.URL.Query().Get("buried_in"),
-		DeathYear:  r.URL.Query().Get("death_year"),
-		DeathMonth: r.URL.Query().Get("death_month"),
-		DeathDay:   r.URL.Query().Get("death_day"),
+		Mode:         "advanced",
+		DisplayID:    r.URL.Query().Get("display_id"),
+		FirstName:    r.URL.Query().Get("first_name"),
+		MiddleName:   r.URL.Query().Get("middle_name"),
+		LastName:     r.URL.Query().Get("last_name"),
+		Rank:         r.URL.Query().Get("rank"),
+		Unit:         r.URL.Query().Get("unit"),
+		PensionState: r.URL.Query().Get("pension_state"),
+		BuriedIn:     r.URL.Query().Get("buried_in"),
+		DeathYear:    r.URL.Query().Get("death_year"),
+		DeathMonth:   r.URL.Query().Get("death_month"),
+		DeathDay:     r.URL.Query().Get("death_day"),
 	}
 	page := parsePage(r.URL.Query().Get("page"))
 
@@ -816,6 +823,116 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "✓ Saved screenshot to %s", path)
 }
 
+type imageRotateRequest struct {
+	ImageID   int64  `json:"imageId"`
+	Direction string `json:"direction"`
+}
+
+func (a *App) handleImageRotate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req imageRotateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid rotate request", http.StatusBadRequest)
+		return
+	}
+	if req.ImageID < 1 {
+		http.Error(w, "invalid image id", http.StatusBadRequest)
+		return
+	}
+
+	imageRecord, err := a.soldiers.GetImageByID(req.ImageID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	imagePath := filepath.Join(a.dataDir, filepath.FromSlash(imageRecord.FilePath))
+	switch strings.ToLower(strings.TrimSpace(req.Direction)) {
+	case "cw":
+		err = rotateImageFile(imagePath, true)
+	case "ccw":
+		err = rotateImageFile(imagePath, false)
+	default:
+		http.Error(w, "invalid rotate direction", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Fprint(w, "Image rotated.")
+}
+
+func rotateImageFile(path string, clockwise bool) error {
+	source, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open image file: %w", err)
+	}
+	img, format, err := image.Decode(source)
+	source.Close()
+	if err != nil {
+		return fmt.Errorf("decode image file: %w", err)
+	}
+
+	rotated := rotateImage90(img, clockwise)
+	tempPath := path + ".rotate"
+	output, err := os.Create(tempPath)
+	if err != nil {
+		return fmt.Errorf("create rotated image file: %w", err)
+	}
+
+	switch strings.ToLower(format) {
+	case "jpeg", "jpg":
+		err = jpeg.Encode(output, rotated, &jpeg.Options{Quality: 95})
+	case "png":
+		err = png.Encode(output, rotated)
+	case "gif":
+		err = gif.Encode(output, rotated, nil)
+	default:
+		err = fmt.Errorf("unsupported image format for rotation: %s", format)
+	}
+	closeErr := output.Close()
+	if err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(tempPath)
+		return err
+	}
+
+	if err := os.Remove(path); err != nil {
+		_ = os.Remove(tempPath)
+		return fmt.Errorf("replace rotated image file: %w", err)
+	}
+	if err := os.Rename(tempPath, path); err != nil {
+		_ = os.Remove(tempPath)
+		return fmt.Errorf("replace rotated image file: %w", err)
+	}
+	return nil
+}
+
+func rotateImage90(src image.Image, clockwise bool) image.Image {
+	bounds := src.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+	dst := image.NewRGBA(image.Rect(0, 0, height, width))
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if clockwise {
+				dst.Set(height-1-y, x, src.At(bounds.Min.X+x, bounds.Min.Y+y))
+			} else {
+				dst.Set(y, width-1-x, src.At(bounds.Min.X+x, bounds.Min.Y+y))
+			}
+		}
+	}
+	return dst
+}
+
 func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request, id int64) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -895,8 +1012,17 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	w.Header().Set("X-DixieData-Redirect", imageImportRedirectPath(id, r.URL.Query().Get("return")))
 	fmt.Fprintf(w, "Imported %d image(s).", imported)
+}
+
+func imageImportRedirectPath(id int64, returnTarget string) string {
+	switch strings.ToLower(strings.TrimSpace(returnTarget)) {
+	case "edit":
+		return fmt.Sprintf("/soldiers/%d/edit", id)
+	default:
+		return fmt.Sprintf("/soldiers/%d", id)
+	}
 }
 
 func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, id int64) {
@@ -970,19 +1096,23 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 	}
 
 	return models.Soldier{
-		ID:         id,
-		DisplayID:  r.FormValue("display_id"),
-		FirstName:  r.FormValue("first_name"),
-		LastName:   r.FormValue("last_name"),
-		Rank:       r.FormValue("rank"),
-		Unit:       r.FormValue("unit"),
-		BirthInfo:  r.FormValue("birth_info"),
-		BuriedIn:   r.FormValue("buried_in"),
-		Notes:      r.FormValue("notes"),
-		DeathYear:  deathYear,
-		DeathMonth: deathMonth,
-		DeathDay:   deathDay,
-		Records:    parseRecordInputs(r),
+		ID:           id,
+		DisplayID:    r.FormValue("display_id"),
+		FirstName:    r.FormValue("first_name"),
+		MiddleName:   r.FormValue("middle_name"),
+		LastName:     r.FormValue("last_name"),
+		Rank:         r.FormValue("rank_out"),
+		RankIn:       r.FormValue("rank_in"),
+		RankOut:      r.FormValue("rank_out"),
+		Unit:         r.FormValue("unit"),
+		PensionState: r.FormValue("pension_state"),
+		BirthInfo:    r.FormValue("birth_info"),
+		BuriedIn:     r.FormValue("buried_in"),
+		Notes:        r.FormValue("notes"),
+		DeathYear:    deathYear,
+		DeathMonth:   deathMonth,
+		DeathDay:     deathDay,
+		Records:      parseRecordInputs(r),
 	}, nil
 }
 

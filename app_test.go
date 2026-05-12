@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -95,6 +98,10 @@ func TestParseSoldierFormRejectsInvalidMonth(t *testing.T) {
 
 func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(url.Values{
+		"middle_name":    {"Thomas"},
+		"rank_in":        {"Private"},
+		"rank_out":       {"Captain"},
+		"pension_state":  {"Virginia"},
 		"buried_in":      {"Hollywood Cemetery"},
 		"record_type":    {"Service Record", "Burial Ledger"},
 		"record_app_id":  {"APP-1", "APP-2"},
@@ -108,6 +115,9 @@ func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	}
 	if soldier.BuriedIn != "Hollywood Cemetery" {
 		t.Fatalf("BuriedIn = %q", soldier.BuriedIn)
+	}
+	if soldier.MiddleName != "Thomas" || soldier.RankIn != "Private" || soldier.RankOut != "Captain" || soldier.PensionState != "Virginia" {
+		t.Fatalf("unexpected parsed fields: %#v", soldier)
 	}
 	if len(soldier.Records) != 2 {
 		t.Fatalf("records len = %d", len(soldier.Records))
@@ -400,6 +410,34 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	}
 }
 
+func TestRotateImageFileClockwise(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rotate.jpg")
+	if err := writeJPEGFixture(path, 2, 3); err != nil {
+		t.Fatalf("writeJPEGFixture: %v", err)
+	}
+
+	if err := rotateImageFile(path, true); err != nil {
+		t.Fatalf("rotateImageFile: %v", err)
+	}
+
+	width, height, err := imageDimensions(path)
+	if err != nil {
+		t.Fatalf("imageDimensions: %v", err)
+	}
+	if width != 3 || height != 2 {
+		t.Fatalf("dimensions = %dx%d, want 3x2", width, height)
+	}
+}
+
+func TestImageImportRedirectPath(t *testing.T) {
+	if got := imageImportRedirectPath(42, "edit"); got != "/soldiers/42/edit" {
+		t.Fatalf("edit redirect = %q", got)
+	}
+	if got := imageImportRedirectPath(42, "detail"); got != "/soldiers/42" {
+		t.Fatalf("default redirect = %q", got)
+	}
+}
+
 func TestHandleUpdateSoldierRendersFormErrorOnUploadFailure(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)
@@ -489,4 +527,34 @@ func pngFixture() []byte {
 		0xEF, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
+}
+
+func writeJPEGFixture(path string, width, height int) error {
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(20 * x), G: uint8(40 * y), B: 120, A: 255})
+		}
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return jpeg.Encode(file, img, &jpeg.Options{Quality: 90})
+}
+
+func imageDimensions(path string) (int, int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer file.Close()
+
+	img, _, err := image.DecodeConfig(file)
+	if err != nil {
+		return 0, 0, err
+	}
+	return img.Width, img.Height, nil
 }
