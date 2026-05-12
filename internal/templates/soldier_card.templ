@@ -14,7 +14,7 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 		<div class="flex justify-between items-start">
 			<div>
 				<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ s.DisplayID }</span>
-				<p class="mt-1 font-semibold text-slate-900">{ s.Rank } { s.FirstName } { s.LastName }</p>
+				<p class="mt-1 font-semibold text-slate-900">{ detailDisplayRank(s) } { soldierFullName(s) }</p>
 				<p class="text-sm text-slate-500">{ s.Unit }</p>
 				if s.DeathYear > 0 {
 					<p class="text-xs text-slate-400 mt-1">d. { deathDate(s) }</p>
@@ -91,11 +91,11 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 				</div>
 				<div data-ui-id={ uiids.PanelSoldiersSearchBasic } data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
 					@SurfaceBadge(uiids.PanelSoldiersSearchBasic)
-					<input type="text" placeholder="Search by name, unit, rank, record ID, or burial place..." name="q"
+					<input type="text" placeholder="Search by name, unit, rank, pension state, record ID, or burial place..." name="q"
 						value={ query }
 						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
 						class="field-input"/>
-					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, burial locations, and record numbers.</p>
+					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, pension states, burial locations, and record numbers.</p>
 				</div>
 				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="relative hidden card rounded-2xl p-5 grid grid-cols-2 gap-4"
 					hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
@@ -117,12 +117,25 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 						<input type="text" name="first_name" class="field-input"/>
 					</div>
 					<div>
+						<label class="block text-sm text-slate-500 mb-1">Middle Name</label>
+						<input type="text" name="middle_name" class="field-input"/>
+					</div>
+					<div>
 						<label class="block text-sm text-slate-500 mb-1">Last Name</label>
 						<input type="text" name="last_name" class="field-input"/>
 					</div>
 					<div class="col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Unit</label>
 						<input type="text" name="unit" class="field-input"/>
+					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Pension State</label>
+						<select name="pension_state" class="field-input">
+							<option value="">Any state</option>
+							for _, state := range pensionStates() {
+								<option value={ state }>{ state }</option>
+							}
+						</select>
 					</div>
 					<div class="col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
@@ -156,17 +169,21 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 }
 
 templ SoldierDetail(s models.Soldier) {
-	@Layout(s.FirstName + " " + s.LastName) {
+	@Layout(soldierFullName(s)) {
 		<div data-ui-id={ uiids.PageSoldierDetail } class="relative max-w-2xl mx-auto">
 			@SurfaceBadge(uiids.PageSoldierDetail)
 			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-8">
 				@SurfaceBadge(uiids.PanelSoldierDetailSummary)
 				<div class="flex justify-between mb-4">
-					<h2 class="text-2xl font-bold">{ s.Rank } { s.FirstName } { s.LastName }</h2>
+					<h2 class="text-2xl font-bold">{ detailDisplayRank(s) } { soldierFullName(s) }</h2>
 					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
 				</div>
 				<dl class="grid grid-cols-2 gap-2 text-sm">
+					<dt class="text-slate-500">Middle Name</dt><dd>{ emptyDetail(s.MiddleName) }</dd>
+					<dt class="text-slate-500">Rank In</dt><dd>{ emptyDetail(s.RankIn) }</dd>
+					<dt class="text-slate-500">Rank Out</dt><dd>{ emptyDetail(detailDisplayRank(s)) }</dd>
 					<dt class="text-slate-500">Unit</dt><dd>{ s.Unit }</dd>
+					<dt class="text-slate-500">Pension State</dt><dd>{ emptyDetail(s.PensionState) }</dd>
 					<dt class="text-slate-500">Death</dt><dd>{ deathDate(s) }</dd>
 					<dt class="text-slate-500">Birth Info</dt><dd>{ s.BirthInfo }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
@@ -226,9 +243,9 @@ templ SoldierDetail(s models.Soldier) {
 												<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
 												Select
 											</label>
-											<button type="button" data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
+											<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
 										</div>
-										<img src={ imageURL(img.FilePath) } alt={ img.Caption }
+										<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ img.Caption }
 											class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
 										<div class="text-sm gold font-medium">{ img.Caption }</div>
 										<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
@@ -271,6 +288,9 @@ func searchParams(search models.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.FirstName) != "" {
 			values.Set("first_name", search.FirstName)
 		}
+		if strings.TrimSpace(search.MiddleName) != "" {
+			values.Set("middle_name", search.MiddleName)
+		}
 		if strings.TrimSpace(search.LastName) != "" {
 			values.Set("last_name", search.LastName)
 		}
@@ -279,6 +299,9 @@ func searchParams(search models.SoldierSearch) url.Values {
 		}
 		if strings.TrimSpace(search.Unit) != "" {
 			values.Set("unit", search.Unit)
+		}
+		if strings.TrimSpace(search.PensionState) != "" {
+			values.Set("pension_state", search.PensionState)
 		}
 		if strings.TrimSpace(search.BuriedIn) != "" {
 			values.Set("buried_in", search.BuriedIn)
@@ -315,6 +338,9 @@ func searchSummary(search models.SoldierSearch) string {
 	if search.FirstName != "" {
 		parts = append(parts, "First name "+search.FirstName)
 	}
+	if search.MiddleName != "" {
+		parts = append(parts, "Middle name "+search.MiddleName)
+	}
 	if search.LastName != "" {
 		parts = append(parts, "Last name "+search.LastName)
 	}
@@ -323,6 +349,9 @@ func searchSummary(search models.SoldierSearch) string {
 	}
 	if search.Unit != "" {
 		parts = append(parts, "Unit "+search.Unit)
+	}
+	if search.PensionState != "" {
+		parts = append(parts, "Pension state "+search.PensionState)
 	}
 	if search.BuriedIn != "" {
 		parts = append(parts, "Buried in "+search.BuriedIn)
@@ -340,6 +369,26 @@ func searchSummary(search models.SoldierSearch) string {
 		return "Advanced search"
 	}
 	return "Advanced filters: " + strings.Join(parts, ", ")
+}
+
+func soldierFullName(s models.Soldier) string {
+	parts := []string{}
+	for _, part := range []string{s.FirstName, s.MiddleName, s.LastName} {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func detailDisplayRank(s models.Soldier) string {
+	if trimmed := strings.TrimSpace(s.RankOut); trimmed != "" {
+		return trimmed
+	}
+	if trimmed := strings.TrimSpace(s.Rank); trimmed != "" {
+		return trimmed
+	}
+	return strings.TrimSpace(s.RankIn)
 }
 
 func imageURL(filePath string) templ.SafeURL {

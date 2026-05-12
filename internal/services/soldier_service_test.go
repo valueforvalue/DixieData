@@ -88,6 +88,58 @@ func TestSoldierService_GetByID(t *testing.T) {
 	}
 }
 
+func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName:    "John",
+		MiddleName:   "Bell",
+		LastName:     "Hood",
+		RankIn:       "Colonel",
+		RankOut:      "Lieutenant General",
+		PensionState: "Texas",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.MiddleName != "Bell" || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" {
+		t.Fatalf("unexpected new fields: %#v", got)
+	}
+	if got.Rank != "Lieutenant General" {
+		t.Fatalf("Rank = %q, want rank_out mirror", got.Rank)
+	}
+}
+
+func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	result, err := d.Conn().Exec(`INSERT INTO soldiers (display_id, is_generated, first_name, last_name, rank, unit, death_year, death_month, death_day, birth_info, buried_in, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"CSA-NULLTEST", false, "Null", "Case", "Sergeant", "Test Unit", 0, 0, 0, "", "", "",
+	)
+	if err != nil {
+		t.Fatalf("insert legacy row: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		t.Fatalf("LastInsertId: %v", err)
+	}
+
+	got, err := svc.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.MiddleName != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" {
+		t.Fatalf("expected empty strings for NULL fields, got %#v", got)
+	}
+}
+
 func TestSoldierService_PersistsBuriedInAndRecords(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
@@ -127,6 +179,10 @@ func TestSoldierService_Update(t *testing.T) {
 	}
 
 	created.Notes = "Updated note"
+	created.MiddleName = "A."
+	created.RankIn = "Private"
+	created.RankOut = "Major"
+	created.PensionState = "Georgia"
 	if err := svc.Update(*created); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -137,6 +193,9 @@ func TestSoldierService_Update(t *testing.T) {
 	}
 	if got.Notes != "Updated note" {
 		t.Errorf("got notes %q, want 'Updated note'", got.Notes)
+	}
+	if got.MiddleName != "A." || got.RankIn != "Private" || got.RankOut != "Major" || got.PensionState != "Georgia" {
+		t.Fatalf("updated fields missing: %#v", got)
 	}
 }
 
@@ -226,6 +285,31 @@ func TestSoldierService_DeleteImages(t *testing.T) {
 	}
 	if updated.Images[0].FileName != "back.png" && updated.Images[0].FileName != "front.png" {
 		t.Fatalf("remaining image = %#v", updated.Images[0])
+	}
+}
+
+func TestSoldierService_GetImageByID(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{FirstName: "Turner", LastName: "Ashby"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "portrait.png", `images\ashby\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	soldier, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	image, err := svc.GetImageByID(soldier.Images[0].ID)
+	if err != nil {
+		t.Fatalf("GetImageByID: %v", err)
+	}
+	if image.FileName != "portrait.png" {
+		t.Fatalf("FileName = %q", image.FileName)
 	}
 }
 

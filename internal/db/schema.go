@@ -8,9 +8,13 @@ CREATE TABLE IF NOT EXISTS soldiers (
     display_id   TEXT UNIQUE NOT NULL,
     is_generated BOOLEAN DEFAULT 0,
     first_name   TEXT,
+    middle_name  TEXT,
     last_name    TEXT,
     rank         TEXT,
+    rank_in      TEXT,
+    rank_out     TEXT,
     unit         TEXT,
+    pension_state TEXT,
     death_year   INTEGER,
     death_month  INTEGER,
     death_day    INTEGER,
@@ -50,6 +54,16 @@ func applySchema(db *DB) error {
 	}
 	if _, err := db.conn.Exec(`ALTER TABLE soldiers ADD COLUMN buried_in TEXT`); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
 		return err
+	}
+	for _, statement := range []string{
+		`ALTER TABLE soldiers ADD COLUMN middle_name TEXT`,
+		`ALTER TABLE soldiers ADD COLUMN rank_in TEXT`,
+		`ALTER TABLE soldiers ADD COLUMN rank_out TEXT`,
+		`ALTER TABLE soldiers ADD COLUMN pension_state TEXT`,
+	} {
+		if _, err := db.conn.Exec(statement); err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+			return err
+		}
 	}
 	return nil
 }

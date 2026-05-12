@@ -167,7 +167,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	w := csv.NewWriter(f)
 	defer w.Flush()
 
-	header := []string{"id", "display_id", "is_generated", "first_name", "last_name", "rank", "unit", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
+	header := []string{"id", "display_id", "is_generated", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -188,9 +188,13 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				s.DisplayID,
 				fmt.Sprintf("%v", s.IsGenerated),
 				s.FirstName,
+				s.MiddleName,
 				s.LastName,
 				s.Rank,
+				s.RankIn,
+				s.RankOut,
 				s.Unit,
+				s.PensionState,
 				fmt.Sprintf("%d", s.DeathYear),
 				fmt.Sprintf("%d", s.DeathMonth),
 				fmt.Sprintf("%d", s.DeathDay),
@@ -263,8 +267,10 @@ func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldi
 	pdf.CellFormat(0, 8, fmt.Sprintf("Database Number: %s", soldier.DisplayID), "", 1, "", false, 0, "")
 	pdf.Ln(2)
 
-	writePDFField(pdf, "Rank", soldier.Rank)
+	writePDFField(pdf, "Rank In", soldier.RankIn)
+	writePDFField(pdf, "Rank Out", displaySoldierRank(soldier))
 	writePDFField(pdf, "Unit", soldier.Unit)
+	writePDFField(pdf, "Pension State", soldier.PensionState)
 	writePDFField(pdf, "Death", soldierDeathLine(soldier))
 	writePDFField(pdf, "Birth Info", soldier.BirthInfo)
 	writePDFField(pdf, "Buried In", soldier.BuriedIn)
@@ -479,7 +485,31 @@ func emptyPDFValue(value string) string {
 }
 
 func soldierDisplayName(soldier models.Soldier) string {
-	return strings.TrimSpace(strings.TrimSpace(soldier.Rank) + " " + strings.TrimSpace(soldier.FirstName+" "+soldier.LastName))
+	return strings.TrimSpace(strings.TrimSpace(displaySoldierRank(soldier)) + " " + soldierFullName(soldier))
+}
+
+func soldierFullName(soldier models.Soldier) string {
+	return strings.Join(compactNameParts(soldier.FirstName, soldier.MiddleName, soldier.LastName), " ")
+}
+
+func displaySoldierRank(soldier models.Soldier) string {
+	if strings.TrimSpace(soldier.RankOut) != "" {
+		return strings.TrimSpace(soldier.RankOut)
+	}
+	if strings.TrimSpace(soldier.Rank) != "" {
+		return strings.TrimSpace(soldier.Rank)
+	}
+	return strings.TrimSpace(soldier.RankIn)
+}
+
+func compactNameParts(parts ...string) []string {
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 func soldierDeathLine(soldier models.Soldier) string {

@@ -10,6 +10,8 @@
     lastPointerX: 0,
     lastPointerY: 0,
     fileName: "",
+    imageId: "",
+    imageUrl: "",
   };
 
   function getMethod(el) {
@@ -174,6 +176,8 @@
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <span data-image-zoom-label class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">100%</span>
+            <button type="button" data-image-rotate-ccw class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Rotate CCW</button>
+            <button type="button" data-image-rotate-cw class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Rotate CW</button>
             <button type="button" data-image-zoom-out class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">-</button>
             <button type="button" data-image-zoom-in class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">+</button>
             <button type="button" data-image-reset class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Reset</button>
@@ -341,13 +345,83 @@
     }
   }
 
-  function openImageViewer(url, caption, fileName) {
+  function cacheBustedImageURL(url) {
+    if (!url) {
+      return url;
+    }
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}v=${Date.now()}`;
+  }
+
+  function refreshImageReferences(imageId, baseUrl) {
+    if (!imageId || !baseUrl) {
+      return;
+    }
+    const refreshedUrl = cacheBustedImageURL(baseUrl);
+    document.querySelectorAll(`[data-image-thumb-id="${imageId}"]`).forEach((thumb) => {
+      if (thumb instanceof HTMLImageElement) {
+        thumb.src = refreshedUrl;
+      }
+    });
+    document.querySelectorAll(`[data-image-id="${imageId}"]`).forEach((button) => {
+      if (button instanceof HTMLElement) {
+        button.setAttribute("data-image-preview", refreshedUrl);
+      }
+    });
+    imageViewerState.imageUrl = baseUrl;
+    return refreshedUrl;
+  }
+
+  async function rotateImageViewer(direction) {
+    if (!imageViewerState.imageId) {
+      setImageViewerStatus("Image rotate failed.");
+      return;
+    }
+    setImageViewerStatus(`Rotating image ${direction.toUpperCase()}...`);
+    try {
+      const response = await fetch("/images/rotate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "DixieData",
+        },
+        body: JSON.stringify({
+          imageId: Number.parseInt(imageViewerState.imageId, 10),
+          direction,
+        }),
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        setImageViewerStatus(text || "Image rotate failed.");
+        return;
+      }
+      const refreshedUrl = refreshImageReferences(imageViewerState.imageId, imageViewerState.imageUrl);
+      if (refreshedUrl) {
+        const { image } = imageViewerElements();
+        if (image instanceof HTMLImageElement) {
+          image.onload = () => {
+            setImageViewerStatus(text || "Image rotated.");
+            resetImageViewerTransform();
+          };
+          image.src = refreshedUrl;
+        }
+      } else {
+        setImageViewerStatus(text || "Image rotated.");
+      }
+    } catch (error) {
+      setImageViewerStatus("Image rotate failed.");
+    }
+  }
+
+  function openImageViewer(url, caption, fileName, imageId) {
     const { viewer, image, caption: text, file } = imageViewerElements();
     if (!(image instanceof HTMLImageElement) || !text || !file) {
       return;
     }
 
     imageViewerState.fileName = fileName || "";
+    imageViewerState.imageId = imageId || "";
+    imageViewerState.imageUrl = url || "";
     image.onload = () => {
       setImageViewerStatus("");
       resetImageViewerTransform();
@@ -695,7 +769,18 @@
         imageTrigger.getAttribute("data-image-preview"),
         imageTrigger.getAttribute("data-image-caption"),
         imageTrigger.getAttribute("data-image-file"),
+        imageTrigger.getAttribute("data-image-id"),
       );
+      return;
+    }
+    if (event.target.closest("[data-image-rotate-ccw]")) {
+      event.preventDefault();
+      rotateImageViewer("ccw");
+      return;
+    }
+    if (event.target.closest("[data-image-rotate-cw]")) {
+      event.preventDefault();
+      rotateImageViewer("cw");
       return;
     }
     if (event.target.closest("[data-image-zoom-in]")) {
