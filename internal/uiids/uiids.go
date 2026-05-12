@@ -25,6 +25,7 @@ const (
 	PanelSoldierDetailImages    = "panel.soldier.detail.images"
 	PageSoldierNew              = "page.soldier.new"
 	PageSoldierEdit             = "page.soldier.edit"
+	PanelSoldierFormScratchpad  = "panel.soldier.form.scratchpad"
 	PanelSoldierFormRecords     = "panel.soldier.form.records"
 	PanelSoldierFormImages      = "panel.soldier.form.images"
 	PageExport                  = "page.export"
@@ -33,6 +34,7 @@ const (
 	PageSettings                = "page.settings"
 	PanelSettingsInitialize     = "panel.settings.initialize"
 	OverlayImageViewer          = "overlay.image.viewer"
+	OverlaySoldierScratchpad    = "overlay.soldier.scratchpad"
 )
 
 type Surface struct {
@@ -58,6 +60,7 @@ var Registry = []Surface{
 	{ID: PanelSoldierDetailImages, Kind: "panel", Description: "Images section on the soldier detail page."},
 	{ID: PageSoldierNew, Kind: "page", Description: "New soldier record form page."},
 	{ID: PageSoldierEdit, Kind: "page", Description: "Edit soldier record form page."},
+	{ID: PanelSoldierFormScratchpad, Kind: "panel", Description: "Scratch pad launcher section inside the soldier form."},
 	{ID: PanelSoldierFormRecords, Kind: "panel", Description: "Records editor section inside the soldier form."},
 	{ID: PanelSoldierFormImages, Kind: "panel", Description: "Image upload section inside the soldier form."},
 	{ID: PageExport, Kind: "page", Description: "Export page."},
@@ -66,6 +69,7 @@ var Registry = []Surface{
 	{ID: PageSettings, Kind: "page", Description: "Settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
+	{ID: OverlaySoldierScratchpad, Kind: "overlay", Description: "Floating scratch pad window for soldier forms."},
 }
 
 func DebugEnabled() bool {

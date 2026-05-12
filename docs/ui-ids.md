@@ -37,6 +37,7 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launching the app to show surface badges i
 | `panel.soldier.detail.images` | panel | Images section |
 | `page.soldier.new` | page | New soldier record form |
 | `page.soldier.edit` | page | Edit soldier record form |
+| `panel.soldier.form.scratchpad` | panel | Scratch pad launcher section in the soldier form |
 | `panel.soldier.form.records` | panel | Record entry editor |
 | `panel.soldier.form.images` | panel | Image upload section |
 | `page.export` | page | Export page |
@@ -45,3 +46,4 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launching the app to show surface badges i
 | `page.settings` | page | Settings page |
 | `panel.settings.initialize` | panel | Initialize Data panel |
 | `overlay.image.viewer` | overlay | Full-screen image viewer |
+| `overlay.soldier.scratchpad` | overlay | Floating soldier scratch pad window |

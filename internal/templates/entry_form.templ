@@ -143,6 +143,18 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 					<textarea name="notes" rows="4"
 						class="field-input min-h-32">{ s.Notes }</textarea>
 				</div>
+				<div data-ui-id={ uiids.PanelSoldierFormScratchpad } class="relative col-span-2">
+					@SurfaceBadge(uiids.PanelSoldierFormScratchpad)
+					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-4 text-sm text-slate-600">
+						<div class="flex flex-wrap items-center justify-between gap-3">
+							<div>
+								<p class="font-medium text-slate-700">Scratch Pad</p>
+								<p class="mt-1">Open a floating local pad for temporary notes, pasted text, and quick copy work. It is stored per Record ID and stays out of the database.</p>
+							</div>
+							<button type="button" data-scratchpad-open class="secondary-button">Open Scratch Pad</button>
+						</div>
+					</div>
+				</div>
 				<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
 					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
