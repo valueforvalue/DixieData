@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -34,12 +35,15 @@ func TestExportService_ExportJSON(t *testing.T) {
 	defer f.Close()
 
 	data, _ := io.ReadAll(f)
-	var soldiers []models.Soldier
-	if err := json.Unmarshal(data, &soldiers); err != nil {
+	var doc JSONExportDocument
+	if err := json.Unmarshal(data, &doc); err != nil {
 		t.Fatalf("unmarshal JSON: %v", err)
 	}
-	if len(soldiers) != 2 {
-		t.Errorf("exported %d soldiers, want 2", len(soldiers))
+	if doc.Metadata.AppVersion != buildinfo.AppVersion || doc.Metadata.SchemaVersion != buildinfo.SchemaVersion {
+		t.Fatalf("unexpected metadata: %#v", doc.Metadata)
+	}
+	if len(doc.Soldiers) != 2 {
+		t.Errorf("exported %d soldiers, want 2", len(doc.Soldiers))
 	}
 }
 
@@ -79,6 +83,7 @@ func TestExportService_ExportCSV(t *testing.T) {
 	}
 	// Verify header contains expected columns
 	expected := map[string]bool{
+		"app_version": true, "schema_version": true, "export_version": true, "generated_at": true,
 		"id": true, "display_id": true, "first_name": true,
 		"pension_id": true, "application_id": true, "middle_name": true,
 		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "death_year": true, "buried_in": true,
@@ -177,11 +182,48 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "Hollywood Cemetery") {
 		t.Fatalf("pdf missing buried-in text")
 	}
+	if !strings.Contains(text, "Includes Images") || !strings.Contains(text, "true") {
+		t.Fatalf("pdf missing report metadata")
+	}
 	if !strings.Contains(text, "https://example.com/notes") || !strings.Contains(text, "https://example.com/record") {
 		t.Fatalf("pdf missing expected URL text")
 	}
 	if !strings.Contains(text, "/URI (https://example.com/notes)") || !strings.Contains(text, "/URI (https://example.com/record)") {
 		t.Fatalf("pdf missing expected clickable link annotations")
+	}
+}
+
+func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "soldier-no-images.pdf")
+	err := exportSvc.ExportSoldierPDFWithoutImages(outPath, models.Soldier{
+		DisplayID: "PENSION-42",
+		FirstName: "Robert",
+		LastName:  "Lee",
+		Images:    []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
+	})
+	if err != nil {
+		t.Fatalf("ExportSoldierPDFWithoutImages: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if strings.Contains(text, "DB Path:") || strings.Contains(text, "portrait.png") {
+		t.Fatalf("image details should be omitted from no-images PDF")
+	}
+	if !strings.Contains(text, "Includes Images") || !strings.Contains(text, "false") {
+		t.Fatalf("pdf missing no-images metadata")
 	}
 }
 

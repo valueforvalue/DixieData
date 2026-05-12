@@ -767,6 +767,19 @@
     return form.getAttribute("data-draft-key") || "";
   }
 
+  function isDraftableField(field) {
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
+      return false;
+    }
+    if (!field.name || field.disabled) {
+      return false;
+    }
+    if (field instanceof HTMLInputElement && (field.type === "file" || field.readOnly)) {
+      return false;
+    }
+    return true;
+  }
+
   function persistDraftForForm(form) {
     const key = draftKeyForForm(form);
     if (!key) {
@@ -774,10 +787,7 @@
     }
     const payload = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
-      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
-        return;
-      }
-      if (!field.name || field.disabled || field instanceof HTMLInputElement && field.type === "file") {
+      if (!isDraftableField(field)) {
         return;
       }
       if (!Object.prototype.hasOwnProperty.call(payload, field.name)) {
@@ -846,10 +856,7 @@
     ensureRecordRowCount(form, recordCount);
     const cursors = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
-      if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
-        return;
-      }
-      if (!field.name || field.disabled || field instanceof HTMLInputElement && field.type === "file") {
+      if (!isDraftableField(field)) {
         return;
       }
       const values = payload[field.name];

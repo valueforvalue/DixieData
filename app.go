@@ -419,6 +419,10 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleEditSoldier(w, r, id)
 		return
 	}
+	if len(parts) > 2 && parts[1] == "pdf" && parts[2] == "no-images" {
+		a.handleSoldierPDFNoImages(w, r, id)
+		return
+	}
 	if len(parts) > 1 && parts[1] == "pdf" {
 		a.handleSoldierPDF(w, r, id)
 		return
@@ -816,6 +820,35 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 	fmt.Fprint(w, exportLinkMarkup("PDF ready:", path))
+}
+
+func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	soldier, err := a.soldiers.GetByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: soldierPDFNameNoImages(*soldier),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "PDF export cancelled.")
+		return
+	}
+	if err := a.export.ExportSoldierPDFWithoutImages(path, *soldier); err != nil {
+		fmt.Fprintf(w, "PDF export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("PDF without images ready:", path))
 }
 
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
@@ -1272,6 +1305,14 @@ func soldierPDFName(soldier models.Soldier) string {
 	return sanitizedFileStem(base, "soldier-record") + ".pdf"
 }
 
+func soldierPDFNameNoImages(soldier models.Soldier) string {
+	base := strings.TrimSpace(soldier.DisplayID)
+	if base == "" {
+		base = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
+	}
+	return sanitizedFileStem(base, "soldier-record") + "-no-images.pdf"
+}
+
 func monthPDFName(month int) string {
 	return sanitizedFileStem(fmt.Sprintf("%s report", monthNameValue(month)), "monthly-report") + ".pdf"
 }
@@ -1474,7 +1515,7 @@ func (a *App) reloadServices() error {
 	a.soldiers = services.NewSoldierService(a.database)
 	a.anniversary = services.NewAnniversaryService(a.database)
 	a.export = services.NewExportService(a.database, a.soldiers)
-	a.backup = services.NewBackupService(a.soldiers)
+	a.backup = services.NewBackupService(a.database, a.soldiers)
 	a.google = services.NewGoogleService(a.dataDir)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
 	return nil

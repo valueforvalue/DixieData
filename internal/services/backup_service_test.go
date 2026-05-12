@@ -2,11 +2,13 @@ package services
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -14,7 +16,7 @@ import (
 func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
-	backupSvc := NewBackupService(soldierSvc)
+	backupSvc := NewBackupService(d, soldierSvc)
 
 	dataDir := t.TempDir()
 	created, err := soldierSvc.Create(models.Soldier{
@@ -58,17 +60,40 @@ func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
 		names = append(names, file.Name)
 	}
 	joined := strings.Join(names, "\n")
-	for _, expected := range []string{"manifest.json", "data/soldiers.json", "images/pension-1/portrait.png"} {
+	for _, expected := range []string{"manifest.json", "data/dixiedata.db", "images/pension-1/portrait.png"} {
 		if !strings.Contains(joined, expected) {
 			t.Fatalf("backup missing %s", expected)
 		}
+	}
+
+	var manifestFile *zip.File
+	for _, file := range reader.File {
+		if file.Name == "manifest.json" {
+			manifestFile = file
+			break
+		}
+	}
+	if manifestFile == nil {
+		t.Fatal("manifest.json missing")
+	}
+	rc, err := manifestFile.Open()
+	if err != nil {
+		t.Fatalf("Open manifest: %v", err)
+	}
+	defer rc.Close()
+	var storedManifest BackupManifest
+	if err := json.NewDecoder(rc).Decode(&storedManifest); err != nil {
+		t.Fatalf("Decode manifest: %v", err)
+	}
+	if storedManifest.AppVersion != buildinfo.AppVersion || storedManifest.SchemaVersion != buildinfo.SchemaVersion || storedManifest.DataFormat != "sqlite" {
+		t.Fatalf("unexpected stored manifest: %#v", storedManifest)
 	}
 }
 
 func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 	sourceDB := newTestDB(t)
 	sourceSvc := NewSoldierService(sourceDB)
-	backupSvc := NewBackupService(sourceSvc)
+	backupSvc := NewBackupService(sourceDB, sourceSvc)
 
 	sourceDataDir := t.TempDir()
 	created, err := sourceSvc.Create(models.Soldier{
@@ -136,4 +161,77 @@ func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 
 func openExistingTestDB(dataDir string) (*db.DB, error) {
 	return db.Open(dataDir)
+}
+
+func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
+	restoreDir := t.TempDir()
+	backupPath := filepath.Join(t.TempDir(), "legacy.zip")
+
+	file, err := os.Create(backupPath)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zipWriter := zip.NewWriter(file)
+
+	manifest := BackupManifest{
+		Format:    backupFormatName,
+		Version:   1,
+		CreatedAt: "2026-01-01T00:00:00Z",
+		DataFile:  "data/soldiers.json",
+		ImageRoot: "images/",
+		Soldiers:  1,
+		Records:   1,
+		Images:    1,
+	}
+	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	soldiers := []models.Soldier{{
+		DisplayID: "PENSION-LEGACY",
+		FirstName: "Legacy",
+		LastName:  "Soldier",
+		Records:   []models.Record{{RecordType: "Roster", AppID: "APP-1", Details: "Legacy details"}},
+		Images:    []models.Image{{FileName: "portrait.png", FilePath: "images/pension-legacy/portrait.png", Caption: "Portrait"}},
+	}}
+	if err := writeBackupJSON(zipWriter, "data/soldiers.json", soldiers); err != nil {
+		t.Fatalf("write soldiers: %v", err)
+	}
+	imageEntry, err := zipWriter.Create("images/pension-legacy/portrait.png")
+	if err != nil {
+		t.Fatalf("Create image entry: %v", err)
+	}
+	if _, err := imageEntry.Write(pngFixture()); err != nil {
+		t.Fatalf("Write image entry: %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("Close zip: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Close file: %v", err)
+	}
+
+	restoreDB := newTestDB(t)
+	restoreSvc := NewSoldierService(restoreDB)
+	backupSvc := NewBackupService(restoreDB, restoreSvc)
+
+	manifestOut, err := backupSvc.Import(backupPath, restoreDir)
+	if err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if manifestOut.Version != 1 {
+		t.Fatalf("expected legacy manifest version 1, got %d", manifestOut.Version)
+	}
+	reopened, err := openExistingTestDB(restoreDir)
+	if err != nil {
+		t.Fatalf("openExistingTestDB: %v", err)
+	}
+	defer reopened.Close()
+	reopenedSvc := NewSoldierService(reopened)
+	results, total, err := reopenedSvc.SearchPage("PENSION-LEGACY", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("restored search total=%d len=%d", total, len(results))
+	}
 }

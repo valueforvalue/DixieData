@@ -235,6 +235,13 @@ func TestSoldierPDFNameUsesDisplayID(t *testing.T) {
 	}
 }
 
+func TestSoldierPDFNameNoImagesUsesDisplayID(t *testing.T) {
+	name := soldierPDFNameNoImages(models.Soldier{DisplayID: "DD 100"})
+	if name != "DD-100-no-images.pdf" {
+		t.Fatalf("soldier pdf name = %q", name)
+	}
+}
+
 func TestMonthPDFNameUsesMonthName(t *testing.T) {
 	name := monthPDFName(4)
 	if name != "April-report.pdf" {

@@ -1,5 +1,11 @@
 package templates
 
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
+)
+
 templ Layout(title string) {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -181,6 +187,9 @@ templ Layout(title string) {
 			<main>
 				{ children... }
 			</main>
+			<footer class="mt-8 text-right text-xs text-slate-600">
+				{ buildinfo.AppLabel() } · Schema v{ fmt.Sprintf("%d", buildinfo.SchemaVersion) }
+			</footer>
 		</div>
 	</body>
 	</html>

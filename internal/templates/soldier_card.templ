@@ -204,6 +204,7 @@ templ SoldierDetail(s models.Soldier) {
 				<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.75)] p-4">
 					<div class="flex flex-wrap gap-3">
 						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" class="primary-button px-5 py-3 text-base">Export PDF Report</button>
+						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf/no-images", s.ID) } hx-target="#soldier-export-status" class="secondary-button px-5 py-3 text-base">Export PDF Report (No Images)</button>
 						<a href="/soldiers" class="ghost-link px-5 py-3 text-base font-semibold">← Back to Soldiers</a>
 					</div>
 					<div class="flex flex-wrap gap-2">

@@ -24,3 +24,16 @@ func TestEntryFormIncludesScratchPadLauncher(t *testing.T) {
 		t.Fatalf("entry form missing scratch pad surface id")
 	}
 }
+
+func TestEntryFormKeepsDisplayIDReadonlyOnEdit(t *testing.T) {
+	var buf bytes.Buffer
+	err := EntryForm(models.Soldier{DisplayID: "DXD-00001"}, true).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if !strings.Contains(content, `name="display_id"`) || !strings.Contains(content, `readonly`) {
+		t.Fatalf("entry form should render display_id as readonly on edit")
+	}
+}
