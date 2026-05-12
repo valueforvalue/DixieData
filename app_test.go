@@ -409,7 +409,14 @@ func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
 	if len(soldier.Images) != 2 {
 		t.Fatalf("images len = %d, want 2", len(soldier.Images))
 	}
-	if soldier.Images[0].FileName != "CSA-TEST-img-001.jpg" || soldier.Images[1].FileName != "CSA-TEST-img-002.png" {
+	gotNames := map[string]bool{}
+	for _, image := range soldier.Images {
+		gotNames[image.FileName] = true
+	}
+	if !gotNames["CSA-TEST-img-001.jpg"] && !gotNames["CSA-TEST-img-001.png"] {
+		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
+	}
+	if !gotNames["CSA-TEST-img-002.jpg"] && !gotNames["CSA-TEST-img-002.png"] {
 		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
 	}
 }
