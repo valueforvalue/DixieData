@@ -8,119 +8,137 @@ import (
 
 templ EntryForm(s models.Soldier, isEdit bool) {
 	@Layout(formTitle(isEdit)) {
-		<div data-ui-id={ entryFormPageID(isEdit) } class="relative max-w-2xl mx-auto">
-			@SurfaceBadge(entryFormPageID(isEdit))
-			<h2 class="text-2xl gold font-bold mb-6">{ formTitle(isEdit) }</h2>
-			<form
-				if isEdit {
-					hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
-				} else {
-					hx-post="/soldiers"
-					data-draft-key="new-soldier"
-				}
-				hx-target="body"
-				enctype="multipart/form-data"
-				class="card rounded-3xl p-8 space-y-5"
-			>
-				<div class="grid grid-cols-2 gap-4">
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Pension/Record ID (leave blank for CSA-ID)</label>
-						<input type="text" name="display_id" value={ s.DisplayID }
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Rank</label>
-						<input type="text" name="rank" value={ s.Rank }
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">First Name</label>
-						<input type="text" name="first_name" value={ s.FirstName }
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Last Name</label>
-						<input type="text" name="last_name" value={ s.LastName }
-							class="field-input"/>
-					</div>
-					<div class="col-span-2">
-						<label class="block text-sm text-slate-500 mb-1">Unit</label>
-						<input type="text" name="unit" value={ s.Unit }
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Year</label>
-						<input type="number" name="death_year" value={ fmt.Sprintf("%d", s.DeathYear) }
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Month (1-12, 0=unknown)</label>
-						<input type="number" name="death_month" value={ fmt.Sprintf("%d", s.DeathMonth) } min="0" max="12"
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Day (1-31, 0=unknown)</label>
-						<input type="number" name="death_day" value={ fmt.Sprintf("%d", s.DeathDay) } min="0" max="31"
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
-						<input type="text" name="birth_info" value={ s.BirthInfo }
-							class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
-						<input type="text" name="buried_in" value={ s.BuriedIn }
-							class="field-input"/>
-					</div>
-					<div data-ui-id={ uiids.PanelSoldierFormRecords } class="relative col-span-2">
-						@SurfaceBadge(uiids.PanelSoldierFormRecords)
-						<div class="mb-3 flex items-center justify-between gap-3">
-							<label class="block text-sm text-slate-500">Records</label>
-							<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Record</button>
-						</div>
-						<div data-record-list class="space-y-3">
-							for _, record := range formRecords(s.Records) {
-								@RecordInputRow(record)
-							}
-						</div>
-						<template data-record-template>
-							@RecordInputRow(models.Record{})
-						</template>
-						<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
-					</div>
-					<div class="col-span-2">
-						<label class="block text-sm text-slate-500 mb-1">Notes</label>
-						<textarea name="notes" rows="4"
-							class="field-input min-h-32">{ s.Notes }</textarea>
-					</div>
-					<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">
-						@SurfaceBadge(uiids.PanelSoldierFormImages)
-						<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
-						<input type="file" name="images" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*"
-							class="field-input"/>
-						<p class="text-xs text-slate-500 mt-2">Images are stored in a folder named after the soldier's record number.</p>
-						if !isEdit {
-							<p class="text-xs text-slate-500 mt-1">This form autosaves locally while you type. Uploaded files still need to be selected again after a reload.</p>
-						}
-						if isEdit && len(s.Images) > 0 {
-							<p class="text-xs text-slate-500 mt-1">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
-						}
-					</div>
-				</div>
-				<div class="flex gap-2 pt-2">
-					<button type="submit" class="primary-button">
-						if isEdit {
-							Save Changes
-						} else {
-							Create Record
-						}
-					</button>
-					<a href="/soldiers" class="ghost-link px-4 py-2">Cancel</a>
-				</div>
-			</form>
-		</div>
+		@EntryFormContent(s, isEdit, "")
 	}
+}
+
+templ EntryFormWithError(s models.Soldier, isEdit bool, errorMessage string) {
+	@Layout(formTitle(isEdit)) {
+		@EntryFormContent(s, isEdit, errorMessage)
+	}
+}
+
+templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
+	<div data-ui-id={ entryFormPageID(isEdit) } class="relative max-w-2xl mx-auto">
+		@SurfaceBadge(entryFormPageID(isEdit))
+		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(isEdit) }</h2>
+		if errorMessage != "" {
+			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+				<strong class="font-semibold">Save failed.</strong>
+				<span class="ml-1">{ errorMessage }</span>
+			</div>
+		}
+		<form
+			if isEdit {
+				hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
+			} else {
+				hx-post="/soldiers"
+				data-draft-key="new-soldier"
+			}
+			hx-target="body"
+			enctype="multipart/form-data"
+			class="card rounded-3xl p-8 space-y-5"
+		>
+			<div class="grid grid-cols-2 gap-4">
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Pension/Record ID (leave blank for CSA-ID)</label>
+					<input type="text" name="display_id" value={ s.DisplayID }
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Rank</label>
+					<input type="text" name="rank" value={ s.Rank }
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">First Name</label>
+					<input type="text" name="first_name" value={ s.FirstName }
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Last Name</label>
+					<input type="text" name="last_name" value={ s.LastName }
+						class="field-input"/>
+				</div>
+				<div class="col-span-2">
+					<label class="block text-sm text-slate-500 mb-1">Unit</label>
+					<input type="text" name="unit" value={ s.Unit }
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Death Year</label>
+					<input type="number" name="death_year" value={ fmt.Sprintf("%d", s.DeathYear) }
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Death Month (1-12, 0=unknown)</label>
+					<input type="number" name="death_month" value={ fmt.Sprintf("%d", s.DeathMonth) } min="0" max="12"
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Death Day (1-31, 0=unknown)</label>
+					<input type="number" name="death_day" value={ fmt.Sprintf("%d", s.DeathDay) } min="0" max="31"
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
+					<input type="text" name="birth_info" value={ s.BirthInfo }
+						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Buried In</label>
+					<input type="text" name="buried_in" value={ s.BuriedIn }
+						class="field-input"/>
+				</div>
+				<div data-ui-id={ uiids.PanelSoldierFormRecords } class="relative col-span-2">
+					@SurfaceBadge(uiids.PanelSoldierFormRecords)
+					<div class="mb-3 flex items-center justify-between gap-3">
+						<label class="block text-sm text-slate-500">Records</label>
+						<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Record</button>
+					</div>
+					<div data-record-list class="space-y-3">
+						for _, record := range formRecords(s.Records) {
+							@RecordInputRow(record)
+						}
+					</div>
+					<template data-record-template>
+						@RecordInputRow(models.Record{})
+					</template>
+					<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
+				</div>
+				<div class="col-span-2">
+					<label class="block text-sm text-slate-500 mb-1">Notes</label>
+					<textarea name="notes" rows="4"
+						class="field-input min-h-32">{ s.Notes }</textarea>
+				</div>
+				<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">
+					@SurfaceBadge(uiids.PanelSoldierFormImages)
+					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
+					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+						<p>Desktop image uploads now use the native file picker from the soldier detail page.</p>
+						if isEdit {
+							<p class="mt-2">Save any record changes first, then use <strong>Add Images From Computer</strong> in the image panel on the soldier page.</p>
+						} else {
+							<p class="mt-2">Create the record first, then use <strong>Add Images From Computer</strong> on the soldier page to import one or more images.</p>
+						}
+					</div>
+					if isEdit && len(s.Images) > 0 {
+						<p class="text-xs text-slate-500 mt-2">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
+					}
+				</div>
+			</div>
+			<div class="flex gap-2 pt-2">
+				<button type="submit" class="primary-button">
+					if isEdit {
+						Save Changes
+					} else {
+						Create Record
+					}
+				</button>
+				<a href="/soldiers" class="ghost-link px-4 py-2">Cancel</a>
+			</div>
+		</form>
+	</div>
 }
 
 func formTitle(isEdit bool) string {

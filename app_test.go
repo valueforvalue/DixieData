@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -31,6 +34,50 @@ func TestAppServeHTTPStartupError(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "startup failed") {
 		t.Fatalf("expected startup error in response, got %q", rec.Body.String())
+	}
+}
+
+func TestAppServeHTTPMethodOverride(t *testing.T) {
+	app := NewApp()
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.Method))
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/override", nil)
+	req.Header.Set("X-HTTP-Method-Override", http.MethodPut)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	if rec.Body.String() != http.MethodPut {
+		t.Fatalf("method=%q want %q", rec.Body.String(), http.MethodPut)
+	}
+}
+
+func TestAppServeHTTPMethodOverrideFromFormValue(t *testing.T) {
+	app := NewApp()
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.Method))
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/override", strings.NewReader(url.Values{
+		"_method": {http.MethodPut},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	if rec.Body.String() != http.MethodPut {
+		t.Fatalf("method=%q want %q", rec.Body.String(), http.MethodPut)
 	}
 }
 
@@ -207,5 +254,239 @@ func TestInitializeLocalDataRecreatesFreshArchive(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dataDir, "images", "demo", "sample.txt")); !os.IsNotExist(err) {
 		t.Fatalf("expected image tree to be removed, stat err=%v", err)
+	}
+}
+
+func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+
+	created, err := app.soldiers.Create(models.Soldier{DisplayID: "CSA-TEST", FirstName: "Test", LastName: "Soldier"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	body, contentType := multipartRequestBody(t, map[string][]byte{
+		"first.jpg":  pngFixture(),
+		"second.png": pngFixture(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/soldiers", body)
+	req.Header.Set("Content-Type", contentType)
+	if err := req.ParseMultipartForm(64 << 20); err != nil {
+		t.Fatalf("ParseMultipartForm: %v", err)
+	}
+
+	if err := app.saveUploadedImages(req, *created); err != nil {
+		t.Fatalf("saveUploadedImages: %v", err)
+	}
+
+	soldier, err := app.soldiers.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(soldier.Images) != 2 {
+		t.Fatalf("images len = %d, want 2", len(soldier.Images))
+	}
+}
+
+func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+
+	created, err := app.soldiers.Create(models.Soldier{DisplayID: "CSA-HEADER", FirstName: "Header", LastName: "Test"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	body, contentType := multipartRequestBody(t, map[string][]byte{
+		"timesheet.jpeg": pngFixture(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/soldiers", body)
+	req.Header.Set("Content-Type", contentType)
+	if err := req.ParseMultipartForm(64 << 20); err != nil {
+		t.Fatalf("ParseMultipartForm: %v", err)
+	}
+	req.MultipartForm.File["images"][0].Size = 0
+
+	if err := app.saveUploadedImages(req, *created); err != nil {
+		t.Fatalf("saveUploadedImages with zero header size: %v", err)
+	}
+
+	soldier, err := app.soldiers.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(soldier.Images) != 1 {
+		t.Fatalf("images len = %d, want 1", len(soldier.Images))
+	}
+}
+
+func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+
+	created, err := app.soldiers.Create(models.Soldier{DisplayID: "CSA-NATIVE", FirstName: "Native", LastName: "Import"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	sourceDir := t.TempDir()
+	firstPath := filepath.Join(sourceDir, "first.jpeg")
+	secondPath := filepath.Join(sourceDir, "second.png")
+	if err := os.WriteFile(firstPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile first: %v", err)
+	}
+	if err := os.WriteFile(secondPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile second: %v", err)
+	}
+
+	imported, err := app.importImagePaths(*created, []string{firstPath, secondPath})
+	if err != nil {
+		t.Fatalf("importImagePaths: %v", err)
+	}
+	if imported != 2 {
+		t.Fatalf("imported = %d, want 2", imported)
+	}
+
+	soldier, err := app.soldiers.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(soldier.Images) != 2 {
+		t.Fatalf("images len = %d, want 2", len(soldier.Images))
+	}
+	for _, image := range soldier.Images {
+		fullPath := filepath.Join(dataDir, filepath.FromSlash(image.FilePath))
+		info, err := os.Stat(fullPath)
+		if err != nil {
+			t.Fatalf("Stat %s: %v", fullPath, err)
+		}
+		if info.Size() == 0 {
+			t.Fatalf("copied file %s is empty", fullPath)
+		}
+	}
+}
+
+func TestHandleUpdateSoldierRendersFormErrorOnUploadFailure(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{DisplayID: "CSA-TEST", FirstName: "Edit", LastName: "Target"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("display_id", created.DisplayID); err != nil {
+		t.Fatalf("WriteField display_id: %v", err)
+	}
+	if err := writer.WriteField("first_name", created.FirstName); err != nil {
+		t.Fatalf("WriteField first_name: %v", err)
+	}
+	if err := writer.WriteField("last_name", created.LastName); err != nil {
+		t.Fatalf("WriteField last_name: %v", err)
+	}
+	part, err := writer.CreateFormFile("images", "timesheet.jpeg")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	if _, err := io.Copy(part, bytes.NewReader(nil)); err != nil {
+		t.Fatalf("Copy empty file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Close writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/soldiers/1", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("X-HTTP-Method-Override", http.MethodPut)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(rec.Body.String(), "Save failed.") || !strings.Contains(rec.Body.String(), "timesheet.jpeg") {
+		t.Fatalf("expected inline upload error form, got %q", rec.Body.String())
+	}
+}
+
+func multipartRequestBody(t *testing.T, files map[string][]byte) (*bytes.Buffer, string) {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for name, data := range files {
+		part, err := writer.CreateFormFile("images", name)
+		if err != nil {
+			t.Fatalf("CreateFormFile %s: %v", name, err)
+		}
+		if _, err := part.Write(data); err != nil {
+			t.Fatalf("Write form file %s: %v", name, err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Close writer: %v", err)
+	}
+	return &body, writer.FormDataContentType()
+}
+
+func pngFixture() []byte {
+	return []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0x99, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
+		0x00, 0x03, 0x01, 0x01, 0x00, 0xC9, 0xFE, 0x92,
+		0xEF, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 }

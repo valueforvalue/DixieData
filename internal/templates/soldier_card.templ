@@ -200,18 +200,24 @@ templ SoldierDetail(s models.Soldier) {
 						}
 					</section>
 				}
-				if len(s.Images) > 0 {
-					<section data-ui-id={ uiids.PanelSoldierDetailImages } class="relative">
-						@SurfaceBadge(uiids.PanelSoldierDetailImages)
-						<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
-						<form hx-post={ fmt.Sprintf("/soldiers/%d/images/download", s.ID) } hx-target="#image-download-status" class="mt-2">
-							<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
-								<label class="inline-flex items-center gap-2 font-medium text-slate-700">
-									<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
-									Select all images
-								</label>
-								<button type="submit" class="primary-button">Download Selected Images</button>
+				<section data-ui-id={ uiids.PanelSoldierDetailImages } class="relative">
+					@SurfaceBadge(uiids.PanelSoldierDetailImages)
+					<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
+					<form hx-post={ fmt.Sprintf("/soldiers/%d/images/download", s.ID) } hx-target="#image-download-status" class="mt-2">
+						<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+							<label class="inline-flex items-center gap-2 font-medium text-slate-700">
+								<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
+								Select all images
+							</label>
+							<div class="flex flex-wrap gap-2">
+								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import", s.ID) } hx-target="#image-download-status" class="primary-button">Add Images From Computer</button>
+								if len(s.Images) > 0 {
+									<button type="submit" class="primary-button">Download Selected Images</button>
+									<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/delete", s.ID) } hx-target="#image-download-status" hx-confirm="Delete the selected image(s)?" class="danger-button">Delete Selected Images</button>
+								}
 							</div>
+						</div>
+						if len(s.Images) > 0 {
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								for _, img := range s.Images {
 									<div class="card rounded-2xl p-3">
@@ -229,10 +235,12 @@ templ SoldierDetail(s models.Soldier) {
 									</div>
 								}
 							</div>
-							<div id="image-download-status" class="mt-3 text-sm text-slate-600"></div>
-						</form>
-					</section>
-				}
+						} else {
+							<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">No images are attached yet. Use <strong>Add Images From Computer</strong> to import one or more files with the desktop file picker.</p>
+						}
+						<div id="image-download-status" class="mt-3 text-sm text-slate-600"></div>
+					</form>
+				</section>
 			</div>
 		</div>
 	}

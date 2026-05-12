@@ -54,6 +54,10 @@
     if (el instanceof HTMLFormElement) {
       return new FormData(el);
     }
+    const form = el.closest("form");
+    if (form instanceof HTMLFormElement) {
+      return new FormData(form);
+    }
     if (el.name) {
       data.append(el.name, el.value ?? "");
     }
@@ -78,6 +82,40 @@
       }
     }
     return false;
+  }
+
+  function nativeMultipartMethodInput(form) {
+    return form.querySelector("input[data-native-method-override]");
+  }
+
+  function submitMultipartForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return false;
+    }
+    const method = getMethod(form);
+    const url = getUrl(form, method);
+    if (!url) {
+      return false;
+    }
+
+    let overrideInput = nativeMultipartMethodInput(form);
+    if (method !== "POST") {
+      if (!(overrideInput instanceof HTMLInputElement)) {
+        overrideInput = document.createElement("input");
+        overrideInput.type = "hidden";
+        overrideInput.name = "_method";
+        overrideInput.setAttribute("data-native-method-override", "true");
+        form.appendChild(overrideInput);
+      }
+      overrideInput.value = method;
+    } else if (overrideInput instanceof HTMLInputElement) {
+      overrideInput.remove();
+    }
+
+    form.method = "post";
+    form.action = url;
+    form.submit();
+    return true;
   }
 
   function activateTab(trigger) {
@@ -310,7 +348,13 @@
     }
 
     imageViewerState.fileName = fileName || "";
-    image.onload = () => resetImageViewerTransform();
+    image.onload = () => {
+      setImageViewerStatus("");
+      resetImageViewerTransform();
+    };
+    image.onerror = () => {
+      setImageViewerStatus("Image preview failed. The stored file may be empty or invalid.");
+    };
     image.setAttribute("src", url);
     image.setAttribute("alt", caption || fileName || "Archive image");
     text.textContent = caption || fileName || "Archive image";
@@ -569,12 +613,20 @@
     }
 
     const data = formDataFromElement(el);
+    const includesFiles = hasFiles(data);
+    if (includesFiles && el instanceof HTMLFormElement && submitMultipartForm(el)) {
+      return;
+    }
+    const transportMethod = includesFiles && method !== "GET" && method !== "POST" ? "POST" : method;
     const options = {
-      method,
+      method: transportMethod,
       headers: {
         "X-Requested-With": "DixieData"
       }
     };
+    if (transportMethod !== method) {
+      options.headers["X-HTTP-Method-Override"] = method;
+    }
 
     let requestUrl = url;
     if (method === "GET") {
@@ -584,7 +636,7 @@
         requestUrl += (url.includes("?") ? "&" : "?") + query;
       }
     } else {
-      if (hasFiles(data)) {
+      if (includesFiles) {
         options.body = data;
       } else {
         options.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
@@ -597,6 +649,11 @@
     try {
       const response = await fetch(requestUrl, options);
       const html = await response.text();
+      const redirectTo = response.headers.get("X-DixieData-Redirect");
+      if (redirectTo) {
+        window.location.assign(redirectTo);
+        return;
+      }
       if (el instanceof HTMLFormElement && response.ok && response.redirected) {
         clearDraftForForm(el);
       }
