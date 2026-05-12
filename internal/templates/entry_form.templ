@@ -43,9 +43,7 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">Record ID</label>
 					<input type="text" name="display_id" value={ s.DisplayID }
-						if !isEdit {
-							readonly
-						}
+						readonly
 						class={ displayIDInputClass(isEdit) }/>
 				</div>
 				<div>
@@ -282,27 +280,27 @@ templ ExportView(status models.GoogleStatus) {
 					<button hx-post="/export/json" hx-target="#export-status"
 						class="primary-button justify-start text-left">
 						<div class="font-bold">Export JSON</div>
-						<div class="text-xs text-slate-300">Full hierarchical export (soldiers, records, images)</div>
+						<div class="text-xs text-slate-300">Full hierarchical export with version metadata</div>
 					</button>
 					<button hx-post="/export/csv" hx-target="#export-status"
 						class="secondary-button justify-start text-left">
 						<div class="font-bold">Export CSV</div>
-						<div class="text-xs text-slate-500">Flat spreadsheet format</div>
+						<div class="text-xs text-slate-500">Flat spreadsheet format with version columns</div>
 					</button>
 					<button hx-post="/export/ical" hx-target="#export-status"
 						class="secondary-button justify-start text-left">
 						<div class="font-bold">Export iCalendar</div>
-						<div class="text-xs text-slate-500">ICS calendar import for yearly soldier anniversaries</div>
+						<div class="text-xs text-slate-500">ICS anniversary export with embedded app and schema versions</div>
 					</button>
 					<button hx-post="/export/backup" hx-target="#export-status"
 						class="primary-button justify-start text-left">
 						<div class="font-bold">Export Backup</div>
-						<div class="text-xs text-slate-300">ZIP archive with manifest, soldier data, and all images</div>
+						<div class="text-xs text-slate-300">ZIP archive with manifest, DB snapshot, and all images</div>
 					</button>
 					<button hx-post="/import/backup" hx-target="#export-status" hx-confirm="Load a backup and replace the current local archive?"
 						class="secondary-button justify-start text-left">
 						<div class="font-bold">Load Backup</div>
-						<div class="text-xs text-slate-500">Validates the manifest, then restores soldiers, records, and images</div>
+						<div class="text-xs text-slate-500">Stages and validates the backup before replacing the current archive</div>
 					</button>
 				</div>
 				<div id="export-status" class="text-sm text-slate-500"></div>

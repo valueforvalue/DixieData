@@ -3,8 +3,11 @@ package templates
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 )
 
 func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
@@ -22,5 +25,8 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	}
 	if strings.Contains(content, "unpkg.com/htmx.org") {
 		t.Fatalf("layout should not depend on remote htmx")
+	}
+	if !strings.Contains(content, buildinfo.AppLabel()) || !strings.Contains(content, fmt.Sprintf("Schema v%d", buildinfo.SchemaVersion)) {
+		t.Fatalf("layout should include app and schema versions")
 	}
 }

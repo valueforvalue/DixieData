@@ -16,7 +16,7 @@ func Open(dataDir string) (*DB, error) {
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
 	}
-	dbPath := filepath.Join(dataDir, "dixiedata.db")
+	dbPath := filepath.Join(dataDir, FileName)
 	conn, err := sql.Open("sqlite", dbPath+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		return nil, err

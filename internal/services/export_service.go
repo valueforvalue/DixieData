@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -27,13 +28,26 @@ type ExportService struct {
 	soldier *SoldierService
 }
 
+type ExportMetadata struct {
+	AppVersion    string `json:"app_version"`
+	SchemaVersion int    `json:"schema_version"`
+	Format        string `json:"format"`
+	Version       int    `json:"version"`
+	GeneratedAt   string `json:"generated_at"`
+}
+
+type JSONExportDocument struct {
+	Metadata ExportMetadata   `json:"metadata"`
+	Soldiers []models.Soldier `json:"soldiers"`
+}
+
 func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
 	return &ExportService{db: database, soldier: soldier}
 }
 
-// ExportJSON streams a full hierarchical export (Soldier -> Records -> Images)
-// to outputPath in JSON array format, processing records in batches to avoid
-// loading the entire dataset into memory at once.
+// ExportJSON writes a full hierarchical export document with metadata and
+// soldiers/records/images, processing records in batches to avoid loading the
+// entire dataset into memory at once.
 func (e *ExportService) ExportJSON(outputPath string) error {
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -44,11 +58,10 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 
-	if _, err := fmt.Fprint(f, "[\n"); err != nil {
-		return err
+	payload := JSONExportDocument{
+		Metadata: newExportMetadata("json", buildinfo.JSONExportVersion),
+		Soldiers: []models.Soldier{},
 	}
-
-	first := true
 	page := 1
 	for {
 		batch, _, err := e.soldier.List(page, exportBatchSize)
@@ -64,15 +77,7 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 			if err != nil {
 				return err
 			}
-			if !first {
-				if _, err := fmt.Fprint(f, ",\n"); err != nil {
-					return err
-				}
-			}
-			if err := enc.Encode(enriched); err != nil {
-				return err
-			}
-			first = false
+			payload.Soldiers = append(payload.Soldiers, *enriched)
 		}
 
 		if len(batch) < exportBatchSize {
@@ -81,8 +86,7 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 		page++
 	}
 
-	_, err = fmt.Fprint(f, "]\n")
-	return err
+	return enc.Encode(payload)
 }
 
 func (e *ExportService) ExportICalendar(outputPath string) error {
@@ -101,10 +105,13 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 	for _, line := range []string{
 		"BEGIN:VCALENDAR",
 		"VERSION:2.0",
-		"PRODID:-//DixieData//Anniversaries//EN",
+		fmt.Sprintf("PRODID:-//%s v%s//Anniversaries v%d//EN", buildinfo.AppName, buildinfo.AppVersion, buildinfo.ICalendarExportVersion),
 		"CALSCALE:GREGORIAN",
 		"METHOD:PUBLISH",
 		"X-WR-CALNAME:DixieData Anniversaries",
+		fmt.Sprintf("X-DIXIEDATA-APP-VERSION:%s", buildinfo.AppVersion),
+		fmt.Sprintf("X-DIXIEDATA-SCHEMA-VERSION:%d", buildinfo.SchemaVersion),
+		fmt.Sprintf("X-DIXIEDATA-EXPORT-VERSION:%d", buildinfo.ICalendarExportVersion),
 	} {
 		if err := writeICalendarLine(f, line); err != nil {
 			return err
@@ -170,7 +177,8 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	w := csv.NewWriter(f)
 	defer w.Flush()
 
-	header := []string{"id", "display_id", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
+	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -187,6 +195,10 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 
 		for _, s := range batch {
 			row := []string{
+				metadata.AppVersion,
+				fmt.Sprintf("%d", metadata.SchemaVersion),
+				fmt.Sprintf("%d", metadata.Version),
+				metadata.GeneratedAt,
 				fmt.Sprintf("%d", s.ID),
 				s.DisplayID,
 				fmt.Sprintf("%v", s.IsGenerated),
@@ -263,7 +275,15 @@ func (e *ExportService) ExportImages(outputPath string, images []models.Image) e
 }
 
 func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier) error {
-	pdf := newPDFDocument()
+	return e.exportSoldierPDF(outputPath, soldier, true)
+}
+
+func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error {
+	return e.exportSoldierPDF(outputPath, soldier, false)
+}
+
+func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldier, includeImages bool) error {
+	pdf := newPDFDocument("Soldier Report", "soldier-pdf", buildinfo.SoldierPDFExportVersion)
 	pdf.AddPage()
 
 	pdf.SetFont("Times", "B", 20)
@@ -298,18 +318,22 @@ func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldi
 		}
 	}
 
-	if len(soldier.Images) > 0 {
+	if includeImages && len(soldier.Images) > 0 {
 		writePDFSection(pdf, "Images")
 		for _, image := range soldier.Images {
 			writePDFImageRow(pdf, image)
 		}
 	}
 
+	writePDFExportMetadata(pdf, "soldier-pdf", buildinfo.SoldierPDFExportVersion, map[string]string{
+		"Includes Images": fmt.Sprintf("%t", includeImages),
+	})
+
 	return pdf.OutputFileAndClose(outputPath)
 }
 
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier) error {
-	pdf := newPDFDocument()
+	pdf := newPDFDocument("Monthly Anniversary Report", "monthly-pdf", buildinfo.MonthlyPDFExportVersion)
 	pdf.AddPage()
 
 	title := fmt.Sprintf("%s Anniversary Report", monthLabel(month))
@@ -330,6 +354,7 @@ func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int
 
 	if len(days) == 0 {
 		writePDFBody(pdf, "No soldiers are recorded for this month.")
+		writePDFExportMetadata(pdf, "monthly-pdf", buildinfo.MonthlyPDFExportVersion, nil)
 		return pdf.OutputFileAndClose(outputPath)
 	}
 
@@ -347,17 +372,31 @@ func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int
 		}
 	}
 
+	writePDFExportMetadata(pdf, "monthly-pdf", buildinfo.MonthlyPDFExportVersion, map[string]string{})
+
 	return pdf.OutputFileAndClose(outputPath)
 }
 
-func newPDFDocument() *fpdf.Fpdf {
+func newPDFDocument(title, format string, version int) *fpdf.Fpdf {
 	pdf := fpdf.New("P", "mm", "Letter", "")
-	pdf.SetTitle("DixieData Report", false)
-	pdf.SetAuthor("DixieData", false)
+	pdf.SetTitle(title, false)
+	pdf.SetAuthor(buildinfo.AppLabel(), false)
+	pdf.SetCreator(fmt.Sprintf("%s %s export v%d", buildinfo.AppName, format, version), false)
+	pdf.SetSubject(fmt.Sprintf("%s schema v%d", buildinfo.AppName, buildinfo.SchemaVersion), false)
 	pdf.SetMargins(16, 16, 16)
 	pdf.SetAutoPageBreak(true, 16)
 	pdf.SetCompression(false)
 	return pdf
+}
+
+func newExportMetadata(format string, version int) ExportMetadata {
+	return ExportMetadata{
+		AppVersion:    buildinfo.AppVersion,
+		SchemaVersion: buildinfo.SchemaVersion,
+		Format:        format,
+		Version:       version,
+		GeneratedAt:   time.Now().Format(time.RFC3339),
+	}
 }
 
 func exportSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
@@ -426,6 +465,23 @@ func writePDFSection(pdf *fpdf.Fpdf, title string) {
 	pdf.SetFont("Times", "B", 15)
 	pdf.CellFormat(0, 8, title, "", 1, "", false, 0, "")
 	pdf.SetFont("Times", "", 12)
+}
+
+func writePDFExportMetadata(pdf *fpdf.Fpdf, format string, version int, details map[string]string) {
+	writePDFSection(pdf, "Report Metadata")
+	writePDFField(pdf, "App Version", buildinfo.AppVersion)
+	writePDFField(pdf, "Schema Version", fmt.Sprintf("%d", buildinfo.SchemaVersion))
+	writePDFField(pdf, "Export Format", format)
+	writePDFField(pdf, "Export Version", fmt.Sprintf("%d", version))
+	writePDFField(pdf, "Generated At", time.Now().Format(time.RFC3339))
+	keys := make([]string, 0, len(details))
+	for key := range details {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		writePDFField(pdf, key, details[key])
+	}
 }
 
 func writePDFField(pdf *fpdf.Fpdf, label, value string) {

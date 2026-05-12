@@ -1,6 +1,11 @@
 package db
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
+)
 
 const schema = `
 CREATE TABLE IF NOT EXISTS soldiers (
@@ -70,6 +75,9 @@ func applySchema(db *DB) error {
 		}
 	}
 	if _, err := db.conn.Exec(`UPDATE soldiers SET is_generated = 1 WHERE is_generated = 0 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`); err != nil {
+		return err
+	}
+	if _, err := db.conn.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, buildinfo.SchemaVersion)); err != nil {
 		return err
 	}
 	return nil
