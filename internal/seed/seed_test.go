@@ -41,12 +41,15 @@ func TestGenerateCreatesDatabaseRecordsAndImages(t *testing.T) {
 	assertCount(t, database, "records", summary.Records)
 	assertCount(t, database, "images", summary.Images)
 
-	var displayID, pensionID, applicationID string
-	if err := database.Conn().QueryRow("SELECT display_id, pension_id, application_id FROM soldiers ORDER BY id LIMIT 1").Scan(&displayID, &pensionID, &applicationID); err != nil {
+	var displayID, pensionID, applicationID, middleName, rankIn, rankOut, pensionState string
+	if err := database.Conn().QueryRow("SELECT display_id, pension_id, application_id, middle_name, rank_in, rank_out, pension_state FROM soldiers ORDER BY id LIMIT 1").Scan(&displayID, &pensionID, &applicationID, &middleName, &rankIn, &rankOut, &pensionState); err != nil {
 		t.Fatalf("select generated identifiers: %v", err)
 	}
 	if displayID == "" || pensionID == "" || applicationID == "" {
 		t.Fatalf("expected generated identifiers, got display=%q pension=%q application=%q", displayID, pensionID, applicationID)
+	}
+	if middleName == "" || rankIn == "" || rankOut == "" || pensionState == "" {
+		t.Fatalf("expected new identity fields, got middle=%q rankIn=%q rankOut=%q pensionState=%q", middleName, rankIn, rankOut, pensionState)
 	}
 
 	imageFiles := 0
