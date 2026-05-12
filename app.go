@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -123,7 +124,47 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, a.startupErr.Error(), http.StatusInternalServerError)
 		return
 	}
+	if override := requestMethodOverride(r); override != "" {
+		r = r.Clone(r.Context())
+		r.Method = override
+	}
 	a.mux.ServeHTTP(w, r)
+}
+
+func requestMethodOverride(r *http.Request) string {
+	if r == nil || r.Method != http.MethodPost {
+		return ""
+	}
+	if override := normalizedMethodOverride(r.Header.Get("X-HTTP-Method-Override")); override != "" {
+		return override
+	}
+	if err := parseRequestFormForOverride(r); err == nil {
+		if override := normalizedMethodOverride(r.FormValue("_method")); override != "" {
+			return override
+		}
+	}
+	return ""
+}
+
+func parseRequestFormForOverride(r *http.Request) error {
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		return r.ParseMultipartForm(64 << 20)
+	}
+	return r.ParseForm()
+}
+
+func normalizedMethodOverride(value string) string {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case http.MethodPut:
+		return http.MethodPut
+	case http.MethodDelete:
+		return http.MethodDelete
+	case http.MethodPatch:
+		return http.MethodPatch
+	default:
+		return ""
+	}
 }
 
 func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
@@ -292,17 +333,24 @@ func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 	s, err := parseSoldierForm(r, 0)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		templates.EntryFormWithError(models.Soldier{}, false, err.Error()).Render(r.Context(), w)
 		return
 	}
 
 	created, err := a.soldiers.Create(s)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		w.WriteHeader(http.StatusInternalServerError)
+		templates.EntryFormWithError(s, false, err.Error()).Render(r.Context(), w)
 		return
 	}
 	if err := a.saveUploadedImages(r, *created); err != nil {
-		http.Error(w, err.Error(), 500)
+		reloaded, reloadErr := a.soldiers.GetByID(created.ID)
+		if reloadErr != nil {
+			reloaded = created
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		templates.EntryFormWithError(*reloaded, true, err.Error()).Render(r.Context(), w)
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", created.ID), http.StatusSeeOther)
@@ -328,6 +376,14 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) > 2 && parts[1] == "images" && parts[2] == "download" {
 		a.handleDownloadSoldierImages(w, r, id)
+		return
+	}
+	if len(parts) > 2 && parts[1] == "images" && parts[2] == "import" {
+		a.handleImportSoldierImages(w, r, id)
+		return
+	}
+	if len(parts) > 2 && parts[1] == "images" && parts[2] == "delete" {
+		a.handleDeleteSoldierImages(w, r, id)
 		return
 	}
 
@@ -368,16 +424,23 @@ func (a *App) handleEditSoldier(w http.ResponseWriter, r *http.Request, id int64
 func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int64) {
 	s, err := parseSoldierForm(r, id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		templates.EntryFormWithError(models.Soldier{ID: id}, true, err.Error()).Render(r.Context(), w)
 		return
 	}
 
 	if err := a.soldiers.Update(s); err != nil {
-		http.Error(w, err.Error(), 500)
+		w.WriteHeader(http.StatusInternalServerError)
+		templates.EntryFormWithError(s, true, err.Error()).Render(r.Context(), w)
 		return
 	}
 	if err := a.saveUploadedImages(r, s); err != nil {
-		http.Error(w, err.Error(), 500)
+		reloaded, reloadErr := a.soldiers.GetByID(id)
+		if reloadErr != nil {
+			reloaded = &s
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		templates.EntryFormWithError(*reloaded, true, err.Error()).Render(r.Context(), w)
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", id), http.StatusSeeOther)
@@ -800,6 +863,87 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 	fmt.Fprintf(w, "✓ Saved %d image(s) to %s", len(selected), path)
 }
 
+func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	soldier, err := a.soldiers.GetByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
+		},
+	})
+	if err != nil || len(paths) == 0 {
+		fmt.Fprint(w, "Image import cancelled.")
+		return
+	}
+
+	imported, importErr := a.importImagePaths(*soldier, paths)
+	if importErr != nil {
+		if imported > 0 {
+			fmt.Fprintf(w, "Imported %d image(s), but some files failed: %v", imported, importErr)
+			return
+		}
+		fmt.Fprintf(w, "Image import failed: %v", importErr)
+		return
+	}
+
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	fmt.Fprintf(w, "Imported %d image(s).", imported)
+}
+
+func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	soldier, err := a.soldiers.GetByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	selected, err := selectedSoldierImages(*soldier, r.Form["image_ids"], a.dataDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(selected) == 0 {
+		fmt.Fprint(w, "Select at least one image to delete.")
+		return
+	}
+
+	for _, image := range selected {
+		if err := os.Remove(image.FilePath); err != nil && !os.IsNotExist(err) {
+			fmt.Fprintf(w, "Delete failed: %v", err)
+			return
+		}
+	}
+
+	imageIDs := make([]int64, 0, len(selected))
+	for _, image := range selected {
+		imageIDs = append(imageIDs, image.ID)
+	}
+	if err := a.soldiers.DeleteImages(id, imageIDs); err != nil {
+		fmt.Fprintf(w, "Delete failed: %v", err)
+		return
+	}
+
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	fmt.Fprintf(w, "Deleted %d image(s).", len(selected))
+}
+
 func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 	contentType := r.Header.Get("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
@@ -1096,12 +1240,14 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 		return fmt.Errorf("create image directory: %w", err)
 	}
 
+	var issues []string
 	for index, fileHeader := range r.MultipartForm.File["images"] {
 		if fileHeader == nil || fileHeader.Filename == "" {
 			continue
 		}
 		if !isAllowedImageFile(fileHeader.Filename) {
-			return fmt.Errorf("unsupported image file: %s", fileHeader.Filename)
+			issues = append(issues, fmt.Sprintf("unsupported image file: %s", fileHeader.Filename))
+			continue
 		}
 
 		storedName := fmt.Sprintf("%d-%02d-%s", time.Now().UnixNano(), index+1, sanitizeUploadFileName(fileHeader.Filename))
@@ -1109,14 +1255,70 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 		relativePath := filepath.Join(relativeDir, storedName)
 
 		if err := saveUploadedFile(fileHeader, absolutePath); err != nil {
-			return err
+			issues = append(issues, err.Error())
+			continue
 		}
 		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, fileHeader.Filename); err != nil {
-			return err
+			_ = os.Remove(absolutePath)
+			issues = append(issues, err.Error())
+			continue
 		}
 	}
 
+	if len(issues) > 0 {
+		return errors.New(strings.Join(issues, "; "))
+	}
 	return nil
+}
+
+func (a *App) importImagePaths(soldier models.Soldier, paths []string) (int, error) {
+	recordDir, relativeDir := appdata.RecordImageDir(a.dataDir, soldier.DisplayID)
+	if err := os.MkdirAll(recordDir, 0o755); err != nil {
+		return 0, fmt.Errorf("create image directory: %w", err)
+	}
+
+	imported := 0
+	var issues []string
+	for index, sourcePath := range paths {
+		sourcePath = strings.TrimSpace(sourcePath)
+		if sourcePath == "" {
+			continue
+		}
+		fileName := filepath.Base(sourcePath)
+		if !isAllowedImageFile(fileName) {
+			issues = append(issues, fmt.Sprintf("unsupported image file: %s", fileName))
+			continue
+		}
+		info, err := os.Stat(sourcePath)
+		if err != nil {
+			issues = append(issues, fmt.Sprintf("read image file %s: %v", fileName, err))
+			continue
+		}
+		if info.IsDir() || info.Size() == 0 {
+			issues = append(issues, fmt.Sprintf("image file %s is empty", fileName))
+			continue
+		}
+
+		storedName := fmt.Sprintf("%d-%02d-%s", time.Now().UnixNano(), index+1, sanitizeUploadFileName(fileName))
+		absolutePath := filepath.Join(recordDir, storedName)
+		relativePath := filepath.Join(relativeDir, storedName)
+
+		if err := copyImageFile(sourcePath, absolutePath); err != nil {
+			issues = append(issues, err.Error())
+			continue
+		}
+		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, fileName); err != nil {
+			_ = os.Remove(absolutePath)
+			issues = append(issues, err.Error())
+			continue
+		}
+		imported++
+	}
+
+	if len(issues) > 0 {
+		return imported, errors.New(strings.Join(issues, "; "))
+	}
+	return imported, nil
 }
 
 func saveUploadedFile(fileHeader *multipart.FileHeader, destination string) error {
@@ -1132,8 +1334,39 @@ func saveUploadedFile(fileHeader *multipart.FileHeader, destination string) erro
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, src); err != nil {
+	written, err := io.Copy(dst, src)
+	if err != nil {
 		return fmt.Errorf("write image file %s: %w", destination, err)
+	}
+	if written == 0 {
+		dst.Close()
+		_ = os.Remove(destination)
+		return fmt.Errorf("image file %s is empty", fileHeader.Filename)
+	}
+	return nil
+}
+
+func copyImageFile(sourcePath, destination string) error {
+	src, err := os.Open(sourcePath)
+	if err != nil {
+		return fmt.Errorf("open image file %s: %w", filepath.Base(sourcePath), err)
+	}
+	defer src.Close()
+
+	dst, err := os.Create(destination)
+	if err != nil {
+		return fmt.Errorf("create image file %s: %w", destination, err)
+	}
+	defer dst.Close()
+
+	written, err := io.Copy(dst, src)
+	if err != nil {
+		return fmt.Errorf("write image file %s: %w", destination, err)
+	}
+	if written == 0 {
+		dst.Close()
+		_ = os.Remove(destination)
+		return fmt.Errorf("image file %s is empty", filepath.Base(sourcePath))
 	}
 	return nil
 }
