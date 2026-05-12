@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"google.golang.org/api/drive/v3"
 )
 
 func TestGoogleService_SaveAndLoadSettings(t *testing.T) {
@@ -126,5 +127,30 @@ func TestGoogleService_LoadEffectiveSettingsLetsSavedValuesOverrideSharedDefault
 	}
 	if effective.ClientID != "custom-client" || effective.ClientSecret != "custom-secret" || effective.CalendarID != "custom-calendar" || effective.DriveFolderID != "custom-folder" {
 		t.Fatalf("effective = %#v", effective)
+	}
+}
+
+func TestGoogleSheetUploadNameDropsCSVExtension(t *testing.T) {
+	got := googleSheetUploadName("", `C:\Development\DixieData\files\dixiedata-export.csv`)
+	if got != "dixiedata-export" {
+		t.Fatalf("googleSheetUploadName = %q", got)
+	}
+}
+
+func TestGoogleSheetUploadNamePrefersExplicitTitle(t *testing.T) {
+	got := googleSheetUploadName("DixieData Export", `C:\Development\DixieData\files\dixiedata-export.csv`)
+	if got != "DixieData Export" {
+		t.Fatalf("googleSheetUploadName = %q", got)
+	}
+}
+
+func TestGoogleDriveUploadResultUsesSheetsLinkFallback(t *testing.T) {
+	result := googleDriveUploadResult(&drive.File{
+		Id:       "sheet123",
+		Name:     "DixieData Export",
+		MimeType: "application/vnd.google-apps.spreadsheet",
+	})
+	if result.WebViewLink != "https://docs.google.com/spreadsheets/d/sheet123/edit" {
+		t.Fatalf("WebViewLink = %q", result.WebViewLink)
 	}
 }

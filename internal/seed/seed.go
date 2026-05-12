@@ -25,6 +25,7 @@ const (
 
 var (
 	firstNames    = []string{"James", "William", "John", "Thomas", "Robert", "Samuel", "George", "Henry", "Joseph", "Charles", "Andrew", "Edward", "Benjamin", "Francis", "Nathaniel", "Lewis", "Richard", "Elijah", "Walter", "Jasper"}
+	middleNames   = []string{"Allen", "Bell", "Clay", "Davis", "Edward", "Franklin", "Gray", "Henry", "Isaac", "Jasper", "Knox", "Lee", "Morgan", "Nathan", "Otis", "Perry", "Quincy", "Reuben", "Silas", "Thomas"}
 	lastNames     = []string{"Carter", "Walker", "Hughes", "Bennett", "Foster", "McDaniel", "Pritchard", "Hawkins", "Turner", "Coleman", "Whitfield", "Mercer", "Dawson", "Reed", "Calhoun", "Harper", "Tate", "McBride", "Boone", "Abernathy"}
 	ranks         = []string{"Private", "Corporal", "Sergeant", "Lieutenant", "Captain", "Major", "Colonel"}
 	units         = []string{"1st Georgia Infantry", "4th Alabama Cavalry", "7th Texas Infantry", "12th Virginia Artillery", "15th Tennessee Infantry", "18th Mississippi Cavalry", "22nd North Carolina Infantry", "31st Louisiana Infantry", "3rd Arkansas Mounted Rifles", "5th South Carolina Infantry"}
@@ -162,11 +163,16 @@ func resetData(dbPath, imageDir string) error {
 
 func buildSoldier(rng *rand.Rand, index int) models.Soldier {
 	firstName := firstNames[rng.Intn(len(firstNames))]
+	middleName := middleNames[rng.Intn(len(middleNames))]
 	lastName := fmt.Sprintf("%s %s", lastNames[rng.Intn(len(lastNames))], string(rune('A'+(index%26))))
 	state := states[rng.Intn(len(states))]
 	county := counties[rng.Intn(len(counties))]
 	month := 1 + rng.Intn(12)
 	day := 1 + rng.Intn(28)
+	rankInIndex := rng.Intn(len(ranks))
+	rankOutIndex := rankInIndex + rng.Intn(len(ranks)-rankInIndex)
+	rankIn := ranks[rankInIndex]
+	rankOut := ranks[rankOutIndex]
 	if rng.Intn(5) == 0 {
 		day = 0
 	}
@@ -175,8 +181,11 @@ func buildSoldier(rng *rand.Rand, index int) models.Soldier {
 		PensionID:     fmt.Sprintf("P%05d", 10000+index),
 		ApplicationID: fmt.Sprintf("A%05d", 10000+index),
 		FirstName:     firstName,
+		MiddleName:    middleName,
 		LastName:      lastName,
-		Rank:          ranks[rng.Intn(len(ranks))],
+		Rank:          rankOut,
+		RankIn:        rankIn,
+		RankOut:       rankOut,
 		Unit:          units[rng.Intn(len(units))],
 		PensionState:  state,
 		DeathYear:     1861 + rng.Intn(5),

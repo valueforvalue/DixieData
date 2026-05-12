@@ -250,11 +250,45 @@ func (g *GoogleService) UploadBackup(ctx context.Context, backupPath string) (Go
 	if err != nil {
 		return GoogleDriveUploadResult{}, err
 	}
-	webViewLink := created.WebViewLink
-	if strings.TrimSpace(webViewLink) == "" && created.Id != "" {
-		webViewLink = fmt.Sprintf("https://drive.google.com/file/d/%s/view", created.Id)
+	return googleDriveUploadResult(created), nil
+}
+
+func (g *GoogleService) UploadCSVAsSheet(ctx context.Context, csvPath, title string) (GoogleDriveUploadResult, error) {
+	client, settings, err := g.client(ctx)
+	if err != nil {
+		return GoogleDriveUploadResult{}, err
 	}
-	return GoogleDriveUploadResult{FileID: created.Id, WebViewLink: webViewLink, Name: created.Name}, nil
+
+	driveSvc, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return GoogleDriveUploadResult{}, err
+	}
+
+	file, err := os.Open(csvPath)
+	if err != nil {
+		return GoogleDriveUploadResult{}, err
+	}
+	defer file.Close()
+
+	uploadName := googleSheetUploadName(title, csvPath)
+	driveFile := &drive.File{
+		Name:     uploadName,
+		MimeType: "application/vnd.google-apps.spreadsheet",
+	}
+	if folderID, err := resolveGoogleDriveFolder(ctx, driveSvc, settings.DriveFolderID); err != nil {
+		return GoogleDriveUploadResult{}, err
+	} else if folderID != "" {
+		driveFile.Parents = []string{folderID}
+	}
+
+	created, err := driveSvc.Files.Create(driveFile).
+		Media(file, googleapi.ContentType("text/csv")).
+		Fields("id,webViewLink,name,mimeType").
+		Do()
+	if err != nil {
+		return GoogleDriveUploadResult{}, err
+	}
+	return googleDriveUploadResult(created), nil
 }
 
 func resolveGoogleDriveFolder(ctx context.Context, driveSvc *drive.Service, folderTarget string) (string, error) {
@@ -298,6 +332,36 @@ func resolveGoogleDriveFolder(ctx context.Context, driveSvc *drive.Service, fold
 
 func escapeGoogleDriveQueryValue(value string) string {
 	return strings.ReplaceAll(value, "'", "\\'")
+}
+
+func googleSheetUploadName(title, csvPath string) string {
+	name := strings.TrimSpace(title)
+	if name == "" {
+		name = strings.TrimSpace(strings.TrimSuffix(filepath.Base(csvPath), filepath.Ext(csvPath)))
+	}
+	if name == "" {
+		name = "DixieData Export"
+	}
+	return name
+}
+
+func googleDriveUploadResult(file *drive.File) GoogleDriveUploadResult {
+	if file == nil {
+		return GoogleDriveUploadResult{}
+	}
+	webViewLink := strings.TrimSpace(file.WebViewLink)
+	if webViewLink == "" && strings.TrimSpace(file.Id) != "" {
+		if file.MimeType == "application/vnd.google-apps.spreadsheet" {
+			webViewLink = fmt.Sprintf("https://docs.google.com/spreadsheets/d/%s/edit", file.Id)
+		} else {
+			webViewLink = fmt.Sprintf("https://drive.google.com/file/d/%s/view", file.Id)
+		}
+	}
+	return GoogleDriveUploadResult{
+		FileID:      file.Id,
+		WebViewLink: webViewLink,
+		Name:        file.Name,
+	}
 }
 
 func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.GoogleSettings, soldiers []models.Soldier) (GoogleCalendarSyncResult, error) {

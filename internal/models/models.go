@@ -28,6 +28,7 @@ type Soldier struct {
 type SoldierSearch struct {
 	Mode         string
 	Query        string
+	Browse       bool
 	DisplayID    string
 	FirstName    string
 	MiddleName   string

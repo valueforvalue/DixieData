@@ -46,6 +46,9 @@ func soldierCardClass(highlighted bool) string {
 }
 
 func hasActiveSearch(search models.SoldierSearch) bool {
+	if search.Browse {
+		return true
+	}
 	if search.Mode == "advanced" {
 		return len(searchParams(search)) > 0
 	}
@@ -96,6 +99,9 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 						value={ query }
 						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
 						class="field-input"/>
+					<div class="flex flex-wrap items-center gap-3">
+						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
+					</div>
 					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, pension states, burial locations, and record numbers.</p>
 				</div>
 				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="relative hidden card rounded-2xl p-5 grid grid-cols-2 gap-4"
@@ -268,9 +274,6 @@ templ SoldierDetail(s models.Soldier) {
 }
 
 func pageHref(search models.SoldierSearch, page int) templ.SafeURL {
-	if search.Mode != "advanced" && strings.TrimSpace(search.Query) == "" {
-		return templ.SafeURL(fmt.Sprintf("/soldiers?page=%d", page))
-	}
 	return templ.SafeURL(pageRequestURL(search, page))
 }
 
@@ -321,6 +324,9 @@ func searchParams(search models.SoldierSearch) url.Values {
 		}
 		return values
 	}
+	if search.Browse {
+		values.Set("browse", "1")
+	}
 	if strings.TrimSpace(search.Query) != "" {
 		values.Set("q", search.Query)
 	}
@@ -329,8 +335,11 @@ func searchParams(search models.SoldierSearch) url.Values {
 
 func searchSummary(search models.SoldierSearch) string {
 	if search.Mode != "advanced" {
+		if search.Browse {
+			return "Browse: alphabetical list"
+		}
 		if strings.TrimSpace(search.Query) == "" {
-			return "All records"
+			return ""
 		}
 		return fmt.Sprintf("Search: %q", search.Query)
 	}

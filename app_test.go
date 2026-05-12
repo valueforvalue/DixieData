@@ -294,6 +294,80 @@ func TestInitializeLocalDataRecreatesFreshArchive(t *testing.T) {
 	}
 }
 
+func TestSoldierListStartsBlankUntilBrowseOrSearch(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{FirstName: "Nathan", LastName: "Forrest"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/soldiers", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Browse Alphabetically") {
+		t.Fatalf("expected browse button, got %q", body)
+	}
+	if strings.Contains(body, created.DisplayID) {
+		t.Fatalf("expected initial results to stay blank, got %q", body)
+	}
+}
+
+func TestBrowseModeShowsAlphabeticalResults(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{FirstName: "Nathan", LastName: "Forrest"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/soldiers/search?browse=1", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, created.DisplayID) {
+		t.Fatalf("expected browse mode to show results, got %q", body)
+	}
+	if !strings.Contains(body, "Browse: alphabetical list") {
+		t.Fatalf("expected browse summary, got %q", body)
+	}
+}
+
 func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)

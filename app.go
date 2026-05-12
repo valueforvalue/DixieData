@@ -113,6 +113,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
 	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
 	mux.HandleFunc("/integrations/google/backup", a.handleGoogleBackup)
+	mux.HandleFunc("/integrations/google/sheets/export", a.handleGoogleSheetsExport)
 	mux.HandleFunc("/integrations/google/calendar/sync", a.handleGoogleCalendarSync)
 	mux.HandleFunc("/integrations/google/calendar/unsync", a.handleGoogleCalendarUnsync)
 	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
@@ -268,12 +269,7 @@ func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
 	if p, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && p > 0 {
 		page = p
 	}
-	soldiers, total, err := a.soldiers.List(page, 50)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	templates.SoldierList(soldiers, page, total, "").Render(r.Context(), w)
+	templates.SoldierList(nil, page, 0, "").Render(r.Context(), w)
 }
 
 func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -283,8 +279,16 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query().Get("q")
 	page := parsePage(r.URL.Query().Get("page"))
-	search := models.SoldierSearch{Mode: "basic", Query: q}
-	if strings.TrimSpace(q) == "" {
+	search := models.SoldierSearch{
+		Mode:   "basic",
+		Query:  q,
+		Browse: r.URL.Query().Get("browse") == "1",
+	}
+	if strings.TrimSpace(q) == "" && !search.Browse {
+		templates.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
+		return
+	}
+	if strings.TrimSpace(q) == "" && search.Browse {
 		soldiers, total, err := a.soldiers.List(page, 50)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -322,6 +326,10 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		DeathDay:     r.URL.Query().Get("death_day"),
 	}
 	page := parsePage(r.URL.Query().Get("page"))
+	if !hasAdvancedSearchInput(search) {
+		templates.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
+		return
+	}
 
 	soldiers, total, err := a.soldiers.AdvancedSearch(search, page, 50)
 	if err != nil {
@@ -330,6 +338,20 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	templates.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+}
+
+func hasAdvancedSearchInput(search models.SoldierSearch) bool {
+	return strings.TrimSpace(search.DisplayID) != "" ||
+		strings.TrimSpace(search.FirstName) != "" ||
+		strings.TrimSpace(search.MiddleName) != "" ||
+		strings.TrimSpace(search.LastName) != "" ||
+		strings.TrimSpace(search.Rank) != "" ||
+		strings.TrimSpace(search.Unit) != "" ||
+		strings.TrimSpace(search.PensionState) != "" ||
+		strings.TrimSpace(search.BuriedIn) != "" ||
+		strings.TrimSpace(search.DeathYear) != "" ||
+		strings.TrimSpace(search.DeathMonth) != "" ||
+		strings.TrimSpace(search.DeathDay) != ""
 }
 
 func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
@@ -685,6 +707,37 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprint(w, externalLinkMarkup(
 		fmt.Sprintf("Backup uploaded to Google Drive (%d soldiers, %d images):", manifest.Soldiers, manifest.Images),
+		uploaded.WebViewLink,
+		uploaded.Name,
+	))
+}
+
+func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tempDir, err := os.MkdirTemp("", "dixiedata-google-sheets-*")
+	if err != nil {
+		fmt.Fprintf(w, "Google Sheets export failed: %v", err)
+		return
+	}
+	defer os.RemoveAll(tempDir)
+
+	csvPath := filepath.Join(tempDir, "dixiedata-export.csv")
+	if err := a.export.ExportCSV(csvPath); err != nil {
+		fmt.Fprintf(w, "Google Sheets export failed: %v", err)
+		return
+	}
+
+	uploaded, err := a.google.UploadCSVAsSheet(r.Context(), csvPath, "DixieData Export")
+	if err != nil {
+		fmt.Fprintf(w, "Google Sheets export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, externalLinkMarkup(
+		"Google Sheet ready:",
 		uploaded.WebViewLink,
 		uploaded.Name,
 	))
