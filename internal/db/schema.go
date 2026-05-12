@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS soldiers (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     display_id   TEXT UNIQUE NOT NULL,
     is_generated BOOLEAN DEFAULT 0,
+    pension_id   TEXT,
+    application_id TEXT,
     first_name   TEXT,
     middle_name  TEXT,
     last_name    TEXT,
@@ -56,6 +58,8 @@ func applySchema(db *DB) error {
 		return err
 	}
 	for _, statement := range []string{
+		`ALTER TABLE soldiers ADD COLUMN pension_id TEXT`,
+		`ALTER TABLE soldiers ADD COLUMN application_id TEXT`,
 		`ALTER TABLE soldiers ADD COLUMN middle_name TEXT`,
 		`ALTER TABLE soldiers ADD COLUMN rank_in TEXT`,
 		`ALTER TABLE soldiers ADD COLUMN rank_out TEXT`,

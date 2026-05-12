@@ -753,6 +753,25 @@
     timers.set(el, timer);
   }
 
+  async function openExternalLinkInChrome(href) {
+    const params = new URLSearchParams();
+    params.set("target", href);
+    try {
+      const response = await fetch("/open-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: params.toString(),
+      });
+      if (!response.ok) {
+        console.error(await response.text());
+      }
+    } catch (error) {
+      console.error("Failed to open external link", error);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     initializeTabs();
     initializeDraftForms();
@@ -762,6 +781,12 @@
   });
 
   document.addEventListener("click", (event) => {
+    const externalLink = event.target.closest("a[data-open-external]");
+    if (externalLink instanceof HTMLAnchorElement) {
+      event.preventDefault();
+      openExternalLinkInChrome(externalLink.href);
+      return;
+    }
     const imageTrigger = event.target.closest("[data-image-preview]");
     if (imageTrigger) {
       event.preventDefault();

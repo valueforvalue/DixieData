@@ -98,10 +98,13 @@ func TestParseSoldierFormRejectsInvalidMonth(t *testing.T) {
 
 func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(url.Values{
+		"display_id":     {"DXD-00001"},
 		"middle_name":    {"Thomas"},
 		"rank_in":        {"Private"},
 		"rank_out":       {"Captain"},
 		"pension_state":  {"Virginia"},
+		"pension_id":     {"P12345"},
+		"application_id": {"A12345"},
 		"buried_in":      {"Hollywood Cemetery"},
 		"record_type":    {"Service Record", "Burial Ledger"},
 		"record_app_id":  {"APP-1", "APP-2"},
@@ -116,7 +119,7 @@ func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	if soldier.BuriedIn != "Hollywood Cemetery" {
 		t.Fatalf("BuriedIn = %q", soldier.BuriedIn)
 	}
-	if soldier.MiddleName != "Thomas" || soldier.RankIn != "Private" || soldier.RankOut != "Captain" || soldier.PensionState != "Virginia" {
+	if soldier.DisplayID != "DXD-00001" || soldier.MiddleName != "Thomas" || soldier.RankIn != "Private" || soldier.RankOut != "Captain" || soldier.PensionState != "Virginia" || soldier.PensionID != "P12345" || soldier.ApplicationID != "A12345" {
 		t.Fatalf("unexpected parsed fields: %#v", soldier)
 	}
 	if len(soldier.Records) != 2 {
@@ -199,8 +202,32 @@ func TestExportLinkMarkupIncludesFileURL(t *testing.T) {
 	if !strings.Contains(markup, `file:///C:/Development/DixieData/build/bin/DixieData.pdf`) {
 		t.Fatalf("markup missing file URL: %q", markup)
 	}
+	if !strings.Contains(markup, `data-open-external="true"`) {
+		t.Fatalf("markup missing external-link flag: %q", markup)
+	}
 	if !strings.Contains(markup, `C:\Development\DixieData\build\bin\DixieData.pdf`) {
 		t.Fatalf("markup missing display path: %q", markup)
+	}
+}
+
+func TestNormalizeChromeOpenTarget(t *testing.T) {
+	if got, err := normalizeChromeOpenTarget("https://example.com"); err != nil || got != "https://example.com" {
+		t.Fatalf("https target = %q, %v", got, err)
+	}
+	if got, err := normalizeChromeOpenTarget(`C:\Users\value\OneDrive\Documents\CSA-000226.pdf`); err != nil || got != "file:///C:/Users/value/OneDrive/Documents/CSA-000226.pdf" {
+		t.Fatalf("file target = %q, %v", got, err)
+	}
+	if _, err := normalizeChromeOpenTarget("not-a-link"); err == nil {
+		t.Fatal("expected invalid target error")
+	}
+}
+
+func TestIsFileOpenTarget(t *testing.T) {
+	if !isFileOpenTarget("file:///C:/Users/value/OneDrive/Documents/CSA-000226.pdf") {
+		t.Fatal("expected file URL to use system opener")
+	}
+	if isFileOpenTarget("https://example.com") {
+		t.Fatal("expected web URL to stay on Chrome path")
 	}
 }
 
@@ -308,6 +335,9 @@ func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
 	if len(soldier.Images) != 2 {
 		t.Fatalf("images len = %d, want 2", len(soldier.Images))
 	}
+	if soldier.Images[0].FileName != "CSA-TEST-img-001.jpg" || soldier.Images[1].FileName != "CSA-TEST-img-002.png" {
+		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
+	}
 }
 
 func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
@@ -350,6 +380,9 @@ func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
 	}
 	if len(soldier.Images) != 1 {
 		t.Fatalf("images len = %d, want 1", len(soldier.Images))
+	}
+	if soldier.Images[0].FileName != "CSA-HEADER-img-001.jpeg" {
+		t.Fatalf("stored image name = %q", soldier.Images[0].FileName)
 	}
 }
 
@@ -398,6 +431,9 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	if len(soldier.Images) != 2 {
 		t.Fatalf("images len = %d, want 2", len(soldier.Images))
 	}
+	if soldier.Images[0].FileName != "CSA-NATIVE-img-001.jpeg" || soldier.Images[1].FileName != "CSA-NATIVE-img-002.png" {
+		t.Fatalf("unexpected imported image names: %#v", soldier.Images)
+	}
 	for _, image := range soldier.Images {
 		fullPath := filepath.Join(dataDir, filepath.FromSlash(image.FilePath))
 		info, err := os.Stat(fullPath)
@@ -407,6 +443,23 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 		if info.Size() == 0 {
 			t.Fatalf("copied file %s is empty", fullPath)
 		}
+	}
+}
+
+func TestNextStoredImageSequence(t *testing.T) {
+	recordDir := t.TempDir()
+	for _, name := range []string{"DXD-00001-img-001.jpg", "DXD-00001-img-003.png", "legacy-file-name.jpeg"} {
+		if err := os.WriteFile(filepath.Join(recordDir, name), []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile %s: %v", name, err)
+		}
+	}
+
+	next, err := nextStoredImageSequence(recordDir, "DXD-00001")
+	if err != nil {
+		t.Fatalf("nextStoredImageSequence: %v", err)
+	}
+	if next != 4 {
+		t.Fatalf("next sequence = %d, want 4", next)
 	}
 }
 

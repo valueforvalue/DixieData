@@ -18,7 +18,7 @@ func newTestDB(t *testing.T) *db.DB {
 	return d
 }
 
-func TestSoldierService_CreateWithCSAID(t *testing.T) {
+func TestSoldierService_CreateWithGeneratedID(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 
@@ -32,8 +32,8 @@ func TestSoldierService_CreateWithCSAID(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if s.DisplayID != "CSA-000001" {
-		t.Errorf("expected CSA-000001, got %s", s.DisplayID)
+	if s.DisplayID != "DXD-00001" {
+		t.Errorf("expected DXD-00001, got %s", s.DisplayID)
 	}
 	if !s.IsGenerated {
 		t.Error("expected IsGenerated=true")
@@ -93,12 +93,14 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	svc := NewSoldierService(d)
 
 	created, err := svc.Create(models.Soldier{
-		FirstName:    "John",
-		MiddleName:   "Bell",
-		LastName:     "Hood",
-		RankIn:       "Colonel",
-		RankOut:      "Lieutenant General",
-		PensionState: "Texas",
+		PensionID:     "P12345",
+		ApplicationID: "A12345",
+		FirstName:     "John",
+		MiddleName:    "Bell",
+		LastName:      "Hood",
+		RankIn:        "Colonel",
+		RankOut:       "Lieutenant General",
+		PensionState:  "Texas",
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -108,7 +110,7 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.MiddleName != "Bell" || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" {
+	if got.MiddleName != "Bell" || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" {
 		t.Fatalf("unexpected new fields: %#v", got)
 	}
 	if got.Rank != "Lieutenant General" {
@@ -135,7 +137,7 @@ func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.MiddleName != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" {
+	if got.MiddleName != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" {
 		t.Fatalf("expected empty strings for NULL fields, got %#v", got)
 	}
 }

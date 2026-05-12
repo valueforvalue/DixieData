@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
@@ -179,17 +180,20 @@ templ SoldierDetail(s models.Soldier) {
 					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
 				</div>
 				<dl class="grid grid-cols-2 gap-2 text-sm">
+					<dt class="text-slate-500">Record ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
 					<dt class="text-slate-500">Middle Name</dt><dd>{ emptyDetail(s.MiddleName) }</dd>
 					<dt class="text-slate-500">Rank In</dt><dd>{ emptyDetail(s.RankIn) }</dd>
 					<dt class="text-slate-500">Rank Out</dt><dd>{ emptyDetail(detailDisplayRank(s)) }</dd>
 					<dt class="text-slate-500">Unit</dt><dd>{ s.Unit }</dd>
 					<dt class="text-slate-500">Pension State</dt><dd>{ emptyDetail(s.PensionState) }</dd>
+					<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
+					<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
 					<dt class="text-slate-500">Death</dt><dd>{ deathDate(s) }</dd>
 					<dt class="text-slate-500">Birth Info</dt><dd>{ s.BirthInfo }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
 				</dl>
 				if s.Notes != "" {
-					<p class="mt-4 text-sm text-slate-600">{ s.Notes }</p>
+					@LinkedText(s.Notes, "mt-4 text-sm text-slate-600 leading-6")
 				}
 				<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.75)] p-4">
 					<div class="flex flex-wrap gap-3">
@@ -212,7 +216,7 @@ templ SoldierDetail(s models.Soldier) {
 								if r.AppID != "" {
 									<span class="ml-2 text-slate-500">App: { r.AppID }</span>
 								}
-								<p class="text-slate-600 mt-2 leading-6">{ r.Details }</p>
+								@LinkedText(r.Details, "text-slate-600 mt-2 leading-6")
 							</div>
 						}
 					</section>
@@ -389,6 +393,74 @@ func detailDisplayRank(s models.Soldier) string {
 		return trimmed
 	}
 	return strings.TrimSpace(s.RankIn)
+}
+
+var linkifiedURLPattern = regexp.MustCompile(`https?://[^\s<]+`)
+
+type textSegment struct {
+	Text string
+	Href string
+}
+
+templ LinkedText(text string, className string) {
+	<div class={ className }>
+		for lineIndex, line := range linkifiedLines(text) {
+			if lineIndex > 0 {
+				<br/>
+			}
+			for _, segment := range line {
+				if segment.Href != "" {
+					<a href={ templ.SafeURL(segment.Href) } data-open-external="true" target="_blank" rel="noreferrer noopener" class="text-[#7b1e2b] underline underline-offset-2 break-all">{ segment.Text }</a>
+				} else {
+					{ segment.Text }
+				}
+			}
+		}
+	</div>
+}
+
+func linkifiedLines(text string) [][]textSegment {
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	result := make([][]textSegment, 0, len(lines))
+	for _, line := range lines {
+		result = append(result, linkifiedSegments(line))
+	}
+	return result
+}
+
+func linkifiedSegments(text string) []textSegment {
+	matches := linkifiedURLPattern.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return []textSegment{{Text: text}}
+	}
+
+	segments := make([]textSegment, 0, len(matches)*2+1)
+	cursor := 0
+	for _, match := range matches {
+		start := match[0]
+		end := match[1]
+		if start > cursor {
+			segments = append(segments, textSegment{Text: text[cursor:start]})
+		}
+
+		urlText, suffix := splitURLSuffix(text[start:end])
+		if urlText != "" {
+			segments = append(segments, textSegment{Text: urlText, Href: urlText})
+		}
+		if suffix != "" {
+			segments = append(segments, textSegment{Text: suffix})
+		}
+		cursor = end
+	}
+	if cursor < len(text) {
+		segments = append(segments, textSegment{Text: text[cursor:]})
+	}
+	return segments
+}
+
+func splitURLSuffix(value string) (string, string) {
+	trimmed := strings.TrimRight(value, ".,;:!?)]}")
+	return trimmed, value[len(trimmed):]
 }
 
 func imageURL(filePath string) templ.SafeURL {

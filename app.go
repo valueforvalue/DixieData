@@ -14,7 +14,9 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -115,6 +117,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/integrations/google/calendar/unsync", a.handleGoogleCalendarUnsync)
 	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
 	mux.HandleFunc("/images/rotate", a.handleImageRotate)
+	mux.HandleFunc("/open-link", a.handleOpenLink)
 	mux.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(a.dataDir))))
 
 	a.mux = mux
@@ -334,14 +337,24 @@ func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	templates.EntryForm(models.Soldier{}, false).Render(r.Context(), w)
+	defaults, err := a.newSoldierDefaults()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.EntryForm(defaults, false).Render(r.Context(), w)
 }
 
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 	s, err := parseSoldierForm(r, 0)
 	if err != nil {
+		defaults, defaultsErr := a.newSoldierDefaults()
+		if defaultsErr != nil {
+			http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusBadRequest)
-		templates.EntryFormWithError(models.Soldier{}, false, err.Error()).Render(r.Context(), w)
+		templates.EntryFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
 		return
 	}
 
@@ -1096,24 +1109,34 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 	}
 
 	return models.Soldier{
-		ID:           id,
-		DisplayID:    r.FormValue("display_id"),
-		FirstName:    r.FormValue("first_name"),
-		MiddleName:   r.FormValue("middle_name"),
-		LastName:     r.FormValue("last_name"),
-		Rank:         r.FormValue("rank_out"),
-		RankIn:       r.FormValue("rank_in"),
-		RankOut:      r.FormValue("rank_out"),
-		Unit:         r.FormValue("unit"),
-		PensionState: r.FormValue("pension_state"),
-		BirthInfo:    r.FormValue("birth_info"),
-		BuriedIn:     r.FormValue("buried_in"),
-		Notes:        r.FormValue("notes"),
-		DeathYear:    deathYear,
-		DeathMonth:   deathMonth,
-		DeathDay:     deathDay,
-		Records:      parseRecordInputs(r),
+		ID:            id,
+		DisplayID:     r.FormValue("display_id"),
+		PensionID:     r.FormValue("pension_id"),
+		ApplicationID: r.FormValue("application_id"),
+		FirstName:     r.FormValue("first_name"),
+		MiddleName:    r.FormValue("middle_name"),
+		LastName:      r.FormValue("last_name"),
+		Rank:          r.FormValue("rank_out"),
+		RankIn:        r.FormValue("rank_in"),
+		RankOut:       r.FormValue("rank_out"),
+		Unit:          r.FormValue("unit"),
+		PensionState:  r.FormValue("pension_state"),
+		BirthInfo:     r.FormValue("birth_info"),
+		BuriedIn:      r.FormValue("buried_in"),
+		Notes:         r.FormValue("notes"),
+		DeathYear:     deathYear,
+		DeathMonth:    deathMonth,
+		DeathDay:      deathDay,
+		Records:       parseRecordInputs(r),
 	}, nil
+}
+
+func (a *App) newSoldierDefaults() (models.Soldier, error) {
+	displayID, err := a.database.NextDXDID()
+	if err != nil {
+		return models.Soldier{}, err
+	}
+	return models.Soldier{DisplayID: displayID}, nil
 }
 
 func parseOptionalInt(value, field string) (int, error) {
@@ -1263,7 +1286,7 @@ func parseRecordInputs(r *http.Request) []models.Record {
 func exportLinkMarkup(label, path string) string {
 	fileURL := "file:///" + strings.TrimPrefix(filepath.ToSlash(path), "/")
 	return fmt.Sprintf(
-		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">%s <a href="%s" class="pill-link" target="_blank" rel="noreferrer">%s</a></div>`,
+		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">%s <a href="%s" data-open-external="true" class="pill-link" target="_blank" rel="noreferrer">%s</a></div>`,
 		html.EscapeString(label),
 		html.EscapeString(fileURL),
 		html.EscapeString(path),
@@ -1272,11 +1295,92 @@ func exportLinkMarkup(label, path string) string {
 
 func externalLinkMarkup(label, href, text string) string {
 	return fmt.Sprintf(
-		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">%s <a href="%s" class="pill-link" target="_blank" rel="noreferrer">%s</a></div>`,
+		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">%s <a href="%s" data-open-external="true" class="pill-link" target="_blank" rel="noreferrer">%s</a></div>`,
 		html.EscapeString(label),
 		html.EscapeString(href),
 		html.EscapeString(text),
 	)
+}
+
+func (a *App) handleOpenLink(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	target, err := normalizeChromeOpenTarget(r.FormValue("target"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := openLinkTarget(target); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func normalizeChromeOpenTarget(target string) (string, error) {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return "", errors.New("missing link target")
+	}
+	if strings.HasPrefix(strings.ToLower(target), "http://") || strings.HasPrefix(strings.ToLower(target), "https://") || strings.HasPrefix(strings.ToLower(target), "file:///") {
+		return target, nil
+	}
+	if filepath.IsAbs(target) {
+		return "file:///" + strings.TrimPrefix(filepath.ToSlash(target), "/"), nil
+	}
+	parsed, err := url.Parse(target)
+	if err == nil && parsed.Scheme != "" {
+		return target, nil
+	}
+	return "", fmt.Errorf("unsupported link target: %s", target)
+}
+
+func openLinkInChrome(target string) error {
+	chromePath, err := findChromeExecutable()
+	if err != nil {
+		return err
+	}
+	return exec.Command(chromePath, "--new-tab", target).Start()
+}
+
+func openLinkTarget(target string) error {
+	if isFileOpenTarget(target) {
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", target).Start()
+	}
+	return openLinkInChrome(target)
+}
+
+func isFileOpenTarget(target string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(target)), "file:///")
+}
+
+func findChromeExecutable() (string, error) {
+	candidates := []string{
+		filepath.Join(os.Getenv("ProgramFiles"), "Google", "Chrome", "Application", "chrome.exe"),
+		filepath.Join(os.Getenv("ProgramFiles(x86)"), "Google", "Chrome", "Application", "chrome.exe"),
+		filepath.Join(os.Getenv("LocalAppData"), "Google", "Chrome", "Application", "chrome.exe"),
+	}
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate) == "" {
+			continue
+		}
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate, nil
+		}
+	}
+	if path, err := exec.LookPath("chrome.exe"); err == nil {
+		return path, nil
+	}
+	if path, err := exec.LookPath("chrome"); err == nil {
+		return path, nil
+	}
+	return "", errors.New("Google Chrome was not found")
 }
 
 func (a *App) reloadServices() error {
@@ -1369,9 +1473,14 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 	if err := os.MkdirAll(recordDir, 0o755); err != nil {
 		return fmt.Errorf("create image directory: %w", err)
 	}
+	namePrefix := filepath.Base(relativeDir)
+	nextSequence, err := nextStoredImageSequence(recordDir, namePrefix)
+	if err != nil {
+		return fmt.Errorf("prepare image filenames: %w", err)
+	}
 
 	var issues []string
-	for index, fileHeader := range r.MultipartForm.File["images"] {
+	for _, fileHeader := range r.MultipartForm.File["images"] {
 		if fileHeader == nil || fileHeader.Filename == "" {
 			continue
 		}
@@ -1380,7 +1489,7 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 			continue
 		}
 
-		storedName := fmt.Sprintf("%d-%02d-%s", time.Now().UnixNano(), index+1, sanitizeUploadFileName(fileHeader.Filename))
+		storedName := standardizedImageFileName(namePrefix, nextSequence, fileHeader.Filename)
 		absolutePath := filepath.Join(recordDir, storedName)
 		relativePath := filepath.Join(relativeDir, storedName)
 
@@ -1393,6 +1502,7 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 			issues = append(issues, err.Error())
 			continue
 		}
+		nextSequence++
 	}
 
 	if len(issues) > 0 {
@@ -1406,10 +1516,15 @@ func (a *App) importImagePaths(soldier models.Soldier, paths []string) (int, err
 	if err := os.MkdirAll(recordDir, 0o755); err != nil {
 		return 0, fmt.Errorf("create image directory: %w", err)
 	}
+	namePrefix := filepath.Base(relativeDir)
+	nextSequence, err := nextStoredImageSequence(recordDir, namePrefix)
+	if err != nil {
+		return 0, fmt.Errorf("prepare image filenames: %w", err)
+	}
 
 	imported := 0
 	var issues []string
-	for index, sourcePath := range paths {
+	for _, sourcePath := range paths {
 		sourcePath = strings.TrimSpace(sourcePath)
 		if sourcePath == "" {
 			continue
@@ -1429,7 +1544,7 @@ func (a *App) importImagePaths(soldier models.Soldier, paths []string) (int, err
 			continue
 		}
 
-		storedName := fmt.Sprintf("%d-%02d-%s", time.Now().UnixNano(), index+1, sanitizeUploadFileName(fileName))
+		storedName := standardizedImageFileName(namePrefix, nextSequence, fileName)
 		absolutePath := filepath.Join(recordDir, storedName)
 		relativePath := filepath.Join(relativeDir, storedName)
 
@@ -1443,6 +1558,7 @@ func (a *App) importImagePaths(soldier models.Soldier, paths []string) (int, err
 			continue
 		}
 		imported++
+		nextSequence++
 	}
 
 	if len(issues) > 0 {
@@ -1501,29 +1617,61 @@ func copyImageFile(sourcePath, destination string) error {
 	return nil
 }
 
-func sanitizeUploadFileName(name string) string {
-	base := filepath.Base(strings.TrimSpace(name))
-	if base == "." || base == "" {
-		return "upload-image"
+func standardizedImageFileName(prefix string, sequence int, originalName string) string {
+	return fmt.Sprintf("%s-img-%03d%s", strings.TrimSpace(prefix), sequence, normalizedImageExtension(originalName))
+}
+
+func nextStoredImageSequence(recordDir, prefix string) (int, error) {
+	entries, err := os.ReadDir(recordDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 1, nil
+		}
+		return 0, err
 	}
 
-	var builder strings.Builder
-	for _, r := range base {
-		switch {
-		case (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
-			builder.WriteRune(r)
-		case r == '.' || r == '-' || r == '_':
-			builder.WriteRune(r)
-		default:
-			builder.WriteRune('-')
+	maxSequence := 0
+	patternPrefix := prefix + "-img-"
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasPrefix(name, patternPrefix) {
+			continue
+		}
+		base := strings.TrimSuffix(name, filepath.Ext(name))
+		sequenceText := strings.TrimPrefix(base, patternPrefix)
+		sequence, err := strconv.Atoi(sequenceText)
+		if err != nil {
+			continue
+		}
+		if sequence > maxSequence {
+			maxSequence = sequence
 		}
 	}
+	return maxSequence + 1, nil
+}
 
-	safe := strings.Trim(builder.String(), "-")
-	if safe == "" {
-		return "upload-image"
+func normalizedImageExtension(name string) string {
+	switch strings.ToLower(filepath.Ext(strings.TrimSpace(name))) {
+	case ".jpg":
+		return ".jpg"
+	case ".jpeg":
+		return ".jpeg"
+	case ".png":
+		return ".png"
+	case ".gif":
+		return ".gif"
+	case ".webp":
+		return ".webp"
+	case ".bmp":
+		return ".bmp"
+	case ".svg":
+		return ".svg"
+	default:
+		return ".img"
 	}
-	return safe
 }
 
 func isAllowedImageFile(name string) bool {

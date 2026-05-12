@@ -80,8 +80,8 @@ func TestExportService_ExportCSV(t *testing.T) {
 	// Verify header contains expected columns
 	expected := map[string]bool{
 		"id": true, "display_id": true, "first_name": true,
-		"middle_name": true, "last_name": true, "rank_in": true,
-		"rank_out": true, "pension_state": true, "death_year": true, "buried_in": true,
+		"pension_id": true, "application_id": true, "middle_name": true,
+		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "death_year": true, "buried_in": true,
 	}
 	for _, col := range header {
 		delete(expected, col)
@@ -152,7 +152,8 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 		Rank:      "General",
 		Unit:      "Army of Northern Virginia",
 		BuriedIn:  "Hollywood Cemetery",
-		Records:   []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880."}},
+		Notes:     "Reference https://example.com/notes",
+		Records:   []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
 		Images:    []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
 	})
 	if err != nil {
@@ -175,6 +176,12 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	}
 	if !strings.Contains(text, "Hollywood Cemetery") {
 		t.Fatalf("pdf missing buried-in text")
+	}
+	if !strings.Contains(text, "https://example.com/notes") || !strings.Contains(text, "https://example.com/record") {
+		t.Fatalf("pdf missing expected URL text")
+	}
+	if !strings.Contains(text, "/URI (https://example.com/notes)") || !strings.Contains(text, "/URI (https://example.com/record)") {
+		t.Fatalf("pdf missing expected clickable link annotations")
 	}
 }
 
@@ -220,6 +227,22 @@ func TestImagePathForPDFSkipsUnsupportedFormat(t *testing.T) {
 	}
 	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
 		t.Fatalf("imagePathForPDF returned %q for unsupported format", got)
+	}
+}
+
+func TestPDFTextSegments(t *testing.T) {
+	segments := pdfTextSegments("See https://example.com/test, then http://example.org.")
+	if len(segments) != 6 {
+		t.Fatalf("segment count = %d, want 6", len(segments))
+	}
+	if segments[1].Link != "https://example.com/test" {
+		t.Fatalf("first link = %#v", segments[1])
+	}
+	if segments[2].Text != "," || segments[3].Text != " then " {
+		t.Fatalf("unexpected middle segments: %#v", segments)
+	}
+	if segments[4].Link != "http://example.org" || segments[5].Text != "." {
+		t.Fatalf("unexpected final segments: %#v", segments)
 	}
 }
 

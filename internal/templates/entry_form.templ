@@ -41,9 +41,12 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 		>
 			<div class="grid grid-cols-2 gap-4">
 				<div>
-					<label class="block text-sm text-slate-500 mb-1">Pension/Record ID (leave blank for CSA-ID)</label>
+					<label class="block text-sm text-slate-500 mb-1">Record ID</label>
 					<input type="text" name="display_id" value={ s.DisplayID }
-						class="field-input"/>
+						if !isEdit {
+							readonly
+						}
+						class={ displayIDInputClass(isEdit) }/>
 				</div>
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">First Name</label>
@@ -83,6 +86,16 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 							<option value={ state } if state == s.PensionState { selected }>{ state }</option>
 						}
 					</select>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Pension ID</label>
+					<input type="text" name="pension_id" value={ s.PensionID }
+						class="field-input" placeholder="P12345"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Application ID</label>
+					<input type="text" name="application_id" value={ s.ApplicationID }
+						class="field-input" placeholder="A12345"/>
 				</div>
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">Death Year</label>
@@ -185,6 +198,13 @@ func entryFormPageID(isEdit bool) string {
 		return uiids.PageSoldierEdit
 	}
 	return uiids.PageSoldierNew
+}
+
+func displayIDInputClass(isEdit bool) string {
+	if isEdit {
+		return "field-input"
+	}
+	return "field-input bg-slate-100 text-slate-500"
 }
 
 func pensionStates() []string {
