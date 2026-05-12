@@ -4,10 +4,10 @@ param(
     [long]$Seed = 1865
 )
 
-$ErrorActionPreference = "Stop"
-
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $root
+. (Join-Path $root "build-common.ps1")
+
+Set-DixieDataBuildLocation -Root $root
 
 $releaseDir = Join-Path $root "release"
 $stageDir = Join-Path $releaseDir $ReleaseName
@@ -22,16 +22,9 @@ if (Test-Path $archivePath) {
 
 New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
 
-wails build -clean
+Invoke-DixieDataBuild -Root $root -AllowExampleOAuthDefaults
 
 Copy-Item (Join-Path $root "build\\bin\\*") $stageDir -Recurse -Force
-
-$oauthSource = Join-Path $root "google-oauth-defaults.json"
-if (-not (Test-Path $oauthSource)) {
-    $oauthSource = Join-Path $root "google-oauth-defaults.example.json"
-    Write-Warning "google-oauth-defaults.json was not found in the project root. Bundling the example file instead."
-}
-Copy-Item $oauthSource (Join-Path $stageDir "google-oauth-defaults.json") -Force
 
 $demoDataDir = Join-Path $stageDir ".dixiedata"
 go run .\cmd\seed-data -data-dir $demoDataDir -reset -soldiers $Soldiers -seed $Seed

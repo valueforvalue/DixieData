@@ -3,11 +3,13 @@ package templates
 import (
 	"fmt"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 templ EntryForm(s models.Soldier, isEdit bool) {
 	@Layout(formTitle(isEdit)) {
-		<div class="max-w-2xl mx-auto">
+		<div data-ui-id={ entryFormPageID(isEdit) } class="relative max-w-2xl mx-auto">
+			@SurfaceBadge(entryFormPageID(isEdit))
 			<h2 class="text-2xl gold font-bold mb-6">{ formTitle(isEdit) }</h2>
 			<form
 				if isEdit {
@@ -71,7 +73,8 @@ templ EntryForm(s models.Soldier, isEdit bool) {
 						<input type="text" name="buried_in" value={ s.BuriedIn }
 							class="field-input"/>
 					</div>
-					<div class="col-span-2">
+					<div data-ui-id={ uiids.PanelSoldierFormRecords } class="relative col-span-2">
+						@SurfaceBadge(uiids.PanelSoldierFormRecords)
 						<div class="mb-3 flex items-center justify-between gap-3">
 							<label class="block text-sm text-slate-500">Records</label>
 							<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Record</button>
@@ -91,7 +94,8 @@ templ EntryForm(s models.Soldier, isEdit bool) {
 						<textarea name="notes" rows="4"
 							class="field-input min-h-32">{ s.Notes }</textarea>
 					</div>
-					<div class="col-span-2">
+					<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">
+						@SurfaceBadge(uiids.PanelSoldierFormImages)
 						<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
 						<input type="file" name="images" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*"
 							class="field-input"/>
@@ -126,6 +130,13 @@ func formTitle(isEdit bool) string {
 	return "New Soldier Record"
 }
 
+func entryFormPageID(isEdit bool) string {
+	if isEdit {
+		return uiids.PageSoldierEdit
+	}
+	return uiids.PageSoldierNew
+}
+
 templ RecordInputRow(record models.Record) {
 	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
 		<div class="mb-3 flex items-center justify-between gap-3">
@@ -158,9 +169,11 @@ func formRecords(records []models.Record) []models.Record {
 
 templ ExportView(status models.GoogleStatus) {
 	@Layout("Export") {
-		<div class="mx-auto max-w-2xl space-y-6">
+		<div data-ui-id={ uiids.PageExport } class="relative mx-auto max-w-2xl space-y-6">
+			@SurfaceBadge(uiids.PageExport)
 			<h2 class="text-2xl gold font-bold mb-6">Export Data</h2>
-			<div class="card rounded-3xl p-8 space-y-4">
+			<div data-ui-id={ uiids.PanelExportActions } class="relative card rounded-3xl p-8 space-y-4">
+				@SurfaceBadge(uiids.PanelExportActions)
 				<div class="flex flex-col gap-3">
 					<button hx-post="/export/json" hx-target="#export-status"
 						class="primary-button justify-start text-left">
@@ -190,7 +203,8 @@ templ ExportView(status models.GoogleStatus) {
 				</div>
 				<div id="export-status" class="text-sm text-slate-500"></div>
 			</div>
-			<div class="card rounded-3xl p-8 space-y-4">
+			<div data-ui-id={ uiids.PanelExportGoogle } class="relative card rounded-3xl p-8 space-y-4">
+				@SurfaceBadge(uiids.PanelExportGoogle)
 				<div>
 					<h3 class="text-xl gold font-bold">Google Integration</h3>
 					<p class="mt-2 text-sm text-slate-500">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
@@ -237,9 +251,11 @@ templ ExportView(status models.GoogleStatus) {
 
 templ SettingsView(confirmationWord string) {
 	@Layout("Settings") {
-		<div class="mx-auto max-w-2xl space-y-6">
+		<div data-ui-id={ uiids.PageSettings } class="relative mx-auto max-w-2xl space-y-6">
+			@SurfaceBadge(uiids.PageSettings)
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
-			<div class="card rounded-3xl p-8 space-y-4">
+			<div data-ui-id={ uiids.PanelSettingsInitialize } class="relative card rounded-3xl p-8 space-y-4">
+				@SurfaceBadge(uiids.PanelSettingsInitialize)
 				<div>
 					<h3 class="text-xl gold font-bold">Initialize Data</h3>
 					<p class="mt-2 text-sm text-slate-600">Clear the local archive and rebuild a fresh empty database and folder tree.</p>

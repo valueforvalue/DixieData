@@ -1,0 +1,13 @@
+package templates
+
+templ SurfaceBadge(id string) {
+	if uiDebugEnabled() {
+		<div class="ui-debug-badge" aria-hidden="true">{ id }</div>
+	}
+}
+
+templ InlineSurfaceBadge(id string) {
+	if uiDebugEnabled() {
+		<span class="ui-debug-inline" aria-hidden="true">{ id }</span>
+	}
+}

@@ -1,5 +1,6 @@
 (() => {
   const timers = new WeakMap();
+  const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   const imageViewerState = {
     baseScale: 1,
     zoom: 1,
@@ -126,7 +127,8 @@
     viewer.id = "image-viewer";
     viewer.className = "fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-6";
     viewer.innerHTML = `
-      <div class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-slate-700 bg-slate-950 shadow-2xl">
+      <div data-ui-id="overlay.image.viewer" class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-slate-700 bg-slate-950 shadow-2xl">
+        ${debugSurfaceIDsEnabled() ? '<div class="ui-debug-badge" aria-hidden="true">overlay.image.viewer</div>' : ""}
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4 text-slate-200">
           <div>
             <p data-image-caption class="text-sm font-semibold tracking-[0.14em] text-slate-100"></p>
