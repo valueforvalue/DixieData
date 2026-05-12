@@ -72,6 +72,12 @@ func RecordImageDir(dataDir, displayID string) (string, string) {
 	return filepath.Join(dataDir, relative), relative
 }
 
+func ScratchpadPaths(dataDir, displayID string) (string, string) {
+	safeDisplayID := sanitizePathComponent(displayID)
+	base := filepath.Join(dataDir, "scratchpads")
+	return filepath.Join(base, safeDisplayID+".txt"), filepath.Join(base, safeDisplayID+".json")
+}
+
 func sanitizePathComponent(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

@@ -61,6 +61,24 @@ func TestSoldierService_CreateWithPensionID(t *testing.T) {
 	}
 }
 
+func TestSoldierService_CreateWithExplicitDXDIDMarksGenerated(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	s, err := svc.Create(models.Soldier{
+		DisplayID: "DXD-00001",
+		FirstName: "John",
+		LastName:  "Mosby",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if !s.IsGenerated {
+		t.Fatal("expected IsGenerated=true for DXD IDs")
+	}
+}
+
 func TestSoldierService_GetByID(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)

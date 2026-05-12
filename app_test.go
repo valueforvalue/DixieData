@@ -22,6 +22,18 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
+type scratchpadStub struct {
+	displayID string
+	seed      string
+	err       error
+}
+
+func (s *scratchpadStub) Open(displayID, seed string) error {
+	s.displayID = displayID
+	s.seed = seed
+	return s.err
+}
+
 func TestAppServeHTTPStartupError(t *testing.T) {
 	app := NewApp()
 	app.startupErr = errors.New("startup failed")
@@ -127,6 +139,46 @@ func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	}
 	if soldier.Records[1].RecordType != "Burial Ledger" {
 		t.Fatalf("second record type = %q", soldier.Records[1].RecordType)
+	}
+}
+
+func TestHandleScratchpadOpenLaunchesNativeScratchpad(t *testing.T) {
+	app := NewApp()
+	stub := &scratchpadStub{}
+	app.scratchpads = stub
+
+	req := httptest.NewRequest(http.MethodPost, "/scratchpad/open", strings.NewReader(url.Values{
+		"display_id":      {"DXD-00001"},
+		"scratchpad_seed": {"legacy note"},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.handleScratchpadOpen(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	if stub.displayID != "DXD-00001" || stub.seed != "legacy note" {
+		t.Fatalf("stub got (%q, %q)", stub.displayID, stub.seed)
+	}
+	if !strings.Contains(rec.Body.String(), "DXD-00001") {
+		t.Fatalf("body=%q", rec.Body.String())
+	}
+}
+
+func TestHandleScratchpadOpenRequiresDisplayID(t *testing.T) {
+	app := NewApp()
+	app.scratchpads = &scratchpadStub{}
+
+	req := httptest.NewRequest(http.MethodPost, "/scratchpad/open", strings.NewReader(url.Values{}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.handleScratchpadOpen(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusBadRequest)
 	}
 }
 

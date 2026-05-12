@@ -46,4 +46,3 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launching the app to show surface badges i
 | `page.settings` | page | Settings page |
 | `panel.settings.initialize` | panel | Initialize Data panel |
 | `overlay.image.viewer` | overlay | Full-screen image viewer |
-| `overlay.soldier.scratchpad` | overlay | Floating soldier scratch pad window |

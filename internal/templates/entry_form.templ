@@ -149,10 +149,11 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 						<div class="flex flex-wrap items-center justify-between gap-3">
 							<div>
 								<p class="font-medium text-slate-700">Scratch Pad</p>
-								<p class="mt-1">Open a floating local pad for temporary notes, pasted text, and quick copy work. It is stored per Record ID and stays out of the database.</p>
+								<p class="mt-1">Open a separate native window for temporary notes, pasted text, and quick copy work. It is stored per Record ID outside the database and can stay above other apps when pinned.</p>
 							</div>
 							<button type="button" data-scratchpad-open class="secondary-button">Open Scratch Pad</button>
 						</div>
+						<p data-scratchpad-status class="mt-3 text-xs text-slate-500" aria-live="polite"></p>
 					</div>
 				</div>
 				<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">

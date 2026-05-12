@@ -72,3 +72,24 @@ func TestNextDXDID_NonGeneratedIgnored(t *testing.T) {
 		t.Errorf("expected DXD-00001 (non-generated ignored), got %s", id)
 	}
 }
+
+func TestNextDXDID_UsesExistingDXDIDsWithoutGeneratedFlag(t *testing.T) {
+	d, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer d.Close()
+
+	_, err = d.conn.Exec(`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00007', 0)`)
+	if err != nil {
+		t.Fatalf("insert legacy dxd soldier: %v", err)
+	}
+
+	id, err := d.NextDXDID()
+	if err != nil {
+		t.Fatalf("NextDXDID: %v", err)
+	}
+	if id != "DXD-00008" {
+		t.Fatalf("expected DXD-00008, got %s", id)
+	}
+}

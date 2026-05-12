@@ -13,12 +13,9 @@
     imageId: "",
     imageUrl: "",
   };
-  const scratchpadState = {
-    displayId: "",
-    dragging: false,
-    pinned: true,
-    pointerOffsetX: 0,
-    pointerOffsetY: 0,
+  const textContextMenuState = {
+    target: null,
+    selectionText: "",
   };
 
   function getMethod(el) {
@@ -162,6 +159,171 @@
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  function isTextInputTarget(target) {
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+      return false;
+    }
+    if (target instanceof HTMLTextAreaElement) {
+      return true;
+    }
+    const type = (target.type || "text").toLowerCase();
+    return ["text", "search", "url", "tel", "email", "password", "number"].includes(type);
+  }
+
+  function isEditableTextTarget(target) {
+    return isTextInputTarget(target) || target instanceof HTMLElement && target.isContentEditable;
+  }
+
+  function textSelectionLength(target) {
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      const start = typeof target.selectionStart === "number" ? target.selectionStart : 0;
+      const end = typeof target.selectionEnd === "number" ? target.selectionEnd : 0;
+      return Math.max(0, end - start);
+    }
+    const selection = window.getSelection();
+    return selection ? selection.toString().length : 0;
+  }
+
+  function ensureTextContextMenu() {
+    let menu = document.getElementById("text-context-menu");
+    if (menu) {
+      return menu;
+    }
+
+    menu = document.createElement("div");
+    menu.id = "text-context-menu";
+    menu.className = "fixed hidden min-w-[12rem] rounded-2xl border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-2 shadow-[0_18px_50px_rgba(23,33,43,0.28)]";
+    menu.style.zIndex = "95";
+    menu.innerHTML = `
+      <button type="button" data-text-menu-action="cut" class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-[#22303d] hover:bg-[rgba(36,48,61,0.08)]">Cut</button>
+      <button type="button" data-text-menu-action="copy" class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-[#22303d] hover:bg-[rgba(36,48,61,0.08)]">Copy</button>
+      <button type="button" data-text-menu-action="paste" class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-[#22303d] hover:bg-[rgba(36,48,61,0.08)]">Paste</button>
+      <button type="button" data-text-menu-action="select-all" class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-[#22303d] hover:bg-[rgba(36,48,61,0.08)]">Select All</button>
+    `;
+    document.body.appendChild(menu);
+    return menu;
+  }
+
+  function closeTextContextMenu() {
+    const menu = document.getElementById("text-context-menu");
+    if (menu) {
+      menu.classList.add("hidden");
+    }
+    textContextMenuState.target = null;
+    textContextMenuState.selectionText = "";
+  }
+
+  function updateTextContextMenuState() {
+    const menu = ensureTextContextMenu();
+    const target = textContextMenuState.target;
+    const editable = isEditableTextTarget(target);
+    const selectionLen = target ? textSelectionLength(target) : 0;
+    const canCut = editable && selectionLen > 0 && !target.readOnly && !target.disabled;
+    const canCopy = selectionLen > 0 || !!textContextMenuState.selectionText;
+    const canPaste = editable && !target.readOnly && !target.disabled;
+    const canSelectAll = editable || !!textContextMenuState.selectionText;
+
+    menu.querySelectorAll("[data-text-menu-action]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const action = button.getAttribute("data-text-menu-action");
+      let enabled = false;
+      switch (action) {
+        case "cut":
+          enabled = canCut;
+          break;
+        case "copy":
+          enabled = canCopy;
+          break;
+        case "paste":
+          enabled = canPaste;
+          break;
+        case "select-all":
+          enabled = canSelectAll;
+          break;
+      }
+      button.disabled = !enabled;
+      button.classList.toggle("opacity-50", !enabled);
+      button.classList.toggle("cursor-not-allowed", !enabled);
+    });
+  }
+
+  function openTextContextMenu(target, clientX, clientY) {
+    const menu = ensureTextContextMenu();
+    textContextMenuState.target = target;
+    textContextMenuState.selectionText = (window.getSelection()?.toString() || "").trim();
+    updateTextContextMenuState();
+    menu.classList.remove("hidden");
+
+    const { innerWidth, innerHeight } = window;
+    const rect = menu.getBoundingClientRect();
+    const left = Math.min(clientX, innerWidth - rect.width - 8);
+    const top = Math.min(clientY, innerHeight - rect.height - 8);
+    menu.style.left = `${Math.max(8, left)}px`;
+    menu.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function replaceTextSelection(target, replacement) {
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      const start = typeof target.selectionStart === "number" ? target.selectionStart : target.value.length;
+      const end = typeof target.selectionEnd === "number" ? target.selectionEnd : target.value.length;
+      const value = target.value || "";
+      target.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+      const caret = start + replacement.length;
+      target.setSelectionRange(caret, caret);
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+    if (target instanceof HTMLElement && target.isContentEditable) {
+      document.execCommand("insertText", false, replacement);
+    }
+  }
+
+  async function performTextContextMenuAction(action) {
+    const target = textContextMenuState.target;
+    if (!target) {
+      closeTextContextMenu();
+      return;
+    }
+    if (target instanceof HTMLElement) {
+      target.focus();
+    }
+
+    switch (action) {
+      case "cut":
+        document.execCommand("cut");
+        break;
+      case "copy":
+        document.execCommand("copy");
+        break;
+      case "paste":
+        try {
+          if (navigator.clipboard?.readText) {
+            replaceTextSelection(target, await navigator.clipboard.readText());
+          } else {
+            document.execCommand("paste");
+          }
+        } catch (error) {
+          document.execCommand("paste");
+        }
+        break;
+      case "select-all":
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+          target.select();
+        } else if (target instanceof HTMLElement && target.isContentEditable) {
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          const selection = window.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+        break;
+    }
+
+    closeTextContextMenu();
   }
 
   function ensureImageViewer() {
@@ -480,13 +642,6 @@
         return form;
       }
     }
-    const page = document.querySelector('[data-ui-id="page.soldier.new"], [data-ui-id="page.soldier.edit"]');
-    if (page instanceof HTMLElement) {
-      const form = page.querySelector("form");
-      if (form instanceof HTMLFormElement) {
-        return form;
-      }
-    }
     return null;
   }
 
@@ -499,11 +654,7 @@
     return `dixiedata:scratchpad:${normalizeScratchpadDisplayId(displayId)}`;
   }
 
-  function scratchpadWindowStateKey(displayId) {
-    return `dixiedata:scratchpad-window:${normalizeScratchpadDisplayId(displayId)}`;
-  }
-
-  function loadScratchpadText(displayId) {
+  function loadLegacyScratchpadText(displayId) {
     try {
       return window.localStorage.getItem(scratchpadContentKey(displayId)) || "";
     } catch (error) {
@@ -511,168 +662,29 @@
     }
   }
 
-  function saveScratchpadText(displayId, value) {
-    try {
-      window.localStorage.setItem(scratchpadContentKey(displayId), value || "");
-    } catch (error) {
-    }
-  }
-
-  function loadScratchpadWindowState(displayId) {
-    try {
-      const raw = window.localStorage.getItem(scratchpadWindowStateKey(displayId));
-      if (!raw) {
-        return null;
-      }
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== "object") {
-        return null;
-      }
-      return parsed;
-    } catch (error) {
+  function scratchpadStatusTarget(trigger) {
+    if (!(trigger instanceof HTMLElement)) {
       return null;
     }
-  }
-
-  function saveScratchpadWindowState(displayId, state) {
-    try {
-      window.localStorage.setItem(scratchpadWindowStateKey(displayId), JSON.stringify(state));
-    } catch (error) {
+    const section = trigger.closest("[data-ui-id='panel.soldier.form.scratchpad']");
+    if (!(section instanceof HTMLElement)) {
+      return null;
     }
+    const target = section.querySelector("[data-scratchpad-status]");
+    return target instanceof HTMLElement ? target : null;
   }
 
-  function ensureScratchpadWindow() {
-    let panel = document.getElementById("scratchpad-window");
-    if (panel) {
-      return panel;
-    }
-
-    panel = document.createElement("div");
-    panel.id = "scratchpad-window";
-    panel.setAttribute("data-ui-id", "overlay.soldier.scratchpad");
-    panel.className = "fixed hidden flex-col rounded-[1.7rem] border border-[rgba(141,116,64,0.72)] bg-[rgba(246,241,228,0.98)] shadow-[0_28px_80px_rgba(23,33,43,0.28)]";
-    panel.style.top = "96px";
-    panel.style.left = "96px";
-    panel.style.width = "440px";
-    panel.style.height = "320px";
-    panel.style.resize = "both";
-    panel.style.overflow = "hidden";
-    panel.style.minWidth = "320px";
-    panel.style.minHeight = "220px";
-    panel.innerHTML = `
-      ${debugSurfaceIDsEnabled() ? '<div class="ui-debug-badge" aria-hidden="true">overlay.soldier.scratchpad</div>' : ""}
-      <div data-scratchpad-drag-handle class="flex cursor-move items-center justify-between gap-3 border-b border-[rgba(141,116,64,0.35)] bg-[rgba(36,48,61,0.08)] px-4 py-3">
-        <div>
-          <p data-scratchpad-title class="text-sm font-semibold uppercase tracking-[0.18em] text-[#22303d]">Scratch Pad</p>
-          <p data-scratchpad-subtitle class="mt-1 text-xs text-slate-500"></p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" data-scratchpad-copy class="pill-link">Copy All</button>
-          <button type="button" data-scratchpad-clear class="pill-link">Clear</button>
-          <button type="button" data-scratchpad-pin class="pill-link">Pinned</button>
-          <button type="button" data-scratchpad-close class="pill-link">Close</button>
-        </div>
-      </div>
-      <div class="flex-1 p-3">
-        <textarea data-scratchpad-text class="field-input h-full min-h-0 resize-none" placeholder="Paste temporary notes here..."></textarea>
-      </div>
-      <div class="flex items-center justify-between border-t border-[rgba(141,116,64,0.28)] px-4 py-2 text-xs text-slate-500">
-        <span>Local only. Stored per Record ID outside the database.</span>
-        <span>Drag the header and resize from the bottom-right corner.</span>
-      </div>
-    `;
-    document.body.appendChild(panel);
-
-    if (typeof ResizeObserver === "function") {
-      const resizeObserver = new ResizeObserver(() => {
-        persistScratchpadWindowState();
-      });
-      resizeObserver.observe(panel);
-    }
-
-    return panel;
-  }
-
-  function scratchpadElements() {
-    const panel = ensureScratchpadWindow();
-    return {
-      panel,
-      title: panel.querySelector("[data-scratchpad-title]"),
-      subtitle: panel.querySelector("[data-scratchpad-subtitle]"),
-      textarea: panel.querySelector("[data-scratchpad-text]"),
-      pinButton: panel.querySelector("[data-scratchpad-pin]"),
-    };
-  }
-
-  function applyScratchpadPinnedState() {
-    const { panel, pinButton } = scratchpadElements();
-    panel.style.zIndex = scratchpadState.pinned ? "80" : "45";
-    if (pinButton instanceof HTMLElement) {
-      pinButton.textContent = scratchpadState.pinned ? "Pinned" : "Pin";
-      pinButton.classList.toggle("primary-button", scratchpadState.pinned);
-      pinButton.classList.toggle("pill-link", !scratchpadState.pinned);
-    }
-  }
-
-  function scratchpadWindowStateFromPanel() {
-    const { panel } = scratchpadElements();
-    const rect = panel.getBoundingClientRect();
-    return {
-      left: Math.round(rect.left),
-      top: Math.round(rect.top),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-      pinned: !!scratchpadState.pinned,
-    };
-  }
-
-  function persistScratchpadWindowState() {
-    if (!scratchpadState.displayId) {
+  function setScratchpadStatus(trigger, message, isError = false) {
+    const target = scratchpadStatusTarget(trigger);
+    if (!(target instanceof HTMLElement)) {
       return;
     }
-    const { panel } = scratchpadElements();
-    if (panel.classList.contains("hidden")) {
-      return;
-    }
-    saveScratchpadWindowState(scratchpadState.displayId, scratchpadWindowStateFromPanel());
+    target.textContent = message || "";
+    target.classList.toggle("text-red-700", isError);
+    target.classList.toggle("text-slate-500", !isError);
   }
 
-  function applyScratchpadWindowState(displayId) {
-    const { panel } = scratchpadElements();
-    const saved = loadScratchpadWindowState(displayId) || {};
-    panel.style.left = `${Number.isFinite(saved.left) ? saved.left : 96}px`;
-    panel.style.top = `${Number.isFinite(saved.top) ? saved.top : 96}px`;
-    panel.style.width = `${Number.isFinite(saved.width) ? saved.width : 440}px`;
-    panel.style.height = `${Number.isFinite(saved.height) ? saved.height : 320}px`;
-    scratchpadState.pinned = saved.pinned !== false;
-    applyScratchpadPinnedState();
-  }
-
-  function refreshScratchpadContext(form) {
-    const nextDisplayId = scratchpadDisplayId(form);
-    if (!nextDisplayId || nextDisplayId === scratchpadState.displayId) {
-      return;
-    }
-    const { textarea, title, subtitle } = scratchpadElements();
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      return;
-    }
-    if (scratchpadState.displayId) {
-      saveScratchpadText(scratchpadState.displayId, textarea.value);
-      persistScratchpadWindowState();
-    }
-    scratchpadState.displayId = nextDisplayId;
-    textarea.value = loadScratchpadText(nextDisplayId);
-    if (title) {
-      title.textContent = `Scratch Pad`;
-    }
-    if (subtitle) {
-      subtitle.textContent = `Record ID: ${nextDisplayId}`;
-    }
-    applyScratchpadWindowState(nextDisplayId);
-  }
-
-  function openScratchpad(trigger) {
+  async function openScratchpad(trigger) {
     const form = scratchpadFormFromElement(trigger);
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -682,64 +694,28 @@
       window.alert("A Record ID is required before opening the scratch pad.");
       return;
     }
-    const { panel, textarea, title, subtitle } = scratchpadElements();
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      return;
+    const data = new FormData(form);
+    const legacyText = loadLegacyScratchpadText(displayId);
+    if (legacyText) {
+      data.set("scratchpad_seed", legacyText);
     }
-    scratchpadState.displayId = displayId;
-    applyScratchpadWindowState(displayId);
-    textarea.value = loadScratchpadText(displayId);
-    if (title) {
-      title.textContent = "Scratch Pad";
-    }
-    if (subtitle) {
-      subtitle.textContent = `Record ID: ${displayId}`;
-    }
-    panel.classList.remove("hidden");
-    panel.classList.add("flex");
-    applyScratchpadPinnedState();
-    textarea.focus();
-  }
-
-  function closeScratchpad() {
-    const { panel, textarea } = scratchpadElements();
-    if (textarea instanceof HTMLTextAreaElement && scratchpadState.displayId) {
-      saveScratchpadText(scratchpadState.displayId, textarea.value);
-      persistScratchpadWindowState();
-    }
-    scratchpadState.dragging = false;
-    panel.classList.add("hidden");
-    panel.classList.remove("flex");
-  }
-
-  async function copyScratchpadText() {
-    const { textarea } = scratchpadElements();
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      return;
-    }
-    const value = textarea.value || "";
+    setBusyState(trigger, true);
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(value);
-        return;
-      }
+      const response = await fetch("/scratchpad/open", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-Requested-With": "DixieData"
+        },
+        body: toSearchParams(data).toString(),
+      });
+      const message = await response.text();
+      setScratchpadStatus(trigger, message || "Scratch pad opened.", !response.ok);
     } catch (error) {
+      setScratchpadStatus(trigger, "Scratch pad failed to open.", true);
+    } finally {
+      setBusyState(trigger, false);
     }
-    textarea.focus();
-    textarea.select();
-    document.execCommand("copy");
-  }
-
-  function clearScratchpadText() {
-    const { textarea } = scratchpadElements();
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      return;
-    }
-    textarea.value = "";
-    if (scratchpadState.displayId) {
-      saveScratchpadText(scratchpadState.displayId, "");
-    }
-    textarea.focus();
   }
 
   function toggleCheckboxGroup(group, checked) {
@@ -1071,6 +1047,15 @@
   });
 
   document.addEventListener("click", (event) => {
+    const textMenuAction = event.target.closest("[data-text-menu-action]");
+    if (textMenuAction instanceof HTMLButtonElement) {
+      event.preventDefault();
+      performTextContextMenuAction(textMenuAction.getAttribute("data-text-menu-action"));
+      return;
+    }
+    if (!event.target.closest("#text-context-menu")) {
+      closeTextContextMenu();
+    }
     const externalLink = event.target.closest("a[data-open-external]");
     if (externalLink instanceof HTMLAnchorElement) {
       event.preventDefault();
@@ -1092,28 +1077,6 @@
     if (scratchpadOpen) {
       event.preventDefault();
       openScratchpad(scratchpadOpen);
-      return;
-    }
-    if (event.target.closest("[data-scratchpad-copy]")) {
-      event.preventDefault();
-      copyScratchpadText();
-      return;
-    }
-    if (event.target.closest("[data-scratchpad-clear]")) {
-      event.preventDefault();
-      clearScratchpadText();
-      return;
-    }
-    if (event.target.closest("[data-scratchpad-pin]")) {
-      event.preventDefault();
-      scratchpadState.pinned = !scratchpadState.pinned;
-      applyScratchpadPinnedState();
-      persistScratchpadWindowState();
-      return;
-    }
-    if (event.target.closest("[data-scratchpad-close]")) {
-      event.preventDefault();
-      closeScratchpad();
       return;
     }
     if (event.target.closest("[data-image-rotate-ccw]")) {
@@ -1213,29 +1176,12 @@
   document.addEventListener("input", triggerInputRequest);
   document.addEventListener("change", triggerInputRequest);
   document.addEventListener("input", (event) => {
-    const field = event.target;
-    if (field instanceof HTMLInputElement && field.name === "display_id") {
-      const form = field.closest("form");
-      refreshScratchpadContext(form);
-      return;
-    }
-    if (field instanceof HTMLTextAreaElement && field.hasAttribute("data-scratchpad-text") && scratchpadState.displayId) {
-      saveScratchpadText(scratchpadState.displayId, field.value);
-    }
-  });
-  document.addEventListener("input", (event) => {
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       persistDraftForForm(form);
     }
   });
   document.addEventListener("change", (event) => {
-    const field = event.target;
-    if (field instanceof HTMLInputElement && field.name === "display_id") {
-      const form = field.closest("form");
-      refreshScratchpadContext(form);
-      return;
-    }
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       persistDraftForForm(form);
@@ -1250,22 +1196,27 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      closeTextContextMenu();
       closeImageViewer();
     }
   });
-  document.addEventListener("mousedown", (event) => {
-    const scratchpadHandle = event.target.closest("[data-scratchpad-drag-handle]");
-    if (scratchpadHandle instanceof HTMLElement) {
-      const { panel } = scratchpadElements();
-      if (!panel.classList.contains("hidden")) {
-        const rect = panel.getBoundingClientRect();
-        scratchpadState.dragging = true;
-        scratchpadState.pointerOffsetX = event.clientX - rect.left;
-        scratchpadState.pointerOffsetY = event.clientY - rect.top;
-        event.preventDefault();
+  document.addEventListener("contextmenu", (event) => {
+    const editableTarget = event.target.closest("input, textarea, [contenteditable='true'], [contenteditable=''], [contenteditable='plaintext-only']");
+    const hasTextSelection = (window.getSelection()?.toString() || "").trim() !== "";
+    if (!(editableTarget instanceof HTMLElement) && !hasTextSelection) {
+      closeTextContextMenu();
+      return;
+    }
+    if (editableTarget instanceof HTMLElement && !isEditableTextTarget(editableTarget)) {
+      if (!hasTextSelection) {
+        closeTextContextMenu();
         return;
       }
     }
+    event.preventDefault();
+    openTextContextMenu(editableTarget instanceof HTMLElement ? editableTarget : document.activeElement, event.clientX, event.clientY);
+  });
+  document.addEventListener("mousedown", (event) => {
     const stage = event.target.closest("[data-image-stage]");
     if (!(stage instanceof HTMLElement) || imageViewerState.zoom <= 1) {
       return;
@@ -1277,12 +1228,6 @@
     updateImageViewerTransform();
   });
   document.addEventListener("mousemove", (event) => {
-    if (scratchpadState.dragging) {
-      const { panel } = scratchpadElements();
-      panel.style.left = `${event.clientX - scratchpadState.pointerOffsetX}px`;
-      panel.style.top = `${event.clientY - scratchpadState.pointerOffsetY}px`;
-      return;
-    }
     if (!imageViewerState.dragging) {
       return;
     }
@@ -1293,18 +1238,12 @@
     updateImageViewerTransform();
   });
   document.addEventListener("mouseup", () => {
-    if (scratchpadState.dragging) {
-      scratchpadState.dragging = false;
-      persistScratchpadWindowState();
-    }
     stopImageViewerDrag();
   });
   document.addEventListener("mouseleave", () => {
-    scratchpadState.dragging = false;
     stopImageViewerDrag();
   });
   window.addEventListener("blur", () => {
-    scratchpadState.dragging = false;
     stopImageViewerDrag();
   });
   window.addEventListener("resize", () => {
@@ -1312,7 +1251,6 @@
     if (viewer && !viewer.classList.contains("hidden")) {
       resetImageViewerTransform();
     }
-    persistScratchpadWindowState();
   });
   document.addEventListener(
     "wheel",

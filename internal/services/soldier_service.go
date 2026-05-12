@@ -32,8 +32,8 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 			return nil, err
 		}
 		soldier.DisplayID = id
-		soldier.IsGenerated = true
 	}
+	soldier.IsGenerated = isGeneratedDisplayID(soldier.DisplayID)
 
 	soldier.Rank = canonicalRank(soldier)
 
@@ -61,6 +61,18 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 		return nil, err
 	}
 	return &soldier, nil
+}
+
+func isGeneratedDisplayID(displayID string) bool {
+	if !strings.HasPrefix(displayID, "DXD-") || len(displayID) != len("DXD-00000") {
+		return false
+	}
+	for _, r := range displayID[len("DXD-"):] {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
