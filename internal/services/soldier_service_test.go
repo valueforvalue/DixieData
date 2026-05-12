@@ -190,6 +190,45 @@ func TestSoldierService_Delete(t *testing.T) {
 	}
 }
 
+func TestSoldierService_DeleteImages(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Mosby"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "front.png", `images\mosby\front.png`, "Front"); err != nil {
+		t.Fatalf("AddImage front: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "back.png", `images\mosby\back.png`, "Back"); err != nil {
+		t.Fatalf("AddImage back: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(got.Images) != 2 {
+		t.Fatalf("images len = %d, want 2", len(got.Images))
+	}
+
+	if err := svc.DeleteImages(created.ID, []int64{got.Images[0].ID}); err != nil {
+		t.Fatalf("DeleteImages: %v", err)
+	}
+
+	updated, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID after delete images: %v", err)
+	}
+	if len(updated.Images) != 1 {
+		t.Fatalf("images len = %d, want 1", len(updated.Images))
+	}
+	if updated.Images[0].FileName != "back.png" && updated.Images[0].FileName != "front.png" {
+		t.Fatalf("remaining image = %#v", updated.Images[0])
+	}
+}
+
 func TestSoldierService_List(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)

@@ -202,6 +202,26 @@ func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 	}
 }
 
+func TestImagePathForPDFSkipsEmptyFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "empty.jpg")
+	if err := os.WriteFile(path, nil, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
+		t.Fatalf("imagePathForPDF returned %q for empty file", got)
+	}
+}
+
+func TestImagePathForPDFSkipsUnsupportedFormat(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "portrait.webp")
+	if err := os.WriteFile(path, []byte("not-a-pdf-image"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
+		t.Fatalf("imagePathForPDF returned %q for unsupported format", got)
+	}
+}
+
 func TestExportService_ExportICalendar(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
