@@ -130,6 +130,12 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 					</select>
 				</div>
 				<div>
+					<label class="block text-sm text-slate-500 mb-1">Prefix</label>
+					<input type="text" name="prefix" value={ s.Prefix }
+						list="prefix-suggestions"
+						class="field-input" placeholder="Capt."/>
+				</div>
+				<div>
 					<label class="block text-sm text-slate-500 mb-1">First Name</label>
 					<input type="text" name="first_name" value={ s.FirstName }
 						class="field-input"/>
@@ -143,6 +149,12 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 					<label class="block text-sm text-slate-500 mb-1">Last Name</label>
 					<input type="text" name="last_name" value={ s.LastName }
 						class="field-input"/>
+				</div>
+				<div>
+					<label class="block text-sm text-slate-500 mb-1">Suffix</label>
+					<input type="text" name="suffix" value={ s.Suffix }
+						list="suffix-suggestions"
+						class="field-input" placeholder="Jr."/>
 				</div>
 				<div data-soldier-only-field>
 					<label class="block text-sm text-slate-500 mb-1">Rank In</label>
@@ -295,6 +307,8 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 			@SuggestionDatalist("rank-in-suggestions", suggestions.RankIn)
 			@SuggestionDatalist("rank-out-suggestions", suggestions.RankOut)
 			@SuggestionDatalist("unit-suggestions", suggestions.Unit)
+			@SuggestionDatalist("prefix-suggestions", suggestions.Prefix)
+			@SuggestionDatalist("suffix-suggestions", suggestions.Suffix)
 			@SuggestionDatalist("pension-state-suggestions", suggestions.PensionState)
 			@SuggestionDatalist("buried-in-suggestions", suggestions.BuriedIn)
 			@SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHomeName)
@@ -433,8 +447,8 @@ func entryTypeLabel(entryType string) string {
 }
 
 func spouseCandidateLabel(s models.Soldier) string {
-	label := strings.TrimSpace(s.LastName + ", " + s.FirstName)
-	if label == "," || label == "" {
+	label := strings.TrimSpace(s.GetFullName())
+	if label == "" {
 		label = strings.TrimSpace(s.DisplayID)
 	}
 	if strings.TrimSpace(s.DisplayID) == "" {
@@ -526,7 +540,7 @@ templ InitialSetupView(form models.InitialSetupForm) {
 }
 
 func mergeReviewDisplayName(soldier models.Soldier) string {
-	name := strings.TrimSpace(strings.TrimSpace(soldier.FirstName + " " + soldier.MiddleName + " " + soldier.LastName))
+	name := strings.TrimSpace(soldier.GetFullName())
 	if name == "" {
 		return soldier.DisplayID
 	}

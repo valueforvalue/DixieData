@@ -11,9 +11,11 @@ type Soldier struct {
 	IsGenerated           bool     `json:"is_generated"`
 	PensionID             string   `json:"pension_id"`
 	ApplicationID         string   `json:"application_id"`
+	Prefix                string   `json:"prefix"`
 	FirstName             string   `json:"first_name"`
 	MiddleName            string   `json:"middle_name"`
 	LastName              string   `json:"last_name"`
+	Suffix                string   `json:"suffix"`
 	Rank                  string   `json:"rank"`
 	RankIn                string   `json:"rank_in"`
 	RankOut               string   `json:"rank_out"`
@@ -69,6 +71,8 @@ type SoldierFormSuggestions struct {
 	RankIn              []string
 	RankOut             []string
 	Unit                []string
+	Prefix              []string
+	Suffix              []string
 	PensionState        []string
 	BuriedIn            []string
 	ConfederateHomeName []string

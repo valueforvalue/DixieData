@@ -3,15 +3,16 @@ package buildinfo
 import "strings"
 
 const (
-	AppName                 = "DixieData"
-	AppVersion              = "0.1.0"
-	SchemaVersion           = 6
-	JSONExportVersion       = 1
-	CSVExportVersion        = 2
-	ICalendarExportVersion  = 1
-	SoldierPDFExportVersion = 2
-	MonthlyPDFExportVersion = 1
-	BackupFormatVersion     = 2
+	AppName                  = "DixieData"
+	AppVersion               = "0.1.0"
+	SchemaVersion            = 7
+	JSONExportVersion        = 1
+	CSVExportVersion         = 2
+	ICalendarExportVersion   = 1
+	SoldierPDFExportVersion  = 3
+	MonthlyPDFExportVersion  = 1
+	DatabasePDFExportVersion = 1
+	BackupFormatVersion      = 2
 )
 
 var GitCommit = "dev"
