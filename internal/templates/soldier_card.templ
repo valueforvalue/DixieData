@@ -313,8 +313,8 @@ templ SoldierDetail(s models.Soldier) {
 						}
 					</div>
 				</div>
-				<div class="mb-5 grid gap-4 lg:grid-cols-2">
-					if !isSoldierEntry(s) || s.SpouseSoldierID != 0 {
+				if !isSoldierEntry(s) || s.SpouseSoldierID != 0 {
+					<div class="mb-5 grid gap-4 lg:grid-cols-2">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Family &amp; Relationships</p>
 							<p class="mt-2 text-sm text-slate-600">Relationship details live here so they do not repeat in the summary area.</p>
@@ -337,36 +337,8 @@ templ SoldierDetail(s models.Soldier) {
 								}
 							</div>
 						</div>
-					}
-					<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Review Queue</p>
-						if s.NeedsReview {
-							<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(s.ReviewReason) }</p>
-						} else {
-							<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this record for follow-up research or duplicate checking and it will appear in the review queue.</p>
-						}
-						<form hx-post={ fmt.Sprintf("/soldiers/%d/review/flag", s.ID) } hx-target="#review-resolution-status" class="mt-4 space-y-3">
-							<label class="block text-sm font-medium text-[#6f2c26]">
-								Review Note
-								<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
-							</label>
-							<div class="flex flex-wrap gap-3">
-								<button type="submit" class="primary-button">
-									if s.NeedsReview {
-										Update Review Note
-									} else {
-										Send to Review Queue
-									}
-								</button>
-								if s.NeedsReview {
-									<a href="/review-queue" class="secondary-button">Open Review Queue</a>
-									<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve", s.ID) } hx-target="#review-resolution-status" class="secondary-button" type="button">Mark as Resolved</button>
-								}
-							</div>
-						</form>
-						<div id="review-resolution-status" class="mt-3 text-sm text-slate-600"></div>
 					</div>
-				</div>
+				}
 				<dl class="responsive-two-col grid gap-2 text-sm">
 					<dt class="text-slate-500">Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Record ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
@@ -395,6 +367,100 @@ templ SoldierDetail(s models.Soldier) {
 				if s.Notes != "" {
 					@LinkedText(s.Notes, "mt-4 text-sm text-slate-600 leading-6")
 				}
+				<details class="mt-5 overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)]">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Advanced Research &amp; Review</p>
+							<p class="mt-1 text-sm text-slate-500">Collections, packs, ledgers, timelines, and review actions stay tucked away until you need them.</p>
+						</div>
+						<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Expand</span>
+					</summary>
+					<div class="border-t border-[rgba(141,116,64,0.28)] px-4 py-4">
+						<div class="grid gap-4 lg:grid-cols-2">
+							if soldierHasCamaraderie(s) {
+								<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
+									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Unit Camaraderie</p>
+									<p class="mt-2 text-sm text-slate-700">Trace nearby service connections from this record to the same unit, regiment family, and company variants without losing your place in the archive.</p>
+									<div class="mt-4 flex flex-wrap gap-3">
+										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/camaraderie", s.ID)) } class="secondary-button">Open Unit Graph</a>
+									</div>
+								</div>
+							}
+							if soldierHasTimeline(s) {
+								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
+									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Service Timeline</p>
+									<p class="mt-2 text-sm text-slate-700">Build a chronology from profile dates plus dated record details like muster, parole, pension, and memorial notes.</p>
+									<div class="mt-4 flex flex-wrap gap-3">
+										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/timeline", s.ID)) } class="secondary-button">Open Timeline</a>
+									</div>
+								</div>
+							}
+							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Research Log</p>
+								<p class="mt-2 text-sm text-slate-700">Track missing evidence, attach follow-up tasks, and keep resolved research leads visible instead of burying them in freeform notes.</p>
+								<div class="mt-4 flex flex-wrap gap-3">
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-log", s.ID)) } class="secondary-button">Open Research Log</a>
+								</div>
+							</div>
+							<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Conflict Ledger</p>
+								<p class="mt-2 text-sm text-slate-700">Review shared-import conflicts tied to this record, including which fields differed and how each disagreement was resolved.</p>
+								<div class="mt-4 flex flex-wrap gap-3">
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/conflict-ledger", s.ID)) } class="secondary-button">Open Conflict Ledger</a>
+								</div>
+							</div>
+							if soldierHasResearchPack(s) {
+								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
+									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Research Packs</p>
+									<p class="mt-2 text-sm text-slate-700">Jump into a pre-built county or state cohort using the place clues already attached to this record.</p>
+									<div class="mt-4 flex flex-wrap gap-3">
+										if soldierStateResearchPackLabel(s) != "" {
+											<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-pack/state", s.ID)) } class="secondary-button">Open State Pack</a>
+										}
+										if soldierCountyResearchPackLabel(s) != "" {
+											<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-pack/county", s.ID)) } class="secondary-button">Open County Pack</a>
+										}
+									</div>
+								</div>
+							}
+							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Research Collections</p>
+								<p class="mt-2 text-sm text-slate-700">Save this record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p>
+								<div class="mt-4 flex flex-wrap gap-3">
+									<a href={ templ.SafeURL(fmt.Sprintf("/research-collections?from=%d", s.ID)) } class="secondary-button">Manage Collections</a>
+								</div>
+							</div>
+							<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4 lg:col-span-2">
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Review Queue</p>
+								if s.NeedsReview {
+									<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(s.ReviewReason) }</p>
+								} else {
+									<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this record for follow-up research or duplicate checking and it will appear in the review queue.</p>
+								}
+								<form hx-post={ fmt.Sprintf("/soldiers/%d/review/flag", s.ID) } hx-target="#review-resolution-status" class="mt-4 space-y-3">
+									<label class="block text-sm font-medium text-[#6f2c26]">
+										Review Note
+										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
+									</label>
+									<div class="flex flex-wrap gap-3">
+										<button type="submit" class="primary-button">
+											if s.NeedsReview {
+												Update Review Note
+											} else {
+												Send to Review Queue
+											}
+										</button>
+										if s.NeedsReview {
+											<a href="/review-queue" class="secondary-button">Open Review Queue</a>
+											<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve", s.ID) } hx-target="#review-resolution-status" class="secondary-button" type="button">Mark as Resolved</button>
+										}
+									</div>
+								</form>
+								<div id="review-resolution-status" class="mt-3 text-sm text-slate-600"></div>
+							</div>
+						</div>
+					</div>
+				</details>
 				<details class="mt-5 overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
@@ -727,6 +793,60 @@ func soldierFullName(s models.Soldier) string {
 
 func isSoldierEntry(s models.Soldier) bool {
 	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == "soldier"
+}
+
+func soldierHasCamaraderie(s models.Soldier) bool {
+	return isSoldierEntry(s) && strings.TrimSpace(s.Unit) != ""
+}
+
+func soldierHasTimeline(s models.Soldier) bool {
+	if !isSoldierEntry(s) {
+		return false
+	}
+	if strings.TrimSpace(s.BirthDate) != "" || strings.TrimSpace(s.BirthInfo) != "" || strings.TrimSpace(s.DeathDate) != "" {
+		return true
+	}
+	if s.DeathYear > 0 || s.DeathMonth > 0 || s.DeathDay > 0 {
+		return true
+	}
+	return len(s.Records) > 0
+}
+
+func soldierStateResearchPackLabel(s models.Soldier) string {
+	if trimmed := strings.TrimSpace(s.PensionState); trimmed != "" {
+		return trimmed
+	}
+	_, state := soldierBirthInfoResearchPackLabels(s.BirthInfo)
+	return state
+}
+
+func soldierCountyResearchPackLabel(s models.Soldier) string {
+	county, _ := soldierBirthInfoResearchPackLabels(s.BirthInfo)
+	return county
+}
+
+func soldierHasResearchPack(s models.Soldier) bool {
+	return soldierStateResearchPackLabel(s) != "" || soldierCountyResearchPackLabel(s) != ""
+}
+
+func soldierBirthInfoResearchPackLabels(value string) (string, string) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", ""
+	}
+	countyStatePattern := regexp.MustCompile(`(?i)\b(?:in\s+)?([A-Za-z .'-]+ County),\s*([A-Za-z .'-]+)\b`)
+	if match := countyStatePattern.FindStringSubmatch(trimmed); len(match) == 3 {
+		county := strings.TrimSpace(match[1])
+		if len(county) > 3 && strings.EqualFold(county[:3], "in ") {
+			county = strings.TrimSpace(county[3:])
+		}
+		return county, strings.Trim(strings.TrimSpace(match[2]), ". ")
+	}
+	stateTailPattern := regexp.MustCompile(`(?i),\s*([A-Za-z .'-]+)\.?\s*$`)
+	if match := stateTailPattern.FindStringSubmatch(trimmed); len(match) == 2 {
+		return "", strings.Trim(strings.TrimSpace(match[1]), ". ")
+	}
+	return "", ""
 }
 
 func isWidowEntry(s models.Soldier) bool {

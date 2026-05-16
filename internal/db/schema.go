@@ -9,7 +9,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 )
 
-const CurrentSchemaVersion = 14
+const CurrentSchemaVersion = 16
 
 func GetAppVersion() string {
 	return fmt.Sprintf("1.0.%d", CurrentSchemaVersion)
@@ -121,12 +121,41 @@ CREATE TABLE IF NOT EXISTS duplicate_audit_findings (
     resolved_at      DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS research_tasks (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    soldier_id     INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    title         TEXT NOT NULL,
+    notes         TEXT,
+    evidence_type TEXT NOT NULL DEFAULT 'general',
+    status        TEXT NOT NULL DEFAULT 'open',
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME,
+    resolved_at   DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS research_collections (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT NOT NULL UNIQUE,
+    description   TEXT,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS research_collection_items (
+    collection_id INTEGER NOT NULL REFERENCES research_collections(id) ON DELETE CASCADE,
+    soldier_id    INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (collection_id, soldier_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_status ON duplicate_audit_findings(status);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_soldier_id);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_soldier_id);
+CREATE INDEX IF NOT EXISTS idx_research_tasks_soldier ON research_tasks(soldier_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_research_collection_items_soldier ON research_collection_items(soldier_id, collection_id);
 `
 
 const phase1DistributedMergeMigration = `

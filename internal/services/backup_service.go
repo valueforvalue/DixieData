@@ -74,6 +74,26 @@ type mergeReviewSnapshot struct {
 	SpouseSyncID string         `json:"spouse_sync_id,omitempty"`
 }
 
+type SourceConflictLedger struct {
+	Central       models.Soldier
+	Entries       []SourceConflictLedgerEntry
+	OpenCount     int
+	ResolvedCount int
+}
+
+type SourceConflictLedgerEntry struct {
+	ID               int64
+	ConflictType     string
+	Reason           string
+	SourceDisplayID  string
+	Resolution       string
+	CreatedAt        string
+	ResolvedAt       string
+	LocalSnapshot    models.Soldier
+	SourceSnapshot   models.Soldier
+	DifferenceFields []string
+}
+
 func NewBackupService(database *db.DB, soldier *SoldierService) *BackupService {
 	return &BackupService{db: database, soldier: soldier}
 }
@@ -1032,6 +1052,54 @@ func (b *BackupService) PendingMergeConflicts() ([]models.MergeReviewConflict, e
 	return conflicts, rows.Err()
 }
 
+func (b *BackupService) ConflictLedger(soldierID int64) (*SourceConflictLedger, error) {
+	central, err := b.soldier.GetByID(soldierID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := b.db.Conn().Query(`
+		SELECT id, conflict_type, reason, source_display_id, COALESCE(resolution, ''), created_at, COALESCE(resolved_at, ''), COALESCE(local_data, ''), source_data
+		FROM merge_review_conflicts
+		WHERE local_soldier_id = ?
+		ORDER BY created_at DESC, id DESC
+	`, soldierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ledger := &SourceConflictLedger{Central: *central}
+	for rows.Next() {
+		var (
+			entry                         SourceConflictLedgerEntry
+			localJSON, sourceJSON         string
+			localSnapshot, sourceSnapshot mergeReviewSnapshot
+		)
+		if err := rows.Scan(&entry.ID, &entry.ConflictType, &entry.Reason, &entry.SourceDisplayID, &entry.Resolution, &entry.CreatedAt, &entry.ResolvedAt, &localJSON, &sourceJSON); err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(localJSON) != "" {
+			localSnapshot, err = unmarshalMergeReviewSnapshot(localJSON)
+			if err != nil {
+				return nil, err
+			}
+			entry.LocalSnapshot = localSnapshot.Soldier
+		}
+		if sourceSnapshot, err = unmarshalMergeReviewSnapshot(sourceJSON); err != nil {
+			return nil, err
+		}
+		entry.SourceSnapshot = sourceSnapshot.Soldier
+		entry.DifferenceFields = collectSoldierConflictFields(localSnapshot, sourceSnapshot)
+		ledger.Entries = append(ledger.Entries, entry)
+		if strings.TrimSpace(entry.Resolution) == "" {
+			ledger.OpenCount++
+		} else {
+			ledger.ResolvedCount++
+		}
+	}
+	return ledger, rows.Err()
+}
+
 func (b *BackupService) ResolveMergeConflict(conflictID int64, decision, dataDir string) error {
 	tx, err := b.db.Conn().Begin()
 	if err != nil {
@@ -1600,6 +1668,14 @@ func equivalentMergeReviewSnapshots(local, source mergeReviewSnapshot) bool {
 }
 
 func describeSoldierConflict(local, source mergeReviewSnapshot) string {
+	differences := collectSoldierConflictFields(local, source)
+	if len(differences) == 0 {
+		return ""
+	}
+	return "Shared archive changed " + strings.Join(differences, ", ") + "."
+}
+
+func collectSoldierConflictFields(local, source mergeReviewSnapshot) []string {
 	differences := make([]string, 0, 8)
 	appendDiff := func(label, left, right string) {
 		left = strings.TrimSpace(left)
@@ -1627,10 +1703,7 @@ func describeSoldierConflict(local, source mergeReviewSnapshot) string {
 	appendDiff("buried in", local.Soldier.BuriedIn, source.Soldier.BuriedIn)
 	appendDiff("notes", local.Soldier.Notes, source.Soldier.Notes)
 	appendDiff("spouse link", local.SpouseSyncID, source.SpouseSyncID)
-	if len(differences) == 0 {
-		return ""
-	}
-	return "Shared archive changed " + strings.Join(differences, ", ") + "."
+	return differences
 }
 
 func normalizeSharedSoldierSnapshot(soldier models.Soldier) models.Soldier {

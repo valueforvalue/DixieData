@@ -1,0 +1,159 @@
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/services"
+)
+
+templ ServiceTimelineView(timeline services.ServiceTimeline) {
+	@Layout("Service Timeline") {
+		<div class="mx-auto max-w-6xl">
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				<button
+					type="button"
+					data-history-back
+					data-fallback-href={ fmt.Sprintf("/soldiers/%d", timeline.Central.ID) }
+					data-fallback-label="Back to Record"
+					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+				>← Back to Record</button>
+				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", timeline.Central.ID)) } class="pill-link">Open Detail Card</a>
+			</div>
+			<div class="grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+				<aside class="card rounded-3xl p-6">
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Auto-Built Service Timeline</p>
+					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(timeline.Central) }</h2>
+					<p class="mt-2 text-sm text-slate-600">{ timeline.Central.DisplayID }</p>
+					<div class="mt-5 space-y-3 text-sm text-slate-700">
+						<div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Service Profile</p>
+							<p class="mt-2 font-medium text-slate-900">{ emptyDetail(timeline.Central.Unit) }</p>
+							if strings.TrimSpace(detailDisplayRank(timeline.Central)) != "" {
+								<p class="mt-1 text-slate-600">Rank out: { detailDisplayRank(timeline.Central) }</p>
+							}
+							if strings.TrimSpace(timeline.Central.RankIn) != "" {
+								<p class="mt-1 text-slate-600">Rank in: { timeline.Central.RankIn }</p>
+							}
+						</div>
+						<div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+							<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.8)] px-4 py-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Timed Events</p>
+								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(timeline.Events)) }</p>
+							</div>
+							<div class="rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Exact</p>
+								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", timeline.ExactEventCount) }</p>
+							</div>
+							<div class="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Inferred</p>
+								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", timeline.InferredEventCount) }</p>
+							</div>
+						</div>
+						if timeline.StartLabel != "" || timeline.EndLabel != "" {
+							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Chronology Span</p>
+								<p class="mt-2 font-medium text-slate-900">{ timeline.StartLabel } → { timeline.EndLabel }</p>
+							</div>
+						}
+						if len(timeline.UndatedRecords) > 0 {
+							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Undated Sources</p>
+								<p class="mt-2 font-medium text-slate-900">{ fmt.Sprintf("%d records", len(timeline.UndatedRecords)) }</p>
+							</div>
+						}
+					</div>
+				</aside>
+				<div class="space-y-5">
+					<div class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+						<p class="text-sm text-slate-700">The timeline is assembled from structured birth and death fields plus date clues found inside attached record details such as muster, parole, pension, or memorial notes.</p>
+					</div>
+					if len(timeline.Events) == 0 {
+						<div class="rounded-3xl border border-dashed border-slate-300 bg-white/75 p-6 text-sm text-slate-500">No dated events could be inferred yet. Add dates to the profile or include years in attached record details to populate this timeline.</div>
+					} else {
+						<section class="space-y-4">
+							for _, event := range timeline.Events {
+								<div class="rounded-3xl border border-slate-200 bg-white/85 p-5 shadow-sm">
+									<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+										<div>
+											<p class={ serviceTimelineCategoryClass(event.Category) }>{ serviceTimelineCategoryLabel(event.Category) }</p>
+											<h3 class="mt-2 text-lg font-semibold text-slate-900">{ event.Title }</h3>
+											<p class="mt-1 text-sm text-slate-500">{ event.DateLabel }</p>
+										</div>
+										<div class="flex flex-wrap gap-2">
+											<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{ event.ConfidenceLabel }</span>
+											if strings.TrimSpace(event.SourceLabel) != "" {
+												<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ event.SourceLabel }</span>
+											}
+										</div>
+									</div>
+									if strings.TrimSpace(event.Description) != "" {
+										<p class="mt-4 text-sm leading-6 text-slate-700">{ event.Description }</p>
+									}
+								</div>
+							}
+						</section>
+					}
+					if len(timeline.UndatedRecords) > 0 {
+						<section class="rounded-3xl border border-slate-200 bg-white/85 p-5">
+							<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+								<div>
+									<h3 class="text-lg font-semibold text-slate-900">Undated Archive Sources</h3>
+									<p class="text-sm text-slate-600">These records add context but did not contain a parseable date yet.</p>
+								</div>
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{ fmt.Sprintf("%d records", len(timeline.UndatedRecords)) }</p>
+							</div>
+							<div class="mt-4 grid gap-4 md:grid-cols-2">
+								for _, record := range timeline.UndatedRecords {
+									<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+										<p class="text-sm font-semibold text-slate-900">{ emptyDetail(record.RecordType) }</p>
+										if strings.TrimSpace(record.AppID) != "" {
+											<p class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ record.AppID }</p>
+										}
+										if strings.TrimSpace(record.Details) != "" {
+											<p class="mt-3 text-sm leading-6 text-slate-700">{ record.Details }</p>
+										}
+									</div>
+								}
+							</div>
+						</section>
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+func serviceTimelineCategoryLabel(category string) string {
+	switch strings.TrimSpace(category) {
+	case "life":
+		return "Life Event"
+	case "service":
+		return "Service Record"
+	case "pension":
+		return "Pension Trail"
+	case "burial":
+		return "Burial Context"
+	case "death":
+		return "Death Record"
+	default:
+		return "Archive Context"
+	}
+}
+
+func serviceTimelineCategoryClass(category string) string {
+	switch strings.TrimSpace(category) {
+	case "life":
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]"
+	case "service":
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-blue-600"
+	case "pension":
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]"
+	case "burial":
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
+	case "death":
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-slate-700"
+	default:
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
+	}
+}

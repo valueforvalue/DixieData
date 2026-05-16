@@ -1014,6 +1014,76 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 	}
 }
 
+func TestBackupService_ConflictLedger(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	backupSvc := NewBackupService(d, soldierSvc)
+
+	created, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "LED-0001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "1st Texas Infantry",
+		PensionID: "P-1",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	localJSON, err := marshalMergeReviewSnapshot(mergeReviewSnapshot{
+		Soldier: models.Soldier{
+			DisplayID: "LED-0001",
+			FirstName: "Andrew",
+			LastName:  "Cole",
+			Unit:      "1st Texas Infantry",
+			PensionID: "P-1",
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal local: %v", err)
+	}
+	sourceJSON, err := marshalMergeReviewSnapshot(mergeReviewSnapshot{
+		Soldier: models.Soldier{
+			DisplayID: "SRC-0001",
+			FirstName: "Andrew",
+			LastName:  "Cole",
+			Unit:      "2nd Texas Infantry",
+			PensionID: "P-9",
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal source: %v", err)
+	}
+
+	if _, err := d.Conn().Exec(`
+		INSERT INTO merge_review_sessions (id, archive_path, source_root, status, updated_at)
+		VALUES ('session-ledger', 'ledger.ddshare', 'C:\\source', 'open', CURRENT_TIMESTAMP)
+	`); err != nil {
+		t.Fatalf("insert session: %v", err)
+	}
+	if _, err := d.Conn().Exec(`
+		INSERT INTO merge_review_conflicts (session_id, conflict_type, reason, soldier_sync_id, local_soldier_id, local_display_id, source_display_id, local_data, source_data, resolution, resolved_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, "session-ledger", "soldier-update", "Shared archive changed unit and pension ID.", created.SyncID, created.ID, created.DisplayID, "SRC-0001", localJSON, sourceJSON, "keep-local"); err != nil {
+		t.Fatalf("insert conflict: %v", err)
+	}
+
+	ledger, err := backupSvc.ConflictLedger(created.ID)
+	if err != nil {
+		t.Fatalf("ConflictLedger: %v", err)
+	}
+	if ledger.ResolvedCount != 1 || len(ledger.Entries) != 1 {
+		t.Fatalf("unexpected ledger counts: %#v", ledger)
+	}
+	entry := ledger.Entries[0]
+	if entry.SourceDisplayID != "SRC-0001" || entry.LocalSnapshot.DisplayID != "LED-0001" || entry.SourceSnapshot.PensionID != "P-9" {
+		t.Fatalf("unexpected ledger entry snapshots: %#v", entry)
+	}
+	if !strings.Contains(strings.Join(entry.DifferenceFields, ","), "unit") || !strings.Contains(strings.Join(entry.DifferenceFields, ","), "pension ID") {
+		t.Fatalf("expected differing fields in ledger entry: %#v", entry.DifferenceFields)
+	}
+}
+
 func TestBackupService_ImportSharedBackupMigratesLegacySQLite(t *testing.T) {
 	targetDir := t.TempDir()
 	targetDB, err := db.Open(targetDir)

@@ -243,3 +243,190 @@ func TestSoldierDetailSecondaryBackActionUsesSmartBack(t *testing.T) {
 		}
 	}
 }
+
+func TestSoldierDetailShowsUnitCamaraderieAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        18,
+		DisplayID: "JCM87-00018",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "Co. A, 1st Texas Infantry",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Unit Camaraderie",
+		"/soldiers/18/camaraderie",
+		"Open Unit Graph",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsServiceTimelineAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        19,
+		DisplayID: "JCM87-00019",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		BirthDate: "05/12/1838",
+		Records: []models.Record{{
+			RecordType: "Muster Roll",
+			AppID:      "APP-19",
+			Details:    "Enlisted on 03/11/1862 at Austin.",
+		}},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Service Timeline",
+		"/soldiers/19/timeline",
+		"Open Timeline",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsResearchLogAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        20,
+		DisplayID: "JCM87-00020",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Research Log",
+		"/soldiers/20/research-log",
+		"Open Research Log",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        21,
+		DisplayID: "JCM87-00021",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Conflict Ledger",
+		"/soldiers/21/conflict-ledger",
+		"Open Conflict Ledger",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsResearchPackActions(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:           22,
+		DisplayID:    "JCM87-00022",
+		FirstName:    "Andrew",
+		LastName:     "Cole",
+		PensionState: "Texas",
+		BirthInfo:    "Born 1838 in Orange County, Texas.",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Research Packs",
+		"/soldiers/22/research-pack/state",
+		"/soldiers/22/research-pack/county",
+		"Open State Pack",
+		"Open County Pack",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsResearchCollectionsAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        23,
+		DisplayID: "JCM87-00023",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Research Collections",
+		"/research-collections?from=23",
+		"Manage Collections",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailGroupsAdvancedToolsUnderAccordion(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        24,
+		DisplayID: "JCM87-00024",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "Co. A, 1st Texas Infantry",
+		BirthDate: "05/12/1838",
+		Records: []models.Record{{
+			RecordType: "Muster Roll",
+			AppID:      "APP-24",
+			Details:    "Enlisted on 03/11/1862 at Austin.",
+		}},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Advanced Research &amp; Review",
+		"Collections, packs, ledgers, timelines, and review actions stay tucked away until you need them.",
+		"Review Queue",
+		"Research Log",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}

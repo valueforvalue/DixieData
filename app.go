@@ -131,6 +131,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/setup", a.handleInitialSetup)
 	mux.HandleFunc("/version", a.handleVersion)
 	mux.HandleFunc("/share", a.handleShare)
+	mux.HandleFunc("/research-collections", a.handleResearchCollections)
+	mux.HandleFunc("/research-collections/", a.handleResearchCollectionByID)
 	mux.HandleFunc("/insights", a.handleInsights)
 	mux.HandleFunc("/insights/drilldown", a.handleInsightsDrilldown)
 	mux.HandleFunc("/insights/audit/duplicates", a.handleRunDuplicateAudit)
@@ -619,6 +621,26 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleEditSoldier(w, r, id)
 		return
 	}
+	if len(parts) > 1 && parts[1] == "timeline" {
+		a.handleServiceTimeline(w, r, id)
+		return
+	}
+	if len(parts) > 1 && parts[1] == "research-log" {
+		a.handleResearchLog(w, r, id, parts[1:])
+		return
+	}
+	if len(parts) > 1 && parts[1] == "conflict-ledger" {
+		a.handleConflictLedger(w, r, id)
+		return
+	}
+	if len(parts) > 2 && parts[1] == "research-pack" {
+		a.handleResearchPack(w, r, id, parts[2])
+		return
+	}
+	if len(parts) > 1 && parts[1] == "camaraderie" {
+		a.handleUnitCamaraderie(w, r, id)
+		return
+	}
 	if len(parts) > 2 && parts[1] == "pdf" && parts[2] == "no-images" {
 		a.handleSoldierPDFNoImages(w, r, id)
 		return
@@ -682,6 +704,121 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	graph, err := a.soldiers.UnitCamaraderieGraph(id)
+	if err != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	templates.UnitCamaraderieView(*graph).Render(r.Context(), w)
+}
+
+func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	timeline, err := a.soldiers.ServiceTimeline(id)
+	if err != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	templates.ServiceTimelineView(*timeline).Render(r.Context(), w)
+}
+
+func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64, parts []string) {
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		log, err := a.soldiers.ResearchLog(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		templates.ResearchLogView(*log).Render(r.Context(), w)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "tasks" && r.Method == http.MethodPost {
+		a.handleResearchTaskCreate(w, r, id)
+		return
+	}
+	if len(parts) == 4 && parts[1] == "tasks" && parts[3] == "resolve" && r.Method == http.MethodPost {
+		taskID, err := strconv.ParseInt(parts[2], 10, 64)
+		if err != nil {
+			http.Error(w, "invalid research task id", http.StatusBadRequest)
+			return
+		}
+		a.handleResearchTaskResolve(w, r, id, taskID)
+		return
+	}
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+}
+
+func (a *App) handleResearchTaskCreate(w http.ResponseWriter, r *http.Request, id int64) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	title := strings.TrimSpace(r.FormValue("title"))
+	notes := strings.TrimSpace(r.FormValue("notes"))
+	evidenceType := strings.TrimSpace(r.FormValue("evidence_type"))
+	if err := a.soldiers.AddResearchTask(id, title, notes, evidenceType); err != nil {
+		setToastHeaderWithType(w, "Research task could not be saved.", "error")
+		fmt.Fprintf(w, "Research task could not be saved: %v", err)
+		return
+	}
+	setToastHeader(w, "Success: research task added.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d/research-log", id))
+	fmt.Fprint(w, "Research task saved.")
+}
+
+func (a *App) handleResearchTaskResolve(w http.ResponseWriter, r *http.Request, id, taskID int64) {
+	if err := a.soldiers.ResolveResearchTask(id, taskID); err != nil {
+		setToastHeaderWithType(w, "Research task could not be resolved.", "error")
+		fmt.Fprintf(w, "Research task could not be resolved: %v", err)
+		return
+	}
+	setToastHeader(w, "Success: research task resolved.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d/research-log", id))
+	fmt.Fprint(w, "Research task resolved.")
+}
+
+func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	ledger, err := a.backup.ConflictLedger(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	templates.SourceConflictLedgerView(*ledger).Render(r.Context(), w)
+}
+
+func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int64, scope string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	pack, err := a.soldiers.ResearchPackForSoldier(id, scope)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	templates.ResearchPackView(*pack).Render(r.Context(), w)
+}
+
 func (a *App) handleEditSoldier(w http.ResponseWriter, r *http.Request, id int64) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -737,6 +874,95 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	templates.ShareView(status, conflicts).Render(r.Context(), w)
+}
+
+func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from")
+		if err != nil {
+			http.Error(w, "invalid from id", http.StatusBadRequest)
+			return
+		}
+		hub, err := a.soldiers.ResearchCollectionsHub(fromID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		templates.ResearchCollectionsHubView(*hub).Render(r.Context(), w)
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "failed to parse form", http.StatusBadRequest)
+			return
+		}
+		if err := a.soldiers.CreateResearchCollection(r.FormValue("name"), r.FormValue("description")); err != nil {
+			setToastHeaderWithType(w, "Collection could not be created.", "error")
+			fmt.Fprintf(w, "Collection could not be created: %v", err)
+			return
+		}
+		redirectTo := "/research-collections"
+		if fromID, err := parseOptionalInt64(r.FormValue("from"), "from"); err == nil && fromID > 0 {
+			redirectTo = fmt.Sprintf("/research-collections?from=%d", fromID)
+		}
+		setToastHeader(w, "Success: research collection created.")
+		w.Header().Set("X-DixieData-Redirect", redirectTo)
+		fmt.Fprint(w, "Collection created.")
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Request) {
+	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/research-collections/"), "/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+	parts := strings.Split(path, "/")
+	collectionID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid collection id", http.StatusBadRequest)
+		return
+	}
+	if len(parts) == 2 && parts[1] == "add" && r.Method == http.MethodPost {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "failed to parse form", http.StatusBadRequest)
+			return
+		}
+		soldierID, err := parseOptionalInt64(r.FormValue("soldier_id"), "soldier_id")
+		if err != nil || soldierID < 1 {
+			http.Error(w, "invalid soldier id", http.StatusBadRequest)
+			return
+		}
+		if err := a.soldiers.AddSoldierToResearchCollection(collectionID, soldierID); err != nil {
+			setToastHeaderWithType(w, "Record could not be added to the collection.", "error")
+			fmt.Fprintf(w, "Record could not be added to the collection: %v", err)
+			return
+		}
+		redirectTo := fmt.Sprintf("/research-collections/%d", collectionID)
+		if fromID, err := parseOptionalInt64(r.FormValue("from"), "from"); err == nil && fromID > 0 {
+			redirectTo = fmt.Sprintf("/research-collections/%d?from=%d", collectionID, fromID)
+		}
+		setToastHeader(w, "Success: record added to collection.")
+		w.Header().Set("X-DixieData-Redirect", redirectTo)
+		fmt.Fprint(w, "Record added to collection.")
+		return
+	}
+	if len(parts) == 1 && r.Method == http.MethodGet {
+		fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from")
+		if err != nil {
+			http.Error(w, "invalid from id", http.StatusBadRequest)
+			return
+		}
+		detail, err := a.soldiers.ResearchCollectionDetail(collectionID, fromID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		templates.ResearchCollectionDetailView(*detail).Render(r.Context(), w)
+		return
+	}
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
 func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {

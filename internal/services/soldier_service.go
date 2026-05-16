@@ -3,6 +3,8 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,6 +26,103 @@ type SoldierService struct {
 	db                *db.DB
 	formSuggestionsMu sync.RWMutex
 	formSuggestions   *models.SoldierFormSuggestions
+}
+
+type UnitCamaraderieGraph struct {
+	Central            models.Soldier
+	UnitLabel          string
+	RegimentLabel      string
+	CompanyLabel       string
+	SameUnit           []UnitCamaraderieConnection
+	SameCompanyVariant []UnitCamaraderieConnection
+	SameRegiment       []UnitCamaraderieConnection
+}
+
+type UnitCamaraderieConnection struct {
+	Soldier      models.Soldier
+	Relation     string
+	Strength     int
+	StrengthText string
+}
+
+type ServiceTimeline struct {
+	Central            models.Soldier
+	Events             []ServiceTimelineEvent
+	UndatedRecords     []models.Record
+	StartLabel         string
+	EndLabel           string
+	ExactEventCount    int
+	InferredEventCount int
+}
+
+type ServiceTimelineEvent struct {
+	Title           string
+	DateLabel       string
+	Description     string
+	SourceLabel     string
+	Category        string
+	ConfidenceLabel string
+	Approximate     bool
+	sortDate        dates.PartialDate
+	sortOrder       int
+}
+
+type ResearchTask struct {
+	ID           int64
+	SoldierID    int64
+	Title        string
+	Notes        string
+	EvidenceType string
+	Status       string
+	CreatedAt    string
+	UpdatedAt    string
+	ResolvedAt   string
+}
+
+type ResearchTaskSuggestion struct {
+	Title        string
+	Notes        string
+	EvidenceType string
+}
+
+type ResearchLog struct {
+	Central       models.Soldier
+	Tasks         []ResearchTask
+	Suggestions   []ResearchTaskSuggestion
+	OpenCount     int
+	ResolvedCount int
+}
+
+type ResearchPack struct {
+	Central         models.Soldier
+	Scope           string
+	PlaceLabel      string
+	Description     string
+	Related         []models.Soldier
+	TopUnits        []AnalyticsCount
+	TopCemeteries   []AnalyticsCount
+	OpenReviewCount int
+}
+
+type ResearchCollection struct {
+	ID              int64
+	Name            string
+	Description     string
+	CreatedAt       string
+	UpdatedAt       string
+	ItemCount       int
+	ContainsCurrent bool
+}
+
+type ResearchCollectionHub struct {
+	Current     *models.Soldier
+	Collections []ResearchCollection
+}
+
+type ResearchCollectionDetail struct {
+	Collection ResearchCollection
+	Current    *models.Soldier
+	Members    []models.Soldier
 }
 
 func NewSoldierService(database *db.DB) *SoldierService {
@@ -856,6 +955,388 @@ func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, 
 	return ordered, nil
 }
 
+func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderieGraph, error) {
+	central, err := s.GetByID(soldierID)
+	if err != nil {
+		return nil, err
+	}
+	if normalizeEntryType(central.EntryType) != "soldier" {
+		return nil, fmt.Errorf("unit camaraderie is available for soldier records only")
+	}
+	keys := deriveUnitGraphKeys(central.Unit)
+	if keys.normalizedUnit == "" {
+		return nil, fmt.Errorf("this record does not have enough unit information for camaraderie analysis")
+	}
+
+	rows, err := s.db.Conn().Query(`
+		SELECT `+soldierListSelectColumns+`
+		FROM soldiers
+		WHERE id <> ?
+		  AND TRIM(COALESCE(unit, '')) <> ''
+		  AND (entry_type IS NULL OR TRIM(entry_type) = '' OR LOWER(TRIM(entry_type)) = 'soldier')
+		ORDER BY last_name, first_name
+	`, soldierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	peers, err := scanListSoldiers(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	graph := &UnitCamaraderieGraph{
+		Central:       *central,
+		UnitLabel:     strings.TrimSpace(central.Unit),
+		RegimentLabel: keys.regimentLabel,
+		CompanyLabel:  keys.companyLabel,
+	}
+
+	for _, peer := range peers {
+		peerKeys := deriveUnitGraphKeys(peer.Unit)
+		switch {
+		case peerKeys.normalizedUnit == "":
+			continue
+		case peerKeys.normalizedUnit == keys.normalizedUnit:
+			graph.SameUnit = append(graph.SameUnit, newUnitCamaraderieConnection(peer, "Same recorded unit", 3))
+		case keys.regimentKey != "" && peerKeys.regimentKey == keys.regimentKey && keys.companyKey != "" && peerKeys.companyKey == keys.companyKey:
+			graph.SameCompanyVariant = append(graph.SameCompanyVariant, newUnitCamaraderieConnection(peer, "Same company letter in regiment variant", 2))
+		case keys.regimentKey != "" && peerKeys.regimentKey == keys.regimentKey:
+			graph.SameRegiment = append(graph.SameRegiment, newUnitCamaraderieConnection(peer, "Same regiment", 1))
+		}
+	}
+
+	sort.SliceStable(graph.SameUnit, func(i, j int) bool { return unitConnectionLess(graph.SameUnit[i], graph.SameUnit[j]) })
+	sort.SliceStable(graph.SameCompanyVariant, func(i, j int) bool {
+		return unitConnectionLess(graph.SameCompanyVariant[i], graph.SameCompanyVariant[j])
+	})
+	sort.SliceStable(graph.SameRegiment, func(i, j int) bool { return unitConnectionLess(graph.SameRegiment[i], graph.SameRegiment[j]) })
+
+	graph.SameUnit = limitUnitConnections(graph.SameUnit, 12)
+	graph.SameCompanyVariant = limitUnitConnections(graph.SameCompanyVariant, 12)
+	graph.SameRegiment = limitUnitConnections(graph.SameRegiment, 18)
+	return graph, nil
+}
+
+func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, error) {
+	central, err := s.GetByID(soldierID)
+	if err != nil {
+		return nil, err
+	}
+	if normalizeEntryType(central.EntryType) != "soldier" {
+		return nil, fmt.Errorf("service timeline is available for soldier records only")
+	}
+
+	timeline := &ServiceTimeline{Central: *central}
+	if partial, approximate := soldierBirthTimelineDate(*central); partial.HasAny() {
+		timeline.Events = append(timeline.Events, newServiceTimelineEvent(
+			"Birth",
+			partial,
+			"Profile",
+			strings.TrimSpace(central.BirthInfo),
+			"life",
+			approximate,
+			0,
+		))
+	}
+	for _, record := range central.Records {
+		event, ok := serviceTimelineEventFromRecord(record)
+		if ok {
+			timeline.Events = append(timeline.Events, event)
+			continue
+		}
+		if timelineRecordHasContent(record) {
+			timeline.UndatedRecords = append(timeline.UndatedRecords, record)
+		}
+	}
+	if partial, approximate := soldierDeathTimelineDate(*central); partial.HasAny() {
+		timeline.Events = append(timeline.Events, newServiceTimelineEvent(
+			"Death",
+			partial,
+			"Profile",
+			"",
+			"death",
+			approximate,
+			900,
+		))
+		if strings.TrimSpace(central.BuriedIn) != "" {
+			timeline.Events = append(timeline.Events, newServiceTimelineEvent(
+				"Burial recorded",
+				partial,
+				"Profile",
+				central.BuriedIn,
+				"burial",
+				true,
+				901,
+			))
+		}
+	}
+
+	sort.SliceStable(timeline.Events, func(i, j int) bool {
+		return serviceTimelineEventLess(timeline.Events[i], timeline.Events[j])
+	})
+	if len(timeline.Events) > 0 {
+		timeline.StartLabel = timeline.Events[0].DateLabel
+		timeline.EndLabel = timeline.Events[len(timeline.Events)-1].DateLabel
+	}
+	for _, event := range timeline.Events {
+		if event.Approximate {
+			timeline.InferredEventCount++
+		} else {
+			timeline.ExactEventCount++
+		}
+	}
+	return timeline, nil
+}
+
+func (s *SoldierService) ResearchLog(soldierID int64) (*ResearchLog, error) {
+	central, err := s.GetByID(soldierID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Conn().Query(`
+		SELECT id, soldier_id, title, notes, evidence_type, status, created_at, COALESCE(updated_at, ''), COALESCE(resolved_at, '')
+		FROM research_tasks
+		WHERE soldier_id = ?
+		ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, created_at DESC, id DESC
+	`, soldierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	log := &ResearchLog{
+		Central:     *central,
+		Suggestions: suggestedResearchTasks(*central),
+	}
+	for rows.Next() {
+		var task ResearchTask
+		if err := rows.Scan(&task.ID, &task.SoldierID, &task.Title, &task.Notes, &task.EvidenceType, &task.Status, &task.CreatedAt, &task.UpdatedAt, &task.ResolvedAt); err != nil {
+			return nil, err
+		}
+		log.Tasks = append(log.Tasks, task)
+		if strings.EqualFold(strings.TrimSpace(task.Status), "resolved") {
+			log.ResolvedCount++
+		} else {
+			log.OpenCount++
+		}
+	}
+	return log, rows.Err()
+}
+
+func (s *SoldierService) AddResearchTask(soldierID int64, title, notes, evidenceType string) error {
+	if _, err := s.GetByID(soldierID); err != nil {
+		return err
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return fmt.Errorf("research task title is required")
+	}
+	evidenceType = normalizeResearchEvidenceType(evidenceType)
+	notes = strings.TrimSpace(notes)
+	_, err := s.db.Conn().Exec(`
+		INSERT INTO research_tasks (soldier_id, title, notes, evidence_type, status, updated_at)
+		VALUES (?, ?, ?, ?, 'open', ?)
+	`, soldierID, title, notes, evidenceType, currentSQLiteTimestamp())
+	return err
+}
+
+func (s *SoldierService) ResolveResearchTask(soldierID, taskID int64) error {
+	result, err := s.db.Conn().Exec(`
+		UPDATE research_tasks
+		SET status = 'resolved', updated_at = ?, resolved_at = ?
+		WHERE id = ? AND soldier_id = ? AND status <> 'resolved'
+	`, currentSQLiteTimestamp(), currentSQLiteTimestamp(), taskID, soldierID)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("research task not found")
+	}
+	return nil
+}
+
+func (s *SoldierService) ResearchPackForSoldier(soldierID int64, scope string) (*ResearchPack, error) {
+	central, err := s.GetByID(soldierID)
+	if err != nil {
+		return nil, err
+	}
+	scope = strings.ToLower(strings.TrimSpace(scope))
+	label := ""
+	whereClause := ""
+	args := []interface{}{}
+	switch scope {
+	case "state":
+		label = researchPackStateLabel(*central)
+		if label == "" {
+			return nil, fmt.Errorf("this record does not have a state research pack yet")
+		}
+		whereClause = `(LOWER(TRIM(COALESCE(pension_state, ''))) = LOWER(?) OR LOWER(COALESCE(birth_info, '')) LIKE LOWER(?))`
+		args = []interface{}{label, "%" + label + "%"}
+	case "county":
+		label, _ = parseBirthCountyState(central.BirthInfo)
+		if label == "" {
+			return nil, fmt.Errorf("this record does not have a county research pack yet")
+		}
+		whereClause = `LOWER(COALESCE(birth_info, '')) LIKE LOWER(?)`
+		args = []interface{}{"%" + label + "%"}
+	default:
+		return nil, fmt.Errorf("unknown research pack scope")
+	}
+
+	relatedRows, err := s.db.Conn().Query(
+		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE id <> ? AND "+whereClause+" ORDER BY last_name, first_name LIMIT 40",
+		append([]interface{}{soldierID}, args...)...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer relatedRows.Close()
+	related, err := scanListSoldiers(relatedRows)
+	if err != nil {
+		return nil, err
+	}
+
+	pack := &ResearchPack{
+		Central:     *central,
+		Scope:       scope,
+		PlaceLabel:  label,
+		Related:     related,
+		Description: researchPackDescription(scope, label),
+	}
+	if pack.TopUnits, err = s.researchPackCounts(whereClause, args, "unit", 5); err != nil {
+		return nil, err
+	}
+	if pack.TopCemeteries, err = s.researchPackCounts(whereClause, args, "buried_in", 5); err != nil {
+		return nil, err
+	}
+	if err := s.db.Conn().QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause+" AND needs_review = 1", args...).Scan(&pack.OpenReviewCount); err != nil {
+		return nil, err
+	}
+	return pack, nil
+}
+
+func (s *SoldierService) ResearchCollectionsHub(currentSoldierID int64) (*ResearchCollectionHub, error) {
+	hub := &ResearchCollectionHub{}
+	if currentSoldierID > 0 {
+		current, err := s.GetByID(currentSoldierID)
+		if err != nil {
+			return nil, err
+		}
+		hub.Current = current
+	}
+	rows, err := s.db.Conn().Query(`
+		SELECT c.id, c.name, COALESCE(c.description, ''), c.created_at, COALESCE(c.updated_at, ''), COUNT(i.soldier_id),
+		       CASE WHEN ? > 0 AND EXISTS (SELECT 1 FROM research_collection_items existing WHERE existing.collection_id = c.id AND existing.soldier_id = ?) THEN 1 ELSE 0 END
+		FROM research_collections c
+		LEFT JOIN research_collection_items i ON i.collection_id = c.id
+		GROUP BY c.id, c.name, c.description, c.created_at, c.updated_at
+		ORDER BY LOWER(c.name) ASC
+	`, currentSoldierID, currentSoldierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			collection ResearchCollection
+			contains   int
+		)
+		if err := rows.Scan(&collection.ID, &collection.Name, &collection.Description, &collection.CreatedAt, &collection.UpdatedAt, &collection.ItemCount, &contains); err != nil {
+			return nil, err
+		}
+		collection.ContainsCurrent = contains == 1
+		hub.Collections = append(hub.Collections, collection)
+	}
+	return hub, rows.Err()
+}
+
+func (s *SoldierService) CreateResearchCollection(name, description string) error {
+	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	if name == "" {
+		return fmt.Errorf("collection name is required")
+	}
+	_, err := s.db.Conn().Exec(`
+		INSERT INTO research_collections (name, description, updated_at)
+		VALUES (?, ?, ?)
+	`, name, description, currentSQLiteTimestamp())
+	return err
+}
+
+func (s *SoldierService) AddSoldierToResearchCollection(collectionID, soldierID int64) error {
+	if _, err := s.GetByID(soldierID); err != nil {
+		return err
+	}
+	result, err := s.db.Conn().Exec(`
+		INSERT OR IGNORE INTO research_collection_items (collection_id, soldier_id, created_at)
+		VALUES (?, ?, ?)
+	`, collectionID, soldierID, currentSQLiteTimestamp())
+	if err != nil {
+		return err
+	}
+	if _, err := s.db.Conn().Exec(`UPDATE research_collections SET updated_at = ? WHERE id = ?`, currentSQLiteTimestamp(), collectionID); err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("record is already in that collection")
+	}
+	return nil
+}
+
+func (s *SoldierService) ResearchCollectionDetail(collectionID int64, currentSoldierID int64) (*ResearchCollectionDetail, error) {
+	detail := &ResearchCollectionDetail{}
+	if currentSoldierID > 0 {
+		current, err := s.GetByID(currentSoldierID)
+		if err != nil {
+			return nil, err
+		}
+		detail.Current = current
+	}
+	if err := s.db.Conn().QueryRow(`
+		SELECT c.id, c.name, COALESCE(c.description, ''), c.created_at, COALESCE(c.updated_at, ''), COUNT(i.soldier_id)
+		FROM research_collections c
+		LEFT JOIN research_collection_items i ON i.collection_id = c.id
+		WHERE c.id = ?
+		GROUP BY c.id, c.name, c.description, c.created_at, c.updated_at
+	`, collectionID).Scan(&detail.Collection.ID, &detail.Collection.Name, &detail.Collection.Description, &detail.Collection.CreatedAt, &detail.Collection.UpdatedAt, &detail.Collection.ItemCount); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.Conn().Query(`
+		SELECT `+soldierListSelectColumns+`
+		FROM soldiers
+		WHERE id IN (SELECT soldier_id FROM research_collection_items WHERE collection_id = ?)
+		ORDER BY last_name, first_name
+	`, collectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	members, err := scanListSoldiers(rows)
+	if err != nil {
+		return nil, err
+	}
+	detail.Members = members
+	if currentSoldierID > 0 {
+		for _, member := range members {
+			if member.ID == currentSoldierID {
+				detail.Collection.ContainsCurrent = true
+				break
+			}
+		}
+	}
+	return detail, nil
+}
+
 func scanSoldier(row *sql.Row) (*models.Soldier, error) {
 	var s models.Soldier
 	err := row.Scan(soldierScanDest(&s)...)
@@ -953,6 +1434,389 @@ func soldierSearchRank(soldier models.Soldier) string {
 		}
 	}
 	return ""
+}
+
+type unitGraphKeys struct {
+	normalizedUnit string
+	regimentKey    string
+	regimentLabel  string
+	companyKey     string
+	companyLabel   string
+}
+
+var (
+	companyLetterPattern     = regexp.MustCompile(`(?i)\b(?:company|co)\.?\s*([a-z])\b`)
+	companyPrefixPattern     = regexp.MustCompile(`(?i)^\s*(?:company|co)\.?\s*[a-z]\s*[, -]*`)
+	nonAlphaNumPattern       = regexp.MustCompile(`[^a-z0-9]+`)
+	slashTimelineDatePattern = regexp.MustCompile(`\b(\d{1,2})/(\d{1,2})/(\d{4})\b`)
+	birthCountyStatePattern  = regexp.MustCompile(`(?i)\b(?:in\s+)?([A-Za-z .'-]+ County),\s*([A-Za-z .'-]+)\b`)
+	birthStateTailPattern    = regexp.MustCompile(`(?i),\s*([A-Za-z .'-]+)\.?\s*$`)
+)
+
+func deriveUnitGraphKeys(unit string) unitGraphKeys {
+	trimmed := strings.TrimSpace(unit)
+	if trimmed == "" {
+		return unitGraphKeys{}
+	}
+	keys := unitGraphKeys{
+		normalizedUnit: normalizeUnitGraphText(trimmed),
+		regimentLabel:  trimmed,
+	}
+	if key, label := extractUnitCompany(trimmed); key != "" {
+		keys.companyKey = key
+		keys.companyLabel = label
+	}
+	if idx := strings.Index(trimmed, ","); idx >= 0 {
+		keys.regimentLabel = strings.TrimSpace(trimmed[idx+1:])
+	} else if stripped := strings.TrimSpace(companyPrefixPattern.ReplaceAllString(trimmed, "")); stripped != "" {
+		keys.regimentLabel = stripped
+	}
+	if keys.regimentLabel == "" {
+		keys.regimentLabel = trimmed
+	}
+	keys.regimentKey = normalizeUnitGraphText(keys.regimentLabel)
+	return keys
+}
+
+func extractUnitCompany(unit string) (string, string) {
+	if match := companyLetterPattern.FindStringSubmatch(unit); len(match) > 1 {
+		key := strings.ToUpper(strings.TrimSpace(match[1]))
+		if key != "" {
+			return key, "Company " + key
+		}
+	}
+	fields := strings.Fields(normalizeUnitGraphText(unit))
+	if len(fields) >= 2 && (fields[0] == "co" || fields[0] == "company") && len(fields[1]) == 1 {
+		key := strings.ToUpper(fields[1])
+		return key, "Company " + key
+	}
+	return "", ""
+}
+
+func normalizeUnitGraphText(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = nonAlphaNumPattern.ReplaceAllString(normalized, " ")
+	return strings.Join(strings.Fields(normalized), " ")
+}
+
+func newUnitCamaraderieConnection(soldier models.Soldier, relation string, strength int) UnitCamaraderieConnection {
+	return UnitCamaraderieConnection{
+		Soldier:      soldier,
+		Relation:     relation,
+		Strength:     strength,
+		StrengthText: unitConnectionStrengthText(strength),
+	}
+}
+
+func unitConnectionStrengthText(strength int) string {
+	switch strength {
+	case 3:
+		return "Strong"
+	case 2:
+		return "Medium"
+	default:
+		return "Broad"
+	}
+}
+
+func unitConnectionLess(left, right UnitCamaraderieConnection) bool {
+	if left.Strength != right.Strength {
+		return left.Strength > right.Strength
+	}
+	if strings.ToLower(strings.TrimSpace(left.Soldier.LastName)) != strings.ToLower(strings.TrimSpace(right.Soldier.LastName)) {
+		return strings.ToLower(strings.TrimSpace(left.Soldier.LastName)) < strings.ToLower(strings.TrimSpace(right.Soldier.LastName))
+	}
+	return strings.ToLower(strings.TrimSpace(left.Soldier.FirstName)) < strings.ToLower(strings.TrimSpace(right.Soldier.FirstName))
+}
+
+func limitUnitConnections(connections []UnitCamaraderieConnection, limit int) []UnitCamaraderieConnection {
+	if limit <= 0 || len(connections) <= limit {
+		return connections
+	}
+	return connections[:limit]
+}
+
+func soldierBirthTimelineDate(soldier models.Soldier) (dates.PartialDate, bool) {
+	if partial, err := dates.ParseCanonical(strings.TrimSpace(soldier.BirthDate)); err == nil && partial.HasAny() {
+		return partial, false
+	}
+	if parsed := strings.TrimSpace(dates.ParseBirthInfo(soldier.BirthInfo)); parsed != "" {
+		if partial, err := dates.ParseCanonical(parsed); err == nil && partial.HasAny() {
+			return partial, true
+		}
+	}
+	return dates.PartialDate{}, false
+}
+
+func soldierDeathTimelineDate(soldier models.Soldier) (dates.PartialDate, bool) {
+	if partial, err := dates.ParseCanonical(strings.TrimSpace(soldier.DeathDate)); err == nil && partial.HasAny() {
+		return partial, false
+	}
+	partial := dates.PartialDate{
+		Month: soldier.DeathMonth,
+		Day:   soldier.DeathDay,
+		Year:  soldier.DeathYear,
+	}
+	return partial, partial.HasAny()
+}
+
+func serviceTimelineEventFromRecord(record models.Record) (ServiceTimelineEvent, bool) {
+	partial, approximate, ok := inferTimelineDateFromText(record.Details)
+	if !ok {
+		return ServiceTimelineEvent{}, false
+	}
+	description := strings.TrimSpace(record.Details)
+	title := strings.TrimSpace(record.RecordType)
+	if title == "" {
+		title = "Archive record"
+	}
+	return newServiceTimelineEvent(
+		title,
+		partial,
+		recordTimelineSourceLabel(record),
+		description,
+		recordTimelineCategory(record),
+		approximate,
+		100+recordTimelineOrder(record),
+	), true
+}
+
+func inferTimelineDateFromText(value string) (dates.PartialDate, bool, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return dates.PartialDate{}, false, false
+	}
+	if match := slashTimelineDatePattern.FindStringSubmatch(trimmed); len(match) == 4 {
+		month, monthErr := strconv.Atoi(match[1])
+		day, dayErr := strconv.Atoi(match[2])
+		year, yearErr := strconv.Atoi(match[3])
+		if monthErr == nil && dayErr == nil && yearErr == nil {
+			partial := dates.PartialDate{Month: month, Day: day, Year: year}
+			if partial.HasAny() {
+				return partial, false, true
+			}
+		}
+	}
+	if parsed := strings.TrimSpace(dates.ParseBirthInfo(trimmed)); parsed != "" {
+		if partial, err := dates.ParseCanonical(parsed); err == nil && partial.HasAny() {
+			return partial, true, true
+		}
+	}
+	return dates.PartialDate{}, false, false
+}
+
+func newServiceTimelineEvent(title string, partial dates.PartialDate, sourceLabel, description, category string, approximate bool, order int) ServiceTimelineEvent {
+	confidence := "Exact"
+	if approximate {
+		confidence = "Inferred"
+	}
+	return ServiceTimelineEvent{
+		Title:           title,
+		DateLabel:       dates.Display(partial.Format()),
+		Description:     strings.TrimSpace(description),
+		SourceLabel:     strings.TrimSpace(sourceLabel),
+		Category:        strings.TrimSpace(category),
+		ConfidenceLabel: confidence,
+		Approximate:     approximate,
+		sortDate:        partial,
+		sortOrder:       order,
+	}
+}
+
+func serviceTimelineEventLess(left, right ServiceTimelineEvent) bool {
+	if left.sortDate.Year != right.sortDate.Year {
+		return left.sortDate.Year < right.sortDate.Year
+	}
+	if left.sortDate.Month != right.sortDate.Month {
+		return left.sortDate.Month < right.sortDate.Month
+	}
+	if left.sortDate.Day != right.sortDate.Day {
+		return left.sortDate.Day < right.sortDate.Day
+	}
+	if left.Approximate != right.Approximate {
+		return !left.Approximate
+	}
+	if left.sortOrder != right.sortOrder {
+		return left.sortOrder < right.sortOrder
+	}
+	return strings.ToLower(left.Title) < strings.ToLower(right.Title)
+}
+
+func recordTimelineSourceLabel(record models.Record) string {
+	label := strings.TrimSpace(record.RecordType)
+	if label == "" {
+		label = "Archive record"
+	}
+	if strings.TrimSpace(record.AppID) == "" {
+		return label
+	}
+	return label + " · " + strings.TrimSpace(record.AppID)
+}
+
+func recordTimelineCategory(record models.Record) string {
+	label := strings.ToLower(strings.TrimSpace(record.RecordType))
+	switch {
+	case strings.Contains(label, "pension"), strings.Contains(label, "application"):
+		return "pension"
+	case strings.Contains(label, "parole"), strings.Contains(label, "muster"), strings.Contains(label, "service"), strings.Contains(label, "roster"):
+		return "service"
+	case strings.Contains(label, "grave"), strings.Contains(label, "burial"), strings.Contains(label, "cemetery"):
+		return "burial"
+	default:
+		return "archive"
+	}
+}
+
+func recordTimelineOrder(record models.Record) int {
+	switch recordTimelineCategory(record) {
+	case "service":
+		return 10
+	case "pension":
+		return 20
+	case "burial":
+		return 30
+	default:
+		return 40
+	}
+}
+
+func timelineRecordHasContent(record models.Record) bool {
+	return strings.TrimSpace(record.RecordType) != "" || strings.TrimSpace(record.AppID) != "" || strings.TrimSpace(record.Details) != ""
+}
+
+func suggestedResearchTasks(soldier models.Soldier) []ResearchTaskSuggestion {
+	suggestions := make([]ResearchTaskSuggestion, 0, 8)
+	if isSoldierEntryType(soldier.EntryType) && strings.TrimSpace(soldier.Unit) == "" {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Confirm unit assignment",
+			Notes:        "No unit is recorded yet. Verify regiment, company, or service branch from attached evidence.",
+			EvidenceType: "service",
+		})
+	}
+	if strings.TrimSpace(soldier.PensionID) == "" && strings.TrimSpace(soldier.ApplicationID) == "" {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Locate pension or application file",
+			Notes:        "No pension ID or application ID is attached yet. Check pension indexes or state archive holdings.",
+			EvidenceType: "pension",
+		})
+	}
+	if strings.TrimSpace(soldier.BuriedIn) == "" {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Confirm burial location",
+			Notes:        "Burial place is still missing. Search cemetery registers, memorial sites, or obituary sources.",
+			EvidenceType: "burial",
+		})
+	}
+	if strings.TrimSpace(soldier.BirthDate) == "" && strings.TrimSpace(soldier.BirthInfo) == "" {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Confirm birth details",
+			Notes:        "Birth date and place context are missing. Look for census, family bible, or probate evidence.",
+			EvidenceType: "vital",
+		})
+	}
+	if strings.TrimSpace(soldier.DeathDate) == "" && soldier.DeathYear == 0 {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Confirm death details",
+			Notes:        "Death timing is incomplete. Search pension closure files, death certificates, and memorial records.",
+			EvidenceType: "vital",
+		})
+	}
+	if len(soldier.Records) == 0 {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Attach primary source records",
+			Notes:        "No archive records are attached yet. Add muster, parole, pension, memorial, or correspondence sources.",
+			EvidenceType: "archive",
+		})
+	}
+	if !isSoldierEntryType(soldier.EntryType) && soldier.SpouseSoldierID == 0 {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Link spouse soldier record",
+			Notes:        "Family relationship is not connected yet. Identify and link the matching soldier profile.",
+			EvidenceType: "family",
+		})
+	}
+	if !isSoldierEntryType(soldier.EntryType) && strings.TrimSpace(soldier.MaidenName) == "" {
+		suggestions = append(suggestions, ResearchTaskSuggestion{
+			Title:        "Confirm maiden name",
+			Notes:        "Maiden name is still blank. Search marriage, pension, census, or obituary records for supporting evidence.",
+			EvidenceType: "family",
+		})
+	}
+	return suggestions
+}
+
+func normalizeResearchEvidenceType(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "service", "pension", "burial", "vital", "family", "archive":
+		return strings.ToLower(strings.TrimSpace(value))
+	default:
+		return "general"
+	}
+}
+
+func isSoldierEntryType(value string) bool {
+	trimmed := strings.ToLower(strings.TrimSpace(value))
+	return trimmed == "" || trimmed == "soldier"
+}
+
+func researchPackStateLabel(soldier models.Soldier) string {
+	if trimmed := strings.TrimSpace(soldier.PensionState); trimmed != "" {
+		return trimmed
+	}
+	_, state := parseBirthCountyState(soldier.BirthInfo)
+	return state
+}
+
+func parseBirthCountyState(value string) (string, string) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", ""
+	}
+	if match := birthCountyStatePattern.FindStringSubmatch(trimmed); len(match) == 3 {
+		county := strings.TrimSpace(match[1])
+		if len(county) > 3 && strings.EqualFold(county[:3], "in ") {
+			county = strings.TrimSpace(county[3:])
+		}
+		return county, strings.Trim(strings.TrimSpace(match[2]), ". ")
+	}
+	if match := birthStateTailPattern.FindStringSubmatch(trimmed); len(match) == 2 {
+		return "", strings.Trim(strings.TrimSpace(match[1]), ". ")
+	}
+	return "", ""
+}
+
+func researchPackDescription(scope, label string) string {
+	switch scope {
+	case "county":
+		return fmt.Sprintf("Records tied to %s through birth-place context and related local evidence.", label)
+	default:
+		return fmt.Sprintf("Records tied to %s through pension filing or birth-place context.", label)
+	}
+}
+
+func (s *SoldierService) researchPackCounts(whereClause string, args []interface{}, field string, limit int) ([]AnalyticsCount, error) {
+	query := fmt.Sprintf(`
+		SELECT TRIM(%s) AS label, COUNT(*)
+		FROM soldiers
+		WHERE %s AND TRIM(COALESCE(%s, '')) <> ''
+		GROUP BY TRIM(%s)
+		ORDER BY COUNT(*) DESC, LOWER(TRIM(%s)) ASC
+		LIMIT ?
+	`, field, whereClause, field, field, field)
+	rows, err := s.db.Conn().Query(query, append(args, limit)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := []AnalyticsCount{}
+	for rows.Next() {
+		var count AnalyticsCount
+		if err := rows.Scan(&count.Label, &count.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, count)
+	}
+	return counts, rows.Err()
 }
 
 func (s *SoldierService) ManualComparison(leftID, rightID int64) (*DuplicateAuditComparison, error) {

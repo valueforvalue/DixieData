@@ -1,0 +1,114 @@
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/services"
+)
+
+templ UnitCamaraderieView(graph services.UnitCamaraderieGraph) {
+	@Layout("Unit Camaraderie") {
+		<div class="mx-auto max-w-6xl">
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				<button
+					type="button"
+					data-history-back
+					data-fallback-href={ fmt.Sprintf("/soldiers/%d", graph.Central.ID) }
+					data-fallback-label="Back to Record"
+					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+				>← Back to Record</button>
+				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", graph.Central.ID)) } class="pill-link">Open Detail Card</a>
+			</div>
+			<div class="grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+				<div class="card rounded-3xl p-6">
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Unit Camaraderie Graph</p>
+					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(graph.Central) }</h2>
+					<p class="mt-2 text-sm text-slate-600">{ graph.Central.DisplayID }</p>
+					<div class="mt-5 space-y-3 text-sm text-slate-700">
+						<div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Recorded Unit</p>
+							<p class="mt-2 font-medium text-slate-900">{ emptyDetail(graph.UnitLabel) }</p>
+						</div>
+						if strings.TrimSpace(graph.RegimentLabel) != "" {
+							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Regiment Context</p>
+								<p class="mt-2 font-medium text-slate-900">{ graph.RegimentLabel }</p>
+							</div>
+						}
+						if strings.TrimSpace(graph.CompanyLabel) != "" {
+							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Company Signal</p>
+								<p class="mt-2 font-medium text-slate-900">{ graph.CompanyLabel }</p>
+							</div>
+						}
+					</div>
+					<div class="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.8)] px-4 py-3">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Same Unit</p>
+							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(graph.SameUnit)) }</p>
+						</div>
+						<div class="rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Company Variant</p>
+							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(graph.SameCompanyVariant)) }</p>
+						</div>
+						<div class="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Same Regiment</p>
+							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(graph.SameRegiment)) }</p>
+						</div>
+					</div>
+				</div>
+				<div class="space-y-5">
+					<div class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+						<p class="text-sm text-slate-700">This view keeps the strongest likely service relationships closest to the center: exact unit matches first, then company variants inside the same regiment, then broader regiment peers.</p>
+					</div>
+					@unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.Central.ID, "border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)]")
+					@unitCamaraderieSection("Company Variants", "Likely close matches where the regiment is shared and the company marker aligns even if the unit text varies.", graph.SameCompanyVariant, graph.Central.ID, "border-blue-200 bg-blue-50/70")
+					@unitCamaraderieSection("Same Regiment", "Broader context for soldiers who likely served in the same regiment family.", graph.SameRegiment, graph.Central.ID, "border-slate-200 bg-white/80")
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ unitCamaraderieSection(title, description string, peers []services.UnitCamaraderieConnection, originID int64, sectionClass string) {
+	<section class={ "rounded-3xl border p-5 " + sectionClass }>
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+			<div>
+				<h3 class="text-lg font-semibold text-slate-900">{ title }</h3>
+				<p class="text-sm text-slate-600">{ description }</p>
+			</div>
+			<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{ fmt.Sprintf("%d linked records", len(peers)) }</p>
+		</div>
+		if len(peers) == 0 {
+			<p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-sm text-slate-500">No records surfaced for this relationship tier yet.</p>
+		} else {
+			<div class="mt-4 grid gap-4 md:grid-cols-2">
+				for _, peer := range peers {
+					<div class="rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm">
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">{ peer.StrengthText }</p>
+								<p class="mt-2 text-lg font-semibold text-slate-900">{ detailHeading(peer.Soldier) }</p>
+								<p class="text-sm text-slate-500">{ peer.Soldier.DisplayID }</p>
+							</div>
+							<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{ peer.Relation }</span>
+						</div>
+						<dl class="mt-4 grid gap-2 text-sm text-slate-700">
+							<dt class="text-slate-500">Unit</dt>
+							<dd>{ emptyDetail(peer.Soldier.Unit) }</dd>
+							<dt class="text-slate-500">Pension State</dt>
+							<dd>{ emptyDetail(peer.Soldier.PensionState) }</dd>
+							<dt class="text-slate-500">Buried In</dt>
+							<dd>{ emptyDetail(peer.Soldier.BuriedIn) }</dd>
+						</dl>
+						<div class="mt-4 flex flex-wrap gap-3">
+							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", peer.Soldier.ID, originID)) } class="pill-link">Open Record</a>
+							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", originID, peer.Soldier.ID, originID)) } class="secondary-button">Compare Records</a>
+						</div>
+					</div>
+				}
+			</div>
+		}
+	</section>
+}

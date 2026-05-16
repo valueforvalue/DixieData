@@ -236,6 +236,24 @@
 
   function shouldCaptureBackSnapshot(href) {
     const normalized = String(href || "");
+    if (/^\/research-collections(?:\/\d+)?(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/\d+\/research-pack\/(?:state|county)(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/\d+\/conflict-ledger(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/\d+\/research-log(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/\d+\/timeline(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/\d+\/camaraderie(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
     if (/^\/soldiers\/\d+(?:\?.*)?$/.test(normalized)) {
       return true;
     }
