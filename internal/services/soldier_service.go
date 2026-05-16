@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
 	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
@@ -73,10 +73,10 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	}
 	stampCreateAuditFields(s.currentAuditActor(), &soldier)
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
-		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
+		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -101,31 +101,8 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 }
 
 func isGeneratedDisplayID(displayID string) bool {
-	trimmed := strings.TrimSpace(displayID)
-	parts := strings.Split(trimmed, "-")
-	switch len(parts) {
-	case 2:
-		if parts[0] == "" || !prefixSegmentContainsDigit(parts[0]) {
-			return false
-		}
-		return isFiveDigitGeneratedSuffix(parts[1])
-	case 3:
-		if strings.ToUpper(parts[1]) != "DXD" || parts[0] == "" {
-			return false
-		}
-		return isFiveDigitGeneratedSuffix(parts[2])
-	default:
-		return false
-	}
-}
-
-func prefixSegmentContainsDigit(value string) bool {
-	for _, r := range value {
-		if r >= '0' && r <= '9' {
-			return true
-		}
-	}
-	return false
+	_, _, ok := db.CanonicalDisplayID(db.SanitizeID(displayID, ""))
+	return ok
 }
 
 func isFiveDigitGeneratedSuffix(value string) bool {
@@ -212,9 +189,9 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	}
 	stampUpdateAuditFields(s.currentAuditActor(), before, &soldier)
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
+	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
-		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.ID)
+		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.ID)
 	if err != nil {
 		return err
 	}
@@ -349,6 +326,49 @@ func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
 	return counts, nil
 }
 
+func (s *SoldierService) ReviewQueue(page, pageSize int) ([]models.Soldier, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	conn := s.db.Conn()
+	var total int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM soldiers WHERE needs_review = 1`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	rows, err := conn.Query(`SELECT `+soldierSelectColumns+` FROM soldiers WHERE needs_review = 1 ORDER BY updated_at DESC, last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	soldiers, err := scanSoldiers(rows)
+	return soldiers, total, err
+}
+
+func (s *SoldierService) MarkReviewResolved(soldierID int64) error {
+	if _, err := s.db.Conn().Exec(`UPDATE soldiers SET needs_review = 0, review_reason = '' WHERE id = ?`, soldierID); err != nil {
+		return err
+	}
+	return s.touchAuditFields(soldierID, "review_status")
+}
+
+func (s *SoldierService) SetReviewStatus(soldierID int64, needsReview bool, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if !needsReview {
+		reason = ""
+	}
+	if _, err := s.db.Conn().Exec(`UPDATE soldiers SET needs_review = ?, review_reason = ? WHERE id = ?`, needsReview, reason, soldierID); err != nil {
+		return err
+	}
+	if needsReview {
+		return s.touchAuditFields(soldierID, "needs_review")
+	}
+	return s.touchAuditFields(soldierID, "review_status")
+}
+
 func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1
@@ -479,6 +499,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	search.ConfederateHomeStatus = strings.TrimSpace(search.ConfederateHomeStatus)
 	search.ConfederateHomeName = strings.TrimSpace(search.ConfederateHomeName)
 	search.BuriedIn = strings.TrimSpace(search.BuriedIn)
+	search.ReviewStatus = strings.TrimSpace(search.ReviewStatus)
 	search.BirthDate = strings.TrimSpace(search.BirthDate)
 	search.BirthYear = strings.TrimSpace(search.BirthYear)
 	search.BirthYearTo = strings.TrimSpace(search.BirthYearTo)
@@ -587,6 +608,12 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	}
 	if search.BuriedIn != "" {
 		appendContainsFilter("buried_in", search.BuriedIn)
+	}
+	switch strings.ToLower(search.ReviewStatus) {
+	case "clean":
+		whereParts = append(whereParts, "needs_review = 0")
+	case "review":
+		whereParts = append(whereParts, "needs_review = 1")
 	}
 	if search.BirthDate != "" {
 		normalized, err := dates.NormalizeCanonical(search.BirthDate)
@@ -821,6 +848,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		birthInfo             sql.NullString
 		buriedIn              sql.NullString
 		notes                 sql.NullString
+		reviewReason          sql.NullString
 		addedBy               sql.NullString
 		lastEditedBy          sql.NullString
 		lastEditedFields      sql.NullString
@@ -864,6 +892,8 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.BirthInfo, &birthInfo),
 		nullStringDest(&s.BuriedIn, &buriedIn),
 		nullStringDest(&s.Notes, &notes),
+		&s.NeedsReview,
+		nullStringDest(&s.ReviewReason, &reviewReason),
 		nullStringDest(&s.AddedBy, &addedBy),
 		nullStringDest(&s.LastEditedBy, &lastEditedBy),
 		nullStringDest(&s.LastEditedFields, &lastEditedFields),
@@ -1082,15 +1112,7 @@ func spouseReference(conn *sql.DB, spouseSoldierID int64) string {
 }
 
 func normalizeDisplayID(displayID, nodePrefix string) string {
-	trimmed := strings.TrimSpace(displayID)
-	if trimmed == "" {
-		return ""
-	}
-	prefix := db.NormalizeNodePrefix(nodePrefix)
-	if strings.HasPrefix(trimmed, prefix+"-") {
-		return trimmed
-	}
-	return prefix + "-" + trimmed
+	return db.SanitizeID(displayID, nodePrefix)
 }
 
 func normalizeSoldierDates(soldier *models.Soldier) error {
@@ -1132,11 +1154,13 @@ func hydrateLegacyDeathParts(soldier *models.Soldier) {
 }
 
 func hydrateSoldierIdentity(tx *sql.Tx, soldier *models.Soldier) error {
-	row := tx.QueryRow(`SELECT sync_id, added_by, created_at FROM soldiers WHERE id = ?`, soldier.ID)
+	row := tx.QueryRow(`SELECT sync_id, added_by, created_at, needs_review, review_reason FROM soldiers WHERE id = ?`, soldier.ID)
 	var currentSyncID sql.NullString
 	var addedBy sql.NullString
 	var createdAt sql.NullString
-	if err := row.Scan(&currentSyncID, &addedBy, &createdAt); err != nil {
+	var reviewReason sql.NullString
+	var needsReview bool
+	if err := row.Scan(&currentSyncID, &addedBy, &createdAt, &needsReview, &reviewReason); err != nil {
 		return err
 	}
 	if strings.TrimSpace(soldier.SyncID) == "" {
@@ -1147,6 +1171,10 @@ func hydrateSoldierIdentity(tx *sql.Tx, soldier *models.Soldier) error {
 	}
 	if strings.TrimSpace(soldier.CreatedAt) == "" {
 		soldier.CreatedAt = createdAt.String
+	}
+	if !soldier.NeedsReview && strings.TrimSpace(soldier.ReviewReason) == "" {
+		soldier.NeedsReview = needsReview
+		soldier.ReviewReason = reviewReason.String
 	}
 	return nil
 }
@@ -1227,6 +1255,8 @@ func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
 		{"Birth Info", auditLongTextValue(before.BirthInfo), auditLongTextValue(after.BirthInfo)},
 		{"Buried In", auditTextValue(before.BuriedIn), auditTextValue(after.BuriedIn)},
 		{"Notes", auditLongTextValue(before.Notes), auditLongTextValue(after.Notes)},
+		{"Needs Review", auditBoolValue(before.NeedsReview), auditBoolValue(after.NeedsReview)},
+		{"Review Reason", auditLongTextValue(before.ReviewReason), auditLongTextValue(after.ReviewReason)},
 	}
 	changed := make([]string, 0, len(fields)+1)
 	for _, field := range fields {
@@ -1292,6 +1322,13 @@ func auditDateValue(value string) string {
 	return fmt.Sprintf("%q", display)
 }
 
+func auditBoolValue(value bool) string {
+	if value {
+		return `"Yes"`
+	}
+	return `"No"`
+}
+
 func recordsEqual(left, right []models.Record) bool {
 	left = normalizeRecords(left)
 	right = normalizeRecords(right)
@@ -1351,6 +1388,10 @@ func auditTouchDescriptions(fields []string) []string {
 			descriptions = append(descriptions, "Primary image updated.")
 		case "records":
 			descriptions = append(descriptions, "Records updated.")
+		case "needs_review":
+			descriptions = append(descriptions, "Review status updated.")
+		case "review_status":
+			descriptions = append(descriptions, "Review queue cleared.")
 		default:
 			label := strings.ReplaceAll(strings.TrimSpace(field), "_", " ")
 			label = strings.TrimSpace(strings.Title(label))

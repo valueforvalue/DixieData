@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -1048,11 +1049,11 @@ func (b *BackupService) ResolveMergeConflict(conflictID int64, decision, dataDir
 		if conflict.ConflictType != "display-id-collision" {
 			return fmt.Errorf("keep both is only supported for display ID collisions")
 		}
-		if err := applySharedConflictResolution(tx, conflict, sessionRoot, dataDir); err != nil {
+		if err := applySharedConflictResolution(tx, conflict, decision, sessionRoot, dataDir); err != nil {
 			return err
 		}
-	case "use-shared":
-		if err := applySharedConflictResolution(tx, conflict, sessionRoot, dataDir); err != nil {
+	case "use-shared", "keep-shared":
+		if err := applySharedConflictResolution(tx, conflict, decision, sessionRoot, dataDir); err != nil {
 			return err
 		}
 	default:
@@ -1083,9 +1084,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	err = tx.QueryRow(`SELECT id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID)
 	if err == nil {
 		_, err = tx.Exec(`UPDATE soldiers
-			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
+			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, needs_review = ?, review_reason = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
 			WHERE id = ?`,
-			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
+			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
 		if err != nil {
 			return 0, false, "", err
 		}
@@ -1099,9 +1100,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers
-		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at)
-		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		displayID, syncID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
+		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		displayID, syncID, soldier.EntryType, nil, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
 		return 0, false, "", err
 	}
@@ -1188,33 +1189,80 @@ func copySharedImageFile(sourceDataDir, targetDataDir, relativePath string) erro
 }
 
 func resolveSharedDisplayID(tx *sql.Tx, desiredDisplayID, syncID string) (string, error) {
-	candidate := strings.TrimSpace(desiredDisplayID)
+	nodePrefix, err := nodePrefixFromTx(tx)
+	if err != nil {
+		return "", err
+	}
+	candidate := db.SanitizeID(desiredDisplayID, nodePrefix)
 	if candidate == "" {
-		candidate = "IMPORTED-" + strings.ToUpper(strings.ReplaceAll(strings.Split(syncID, "-")[0], "-", ""))
+		return nextLocalGeneratedDisplayID(tx)
 	}
 	return ensureUniqueDisplayID(tx, candidate, syncID)
 }
 
 func ensureUniqueDisplayID(tx *sql.Tx, candidate, syncID string) (string, error) {
-	shortSync := strings.ToUpper(strings.ReplaceAll(strings.Split(syncID, "-")[0], "-", ""))
-	attempts := []string{
-		candidate,
-		candidate + "-" + shortSync,
+	var existingSync sql.NullString
+	err := tx.QueryRow(`SELECT sync_id FROM soldiers WHERE display_id = ?`, candidate).Scan(&existingSync)
+	if err == sql.ErrNoRows {
+		return candidate, nil
 	}
-	for _, attempt := range attempts {
-		var existingSync sql.NullString
-		err := tx.QueryRow(`SELECT sync_id FROM soldiers WHERE display_id = ?`, attempt).Scan(&existingSync)
-		if err == sql.ErrNoRows {
-			return attempt, nil
-		}
-		if err != nil {
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(existingSync.String) == strings.TrimSpace(syncID) {
+		return candidate, nil
+	}
+	return nextLocalGeneratedDisplayID(tx)
+}
+
+func nextLocalGeneratedDisplayID(tx *sql.Tx) (string, error) {
+	nodePrefix, err := nodePrefixFromTx(tx)
+	if err != nil {
+		return "", err
+	}
+	rows, err := tx.Query(`SELECT display_id, is_generated FROM soldiers`)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	maxID := 0
+	for rows.Next() {
+		var (
+			displayID   string
+			isGenerated bool
+		)
+		if err := rows.Scan(&displayID, &isGenerated); err != nil {
 			return "", err
 		}
-		if strings.TrimSpace(existingSync.String) == strings.TrimSpace(syncID) {
-			return attempt, nil
+		sequence, ok := mergeGeneratedDisplayIDSequence(displayID, nodePrefix, isGenerated)
+		if ok && sequence > maxID {
+			maxID = sequence
 		}
 	}
-	return "", fmt.Errorf("unable to resolve unique display_id for %s", candidate)
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	return db.NextGeneratedDisplayID(nodePrefix, maxID+1), nil
+}
+
+func nodePrefixFromTx(tx *sql.Tx) (string, error) {
+	var prefix sql.NullString
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'node_prefix'`).Scan(&prefix); err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	return db.NormalizeNodePrefix(prefix.String), nil
+}
+
+func mergeGeneratedDisplayIDSequence(displayID, nodePrefix string, isGenerated bool) (int, bool) {
+	namespace, sequence, ok := db.CanonicalDisplayID(db.SanitizeID(displayID, nodePrefix))
+	if !ok {
+		return 0, false
+	}
+	if isGenerated || strings.EqualFold(namespace, db.LegacyDisplayIDNamespace) || strings.EqualFold(namespace, db.NormalizeNodePrefix(nodePrefix)) {
+		return sequence, true
+	}
+	return 0, false
 }
 
 func detectSharedConflict(tx *sql.Tx, source mergeReviewSnapshot) (*mergeReviewSnapshot, string, string, error) {
@@ -1235,6 +1283,14 @@ func detectSharedConflict(tx *sql.Tx, source mergeReviewSnapshot) (*mergeReviewS
 	}
 	if err == nil && strings.TrimSpace(localByDisplay.Soldier.SyncID) != strings.TrimSpace(source.Soldier.SyncID) {
 		return localByDisplay, "display-id-collision", fmt.Sprintf("Shared record %s collides with existing local record %s.", source.Soldier.DisplayID, localByDisplay.Soldier.DisplayID), nil
+	}
+
+	localByHuman, err := loadSoldierSnapshotByHumanMatch(tx, source.Soldier)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, "", "", err
+	}
+	if err == nil && strings.TrimSpace(localByHuman.Soldier.SyncID) != strings.TrimSpace(source.Soldier.SyncID) {
+		return localByHuman, "human-duplicate", describeHumanDuplicateConflict(*localByHuman, source), nil
 	}
 	return nil, "", "", nil
 }
@@ -1304,14 +1360,31 @@ func loadMergeReviewConflict(tx *sql.Tx, conflictID int64) (models.MergeReviewCo
 	return conflict, sessionRoot, nil
 }
 
-func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConflict, sourceDataDir, targetDataDir string) error {
+func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConflict, decision, sourceDataDir, targetDataDir string) error {
 	sourceSnapshot, err := loadSourceSnapshotForConflict(tx, conflict.ID)
 	if err != nil {
 		return err
 	}
+	preserveLocalIdentifiers := decision != "keep-both" && conflict.LocalSoldier != nil
+	if preserveLocalIdentifiers {
+		sourceSnapshot.Soldier.ID = conflict.LocalSoldierID
+		sourceSnapshot.Soldier.DisplayID = conflict.LocalSoldier.DisplayID
+		sourceSnapshot.Soldier.SyncID = conflict.LocalSoldier.SyncID
+		sourceSnapshot.Soldier.AddedBy = conflict.LocalSoldier.AddedBy
+		sourceSnapshot.Soldier.CreatedAt = conflict.LocalSoldier.CreatedAt
+	}
 	targetID, _, _, err := upsertSharedSoldier(tx, sourceSnapshot.Soldier)
 	if err != nil {
 		return err
+	}
+	if decision == "keep-both" && conflict.LocalSoldier != nil {
+		reviewReason := fmt.Sprintf("Potential duplicate preserved during shared merge against %s.", strings.TrimSpace(sourceSnapshot.Soldier.DisplayID))
+		if err := setReviewStatusTx(tx, conflict.LocalSoldierID, true, reviewReason); err != nil {
+			return err
+		}
+		if err := setReviewStatusTx(tx, targetID, true, fmt.Sprintf("Potential duplicate imported from shared record %s.", strings.TrimSpace(conflict.LocalSoldier.DisplayID))); err != nil {
+			return err
+		}
 	}
 	spouseTargetID := int64(0)
 	if strings.TrimSpace(sourceSnapshot.SpouseSyncID) != "" {
@@ -1340,6 +1413,64 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 		}
 	}
 	return nil
+}
+
+func setReviewStatusTx(tx *sql.Tx, soldierID int64, needsReview bool, reason string) error {
+	reason = strings.TrimSpace(reason)
+	if !needsReview {
+		reason = ""
+	}
+	_, err := tx.Exec(`UPDATE soldiers SET needs_review = ?, review_reason = ? WHERE id = ?`, needsReview, reason, soldierID)
+	return err
+}
+
+func loadSoldierSnapshotByHumanMatch(tx *sql.Tx, source models.Soldier) (*mergeReviewSnapshot, error) {
+	birthYear, ok := humanDuplicateBirthYear(source)
+	if !ok {
+		return nil, sql.ErrNoRows
+	}
+	firstName := strings.TrimSpace(source.FirstName)
+	lastName := strings.TrimSpace(source.LastName)
+	unit := strings.TrimSpace(source.Unit)
+	if firstName == "" || lastName == "" || unit == "" {
+		return nil, sql.ErrNoRows
+	}
+
+	var soldierID int64
+	err := tx.QueryRow(`SELECT id
+		FROM soldiers
+		WHERE TRIM(COALESCE(first_name, '')) = ?
+		  AND TRIM(COALESCE(last_name, '')) = ?
+		  AND TRIM(COALESCE(unit, '')) = ?
+		  AND CAST(SUBSTR(TRIM(COALESCE(birth_date, '')), 7, 4) AS INTEGER) = ?
+		  AND TRIM(COALESCE(sync_id, '')) <> ?
+		ORDER BY id
+		LIMIT 1`,
+		firstName, lastName, unit, birthYear, strings.TrimSpace(source.SyncID),
+	).Scan(&soldierID)
+	if err != nil {
+		return nil, err
+	}
+	return loadSoldierSnapshotByID(tx, soldierID)
+}
+
+func describeHumanDuplicateConflict(local mergeReviewSnapshot, source mergeReviewSnapshot) string {
+	birthYear, _ := humanDuplicateBirthYear(source.Soldier)
+	return fmt.Sprintf("Shared record %s matches %s on name, birth year %d, and unit %s.", source.Soldier.DisplayID, local.Soldier.DisplayID, birthYear, strings.TrimSpace(source.Soldier.Unit))
+}
+
+func humanDuplicateBirthYear(soldier models.Soldier) (int, bool) {
+	partial, err := dates.ParseCanonical(strings.TrimSpace(soldier.BirthDate))
+	if err == nil && partial.Year >= 1000 {
+		return partial.Year, true
+	}
+	if parsedBirth := dates.ParseBirthInfo(strings.TrimSpace(soldier.BirthInfo)); parsedBirth != "" {
+		partial, err := dates.ParseCanonical(parsedBirth)
+		if err == nil && partial.Year >= 1000 {
+			return partial.Year, true
+		}
+	}
+	return 0, false
 }
 
 func finalizeMergeReviewSession(tx *sql.Tx, sessionID, sessionRoot string) error {
@@ -1412,8 +1543,10 @@ func loadSoldierSnapshotByID(tx *sql.Tx, soldierID int64) (*mergeReviewSnapshot,
 	if soldier.SpouseSoldierID > 0 {
 		_ = tx.QueryRow(`SELECT COALESCE(sync_id, '') FROM soldiers WHERE id = ?`, soldier.SpouseSoldierID).Scan(&spouseSyncID)
 	}
+	normalized := normalizeSharedSoldierSnapshot(*soldier)
+	normalized.ID = soldierID
 	return &mergeReviewSnapshot{
-		Soldier:      normalizeSharedSoldierSnapshot(*soldier),
+		Soldier:      normalized,
 		SpouseSyncID: strings.TrimSpace(spouseSyncID),
 	}, nil
 }

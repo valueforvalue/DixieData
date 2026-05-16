@@ -19,6 +19,14 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 				<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ s.DisplayID }</span>
 				<p class="mt-1 font-semibold text-slate-900">{ detailHeading(s) }</p>
 				<p class="text-sm text-slate-500">{ detailSubheading(s) }</p>
+				if s.NeedsReview {
+					<div class="mt-2 flex flex-wrap gap-2 text-xs">
+						<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+						if strings.TrimSpace(s.ReviewReason) != "" {
+							<span class="rounded-full border border-[rgba(111,44,38,0.2)] bg-[rgba(255,241,239,0.88)] px-2.5 py-1 text-[#6f2c26]">{ s.ReviewReason }</span>
+						}
+					</div>
+				}
 				if strings.TrimSpace(s.SearchMatchSnippet) != "" {
 					<p class="mt-2 text-xs font-medium text-[#6f2c26]">Matched on { s.SearchMatchField }: <span class="text-[#22303d]">{ s.SearchMatchSnippet }</span></p>
 				}
@@ -211,6 +219,14 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
 						<input type="text" name="buried_in" list="advanced-buried-in-suggestions" class="field-input"/>
 					</div>
+					<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Status</label>
+						<select name="review_status" class="field-input">
+							<option value="">All Records</option>
+							<option value="clean">Clean Records Only</option>
+							<option value="review">Review Queue Only</option>
+						</select>
+					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1">Birth Year</label>
 						<input type="text" name="birth_year" class="field-input" placeholder="1838"/>
@@ -306,10 +322,19 @@ templ SoldierDetail(s models.Soldier) {
 					</summary>
 					<div class="border-t border-[rgba(141,116,64,0.28)] px-4 py-4">
 						<dl class="responsive-two-col grid gap-2 text-sm">
+							<dt class="text-slate-500">Review Status</dt><dd>{ reviewStatusLabel(s) }</dd>
+							<dt class="text-slate-500">Review Reason</dt><dd>{ emptyDetail(s.ReviewReason) }</dd>
 							<dt class="text-slate-500">Created By</dt><dd>{ emptyDetail(s.AddedBy) }</dd>
 							<dt class="text-slate-500">Last Updated By</dt><dd>{ emptyDetail(s.LastEditedBy) }</dd>
 							<dt class="text-slate-500">Last Update Time</dt><dd>{ emptyDetail(formatAuditTimestamp(s.LastEditedAt)) }</dd>
 						</dl>
+						if s.NeedsReview {
+							<div class="mt-4 flex flex-wrap gap-3">
+								<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve", s.ID) } hx-target="#review-resolution-status" class="primary-button">Mark as Resolved</button>
+								<p class="text-sm text-slate-500">This clears the review flag and removes the record from the Review Queue.</p>
+							</div>
+							<div id="review-resolution-status" class="mt-3 text-sm text-slate-600"></div>
+						}
 						<div class="mt-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Recent Field Changes</p>
 							if len(auditHistoryLines(s.LastEditedFields)) == 0 {
@@ -462,6 +487,9 @@ func searchParams(search models.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.BuriedIn) != "" {
 			values.Set("buried_in", search.BuriedIn)
 		}
+		if strings.TrimSpace(search.ReviewStatus) != "" {
+			values.Set("review_status", search.ReviewStatus)
+		}
 		if strings.TrimSpace(search.BirthDate) != "" {
 			values.Set("birth_date", search.BirthDate)
 		}
@@ -551,6 +579,14 @@ func searchSummary(search models.SoldierSearch) string {
 	if search.BuriedIn != "" {
 		parts = append(parts, "Buried in "+search.BuriedIn)
 	}
+	if search.ReviewStatus != "" {
+		switch strings.ToLower(strings.TrimSpace(search.ReviewStatus)) {
+		case "clean":
+			parts = append(parts, "Clean records only")
+		case "review":
+			parts = append(parts, "Review queue only")
+		}
+	}
 	if search.BirthDate != "" {
 		parts = append(parts, "Birth date "+search.BirthDate)
 	}
@@ -581,6 +617,13 @@ func searchSummary(search models.SoldierSearch) string {
 		return "Advanced search"
 	}
 	return "Advanced filters: " + strings.Join(parts, ", ")
+}
+
+func reviewStatusLabel(s models.Soldier) string {
+	if s.NeedsReview {
+		return "Needs Review"
+	}
+	return "Clean"
 }
 
 func soldierFullName(s models.Soldier) string {

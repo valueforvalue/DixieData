@@ -734,10 +734,10 @@ func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
 	for _, image := range soldier.Images {
 		gotNames[image.FileName] = true
 	}
-	if !gotNames["TDM65-CSA-TEST-img-001.jpg"] && !gotNames["TDM65-CSA-TEST-img-001.png"] {
+	if !gotNames["CSA-TEST-img-001.jpg"] && !gotNames["CSA-TEST-img-001.png"] {
 		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
 	}
-	if !gotNames["TDM65-CSA-TEST-img-002.jpg"] && !gotNames["TDM65-CSA-TEST-img-002.png"] {
+	if !gotNames["CSA-TEST-img-002.jpg"] && !gotNames["CSA-TEST-img-002.png"] {
 		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
 	}
 }
@@ -783,7 +783,7 @@ func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
 	if len(soldier.Images) != 1 {
 		t.Fatalf("images len = %d, want 1", len(soldier.Images))
 	}
-	if soldier.Images[0].FileName != "TDM65-CSA-HEADER-img-001.jpeg" {
+	if soldier.Images[0].FileName != "CSA-HEADER-img-001.jpeg" {
 		t.Fatalf("stored image name = %q", soldier.Images[0].FileName)
 	}
 }
@@ -833,7 +833,7 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	if len(soldier.Images) != 2 {
 		t.Fatalf("images len = %d, want 2", len(soldier.Images))
 	}
-	if soldier.Images[0].FileName != "TDM65-CSA-NATIVE-img-001.jpeg" || soldier.Images[1].FileName != "TDM65-CSA-NATIVE-img-002.png" {
+	if soldier.Images[0].FileName != "CSA-NATIVE-img-001.jpeg" || soldier.Images[1].FileName != "CSA-NATIVE-img-002.png" {
 		t.Fatalf("unexpected imported image names: %#v", soldier.Images)
 	}
 	for _, image := range soldier.Images {

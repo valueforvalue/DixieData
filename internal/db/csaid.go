@@ -1,17 +1,13 @@
 package db
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-)
+import "strings"
 
 func (d *DB) NextDXDID() (string, error) {
 	nodePrefix, err := d.NodePrefix()
 	if err != nil {
 		return "", err
 	}
-	rows, err := d.conn.Query(`SELECT display_id FROM soldiers`)
+	rows, err := d.conn.Query(`SELECT display_id, is_generated FROM soldiers`)
 	if err != nil {
 		return "", err
 	}
@@ -19,11 +15,14 @@ func (d *DB) NextDXDID() (string, error) {
 
 	maxID := 0
 	for rows.Next() {
-		var displayID string
-		if err := rows.Scan(&displayID); err != nil {
+		var (
+			displayID   string
+			isGenerated bool
+		)
+		if err := rows.Scan(&displayID, &isGenerated); err != nil {
 			return "", err
 		}
-		sequence, ok := generatedDisplayIDSequence(displayID, nodePrefix)
+		sequence, ok := generatedDisplayIDSequence(displayID, nodePrefix, isGenerated)
 		if ok && sequence > maxID {
 			maxID = sequence
 		}
@@ -31,30 +30,16 @@ func (d *DB) NextDXDID() (string, error) {
 	if err := rows.Err(); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s-%05d", nodePrefix, maxID+1), nil
+	return NextGeneratedDisplayID(nodePrefix, maxID+1), nil
 }
 
-func generatedDisplayIDSequence(displayID, nodePrefix string) (int, bool) {
-	trimmed := strings.TrimSpace(displayID)
-	prefix := NormalizeNodePrefix(nodePrefix)
-	candidates := []string{
-		prefix + "-",
-		prefix + "-DXD-",
-		"DXD-",
+func generatedDisplayIDSequence(displayID, nodePrefix string, isGenerated bool) (int, bool) {
+	namespace, sequence, ok := CanonicalDisplayID(SanitizeID(displayID, nodePrefix))
+	if !ok {
+		return 0, false
 	}
-	for _, candidate := range candidates {
-		if !strings.HasPrefix(trimmed, candidate) {
-			continue
-		}
-		value := strings.TrimPrefix(trimmed, candidate)
-		if len(value) != 5 {
-			continue
-		}
-		parsed, err := strconv.Atoi(value)
-		if err != nil {
-			continue
-		}
-		return parsed, true
+	if isGenerated || strings.EqualFold(namespace, LegacyDisplayIDNamespace) || strings.EqualFold(namespace, NormalizeNodePrefix(nodePrefix)) {
+		return sequence, true
 	}
 	return 0, false
 }

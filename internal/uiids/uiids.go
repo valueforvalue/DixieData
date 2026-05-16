@@ -38,6 +38,11 @@ const (
 	PanelInsightsPensions       = "panel.insights.pensions"
 	PanelInsightsUnits          = "panel.insights.units"
 	PanelInsightsChronology     = "panel.insights.chronology"
+	PanelInsightsDuplicateAudit = "panel.insights.duplicate-audit"
+	PageReviewQueue             = "page.review-queue"
+	PanelReviewQueueList        = "panel.review-queue.list"
+	PageReviewQueueCompare      = "page.review-queue.compare"
+	PanelReviewQueueCompare     = "panel.review-queue.compare"
 	PageSettings                = "page.settings"
 	PanelSettingsInitialize     = "panel.settings.initialize"
 	OverlayImageViewer          = "overlay.image.viewer"
@@ -79,6 +84,11 @@ var Registry = []Surface{
 	{ID: PanelInsightsPensions, Kind: "panel", Description: "Pension distribution analytics card."},
 	{ID: PanelInsightsUnits, Kind: "panel", Description: "Unit representation analytics card."},
 	{ID: PanelInsightsChronology, Kind: "panel", Description: "Chronological decade analytics card."},
+	{ID: PanelInsightsDuplicateAudit, Kind: "panel", Description: "Duplicate audit card on the insights page."},
+	{ID: PageReviewQueue, Kind: "page", Description: "Review queue page for flagged records."},
+	{ID: PanelReviewQueueList, Kind: "panel", Description: "Main list of records awaiting review."},
+	{ID: PageReviewQueueCompare, Kind: "page", Description: "Duplicate audit comparison page."},
+	{ID: PanelReviewQueueCompare, Kind: "panel", Description: "Side-by-side duplicate comparison panel."},
 	{ID: PageSettings, Kind: "page", Description: "Settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},

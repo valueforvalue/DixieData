@@ -73,6 +73,33 @@ templ InsightsView(snapshot services.AnalyticsSnapshot) {
 					@InsightsCountList(snapshot.UnitRepresentation, "No units are recorded yet.")
 				</section>
 
+				<section data-ui-id={ uiids.PanelInsightsDuplicateAudit } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+					@SurfaceBadge(uiids.PanelInsightsDuplicateAudit)
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Review Queue Audit</p>
+					<h3 class="mt-2 text-xl gold font-bold">Advanced Duplicate Discovery</h3>
+					<p class="text-sm text-slate-600">Runs an exact + fuzzy duplicate scan using the current Levenshtein threshold of { fmt.Sprintf("%d", snapshot.DuplicateAudit.SimilarityThreshold) }.</p>
+					<div class="grid gap-3 sm:grid-cols-2">
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4">
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.OpenFindings) }</div>
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Open Duplicate Pairs</div>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4">
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.ResolvedFindings) }</div>
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Resolved Pairs</div>
+						</div>
+					</div>
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div id="insights-audit-status" class="text-sm text-slate-600">
+							if snapshot.DuplicateAudit.LastRunAt != "" {
+								Last scan: { snapshot.DuplicateAudit.LastRunAt }
+							} else {
+								No duplicate scan has been recorded yet.
+							}
+						</div>
+						<button hx-post="/insights/audit/duplicates" hx-target="#insights-audit-status" data-progress-label="Scanning archive for duplicates..." class="primary-button">Audit Now</button>
+					</div>
+				</section>
+
 				<section data-ui-id={ uiids.PanelInsightsChronology } class="relative responsive-span-2 card rounded-3xl p-5 sm:p-8">
 					@SurfaceBadge(uiids.PanelInsightsChronology)
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Chronological Overview</p>

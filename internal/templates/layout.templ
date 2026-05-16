@@ -125,6 +125,38 @@ templ Layout(title string) {
 				box-shadow: 0 0 18px rgba(197, 171, 104, 0.45);
 				animation: google-progress-indeterminate 1.45s ease-in-out infinite;
 			}
+			.toast-region {
+				position: fixed;
+				top: 1rem;
+				left: 50%;
+				transform: translateX(-50%);
+				z-index: 80;
+				width: min(92vw, 38rem);
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+				pointer-events: none;
+			}
+			.toast-card {
+				pointer-events: auto;
+				display: flex;
+				align-items: start;
+				justify-content: space-between;
+				gap: 0.75rem;
+				border-radius: 1.35rem;
+				border: 1px solid rgba(111, 44, 38, 0.78);
+				background: rgba(255, 248, 230, 0.98);
+				box-shadow: 0 22px 45px rgba(21, 29, 38, 0.3);
+				padding: 0.95rem 1.1rem;
+			}
+			.toast-card[data-toast-kind="success"] {
+				border-color: rgba(141, 116, 64, 0.86);
+				background: rgba(255, 248, 230, 0.99);
+			}
+			.toast-card[data-toast-kind="error"] {
+				border-color: rgba(111, 44, 38, 0.86);
+				background: rgba(255, 241, 239, 0.99);
+			}
 			[aria-busy="true"] {
 				opacity: 0.72;
 				pointer-events: none;
@@ -237,6 +269,7 @@ templ Layout(title string) {
 		</style>
 	</head>
 		<body class="min-h-screen" data-debug-ui-ids={ uiDebugValue() }>
+			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			<div class="app-shell">
 				<header class="top-shell fixed left-1/2 top-4 z-40 flex w-[min(96vw,72rem)] -translate-x-1/2 flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
 				<div>
@@ -246,6 +279,7 @@ templ Layout(title string) {
 				<nav class="flex flex-wrap items-center gap-2">
 					<a href="/calendar" class="pill-link">Calendar</a>
 					<a href="/soldiers" class="pill-link">Soldiers</a>
+					<a href="/review-queue" class="pill-link">Review Queue</a>
 					<a href="/insights" class="pill-link">Insights</a>
 					<a href="/soldiers/new" class="pill-link">Add Record</a>
 					<a href="/share" class="pill-link">Share</a>
@@ -266,6 +300,7 @@ templ Layout(title string) {
 					<nav class="mt-3 flex flex-col gap-2">
 						<a href="/calendar" class="pill-link justify-start">Calendar</a>
 						<a href="/soldiers" class="pill-link justify-start">Soldiers</a>
+						<a href="/review-queue" class="pill-link justify-start">Review Queue</a>
 						<a href="/insights" class="pill-link justify-start">Insights</a>
 						<a href="/soldiers/new" class="pill-link justify-start">Add Record</a>
 						<a href="/share" class="pill-link justify-start">Share</a>

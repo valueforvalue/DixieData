@@ -33,8 +33,8 @@ func TestSoldierService_CreateWithGeneratedID(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if s.DisplayID != "TDM65-00001" {
-		t.Errorf("expected TDM65-00001, got %s", s.DisplayID)
+	if s.DisplayID != "DXD-00001" {
+		t.Errorf("expected DXD-00001, got %s", s.DisplayID)
 	}
 	if !s.IsGenerated {
 		t.Error("expected IsGenerated=true")
@@ -80,8 +80,8 @@ func TestSoldierService_CreateWithPensionID(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if s.DisplayID != "TDM65-PENSION-9999" {
-		t.Errorf("expected TDM65-PENSION-9999, got %s", s.DisplayID)
+	if s.DisplayID != "PENSION-9999" {
+		t.Errorf("expected PENSION-9999, got %s", s.DisplayID)
 	}
 	if s.IsGenerated {
 		t.Error("expected IsGenerated=false for explicit pension ID")
@@ -104,7 +104,7 @@ func TestSoldierService_CreateWithExplicitDXDIDMarksGenerated(t *testing.T) {
 	if !s.IsGenerated {
 		t.Fatal("expected IsGenerated=true for DXD IDs")
 	}
-	if s.DisplayID != "TDM65-DXD-00001" {
+	if s.DisplayID != "DXD-00001" {
 		t.Fatalf("DisplayID = %q", s.DisplayID)
 	}
 }
@@ -349,6 +349,26 @@ func TestSoldierService_AddImagePersistsIdentityFields(t *testing.T) {
 	}
 	if !got.Images[0].IsPrimary {
 		t.Fatalf("first imported image should be primary: %#v", got.Images[0])
+	}
+}
+
+func TestNormalizeDisplayIDPreservesCanonicalDisplayIDs(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		displayID string
+		want      string
+	}{
+		{name: "current canonical", displayID: "STC38-00020", want: "STC38-00020"},
+		{name: "legacy dxd", displayID: "DXD-00019", want: "DXD-00019"},
+		{name: "legacy prefixed dxd", displayID: "TDM65-DXD-00019", want: "DXD-00019"},
+		{name: "already recursively wrapped", displayID: "JCM87-TDM65-DXD-00019", want: "DXD-00019"},
+		{name: "manual prefixed value stays put", displayID: "PENSION-9999", want: "PENSION-9999"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := normalizeDisplayID(test.displayID, "STC38"); got != test.want {
+				t.Fatalf("normalizeDisplayID(%q) = %q, want %q", test.displayID, got, test.want)
+			}
+		})
 	}
 }
 
@@ -1143,5 +1163,64 @@ func TestSoldierService_AdvancedSearchYearRanges(t *testing.T) {
 	}
 	if total != 1 || len(results) != 1 || !strings.HasSuffix(results[0].DisplayID, "PENSION-5201") {
 		t.Fatalf("year range search got total=%d len=%d results=%#v", total, len(results), results)
+	}
+}
+
+func TestSoldierService_AdvancedSearchReviewStatusAndQueue(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	clean, err := svc.Create(models.Soldier{FirstName: "Clean", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create clean soldier: %v", err)
+	}
+	flagged, err := svc.Create(models.Soldier{FirstName: "Flagged", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create flagged soldier: %v", err)
+	}
+	if err := svc.SetReviewStatus(flagged.ID, true, "Potential duplicate from import"); err != nil {
+		t.Fatalf("SetReviewStatus: %v", err)
+	}
+
+	reviewResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", ReviewStatus: "review"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch review status: %v", err)
+	}
+	if total != 1 || len(reviewResults) != 1 || reviewResults[0].ID != flagged.ID {
+		t.Fatalf("review filter returned total=%d len=%d results=%#v", total, len(reviewResults), reviewResults)
+	}
+
+	cleanResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", ReviewStatus: "clean"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch clean status: %v", err)
+	}
+	if total != 1 || len(cleanResults) != 1 || cleanResults[0].ID != clean.ID {
+		t.Fatalf("clean filter returned total=%d len=%d results=%#v", total, len(cleanResults), cleanResults)
+	}
+
+	queue, total, err := svc.ReviewQueue(1, 10)
+	if err != nil {
+		t.Fatalf("ReviewQueue: %v", err)
+	}
+	if total != 1 || len(queue) != 1 || queue[0].ID != flagged.ID || queue[0].ReviewReason != "Potential duplicate from import" {
+		t.Fatalf("review queue returned total=%d len=%d results=%#v", total, len(queue), queue)
+	}
+
+	if err := svc.MarkReviewResolved(flagged.ID); err != nil {
+		t.Fatalf("MarkReviewResolved: %v", err)
+	}
+	queue, total, err = svc.ReviewQueue(1, 10)
+	if err != nil {
+		t.Fatalf("ReviewQueue after resolve: %v", err)
+	}
+	if total != 0 || len(queue) != 0 {
+		t.Fatalf("review queue should be empty after resolve: total=%d len=%d results=%#v", total, len(queue), queue)
+	}
+	counts, err := svc.ArchiveCounts()
+	if err != nil {
+		t.Fatalf("ArchiveCounts: %v", err)
+	}
+	if counts.TotalSoldiers != 2 || counts.TotalWivesWidows != 0 {
+		t.Fatalf("review flags should not affect archive counts: %#v", counts)
 	}
 }

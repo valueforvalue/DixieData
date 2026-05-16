@@ -146,13 +146,14 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 				</div>
 			</div>
 			if len(conflicts) > 0 {
-				<div class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<h3 class="text-xl gold font-bold">Shared Merge Review</h3>
-						<p class="mt-2 text-sm text-slate-500">These records were staged because the shared archive changed the same person or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
+						<p class="mt-2 text-sm text-slate-500">These records were staged because the shared archive changed the same person, matched an existing researcher record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
+						<div id="merge-review-loaded-status" data-merge-review-loaded-status class="mt-3 inline-flex rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]" aria-live="polite">Data Loaded: { fmt.Sprintf("%d", len(conflicts)) } Conflicts Found</div>
 					</div>
 					for _, conflict := range conflicts {
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] p-4 space-y-4">
+						<div data-merge-review-item class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] p-4 space-y-4">
 							<div>
 								<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">{ conflict.ConflictType }</div>
 								<h4 class="mt-1 font-bold text-[#22303d]">{ conflict.SourceDisplayID }</h4>
@@ -193,16 +194,15 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 								</div>
 							</div>
 							<div class="flex flex-wrap gap-3">
-								<button hx-post={ fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID) } hx-target="body" class="secondary-button">
+								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID) } hx-target="#share-status" class="secondary-button">
 									Keep Local
 								</button>
+								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID) } hx-target="#share-status" class="primary-button">
+									Keep Shared
+								</button>
 								if conflict.ConflictType == "display-id-collision" {
-									<button hx-post={ fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID) } hx-target="body" class="primary-button">
+									<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID) } hx-target="#share-status" class="secondary-button">
 										Keep Both
-									</button>
-								} else {
-									<button hx-post={ fmt.Sprintf("/merge-review/%d/use-shared", conflict.ID) } hx-target="body" class="primary-button">
-										Use Shared
 									</button>
 								}
 							</div>

@@ -26,6 +26,7 @@ type AnalyticsSnapshot struct {
 	UnitRepresentation      []AnalyticsCount
 	BirthDecadeDistribution []AnalyticsCount
 	DeathDecadeDistribution []AnalyticsCount
+	DuplicateAudit          DuplicateAuditSummary
 }
 
 func NewAnalyticsService(database *db.DB) *AnalyticsService {
@@ -106,6 +107,10 @@ func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 	if err != nil {
 		return AnalyticsSnapshot{}, err
 	}
+	duplicateAudit, err := NewAuditService(s.db).Summary()
+	if err != nil {
+		return AnalyticsSnapshot{}, err
+	}
 	return AnalyticsSnapshot{
 		RecordTypes:             recordTypes,
 		CemeteryDensity:         cemeteries,
@@ -115,6 +120,7 @@ func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 		UnitRepresentation:      units,
 		BirthDecadeDistribution: birthDecades,
 		DeathDecadeDistribution: deathDecades,
+		DuplicateAudit:          duplicateAudit,
 	}, nil
 }
 

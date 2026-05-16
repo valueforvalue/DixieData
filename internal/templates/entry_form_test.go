@@ -99,6 +99,33 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	}
 }
 
+func TestShareViewShowsMergeReviewStatus(t *testing.T) {
+	var buf bytes.Buffer
+	err := ShareView(models.GoogleStatus{}, []models.MergeReviewConflict{
+		{
+			ID:              7,
+			ConflictType:    "soldier-update",
+			SourceDisplayID: "STC38-00007",
+			Reason:          "Shared record changed notes.",
+			SourceSoldier:   models.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`id="merge-review-section"`,
+		`Data Loaded: 1 Conflicts Found`,
+		`data-merge-review-action`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing merge review status UI: %s", needle)
+		}
+	}
+}
+
 func TestInitialSetupViewIncludesIdentityFields(t *testing.T) {
 	var buf bytes.Buffer
 	err := InitialSetupView(models.InitialSetupForm{
@@ -225,7 +252,7 @@ func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 	}
 
 	content := buf.String()
-	if !strings.Contains(content, "Shared Merge Review") || !strings.Contains(content, "/merge-review/42/use-shared") {
+	if !strings.Contains(content, "Shared Merge Review") || !strings.Contains(content, "/merge-review/42/keep-shared") {
 		t.Fatalf("share view missing merge review actions")
 	}
 }
@@ -279,7 +306,7 @@ func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 	if !strings.Contains(content, "/merge-review/99/keep-both") || !strings.Contains(content, "Keep Both") {
 		t.Fatalf("share view missing keep-both action")
 	}
-	if strings.Contains(content, "/merge-review/99/use-shared") {
-		t.Fatalf("display-id collision should not show use-shared action")
+	if !strings.Contains(content, "/merge-review/99/keep-shared") {
+		t.Fatalf("display-id collision should show keep-shared action")
 	}
 }
