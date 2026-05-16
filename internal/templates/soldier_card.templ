@@ -12,9 +12,9 @@ import (
 )
 
 templ SoldierCard(s models.Soldier, highlighted bool) {
-	<div class={ soldierCardClass(highlighted) }>
-		<div class="flex justify-between items-start">
-			<div>
+		<div class={ soldierCardClass(highlighted) }>
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div class="min-w-0">
 				<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ s.DisplayID }</span>
 				<p class="mt-1 font-semibold text-slate-900">{ detailHeading(s) }</p>
 				<p class="text-sm text-slate-500">{ detailSubheading(s) }</p>
@@ -37,9 +37,9 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 				}
 			</div>
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) }
-			   class="pill-link">View</a>
+			   class="pill-link self-start sm:self-auto">View</a>
+			</div>
 		</div>
-	</div>
 }
 
 func soldierCardClass(highlighted bool) string {
@@ -76,11 +76,11 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 		<div data-ui-id={ uiids.PageSoldiersList } class="relative">
 			@SurfaceBadge(uiids.PageSoldiersList)
 			<div class="mb-4">
-				<div class="flex justify-between items-center mb-4">
+				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<h2 class="text-2xl gold font-bold">Soldier Records</h2>
 					<a href="/soldiers/new" class="primary-button">+ Add</a>
 				</div>
-				<div class="flex gap-2 mb-3">
+				<div class="mb-3 flex flex-wrap gap-2">
 					<button type="button" data-ui-id={ uiids.TabSoldiersSearchBasic } data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
 						class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">
 						Quick Search
@@ -103,10 +103,10 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 					</div>
 					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, pension states, burial locations, and record numbers.</p>
 				</div>
-				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="relative hidden card rounded-2xl p-5 grid grid-cols-2 gap-4"
+				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
 					hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
 					@SurfaceBadge(uiids.PanelSoldiersSearchAdvanced)
-					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
+					<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
 						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and record types. Year filters support exact values or a through-year range.</p>
 					</div>
@@ -142,11 +142,11 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 						<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
 						<input type="text" name="rank_out" list="advanced-rank-out-suggestions" class="field-input"/>
 					</div>
-					<div class="col-span-2">
+					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Unit</label>
 						<input type="text" name="unit" list="advanced-unit-suggestions" class="field-input"/>
 					</div>
-					<div class="col-span-2">
+					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Pension State</label>
 						<input type="text" name="pension_state" list="advanced-pension-state-suggestions" class="field-input" placeholder="Any state"/>
 					</div>
@@ -191,11 +191,11 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 						<label class="block text-sm text-slate-500 mb-1">Death Date</label>
 						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 					</div>
-					<div class="col-span-2 flex gap-2 items-center">
+					<div class="responsive-span-2 col-span-2 flex flex-wrap gap-2 items-center">
 						<button type="submit" class="primary-button">Run Advanced Search</button>
 						<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
 					</div>
-					<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
+					<p class="responsive-span-2 col-span-2 text-xs text-slate-500">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
 				</form>
 				@SuggestionDatalist("advanced-record-type-suggestions", suggestions.RecordType)
 				@SuggestionDatalist("advanced-rank-in-suggestions", suggestions.RankIn)
@@ -215,15 +215,15 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 
 templ SoldierDetail(s models.Soldier) {
 	@Layout(soldierFullName(s)) {
-		<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative max-w-2xl mx-auto">
+		<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 			@SurfaceBadge(uiids.PageSoldierDetail)
-			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-8">
+			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-5 sm:p-8">
 				@SurfaceBadge(uiids.PanelSoldierDetailSummary)
-				<div class="flex justify-between mb-4">
+				<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-between">
 					<h2 class="text-2xl font-bold">{ detailHeading(s) }</h2>
 					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
 				</div>
-				<dl class="grid grid-cols-2 gap-2 text-sm">
+				<dl class="responsive-two-col grid gap-2 text-sm">
 					<dt class="text-slate-500">Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Record ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
 					<dt class="text-slate-500">Middle Name</dt><dd>{ emptyDetail(s.MiddleName) }</dd>
@@ -248,6 +248,10 @@ templ SoldierDetail(s models.Soldier) {
 					<dt class="text-slate-500">Death</dt><dd>{ deathDate(s) }</dd>
 					<dt class="text-slate-500">Birth Info</dt><dd>{ emptyDetail(s.BirthInfo) }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
+					<dt class="text-slate-500">Added By</dt><dd>{ emptyDetail(s.AddedBy) }</dd>
+					<dt class="text-slate-500">Last Edited By</dt><dd>{ emptyDetail(s.LastEditedBy) }</dd>
+					<dt class="text-slate-500">Last Edited At</dt><dd>{ emptyDetail(s.LastEditedAt) }</dd>
+					<dt class="text-slate-500">Last Edited Fields</dt><dd>{ emptyDetail(s.LastEditedFields) }</dd>
 				</dl>
 				if s.Notes != "" {
 					@LinkedText(s.Notes, "mt-4 text-sm text-slate-600 leading-6")

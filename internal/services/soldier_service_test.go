@@ -44,6 +44,29 @@ func TestSoldierService_CreateWithGeneratedID(t *testing.T) {
 	}
 }
 
+func TestSoldierService_CreateSetsAuditFields(t *testing.T) {
+	d := newTestDB(t)
+	configureExportIdentity(t, d)
+	svc := NewSoldierService(d)
+
+	s, err := svc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if s.AddedBy != "S. Carter" {
+		t.Fatalf("AddedBy = %q", s.AddedBy)
+	}
+	if s.LastEditedBy != "S. Carter" {
+		t.Fatalf("LastEditedBy = %q", s.LastEditedBy)
+	}
+	if s.LastEditedFields != "created" {
+		t.Fatalf("LastEditedFields = %q", s.LastEditedFields)
+	}
+	if s.LastEditedAt == "" {
+		t.Fatal("expected LastEditedAt")
+	}
+}
+
 func TestSoldierService_CreateWithPensionID(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
@@ -328,6 +351,7 @@ func TestSoldierService_AddImagePersistsIdentityFields(t *testing.T) {
 
 func TestSoldierService_Update(t *testing.T) {
 	d := newTestDB(t)
+	configureExportIdentity(t, d)
 	svc := NewSoldierService(d)
 
 	created, err := svc.Create(models.Soldier{FirstName: "Jubal", LastName: "Early"})
@@ -358,6 +382,17 @@ func TestSoldierService_Update(t *testing.T) {
 	}
 	if got.MiddleName != "A." || got.RankIn != "Private" || got.RankOut != "Major" || got.PensionState != "Georgia" {
 		t.Fatalf("updated fields missing: %#v", got)
+	}
+	if got.LastEditedBy != "S. Carter" {
+		t.Fatalf("LastEditedBy = %q", got.LastEditedBy)
+	}
+	if got.LastEditedAt == "" {
+		t.Fatal("expected LastEditedAt after update")
+	}
+	for _, field := range []string{"prefix", "middle_name", "suffix", "rank_in", "rank_out", "pension_state", "notes"} {
+		if !strings.Contains(got.LastEditedFields, field) {
+			t.Fatalf("LastEditedFields = %q, missing %s", got.LastEditedFields, field)
+		}
 	}
 }
 
@@ -484,6 +519,7 @@ func TestSoldierService_WidowEntryKeepsOwnPensionIdentifiers(t *testing.T) {
 
 func TestSoldierService_UpdateReplacesRecords(t *testing.T) {
 	d := newTestDB(t)
+	configureExportIdentity(t, d)
 	svc := NewSoldierService(d)
 
 	created, err := svc.Create(models.Soldier{
@@ -511,6 +547,12 @@ func TestSoldierService_UpdateReplacesRecords(t *testing.T) {
 	if len(got.Records) != 1 || got.Records[0].RecordType != "Parole" {
 		t.Fatalf("records = %#v", got.Records)
 	}
+	if !strings.Contains(got.LastEditedFields, "records") {
+		t.Fatalf("LastEditedFields = %q", got.LastEditedFields)
+	}
+	if got.LastEditedAt == "" {
+		t.Fatal("expected LastEditedAt after record update")
+	}
 }
 
 func TestSoldierService_Delete(t *testing.T) {
@@ -534,6 +576,7 @@ func TestSoldierService_Delete(t *testing.T) {
 
 func TestSoldierService_DeleteImages(t *testing.T) {
 	d := newTestDB(t)
+	configureExportIdentity(t, d)
 	svc := NewSoldierService(d)
 
 	created, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Mosby"})
@@ -568,6 +611,12 @@ func TestSoldierService_DeleteImages(t *testing.T) {
 	}
 	if updated.Images[0].FileName != "back.png" && updated.Images[0].FileName != "front.png" {
 		t.Fatalf("remaining image = %#v", updated.Images[0])
+	}
+	if updated.LastEditedBy != "S. Carter" || updated.LastEditedFields != "images" {
+		t.Fatalf("unexpected image audit trail: %#v", updated)
+	}
+	if updated.LastEditedAt == "" {
+		t.Fatal("expected LastEditedAt after image delete")
 	}
 }
 

@@ -162,6 +162,33 @@ func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birth
 	}, nil
 }
 
+func (d *DB) BackfillEntryAuditIdentity() error {
+	identity, err := d.UserIdentity()
+	if err != nil {
+		return err
+	}
+	actor := strings.TrimSpace(identity.BrandingName())
+	if actor == "" {
+		return nil
+	}
+	tx, err := d.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`UPDATE soldiers SET added_by = ? WHERE added_by IS NULL OR TRIM(added_by) = ''`, actor); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET last_edited_by = ? WHERE last_edited_by IS NULL OR TRIM(last_edited_by) = ''`, actor); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func firstPrefixInitial(value string) string {
 	for _, r := range strings.ToUpper(strings.TrimSpace(value)) {
 		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {

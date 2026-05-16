@@ -104,7 +104,7 @@ func TestExportService_ExportCSV(t *testing.T) {
 		"entry_type": true, "spouse_soldier_id": true, "maiden_name": true,
 		"pension_id": true, "application_id": true, "prefix": true, "middle_name": true,
 		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "confederate_home_status": true, "confederate_home_name": true, "birth_date": true, "death_date": true, "birth_info": true, "buried_in": true,
-		"suffix": true,
+		"suffix": true, "added_by": true, "last_edited_by": true, "last_edited_fields": true, "last_edited_at": true, "updated_at": true,
 	}
 	for _, col := range header {
 		delete(expected, col)
