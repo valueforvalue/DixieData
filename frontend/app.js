@@ -1232,6 +1232,7 @@
       groupByUnit: form.querySelector('input[name="group_by_unit"]')?.checked === true,
       groupByPensionState: form.querySelector('input[name="group_by_pension_state"]')?.checked === true,
       groupByConfederateHomeStatus: form.querySelector('input[name="group_by_confederate_home_status"]')?.checked === true,
+      groupByBuriedIn: form.querySelector('input[name="group_by_buried_in"]')?.checked === true,
     };
   }
 

@@ -81,3 +81,31 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 		}
 	}
 }
+
+func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        42,
+		DisplayID: "STC38-00001",
+		FirstName: "John",
+		LastName:  "Taylor",
+		Images: []models.Image{
+			{ID: 7, FileName: "front.png", FilePath: `images\front.png`, Caption: "Front", IsPrimary: true},
+			{ID: 8, FileName: "side.png", FilePath: `images\side.png`, Caption: "Side"},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Primary Image",
+		"/soldiers/42/images/primary/8",
+		"Set as Primary",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("primary image controls missing %s", needle)
+		}
+	}
+}

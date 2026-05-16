@@ -659,6 +659,52 @@ func TestExportService_ExportFullDatabasePDFAppliesSortAndGrouping(t *testing.T)
 	}
 }
 
+func TestExportService_ExportFullDatabasePDFGroupsByBurialLocation(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	for _, soldier := range []models.Soldier{
+		{FirstName: "William", LastName: "Brown", BuriedIn: "", Unit: "A Company"},
+		{FirstName: "James", LastName: "Adams", BuriedIn: "Oak Hill Cemetery, McAlester, OK", Unit: "B Company"},
+		{FirstName: "Samuel", LastName: "Carter", BuriedIn: "Oak Hill Cemetery, McAlester, OK", Unit: "C Company"},
+	} {
+		if _, err := soldierSvc.Create(soldier); err != nil {
+			t.Fatalf("Create soldier: %v", err)
+		}
+	}
+
+	outPath := filepath.Join(t.TempDir(), "burial-grouped-registry.pdf")
+	settings := PrintSettings{GroupByBuriedIn: true}
+	if err := exportSvc.ExportFullDatabasePDF(outPath, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "Grouped by Burial Location") || !strings.Contains(text, "Cemetery: Oak Hill Cemetery, McAlester, OK") {
+		t.Fatalf("grouped PDF missing burial-location divider pages")
+	}
+	if !strings.Contains(text, "Cemetery: Location Unknown") {
+		t.Fatalf("grouped PDF missing unknown burial-location section")
+	}
+	if !strings.Contains(text, "Alphabetical by Last Name") || !strings.Contains(text, "Burial Location") {
+		t.Fatalf("grouped PDF missing burial-location print-settings metadata")
+	}
+	if strings.Index(text, "James Adams") > strings.Index(text, "Samuel Carter") {
+		t.Fatalf("records were not ordered alphabetically within the burial-location group")
+	}
+	if strings.Index(text, "Cemetery: Oak Hill Cemetery, McAlester, OK") < strings.Index(text, "Cemetery: Location Unknown") {
+		// expected order
+	} else {
+		t.Fatalf("unknown burial-location section did not sort last")
+	}
+}
+
 func TestFitPDFImageToBoundsPreservesAspectRatio(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -686,6 +732,23 @@ func TestFitPDFImageToBoundsPreservesAspectRatio(t *testing.T) {
 				t.Fatalf("fitPDFImageToBounds = %.2fx%.2f, want %.2fx%.2f", gotWidth, gotHeight, test.wantWidth, test.wantHeight)
 			}
 		})
+	}
+}
+
+func TestFirstRecordCardImagePrefersPrimaryImage(t *testing.T) {
+	secondaryPath := filepath.Join(t.TempDir(), "secondary.png")
+	writeSizedPNGFixture(t, secondaryPath, 120, 120)
+	primaryPath := filepath.Join(t.TempDir(), "primary.png")
+	writeSizedPNGFixture(t, primaryPath, 200, 100)
+
+	path, label := firstRecordCardImage(models.Soldier{
+		Images: []models.Image{
+			{FileName: "secondary.png", Caption: "Secondary", ResolvedPath: secondaryPath},
+			{FileName: "primary.png", Caption: "Primary Portrait", ResolvedPath: primaryPath, IsPrimary: true},
+		},
+	})
+	if path != primaryPath || label != "Primary Portrait" {
+		t.Fatalf("firstRecordCardImage = (%q, %q)", path, label)
 	}
 }
 

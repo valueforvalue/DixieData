@@ -377,7 +377,14 @@ templ SoldierDetail(s models.Soldier) {
 												<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
 												Select
 											</label>
-											<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
+											<div class="flex flex-wrap items-center justify-end gap-2">
+												if img.IsPrimary {
+													<span class="rounded-full bg-[rgba(141,116,64,0.14)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Primary Image</span>
+												} else {
+													<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/primary/%d", s.ID, img.ID) } hx-target="#image-download-status" class="pill-link">Set as Primary</button>
+												}
+												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
+											</div>
 										</div>
 										<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ img.Caption }
 											class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>

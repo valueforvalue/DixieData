@@ -347,6 +347,9 @@ func TestSoldierService_AddImagePersistsIdentityFields(t *testing.T) {
 	if got.Images[0].SyncID == "" || got.Images[0].SoldierSyncID != got.SyncID {
 		t.Fatalf("image identity mismatch: %#v soldier=%#v", got.Images[0], got)
 	}
+	if !got.Images[0].IsPrimary {
+		t.Fatalf("first imported image should be primary: %#v", got.Images[0])
+	}
 }
 
 func TestSoldierService_Update(t *testing.T) {
@@ -605,6 +608,9 @@ func TestSoldierService_DeleteImages(t *testing.T) {
 	if len(got.Images) != 2 {
 		t.Fatalf("images len = %d, want 2", len(got.Images))
 	}
+	if !got.Images[0].IsPrimary {
+		t.Fatalf("expected first image to be primary before delete: %#v", got.Images)
+	}
 
 	if err := svc.DeleteImages(created.ID, []int64{got.Images[0].ID}); err != nil {
 		t.Fatalf("DeleteImages: %v", err)
@@ -619,6 +625,9 @@ func TestSoldierService_DeleteImages(t *testing.T) {
 	}
 	if updated.Images[0].FileName != "back.png" && updated.Images[0].FileName != "front.png" {
 		t.Fatalf("remaining image = %#v", updated.Images[0])
+	}
+	if !updated.Images[0].IsPrimary {
+		t.Fatalf("remaining image should be promoted to primary: %#v", updated.Images[0])
 	}
 	if updated.LastEditedBy != "S. Carter" || updated.LastEditedFields != "Images updated." {
 		t.Fatalf("unexpected image audit trail: %#v", updated)
@@ -650,6 +659,52 @@ func TestSoldierService_GetImageByID(t *testing.T) {
 	}
 	if image.FileName != "portrait.png" {
 		t.Fatalf("FileName = %q", image.FileName)
+	}
+	if !image.IsPrimary {
+		t.Fatalf("expected image to be primary: %#v", image)
+	}
+}
+
+func TestSoldierService_SetPrimaryImage(t *testing.T) {
+	d := newTestDB(t)
+	configureExportIdentity(t, d)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{FirstName: "George", LastName: "Pickett"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "front.png", `images\pickett\front.png`, "Front"); err != nil {
+		t.Fatalf("AddImage front: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "profile.png", `images\pickett\profile.png`, "Profile"); err != nil {
+		t.Fatalf("AddImage profile: %v", err)
+	}
+
+	soldier, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(soldier.Images) != 2 {
+		t.Fatalf("images len = %d", len(soldier.Images))
+	}
+	target := soldier.Images[1].ID
+	if err := svc.SetPrimaryImage(created.ID, target); err != nil {
+		t.Fatalf("SetPrimaryImage: %v", err)
+	}
+
+	updated, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID after SetPrimaryImage: %v", err)
+	}
+	if len(updated.Images) != 2 {
+		t.Fatalf("images len = %d", len(updated.Images))
+	}
+	if updated.Images[0].ID != target || !updated.Images[0].IsPrimary || updated.Images[1].IsPrimary {
+		t.Fatalf("primary image not updated: %#v", updated.Images)
+	}
+	if updated.LastEditedFields != "Primary image updated." {
+		t.Fatalf("unexpected image audit trail: %#v", updated)
 	}
 }
 
