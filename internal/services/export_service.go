@@ -1990,6 +1990,45 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	return pdf.OutputFileAndClose(outputPath)
 }
 
+func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot AnalyticsSnapshot) error {
+	pdf, err := e.brandedPDFDocument("P", "Archive Summary Report", "analytics-pdf", buildinfo.AnalyticsPDFExportVersion)
+	if err != nil {
+		return err
+	}
+	pdf.AddPage()
+	writePDFTitleBlock(pdf, "Archive Summary Report", "High-level archive analytics covering burial density, Confederate Home participation, record types, pension geography, unit representation, and decade trends.")
+
+	writePDFSection(pdf, "Record Types")
+	writePDFBullet(pdf, fmt.Sprintf("Soldiers: %d", snapshot.RecordTypes.TotalSoldiers))
+	writePDFBullet(pdf, fmt.Sprintf("Spouses (Wives & Widows): %d", snapshot.RecordTypes.TotalWivesWidows))
+
+	writePDFSection(pdf, "Top Cemeteries")
+	writePDFAnalyticsRows(pdf, snapshot.CemeteryDensity, "No burial locations are recorded yet.")
+
+	writePDFSection(pdf, "Confederate Home Participation")
+	writePDFBody(pdf, "Status breakdown")
+	writePDFAnalyticsRows(pdf, snapshot.ConfederateHomeStatus, "No Confederate Home statuses are recorded yet.")
+	pdf.Ln(2)
+	writePDFBody(pdf, "Most frequent home names")
+	writePDFAnalyticsRows(pdf, snapshot.ConfederateHomeNames, "No Confederate Home names are recorded yet.")
+
+	writePDFSection(pdf, "Pension Distribution")
+	writePDFAnalyticsRows(pdf, snapshot.PensionDistribution, "No pension states are recorded yet.")
+
+	writePDFSection(pdf, "Unit Representation")
+	writePDFAnalyticsRows(pdf, snapshot.UnitRepresentation, "No units are recorded yet.")
+
+	writePDFSection(pdf, "Chronological Overview")
+	writePDFBody(pdf, "Birth decades")
+	writePDFAnalyticsRows(pdf, snapshot.BirthDecadeDistribution, "No birth decades are recorded yet.")
+	pdf.Ln(2)
+	writePDFBody(pdf, "Death decades")
+	writePDFAnalyticsRows(pdf, snapshot.DeathDecadeDistribution, "No death decades are recorded yet.")
+
+	writePDFExportMetadata(pdf, "analytics-pdf", buildinfo.AnalyticsPDFExportVersion, analyticsPDFMetadataDetails(snapshot))
+	return pdf.OutputFileAndClose(outputPath)
+}
+
 func newPDFDocument(orientation, title, format string, version int) *fpdf.Fpdf {
 	pdf := fpdf.New(orientation, "mm", "Letter", "")
 	pdf.SetTitle(title, false)
@@ -3156,6 +3195,16 @@ func writePDFBullet(pdf *fpdf.Fpdf, text string) {
 	pdf.MultiCell(0, 7, emptyPDFValue(text), "", "", false)
 }
 
+func writePDFAnalyticsRows(pdf *fpdf.Fpdf, items []AnalyticsCount, emptyMessage string) {
+	if len(items) == 0 {
+		writePDFBody(pdf, emptyMessage)
+		return
+	}
+	for _, item := range items {
+		writePDFBullet(pdf, fmt.Sprintf("%s - %d", item.Label, item.Count))
+	}
+}
+
 func writePDFBulletSized(pdf *fpdf.Fpdf, text string, layout pdfRecordCardLayout) {
 	pdf.SetFont("Helvetica", "", layout.BodyFontSize)
 	pdf.CellFormat(layout.BulletIndent, layout.BodyLineHeight, "-", "", 0, "", false, 0, "")
@@ -3164,6 +3213,18 @@ func writePDFBulletSized(pdf *fpdf.Fpdf, text string, layout pdfRecordCardLayout
 
 func writePDFRichText(pdf *fpdf.Fpdf, text string, lineHeight float64) {
 	writePDFRichTextSized(pdf, text, lineHeight, 10)
+}
+
+func analyticsPDFMetadataDetails(snapshot AnalyticsSnapshot) map[string]string {
+	return map[string]string{
+		"Top cemeteries": fmt.Sprintf("%d", len(snapshot.CemeteryDensity)),
+		"Home statuses":  fmt.Sprintf("%d", len(snapshot.ConfederateHomeStatus)),
+		"Pension states": fmt.Sprintf("%d", len(snapshot.PensionDistribution)),
+		"Top units":      fmt.Sprintf("%d", len(snapshot.UnitRepresentation)),
+		"Birth decades":  fmt.Sprintf("%d", len(snapshot.BirthDecadeDistribution)),
+		"Death decades":  fmt.Sprintf("%d", len(snapshot.DeathDecadeDistribution)),
+		"Record types":   fmt.Sprintf("%d soldiers / %d spouses", snapshot.RecordTypes.TotalSoldiers, snapshot.RecordTypes.TotalWivesWidows),
+	}
 }
 
 func writePDFRichTextSized(pdf *fpdf.Fpdf, text string, lineHeight, fontSize float64) {

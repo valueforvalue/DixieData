@@ -31,6 +31,13 @@ const (
 	PageExport                  = "page.export"
 	PanelExportActions          = "panel.export.actions"
 	PanelExportGoogle           = "panel.export.google"
+	PageInsights                = "page.insights"
+	PanelInsightsOverview       = "panel.insights.overview"
+	PanelInsightsCemeteries     = "panel.insights.cemeteries"
+	PanelInsightsHomes          = "panel.insights.homes"
+	PanelInsightsPensions       = "panel.insights.pensions"
+	PanelInsightsUnits          = "panel.insights.units"
+	PanelInsightsChronology     = "panel.insights.chronology"
 	PageSettings                = "page.settings"
 	PanelSettingsInitialize     = "panel.settings.initialize"
 	OverlayImageViewer          = "overlay.image.viewer"
@@ -65,6 +72,13 @@ var Registry = []Surface{
 	{ID: PageExport, Kind: "page", Description: "Export page."},
 	{ID: PanelExportActions, Kind: "panel", Description: "Main export and import actions panel."},
 	{ID: PanelExportGoogle, Kind: "panel", Description: "Google integration panel on the export page."},
+	{ID: PageInsights, Kind: "page", Description: "Archive insights dashboard page."},
+	{ID: PanelInsightsOverview, Kind: "panel", Description: "Overview card on the insights page."},
+	{ID: PanelInsightsCemeteries, Kind: "panel", Description: "Top cemeteries analytics card."},
+	{ID: PanelInsightsHomes, Kind: "panel", Description: "Confederate home analytics card."},
+	{ID: PanelInsightsPensions, Kind: "panel", Description: "Pension distribution analytics card."},
+	{ID: PanelInsightsUnits, Kind: "panel", Description: "Unit representation analytics card."},
+	{ID: PanelInsightsChronology, Kind: "panel", Description: "Chronological decade analytics card."},
 	{ID: PageSettings, Kind: "page", Description: "Settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},

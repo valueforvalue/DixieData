@@ -6,14 +6,23 @@ import (
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ Calendar(month int, calendar map[int][]models.Soldier, total int, quote models.Quote) {
+templ Calendar(month int, calendar map[int][]models.Soldier, counts models.ArchiveCounts, quote models.Quote) {
 	@Layout("Calendar") {
 		<div data-ui-id={ uiids.PageCalendar } class="relative">
 			@SurfaceBadge(uiids.PageCalendar)
 			<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
 					<h2 class="gold text-5xl leading-none">Anniversaries</h2>
-					<p class="mt-3 text-3xl text-[#445260]">{ fmt.Sprintf("%d", total) } soldiers preserved in this archive</p>
+					<div class="mt-3 flex flex-wrap gap-3 text-[#445260]">
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.72)] px-4 py-3">
+							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.TotalSoldiers) }</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Soldiers</div>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.72)] px-4 py-3">
+							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.TotalWivesWidows) }</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Wives & Widows</div>
+						</div>
+					</div>
 					<div id="calendar-export-status" class="mt-3 text-sm text-[#445260]"></div>
 				</div>
 				<div class="mt-1 flex flex-wrap items-center gap-3 text-base text-[#445260]">

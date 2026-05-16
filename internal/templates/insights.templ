@@ -1,0 +1,109 @@
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+)
+
+templ InsightsView(snapshot services.AnalyticsSnapshot) {
+	@Layout("Insights") {
+		<div data-ui-id={ uiids.PageInsights } class="mx-auto max-w-6xl space-y-6">
+			@SurfaceBadge(uiids.PageInsights)
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<div>
+					<h2 class="text-2xl gold font-bold">Archive Insights</h2>
+					<p class="mt-2 max-w-3xl text-sm text-slate-600">High-level analytics for the current archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p>
+				</div>
+				<div class="flex flex-col items-start gap-3 lg:items-end">
+					<button hx-post="/insights/report/pdf" hx-target="#insights-export-status" class="primary-button">Export Analytics Report</button>
+					<div id="insights-export-status" class="text-sm text-slate-600"></div>
+				</div>
+			</div>
+
+			<div class="responsive-two-col grid gap-6">
+				<section data-ui-id={ uiids.PanelInsightsOverview } class="relative card rounded-3xl p-5 sm:p-8">
+					@SurfaceBadge(uiids.PanelInsightsOverview)
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Overview</p>
+					<h3 class="mt-2 text-xl gold font-bold">Record Type Snapshot</h3>
+					<div class="mt-5 grid gap-4 sm:grid-cols-2">
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4">
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.RecordTypes.TotalSoldiers) }</div>
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Soldiers</div>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4">
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.RecordTypes.TotalWivesWidows) }</div>
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Spouses (Wives & Widows)</div>
+						</div>
+					</div>
+				</section>
+
+				<section data-ui-id={ uiids.PanelInsightsCemeteries } class="relative card rounded-3xl p-5 sm:p-8">
+					@SurfaceBadge(uiids.PanelInsightsCemeteries)
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Burial Analytics</p>
+					<h3 class="mt-2 text-xl gold font-bold">Top Cemeteries</h3>
+					@InsightsCountList(snapshot.CemeteryDensity, "No burial locations are recorded yet.")
+				</section>
+
+				<section data-ui-id={ uiids.PanelInsightsHomes } class="relative card rounded-3xl p-5 sm:p-8 space-y-6">
+					@SurfaceBadge(uiids.PanelInsightsHomes)
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Confederate Home Census</p>
+						<h3 class="mt-2 text-xl gold font-bold">Status Breakdown</h3>
+						@InsightsCountList(snapshot.ConfederateHomeStatus, "No Confederate Home statuses are recorded yet.")
+					</div>
+					<div>
+						<h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Most Frequent Home Names</h4>
+						@InsightsCountList(snapshot.ConfederateHomeNames, "No Confederate Home names are recorded yet.")
+					</div>
+				</section>
+
+				<section data-ui-id={ uiids.PanelInsightsPensions } class="relative card rounded-3xl p-5 sm:p-8">
+					@SurfaceBadge(uiids.PanelInsightsPensions)
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Geography</p>
+					<h3 class="mt-2 text-xl gold font-bold">Pension Distribution</h3>
+					@InsightsCountList(snapshot.PensionDistribution, "No pension states are recorded yet.")
+				</section>
+
+				<section data-ui-id={ uiids.PanelInsightsUnits } class="relative card rounded-3xl p-5 sm:p-8">
+					@SurfaceBadge(uiids.PanelInsightsUnits)
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Military Representation</p>
+					<h3 class="mt-2 text-xl gold font-bold">Top Units</h3>
+					@InsightsCountList(snapshot.UnitRepresentation, "No units are recorded yet.")
+				</section>
+
+				<section data-ui-id={ uiids.PanelInsightsChronology } class="relative responsive-span-2 card rounded-3xl p-5 sm:p-8">
+					@SurfaceBadge(uiids.PanelInsightsChronology)
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Chronological Overview</p>
+					<h3 class="mt-2 text-xl gold font-bold">Birth and Death Decades</h3>
+					<div class="mt-5 grid gap-6 lg:grid-cols-2">
+						<div>
+							<h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Birth Decades</h4>
+							@InsightsCountList(snapshot.BirthDecadeDistribution, "No birth decades are recorded yet.")
+						</div>
+						<div>
+							<h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Death Decades</h4>
+							@InsightsCountList(snapshot.DeathDecadeDistribution, "No death decades are recorded yet.")
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+	}
+}
+
+templ InsightsCountList(items []services.AnalyticsCount, emptyMessage string) {
+	if len(items) == 0 {
+		<p class="mt-4 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">{ emptyMessage }</p>
+	} else {
+		<div class="mt-4 space-y-3">
+			for _, item := range items {
+				<div class="flex items-start justify-between gap-4 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3">
+					<div class="text-sm text-[#22303d]">{ item.Label }</div>
+					<div class="text-sm font-semibold text-[#6f2c26]">{ fmt.Sprintf("%d", item.Count) }</div>
+				</div>
+			}
+		</div>
+	}
+}

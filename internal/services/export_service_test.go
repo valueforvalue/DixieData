@@ -559,6 +559,52 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	}
 }
 
+func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	outPath := filepath.Join(t.TempDir(), "analytics-report.pdf")
+	err := exportSvc.ExportAnalyticsSummaryPDF(outPath, AnalyticsSnapshot{
+		RecordTypes: models.ArchiveCounts{
+			TotalSoldiers:    12,
+			TotalWivesWidows: 4,
+		},
+		CemeteryDensity:         []AnalyticsCount{{Label: "Oak Hill Cemetery", Count: 7}},
+		ConfederateHomeStatus:   []AnalyticsCount{{Label: "Inmate", Count: 3}},
+		ConfederateHomeNames:    []AnalyticsCount{{Label: "Texas Confederate Home", Count: 2}},
+		PensionDistribution:     []AnalyticsCount{{Label: "Texas", Count: 5}},
+		UnitRepresentation:      []AnalyticsCount{{Label: "1st Texas Infantry", Count: 4}},
+		BirthDecadeDistribution: []AnalyticsCount{{Label: "1830s", Count: 6}},
+		DeathDecadeDistribution: []AnalyticsCount{{Label: "1900s", Count: 2}},
+	})
+	if err != nil {
+		t.Fatalf("ExportAnalyticsSummaryPDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	for _, needle := range []string{
+		"Archive Summary Report",
+		"Top Cemeteries",
+		"Oak Hill Cemetery",
+		"Confederate Home Participation",
+		"Texas Confederate Home",
+		"Record Types",
+		"Soldiers: 12",
+		"Spouses",
+		"Wives & Widows",
+	} {
+		if !strings.Contains(text, needle) {
+			t.Fatalf("analytics PDF missing %s", needle)
+		}
+	}
+}
+
 func TestExportService_ExportFullDatabasePDFFitsSingleRecordPage(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)

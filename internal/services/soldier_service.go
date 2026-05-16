@@ -330,6 +330,25 @@ func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
 	return &image, nil
 }
 
+func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
+	row := s.db.Conn().QueryRow(`
+		SELECT
+			COALESCE(SUM(CASE
+				WHEN entry_type IS NULL OR TRIM(entry_type) = '' OR LOWER(TRIM(entry_type)) = 'soldier' THEN 1
+				ELSE 0
+			END), 0),
+			COALESCE(SUM(CASE
+				WHEN LOWER(TRIM(entry_type)) IN ('wife', 'widow') THEN 1
+				ELSE 0
+			END), 0)
+		FROM soldiers`)
+	var counts models.ArchiveCounts
+	if err := row.Scan(&counts.TotalSoldiers, &counts.TotalWivesWidows); err != nil {
+		return models.ArchiveCounts{}, err
+	}
+	return counts, nil
+}
+
 func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1

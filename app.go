@@ -44,6 +44,7 @@ type App struct {
 	database      *db.DB
 	soldiers      *services.SoldierService
 	anniversary   *services.AnniversaryService
+	analytics     *services.AnalyticsService
 	export        *services.ExportService
 	backup        *services.BackupService
 	diagnostics   *services.DiagnosticsService
@@ -123,6 +124,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/setup", a.handleInitialSetup)
 	mux.HandleFunc("/version", a.handleVersion)
 	mux.HandleFunc("/share", a.handleShare)
+	mux.HandleFunc("/insights", a.handleInsights)
 	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
@@ -134,6 +136,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
 	mux.HandleFunc("/export/shared-archive", a.handleExportSharedArchive)
 	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
+	mux.HandleFunc("/insights/report/pdf", a.handleExportInsightsPDF)
 	mux.HandleFunc("/import/backup", a.handleImportBackup)
 	mux.HandleFunc("/import/shared-archive", a.handleImportSharedArchive)
 	mux.HandleFunc("/merge-review/", a.handleMergeReviewConflict)
@@ -238,12 +241,12 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, total, err := a.soldiers.List(1, 1)
+	counts, err := a.soldiers.ArchiveCounts()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar, total, selectQuoteForArchive(a.quotes, total)).Render(r.Context(), w)
+	templates.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
 }
 
 func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
@@ -314,12 +317,12 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	_, total, err := a.soldiers.List(1, 1)
+	counts, err := a.soldiers.ArchiveCounts()
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar, total, selectQuoteForArchive(a.quotes, total)).Render(r.Context(), w)
+	templates.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
 }
 
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
@@ -670,6 +673,19 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	templates.ShareView(status, conflicts).Render(r.Context(), w)
 }
 
+func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	snapshot, err := a.analytics.Snapshot()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.InsightsView(snapshot).Render(r.Context(), w)
+}
+
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -718,6 +734,33 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "✓ Exported to %s", path)
+}
+
+func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	snapshot, err := a.analytics.Snapshot()
+	if err != nil {
+		fmt.Fprintf(w, "Analytics export failed: %v", err)
+		return
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "dixiedata-archive-insights.pdf",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Analytics export cancelled.")
+		return
+	}
+	if err := a.export.ExportAnalyticsSummaryPDF(path, snapshot); err != nil {
+		fmt.Fprintf(w, "Analytics export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("Analytics report ready:", path))
 }
 
 func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
@@ -1987,6 +2030,7 @@ func findChromeExecutable() (string, error) {
 func (a *App) reloadServices() error {
 	a.soldiers = services.NewSoldierService(a.database)
 	a.anniversary = services.NewAnniversaryService(a.database)
+	a.analytics = services.NewAnalyticsService(a.database)
 	a.export = services.NewExportService(a.database, a.soldiers)
 	a.backup = services.NewBackupService(a.database, a.soldiers)
 	a.diagnostics = services.NewDiagnosticsService(a.database, a.soldiers)
