@@ -29,4 +29,16 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, buildinfo.AppLabel()) || !strings.Contains(content, fmt.Sprintf("Schema v%d", buildinfo.SchemaVersion)) {
 		t.Fatalf("layout should include app and schema versions")
 	}
+	if !strings.Contains(content, `data-build-identity="`) || !strings.Contains(content, buildinfo.BuildIdentity()) {
+		t.Fatalf("layout should surface build identity")
+	}
+	if !strings.Contains(content, `data-floating-nav-toggle`) || !strings.Contains(content, "Quick Navigation") {
+		t.Fatalf("layout should include floating navigation controls")
+	}
+	if !strings.Contains(content, `data-scratchpad-open`) || !strings.Contains(content, "Scratch Pad") {
+		t.Fatalf("layout should include floating scratch pad controls")
+	}
+	if !strings.Contains(content, `fixed left-1/2 top-5`) || !strings.Contains(content, `pt-32`) {
+		t.Fatalf("layout should render the header as a floating top bar")
+	}
 }

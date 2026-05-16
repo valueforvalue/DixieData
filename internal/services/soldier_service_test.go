@@ -118,14 +118,16 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	svc := NewSoldierService(d)
 
 	created, err := svc.Create(models.Soldier{
-		PensionID:     "P12345",
-		ApplicationID: "A12345",
-		FirstName:     "John",
-		MiddleName:    "Bell",
-		LastName:      "Hood",
-		RankIn:        "Colonel",
-		RankOut:       "Lieutenant General",
-		PensionState:  "Texas",
+		PensionID:             "P12345",
+		ApplicationID:         "A12345",
+		FirstName:             "John",
+		MiddleName:            "Bell",
+		LastName:              "Hood",
+		RankIn:                "Colonel",
+		RankOut:               "Lieutenant General",
+		PensionState:          "Texas",
+		ConfederateHomeStatus: "Staffer",
+		ConfederateHomeName:   "Texas Confederate Home",
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -135,7 +137,7 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.MiddleName != "Bell" || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" {
+	if got.MiddleName != "Bell" || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" || got.ConfederateHomeStatus != "Staffer" || got.ConfederateHomeName != "Texas Confederate Home" {
 		t.Fatalf("unexpected new fields: %#v", got)
 	}
 	if got.Rank != "Lieutenant General" {
@@ -165,8 +167,91 @@ func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.MiddleName != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" {
+	if got.MiddleName != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "None" || got.ConfederateHomeName != "" {
 		t.Fatalf("expected empty strings for NULL fields, got %#v", got)
+	}
+}
+
+func TestSoldierService_NormalizesConfederateHomeFields(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName:             "James",
+		LastName:              "Buckner",
+		ConfederateHomeStatus: "none",
+		ConfederateHomeName:   "Should Clear",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if created.ConfederateHomeStatus != "None" || created.ConfederateHomeName != "" {
+		t.Fatalf("created = %#v", created)
+	}
+}
+
+func TestSoldierService_FormSuggestions(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	first, err := svc.Create(models.Soldier{
+		FirstName:    "Albert",
+		LastName:     "Smith",
+		RankIn:       "Private",
+		RankOut:      "Corporal",
+		Unit:         "Co. A, 1st Texas Infantry",
+		PensionState: "Texas",
+		BuriedIn:     "Oakwood Cemetery",
+		Records: []models.Record{
+			{RecordType: "Pension"},
+			{RecordType: "Muster Roll"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{
+		FirstName:    "Benjamin",
+		LastName:     "Jones",
+		RankIn:       "Private",
+		Rank:         "Sergeant",
+		Unit:         "Co. A, 1st Texas Infantry",
+		PensionState: "Texas",
+		BuriedIn:     "Oakwood Cemetery",
+		Records: []models.Record{
+			{RecordType: "Pension"},
+		},
+	}); err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+
+	suggestions, err := svc.FormSuggestions()
+	if err != nil {
+		t.Fatalf("FormSuggestions: %v", err)
+	}
+	if len(suggestions.RankIn) != 1 || suggestions.RankIn[0] != "Private" {
+		t.Fatalf("rank_in suggestions = %#v", suggestions.RankIn)
+	}
+	if len(suggestions.RankOut) != 2 || suggestions.RankOut[0] != "Corporal" || suggestions.RankOut[1] != "Sergeant" {
+		t.Fatalf("rank_out suggestions = %#v", suggestions.RankOut)
+	}
+	if len(suggestions.RecordType) != 2 || suggestions.RecordType[0] != "Muster Roll" || suggestions.RecordType[1] != "Pension" {
+		t.Fatalf("record_type suggestions = %#v", suggestions.RecordType)
+	}
+
+	updated := *first
+	updated.Unit = "Co. B, 4th Texas Cavalry"
+	if err := svc.Update(updated); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	afterUpdate, err := svc.FormSuggestions()
+	if err != nil {
+		t.Fatalf("FormSuggestions after update: %v", err)
+	}
+	if len(afterUpdate.Unit) != 2 || afterUpdate.Unit[1] != "Co. B, 4th Texas Cavalry" {
+		t.Fatalf("unit suggestions after update = %#v", afterUpdate.Unit)
 	}
 }
 
@@ -557,6 +642,9 @@ func TestSoldierService_SearchPage(t *testing.T) {
 	if results[0].LastName != "Forrest" {
 		t.Errorf("got %s, want Forrest", results[0].LastName)
 	}
+	if results[0].SearchMatchField != "Name" || !strings.Contains(results[0].SearchMatchSnippet, "Nathan") {
+		t.Fatalf("expected quick search match metadata, got field=%q snippet=%q", results[0].SearchMatchField, results[0].SearchMatchSnippet)
+	}
 
 	displayIDResults, total, err := svc.SearchPage("4242", 1, 10)
 	if err != nil {
@@ -591,6 +679,32 @@ func TestSoldierService_SearchPage(t *testing.T) {
 	}
 	if total != 1 || len(rankResults) != 1 || !strings.HasSuffix(rankResults[0].DisplayID, "PENSION-4242") {
 		t.Fatalf("unit search got total=%d len=%d results=%#v", total, len(rankResults), rankResults)
+	}
+}
+
+func TestSoldierService_SearchPageMatchesPensionState(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	_, err := svc.Create(models.Soldier{
+		DisplayID:    "PENSION-5150",
+		FirstName:    "Mary",
+		LastName:     "Bennett",
+		PensionState: "Alabama",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	results, total, err := svc.SearchPage("Alabama", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage pension_state: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("pension state search got total=%d len=%d", total, len(results))
+	}
+	if results[0].SearchMatchField != "Pension State" || results[0].SearchMatchSnippet != "Alabama" {
+		t.Fatalf("unexpected match metadata: %#v", results[0])
 	}
 }
 

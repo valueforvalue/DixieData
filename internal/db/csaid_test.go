@@ -99,7 +99,7 @@ func TestBuildUserNodePrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildUserNodePrefix: %v", err)
 	}
-	if prefix != "STC1838" {
+	if prefix != "STC38" {
 		t.Fatalf("prefix = %q", prefix)
 	}
 }
@@ -123,7 +123,7 @@ func TestIdentitySetupRequiredForFreshDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
-	if identity.NodePrefix != "STC1838" {
+	if identity.NodePrefix != "STC38" {
 		t.Fatalf("node prefix = %q", identity.NodePrefix)
 	}
 

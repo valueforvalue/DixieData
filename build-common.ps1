@@ -164,9 +164,22 @@ function Invoke-DixieDataBuild {
     try {
         Set-DixieDataBuildLocation -Root $Root
 
-        & wails @WailsArguments
+        go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
         if ($LASTEXITCODE -ne 0) {
-            throw "wails $($WailsArguments -join ' ') failed with exit code $LASTEXITCODE"
+            throw "templ generate failed with exit code $LASTEXITCODE"
+        }
+
+        $gitCommit = (& git rev-parse --short HEAD).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitCommit)) {
+            throw "failed to resolve git commit for build metadata"
+        }
+        $buildTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        $buildLdFlags = "-X github.com/valueforvalue/DixieData/internal/buildinfo.GitCommit=$gitCommit -X github.com/valueforvalue/DixieData/internal/buildinfo.BuildTimestamp=$buildTimestamp"
+        $effectiveWailsArguments = @($WailsArguments) + @("-ldflags", $buildLdFlags)
+
+        & wails @effectiveWailsArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "wails $($effectiveWailsArguments -join ' ') failed with exit code $LASTEXITCODE"
         }
 
         $oauthSource = Resolve-DixieDataOAuthDefaultsSource -Root $Root -PreservedPath $preservedOAuth -AllowExampleOAuthDefaults:$AllowExampleOAuthDefaults

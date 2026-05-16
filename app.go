@@ -24,8 +24,10 @@ import (
 
 	_ "embed"
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/findagrave"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
 	"github.com/valueforvalue/DixieData/internal/services"
@@ -110,8 +112,10 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/search", a.handleSearch)
 	mux.HandleFunc("/soldiers/search/advanced", a.handleAdvancedSearch)
 	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
+	mux.HandleFunc("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
 	mux.HandleFunc("/setup", a.handleInitialSetup)
+	mux.HandleFunc("/version", a.handleVersion)
 	mux.HandleFunc("/export", a.handleExport)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
@@ -162,6 +166,8 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func setupRequestAllowed(path string) bool {
 	switch {
 	case path == "/setup":
+		return true
+	case path == "/version":
 		return true
 	case path == "/app.js":
 		return true
@@ -217,7 +223,7 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	month := 1
+	month := int(time.Now().Month())
 	calendar, err := a.anniversary.GetMonthCalendar(month)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -228,7 +234,7 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar, total, selectQuoteOfDay(a.quotes, time.Now())).Render(r.Context(), w)
+	templates.Calendar(month, calendar, total, selectQuoteForArchive(a.quotes, total)).Render(r.Context(), w)
 }
 
 func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
@@ -265,6 +271,20 @@ func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) handleVersion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"app":"%s","version":"%s","schema_version":%d,"build_identity":%q}`+"\n",
+		buildinfo.AppName,
+		buildinfo.AppVersion,
+		buildinfo.SchemaVersion,
+		buildinfo.BuildIdentity(),
+	)
+}
+
 func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/calendar/"), "/")
 	if len(parts) > 2 && parts[1] == "report" && parts[2] == "pdf" {
@@ -290,7 +310,7 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar, total, selectQuoteOfDay(a.quotes, time.Now())).Render(r.Context(), w)
+	templates.Calendar(month, calendar, total, selectQuoteForArchive(a.quotes, total)).Render(r.Context(), w)
 }
 
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
@@ -393,9 +413,6 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		DeathMonth:   r.URL.Query().Get("death_month"),
 		DeathDay:     r.URL.Query().Get("death_day"),
 	}
-	if strings.TrimSpace(search.DeathDate) == "" {
-		search.DeathDate = dates.MustFormat(parseLegacySearchComponent(search.DeathMonth), parseLegacySearchComponent(search.DeathDay), parseLegacySearchComponent(search.DeathYear))
-	}
 	page := parsePage(r.URL.Query().Get("page"))
 	if !hasAdvancedSearchInput(search) {
 		templates.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
@@ -438,6 +455,37 @@ func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.renderEntryForm(w, r, defaults, false, "", http.StatusOK)
+}
+
+func (a *App) handleScrapeFindAGrave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	defaults, err := a.newSoldierDefaults()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	scrape := models.FindAGraveScrapeState{Input: strings.TrimSpace(r.FormValue("findagrave_source"))}
+	result, err := findagrave.ParseInput(r.Context(), scrape.Input)
+	if err != nil {
+		scrape.ErrorMessage = err.Error()
+		a.renderEntryFormWithScrapeState(w, r, defaults, false, "", scrape, http.StatusBadRequest, true)
+		return
+	}
+
+	scrape.SourceLabel = result.SourceLabel
+	scrape.WarningLines = result.Warnings
+	scrape.Spouses = result.Spouses
+	autofilled := applyFindAGraveAutofill(defaults, result)
+	a.renderEntryFormWithScrapeState(w, r, autofilled, false, "", scrape, http.StatusOK, true)
 }
 
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
@@ -763,12 +811,30 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var localIdentity models.UserIdentity
+	preserveLocalIdentity := false
+	if a.database != nil {
+		complete, err := a.database.SystemConfig("user_identity_complete")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if strings.TrimSpace(complete) == "1" {
+			localIdentity, err = a.database.UserIdentity()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			preserveLocalIdentity = true
+		}
+	}
+
 	if a.database != nil {
 		a.database.Close()
 		a.database = nil
 	}
 
-	manifest, err := a.backup.Import(path, a.dataDir)
+	manifest, err := a.backup.ImportWithLocalIdentity(path, a.dataDir, localIdentity, preserveLocalIdentity)
 	if err != nil {
 		if reopenErr := a.reopenDatabase(); reopenErr != nil {
 			http.Error(w, fmt.Sprintf("backup import failed: %v (and reopen failed: %v)", err, reopenErr), http.StatusInternalServerError)
@@ -1387,27 +1453,29 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 	}
 
 	return models.Soldier{
-		ID:              id,
-		DisplayID:       r.FormValue("display_id"),
-		EntryType:       r.FormValue("entry_type"),
-		SpouseSoldierID: spouseSoldierID,
-		MaidenName:      r.FormValue("maiden_name"),
-		PensionID:       r.FormValue("pension_id"),
-		ApplicationID:   r.FormValue("application_id"),
-		FirstName:       r.FormValue("first_name"),
-		MiddleName:      r.FormValue("middle_name"),
-		LastName:        r.FormValue("last_name"),
-		Rank:            r.FormValue("rank_out"),
-		RankIn:          r.FormValue("rank_in"),
-		RankOut:         r.FormValue("rank_out"),
-		Unit:            r.FormValue("unit"),
-		PensionState:    r.FormValue("pension_state"),
-		BirthDate:       birthDate,
-		DeathDate:       deathDate,
-		BirthInfo:       r.FormValue("birth_info"),
-		BuriedIn:        r.FormValue("buried_in"),
-		Notes:           r.FormValue("notes"),
-		Records:         parseRecordInputs(r),
+		ID:                    id,
+		DisplayID:             r.FormValue("display_id"),
+		EntryType:             r.FormValue("entry_type"),
+		SpouseSoldierID:       spouseSoldierID,
+		MaidenName:            r.FormValue("maiden_name"),
+		PensionID:             r.FormValue("pension_id"),
+		ApplicationID:         r.FormValue("application_id"),
+		FirstName:             r.FormValue("first_name"),
+		MiddleName:            r.FormValue("middle_name"),
+		LastName:              r.FormValue("last_name"),
+		Rank:                  r.FormValue("rank_out"),
+		RankIn:                r.FormValue("rank_in"),
+		RankOut:               r.FormValue("rank_out"),
+		Unit:                  r.FormValue("unit"),
+		PensionState:          r.FormValue("pension_state"),
+		ConfederateHomeStatus: r.FormValue("confederate_home_status"),
+		ConfederateHomeName:   r.FormValue("confederate_home_name"),
+		BirthDate:             birthDate,
+		DeathDate:             deathDate,
+		BirthInfo:             r.FormValue("birth_info"),
+		BuriedIn:              r.FormValue("buried_in"),
+		Notes:                 r.FormValue("notes"),
+		Records:               parseRecordInputs(r),
 	}, nil
 }
 
@@ -1416,7 +1484,7 @@ func (a *App) newSoldierDefaults() (models.Soldier, error) {
 	if err != nil {
 		return models.Soldier{}, err
 	}
-	return models.Soldier{DisplayID: displayID}, nil
+	return models.Soldier{DisplayID: displayID, PensionState: "None", ConfederateHomeStatus: "None"}, nil
 }
 
 func parseOptionalInt(value, field string) (int, error) {
@@ -1452,17 +1520,52 @@ func parseOptionalBoundedInt(value, field string, min, max int) (int, error) {
 }
 
 func (a *App) renderEntryForm(w http.ResponseWriter, r *http.Request, soldier models.Soldier, isEdit bool, errorMessage string, statusCode int) {
+	a.renderEntryFormWithScrapeState(w, r, soldier, isEdit, errorMessage, models.FindAGraveScrapeState{}, statusCode, false)
+}
+
+func (a *App) renderEntryFormWithScrapeState(w http.ResponseWriter, r *http.Request, soldier models.Soldier, isEdit bool, errorMessage string, scrape models.FindAGraveScrapeState, statusCode int, fragmentOnly bool) {
 	candidates, err := a.soldiers.MarriageCandidates()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(statusCode)
-	if errorMessage != "" {
-		templates.EntryFormWithError(soldier, candidates, isEdit, errorMessage).Render(r.Context(), w)
+	suggestions, err := a.soldiers.FormSuggestions()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.EntryForm(soldier, candidates, isEdit).Render(r.Context(), w)
+	w.WriteHeader(statusCode)
+	if fragmentOnly {
+		templates.EntryFormFragment(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
+		return
+	}
+	if errorMessage != "" {
+		templates.EntryFormWithError(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
+		return
+	}
+	templates.EntryForm(soldier, candidates, suggestions, scrape, isEdit).Render(r.Context(), w)
+}
+
+func applyFindAGraveAutofill(base models.Soldier, result findagrave.Result) models.Soldier {
+	base.FirstName = result.FirstName
+	base.MiddleName = result.MiddleName
+	base.LastName = result.LastName
+	base.BirthDate = result.BirthDate
+	base.BirthInfo = result.BirthInfo
+	base.DeathDate = result.DeathDate
+	base.BuriedIn = result.BuriedIn
+	if strings.TrimSpace(result.MemorialID) != "" || strings.TrimSpace(result.MemorialURL) != "" {
+		details := strings.TrimSpace(result.MemorialURL)
+		if details == "" {
+			details = "Find a Grave memorial"
+		}
+		base.Records = []models.Record{{
+			RecordType: "Find a Grave",
+			AppID:      strings.TrimSpace(result.MemorialID),
+			Details:    details,
+		}}
+	}
+	return base
 }
 
 func parseOptionalCanonicalDate(value, field string) (string, error) {
@@ -1815,11 +1918,14 @@ func (a *App) listAllSoldiers() ([]models.Soldier, error) {
 	return soldiers, nil
 }
 
-func selectQuoteOfDay(quotes []models.Quote, now time.Time) models.Quote {
+func selectQuoteForArchive(quotes []models.Quote, totalSoldiers int) models.Quote {
 	if len(quotes) == 0 {
 		return models.Quote{}
 	}
-	index := (now.YearDay() - 1) % len(quotes)
+	if totalSoldiers < 0 {
+		totalSoldiers = 0
+	}
+	index := (totalSoldiers / 3) % len(quotes)
 	return quotes[index]
 }
 

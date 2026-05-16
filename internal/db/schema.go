@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS soldiers (
     rank_out     TEXT,
     unit         TEXT,
     pension_state TEXT,
+    confederate_home_status TEXT DEFAULT 'None',
+    confederate_home_name TEXT,
     death_year   INTEGER,
     death_month  INTEGER,
     death_day    INTEGER,
@@ -125,8 +127,8 @@ SET sync_id = ` + syncIDSQL + `
 WHERE sync_id IS NULL OR TRIM(sync_id) = '';
 
 INSERT INTO system_config(key, value)
-VALUES ('node_prefix', 'TDM65')
-ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP;
+SELECT 'node_prefix', 'TDM65'
+WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_prefix');
 
 INSERT INTO system_config(key, value)
 SELECT
@@ -206,6 +208,8 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "rank_in", sql: `ALTER TABLE soldiers ADD COLUMN rank_in TEXT`},
 		{table: "soldiers", column: "rank_out", sql: `ALTER TABLE soldiers ADD COLUMN rank_out TEXT`},
 		{table: "soldiers", column: "pension_state", sql: `ALTER TABLE soldiers ADD COLUMN pension_state TEXT`},
+		{table: "soldiers", column: "confederate_home_status", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_status TEXT DEFAULT 'None'`},
+		{table: "soldiers", column: "confederate_home_name", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_name TEXT`},
 		{table: "soldiers", column: "sync_id", sql: `ALTER TABLE soldiers ADD COLUMN sync_id TEXT`},
 		{table: "soldiers", column: "entry_type", sql: `ALTER TABLE soldiers ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'soldier'`},
 		{table: "soldiers", column: "spouse_soldier_id", sql: `ALTER TABLE soldiers ADD COLUMN spouse_soldier_id INTEGER REFERENCES soldiers(id) ON DELETE SET NULL`},
@@ -236,6 +240,15 @@ func applySchema(db *DB) error {
 		return err
 	}
 	if _, err := tx.Exec(phase2CanonicalDatesMigration); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'None' WHERE confederate_home_status IS NULL OR TRIM(confederate_home_status) = ''`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_name IS NULL`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_status = 'None'`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`); err != nil {

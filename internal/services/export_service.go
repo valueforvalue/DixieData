@@ -183,7 +183,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	defer w.Flush()
 
 	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "birth_date", "death_date", "birth_info", "buried_in", "notes", "created_at"}
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -220,6 +220,8 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				s.RankOut,
 				s.Unit,
 				s.PensionState,
+				s.ConfederateHomeStatus,
+				s.ConfederateHomeName,
 				s.BirthDate,
 				s.DeathDate,
 				s.BirthInfo,
@@ -305,6 +307,8 @@ func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldi
 		writePDFField(pdf, "Rank Out", displaySoldierRank(soldier))
 		writePDFField(pdf, "Unit", soldier.Unit)
 		writePDFField(pdf, "Pension State", soldier.PensionState)
+		writePDFField(pdf, "Confederate Home Status", soldier.ConfederateHomeStatus)
+		writePDFField(pdf, "Confederate Home Name", soldier.ConfederateHomeName)
 		writePDFField(pdf, "Pension ID", soldier.PensionID)
 		writePDFField(pdf, "Application ID", soldier.ApplicationID)
 	} else {

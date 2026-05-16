@@ -18,6 +18,9 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 				<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ s.DisplayID }</span>
 				<p class="mt-1 font-semibold text-slate-900">{ detailHeading(s) }</p>
 				<p class="text-sm text-slate-500">{ detailSubheading(s) }</p>
+				if strings.TrimSpace(s.SearchMatchSnippet) != "" {
+					<p class="mt-2 text-xs font-medium text-[#6f2c26]">Matched on { s.SearchMatchField }: <span class="text-[#22303d]">{ s.SearchMatchSnippet }</span></p>
+				}
 				if strings.TrimSpace(s.DeathDate) != "" {
 					<p class="text-xs text-slate-400 mt-1">d. { deathDate(s) }</p>
 				}
@@ -36,11 +39,21 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) }
 			   class="pill-link">View</a>
 		</div>
+		if highlighted {
+			<div class="pointer-events-none absolute inset-x-4 top-4 z-20 hidden rounded-2xl border border-[rgba(141,116,64,0.6)] bg-[rgba(255,251,241,0.98)] px-4 py-4 text-xs text-[#445260] shadow-[0_16px_28px_rgba(23,33,43,0.2)] group-hover:block">
+				<p class="font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Hover Preview</p>
+				<p class="mt-1 text-sm font-medium text-[#22303d]">{ detailHeading(s) }</p>
+				<p class="mt-1">{ searchPreviewSummary(s) }</p>
+				if strings.TrimSpace(s.Notes) != "" {
+					<p class="mt-2 text-slate-500">{ notesPreview(s.Notes) }</p>
+				}
+			</div>
+		}
 	</div>
 }
 
 func soldierCardClass(highlighted bool) string {
-	className := "card rounded-2xl p-4 mb-3"
+	className := "group relative card rounded-2xl p-4 mb-3"
 	if highlighted {
 		className += " border-[rgba(197,171,104,0.92)] bg-[rgba(245,241,230,0.97)] shadow-[0_0_30px_rgba(197,171,104,0.16)] ring-1 ring-[rgba(197,171,104,0.7)]"
 	}
@@ -169,7 +182,7 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 
 templ SoldierDetail(s models.Soldier) {
 	@Layout(soldierFullName(s)) {
-		<div data-ui-id={ uiids.PageSoldierDetail } class="relative max-w-2xl mx-auto">
+		<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative max-w-2xl mx-auto">
 			@SurfaceBadge(uiids.PageSoldierDetail)
 			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-8">
 				@SurfaceBadge(uiids.PanelSoldierDetailSummary)
@@ -186,6 +199,8 @@ templ SoldierDetail(s models.Soldier) {
 						<dt class="text-slate-500">Rank Out</dt><dd>{ emptyDetail(detailDisplayRank(s)) }</dd>
 						<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(s.Unit) }</dd>
 						<dt class="text-slate-500">Pension State</dt><dd>{ emptyDetail(s.PensionState) }</dd>
+						<dt class="text-slate-500">Confederate Home Status</dt><dd>{ emptyDetail(s.ConfederateHomeStatus) }</dd>
+						<dt class="text-slate-500">Confederate Home Name</dt><dd>{ emptyDetail(s.ConfederateHomeName) }</dd>
 						<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
 						<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
 					} else {
@@ -465,6 +480,37 @@ func detailDisplayRank(s models.Soldier) string {
 		return trimmed
 	}
 	return strings.TrimSpace(s.RankIn)
+}
+
+func searchPreviewSummary(s models.Soldier) string {
+	parts := []string{entryBadgeLabel(s), "Record ID " + strings.TrimSpace(s.DisplayID)}
+	if rank := strings.TrimSpace(detailDisplayRank(s)); rank != "" {
+		parts = append(parts, "Rank "+rank)
+	}
+	if unit := strings.TrimSpace(s.Unit); unit != "" {
+		parts = append(parts, "Unit "+unit)
+	}
+	if spouse := strings.TrimSpace(s.SpouseName); spouse != "" {
+		parts = append(parts, "Married to "+spouse)
+	}
+	if state := strings.TrimSpace(s.PensionState); state != "" {
+		parts = append(parts, "Pension state "+state)
+	}
+	if buried := strings.TrimSpace(s.BuriedIn); buried != "" {
+		parts = append(parts, "Buried in "+buried)
+	}
+	if death := strings.TrimSpace(deathDate(s)); death != "" {
+		parts = append(parts, "Death "+death)
+	}
+	return strings.Join(parts, " • ")
+}
+
+func notesPreview(notes string) string {
+	trimmed := strings.TrimSpace(notes)
+	if len(trimmed) <= 140 {
+		return trimmed
+	}
+	return trimmed[:140] + "..."
 }
 
 var linkifiedURLPattern = regexp.MustCompile(`https?://[^\s<]+`)

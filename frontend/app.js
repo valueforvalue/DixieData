@@ -632,6 +632,26 @@
     return (field.value || "").trim();
   }
 
+  function pageScratchpadDisplayId() {
+    const explicit = document.querySelector("[data-scratchpad-display-id]");
+    if (explicit instanceof HTMLElement) {
+      const value = (explicit.getAttribute("data-scratchpad-display-id") || "").trim();
+      if (value) {
+        return value;
+      }
+    }
+    const fields = document.querySelectorAll('input[name="display_id"]');
+    for (const field of fields) {
+      if (field instanceof HTMLInputElement) {
+        const value = (field.value || "").trim();
+        if (value) {
+          return value;
+        }
+      }
+    }
+    return "";
+  }
+
   function scratchpadFormFromElement(el) {
     if (el instanceof HTMLFormElement) {
       return el;
@@ -664,14 +684,18 @@
 
   function scratchpadStatusTarget(trigger) {
     if (!(trigger instanceof HTMLElement)) {
-      return null;
+      const globalTarget = document.querySelector("[data-floating-scratchpad-status]");
+      return globalTarget instanceof HTMLElement ? globalTarget : null;
     }
     const section = trigger.closest("[data-ui-id='panel.soldier.form.scratchpad']");
-    if (!(section instanceof HTMLElement)) {
-      return null;
+    if (section instanceof HTMLElement) {
+      const target = section.querySelector("[data-scratchpad-status]");
+      if (target instanceof HTMLElement) {
+        return target;
+      }
     }
-    const target = section.querySelector("[data-scratchpad-status]");
-    return target instanceof HTMLElement ? target : null;
+    const globalTarget = document.querySelector("[data-floating-scratchpad-status]");
+    return globalTarget instanceof HTMLElement ? globalTarget : null;
   }
 
   function setScratchpadStatus(trigger, message, isError = false) {
@@ -686,15 +710,13 @@
 
   async function openScratchpad(trigger) {
     const form = scratchpadFormFromElement(trigger);
-    if (!(form instanceof HTMLFormElement)) {
-      return;
-    }
-    const displayId = scratchpadDisplayId(form);
+    const displayId = scratchpadDisplayId(form) || pageScratchpadDisplayId();
     if (!displayId) {
-      window.alert("A Record ID is required before opening the scratch pad.");
+      setScratchpadStatus(trigger, "Open a record with a saved Record ID before launching the scratch pad.", true);
       return;
     }
-    const data = new FormData(form);
+    const data = form instanceof HTMLFormElement ? new FormData(form) : new FormData();
+    data.set("display_id", displayId);
     const legacyText = loadLegacyScratchpadText(displayId);
     if (legacyText) {
       data.set("scratchpad_seed", legacyText);
@@ -801,6 +823,39 @@
     }
   }
 
+  function recordPersistenceTarget(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return null;
+    }
+    const target = form.querySelector("[data-record-persistence]");
+    return target instanceof HTMLElement ? target : null;
+  }
+
+  function syncRecordPersistenceIndicator(form, hasDraft, restored = false) {
+    const target = recordPersistenceTarget(form);
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const kind = target.getAttribute("data-record-persistence-kind") || "new";
+    target.classList.remove("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900", "border-amber-700/40", "bg-amber-50/80", "text-amber-900");
+    let heading = "";
+    let message = "";
+    if (kind === "edit" && !hasDraft) {
+      heading = "Committed to database.";
+      message = "This record currently matches the primary database.";
+      target.classList.add("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900");
+    } else if (kind === "edit") {
+      heading = restored ? "Local draft restored." : "Unsaved local edits.";
+      message = "Your current changes are cached in localStorage and have not been committed to the database yet.";
+      target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
+    } else {
+      heading = restored ? "Local draft restored." : "Local draft only.";
+      message = "This new record exists only in localStorage until you create it in the database.";
+      target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
+    }
+    target.innerHTML = `<strong class="font-semibold">${heading}</strong><span class="ml-2">${message}</span>`;
+  }
+
   function clearDraftForForm(form) {
     const key = draftKeyForForm(form);
     if (!key) {
@@ -810,6 +865,7 @@
       window.localStorage.removeItem(`dixiedata:${key}`);
     } catch (error) {
     }
+    syncRecordPersistenceIndicator(form, false);
   }
 
   function ensureRecordRowCount(form, targetCount) {
@@ -836,15 +892,18 @@
     try {
       saved = window.localStorage.getItem(`dixiedata:${key}`);
     } catch (error) {
+      syncRecordPersistenceIndicator(form, false);
       return;
     }
     if (!saved) {
+      syncRecordPersistenceIndicator(form, false);
       return;
     }
     let payload;
     try {
       payload = JSON.parse(saved);
     } catch (error) {
+      syncRecordPersistenceIndicator(form, false);
       return;
     }
     const recordCount = Math.max(
@@ -870,12 +929,33 @@
       field.value = values[index] ?? "";
       cursors[field.name] = index + 1;
     });
+    syncRecordPersistenceIndicator(form, true, true);
   }
 
   function initializeDraftForms() {
     document.querySelectorAll("form[data-draft-key]").forEach((form) => {
       if (form instanceof HTMLFormElement) {
         restoreDraftForForm(form);
+      }
+    });
+  }
+
+  function initializeFloatingNav() {
+    const panel = document.querySelector("[data-floating-nav-panel]");
+    const toggle = document.querySelector("[data-floating-nav-toggle]");
+    if (!(panel instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) {
+      return;
+    }
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      panel.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (event) => {
+      if (panel.classList.contains("hidden")) {
+        return;
+      }
+      if (event.target instanceof Node && !panel.contains(event.target) && !toggle.contains(event.target)) {
+        panel.classList.add("hidden");
       }
     });
   }
@@ -911,6 +991,7 @@
     form.querySelectorAll("[data-soldier-or-widow-field]").forEach((section) => {
       setSectionEnabled(section, isSoldierEntryType(select.value) || widowEntry);
     });
+    syncConfederateHomeFields(form);
   }
 
   function isSoldierEntryType(value) {
@@ -921,6 +1002,26 @@
     document.querySelectorAll("form").forEach((form) => {
       syncEntryTypeFields(form);
     });
+  }
+
+  function syncConfederateHomeFields(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const status = form.querySelector("[data-confederate-home-status]");
+    const nameField = form.querySelector("[data-confederate-home-name-field] input[name='confederate_home_name']");
+    const nameWrapper = form.querySelector("[data-confederate-home-name-field]");
+    if (!(status instanceof HTMLSelectElement) || !(nameField instanceof HTMLInputElement)) {
+      return;
+    }
+    const enabled = status.value !== "None";
+    nameField.disabled = !enabled;
+    if (!enabled) {
+      nameField.value = "";
+    }
+    if (nameWrapper instanceof HTMLElement) {
+      nameWrapper.classList.toggle("opacity-60", !enabled);
+    }
   }
 
   function renderDocument(html) {
@@ -948,10 +1049,17 @@
 
     if (getSwap(el) === "outerHTML") {
       target.outerHTML = html;
+      initializeDynamicContent();
       return;
     }
 
     target.innerHTML = html;
+    initializeDynamicContent();
+  }
+
+  function initializeDynamicContent() {
+    initializeTabs();
+    initializeEntryTypeForms();
   }
 
   function showProgress(el) {
@@ -1092,6 +1200,7 @@
     initializeTabs();
     initializeDraftForms();
     initializeEntryTypeForms();
+    initializeFloatingNav();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -1167,6 +1276,7 @@
       const form = recordAdd.closest("form");
       if (form instanceof HTMLFormElement) {
         persistDraftForForm(form);
+        syncRecordPersistenceIndicator(form, true);
       }
       return;
     }
@@ -1177,6 +1287,7 @@
       const form = recordRemove.closest("form");
       if (form instanceof HTMLFormElement) {
         persistDraftForForm(form);
+        syncRecordPersistenceIndicator(form, true);
       }
       return;
     }
@@ -1230,12 +1341,14 @@
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       persistDraftForForm(form);
+      syncRecordPersistenceIndicator(form, true);
     }
   });
   document.addEventListener("change", (event) => {
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       persistDraftForForm(form);
+      syncRecordPersistenceIndicator(form, true);
     }
   });
   document.addEventListener("change", (event) => {
@@ -1244,6 +1357,15 @@
       const form = entryTypeSelect.closest("form");
       if (form instanceof HTMLFormElement) {
         syncEntryTypeFields(form);
+      }
+    }
+  });
+  document.addEventListener("change", (event) => {
+    const homeStatusSelect = event.target.closest("[data-confederate-home-status]");
+    if (homeStatusSelect) {
+      const form = homeStatusSelect.closest("form");
+      if (form instanceof HTMLFormElement) {
+        syncConfederateHomeFields(form);
       }
     }
   });
@@ -1258,6 +1380,10 @@
     if (event.key === "Escape") {
       closeTextContextMenu();
       closeImageViewer();
+      const panel = document.querySelector("[data-floating-nav-panel]");
+      if (panel instanceof HTMLElement) {
+        panel.classList.add("hidden");
+      }
     }
   });
   document.addEventListener("contextmenu", (event) => {

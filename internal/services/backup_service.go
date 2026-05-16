@@ -125,6 +125,14 @@ func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (
 }
 
 func (b *BackupService) Import(backupPath, dataDir string) (BackupManifest, error) {
+	localIdentity, preserveLocalIdentity, err := b.currentImportIdentity()
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	return b.ImportWithLocalIdentity(backupPath, dataDir, localIdentity, preserveLocalIdentity)
+}
+
+func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, localIdentity models.UserIdentity, preserveLocalIdentity bool) (BackupManifest, error) {
 	reader, err := zip.OpenReader(backupPath)
 	if err != nil {
 		return BackupManifest{}, err
@@ -169,6 +177,9 @@ func (b *BackupService) Import(backupPath, dataDir string) (BackupManifest, erro
 		if err := restoreSnapshotBackup(stagingDir, extractDir, contents); err != nil {
 			return BackupManifest{}, err
 		}
+		if err := preserveSnapshotImportIdentity(stagingDir, localIdentity, preserveLocalIdentity); err != nil {
+			return BackupManifest{}, err
+		}
 	default:
 		return BackupManifest{}, fmt.Errorf("unsupported backup data format %q", contents.Manifest.DataFormat)
 	}
@@ -182,6 +193,35 @@ func (b *BackupService) Import(backupPath, dataDir string) (BackupManifest, erro
 	stagingActive = false
 
 	return contents.Manifest, nil
+}
+
+func (b *BackupService) currentImportIdentity() (models.UserIdentity, bool, error) {
+	complete, err := b.db.SystemConfig("user_identity_complete")
+	if err != nil {
+		return models.UserIdentity{}, false, err
+	}
+	if strings.TrimSpace(complete) != "1" {
+		return models.UserIdentity{}, false, nil
+	}
+	identity, err := b.db.UserIdentity()
+	if err != nil {
+		return models.UserIdentity{}, false, err
+	}
+	return identity, true, nil
+}
+
+func preserveSnapshotImportIdentity(dataDir string, identity models.UserIdentity, preserve bool) error {
+	if !preserve {
+		return nil
+	}
+	database, err := db.Open(dataDir)
+	if err != nil {
+		return err
+	}
+	defer database.Close()
+
+	_, err = database.ConfigureUserIdentity(identity.FirstName, identity.MiddleName, identity.LastName, identity.BirthYear)
+	return err
 }
 
 func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary SharedImportSummary, err error) {
@@ -1027,9 +1067,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	err = tx.QueryRow(`SELECT id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID)
 	if err == nil {
 		_, err = tx.Exec(`UPDATE soldiers
-			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, first_name = ?, middle_name = ?, last_name = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, created_at = ?, updated_at = ?
+			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, first_name = ?, middle_name = ?, last_name = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, created_at = ?, updated_at = ?
 			WHERE id = ?`,
-			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt, existingID)
+			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt, existingID)
 		if err != nil {
 			return 0, false, "", err
 		}
@@ -1043,9 +1083,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers
-		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at)
-		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		displayID, syncID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt)
+		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at)
+		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		displayID, syncID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
 		return 0, false, "", err
 	}

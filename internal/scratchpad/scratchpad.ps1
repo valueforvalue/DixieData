@@ -19,6 +19,7 @@ public static class ScratchpadNative {
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
 }
 "@
 
@@ -99,6 +100,12 @@ try {
     }
 
     $savingState = $false
+    function Apply-TextboxPresentation([System.Windows.Forms.TextBox]$TextBox, [double]$FontSize, [bool]$WrapEnabled) {
+        $safeFontSize = [Math]::Min([Math]::Max([double]$FontSize, 8), 28)
+        $TextBox.Font = New-Object System.Drawing.Font('Consolas', $safeFontSize)
+        $TextBox.WordWrap = $WrapEnabled
+        $TextBox.ScrollBars = if ($WrapEnabled) { [System.Windows.Forms.ScrollBars]::Vertical } else { [System.Windows.Forms.ScrollBars]::Both }
+    }
     function Save-State([System.Windows.Forms.Form]$Form) {
         if ($savingState -or $Form.WindowState -eq [System.Windows.Forms.FormWindowState]::Minimized) {
             return
@@ -111,6 +118,8 @@ try {
                 width = $Form.Width
                 height = $Form.Height
                 pinned = $Form.TopMost
+                fontSize = $fontSizeControl.Value
+                wrapEnabled = $wrapToggle.Checked
             } | ConvertTo-Json -Compress
             [System.IO.File]::WriteAllText($StatePath, $payload, [System.Text.Encoding]::UTF8)
         } finally {
@@ -129,6 +138,14 @@ try {
     if ($null -ne $state -and $state.PSObject.Properties.Match('pinned').Count -gt 0) {
         $pinned = [bool]$state.pinned
     }
+    $fontSize = 10
+    if ($null -ne $state -and $state.PSObject.Properties.Match('fontSize').Count -gt 0) {
+        $fontSize = [double]$state.fontSize
+    }
+    $wrapEnabled = $true
+    if ($null -ne $state -and $state.PSObject.Properties.Match('wrapEnabled').Count -gt 0) {
+        $wrapEnabled = [bool]$state.wrapEnabled
+    }
 
     $form = New-Object System.Windows.Forms.Form
     $form.Text = $windowTitle
@@ -137,20 +154,41 @@ try {
     $form.TopMost = $pinned
     $form.Location = New-Object System.Drawing.Point($rect.X, $rect.Y)
     $form.Size = New-Object System.Drawing.Size($rect.Width, $rect.Height)
-    $form.BackColor = [System.Drawing.Color]::FromArgb(246, 241, 228)
+    $form.BackColor = [System.Drawing.Color]::FromArgb(243, 239, 231)
+    $form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 
     $header = New-Object System.Windows.Forms.FlowLayoutPanel
     $header.Dock = [System.Windows.Forms.DockStyle]::Top
     $header.FlowDirection = [System.Windows.Forms.FlowDirection]::RightToLeft
     $header.WrapContents = $false
     $header.AutoSize = $false
-    $header.Height = 42
-    $header.Padding = New-Object System.Windows.Forms.Padding(8, 8, 8, 4)
-    $header.BackColor = [System.Drawing.Color]::FromArgb(233, 225, 203)
+    $header.Height = 52
+    $header.Padding = New-Object System.Windows.Forms.Padding(10, 10, 10, 6)
+    $header.BackColor = [System.Drawing.Color]::FromArgb(47, 58, 70)
 
     $pinButton = New-Object System.Windows.Forms.Button
     $pinButton.AutoSize = $true
     $pinButton.Text = if ($form.TopMost) { 'Pinned' } else { 'Pin' }
+
+    $wrapToggle = New-Object System.Windows.Forms.CheckBox
+    $wrapToggle.AutoSize = $true
+    $wrapToggle.Checked = $wrapEnabled
+    $wrapToggle.Text = 'Wrap'
+    $wrapToggle.Margin = New-Object System.Windows.Forms.Padding(12, 6, 0, 0)
+    $wrapToggle.ForeColor = [System.Drawing.Color]::FromArgb(244, 234, 208)
+
+    $fontLabel = New-Object System.Windows.Forms.Label
+    $fontLabel.AutoSize = $true
+    $fontLabel.Text = 'Font'
+    $fontLabel.Margin = New-Object System.Windows.Forms.Padding(12, 8, 0, 0)
+    $fontLabel.ForeColor = [System.Drawing.Color]::FromArgb(207, 183, 122)
+
+    $fontSizeControl = New-Object System.Windows.Forms.NumericUpDown
+    $fontSizeControl.Minimum = 8
+    $fontSizeControl.Maximum = 28
+    $fontSizeControl.Value = [decimal]$fontSize
+    $fontSizeControl.Width = 56
+    $fontSizeControl.BackColor = [System.Drawing.Color]::FromArgb(246, 241, 228)
 
     $copyButton = New-Object System.Windows.Forms.Button
     $copyButton.AutoSize = $true
@@ -160,24 +198,34 @@ try {
     $clearButton.AutoSize = $true
     $clearButton.Text = 'Clear'
 
-    $header.Controls.AddRange(@($pinButton, $copyButton, $clearButton))
+    foreach ($button in @($pinButton, $copyButton, $clearButton)) {
+        $button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+        $button.BackColor = [System.Drawing.Color]::FromArgb(214, 192, 132)
+        $button.ForeColor = [System.Drawing.Color]::FromArgb(31, 43, 56)
+        $button.FlatAppearance.BorderColor = [System.Drawing.Color]::FromArgb(141, 116, 64)
+        $button.Padding = New-Object System.Windows.Forms.Padding(8, 2, 8, 2)
+    }
+
+    $header.Controls.AddRange(@($pinButton, $copyButton, $clearButton, $wrapToggle, $fontSizeControl, $fontLabel))
 
     $summary = New-Object System.Windows.Forms.Label
     $summary.Dock = [System.Windows.Forms.DockStyle]::Top
     $summary.AutoSize = $false
-    $summary.Height = 34
-    $summary.Padding = New-Object System.Windows.Forms.Padding(12, 8, 12, 0)
-    $summary.Text = "Record ID: $DisplayId"
+    $summary.Height = 42
+    $summary.Padding = New-Object System.Windows.Forms.Padding(14, 10, 14, 0)
+    $summary.Font = New-Object System.Drawing.Font('Segoe UI Semibold', 10)
+    $summary.ForeColor = [System.Drawing.Color]::FromArgb(34, 48, 61)
+    $summary.Text = "Scratch Pad - $DisplayId"
 
     $textbox = New-Object System.Windows.Forms.TextBox
     $textbox.Multiline = $true
     $textbox.AcceptsReturn = $true
     $textbox.AcceptsTab = $true
-    $textbox.ScrollBars = [System.Windows.Forms.ScrollBars]::Both
-    $textbox.WordWrap = $false
     $textbox.Dock = [System.Windows.Forms.DockStyle]::Fill
-    $textbox.Font = New-Object System.Drawing.Font('Consolas', 10)
     $textbox.Text = [System.IO.File]::ReadAllText($TextPath, [System.Text.Encoding]::UTF8)
+    $textbox.BackColor = [System.Drawing.Color]::FromArgb(252, 250, 245)
+    $textbox.ForeColor = [System.Drawing.Color]::FromArgb(31, 43, 56)
+    $textbox.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 
     $contextMenu = New-Object System.Windows.Forms.ContextMenuStrip
     $cutItem = $contextMenu.Items.Add('Cut')
@@ -189,9 +237,10 @@ try {
     $footer = New-Object System.Windows.Forms.Label
     $footer.Dock = [System.Windows.Forms.DockStyle]::Bottom
     $footer.AutoSize = $false
-    $footer.Height = 26
-    $footer.Padding = New-Object System.Windows.Forms.Padding(12, 4, 12, 0)
-    $footer.Text = 'Local only. Stored per Record ID outside the database.'
+    $footer.Height = 30
+    $footer.Padding = New-Object System.Windows.Forms.Padding(14, 6, 14, 0)
+    $footer.ForeColor = [System.Drawing.Color]::FromArgb(90, 102, 114)
+    $footer.Text = 'Local only. Stored per Record ID outside the database. Font size and wrap preference are remembered.'
 
     $form.Controls.Add($textbox)
     $form.Controls.Add($footer)
@@ -220,6 +269,16 @@ try {
         $textbox.Focus()
     })
 
+    $fontSizeControl.Add_ValueChanged({
+        Apply-TextboxPresentation $textbox $fontSizeControl.Value $wrapToggle.Checked
+        Save-State $form
+    })
+
+    $wrapToggle.Add_CheckedChanged({
+        Apply-TextboxPresentation $textbox $fontSizeControl.Value $wrapToggle.Checked
+        Save-State $form
+    })
+
     $cutItem.Add_Click({ $textbox.Cut() })
     $copyItem.Add_Click({ $textbox.Copy() })
     $pasteItem.Add_Click({ $textbox.Paste() })
@@ -245,7 +304,10 @@ try {
         }
     })
     $form.Add_FormClosing({ Save-State $form })
-    $form.Add_Shown({ $textbox.Focus() })
+    $form.Add_Shown({
+        Apply-TextboxPresentation $textbox $fontSizeControl.Value $wrapToggle.Checked
+        $textbox.Focus()
+    })
 
     [System.Windows.Forms.Application]::EnableVisualStyles()
     [void]$form.ShowDialog()
