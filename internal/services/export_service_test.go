@@ -4,6 +4,9 @@ import (
 	"archive/zip"
 	"encoding/csv"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +18,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/xuri/excelize/v2"
 )
 
 func configureExportIdentity(t *testing.T, database *db.DB) {
@@ -29,7 +33,17 @@ func TestExportService_ExportJSON(t *testing.T) {
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
 
-	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee", Rank: "General"})
+	_, _ = soldierSvc.Create(models.Soldier{
+		FirstName:        "Robert",
+		LastName:         "Lee",
+		Rank:             "General",
+		Prefix:           "Gen.",
+		Suffix:           "Sr.",
+		AddedBy:          "STC38",
+		LastEditedBy:     "MDC42",
+		LastEditedAt:     "2026-05-16 12:00:00",
+		LastEditedFields: "prefix,last_edited_by",
+	})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", DisplayID: "PENSION-001"})
 
 	outPath := filepath.Join(t.TempDir(), "export.json")
@@ -53,6 +67,85 @@ func TestExportService_ExportJSON(t *testing.T) {
 	}
 	if len(doc.Soldiers) != 2 {
 		t.Errorf("exported %d soldiers, want 2", len(doc.Soldiers))
+	}
+	if !strings.Contains(string(data), `"prefix"`) || !strings.Contains(string(data), `"suffix"`) || !strings.Contains(string(data), `"added_by"`) || !strings.Contains(string(data), `"last_edited_by"`) || !strings.Contains(string(data), `"last_edited_at"`) {
+		t.Fatalf("JSON export missing audited field keys: %s", string(data))
+	}
+	var audited *models.Soldier
+	for index := range doc.Soldiers {
+		if doc.Soldiers[index].FirstName == "Robert" && doc.Soldiers[index].LastName == "Lee" {
+			audited = &doc.Soldiers[index]
+			break
+		}
+	}
+	if audited == nil {
+		t.Fatalf("JSON export missing audited soldier: %#v", doc.Soldiers)
+	}
+	if audited.Prefix != "Gen." || audited.Suffix != "Sr." || audited.AddedBy != "STC38" || audited.LastEditedBy != "MDC42" || audited.LastEditedAt != "2026-05-16T12:00:00Z" {
+		t.Fatalf("JSON export missing audited field values: %#v", *audited)
+	}
+}
+
+func TestExportService_ExportExcel(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	soldier, err := soldierSvc.Create(models.Soldier{
+		DisplayID:    "STC38-00001",
+		Prefix:       "Capt.",
+		FirstName:    "John",
+		LastName:     "Hood",
+		RankIn:       "Captain",
+		RankOut:      "General",
+		Unit:         "Texas Brigade",
+		PensionState: "Texas",
+		BirthDate:    "11/09/1831",
+		DeathDate:    "00/00/1879",
+	})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+	if _, err := soldierSvc.Create(models.Soldier{
+		DisplayID:       "STC38-00002",
+		EntryType:       "widow",
+		FirstName:       "Mary",
+		LastName:        "Hood",
+		SpouseSoldierID: soldier.ID,
+		MaidenName:      "Jones",
+	}); err != nil {
+		t.Fatalf("Create spouse: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "export.xlsx")
+	if err := exportSvc.ExportExcel(outPath); err != nil {
+		t.Fatalf("ExportExcel: %v", err)
+	}
+
+	workbook, err := excelize.OpenFile(outPath)
+	if err != nil {
+		t.Fatalf("OpenFile: %v", err)
+	}
+	defer workbook.Close()
+
+	sheets := workbook.GetSheetList()
+	if len(sheets) < 3 || sheets[0] != "Archive Export" {
+		t.Fatalf("unexpected workbook sheets: %v", sheets)
+	}
+	if value, err := workbook.GetCellValue("Archive Export", "F2"); err != nil || value != "TDM65-STC38-00001" {
+		t.Fatalf("display ID cell = %q err=%v", value, err)
+	}
+	if value, err := workbook.GetCellValue("Archive Export", "I2"); err != nil || value != "" {
+		t.Fatalf("linked spouse display should be empty for the soldier row before spouse backfill check: %q err=%v", value, err)
+	}
+	if value, err := workbook.GetCellValue("Archive Export", "AA2"); err != nil || value != "1831-11-09T00:00:00Z" {
+		t.Fatalf("birth date cell = %q err=%v", value, err)
+	}
+	if value, err := workbook.GetCellValue("Linked Spouses", "A2"); err != nil || value != "TDM65-STC38-00002" {
+		t.Fatalf("linked spouse sheet missing widow row: %q err=%v", value, err)
+	}
+	if value, err := workbook.GetCellValue("Linked Spouses", "F2"); err != nil || value != "Capt. John Hood" {
+		t.Fatalf("linked spouse sheet missing linked soldier name: %q err=%v", value, err)
 	}
 }
 
@@ -269,7 +362,7 @@ func TestExportService_ExportImages(t *testing.T) {
 		t.Fatalf("write second image: %v", err)
 	}
 
-	outPath := filepath.Join(tempDir, "images.zip")
+	outPath := filepath.Join(tempDir, "STC38-00001_Images")
 	err := exportSvc.ExportImages(outPath, []models.Image{
 		{FileName: "front.png", FilePath: firstPath},
 		{FileName: "back.png", FilePath: secondPath},
@@ -278,22 +371,18 @@ func TestExportService_ExportImages(t *testing.T) {
 		t.Fatalf("ExportImages: %v", err)
 	}
 
-	reader, err := zip.OpenReader(outPath)
+	entries, err := os.ReadDir(outPath)
 	if err != nil {
-		t.Fatalf("open zip: %v", err)
+		t.Fatalf("ReadDir: %v", err)
 	}
-	defer reader.Close()
-
-	if len(reader.File) != 2 {
-		t.Fatalf("zip contains %d files, want 2", len(reader.File))
+	if len(entries) != 2 {
+		t.Fatalf("copied file count = %d, want 2", len(entries))
 	}
-
-	names := map[string]bool{}
-	for _, file := range reader.File {
-		names[file.Name] = true
+	if data, err := os.ReadFile(filepath.Join(outPath, "front.png")); err != nil || string(data) != "front-image" {
+		t.Fatalf("front image copy mismatch: %q err=%v", string(data), err)
 	}
-	if !names["front.png"] || !names["back.png"] {
-		t.Fatalf("zip missing expected image names: %v", names)
+	if data, err := os.ReadFile(filepath.Join(outPath, "back.png")); err != nil || string(data) != "back-image" {
+		t.Fatalf("back image copy mismatch: %q err=%v", string(data), err)
 	}
 }
 
@@ -444,7 +533,7 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	}
 
 	outPath := filepath.Join(t.TempDir(), "registry.pdf")
-	if err := exportSvc.ExportFullDatabasePDF(outPath); err != nil {
+	if err := exportSvc.ExportFullDatabasePDF(outPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
 
@@ -501,7 +590,7 @@ func TestExportService_ExportFullDatabasePDFFitsSingleRecordPage(t *testing.T) {
 	}
 
 	outPath := filepath.Join(t.TempDir(), "single-page.pdf")
-	if err := exportSvc.ExportFullDatabasePDF(outPath); err != nil {
+	if err := exportSvc.ExportFullDatabasePDF(outPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
 
@@ -522,6 +611,81 @@ func TestImagePathForPDFSkipsEmptyFile(t *testing.T) {
 	}
 	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
 		t.Fatalf("imagePathForPDF returned %q for empty file", got)
+	}
+}
+
+func TestExportService_ExportFullDatabasePDFAppliesSortAndGrouping(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	for _, soldier := range []models.Soldier{
+		{FirstName: "William", LastName: "Brown", Unit: "A Company", PensionState: "Texas", BirthDate: "00/00/1830", DeathDate: "00/00/1864"},
+		{FirstName: "James", LastName: "Adams", Unit: "B Company", PensionState: "Alabama", BirthDate: "00/00/1825", DeathDate: "00/00/1865"},
+		{FirstName: "Samuel", LastName: "Carter", Unit: "B Company", PensionState: "Alabama", BirthDate: "00/00/1820", DeathDate: "00/00/1863"},
+	} {
+		if _, err := soldierSvc.Create(soldier); err != nil {
+			t.Fatalf("Create soldier: %v", err)
+		}
+	}
+
+	outPath := filepath.Join(t.TempDir(), "grouped-registry.pdf")
+	settings := PrintSettings{
+		SortBy:              PrintSortBirthYear,
+		GroupByUnit:         true,
+		GroupByPensionState: true,
+	}
+	if err := exportSvc.ExportFullDatabasePDF(outPath, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "Grouped by Unit") || !strings.Contains(text, "A Company") || !strings.Contains(text, "B Company") {
+		t.Fatalf("grouped PDF missing unit divider pages")
+	}
+	if !strings.Contains(text, "Grouped by Pension State") || !strings.Contains(text, "Texas") || !strings.Contains(text, "Alabama") {
+		t.Fatalf("grouped PDF missing pension-state divider pages")
+	}
+	if !strings.Contains(text, "Chronological by Birth Year") || !strings.Contains(text, "Unit, Pension State") {
+		t.Fatalf("grouped PDF missing print-settings metadata")
+	}
+	if strings.Index(text, "Samuel Carter") > strings.Index(text, "James Adams") {
+		t.Fatalf("records were not ordered by birth year within the grouped section")
+	}
+}
+
+func TestFitPDFImageToBoundsPreservesAspectRatio(t *testing.T) {
+	tests := []struct {
+		name       string
+		width      int
+		height     int
+		maxWidth   float64
+		maxHeight  float64
+		wantWidth  float64
+		wantHeight float64
+	}{
+		{name: "landscape", width: 200, height: 100, maxWidth: 50, maxHeight: 50, wantWidth: 50, wantHeight: 25},
+		{name: "portrait", width: 100, height: 200, maxWidth: 50, maxHeight: 50, wantWidth: 25, wantHeight: 50},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			imagePath := filepath.Join(t.TempDir(), test.name+".png")
+			writeSizedPNGFixture(t, imagePath, test.width, test.height)
+
+			_, _, gotWidth, gotHeight, ok := fitPDFImageToBounds(imagePath, 10, 20, test.maxWidth, test.maxHeight)
+			if !ok {
+				t.Fatalf("fitPDFImageToBounds returned ok=false")
+			}
+			if gotWidth != test.wantWidth || gotHeight != test.wantHeight {
+				t.Fatalf("fitPDFImageToBounds = %.2fx%.2f, want %.2fx%.2f", gotWidth, gotHeight, test.wantWidth, test.wantHeight)
+			}
+		})
 	}
 }
 
@@ -595,11 +759,18 @@ func TestExportService_ExportICalendar(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 	text := string(data)
+	normalizedText := strings.ReplaceAll(text, "\r\n ", "")
 	if !strings.Contains(text, "BEGIN:VCALENDAR") || !strings.Contains(text, "END:VCALENDAR") {
 		t.Fatalf("ics missing calendar wrapper: %q", text)
 	}
-	if !strings.Contains(text, "SUMMARY:DixieData Anniversary: John Smith") {
+	if !strings.Contains(text, "SUMMARY:Memorial Anniversary: John Smith") {
 		t.Fatalf("ics missing summary: %q", text)
+	}
+	if !strings.Contains(normalizedText, "DESCRIPTION:Record ID: TDM65-CSA-1\\nEntry Type: Soldier\\nFull Name: John Smith") ||
+		!strings.Contains(normalizedText, "\\nUnit: 1st Virginia") ||
+		!strings.Contains(normalizedText, "\\nBuried In: Richmond") ||
+		!strings.Contains(normalizedText, "\\nOriginal Death Date: April 9\\, 1862") {
+		t.Fatalf("ics missing cleaned description: %q", text)
 	}
 	expectedStart := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now()).Format("20060102") + "T090000"
 	if !strings.Contains(text, "DTSTART:"+expectedStart) {
@@ -617,6 +788,9 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	if !strings.Contains(text, "BEGIN:VALARM") || !strings.Contains(text, "TRIGGER:-P1D") || !strings.Contains(text, "TRIGGER:-PT1H") {
 		t.Fatalf("ics missing reminder alarms: %q", text)
 	}
+	if !strings.Contains(text, "DESCRIPTION:Upcoming memorial anniversary for John Smith") || !strings.Contains(text, "DESCRIPTION:Memorial anniversary in one hour for John Smith") {
+		t.Fatalf("ics missing updated alarm descriptions: %q", text)
+	}
 	if strings.Contains(text, "CSA-2") {
 		t.Fatalf("ics should skip soldiers without full month/day")
 	}
@@ -631,5 +805,24 @@ func pngFixture() []byte {
 		0xf8, 0xcf, 0xc0, 0x00, 0x00, 0x03, 0x01, 0x01, 0x00, 0xc9, 0xfe, 0x92,
 		0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
 		0x82,
+	}
+}
+
+func writeSizedPNGFixture(t *testing.T, path string, width, height int) {
+	t.Helper()
+	imageRect := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			imageRect.Set(x, y, color.RGBA{R: 180, G: 120, B: 70, A: 255})
+		}
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	defer file.Close()
+	if err := png.Encode(file, imageRect); err != nil {
+		t.Fatalf("png.Encode: %v", err)
 	}
 }

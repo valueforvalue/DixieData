@@ -716,20 +716,20 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "dixiedata-export.csv",
+		DefaultFilename: "dixiedata-export.xlsx",
 		Filters: []runtime.FileFilter{
-			{DisplayName: "CSV", Pattern: "*.csv"},
+			{DisplayName: "Excel workbook", Pattern: "*.xlsx"},
 		},
 	})
 	if err != nil || path == "" {
 		fmt.Fprintf(w, "Export cancelled.")
 		return
 	}
-	if err := a.export.ExportCSV(path); err != nil {
+	if err := a.export.ExportExcel(path); err != nil {
 		fmt.Fprintf(w, "Export failed: %v", err)
 		return
 	}
-	fmt.Fprintf(w, "✓ Exported to %s", path)
+	fmt.Fprint(w, exportLinkMarkup("Excel workbook ready:", path))
 }
 
 func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
@@ -786,6 +786,20 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	settings, err := parsePrintSettingsRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	message, err := a.ExportFullDatabasePDF(settings)
+	if err != nil {
+		fmt.Fprintf(w, "Printable PDF export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, message)
+}
+
+func (a *App) ExportFullDatabasePDF(settings services.PrintSettings) (string, error) {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-printable-archive.pdf",
 		Filters: []runtime.FileFilter{
@@ -793,14 +807,24 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Printable PDF export cancelled.")
-		return
+		return "Printable PDF export cancelled.", nil
 	}
-	if err := a.export.ExportFullDatabasePDF(path); err != nil {
-		fmt.Fprintf(w, "Printable PDF export failed: %v", err)
-		return
+	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
+		return "", err
 	}
-	fmt.Fprint(w, exportLinkMarkup("Printable PDF ready:", path))
+	return exportLinkMarkup("Printable PDF ready:", path), nil
+}
+
+func parsePrintSettingsRequest(r *http.Request) (services.PrintSettings, error) {
+	if err := r.ParseForm(); err != nil {
+		return services.PrintSettings{}, fmt.Errorf("failed to parse print settings")
+	}
+	return services.PrintSettings{
+		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),
+		GroupByUnit:                  r.FormValue("group_by_unit") != "",
+		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
+		GroupByConfederateHomeStatus: r.FormValue("group_by_confederate_home_status") != "",
+	}, nil
 }
 
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
@@ -1404,21 +1428,19 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: imageArchiveName(*soldier),
-		Filters: []runtime.FileFilter{
-			{DisplayName: "ZIP archive", Pattern: "*.zip"},
-		},
+	parentDir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Choose where to copy the record images",
 	})
-	if err != nil || path == "" {
+	if err != nil || parentDir == "" {
 		fmt.Fprint(w, "Download cancelled.")
 		return
 	}
-	if err := a.export.ExportImages(path, selected); err != nil {
+	destinationDir := filepath.Join(parentDir, imageExportFolderName(*soldier))
+	if err := a.export.ExportImages(destinationDir, selected); err != nil {
 		fmt.Fprintf(w, "Download failed: %v", err)
 		return
 	}
-	fmt.Fprintf(w, "✓ Saved %d image(s) to %s", len(selected), path)
+	fmt.Fprintf(w, "✓ Copied %d image(s) to %s", len(selected), destinationDir)
 }
 
 func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, id int64) {
@@ -1699,12 +1721,12 @@ func selectedSoldierImages(soldier models.Soldier, selectedIDs []string, dataDir
 	return selected, nil
 }
 
-func imageArchiveName(soldier models.Soldier) string {
+func imageExportFolderName(soldier models.Soldier) string {
 	base := strings.TrimSpace(soldier.DisplayID)
 	if base == "" {
 		base = fmt.Sprintf("%s-%s", soldier.FirstName, soldier.LastName)
 	}
-	return sanitizedFileStem(base, "soldier-images") + "-images.zip"
+	return sanitizedFileStem(base, "soldier-images") + "_Images"
 }
 
 func imageScreenshotName(fileName string) string {

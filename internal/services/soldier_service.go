@@ -1147,16 +1147,16 @@ func stampUpdateAuditFields(actor string, before *models.Soldier, soldier *model
 	}
 	changed := diffSoldierFields(before, soldier)
 	if len(changed) == 0 {
-		changed = []string{"metadata"}
+		changed = []string{"Metadata updated."}
 	}
 	soldier.LastEditedBy = actor
-	soldier.LastEditedFields = strings.Join(changed, ", ")
+	soldier.LastEditedFields = strings.Join(changed, "\n")
 	soldier.LastEditedAt = soldier.UpdatedAt
 }
 
 func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
 	if before == nil || after == nil {
-		return []string{"metadata"}
+		return []string{"Metadata updated."}
 	}
 	type comparedField struct {
 		label  string
@@ -1164,39 +1164,91 @@ func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
 		after  string
 	}
 	fields := []comparedField{
-		{"display_id", strings.TrimSpace(before.DisplayID), strings.TrimSpace(after.DisplayID)},
-		{"entry_type", strings.TrimSpace(before.EntryType), strings.TrimSpace(after.EntryType)},
-		{"spouse_soldier_id", fmt.Sprintf("%d", before.SpouseSoldierID), fmt.Sprintf("%d", after.SpouseSoldierID)},
-		{"maiden_name", strings.TrimSpace(before.MaidenName), strings.TrimSpace(after.MaidenName)},
-		{"pension_id", strings.TrimSpace(before.PensionID), strings.TrimSpace(after.PensionID)},
-		{"application_id", strings.TrimSpace(before.ApplicationID), strings.TrimSpace(after.ApplicationID)},
-		{"prefix", strings.TrimSpace(before.Prefix), strings.TrimSpace(after.Prefix)},
-		{"first_name", strings.TrimSpace(before.FirstName), strings.TrimSpace(after.FirstName)},
-		{"middle_name", strings.TrimSpace(before.MiddleName), strings.TrimSpace(after.MiddleName)},
-		{"last_name", strings.TrimSpace(before.LastName), strings.TrimSpace(after.LastName)},
-		{"suffix", strings.TrimSpace(before.Suffix), strings.TrimSpace(after.Suffix)},
-		{"rank_in", strings.TrimSpace(before.RankIn), strings.TrimSpace(after.RankIn)},
-		{"rank_out", strings.TrimSpace(before.RankOut), strings.TrimSpace(after.RankOut)},
-		{"unit", strings.TrimSpace(before.Unit), strings.TrimSpace(after.Unit)},
-		{"pension_state", strings.TrimSpace(before.PensionState), strings.TrimSpace(after.PensionState)},
-		{"confederate_home_status", strings.TrimSpace(before.ConfederateHomeStatus), strings.TrimSpace(after.ConfederateHomeStatus)},
-		{"confederate_home_name", strings.TrimSpace(before.ConfederateHomeName), strings.TrimSpace(after.ConfederateHomeName)},
-		{"birth_date", strings.TrimSpace(before.BirthDate), strings.TrimSpace(after.BirthDate)},
-		{"death_date", strings.TrimSpace(before.DeathDate), strings.TrimSpace(after.DeathDate)},
-		{"birth_info", strings.TrimSpace(before.BirthInfo), strings.TrimSpace(after.BirthInfo)},
-		{"buried_in", strings.TrimSpace(before.BuriedIn), strings.TrimSpace(after.BuriedIn)},
-		{"notes", strings.TrimSpace(before.Notes), strings.TrimSpace(after.Notes)},
+		{"Record ID", auditDisplayID(strings.TrimSpace(before.DisplayID)), auditDisplayID(strings.TrimSpace(after.DisplayID))},
+		{"Record Type", auditEntryType(strings.TrimSpace(before.EntryType)), auditEntryType(strings.TrimSpace(after.EntryType))},
+		{"Linked Spouse Record", auditSpouseID(before.SpouseSoldierID), auditSpouseID(after.SpouseSoldierID)},
+		{"Maiden Name", auditTextValue(before.MaidenName), auditTextValue(after.MaidenName)},
+		{"Pension ID", auditTextValue(before.PensionID), auditTextValue(after.PensionID)},
+		{"Application ID", auditTextValue(before.ApplicationID), auditTextValue(after.ApplicationID)},
+		{"Prefix", auditTextValue(before.Prefix), auditTextValue(after.Prefix)},
+		{"First Name", auditTextValue(before.FirstName), auditTextValue(after.FirstName)},
+		{"Middle Name", auditTextValue(before.MiddleName), auditTextValue(after.MiddleName)},
+		{"Last Name", auditTextValue(before.LastName), auditTextValue(after.LastName)},
+		{"Suffix", auditTextValue(before.Suffix), auditTextValue(after.Suffix)},
+		{"Rank In", auditTextValue(before.RankIn), auditTextValue(after.RankIn)},
+		{"Rank Out", auditTextValue(before.RankOut), auditTextValue(after.RankOut)},
+		{"Unit", auditTextValue(before.Unit), auditTextValue(after.Unit)},
+		{"Pension State", auditTextValue(before.PensionState), auditTextValue(after.PensionState)},
+		{"Confederate Home Status", auditTextValue(before.ConfederateHomeStatus), auditTextValue(after.ConfederateHomeStatus)},
+		{"Confederate Home Name", auditTextValue(before.ConfederateHomeName), auditTextValue(after.ConfederateHomeName)},
+		{"Birth Date", auditDateValue(before.BirthDate), auditDateValue(after.BirthDate)},
+		{"Death Date", auditDateValue(before.DeathDate), auditDateValue(after.DeathDate)},
+		{"Birth Info", auditLongTextValue(before.BirthInfo), auditLongTextValue(after.BirthInfo)},
+		{"Buried In", auditTextValue(before.BuriedIn), auditTextValue(after.BuriedIn)},
+		{"Notes", auditLongTextValue(before.Notes), auditLongTextValue(after.Notes)},
 	}
 	changed := make([]string, 0, len(fields)+1)
 	for _, field := range fields {
 		if field.before != field.after {
-			changed = append(changed, field.label)
+			changed = append(changed, fmt.Sprintf("%s changed from %s to %s.", field.label, field.before, field.after))
 		}
 	}
 	if !recordsEqual(before.Records, after.Records) {
-		changed = append(changed, "records")
+		changed = append(changed, "Records updated.")
 	}
 	return changed
+}
+
+func auditDisplayID(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "\"Not recorded\""
+	}
+	return fmt.Sprintf("%q", strings.TrimSpace(value))
+}
+
+func auditEntryType(value string) string {
+	switch strings.TrimSpace(strings.ToLower(value)) {
+	case "wife":
+		return "\"Wife\""
+	case "widow":
+		return "\"Widow\""
+	default:
+		return "\"Soldier\""
+	}
+}
+
+func auditSpouseID(value int64) string {
+	if value <= 0 {
+		return "\"Not recorded\""
+	}
+	return fmt.Sprintf("%q", fmt.Sprintf("DB ID %d", value))
+}
+
+func auditTextValue(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "\"Not recorded\""
+	}
+	return fmt.Sprintf("%q", trimmed)
+}
+
+func auditLongTextValue(value string) string {
+	normalized := strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+	if normalized == "" {
+		return "\"Not recorded\""
+	}
+	if len(normalized) > 72 {
+		normalized = normalized[:69] + "..."
+	}
+	return fmt.Sprintf("%q", normalized)
+}
+
+func auditDateValue(value string) string {
+	display := strings.TrimSpace(dates.Display(strings.TrimSpace(value)))
+	if display == "" || display == "Not recorded" {
+		return "\"Not recorded\""
+	}
+	return fmt.Sprintf("%q", display)
 }
 
 func recordsEqual(left, right []models.Record) bool {
@@ -1239,10 +1291,33 @@ func loadSoldierAuditSnapshot(tx *sql.Tx, soldierID int64) (*models.Soldier, err
 func (s *SoldierService) touchAuditFields(soldierID int64, fields ...string) error {
 	actor := s.currentAuditActor()
 	updatedAt := currentSQLiteTimestamp()
-	changedFields := strings.Join(fields, ", ")
+	changedFields := strings.Join(auditTouchDescriptions(fields), "\n")
 	_, err := s.db.Conn().Exec(`UPDATE soldiers SET last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, updated_at = ? WHERE id = ?`,
 		actor, changedFields, updatedAt, updatedAt, soldierID)
 	return err
+}
+
+func auditTouchDescriptions(fields []string) []string {
+	if len(fields) == 0 {
+		return []string{"Metadata updated."}
+	}
+	descriptions := make([]string, 0, len(fields))
+	for _, field := range fields {
+		switch strings.TrimSpace(strings.ToLower(field)) {
+		case "images":
+			descriptions = append(descriptions, "Images updated.")
+		case "records":
+			descriptions = append(descriptions, "Records updated.")
+		default:
+			label := strings.ReplaceAll(strings.TrimSpace(field), "_", " ")
+			label = strings.TrimSpace(strings.Title(label))
+			if label == "" {
+				label = "Metadata"
+			}
+			descriptions = append(descriptions, label+" updated.")
+		}
+	}
+	return descriptions
 }
 
 func (s *SoldierService) soldierSyncIDByID(soldierID int64) (string, error) {

@@ -22,6 +22,9 @@ func main() {
 		Title:  "DixieData",
 		Width:  1280,
 		Height: 800,
+		Bind: []interface{}{
+			app,
+		},
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
 			Handler: app,

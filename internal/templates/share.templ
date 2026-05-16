@@ -30,8 +30,8 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 							<div class="text-xs text-slate-300">Full hierarchical export with version metadata</div>
 						</button>
 						<button hx-post="/export/csv" hx-target="#share-status" class="secondary-button justify-start text-left">
-							<div class="font-bold">Export CSV</div>
-							<div class="text-xs text-slate-500">Flat spreadsheet format with version columns</div>
+							<div class="font-bold">Export Excel (.xlsx)</div>
+							<div class="text-xs text-slate-500">Formatted workbook with typed dates, linked spouse data, and spreadsheet-friendly sheets</div>
 						</button>
 						<button hx-post="/export/ical" hx-target="#share-status" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export iCalendar</div>
@@ -41,9 +41,9 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 							<div class="font-bold">Export Static Web Archive</div>
 							<div class="text-xs text-slate-500">Standalone HTML archive with images, live search, and expandable record cards</div>
 						</button>
-						<button hx-post="/export/database-pdf" hx-target="#share-status" class="secondary-button justify-start text-left">
+						<button type="button" data-print-config-open class="secondary-button justify-start text-left">
 							<div class="font-bold">Full Database Printable PDF</div>
-							<div class="text-xs text-slate-500">Landscape printable export with one branded record page per entry and no images</div>
+							<div class="text-xs text-slate-500">Landscape printable export with one branded record page per entry, configurable sorting/grouping, and no images</div>
 						</button>
 						<button hx-post="/export/backup" hx-target="#share-status" class="primary-button justify-start text-left">
 							<div class="font-bold">Export Backup (.ddbak)</div>
@@ -89,6 +89,57 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 					</div>
 				</section>
 				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"></div>
+			</div>
+			<div id="share-print-config-modal" data-print-config-modal class="fixed inset-0 z-[90] hidden items-center justify-center bg-[rgba(15,23,42,0.58)] px-4 py-8">
+				<div class="w-full max-w-2xl rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:p-8">
+					<form id="share-print-config-form" hx-post="/export/database-pdf" hx-target="#share-status" class="space-y-6">
+						<div class="flex items-start justify-between gap-4">
+							<div>
+								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable PDF Settings</p>
+								<h3 class="mt-2 text-xl gold font-bold">Configure the archive layout</h3>
+								<p class="mt-2 text-sm text-slate-600">Choose how the printable archive should be sorted and grouped before the PDF is generated.</p>
+							</div>
+							<button type="button" data-print-config-close class="secondary-button px-4">Close</button>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+							<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Sort Options</div>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="radio" name="sort_by" value="last_name" checked class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Alphabetical by Last Name</strong><br/><span class="text-slate-500">Standard registry ordering for browsing by surname.</span></span>
+							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="radio" name="sort_by" value="birth_year" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Chronological by Birth Year</strong><br/><span class="text-slate-500">Oldest to youngest, using stored birth years when available.</span></span>
+							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="radio" name="sort_by" value="death_year" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Chronological by Death Year</strong><br/><span class="text-slate-500">Earliest to latest death year for timeline-style printing.</span></span>
+							</label>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+							<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Group By</div>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="checkbox" name="group_by_unit" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Unit</strong><br/><span class="text-slate-500">Create printable sections by military unit.</span></span>
+							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="checkbox" name="group_by_pension_state" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Pension State</strong><br/><span class="text-slate-500">Create printable sections by pension-state filing location.</span></span>
+							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="checkbox" name="group_by_confederate_home_status" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Confederate Home Status</strong><br/><span class="text-slate-500">Create printable sections by home status such as Inmate, Staffer, Trustee, or None.</span></span>
+							</label>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
+							The printable PDF still uses one landscape record page per entry. Group selections add divider pages before each section, and images remain omitted from this export.
+						</div>
+						<div class="flex flex-wrap justify-end gap-3">
+							<button type="button" data-print-config-close class="secondary-button">Cancel</button>
+							<button type="submit" data-print-config-submit class="primary-button">Generate Printable PDF</button>
+						</div>
+					</form>
+				</div>
 			</div>
 			if len(conflicts) > 0 {
 				<div class="card rounded-3xl p-5 sm:p-8 space-y-4">

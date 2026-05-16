@@ -389,7 +389,15 @@ func TestSoldierService_Update(t *testing.T) {
 	if got.LastEditedAt == "" {
 		t.Fatal("expected LastEditedAt after update")
 	}
-	for _, field := range []string{"prefix", "middle_name", "suffix", "rank_in", "rank_out", "pension_state", "notes"} {
+	for _, field := range []string{
+		`Prefix changed from "Not recorded" to "Gen.".`,
+		`Middle Name changed from "Not recorded" to "A.".`,
+		`Suffix changed from "Not recorded" to "Sr.".`,
+		`Rank In changed from "Not recorded" to "Private".`,
+		`Rank Out changed from "Not recorded" to "Major".`,
+		`Pension State changed from "Not recorded" to "Georgia".`,
+		`Notes changed from "Not recorded" to "Updated note".`,
+	} {
 		if !strings.Contains(got.LastEditedFields, field) {
 			t.Fatalf("LastEditedFields = %q, missing %s", got.LastEditedFields, field)
 		}
@@ -547,7 +555,7 @@ func TestSoldierService_UpdateReplacesRecords(t *testing.T) {
 	if len(got.Records) != 1 || got.Records[0].RecordType != "Parole" {
 		t.Fatalf("records = %#v", got.Records)
 	}
-	if !strings.Contains(got.LastEditedFields, "records") {
+	if !strings.Contains(got.LastEditedFields, "Records updated.") {
 		t.Fatalf("LastEditedFields = %q", got.LastEditedFields)
 	}
 	if got.LastEditedAt == "" {
@@ -612,7 +620,7 @@ func TestSoldierService_DeleteImages(t *testing.T) {
 	if updated.Images[0].FileName != "back.png" && updated.Images[0].FileName != "front.png" {
 		t.Fatalf("remaining image = %#v", updated.Images[0])
 	}
-	if updated.LastEditedBy != "S. Carter" || updated.LastEditedFields != "images" {
+	if updated.LastEditedBy != "S. Carter" || updated.LastEditedFields != "Images updated." {
 		t.Fatalf("unexpected image audit trail: %#v", updated)
 	}
 	if updated.LastEditedAt == "" {
