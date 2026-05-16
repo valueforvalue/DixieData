@@ -619,28 +619,40 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 	soldierSvc := NewSoldierService(database)
 	for _, soldier := range soldiers {
 		created, err := soldierSvc.Create(models.Soldier{
-			DisplayID:     soldier.DisplayID,
-			IsGenerated:   soldier.IsGenerated,
-			SyncID:        soldier.SyncID,
-			PensionID:     soldier.PensionID,
-			ApplicationID: soldier.ApplicationID,
-			FirstName:     soldier.FirstName,
-			MiddleName:    soldier.MiddleName,
-			LastName:      soldier.LastName,
-			Rank:          soldier.Rank,
-			RankIn:        soldier.RankIn,
-			RankOut:       soldier.RankOut,
-			Unit:          soldier.Unit,
-			PensionState:  soldier.PensionState,
-			BirthDate:     soldier.BirthDate,
-			DeathDate:     soldier.DeathDate,
-			DeathYear:     soldier.DeathYear,
-			DeathMonth:    soldier.DeathMonth,
-			DeathDay:      soldier.DeathDay,
-			BirthInfo:     soldier.BirthInfo,
-			BuriedIn:      soldier.BuriedIn,
-			Notes:         soldier.Notes,
-			Records:       soldier.Records,
+			DisplayID:             soldier.DisplayID,
+			EntryType:             soldier.EntryType,
+			MaidenName:            soldier.MaidenName,
+			IsGenerated:           soldier.IsGenerated,
+			SyncID:                soldier.SyncID,
+			PensionID:             soldier.PensionID,
+			ApplicationID:         soldier.ApplicationID,
+			Prefix:                soldier.Prefix,
+			FirstName:             soldier.FirstName,
+			MiddleName:            soldier.MiddleName,
+			LastName:              soldier.LastName,
+			Suffix:                soldier.Suffix,
+			Rank:                  soldier.Rank,
+			RankIn:                soldier.RankIn,
+			RankOut:               soldier.RankOut,
+			Unit:                  soldier.Unit,
+			PensionState:          soldier.PensionState,
+			ConfederateHomeStatus: soldier.ConfederateHomeStatus,
+			ConfederateHomeName:   soldier.ConfederateHomeName,
+			BirthDate:             soldier.BirthDate,
+			DeathDate:             soldier.DeathDate,
+			DeathYear:             soldier.DeathYear,
+			DeathMonth:            soldier.DeathMonth,
+			DeathDay:              soldier.DeathDay,
+			BirthInfo:             soldier.BirthInfo,
+			BuriedIn:              soldier.BuriedIn,
+			Notes:                 soldier.Notes,
+			AddedBy:               soldier.AddedBy,
+			LastEditedBy:          soldier.LastEditedBy,
+			LastEditedFields:      soldier.LastEditedFields,
+			LastEditedAt:          soldier.LastEditedAt,
+			CreatedAt:             soldier.CreatedAt,
+			UpdatedAt:             soldier.UpdatedAt,
+			Records:               soldier.Records,
 		})
 		if err != nil {
 			return err
@@ -658,6 +670,10 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			if err := soldierSvc.AddImage(created.ID, image.FileName, image.FilePath, image.Caption); err != nil {
 				return err
 			}
+		}
+		if _, err := database.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ? WHERE id = ?`,
+			soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, created.ID); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -1067,9 +1083,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	err = tx.QueryRow(`SELECT id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID)
 	if err == nil {
 		_, err = tx.Exec(`UPDATE soldiers
-			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, first_name = ?, middle_name = ?, last_name = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, created_at = ?, updated_at = ?
+			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
 			WHERE id = ?`,
-			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt, existingID)
+			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
 		if err != nil {
 			return 0, false, "", err
 		}
@@ -1083,9 +1099,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers
-		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at)
-		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		displayID, syncID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt)
+		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at)
+		VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		displayID, syncID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
 		return 0, false, "", err
 	}

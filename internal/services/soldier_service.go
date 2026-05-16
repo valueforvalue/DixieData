@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at`
+	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
 	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption`
 )
@@ -71,11 +71,12 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	if strings.TrimSpace(soldier.UpdatedAt) == "" {
 		soldier.UpdatedAt = soldier.CreatedAt
 	}
+	stampCreateAuditFields(s.currentAuditActor(), &soldier)
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
-		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt)
+		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +186,11 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	}
 	defer tx.Rollback()
 
+	before, err := loadSoldierAuditSnapshot(tx, soldier.ID)
+	if err != nil {
+		return err
+	}
+
 	soldier.Rank = canonicalRank(soldier)
 	nodePrefix, err := s.db.NodePrefix()
 	if err != nil {
@@ -204,10 +210,11 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	if strings.TrimSpace(soldier.UpdatedAt) == "" {
 		soldier.UpdatedAt = currentSQLiteTimestamp()
 	}
+	stampUpdateAuditFields(s.currentAuditActor(), before, &soldier)
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, updated_at=? WHERE id=?`,
+	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
-		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.UpdatedAt, soldier.ID)
+		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.ID)
 	if err != nil {
 		return err
 	}
@@ -263,7 +270,10 @@ func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption s
 		filePath,
 		caption,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return s.touchAuditFields(soldierID, "images")
 }
 
 func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
@@ -283,7 +293,10 @@ func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
 		fmt.Sprintf(`DELETE FROM images WHERE soldier_id = ? AND id IN (%s)`, strings.Join(placeholders, ",")),
 		args...,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return s.touchAuditFields(soldierID, "images")
 }
 
 func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
@@ -767,6 +780,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		birthInfo             sql.NullString
 		buriedIn              sql.NullString
 		notes                 sql.NullString
+		addedBy               sql.NullString
+		lastEditedBy          sql.NullString
+		lastEditedFields      sql.NullString
+		lastEditedAt          sql.NullString
 		createdAt             sql.NullString
 		deathYear             sql.NullInt64
 		deathMonth            sql.NullInt64
@@ -806,6 +823,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.BirthInfo, &birthInfo),
 		nullStringDest(&s.BuriedIn, &buriedIn),
 		nullStringDest(&s.Notes, &notes),
+		nullStringDest(&s.AddedBy, &addedBy),
+		nullStringDest(&s.LastEditedBy, &lastEditedBy),
+		nullStringDest(&s.LastEditedFields, &lastEditedFields),
+		nullStringDest(&s.LastEditedAt, &lastEditedAt),
 		nullStringDest(&s.CreatedAt, &createdAt),
 		nullStringDest(&s.UpdatedAt, &updatedAt),
 	}
@@ -1070,19 +1091,158 @@ func hydrateLegacyDeathParts(soldier *models.Soldier) {
 }
 
 func hydrateSoldierIdentity(tx *sql.Tx, soldier *models.Soldier) error {
-	row := tx.QueryRow(`SELECT sync_id, created_at FROM soldiers WHERE id = ?`, soldier.ID)
+	row := tx.QueryRow(`SELECT sync_id, added_by, created_at FROM soldiers WHERE id = ?`, soldier.ID)
 	var currentSyncID sql.NullString
+	var addedBy sql.NullString
 	var createdAt sql.NullString
-	if err := row.Scan(&currentSyncID, &createdAt); err != nil {
+	if err := row.Scan(&currentSyncID, &addedBy, &createdAt); err != nil {
 		return err
 	}
 	if strings.TrimSpace(soldier.SyncID) == "" {
 		soldier.SyncID = currentSyncID.String
 	}
+	if strings.TrimSpace(soldier.AddedBy) == "" {
+		soldier.AddedBy = addedBy.String
+	}
 	if strings.TrimSpace(soldier.CreatedAt) == "" {
 		soldier.CreatedAt = createdAt.String
 	}
 	return nil
+}
+
+func (s *SoldierService) currentAuditActor() string {
+	if identity, err := s.db.UserIdentity(); err == nil {
+		if branding := strings.TrimSpace(identity.BrandingName()); branding != "" {
+			return branding
+		}
+		fullName := strings.TrimSpace(strings.Join([]string{identity.FirstName, identity.MiddleName, identity.LastName}, " "))
+		if fullName != "" {
+			return fullName
+		}
+	}
+	if nodePrefix, err := s.db.NodePrefix(); err == nil && strings.TrimSpace(nodePrefix) != "" {
+		return strings.TrimSpace(nodePrefix)
+	}
+	return "Unknown"
+}
+
+func stampCreateAuditFields(actor string, soldier *models.Soldier) {
+	if strings.TrimSpace(soldier.AddedBy) == "" {
+		soldier.AddedBy = actor
+	}
+	if strings.TrimSpace(soldier.LastEditedBy) == "" {
+		soldier.LastEditedBy = actor
+	}
+	if strings.TrimSpace(soldier.LastEditedFields) == "" {
+		soldier.LastEditedFields = "created"
+	}
+	if strings.TrimSpace(soldier.LastEditedAt) == "" {
+		soldier.LastEditedAt = soldier.UpdatedAt
+	}
+}
+
+func stampUpdateAuditFields(actor string, before *models.Soldier, soldier *models.Soldier) {
+	if strings.TrimSpace(soldier.AddedBy) == "" && before != nil {
+		soldier.AddedBy = before.AddedBy
+	}
+	changed := diffSoldierFields(before, soldier)
+	if len(changed) == 0 {
+		changed = []string{"metadata"}
+	}
+	soldier.LastEditedBy = actor
+	soldier.LastEditedFields = strings.Join(changed, ", ")
+	soldier.LastEditedAt = soldier.UpdatedAt
+}
+
+func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
+	if before == nil || after == nil {
+		return []string{"metadata"}
+	}
+	type comparedField struct {
+		label  string
+		before string
+		after  string
+	}
+	fields := []comparedField{
+		{"display_id", strings.TrimSpace(before.DisplayID), strings.TrimSpace(after.DisplayID)},
+		{"entry_type", strings.TrimSpace(before.EntryType), strings.TrimSpace(after.EntryType)},
+		{"spouse_soldier_id", fmt.Sprintf("%d", before.SpouseSoldierID), fmt.Sprintf("%d", after.SpouseSoldierID)},
+		{"maiden_name", strings.TrimSpace(before.MaidenName), strings.TrimSpace(after.MaidenName)},
+		{"pension_id", strings.TrimSpace(before.PensionID), strings.TrimSpace(after.PensionID)},
+		{"application_id", strings.TrimSpace(before.ApplicationID), strings.TrimSpace(after.ApplicationID)},
+		{"prefix", strings.TrimSpace(before.Prefix), strings.TrimSpace(after.Prefix)},
+		{"first_name", strings.TrimSpace(before.FirstName), strings.TrimSpace(after.FirstName)},
+		{"middle_name", strings.TrimSpace(before.MiddleName), strings.TrimSpace(after.MiddleName)},
+		{"last_name", strings.TrimSpace(before.LastName), strings.TrimSpace(after.LastName)},
+		{"suffix", strings.TrimSpace(before.Suffix), strings.TrimSpace(after.Suffix)},
+		{"rank_in", strings.TrimSpace(before.RankIn), strings.TrimSpace(after.RankIn)},
+		{"rank_out", strings.TrimSpace(before.RankOut), strings.TrimSpace(after.RankOut)},
+		{"unit", strings.TrimSpace(before.Unit), strings.TrimSpace(after.Unit)},
+		{"pension_state", strings.TrimSpace(before.PensionState), strings.TrimSpace(after.PensionState)},
+		{"confederate_home_status", strings.TrimSpace(before.ConfederateHomeStatus), strings.TrimSpace(after.ConfederateHomeStatus)},
+		{"confederate_home_name", strings.TrimSpace(before.ConfederateHomeName), strings.TrimSpace(after.ConfederateHomeName)},
+		{"birth_date", strings.TrimSpace(before.BirthDate), strings.TrimSpace(after.BirthDate)},
+		{"death_date", strings.TrimSpace(before.DeathDate), strings.TrimSpace(after.DeathDate)},
+		{"birth_info", strings.TrimSpace(before.BirthInfo), strings.TrimSpace(after.BirthInfo)},
+		{"buried_in", strings.TrimSpace(before.BuriedIn), strings.TrimSpace(after.BuriedIn)},
+		{"notes", strings.TrimSpace(before.Notes), strings.TrimSpace(after.Notes)},
+	}
+	changed := make([]string, 0, len(fields)+1)
+	for _, field := range fields {
+		if field.before != field.after {
+			changed = append(changed, field.label)
+		}
+	}
+	if !recordsEqual(before.Records, after.Records) {
+		changed = append(changed, "records")
+	}
+	return changed
+}
+
+func recordsEqual(left, right []models.Record) bool {
+	left = normalizeRecords(left)
+	right = normalizeRecords(right)
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if strings.TrimSpace(left[index].RecordType) != strings.TrimSpace(right[index].RecordType) ||
+			strings.TrimSpace(left[index].AppID) != strings.TrimSpace(right[index].AppID) ||
+			strings.TrimSpace(left[index].Details) != strings.TrimSpace(right[index].Details) {
+			return false
+		}
+	}
+	return true
+}
+
+func loadSoldierAuditSnapshot(tx *sql.Tx, soldierID int64) (*models.Soldier, error) {
+	row := tx.QueryRow(`SELECT `+soldierSelectColumns+` FROM soldiers WHERE id = ?`, soldierID)
+	soldier, err := scanSoldier(row)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE soldier_id = ? ORDER BY id`, soldierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var record models.Record
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.SoldierID, &record.SoldierSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+			return nil, err
+		}
+		soldier.Records = append(soldier.Records, record)
+	}
+	return soldier, rows.Err()
+}
+
+func (s *SoldierService) touchAuditFields(soldierID int64, fields ...string) error {
+	actor := s.currentAuditActor()
+	updatedAt := currentSQLiteTimestamp()
+	changedFields := strings.Join(fields, ", ")
+	_, err := s.db.Conn().Exec(`UPDATE soldiers SET last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, updated_at = ? WHERE id = ?`,
+		actor, changedFields, updatedAt, updatedAt, soldierID)
+	return err
 }
 
 func (s *SoldierService) soldierSyncIDByID(soldierID int64) (string, error) {

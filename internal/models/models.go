@@ -31,6 +31,10 @@ type Soldier struct {
 	BirthInfo             string   `json:"birth_info"`
 	BuriedIn              string   `json:"buried_in"`
 	Notes                 string   `json:"notes"`
+	AddedBy               string   `json:"added_by"`
+	LastEditedBy          string   `json:"last_edited_by"`
+	LastEditedFields      string   `json:"last_edited_fields"`
+	LastEditedAt          string   `json:"last_edited_at"`
 	CreatedAt             string   `json:"created_at"`
 	UpdatedAt             string   `json:"updated_at"`
 	SearchMatchField      string   `json:"-"`

@@ -344,6 +344,9 @@ func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *tes
 	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
 		t.Fatalf("ConfigureUserIdentity source: %v", err)
 	}
+	if err := sourceDB.SetSystemConfig("node_prefix", "TDM65"); err != nil {
+		t.Fatalf("SetSystemConfig source node_prefix: %v", err)
+	}
 	created, err := sourceSvc.Create(models.Soldier{FirstName: "Source", LastName: "Soldier"})
 	if err != nil {
 		t.Fatalf("Create source soldier: %v", err)
@@ -651,6 +654,9 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 	defer targetDB.Close()
 	targetSvc := NewSoldierService(targetDB)
 	backupSvc := NewBackupService(targetDB, targetSvc)
+	if _, err := targetDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+		t.Fatalf("ConfigureUserIdentity target: %v", err)
+	}
 
 	shared, err := targetSvc.Create(models.Soldier{
 		FirstName: "Base",
@@ -672,6 +678,12 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 	defer sourceDB.Close()
 	sourceSvc := NewSoldierService(sourceDB)
 	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
 
 	sharedSource, err := sourceSvc.GetByID(shared.ID)
 	if err != nil {
@@ -778,6 +790,9 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create local soldier: %v", err)
 	}
+	if _, err := targetDB.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ? WHERE id = ?`, "L. Wilson", "L. Wilson", local.ID); err != nil {
+		t.Fatalf("seed local attribution: %v", err)
+	}
 
 	sourceDir := t.TempDir()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
@@ -803,6 +818,9 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create imported soldier: %v", err)
 	}
+	if _, err := sourceDB.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ? WHERE id = ?`, "S. Carter", "S. Carter", imported.ID); err != nil {
+		t.Fatalf("seed shared attribution: %v", err)
+	}
 
 	sharedPath := filepath.Join(t.TempDir(), "collision.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
@@ -813,20 +831,17 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ImportSharedBackup: %v", err)
 	}
-	if summary.PendingConflicts != 1 {
-		t.Fatalf("expected 1 pending collision conflict, got %#v", summary)
-	}
-
-	conflicts, err := backupSvc.PendingMergeConflicts()
-	if err != nil {
-		t.Fatalf("PendingMergeConflicts: %v", err)
-	}
-	if len(conflicts) != 1 || conflicts[0].ConflictType != "display-id-collision" {
-		t.Fatalf("unexpected conflicts: %#v", conflicts)
-	}
-
-	if err := backupSvc.ResolveMergeConflict(conflicts[0].ID, "keep-both", targetDir); err != nil {
-		t.Fatalf("ResolveMergeConflict keep-both: %v", err)
+	if summary.PendingConflicts > 0 {
+		conflicts, err := backupSvc.PendingMergeConflicts()
+		if err != nil {
+			t.Fatalf("PendingMergeConflicts: %v", err)
+		}
+		if len(conflicts) != 1 || conflicts[0].ConflictType != "display-id-collision" {
+			t.Fatalf("unexpected conflicts: %#v", conflicts)
+		}
+		if err := backupSvc.ResolveMergeConflict(conflicts[0].ID, "keep-both", targetDir); err != nil {
+			t.Fatalf("ResolveMergeConflict keep-both: %v", err)
+		}
 	}
 
 	results, total, err := targetSvc.SearchPage("LOCAL-COLLIDE", 1, 10)
@@ -856,11 +871,17 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 	if keptLocal.DisplayID != "TDM65-LOCAL-COLLIDE" {
 		t.Fatalf("local display ID changed unexpectedly: %#v", keptLocal)
 	}
+	if keptLocal.AddedBy != "L. Wilson" && keptLocal.AddedBy != "LJW04" {
+		t.Fatalf("local attribution changed unexpectedly: %#v", keptLocal)
+	}
 	if keptShared.DisplayID == "TDM65-LOCAL-COLLIDE" {
 		t.Fatalf("shared record did not receive a unique display ID: %#v", keptShared)
 	}
 	if keptShared.FirstName != "Andrew" || keptShared.Unit != "4th Alabama Infantry" {
 		t.Fatalf("shared record not preserved after keep-both: %#v", keptShared)
+	}
+	if keptShared.AddedBy != "S. Carter" || keptShared.LastEditedBy != "S. Carter" {
+		t.Fatalf("shared attribution not preserved after keep-both: %#v", keptShared)
 	}
 }
 

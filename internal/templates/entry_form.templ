@@ -20,7 +20,7 @@ templ EntryFormWithError(s models.Soldier, spouseCandidates []models.Soldier, su
 }
 
 templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) {
-	<div id="entry-form-shell" data-ui-id={ entryFormPageID(isEdit) } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative max-w-2xl mx-auto">
+	<div id="entry-form-shell" data-ui-id={ entryFormPageID(isEdit) } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		@SurfaceBadge(entryFormPageID(isEdit))
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
 		if !isEdit {
@@ -108,13 +108,13 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 			hx-target="body"
 			enctype="multipart/form-data"
 			data-record-persistence-kind={ draftMode(isEdit) }
-			class="card rounded-3xl p-8 space-y-5"
+			class="card rounded-3xl p-5 sm:p-8 space-y-5"
 		>
 			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
 				<strong class="font-semibold">{ recordPersistenceHeading(isEdit) }</strong>
 				<span class="ml-2">{ recordPersistenceMessage(isEdit) }</span>
 			</div>
-			<div class="grid grid-cols-2 gap-4">
+			<div class="responsive-two-col grid gap-4">
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">Record ID</label>
 					<input type="text" name="display_id" value={ s.DisplayID }
@@ -168,13 +168,13 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						list="rank-out-suggestions"
 						class="field-input"/>
 				</div>
-				<div data-soldier-only-field class="col-span-2">
+				<div data-soldier-only-field class="responsive-span-2 col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Unit</label>
 					<input type="text" name="unit" value={ s.Unit }
 						list="unit-suggestions"
 						class="field-input"/>
 				</div>
-				<div class="col-span-2" data-entry-type-special>
+				<div class="responsive-span-2 col-span-2" data-entry-type-special>
 					<label class="block text-sm text-slate-500 mb-1">Married To</label>
 					<select name="spouse_soldier_id" class="field-input">
 						<option value="">Select a soldier</option>
@@ -183,16 +183,16 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						}
 					</select>
 				</div>
-				<div class="col-span-2" data-entry-type-special>
+				<div class="responsive-span-2 col-span-2" data-entry-type-special>
 					<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
 					<input type="text" name="maiden_name" value={ s.MaidenName }
 						class="field-input"/>
 				</div>
-				<div data-soldier-only-field class="col-span-2">
+				<div data-soldier-only-field class="responsive-span-2 col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Pension State</label>
 					<input type="text" name="pension_state" value={ selectedPensionState(s) } list="pension-state-suggestions" class="field-input"/>
 				</div>
-				<div data-soldier-only-field class="col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4">
+				<div data-soldier-only-field class="responsive-span-2 col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4">
 					<div class="grid gap-4 md:grid-cols-2">
 						<div>
 							<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
@@ -241,10 +241,10 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						list="buried-in-suggestions"
 						class="field-input"/>
 				</div>
-				<div class="col-span-2 text-xs text-slate-500">
+				<div class="responsive-span-2 col-span-2 text-xs text-slate-500">
 					Use <code>MM/DD/YYYY</code>. Unknown month or day should be entered as <code>00</code>, such as <code>11/00/1886</code> or <code>00/00/1886</code>.
 				</div>
-				<div data-ui-id={ uiids.PanelSoldierFormRecords } class="relative col-span-2">
+				<div data-ui-id={ uiids.PanelSoldierFormRecords } class="responsive-span-2 relative col-span-2">
 					@SurfaceBadge(uiids.PanelSoldierFormRecords)
 					<div class="mb-3 flex items-center justify-between gap-3">
 						<label class="block text-sm text-slate-500">Records</label>
@@ -260,12 +260,12 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 					</template>
 					<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
 				</div>
-				<div class="col-span-2">
+				<div class="responsive-span-2 col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Notes</label>
 					<textarea name="notes" rows="4"
 						class="field-input min-h-32">{ s.Notes }</textarea>
 				</div>
-				<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">
+				<div data-ui-id={ uiids.PanelSoldierFormImages } class="responsive-span-2 relative col-span-2">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
 					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
 					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
@@ -463,7 +463,7 @@ templ RecordInputRow(record models.Record) {
 			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Record Entry</span>
 			<button type="button" data-record-remove class="pill-link">Remove</button>
 		</div>
-		<div class="grid grid-cols-2 gap-4">
+		<div class="responsive-two-col grid gap-4">
 			<div>
 				<label class="mb-1 block text-sm text-slate-500">Record Type</label>
 				<input type="text" name="record_type" value={ record.RecordType } list="record-type-suggestions" class="field-input"/>
@@ -472,7 +472,7 @@ templ RecordInputRow(record models.Record) {
 				<label class="mb-1 block text-sm text-slate-500">App / Record Number</label>
 				<input type="text" name="record_app_id" value={ record.AppID } class="field-input"/>
 			</div>
-			<div class="col-span-2">
+			<div class="responsive-span-2 col-span-2">
 				<label class="mb-1 block text-sm text-slate-500">Details</label>
 				<textarea name="record_details" rows="3" class="field-input min-h-24">{ record.Details }</textarea>
 			</div>
@@ -497,9 +497,9 @@ func formRecords(records []models.Record) []models.Record {
 
 templ InitialSetupView(form models.InitialSetupForm) {
 	@Layout("First Launch Setup") {
-		<div class="mx-auto max-w-2xl space-y-6">
+		<div class="mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold">First Launch Setup</h2>
-			<div class="card rounded-3xl p-8 space-y-4">
+			<div class="card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<p class="text-sm text-slate-600">Enter your name and birth year once. DixieData will use your initials plus birth year as the prefix for new visible IDs so shared archives are easier to trace back to their source.</p>
 				</div>
@@ -508,7 +508,7 @@ templ InitialSetupView(form models.InitialSetupForm) {
 						{ form.ErrorMessage }
 					</div>
 				}
-				<form method="post" action="/setup" class="grid gap-4 md:grid-cols-2">
+				<form method="post" action="/setup" class="responsive-two-col grid gap-4">
 					<div>
 						<label class="mb-1 block text-sm text-slate-500">First name</label>
 						<input type="text" name="first_name" value={ form.FirstName } class="field-input" autocomplete="given-name"/>
@@ -526,11 +526,11 @@ templ InitialSetupView(form models.InitialSetupForm) {
 						<input type="text" name="birth_year" value={ form.BirthYear } inputmode="numeric" maxlength="4" class="field-input" autocomplete="bday-year"/>
 					</div>
 					if form.PrefixPreview != "" {
-						<div class="md:col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
+						<div class="responsive-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
 							New ID prefix: <strong class="text-[#22303d]">{ form.PrefixPreview }</strong>
 						</div>
 					}
-					<div class="md:col-span-2">
+					<div class="responsive-span-2">
 						<button type="submit" class="primary-button">Save Identity</button>
 					</div>
 				</form>
@@ -549,10 +549,10 @@ func mergeReviewDisplayName(soldier models.Soldier) string {
 
 templ SettingsView(confirmationWord string) {
 	@Layout("Settings") {
-		<div data-ui-id={ uiids.PageSettings } class="relative mx-auto max-w-2xl space-y-6">
+		<div data-ui-id={ uiids.PageSettings } class="relative mx-auto max-w-3xl space-y-6">
 			@SurfaceBadge(uiids.PageSettings)
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
-			<div data-ui-id={ uiids.PanelSettingsInitialize } class="relative card rounded-3xl p-8 space-y-4">
+			<div data-ui-id={ uiids.PanelSettingsInitialize } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				@SurfaceBadge(uiids.PanelSettingsInitialize)
 				<div>
 					<h3 class="text-xl gold font-bold">Initialize Data</h3>

@@ -66,6 +66,11 @@ func NewApp() *App {
 }
 
 func (a *App) startup(ctx context.Context) {
+	if err := configureStressLogging(); err != nil {
+		a.startupErr = fmt.Errorf("failed to configure stress logging: %w", err)
+		a.setupRoutes()
+		return
+	}
 	a.ctx = ctx
 	a.dataDir = appdata.DefaultDir()
 	var err error
@@ -1939,6 +1944,11 @@ func (a *App) reloadServices() error {
 			return err
 		}
 		a.setupRequired = required
+		if !required {
+			if err := a.database.BackfillEntryAuditIdentity(); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

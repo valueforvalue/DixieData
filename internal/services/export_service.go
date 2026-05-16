@@ -1250,7 +1250,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	defer w.Flush()
 
 	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "created_at"}
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1296,7 +1296,12 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				s.BirthInfo,
 				s.BuriedIn,
 				s.Notes,
+				s.AddedBy,
+				s.LastEditedBy,
+				s.LastEditedFields,
+				s.LastEditedAt,
 				s.CreatedAt,
+				s.UpdatedAt,
 			}
 			if err := w.Write(row); err != nil {
 				return err
@@ -2244,6 +2249,10 @@ func recordServiceFields(soldier models.Soldier) [][2]string {
 		{"Application ID", soldier.ApplicationID},
 		{"Confederate Home Status", soldier.ConfederateHomeStatus},
 		{"Confederate Home Name", soldier.ConfederateHomeName},
+		{"Added By", soldier.AddedBy},
+		{"Last Edited By", soldier.LastEditedBy},
+		{"Last Edited At", soldier.LastEditedAt},
+		{"Last Edited Fields", soldier.LastEditedFields},
 	}
 	return fields
 }

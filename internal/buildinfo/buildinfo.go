@@ -4,10 +4,10 @@ import "strings"
 
 const (
 	AppName                  = "DixieData"
-	AppVersion               = "0.1.0"
-	SchemaVersion            = 7
-	JSONExportVersion        = 1
-	CSVExportVersion         = 2
+	AppVersion               = "1.0.0"
+	SchemaVersion            = 9
+	JSONExportVersion        = 3
+	CSVExportVersion         = 4
 	ICalendarExportVersion   = 1
 	SoldierPDFExportVersion  = 3
 	MonthlyPDFExportVersion  = 1
