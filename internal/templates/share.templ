@@ -130,6 +130,10 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 								<input type="checkbox" name="group_by_confederate_home_status" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
 								<span><strong class="text-[#22303d]">Confederate Home Status</strong><br/><span class="text-slate-500">Create printable sections by home status such as Inmate, Staffer, Trustee, or None.</span></span>
 							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="checkbox" name="group_by_buried_in" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Group by Burial Location (Buried In)</strong><br/><span class="text-slate-500">Create printable sections by cemetery or burial location, with unknown locations gathered at the end.</span></span>
+							</label>
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
 							The printable PDF still uses one landscape record page per entry. Group selections add divider pages before each section, and images remain omitted from this export.

@@ -16,7 +16,7 @@ import (
 const (
 	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
-	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption`
+	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
 
 type SoldierService struct {
@@ -161,14 +161,14 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 		soldier.Records = append(soldier.Records, r)
 	}
 
-	imgRows, err := conn.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY id`, id)
+	imgRows, err := conn.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY is_primary DESC, id`, id)
 	if err != nil {
 		return nil, err
 	}
 	defer imgRows.Close()
 	for imgRows.Next() {
 		var img models.Image
-		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption); err != nil {
+		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
 			return nil, err
 		}
 		soldier.Images = append(soldier.Images, img)
@@ -261,14 +261,19 @@ func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption s
 	if err != nil {
 		return err
 	}
+	isPrimary, err := s.shouldAssignPrimaryImage(soldierID)
+	if err != nil {
+		return err
+	}
 	_, err = s.db.Conn().Exec(
-		`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption) VALUES (?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		imageSyncID,
 		soldierID,
 		soldierSyncID,
 		fileName,
 		filePath,
 		caption,
+		isPrimary,
 	)
 	if err != nil {
 		return err
@@ -296,13 +301,30 @@ func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
 	if err != nil {
 		return err
 	}
+	if err := s.ensurePrimaryImage(soldierID); err != nil {
+		return err
+	}
 	return s.touchAuditFields(soldierID, "images")
+}
+
+func (s *SoldierService) SetPrimaryImage(soldierID, imageID int64) error {
+	var count int
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ? AND id = ?`, soldierID, imageID).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	if _, err := s.db.Conn().Exec(`UPDATE images SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE soldier_id = ?`, imageID, soldierID); err != nil {
+		return err
+	}
+	return s.touchAuditFields(soldierID, "primary_image")
 }
 
 func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
 	row := s.db.Conn().QueryRow(`SELECT `+imageSelectColumns+` FROM images WHERE id = ?`, imageID)
 	var image models.Image
-	if err := row.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption); err != nil {
+	if err := row.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
 		return nil, err
 	}
 	return &image, nil
@@ -1306,6 +1328,8 @@ func auditTouchDescriptions(fields []string) []string {
 		switch strings.TrimSpace(strings.ToLower(field)) {
 		case "images":
 			descriptions = append(descriptions, "Images updated.")
+		case "primary_image":
+			descriptions = append(descriptions, "Primary image updated.")
 		case "records":
 			descriptions = append(descriptions, "Records updated.")
 		default:
@@ -1326,6 +1350,35 @@ func (s *SoldierService) soldierSyncIDByID(soldierID int64) (string, error) {
 		return "", err
 	}
 	return syncID, nil
+}
+
+func (s *SoldierService) shouldAssignPrimaryImage(soldierID int64) (bool, error) {
+	var count int
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ?`, soldierID).Scan(&count); err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
+func (s *SoldierService) ensurePrimaryImage(soldierID int64) error {
+	var count int
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ?`, soldierID).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return nil
+	}
+	var primaryCount int
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ? AND is_primary = 1`, soldierID).Scan(&primaryCount); err != nil {
+		return err
+	}
+	if primaryCount > 0 {
+		return nil
+	}
+	_, err := s.db.Conn().Exec(`UPDATE images SET is_primary = CASE WHEN id = (
+		SELECT id FROM images WHERE soldier_id = ? ORDER BY id LIMIT 1
+	) THEN 1 ELSE 0 END WHERE soldier_id = ?`, soldierID, soldierID)
+	return err
 }
 
 func nullStringDest(target *string, holder *sql.NullString) interface{ Scan(any) error } {

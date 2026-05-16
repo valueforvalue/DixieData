@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS images (
     soldier_sync_id TEXT,
     file_name    TEXT,
     file_path    TEXT,
-    caption      TEXT
+    caption      TEXT,
+    is_primary   BOOLEAN DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS merge_review_sessions (
@@ -233,6 +234,7 @@ func applySchema(db *DB) error {
 		{table: "records", column: "soldier_sync_id", sql: `ALTER TABLE records ADD COLUMN soldier_sync_id TEXT`},
 		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
 		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`},
+		{table: "images", column: "is_primary", sql: `ALTER TABLE images ADD COLUMN is_primary BOOLEAN DEFAULT 0`},
 	} {
 		exists, err := columnExists(tx, migration.table, migration.column)
 		if err != nil {
@@ -264,6 +266,17 @@ func applySchema(db *DB) error {
 		return err
 	}
 	if _, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE images SET is_primary = 0 WHERE is_primary IS NULL`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE images SET is_primary = 1 WHERE id IN (
+		SELECT MIN(id)
+		FROM images
+		GROUP BY soldier_id
+		HAVING MAX(CASE WHEN is_primary = 1 THEN 1 ELSE 0 END) = 0
+	)`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`); err != nil {

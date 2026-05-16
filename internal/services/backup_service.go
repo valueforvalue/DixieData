@@ -1156,15 +1156,15 @@ func upsertSharedImage(tx *sql.Tx, targetSoldierID int64, soldierSyncID string, 
 	var existingID int64
 	err := tx.QueryRow(`SELECT id FROM images WHERE sync_id = ?`, syncID).Scan(&existingID)
 	if err == nil {
-		_, err = tx.Exec(`UPDATE images SET soldier_id = ?, soldier_sync_id = ?, file_name = ?, file_path = ?, caption = ? WHERE id = ?`,
-			targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, existingID)
+		_, err = tx.Exec(`UPDATE images SET soldier_id = ?, soldier_sync_id = ?, file_name = ?, file_path = ?, caption = ?, is_primary = ? WHERE id = ?`,
+			targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary, existingID)
 		return true, err
 	}
 	if err != sql.ErrNoRows {
 		return false, err
 	}
-	_, err = tx.Exec(`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption) VALUES (?, ?, ?, ?, ?, ?)`,
-		syncID, targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption)
+	_, err = tx.Exec(`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		syncID, targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary)
 	return false, err
 }
 
@@ -1436,7 +1436,7 @@ func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, erro
 }
 
 func loadImagesForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Image, error) {
-	rows, err := tx.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY id`, soldierID)
+	rows, err := tx.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY is_primary DESC, id`, soldierID)
 	if err != nil {
 		return nil, err
 	}
@@ -1444,7 +1444,7 @@ func loadImagesForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Image, error)
 	images := []models.Image{}
 	for rows.Next() {
 		var image models.Image
-		if err := rows.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption); err != nil {
+		if err := rows.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
 			return nil, err
 		}
 		images = append(images, image)

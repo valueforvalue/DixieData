@@ -42,6 +42,7 @@ type PrintSettings struct {
 	GroupByUnit                  bool   `json:"groupByUnit"`
 	GroupByPensionState          bool   `json:"groupByPensionState"`
 	GroupByConfederateHomeStatus bool   `json:"groupByConfederateHomeStatus"`
+	GroupByBuriedIn              bool   `json:"groupByBuriedIn"`
 }
 
 const (
@@ -1972,7 +1973,7 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	for _, soldier := range soldiers {
 		for _, groupChange := range changedPrintGroups(lastGroupValues, soldier, groupOrder, firstRecord) {
 			pdf.AddPage()
-			writePDFGroupDividerPage(pdf, groupChange.Label, groupChange.Value, groupChange.Level)
+			writePDFGroupDividerPage(pdf, groupChange.Label, groupChange.Title, groupChange.Level)
 		}
 		firstRecord = false
 		pdf.AddPage()
@@ -2100,6 +2101,7 @@ type printGroupChange struct {
 	Key   string
 	Label string
 	Value string
+	Title string
 	Level int
 }
 
@@ -2146,6 +2148,9 @@ func selectedPrintGroups(settings PrintSettings) []string {
 	if settings.GroupByConfederateHomeStatus {
 		fields = append(fields, "confederate_home_status")
 	}
+	if settings.GroupByBuriedIn {
+		fields = append(fields, "buried_in")
+	}
 	return fields
 }
 
@@ -2174,6 +2179,7 @@ func changedPrintGroups(previous map[string]string, soldier models.Soldier, grou
 			Key:   field,
 			Label: printGroupLabel(field),
 			Value: value,
+			Title: printGroupTitle(field, value),
 			Level: index,
 		})
 	}
@@ -2304,12 +2310,17 @@ func printGroupLabel(field string) string {
 		return "Pension State"
 	case "confederate_home_status":
 		return "Confederate Home Status"
+	case "buried_in":
+		return "Burial Location"
 	default:
 		return "Group"
 	}
 }
 
 func printGroupSortKey(soldier models.Soldier, field string) string {
+	if field == "buried_in" && strings.TrimSpace(soldier.BuriedIn) == "" {
+		return "\uffff"
+	}
 	return strings.ToLower(printGroupValue(soldier, field))
 }
 
@@ -2325,9 +2336,22 @@ func printGroupValue(soldier models.Soldier, field string) string {
 			return "None"
 		}
 		return value
+	case "buried_in":
+		value := strings.TrimSpace(soldier.BuriedIn)
+		if value == "" {
+			return "Location Unknown"
+		}
+		return value
 	default:
 		return "Not recorded"
 	}
+}
+
+func printGroupTitle(field, value string) string {
+	if field == "buried_in" {
+		return "Cemetery: " + value
+	}
+	return value
 }
 
 func (e *ExportService) staticArchiveOwner() (staticArchiveOwner, error) {
@@ -3019,6 +3043,18 @@ func recordHouseholdFields(soldier models.Soldier) [][2]string {
 }
 
 func firstRecordCardImage(soldier models.Soldier) (string, string) {
+	for _, image := range soldier.Images {
+		if !image.IsPrimary {
+			continue
+		}
+		if imagePath := imagePathForPDF(image); imagePath != "" {
+			label := image.FileName
+			if strings.TrimSpace(image.Caption) != "" {
+				label = image.Caption
+			}
+			return imagePath, label
+		}
+	}
 	for _, image := range soldier.Images {
 		if imagePath := imagePathForPDF(image); imagePath != "" {
 			label := image.FileName

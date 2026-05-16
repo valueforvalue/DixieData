@@ -119,6 +119,7 @@ func TestParsePrintSettingsRequest(t *testing.T) {
 		"sort_by":                          {"birth_year"},
 		"group_by_unit":                    {"1"},
 		"group_by_confederate_home_status": {"1"},
+		"group_by_buried_in":               {"1"},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -129,7 +130,7 @@ func TestParsePrintSettingsRequest(t *testing.T) {
 	if settings.SortBy != services.PrintSortBirthYear {
 		t.Fatalf("SortBy = %q", settings.SortBy)
 	}
-	if !settings.GroupByUnit || !settings.GroupByConfederateHomeStatus || settings.GroupByPensionState {
+	if !settings.GroupByUnit || !settings.GroupByConfederateHomeStatus || !settings.GroupByBuriedIn || settings.GroupByPensionState {
 		t.Fatalf("unexpected parsed settings: %#v", settings)
 	}
 }

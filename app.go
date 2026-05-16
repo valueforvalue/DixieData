@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -581,6 +582,15 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleDeleteSoldierImages(w, r, id)
 		return
 	}
+	if len(parts) > 3 && parts[1] == "images" && parts[2] == "primary" {
+		imageID, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			http.Error(w, "invalid image id", http.StatusBadRequest)
+			return
+		}
+		a.handleSetPrimarySoldierImage(w, r, id, imageID)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -824,6 +834,7 @@ func parsePrintSettingsRequest(r *http.Request) (services.PrintSettings, error) 
 		GroupByUnit:                  r.FormValue("group_by_unit") != "",
 		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
 		GroupByConfederateHomeStatus: r.FormValue("group_by_confederate_home_status") != "",
+		GroupByBuriedIn:              r.FormValue("group_by_buried_in") != "",
 	}, nil
 }
 
@@ -1531,6 +1542,27 @@ func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, 
 
 	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
 	fmt.Fprintf(w, "Deleted %d image(s).", len(selected))
+}
+
+func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Request, id, imageID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := a.soldiers.GetByID(id); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if err := a.soldiers.SetPrimaryImage(id, imageID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "image not found", http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(w, "Primary image update failed: %v", err)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	fmt.Fprint(w, "Primary image updated.")
 }
 
 func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {

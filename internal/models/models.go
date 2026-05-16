@@ -117,6 +117,7 @@ type Image struct {
 	FileName      string `json:"file_name"`
 	FilePath      string `json:"file_path"`
 	Caption       string `json:"caption"`
+	IsPrimary     bool   `json:"is_primary"`
 	ResolvedPath  string `json:"-"`
 }
 
