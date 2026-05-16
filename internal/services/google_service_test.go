@@ -34,6 +34,7 @@ func TestGoogleService_SaveAndLoadSettings(t *testing.T) {
 func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 	event := googleCalendarEvent(models.Soldier{
 		DisplayID:  "PENSION-42",
+		SyncID:     "sync-42",
 		FirstName:  "Robert",
 		LastName:   "Lee",
 		Rank:       "General",
@@ -59,6 +60,21 @@ func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 	}
 	if event.ExtendedProperties == nil || event.ExtendedProperties.Private["dixiedata_display_id"] != "PENSION-42" {
 		t.Fatalf("extended properties = %#v", event.ExtendedProperties)
+	}
+	if event.ExtendedProperties.Private["dixiedata_sync_id"] != "sync-42" {
+		t.Fatalf("sync property = %#v", event.ExtendedProperties)
+	}
+}
+
+func TestGoogleCalendarEventIDFallsBackToLegacyDisplayID(t *testing.T) {
+	key, eventID := googleCalendarEventID(map[string]string{
+		"DXD-00001": "event-1",
+	}, models.Soldier{
+		DisplayID: "TDM65-DXD-00001",
+		SyncID:    "sync-1",
+	})
+	if key != "DXD-00001" || eventID != "event-1" {
+		t.Fatalf("got key=%q eventID=%q", key, eventID)
 	}
 }
 

@@ -2,26 +2,27 @@ package templates
 
 import (
 	"fmt"
+	"strings"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ EntryForm(s models.Soldier, isEdit bool) {
-	@Layout(formTitle(isEdit)) {
-		@EntryFormContent(s, isEdit, "")
+templ EntryForm(s models.Soldier, spouseCandidates []models.Soldier, isEdit bool) {
+	@Layout(formTitle(s, isEdit)) {
+		@EntryFormContent(s, spouseCandidates, isEdit, "")
 	}
 }
 
-templ EntryFormWithError(s models.Soldier, isEdit bool, errorMessage string) {
-	@Layout(formTitle(isEdit)) {
-		@EntryFormContent(s, isEdit, errorMessage)
+templ EntryFormWithError(s models.Soldier, spouseCandidates []models.Soldier, isEdit bool, errorMessage string) {
+	@Layout(formTitle(s, isEdit)) {
+		@EntryFormContent(s, spouseCandidates, isEdit, errorMessage)
 	}
 }
 
-templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
+templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEdit bool, errorMessage string) {
 	<div data-ui-id={ entryFormPageID(isEdit) } class="relative max-w-2xl mx-auto">
 		@SurfaceBadge(entryFormPageID(isEdit))
-		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(isEdit) }</h2>
+		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
 		if errorMessage != "" {
 			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
 				<strong class="font-semibold">Save failed.</strong>
@@ -47,6 +48,14 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 						class={ displayIDInputClass(isEdit) }/>
 				</div>
 				<div>
+					<label class="block text-sm text-slate-500 mb-1">Record Type</label>
+					<select name="entry_type" data-entry-type-select class="field-input">
+						for _, entryType := range entryTypes() {
+							<option value={ entryType.Value } if entryType.Value == normalizedEntryType(s) { selected }>{ entryType.Label }</option>
+						}
+					</select>
+				</div>
+				<div>
 					<label class="block text-sm text-slate-500 mb-1">First Name</label>
 					<input type="text" name="first_name" value={ s.FirstName }
 						class="field-input"/>
@@ -61,22 +70,36 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 					<input type="text" name="last_name" value={ s.LastName }
 						class="field-input"/>
 				</div>
-				<div>
+				<div data-soldier-only-field>
 					<label class="block text-sm text-slate-500 mb-1">Rank In</label>
 					<input type="text" name="rank_in" value={ s.RankIn }
 						class="field-input"/>
 				</div>
-				<div>
+				<div data-soldier-only-field>
 					<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
 					<input type="text" name="rank_out" value={ rankOutValue(s) }
 						class="field-input"/>
 				</div>
-				<div class="col-span-2">
+				<div data-soldier-only-field class="col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Unit</label>
 					<input type="text" name="unit" value={ s.Unit }
 						class="field-input"/>
 				</div>
-				<div class="col-span-2">
+				<div class="col-span-2" data-entry-type-special>
+					<label class="block text-sm text-slate-500 mb-1">Married To</label>
+					<select name="spouse_soldier_id" class="field-input">
+						<option value="">Select a soldier</option>
+						for _, candidate := range spouseCandidates {
+							<option value={ fmt.Sprintf("%d", candidate.ID) } if candidate.ID == s.SpouseSoldierID { selected }>{ spouseCandidateLabel(candidate) }</option>
+						}
+					</select>
+				</div>
+				<div class="col-span-2" data-entry-type-special>
+					<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
+					<input type="text" name="maiden_name" value={ s.MaidenName }
+						class="field-input"/>
+				</div>
+				<div data-soldier-only-field class="col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Pension State</label>
 					<select name="pension_state" class="field-input">
 						<option value="">Select a state</option>
@@ -85,30 +108,25 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 						}
 					</select>
 				</div>
-				<div>
+				<div data-soldier-or-widow-field>
 					<label class="block text-sm text-slate-500 mb-1">Pension ID</label>
 					<input type="text" name="pension_id" value={ s.PensionID }
 						class="field-input" placeholder="P12345"/>
 				</div>
-				<div>
+				<div data-soldier-or-widow-field>
 					<label class="block text-sm text-slate-500 mb-1">Application ID</label>
 					<input type="text" name="application_id" value={ s.ApplicationID }
 						class="field-input" placeholder="A12345"/>
 				</div>
 				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Year</label>
-					<input type="number" name="death_year" value={ fmt.Sprintf("%d", s.DeathYear) }
-						class="field-input"/>
+					<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
+					<input type="text" name="birth_date" value={ s.BirthDate }
+						class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 				</div>
 				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Month (1-12, 0=unknown)</label>
-					<input type="number" name="death_month" value={ fmt.Sprintf("%d", s.DeathMonth) } min="0" max="12"
-						class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Day (1-31, 0=unknown)</label>
-					<input type="number" name="death_day" value={ fmt.Sprintf("%d", s.DeathDay) } min="0" max="31"
-						class="field-input"/>
+					<label class="block text-sm text-slate-500 mb-1">Death Date</label>
+					<input type="text" name="death_date" value={ s.DeathDate }
+						class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 				</div>
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
@@ -119,6 +137,9 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 					<label class="block text-sm text-slate-500 mb-1">Buried In</label>
 					<input type="text" name="buried_in" value={ s.BuriedIn }
 						class="field-input"/>
+				</div>
+				<div class="col-span-2 text-xs text-slate-500">
+					Use <code>MM/DD/YYYY</code>. Unknown month or day should be entered as <code>00</code>, such as <code>11/00/1886</code> or <code>00/00/1886</code>.
 				</div>
 				<div data-ui-id={ uiids.PanelSoldierFormRecords } class="relative col-span-2">
 					@SurfaceBadge(uiids.PanelSoldierFormRecords)
@@ -197,11 +218,12 @@ templ EntryFormContent(s models.Soldier, isEdit bool, errorMessage string) {
 	</div>
 }
 
-func formTitle(isEdit bool) string {
+func formTitle(s models.Soldier, isEdit bool) string {
+	label := entryTypeLabel(normalizedEntryType(s))
 	if isEdit {
-		return "Edit Soldier Record"
+		return "Edit " + label + " Record"
 	}
-	return "New Soldier Record"
+	return "New " + label + " Record"
 }
 
 func entryFormPageID(isEdit bool) string {
@@ -237,6 +259,48 @@ func rankOutValue(s models.Soldier) string {
 		return s.RankOut
 	}
 	return s.Rank
+}
+
+type entryTypeOption struct {
+	Value string
+	Label string
+}
+
+func entryTypes() []entryTypeOption {
+	return []entryTypeOption{
+		{Value: "soldier", Label: "Soldier"},
+		{Value: "wife", Label: "Wife"},
+		{Value: "widow", Label: "Widow"},
+	}
+}
+
+func normalizedEntryType(s models.Soldier) string {
+	switch s.EntryType {
+	case "wife", "widow":
+		return s.EntryType
+	default:
+		return "soldier"
+	}
+}
+
+func entryTypeLabel(entryType string) string {
+	for _, option := range entryTypes() {
+		if option.Value == entryType {
+			return option.Label
+		}
+	}
+	return "Soldier"
+}
+
+func spouseCandidateLabel(s models.Soldier) string {
+	label := strings.TrimSpace(s.LastName + ", " + s.FirstName)
+	if label == "," || label == "" {
+		label = strings.TrimSpace(s.DisplayID)
+	}
+	if strings.TrimSpace(s.DisplayID) == "" {
+		return label
+	}
+	return label + " (" + s.DisplayID + ")"
 }
 
 templ RecordInputRow(record models.Record) {

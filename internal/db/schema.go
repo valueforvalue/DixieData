@@ -3,8 +3,10 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/dates"
 )
 
 const schema = `
@@ -12,6 +14,9 @@ CREATE TABLE IF NOT EXISTS soldiers (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     display_id   TEXT UNIQUE NOT NULL,
     sync_id      TEXT,
+    entry_type   TEXT NOT NULL DEFAULT 'soldier',
+    spouse_soldier_id INTEGER REFERENCES soldiers(id) ON DELETE SET NULL,
+    maiden_name  TEXT,
     is_generated BOOLEAN DEFAULT 0,
     pension_id   TEXT,
     application_id TEXT,
@@ -37,7 +42,9 @@ CREATE TABLE IF NOT EXISTS soldiers (
 
 CREATE TABLE IF NOT EXISTS records (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    sync_id      TEXT,
     soldier_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    soldier_sync_id TEXT,
     record_type  TEXT,
     app_id       TEXT,
     details      TEXT
@@ -45,7 +52,9 @@ CREATE TABLE IF NOT EXISTS records (
 
 CREATE TABLE IF NOT EXISTS images (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    sync_id      TEXT,
     soldier_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    soldier_sync_id TEXT,
     file_name    TEXT,
     file_path    TEXT,
     caption      TEXT
@@ -85,13 +94,7 @@ SET updated_at = COALESCE(NULLIF(created_at, ''), CURRENT_TIMESTAMP)
 WHERE updated_at IS NULL OR TRIM(updated_at) = '';
 
 UPDATE soldiers
-SET sync_id = lower(
-    hex(randomblob(4)) || '-' ||
-    hex(randomblob(2)) || '-' ||
-    '7' || substr(hex(randomblob(2)), 2) || '-' ||
-    substr('89ab', (abs(random()) % 4) + 1, 1) || substr(hex(randomblob(2)), 2) || '-' ||
-    hex(randomblob(6))
-)
+SET sync_id = ` + syncIDSQL + `
 WHERE sync_id IS NULL OR TRIM(sync_id) = '';
 
 INSERT INTO system_config(key, value)
@@ -101,16 +104,57 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIME
 INSERT INTO system_config(key, value)
 SELECT
     'node_id',
-    lower(
-        hex(randomblob(4)) || '-' ||
-        hex(randomblob(2)) || '-' ||
-        '7' || substr(hex(randomblob(2)), 2) || '-' ||
-        substr('89ab', (abs(random()) % 4) + 1, 1) || substr(hex(randomblob(2)), 2) || '-' ||
-        hex(randomblob(6))
-    )
+    ` + syncIDSQL + `
 WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_id');
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_soldiers_sync_id ON soldiers(sync_id);
+
+UPDATE records
+SET soldier_sync_id = (
+    SELECT soldiers.sync_id
+    FROM soldiers
+    WHERE soldiers.id = records.soldier_id
+)
+WHERE soldier_sync_id IS NULL OR TRIM(soldier_sync_id) = '';
+
+UPDATE records
+SET sync_id = ` + syncIDSQL + `
+WHERE sync_id IS NULL OR TRIM(sync_id) = '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_records_sync_id ON records(sync_id);
+CREATE INDEX IF NOT EXISTS idx_records_soldier_sync_id ON records(soldier_sync_id);
+
+UPDATE images
+SET soldier_sync_id = (
+    SELECT soldiers.sync_id
+    FROM soldiers
+    WHERE soldiers.id = images.soldier_id
+)
+WHERE soldier_sync_id IS NULL OR TRIM(soldier_sync_id) = '';
+
+UPDATE images
+SET sync_id = ` + syncIDSQL + `
+WHERE sync_id IS NULL OR TRIM(sync_id) = '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sync_id ON images(sync_id);
+CREATE INDEX IF NOT EXISTS idx_images_soldier_sync_id ON images(soldier_sync_id);
+`
+
+const phase2CanonicalDatesMigration = `
+UPDATE soldiers
+SET entry_type = 'soldier'
+WHERE entry_type IS NULL OR TRIM(entry_type) = '';
+
+UPDATE soldiers
+SET death_date = CASE
+    WHEN COALESCE(death_year, 0) = 0 AND COALESCE(death_month, 0) = 0 AND COALESCE(death_day, 0) = 0 THEN ''
+    ELSE printf('%02d/%02d/%04d', COALESCE(death_month, 0), COALESCE(death_day, 0), COALESCE(death_year, 0))
+END
+WHERE death_date IS NULL OR TRIM(death_date) = '';
+
+UPDATE soldiers
+SET birth_date = ''
+WHERE birth_date = '00/00/0000';
 `
 
 func applySchema(db *DB) error {
@@ -136,9 +180,16 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "rank_out", sql: `ALTER TABLE soldiers ADD COLUMN rank_out TEXT`},
 		{table: "soldiers", column: "pension_state", sql: `ALTER TABLE soldiers ADD COLUMN pension_state TEXT`},
 		{table: "soldiers", column: "sync_id", sql: `ALTER TABLE soldiers ADD COLUMN sync_id TEXT`},
+		{table: "soldiers", column: "entry_type", sql: `ALTER TABLE soldiers ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'soldier'`},
+		{table: "soldiers", column: "spouse_soldier_id", sql: `ALTER TABLE soldiers ADD COLUMN spouse_soldier_id INTEGER REFERENCES soldiers(id) ON DELETE SET NULL`},
+		{table: "soldiers", column: "maiden_name", sql: `ALTER TABLE soldiers ADD COLUMN maiden_name TEXT`},
 		{table: "soldiers", column: "birth_date", sql: `ALTER TABLE soldiers ADD COLUMN birth_date TEXT`},
 		{table: "soldiers", column: "death_date", sql: `ALTER TABLE soldiers ADD COLUMN death_date TEXT`},
 		{table: "soldiers", column: "updated_at", sql: `ALTER TABLE soldiers ADD COLUMN updated_at DATETIME`},
+		{table: "records", column: "sync_id", sql: `ALTER TABLE records ADD COLUMN sync_id TEXT`},
+		{table: "records", column: "soldier_sync_id", sql: `ALTER TABLE records ADD COLUMN soldier_sync_id TEXT`},
+		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
+		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`},
 	} {
 		exists, err := columnExists(tx, migration.table, migration.column)
 		if err != nil {
@@ -155,6 +206,15 @@ func applySchema(db *DB) error {
 		return err
 	}
 	if _, err := tx.Exec(phase1DistributedMergeMigration); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(phase2CanonicalDatesMigration); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`); err != nil {
+		return err
+	}
+	if err := migrateCanonicalDateData(tx); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, buildinfo.SchemaVersion)); err != nil {
@@ -200,4 +260,77 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		}
 	}
 	return false, rows.Err()
+}
+
+func migrateCanonicalDateData(tx *sql.Tx) error {
+	rows, err := tx.Query(`SELECT id, birth_date, birth_info, death_date, death_year, death_month, death_day FROM soldiers`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type updateRow struct {
+		id        int64
+		birthDate string
+		deathDate string
+		year      int
+		month     int
+		day       int
+	}
+	updates := []updateRow{}
+	for rows.Next() {
+		var (
+			id         int64
+			birthDate  sql.NullString
+			birthInfo  sql.NullString
+			deathDate  sql.NullString
+			deathYear  sql.NullInt64
+			deathMonth sql.NullInt64
+			deathDay   sql.NullInt64
+		)
+		if err := rows.Scan(&id, &birthDate, &birthInfo, &deathDate, &deathYear, &deathMonth, &deathDay); err != nil {
+			return err
+		}
+
+		normalizedBirth := strings.TrimSpace(birthDate.String)
+		if normalizedBirth == "00/00/0000" || normalizedBirth == "" {
+			normalizedBirth = dates.ParseBirthInfo(strings.TrimSpace(birthInfo.String))
+		}
+		normalizedBirth, err = dates.NormalizeCanonical(normalizedBirth)
+		if err != nil {
+			normalizedBirth = ""
+		}
+
+		normalizedDeath := strings.TrimSpace(deathDate.String)
+		if normalizedDeath == "" {
+			normalizedDeath = dates.MustFormat(int(deathMonth.Int64), int(deathDay.Int64), int(deathYear.Int64))
+		}
+		normalizedDeath, err = dates.NormalizeCanonical(normalizedDeath)
+		if err != nil {
+			normalizedDeath = ""
+		}
+		partialDeath, err := dates.ParseCanonical(normalizedDeath)
+		if err != nil {
+			partialDeath = dates.PartialDate{}
+		}
+
+		updates = append(updates, updateRow{
+			id:        id,
+			birthDate: normalizedBirth,
+			deathDate: normalizedDeath,
+			year:      partialDeath.Year,
+			month:     partialDeath.Month,
+			day:       partialDeath.Day,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, update := range updates {
+		if _, err := tx.Exec(`UPDATE soldiers SET birth_date = ?, death_date = ?, death_year = ?, death_month = ?, death_day = ? WHERE id = ?`,
+			update.birthDate, update.deathDate, update.year, update.month, update.day, update.id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

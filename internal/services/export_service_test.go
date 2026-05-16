@@ -85,14 +85,54 @@ func TestExportService_ExportCSV(t *testing.T) {
 	expected := map[string]bool{
 		"app_version": true, "schema_version": true, "export_version": true, "generated_at": true,
 		"id": true, "display_id": true, "first_name": true,
+		"entry_type": true, "spouse_soldier_id": true, "maiden_name": true,
 		"pension_id": true, "application_id": true, "middle_name": true,
-		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "death_year": true, "buried_in": true,
+		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "birth_date": true, "death_date": true, "buried_in": true,
 	}
 	for _, col := range header {
 		delete(expected, col)
 	}
 	if len(expected) > 0 {
 		t.Errorf("CSV missing columns: %v", expected)
+	}
+}
+
+func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	outPath := filepath.Join(t.TempDir(), "wife.pdf")
+	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
+		DisplayID:     "TDM65-DXD-00002",
+		EntryType:     "widow",
+		FirstName:     "Martha",
+		LastName:      "Taylor",
+		SpouseName:    "John Taylor",
+		MaidenName:    "Cole",
+		PensionID:     "WP-42",
+		ApplicationID: "WA-42",
+	})
+	if err != nil {
+		t.Fatalf("ExportSoldierPDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "Record Type") || !strings.Contains(text, "Widow") {
+		t.Fatalf("pdf missing spouse record type")
+	}
+	if !strings.Contains(text, "Married To") || !strings.Contains(text, "John Taylor") {
+		t.Fatalf("pdf missing spouse reference")
+	}
+	if !strings.Contains(text, "Maiden Name") || !strings.Contains(text, "Cole") {
+		t.Fatalf("pdf missing maiden name")
+	}
+	if !strings.Contains(text, "Pension ID") || !strings.Contains(text, "WP-42") || !strings.Contains(text, "Application ID") || !strings.Contains(text, "WA-42") {
+		t.Fatalf("pdf missing widow pension identifiers")
 	}
 }
 

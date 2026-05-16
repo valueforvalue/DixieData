@@ -114,7 +114,7 @@ func Generate(options Options) (Summary, error) {
 		recordCount := 1 + rng.Intn(3)
 		for j := 0; j < recordCount; j++ {
 			record := buildRecord(rng, *created, j)
-			if err := insertRecord(conn, created.ID, record); err != nil {
+			if err := insertRecord(conn, *created, record); err != nil {
 				return Summary{}, fmt.Errorf("create record for soldier %d: %w", created.ID, err)
 			}
 			summary.Records++
@@ -126,7 +126,7 @@ func Generate(options Options) (Summary, error) {
 			if err != nil {
 				return Summary{}, fmt.Errorf("create image for soldier %d: %w", created.ID, err)
 			}
-			if err := insertImage(conn, created.ID, image); err != nil {
+			if err := insertImage(conn, *created, image); err != nil {
 				return Summary{}, fmt.Errorf("insert image for soldier %d: %w", created.ID, err)
 			}
 			summary.Images++
@@ -215,10 +215,16 @@ func buildRecord(rng *rand.Rand, soldier models.Soldier, index int) models.Recor
 	}
 }
 
-func insertRecord(conn *sql.DB, soldierID int64, record models.Record) error {
-	_, err := conn.Exec(
-		`INSERT INTO records (soldier_id, record_type, app_id, details) VALUES (?, ?, ?, ?)`,
-		soldierID,
+func insertRecord(conn *sql.DB, soldier models.Soldier, record models.Record) error {
+	syncID, err := db.NewSyncID()
+	if err != nil {
+		return err
+	}
+	_, err = conn.Exec(
+		`INSERT INTO records (sync_id, soldier_id, soldier_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+		syncID,
+		soldier.ID,
+		soldier.SyncID,
 		record.RecordType,
 		record.AppID,
 		record.Details,
@@ -271,10 +277,16 @@ func createImage(dataDir string, rng *rand.Rand, soldier models.Soldier, index i
 	}, nil
 }
 
-func insertImage(conn *sql.DB, soldierID int64, image models.Image) error {
-	_, err := conn.Exec(
-		`INSERT INTO images (soldier_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
-		soldierID,
+func insertImage(conn *sql.DB, soldier models.Soldier, image models.Image) error {
+	syncID, err := db.NewSyncID()
+	if err != nil {
+		return err
+	}
+	_, err = conn.Exec(
+		`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption) VALUES (?, ?, ?, ?, ?, ?)`,
+		syncID,
+		soldier.ID,
+		soldier.SyncID,
 		image.FileName,
 		image.FilePath,
 		image.Caption,

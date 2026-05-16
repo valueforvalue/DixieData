@@ -24,6 +24,7 @@ import (
 
 	_ "embed"
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
@@ -330,9 +331,14 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		Unit:         r.URL.Query().Get("unit"),
 		PensionState: r.URL.Query().Get("pension_state"),
 		BuriedIn:     r.URL.Query().Get("buried_in"),
+		BirthDate:    r.URL.Query().Get("birth_date"),
+		DeathDate:    r.URL.Query().Get("death_date"),
 		DeathYear:    r.URL.Query().Get("death_year"),
 		DeathMonth:   r.URL.Query().Get("death_month"),
 		DeathDay:     r.URL.Query().Get("death_day"),
+	}
+	if strings.TrimSpace(search.DeathDate) == "" {
+		search.DeathDate = dates.MustFormat(parseLegacySearchComponent(search.DeathMonth), parseLegacySearchComponent(search.DeathDay), parseLegacySearchComponent(search.DeathYear))
 	}
 	page := parsePage(r.URL.Query().Get("page"))
 	if !hasAdvancedSearchInput(search) {
@@ -358,6 +364,8 @@ func hasAdvancedSearchInput(search models.SoldierSearch) bool {
 		strings.TrimSpace(search.Unit) != "" ||
 		strings.TrimSpace(search.PensionState) != "" ||
 		strings.TrimSpace(search.BuriedIn) != "" ||
+		strings.TrimSpace(search.BirthDate) != "" ||
+		strings.TrimSpace(search.DeathDate) != "" ||
 		strings.TrimSpace(search.DeathYear) != "" ||
 		strings.TrimSpace(search.DeathMonth) != "" ||
 		strings.TrimSpace(search.DeathDay) != ""
@@ -373,7 +381,7 @@ func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.EntryForm(defaults, false).Render(r.Context(), w)
+	a.renderEntryForm(w, r, defaults, false, "", http.StatusOK)
 }
 
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
@@ -384,15 +392,13 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		templates.EntryFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
+		a.renderEntryForm(w, r, defaults, false, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	created, err := a.soldiers.Create(s)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		templates.EntryFormWithError(s, false, err.Error()).Render(r.Context(), w)
+		a.renderEntryForm(w, r, s, false, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if err := a.saveUploadedImages(r, *created); err != nil {
@@ -400,8 +406,7 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 		if reloadErr != nil {
 			reloaded = created
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		templates.EntryFormWithError(*reloaded, true, err.Error()).Render(r.Context(), w)
+		a.renderEntryForm(w, r, *reloaded, true, err.Error(), http.StatusBadRequest)
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", created.ID), http.StatusSeeOther)
@@ -473,20 +478,18 @@ func (a *App) handleEditSoldier(w http.ResponseWriter, r *http.Request, id int64
 		http.Error(w, err.Error(), 404)
 		return
 	}
-	templates.EntryForm(*soldier, true).Render(r.Context(), w)
+	a.renderEntryForm(w, r, *soldier, true, "", http.StatusOK)
 }
 
 func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int64) {
 	s, err := parseSoldierForm(r, id)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		templates.EntryFormWithError(models.Soldier{ID: id}, true, err.Error()).Render(r.Context(), w)
+		a.renderEntryForm(w, r, models.Soldier{ID: id}, true, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err := a.soldiers.Update(s); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		templates.EntryFormWithError(s, true, err.Error()).Render(r.Context(), w)
+		a.renderEntryForm(w, r, s, true, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if err := a.saveUploadedImages(r, s); err != nil {
@@ -494,8 +497,7 @@ func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int
 		if reloadErr != nil {
 			reloaded = &s
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		templates.EntryFormWithError(*reloaded, true, err.Error()).Render(r.Context(), w)
+		a.renderEntryForm(w, r, *reloaded, true, err.Error(), http.StatusBadRequest)
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", id), http.StatusSeeOther)
@@ -1215,39 +1217,41 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		}
 	}
 
-	deathYear, err := parseOptionalInt(r.FormValue("death_year"), "death_year")
+	birthDate, err := parseOptionalCanonicalDate(r.FormValue("birth_date"), "birth_date")
 	if err != nil {
 		return models.Soldier{}, err
 	}
-	deathMonth, err := parseOptionalBoundedInt(r.FormValue("death_month"), "death_month", 0, 12)
+	deathDate, err := parseOptionalCanonicalDate(r.FormValue("death_date"), "death_date")
 	if err != nil {
 		return models.Soldier{}, err
 	}
-	deathDay, err := parseOptionalBoundedInt(r.FormValue("death_day"), "death_day", 0, 31)
+	spouseSoldierID, err := parseOptionalInt64(r.FormValue("spouse_soldier_id"), "spouse_soldier_id")
 	if err != nil {
 		return models.Soldier{}, err
 	}
 
 	return models.Soldier{
-		ID:            id,
-		DisplayID:     r.FormValue("display_id"),
-		PensionID:     r.FormValue("pension_id"),
-		ApplicationID: r.FormValue("application_id"),
-		FirstName:     r.FormValue("first_name"),
-		MiddleName:    r.FormValue("middle_name"),
-		LastName:      r.FormValue("last_name"),
-		Rank:          r.FormValue("rank_out"),
-		RankIn:        r.FormValue("rank_in"),
-		RankOut:       r.FormValue("rank_out"),
-		Unit:          r.FormValue("unit"),
-		PensionState:  r.FormValue("pension_state"),
-		BirthInfo:     r.FormValue("birth_info"),
-		BuriedIn:      r.FormValue("buried_in"),
-		Notes:         r.FormValue("notes"),
-		DeathYear:     deathYear,
-		DeathMonth:    deathMonth,
-		DeathDay:      deathDay,
-		Records:       parseRecordInputs(r),
+		ID:              id,
+		DisplayID:       r.FormValue("display_id"),
+		EntryType:       r.FormValue("entry_type"),
+		SpouseSoldierID: spouseSoldierID,
+		MaidenName:      r.FormValue("maiden_name"),
+		PensionID:       r.FormValue("pension_id"),
+		ApplicationID:   r.FormValue("application_id"),
+		FirstName:       r.FormValue("first_name"),
+		MiddleName:      r.FormValue("middle_name"),
+		LastName:        r.FormValue("last_name"),
+		Rank:            r.FormValue("rank_out"),
+		RankIn:          r.FormValue("rank_in"),
+		RankOut:         r.FormValue("rank_out"),
+		Unit:            r.FormValue("unit"),
+		PensionState:    r.FormValue("pension_state"),
+		BirthDate:       birthDate,
+		DeathDate:       deathDate,
+		BirthInfo:       r.FormValue("birth_info"),
+		BuriedIn:        r.FormValue("buried_in"),
+		Notes:           r.FormValue("notes"),
+		Records:         parseRecordInputs(r),
 	}, nil
 }
 
@@ -1271,12 +1275,51 @@ func parseOptionalInt(value, field string) (int, error) {
 	return parsed, nil
 }
 
+func parseOptionalInt64(value, field string) (int64, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, nil
+	}
+	parsed, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s", field)
+	}
+	return parsed, nil
+}
+
 func parseOptionalBoundedInt(value, field string, min, max int) (int, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return 0, nil
 	}
 	return parseBoundedInt(trimmed, field, min, max)
+}
+
+func (a *App) renderEntryForm(w http.ResponseWriter, r *http.Request, soldier models.Soldier, isEdit bool, errorMessage string, statusCode int) {
+	candidates, err := a.soldiers.MarriageCandidates()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(statusCode)
+	if errorMessage != "" {
+		templates.EntryFormWithError(soldier, candidates, isEdit, errorMessage).Render(r.Context(), w)
+		return
+	}
+	templates.EntryForm(soldier, candidates, isEdit).Render(r.Context(), w)
+}
+
+func parseOptionalCanonicalDate(value, field string) (string, error) {
+	normalized, err := dates.NormalizeCanonical(value)
+	if err != nil {
+		return "", fmt.Errorf("invalid %s", field)
+	}
+	return normalized, nil
+}
+
+func parseLegacySearchComponent(value string) int {
+	parsed, _ := strconv.Atoi(strings.TrimSpace(value))
+	return parsed
 }
 
 func parseBoundedInt(value, field string, min, max int) (int, error) {

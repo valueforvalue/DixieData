@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
@@ -15,14 +16,15 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 		<div class="flex justify-between items-start">
 			<div>
 				<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ s.DisplayID }</span>
-				<p class="mt-1 font-semibold text-slate-900">{ detailDisplayRank(s) } { soldierFullName(s) }</p>
-				<p class="text-sm text-slate-500">{ s.Unit }</p>
-				if s.DeathYear > 0 {
+				<p class="mt-1 font-semibold text-slate-900">{ detailHeading(s) }</p>
+				<p class="text-sm text-slate-500">{ detailSubheading(s) }</p>
+				if strings.TrimSpace(s.DeathDate) != "" {
 					<p class="text-xs text-slate-400 mt-1">d. { deathDate(s) }</p>
 				}
 				if highlighted {
 					<div class="mt-3 flex flex-wrap gap-2 text-xs">
-						if s.DeathYear > 0 {
+						<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-[rgba(36,48,61,0.08)] px-2.5 py-1 text-[#22303d]">{ entryBadgeLabel(s) }</span>
+						if strings.TrimSpace(s.DeathDate) != "" {
 							<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-[rgba(197,171,104,0.18)] px-2.5 py-1 text-[#22303d]">Death: { deathDate(s) }</span>
 						}
 						if strings.TrimSpace(s.BuriedIn) != "" {
@@ -56,13 +58,7 @@ func hasActiveSearch(search models.SoldierSearch) bool {
 }
 
 func deathDate(s models.Soldier) string {
-	if s.DeathMonth == 0 {
-		return fmt.Sprintf("%d", s.DeathYear)
-	}
-	if s.DeathDay > 0 {
-		return fmt.Sprintf("%s %d, %d", monthName(s.DeathMonth), s.DeathDay, s.DeathYear)
-	}
-	return fmt.Sprintf("%s %d", monthName(s.DeathMonth), s.DeathYear)
+	return dates.Display(s.DeathDate)
 }
 
 func emptyDetail(value string) string {
@@ -149,22 +145,18 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 						<input type="text" name="buried_in" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Year</label>
-						<input type="number" name="death_year" class="field-input"/>
+						<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
+						<input type="text" name="birth_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Month</label>
-						<input type="number" name="death_month" min="0" max="12" class="field-input"/>
-					</div>
-					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Day</label>
-						<input type="number" name="death_day" min="0" max="31" class="field-input"/>
+						<label class="block text-sm text-slate-500 mb-1">Death Date</label>
+						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 					</div>
 					<div class="col-span-2 flex gap-2 items-center">
 						<button type="submit" class="primary-button">Run Advanced Search</button>
 						<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
 					</div>
-					<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>contains</strong> matching for text fields. Death year, month, and day are <strong>exact</strong> matches, and all filled filters must match the same soldier.</p>
+					<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>contains</strong> matching for text fields. Birth and death dates are <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
 				</form>
 			</div>
 			<div id="soldier-list" data-ui-id={ uiids.PanelSoldiersResults } class="relative">
@@ -182,20 +174,31 @@ templ SoldierDetail(s models.Soldier) {
 			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-8">
 				@SurfaceBadge(uiids.PanelSoldierDetailSummary)
 				<div class="flex justify-between mb-4">
-					<h2 class="text-2xl font-bold">{ detailDisplayRank(s) } { soldierFullName(s) }</h2>
+					<h2 class="text-2xl font-bold">{ detailHeading(s) }</h2>
 					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
 				</div>
 				<dl class="grid grid-cols-2 gap-2 text-sm">
+					<dt class="text-slate-500">Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Record ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
 					<dt class="text-slate-500">Middle Name</dt><dd>{ emptyDetail(s.MiddleName) }</dd>
-					<dt class="text-slate-500">Rank In</dt><dd>{ emptyDetail(s.RankIn) }</dd>
-					<dt class="text-slate-500">Rank Out</dt><dd>{ emptyDetail(detailDisplayRank(s)) }</dd>
-					<dt class="text-slate-500">Unit</dt><dd>{ s.Unit }</dd>
-					<dt class="text-slate-500">Pension State</dt><dd>{ emptyDetail(s.PensionState) }</dd>
-					<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
-					<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
+					if isSoldierEntry(s) {
+						<dt class="text-slate-500">Rank In</dt><dd>{ emptyDetail(s.RankIn) }</dd>
+						<dt class="text-slate-500">Rank Out</dt><dd>{ emptyDetail(detailDisplayRank(s)) }</dd>
+						<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(s.Unit) }</dd>
+						<dt class="text-slate-500">Pension State</dt><dd>{ emptyDetail(s.PensionState) }</dd>
+						<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
+						<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
+					} else {
+						<dt class="text-slate-500">Married To</dt><dd>{ emptyDetail(s.SpouseName) }</dd>
+						<dt class="text-slate-500">Maiden Name</dt><dd>{ emptyDetail(s.MaidenName) }</dd>
+						if isWidowEntry(s) {
+							<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
+							<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
+						}
+					}
+					<dt class="text-slate-500">Birth Date</dt><dd>{ emptyDetail(dates.Display(s.BirthDate)) }</dd>
 					<dt class="text-slate-500">Death</dt><dd>{ deathDate(s) }</dd>
-					<dt class="text-slate-500">Birth Info</dt><dd>{ s.BirthInfo }</dd>
+					<dt class="text-slate-500">Birth Info</dt><dd>{ emptyDetail(s.BirthInfo) }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
 				</dl>
 				if s.Notes != "" {
@@ -314,6 +317,12 @@ func searchParams(search models.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.BuriedIn) != "" {
 			values.Set("buried_in", search.BuriedIn)
 		}
+		if strings.TrimSpace(search.BirthDate) != "" {
+			values.Set("birth_date", search.BirthDate)
+		}
+		if strings.TrimSpace(search.DeathDate) != "" {
+			values.Set("death_date", search.DeathDate)
+		}
 		if strings.TrimSpace(search.DeathYear) != "" {
 			values.Set("death_year", search.DeathYear)
 		}
@@ -370,6 +379,12 @@ func searchSummary(search models.SoldierSearch) string {
 	if search.BuriedIn != "" {
 		parts = append(parts, "Buried in "+search.BuriedIn)
 	}
+	if search.BirthDate != "" {
+		parts = append(parts, "Birth date "+search.BirthDate)
+	}
+	if search.DeathDate != "" {
+		parts = append(parts, "Death date "+search.DeathDate)
+	}
 	if search.DeathYear != "" {
 		parts = append(parts, "Death year "+search.DeathYear)
 	}
@@ -393,6 +408,53 @@ func soldierFullName(s models.Soldier) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+func isSoldierEntry(s models.Soldier) bool {
+	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == "soldier"
+}
+
+func isWidowEntry(s models.Soldier) bool {
+	return s.EntryType == "widow"
+}
+
+func entryBadgeLabel(s models.Soldier) string {
+	switch s.EntryType {
+	case "wife":
+		return "Wife"
+	case "widow":
+		return "Widow"
+	default:
+		return "Soldier"
+	}
+}
+
+func detailHeading(s models.Soldier) string {
+	name := strings.TrimSpace(soldierFullName(s))
+	if isSoldierEntry(s) {
+		rank := strings.TrimSpace(detailDisplayRank(s))
+		if rank == "" {
+			return name
+		}
+		if name == "" {
+			return rank
+		}
+		return rank + " " + name
+	}
+	if name != "" {
+		return name
+	}
+	return entryBadgeLabel(s)
+}
+
+func detailSubheading(s models.Soldier) string {
+	if isSoldierEntry(s) {
+		return strings.TrimSpace(s.Unit)
+	}
+	if strings.TrimSpace(s.SpouseName) != "" {
+		return "Married to " + strings.TrimSpace(s.SpouseName)
+	}
+	return strings.TrimSpace(s.MaidenName)
 }
 
 func detailDisplayRank(s models.Soldier) string {

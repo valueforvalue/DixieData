@@ -394,9 +394,15 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 			result.Skipped++
 			continue
 		}
-		active[soldier.DisplayID] = struct{}{}
+		syncKey := googleCalendarSyncKey(soldier)
+		active[syncKey] = struct{}{}
 		event := googleCalendarEvent(soldier)
-		if existingID := syncState.EventIDs[soldier.DisplayID]; existingID != "" {
+		existingKey, existingID := googleCalendarEventID(syncState.EventIDs, soldier)
+		if existingID != "" {
+			if existingKey != syncKey {
+				delete(syncState.EventIDs, existingKey)
+				syncState.EventIDs[syncKey] = existingID
+			}
 			_, err := calSvc.Events.Update(calendarID, existingID, event).Do()
 			if err == nil {
 				result.Updated++
@@ -411,7 +417,7 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 		if err != nil {
 			return GoogleCalendarSyncResult{}, err
 		}
-		syncState.EventIDs[soldier.DisplayID] = created.Id
+		syncState.EventIDs[syncKey] = created.Id
 		result.Created++
 	}
 
@@ -760,6 +766,38 @@ func (g *GoogleService) saveCalendarSyncState(state GoogleCalendarSyncState) err
 	return writeJSONFile(filepath.Join(g.dataDir, googleCalendarSyncFile), state)
 }
 
+func googleCalendarSyncKey(soldier models.Soldier) string {
+	if strings.TrimSpace(soldier.SyncID) != "" {
+		return strings.TrimSpace(soldier.SyncID)
+	}
+	return strings.TrimSpace(soldier.DisplayID)
+}
+
+func googleCalendarEventID(eventIDs map[string]string, soldier models.Soldier) (string, string) {
+	seen := map[string]struct{}{}
+	for _, key := range []string{googleCalendarSyncKey(soldier), strings.TrimSpace(soldier.DisplayID), legacyDisplayID(strings.TrimSpace(soldier.DisplayID))} {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		if eventID := eventIDs[key]; strings.TrimSpace(eventID) != "" {
+			return key, eventID
+		}
+	}
+	return "", ""
+}
+
+func legacyDisplayID(displayID string) string {
+	index := strings.Index(displayID, "-")
+	if index <= 0 || index >= len(displayID)-1 {
+		return ""
+	}
+	return displayID[index+1:]
+}
+
 func googleCalendarEvent(soldier models.Soldier) *gcal.Event {
 	start := nextGoogleAnniversaryDate(soldier, time.Now()).In(time.Local)
 	start = time.Date(start.Year(), start.Month(), start.Day(), 9, 0, 0, 0, time.Local)
@@ -782,6 +820,7 @@ func googleCalendarEvent(soldier models.Soldier) *gcal.Event {
 		ExtendedProperties: &gcal.EventExtendedProperties{
 			Private: map[string]string{
 				"dixiedata_display_id": soldier.DisplayID,
+				"dixiedata_sync_id":    soldier.SyncID,
 				"dixiedata":            "true",
 			},
 		},

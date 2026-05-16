@@ -19,10 +19,10 @@ func (a *AnniversaryService) GetByMonthDay(month, day int) ([]models.Soldier, er
 	var query string
 	var args []interface{}
 	if day == 0 {
-		query = `SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers WHERE death_month = ? AND death_day = 0`
+		query = `SELECT ` + soldierSelectColumns + ` FROM soldiers WHERE death_month = ? AND death_day = 0`
 		args = []interface{}{month}
 	} else {
-		query = `SELECT id, display_id, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, death_year, death_month, death_day, birth_info, buried_in, notes, created_at FROM soldiers WHERE death_month = ? AND death_day = ?`
+		query = `SELECT ` + soldierSelectColumns + ` FROM soldiers WHERE death_month = ? AND death_day = ?`
 		args = []interface{}{month, day}
 	}
 

@@ -96,21 +96,23 @@ func TestAppServeHTTPMethodOverrideFromFormValue(t *testing.T) {
 	}
 }
 
-func TestParseSoldierFormRejectsInvalidMonth(t *testing.T) {
+func TestParseSoldierFormRejectsInvalidDeathDate(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(url.Values{
-		"death_month": {"13"},
+		"death_date": {"13/99/1886"},
 	}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	_, err := parseSoldierForm(req, 0)
-	if err == nil || !strings.Contains(err.Error(), "death_month") {
-		t.Fatalf("expected death_month validation error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "death_date") {
+		t.Fatalf("expected death_date validation error, got %v", err)
 	}
 }
 
 func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(url.Values{
 		"display_id":     {"DXD-00001"},
+		"birth_date":     {"11/00/1836"},
+		"death_date":     {"05/12/1909"},
 		"middle_name":    {"Thomas"},
 		"rank_in":        {"Private"},
 		"rank_out":       {"Captain"},
@@ -131,7 +133,7 @@ func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	if soldier.BuriedIn != "Hollywood Cemetery" {
 		t.Fatalf("BuriedIn = %q", soldier.BuriedIn)
 	}
-	if soldier.DisplayID != "DXD-00001" || soldier.MiddleName != "Thomas" || soldier.RankIn != "Private" || soldier.RankOut != "Captain" || soldier.PensionState != "Virginia" || soldier.PensionID != "P12345" || soldier.ApplicationID != "A12345" {
+	if soldier.DisplayID != "DXD-00001" || soldier.MiddleName != "Thomas" || soldier.RankIn != "Private" || soldier.RankOut != "Captain" || soldier.PensionState != "Virginia" || soldier.PensionID != "P12345" || soldier.ApplicationID != "A12345" || soldier.BirthDate != "11/00/1836" || soldier.DeathDate != "05/12/1909" {
 		t.Fatalf("unexpected parsed fields: %#v", soldier)
 	}
 	if len(soldier.Records) != 2 {
@@ -139,6 +141,28 @@ func TestParseSoldierFormIncludesBurialAndRecords(t *testing.T) {
 	}
 	if soldier.Records[1].RecordType != "Burial Ledger" {
 		t.Fatalf("second record type = %q", soldier.Records[1].RecordType)
+	}
+}
+
+func TestParseSoldierFormIncludesSpouseFields(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(url.Values{
+		"display_id":        {"DXD-00001"},
+		"entry_type":        {"widow"},
+		"spouse_soldier_id": {"4"},
+		"maiden_name":       {"Taylor"},
+		"pension_id":        {"WP-42"},
+		"application_id":    {"WA-42"},
+		"first_name":        {"Mary"},
+		"last_name":         {"Jones"},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	soldier, err := parseSoldierForm(req, 12)
+	if err != nil {
+		t.Fatalf("parseSoldierForm: %v", err)
+	}
+	if soldier.ID != 12 || soldier.EntryType != "widow" || soldier.SpouseSoldierID != 4 || soldier.MaidenName != "Taylor" || soldier.PensionID != "WP-42" || soldier.ApplicationID != "WA-42" {
+		t.Fatalf("unexpected spouse fields: %#v", soldier)
 	}
 }
 
@@ -472,10 +496,10 @@ func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
 	for _, image := range soldier.Images {
 		gotNames[image.FileName] = true
 	}
-	if !gotNames["CSA-TEST-img-001.jpg"] && !gotNames["CSA-TEST-img-001.png"] {
+	if !gotNames["TDM65-CSA-TEST-img-001.jpg"] && !gotNames["TDM65-CSA-TEST-img-001.png"] {
 		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
 	}
-	if !gotNames["CSA-TEST-img-002.jpg"] && !gotNames["CSA-TEST-img-002.png"] {
+	if !gotNames["TDM65-CSA-TEST-img-002.jpg"] && !gotNames["TDM65-CSA-TEST-img-002.png"] {
 		t.Fatalf("unexpected stored image names: %#v", soldier.Images)
 	}
 }
@@ -521,7 +545,7 @@ func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
 	if len(soldier.Images) != 1 {
 		t.Fatalf("images len = %d, want 1", len(soldier.Images))
 	}
-	if soldier.Images[0].FileName != "CSA-HEADER-img-001.jpeg" {
+	if soldier.Images[0].FileName != "TDM65-CSA-HEADER-img-001.jpeg" {
 		t.Fatalf("stored image name = %q", soldier.Images[0].FileName)
 	}
 }
@@ -571,7 +595,7 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	if len(soldier.Images) != 2 {
 		t.Fatalf("images len = %d, want 2", len(soldier.Images))
 	}
-	if soldier.Images[0].FileName != "CSA-NATIVE-img-001.jpeg" || soldier.Images[1].FileName != "CSA-NATIVE-img-002.png" {
+	if soldier.Images[0].FileName != "TDM65-CSA-NATIVE-img-001.jpeg" || soldier.Images[1].FileName != "TDM65-CSA-NATIVE-img-002.png" {
 		t.Fatalf("unexpected imported image names: %#v", soldier.Images)
 	}
 	for _, image := range soldier.Images {
