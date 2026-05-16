@@ -316,33 +316,54 @@ func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.
 	return s.searchWithLike(query, pageSize, offset)
 }
 
+func quickSearchLikeClause() string {
+	return `display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR confederate_home_status LIKE ? OR confederate_home_name LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ? OR EXISTS (
+		SELECT 1 FROM records
+		WHERE records.soldier_id = soldiers.id
+			AND (record_type LIKE ? OR app_id LIKE ? OR details LIKE ?)
+	)`
+}
+
+func quickSearchLikeArgs(query string) []interface{} {
+	like := "%" + query + "%"
+	return []interface{}{
+		like, like, like,
+		like, like, like,
+		like, like, like, like,
+		like, like, like,
+		like, like,
+		like, like, like,
+	}
+}
+
 func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]models.Soldier, int, error) {
 	conn := s.db.Conn()
-	like := "%" + query + "%"
+	likeArgs := quickSearchLikeArgs(query)
 
 	var total int
 	err := conn.QueryRow(`
 		SELECT COUNT(*) FROM (
-			SELECT id FROM soldiers WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR pension_state LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ?
+			SELECT id FROM soldiers WHERE `+quickSearchLikeClause()+`
 			UNION
 			SELECT rowid AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
 		) matches
-	`, like, like, like, like, like, like, query).Scan(&total)
+	`, append(likeArgs, query)...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
+	rowArgs := append(append([]interface{}{}, likeArgs...), query, pageSize, offset)
 	rows, err := conn.Query(`
 		SELECT `+soldierSelectColumns+`
 		FROM soldiers
 		WHERE id IN (
-			SELECT id FROM soldiers WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR pension_state LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ?
+			SELECT id FROM soldiers WHERE `+quickSearchLikeClause()+`
 			UNION
 			SELECT rowid AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
 		)
 		ORDER BY last_name, first_name
 		LIMIT ? OFFSET ?
-	`, like, like, like, like, like, like, query, pageSize, offset)
+	`, rowArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -354,15 +375,13 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 
 func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]models.Soldier, int, error) {
 	conn := s.db.Conn()
-	like := "%" + query + "%"
-	args := []interface{}{like, like, like, like, like, like, like, like, like, like, like, like}
-	args = append(args, like)
+	args := quickSearchLikeArgs(query)
 
 	var total int
 	err := conn.QueryRow(`
 		SELECT COUNT(*)
 		FROM soldiers
-		WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ?
+		WHERE `+quickSearchLikeClause()+`
 	`, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -371,7 +390,7 @@ func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]m
 	rows, err := conn.Query(`
 		SELECT `+soldierSelectColumns+`
 		FROM soldiers
-		WHERE display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ?
+		WHERE `+quickSearchLikeClause()+`
 		ORDER BY last_name, first_name
 		LIMIT ? OFFSET ?
 	`, append(args, pageSize, offset)...)
@@ -396,50 +415,124 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	search.FirstName = strings.TrimSpace(search.FirstName)
 	search.MiddleName = strings.TrimSpace(search.MiddleName)
 	search.LastName = strings.TrimSpace(search.LastName)
+	search.MaidenName = strings.TrimSpace(search.MaidenName)
 	search.Rank = strings.TrimSpace(search.Rank)
+	search.RankIn = strings.TrimSpace(search.RankIn)
+	search.RankOut = strings.TrimSpace(search.RankOut)
 	search.Unit = strings.TrimSpace(search.Unit)
+	search.RecordType = strings.TrimSpace(search.RecordType)
 	search.PensionState = strings.TrimSpace(search.PensionState)
+	search.ConfederateHomeStatus = strings.TrimSpace(search.ConfederateHomeStatus)
+	search.ConfederateHomeName = strings.TrimSpace(search.ConfederateHomeName)
 	search.BuriedIn = strings.TrimSpace(search.BuriedIn)
 	search.BirthDate = strings.TrimSpace(search.BirthDate)
+	search.BirthYear = strings.TrimSpace(search.BirthYear)
+	search.BirthYearTo = strings.TrimSpace(search.BirthYearTo)
 	search.DeathDate = strings.TrimSpace(search.DeathDate)
 	search.DeathYear = strings.TrimSpace(search.DeathYear)
+	search.DeathYearTo = strings.TrimSpace(search.DeathYearTo)
 	search.DeathMonth = strings.TrimSpace(search.DeathMonth)
 	search.DeathDay = strings.TrimSpace(search.DeathDay)
 
 	whereParts := []string{}
 	args := []interface{}{}
+	appendContainsFilter := func(column, value string) {
+		whereParts = append(whereParts, column+" LIKE ?")
+		args = append(args, "%"+value+"%")
+	}
+	appendYearFilter := func(expression, startValue, endValue, field string) error {
+		if startValue == "" && endValue == "" {
+			return nil
+		}
+		if startValue != "" && endValue == "" {
+			parsed, err := strconv.Atoi(startValue)
+			if err != nil {
+				return fmt.Errorf("invalid %s", field)
+			}
+			whereParts = append(whereParts, expression+" = ?")
+			args = append(args, parsed)
+			return nil
+		}
+
+		var (
+			start int
+			end   int
+			err   error
+		)
+		if startValue != "" {
+			start, err = strconv.Atoi(startValue)
+			if err != nil {
+				return fmt.Errorf("invalid %s", field)
+			}
+		}
+		if endValue != "" {
+			end, err = strconv.Atoi(endValue)
+			if err != nil {
+				return fmt.Errorf("invalid %s_to", field)
+			}
+		}
+		switch {
+		case startValue == "":
+			whereParts = append(whereParts, expression+" <= ?")
+			args = append(args, end)
+		case endValue == "":
+			whereParts = append(whereParts, expression+" >= ?")
+			args = append(args, start)
+		default:
+			if end < start {
+				start, end = end, start
+			}
+			whereParts = append(whereParts, expression+" BETWEEN ? AND ?")
+			args = append(args, start, end)
+		}
+		return nil
+	}
 
 	if search.DisplayID != "" {
-		whereParts = append(whereParts, "display_id LIKE ?")
-		args = append(args, "%"+search.DisplayID+"%")
+		appendContainsFilter("display_id", search.DisplayID)
 	}
 	if search.FirstName != "" {
-		whereParts = append(whereParts, "first_name LIKE ?")
-		args = append(args, "%"+search.FirstName+"%")
+		appendContainsFilter("first_name", search.FirstName)
 	}
 	if search.MiddleName != "" {
-		whereParts = append(whereParts, "middle_name LIKE ?")
-		args = append(args, "%"+search.MiddleName+"%")
+		appendContainsFilter("middle_name", search.MiddleName)
 	}
 	if search.LastName != "" {
-		whereParts = append(whereParts, "last_name LIKE ?")
-		args = append(args, "%"+search.LastName+"%")
+		appendContainsFilter("last_name", search.LastName)
+	}
+	if search.MaidenName != "" {
+		appendContainsFilter("maiden_name", search.MaidenName)
 	}
 	if search.Rank != "" {
 		whereParts = append(whereParts, "(rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ?)")
 		args = append(args, "%"+search.Rank+"%", "%"+search.Rank+"%", "%"+search.Rank+"%")
 	}
+	if search.RankIn != "" {
+		appendContainsFilter("rank_in", search.RankIn)
+	}
+	if search.RankOut != "" {
+		appendContainsFilter("rank_out", search.RankOut)
+	}
 	if search.Unit != "" {
-		whereParts = append(whereParts, "unit LIKE ?")
-		args = append(args, "%"+search.Unit+"%")
+		appendContainsFilter("unit", search.Unit)
+	}
+	if search.RecordType != "" {
+		whereParts = append(whereParts, "EXISTS (SELECT 1 FROM records WHERE records.soldier_id = soldiers.id AND records.record_type LIKE ?)")
+		args = append(args, "%"+search.RecordType+"%")
 	}
 	if search.PensionState != "" {
 		whereParts = append(whereParts, "pension_state = ?")
 		args = append(args, search.PensionState)
 	}
+	if search.ConfederateHomeStatus != "" {
+		whereParts = append(whereParts, "confederate_home_status = ?")
+		args = append(args, search.ConfederateHomeStatus)
+	}
+	if search.ConfederateHomeName != "" {
+		appendContainsFilter("confederate_home_name", search.ConfederateHomeName)
+	}
 	if search.BuriedIn != "" {
-		whereParts = append(whereParts, "buried_in LIKE ?")
-		args = append(args, "%"+search.BuriedIn+"%")
+		appendContainsFilter("buried_in", search.BuriedIn)
 	}
 	if search.BirthDate != "" {
 		normalized, err := dates.NormalizeCanonical(search.BirthDate)
@@ -449,6 +542,9 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 		whereParts = append(whereParts, "birth_date = ?")
 		args = append(args, normalized)
 	}
+	if err := appendYearFilter(`NULLIF(CAST(substr(trim(coalesce(birth_date, '')), -4) AS INTEGER), 0)`, search.BirthYear, search.BirthYearTo, "birth_year"); err != nil {
+		return nil, 0, err
+	}
 	if search.DeathDate != "" {
 		normalized, err := dates.NormalizeCanonical(search.DeathDate)
 		if err != nil {
@@ -457,13 +553,15 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 		whereParts = append(whereParts, "death_date = ?")
 		args = append(args, normalized)
 	}
+	if err := appendYearFilter("NULLIF(death_year, 0)", search.DeathYear, search.DeathYearTo, "death_year"); err != nil {
+		return nil, 0, err
+	}
 
 	exactFilters := []struct {
 		value  string
 		field  string
 		column string
 	}{
-		{search.DeathYear, "death_year", "death_year"},
 		{search.DeathMonth, "death_month", "death_month"},
 		{search.DeathDay, "death_day", "death_day"},
 	}

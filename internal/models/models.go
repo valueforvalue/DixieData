@@ -38,22 +38,31 @@ type Soldier struct {
 }
 
 type SoldierSearch struct {
-	Mode         string
-	Query        string
-	Browse       bool
-	DisplayID    string
-	FirstName    string
-	MiddleName   string
-	LastName     string
-	Rank         string
-	Unit         string
-	PensionState string
-	BuriedIn     string
-	BirthDate    string
-	DeathDate    string
-	DeathYear    string
-	DeathMonth   string
-	DeathDay     string
+	Mode                  string
+	Query                 string
+	Browse                bool
+	DisplayID             string
+	FirstName             string
+	MiddleName            string
+	LastName              string
+	MaidenName            string
+	Rank                  string
+	RankIn                string
+	RankOut               string
+	Unit                  string
+	RecordType            string
+	PensionState          string
+	ConfederateHomeStatus string
+	ConfederateHomeName   string
+	BuriedIn              string
+	BirthDate             string
+	BirthYear             string
+	BirthYearTo           string
+	DeathDate             string
+	DeathYear             string
+	DeathYearTo           string
+	DeathMonth            string
+	DeathDay              string
 }
 
 type SoldierFormSuggestions struct {

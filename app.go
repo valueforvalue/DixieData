@@ -116,12 +116,14 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
 	mux.HandleFunc("/setup", a.handleInitialSetup)
 	mux.HandleFunc("/version", a.handleVersion)
-	mux.HandleFunc("/export", a.handleExport)
+	mux.HandleFunc("/share", a.handleShare)
+	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
 	mux.HandleFunc("/export/ical", a.handleExportICalendar)
+	mux.HandleFunc("/export/static-archive", a.handleExportStaticArchive)
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
 	mux.HandleFunc("/export/shared-archive", a.handleExportSharedArchive)
 	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
@@ -355,7 +357,12 @@ func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
 	if p, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && p > 0 {
 		page = p
 	}
-	templates.SoldierList(nil, page, 0, "").Render(r.Context(), w)
+	suggestions, err := a.soldiers.FormSuggestions()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.SoldierList(nil, page, 0, "", suggestions).Render(r.Context(), w)
 }
 
 func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -398,20 +405,29 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	search := models.SoldierSearch{
-		Mode:         "advanced",
-		DisplayID:    r.URL.Query().Get("display_id"),
-		FirstName:    r.URL.Query().Get("first_name"),
-		MiddleName:   r.URL.Query().Get("middle_name"),
-		LastName:     r.URL.Query().Get("last_name"),
-		Rank:         r.URL.Query().Get("rank"),
-		Unit:         r.URL.Query().Get("unit"),
-		PensionState: r.URL.Query().Get("pension_state"),
-		BuriedIn:     r.URL.Query().Get("buried_in"),
-		BirthDate:    r.URL.Query().Get("birth_date"),
-		DeathDate:    r.URL.Query().Get("death_date"),
-		DeathYear:    r.URL.Query().Get("death_year"),
-		DeathMonth:   r.URL.Query().Get("death_month"),
-		DeathDay:     r.URL.Query().Get("death_day"),
+		Mode:                  "advanced",
+		DisplayID:             r.URL.Query().Get("display_id"),
+		FirstName:             r.URL.Query().Get("first_name"),
+		MiddleName:            r.URL.Query().Get("middle_name"),
+		LastName:              r.URL.Query().Get("last_name"),
+		MaidenName:            r.URL.Query().Get("maiden_name"),
+		Rank:                  r.URL.Query().Get("rank"),
+		RankIn:                r.URL.Query().Get("rank_in"),
+		RankOut:               r.URL.Query().Get("rank_out"),
+		Unit:                  r.URL.Query().Get("unit"),
+		RecordType:            r.URL.Query().Get("record_type"),
+		PensionState:          r.URL.Query().Get("pension_state"),
+		ConfederateHomeStatus: r.URL.Query().Get("confederate_home_status"),
+		ConfederateHomeName:   r.URL.Query().Get("confederate_home_name"),
+		BuriedIn:              r.URL.Query().Get("buried_in"),
+		BirthDate:             r.URL.Query().Get("birth_date"),
+		BirthYear:             r.URL.Query().Get("birth_year"),
+		BirthYearTo:           r.URL.Query().Get("birth_year_to"),
+		DeathDate:             r.URL.Query().Get("death_date"),
+		DeathYear:             r.URL.Query().Get("death_year"),
+		DeathYearTo:           r.URL.Query().Get("death_year_to"),
+		DeathMonth:            r.URL.Query().Get("death_month"),
+		DeathDay:              r.URL.Query().Get("death_day"),
 	}
 	page := parsePage(r.URL.Query().Get("page"))
 	if !hasAdvancedSearchInput(search) {
@@ -433,13 +449,22 @@ func hasAdvancedSearchInput(search models.SoldierSearch) bool {
 		strings.TrimSpace(search.FirstName) != "" ||
 		strings.TrimSpace(search.MiddleName) != "" ||
 		strings.TrimSpace(search.LastName) != "" ||
+		strings.TrimSpace(search.MaidenName) != "" ||
 		strings.TrimSpace(search.Rank) != "" ||
+		strings.TrimSpace(search.RankIn) != "" ||
+		strings.TrimSpace(search.RankOut) != "" ||
 		strings.TrimSpace(search.Unit) != "" ||
+		strings.TrimSpace(search.RecordType) != "" ||
 		strings.TrimSpace(search.PensionState) != "" ||
+		strings.TrimSpace(search.ConfederateHomeStatus) != "" ||
+		strings.TrimSpace(search.ConfederateHomeName) != "" ||
 		strings.TrimSpace(search.BuriedIn) != "" ||
 		strings.TrimSpace(search.BirthDate) != "" ||
+		strings.TrimSpace(search.BirthYear) != "" ||
+		strings.TrimSpace(search.BirthYearTo) != "" ||
 		strings.TrimSpace(search.DeathDate) != "" ||
 		strings.TrimSpace(search.DeathYear) != "" ||
+		strings.TrimSpace(search.DeathYearTo) != "" ||
 		strings.TrimSpace(search.DeathMonth) != "" ||
 		strings.TrimSpace(search.DeathDay) != ""
 }
@@ -607,7 +632,11 @@ func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", id), http.StatusSeeOther)
 }
 
-func (a *App) handleExport(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleLegacyExportRedirect(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/share", http.StatusSeeOther)
+}
+
+func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -622,7 +651,7 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.ExportView(status, conflicts).Render(r.Context(), w)
+	templates.ShareView(status, conflicts).Render(r.Context(), w)
 }
 
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -717,6 +746,33 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, exportLinkMarkup("iCalendar ready:", path))
+}
+
+func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	defaultName := "DixieData_Archive.zip"
+	if suggested, err := a.export.StaticArchiveFileName(time.Now()); err == nil {
+		defaultName = suggested
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultName,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "ZIP archive", Pattern: "*.zip"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Static web archive export cancelled.")
+		return
+	}
+	if err := a.export.ExportStaticArchive(path, a.dataDir); err != nil {
+		fmt.Fprintf(w, "Static web archive export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("Static web archive ready:", path))
 }
 
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {

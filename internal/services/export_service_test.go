@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -111,6 +112,92 @@ func TestExportService_ExportCSV(t *testing.T) {
 	}
 	if records[1][index["birth_info"]] != "Born circa 1830, New Orleans\npossibly St. Bernard Parish" {
 		t.Fatalf("birth_info corrupted during CSV round trip: %q", records[1][index["birth_info"]])
+	}
+}
+
+func TestExportService_ExportStaticArchive(t *testing.T) {
+	dataDir := t.TempDir()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	soldierSvc := NewSoldierService(database)
+	exportSvc := NewExportService(database, soldierSvc)
+	if _, err := database.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+
+	soldier, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "PENSION-0042",
+		FirstName: "Robert",
+		LastName:  "Lee",
+		Unit:      "Army of Northern Virginia",
+		BuriedIn:  "Hollywood Cemetery",
+		Notes:     "Detailed archive note.",
+		Records: []models.Record{
+			{RecordType: "Pension", AppID: "42", Details: "Filed in 1880."},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	imageRelative := filepath.ToSlash(filepath.Join("images", "PENSION-0042", "portrait.png"))
+	imagePath := filepath.Join(dataDir, filepath.FromSlash(imageRelative))
+	if err := os.MkdirAll(filepath.Dir(imagePath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := soldierSvc.AddImage(soldier.ID, "portrait.png", imageRelative, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "static-archive.zip")
+	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outputPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	entries := map[string]string{}
+	for _, file := range reader.File {
+		rc, err := file.Open()
+		if err != nil {
+			t.Fatalf("open zip entry %s: %v", file.Name, err)
+		}
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			t.Fatalf("read zip entry %s: %v", file.Name, err)
+		}
+		entries[file.Name] = string(data)
+	}
+
+	if _, ok := entries["index.html"]; !ok {
+		t.Fatalf("archive missing index.html: %v", entries)
+	}
+	if _, ok := entries["data.js"]; !ok {
+		t.Fatalf("archive missing data.js: %v", entries)
+	}
+	if _, ok := entries["images/PENSION-0042/portrait.png"]; !ok {
+		t.Fatalf("archive missing copied image: %v", entries)
+	}
+	if !strings.Contains(entries["data.js"], "const archiveData = [") || !strings.Contains(entries["data.js"], "./images/PENSION-0042/portrait.png") {
+		t.Fatalf("data.js missing expected archive payload: %s", entries["data.js"])
+	}
+	if !strings.Contains(entries["index.html"], "S. Carter&#39;s Civil War Research Archive") {
+		t.Fatalf("index.html missing owner title: %s", entries["index.html"])
+	}
+	if !strings.Contains(entries["index.html"], "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
+		t.Fatalf("index.html missing version/build footer")
 	}
 }
 
