@@ -734,6 +734,33 @@ func TestSoldierService_List(t *testing.T) {
 	}
 }
 
+func TestSoldierService_ArchiveCounts(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Taylor"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	for _, spouse := range []models.Soldier{
+		{EntryType: "wife", SpouseSoldierID: soldier.ID, FirstName: "Martha", LastName: "Taylor"},
+		{EntryType: "widow", SpouseSoldierID: soldier.ID, FirstName: "Sarah", LastName: "Hill"},
+	} {
+		if _, err := svc.Create(spouse); err != nil {
+			t.Fatalf("Create spouse: %v", err)
+		}
+	}
+
+	counts, err := svc.ArchiveCounts()
+	if err != nil {
+		t.Fatalf("ArchiveCounts: %v", err)
+	}
+	if counts.TotalSoldiers != 1 || counts.TotalWivesWidows != 2 {
+		t.Fatalf("unexpected archive counts: %#v", counts)
+	}
+}
+
 func TestSoldierService_SearchPage(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)

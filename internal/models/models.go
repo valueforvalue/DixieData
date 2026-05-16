@@ -43,6 +43,15 @@ type Soldier struct {
 	Images                []Image  `json:"images,omitempty"`
 }
 
+type ArchiveCounts struct {
+	TotalSoldiers    int `json:"total_soldiers"`
+	TotalWivesWidows int `json:"total_wives_widows"`
+}
+
+func (c ArchiveCounts) TotalRecords() int {
+	return c.TotalSoldiers + c.TotalWivesWidows
+}
+
 type SoldierSearch struct {
 	Mode                  string
 	Query                 string
