@@ -880,6 +880,49 @@
     });
   }
 
+  function setSectionEnabled(section, enabled) {
+    if (!(section instanceof HTMLElement)) {
+      return;
+    }
+    section.classList.toggle("hidden", !enabled);
+    section.querySelectorAll("input, select, textarea").forEach((field) => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+        field.disabled = !enabled;
+      }
+    });
+  }
+
+  function syncEntryTypeFields(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const select = form.querySelector("[data-entry-type-select]");
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    const specialEntry = select.value === "wife" || select.value === "widow";
+    const widowEntry = select.value === "widow";
+    form.querySelectorAll("[data-entry-type-special]").forEach((section) => {
+      setSectionEnabled(section, specialEntry);
+    });
+    form.querySelectorAll("[data-soldier-only-field]").forEach((section) => {
+      setSectionEnabled(section, isSoldierEntryType(select.value));
+    });
+    form.querySelectorAll("[data-soldier-or-widow-field]").forEach((section) => {
+      setSectionEnabled(section, isSoldierEntryType(select.value) || widowEntry);
+    });
+  }
+
+  function isSoldierEntryType(value) {
+    return value !== "wife" && value !== "widow";
+  }
+
+  function initializeEntryTypeForms() {
+    document.querySelectorAll("form").forEach((form) => {
+      syncEntryTypeFields(form);
+    });
+  }
+
   function renderDocument(html) {
     document.open();
     document.write(html);
@@ -1048,6 +1091,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     initializeTabs();
     initializeDraftForms();
+    initializeEntryTypeForms();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -1192,6 +1236,15 @@
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
       persistDraftForForm(form);
+    }
+  });
+  document.addEventListener("change", (event) => {
+    const entryTypeSelect = event.target.closest("[data-entry-type-select]");
+    if (entryTypeSelect) {
+      const form = entryTypeSelect.closest("form");
+      if (form instanceof HTMLFormElement) {
+        syncEntryTypeFields(form);
+      }
     }
   });
   document.addEventListener("change", (event) => {

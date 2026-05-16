@@ -159,6 +159,79 @@ func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 	}
 }
 
+func TestBackupService_ImportAllowsExtraImageFilesInSQLiteBackup(t *testing.T) {
+	sourceDB := newTestDB(t)
+	sourceSvc := NewSoldierService(sourceDB)
+	backupSvc := NewBackupService(sourceDB, sourceSvc)
+
+	sourceDataDir := t.TempDir()
+	created, err := sourceSvc.Create(models.Soldier{
+		DisplayID: "PENSION-EXTRA",
+		FirstName: "Extra",
+		LastName:  "Image",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	liveImagePath := filepath.Join(sourceDataDir, "images", "pension-extra", "portrait.png")
+	if err := os.MkdirAll(filepath.Dir(liveImagePath), 0o755); err != nil {
+		t.Fatalf("MkdirAll live image: %v", err)
+	}
+	if err := os.WriteFile(liveImagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile live image: %v", err)
+	}
+	if err := sourceSvc.AddImage(created.ID, "portrait.png", `images\pension-extra\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	orphanPath := filepath.Join(sourceDataDir, "images", "orphaned", "extra.png")
+	if err := os.MkdirAll(filepath.Dir(orphanPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll orphan image: %v", err)
+	}
+	if err := os.WriteFile(orphanPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile orphan image: %v", err)
+	}
+
+	backupPath := filepath.Join(t.TempDir(), "backup-extra-images.zip")
+	if _, err := backupSvc.Export(backupPath, sourceDataDir); err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	restoreDir := t.TempDir()
+	if _, err := backupSvc.Import(backupPath, restoreDir); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(restoreDir, "images", "pension-extra", "portrait.png")); err != nil {
+		t.Fatalf("restored live image missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(restoreDir, "images", "orphaned", "extra.png")); err != nil {
+		t.Fatalf("restored orphan image missing: %v", err)
+	}
+
+	restoreDB, err := openExistingTestDB(restoreDir)
+	if err != nil {
+		t.Fatalf("openExistingTestDB: %v", err)
+	}
+	defer restoreDB.Close()
+	restoreSvc := NewSoldierService(restoreDB)
+	restored, total, err := restoreSvc.SearchPage("EXTRA", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage: %v", err)
+	}
+	if total != 1 || len(restored) != 1 {
+		t.Fatalf("restored search total=%d len=%d", total, len(restored))
+	}
+	full, err := restoreSvc.GetByID(restored[0].ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(full.Images) != 1 {
+		t.Fatalf("restored DB image count = %d", len(full.Images))
+	}
+}
+
 func openExistingTestDB(dataDir string) (*db.DB, error) {
 	return db.Open(dataDir)
 }

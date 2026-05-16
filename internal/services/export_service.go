@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -182,7 +183,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	defer w.Flush()
 
 	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "death_year", "death_month", "death_day", "birth_info", "buried_in", "notes", "created_at"}
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "birth_date", "death_date", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -205,6 +206,9 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				metadata.GeneratedAt,
 				fmt.Sprintf("%d", s.ID),
 				s.DisplayID,
+				s.EntryType,
+				fmt.Sprintf("%d", s.SpouseSoldierID),
+				s.MaidenName,
 				fmt.Sprintf("%v", s.IsGenerated),
 				s.PensionID,
 				s.ApplicationID,
@@ -216,9 +220,8 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				s.RankOut,
 				s.Unit,
 				s.PensionState,
-				fmt.Sprintf("%d", s.DeathYear),
-				fmt.Sprintf("%d", s.DeathMonth),
-				fmt.Sprintf("%d", s.DeathDay),
+				s.BirthDate,
+				s.DeathDate,
 				s.BirthInfo,
 				s.BuriedIn,
 				s.Notes,
@@ -296,12 +299,22 @@ func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldi
 	pdf.CellFormat(0, 8, fmt.Sprintf("Database Number: %s", soldier.DisplayID), "", 1, "", false, 0, "")
 	pdf.Ln(2)
 
-	writePDFField(pdf, "Rank In", soldier.RankIn)
-	writePDFField(pdf, "Rank Out", displaySoldierRank(soldier))
-	writePDFField(pdf, "Unit", soldier.Unit)
-	writePDFField(pdf, "Pension State", soldier.PensionState)
-	writePDFField(pdf, "Pension ID", soldier.PensionID)
-	writePDFField(pdf, "Application ID", soldier.ApplicationID)
+	writePDFField(pdf, "Record Type", displayEntryType(soldier))
+	if isSoldierEntry(soldier) {
+		writePDFField(pdf, "Rank In", soldier.RankIn)
+		writePDFField(pdf, "Rank Out", displaySoldierRank(soldier))
+		writePDFField(pdf, "Unit", soldier.Unit)
+		writePDFField(pdf, "Pension State", soldier.PensionState)
+		writePDFField(pdf, "Pension ID", soldier.PensionID)
+		writePDFField(pdf, "Application ID", soldier.ApplicationID)
+	} else {
+		writePDFField(pdf, "Married To", strings.TrimSpace(soldier.SpouseName))
+		writePDFField(pdf, "Maiden Name", soldier.MaidenName)
+		if soldier.EntryType == "widow" {
+			writePDFField(pdf, "Pension ID", soldier.PensionID)
+			writePDFField(pdf, "Application ID", soldier.ApplicationID)
+		}
+	}
 	writePDFField(pdf, "Death", soldierDeathLine(soldier))
 	writePDFField(pdf, "Birth Info", soldier.BirthInfo)
 	writePDFField(pdf, "Buried In", soldier.BuriedIn)
@@ -617,7 +630,13 @@ func emptyPDFValue(value string) string {
 }
 
 func soldierDisplayName(soldier models.Soldier) string {
-	return strings.TrimSpace(strings.TrimSpace(displaySoldierRank(soldier)) + " " + soldierFullName(soldier))
+	if isSoldierEntry(soldier) {
+		return strings.TrimSpace(strings.TrimSpace(displaySoldierRank(soldier)) + " " + soldierFullName(soldier))
+	}
+	if name := soldierFullName(soldier); name != "" {
+		return name
+	}
+	return displayEntryType(soldier)
 }
 
 func soldierFullName(soldier models.Soldier) string {
@@ -634,6 +653,21 @@ func displaySoldierRank(soldier models.Soldier) string {
 	return strings.TrimSpace(soldier.RankIn)
 }
 
+func isSoldierEntry(soldier models.Soldier) bool {
+	return strings.TrimSpace(soldier.EntryType) == "" || soldier.EntryType == "soldier"
+}
+
+func displayEntryType(soldier models.Soldier) string {
+	switch soldier.EntryType {
+	case "wife":
+		return "Wife"
+	case "widow":
+		return "Widow"
+	default:
+		return "Soldier"
+	}
+}
+
 func compactNameParts(parts ...string) []string {
 	result := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -645,16 +679,7 @@ func compactNameParts(parts ...string) []string {
 }
 
 func soldierDeathLine(soldier models.Soldier) string {
-	if soldier.DeathMonth == 0 && soldier.DeathYear == 0 {
-		return ""
-	}
-	if soldier.DeathMonth == 0 {
-		return fmt.Sprintf("%d", soldier.DeathYear)
-	}
-	if soldier.DeathDay > 0 {
-		return fmt.Sprintf("%s %d, %d", monthLabel(soldier.DeathMonth), soldier.DeathDay, soldier.DeathYear)
-	}
-	return fmt.Sprintf("%s %d", monthLabel(soldier.DeathMonth), soldier.DeathYear)
+	return strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.DeathDate), "Not recorded", ""))
 }
 
 func monthLabel(month int) string {

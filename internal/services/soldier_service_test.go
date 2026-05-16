@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -32,11 +33,14 @@ func TestSoldierService_CreateWithGeneratedID(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if s.DisplayID != "DXD-00001" {
-		t.Errorf("expected DXD-00001, got %s", s.DisplayID)
+	if s.DisplayID != "TDM65-DXD-00001" {
+		t.Errorf("expected TDM65-DXD-00001, got %s", s.DisplayID)
 	}
 	if !s.IsGenerated {
 		t.Error("expected IsGenerated=true")
+	}
+	if s.SyncID == "" {
+		t.Fatal("expected SyncID")
 	}
 }
 
@@ -53,8 +57,8 @@ func TestSoldierService_CreateWithPensionID(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if s.DisplayID != "PENSION-9999" {
-		t.Errorf("expected PENSION-9999, got %s", s.DisplayID)
+	if s.DisplayID != "TDM65-PENSION-9999" {
+		t.Errorf("expected TDM65-PENSION-9999, got %s", s.DisplayID)
 	}
 	if s.IsGenerated {
 		t.Error("expected IsGenerated=false for explicit pension ID")
@@ -76,6 +80,9 @@ func TestSoldierService_CreateWithExplicitDXDIDMarksGenerated(t *testing.T) {
 
 	if !s.IsGenerated {
 		t.Fatal("expected IsGenerated=true for DXD IDs")
+	}
+	if s.DisplayID != "TDM65-DXD-00001" {
+		t.Fatalf("DisplayID = %q", s.DisplayID)
 	}
 }
 
@@ -134,6 +141,9 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	if got.Rank != "Lieutenant General" {
 		t.Fatalf("Rank = %q, want rank_out mirror", got.Rank)
 	}
+	if got.SyncID == "" || got.UpdatedAt == "" {
+		t.Fatalf("expected identity/date fields, got %#v", got)
+	}
 }
 
 func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
@@ -187,6 +197,38 @@ func TestSoldierService_PersistsBuriedInAndRecords(t *testing.T) {
 	if len(got.Records) != 2 {
 		t.Fatalf("records len = %d", len(got.Records))
 	}
+	for _, record := range got.Records {
+		if record.SyncID == "" || record.SoldierSyncID != got.SyncID {
+			t.Fatalf("record identity mismatch: %#v soldier=%#v", record, got)
+		}
+	}
+}
+
+func TestSoldierService_AddImagePersistsIdentityFields(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName: "Thomas",
+		LastName:  "Green",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "portrait.png", `images\green\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(got.Images) != 1 {
+		t.Fatalf("images len = %d", len(got.Images))
+	}
+	if got.Images[0].SyncID == "" || got.Images[0].SoldierSyncID != got.SyncID {
+		t.Fatalf("image identity mismatch: %#v soldier=%#v", got.Images[0], got)
+	}
 }
 
 func TestSoldierService_Update(t *testing.T) {
@@ -216,6 +258,127 @@ func TestSoldierService_Update(t *testing.T) {
 	}
 	if got.MiddleName != "A." || got.RankIn != "Private" || got.RankOut != "Major" || got.PensionState != "Georgia" {
 		t.Fatalf("updated fields missing: %#v", got)
+	}
+}
+
+func TestSoldierService_CreateWifeEntry(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Taylor", RankOut: "Captain"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	spouse, err := svc.Create(models.Soldier{
+		EntryType:       "wife",
+		SpouseSoldierID: soldier.ID,
+		FirstName:       "Martha",
+		LastName:        "Taylor",
+		MaidenName:      "Cole",
+	})
+	if err != nil {
+		t.Fatalf("Create spouse: %v", err)
+	}
+
+	got, err := svc.GetByID(spouse.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.EntryType != "wife" || got.SpouseSoldierID != soldier.ID || got.MaidenName != "Cole" {
+		t.Fatalf("unexpected spouse record: %#v", got)
+	}
+	if got.SpouseName != "John Taylor" {
+		t.Fatalf("SpouseName = %q", got.SpouseName)
+	}
+	if got.Rank != "" || got.Unit != "" || got.PensionID != "" {
+		t.Fatalf("unexpected soldier-only data on spouse record: %#v", got)
+	}
+}
+
+func TestSoldierService_RejectsSpouseLinkedToNonSoldier(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Taylor"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+	wife, err := svc.Create(models.Soldier{
+		EntryType:       "wife",
+		SpouseSoldierID: soldier.ID,
+		FirstName:       "Anna",
+		LastName:        "Taylor",
+	})
+	if err != nil {
+		t.Fatalf("Create wife: %v", err)
+	}
+
+	_, err = svc.Create(models.Soldier{
+		EntryType:       "widow",
+		SpouseSoldierID: wife.ID,
+		FirstName:       "Clara",
+		LastName:        "Taylor",
+	})
+	if err == nil || !strings.Contains(err.Error(), "soldier record") {
+		t.Fatalf("expected spouse validation error, got %v", err)
+	}
+}
+
+func TestSoldierService_MarriageCandidatesExcludeSpouseEntries(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "Thomas", LastName: "Hill"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{
+		EntryType:       "widow",
+		SpouseSoldierID: soldier.ID,
+		FirstName:       "Sarah",
+		LastName:        "Hill",
+	}); err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	candidates, err := svc.MarriageCandidates()
+	if err != nil {
+		t.Fatalf("MarriageCandidates: %v", err)
+	}
+	if len(candidates) != 1 || candidates[0].ID != soldier.ID {
+		t.Fatalf("unexpected candidates: %#v", candidates)
+	}
+}
+
+func TestSoldierService_WidowEntryKeepsOwnPensionIdentifiers(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Taylor"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	widow, err := svc.Create(models.Soldier{
+		EntryType:       "widow",
+		SpouseSoldierID: soldier.ID,
+		FirstName:       "Mary",
+		LastName:        "Taylor",
+		MaidenName:      "Cole",
+		PensionID:       "WP-42",
+		ApplicationID:   "WA-42",
+	})
+	if err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	got, err := svc.GetByID(widow.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.PensionID != "WP-42" || got.ApplicationID != "WA-42" {
+		t.Fatalf("widow pension identifiers not persisted: %#v", got)
 	}
 }
 
@@ -402,8 +565,8 @@ func TestSoldierService_SearchPage(t *testing.T) {
 	if total != 1 || len(displayIDResults) != 1 {
 		t.Fatalf("display_id search got total=%d len=%d, want 1/1", total, len(displayIDResults))
 	}
-	if displayIDResults[0].DisplayID != "PENSION-4242" {
-		t.Fatalf("got display_id %q, want PENSION-4242", displayIDResults[0].DisplayID)
+	if !strings.HasSuffix(displayIDResults[0].DisplayID, "PENSION-4242") {
+		t.Fatalf("got display_id %q", displayIDResults[0].DisplayID)
 	}
 
 	_, err = svc.Create(models.Soldier{
@@ -426,7 +589,7 @@ func TestSoldierService_SearchPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchPage unit: %v", err)
 	}
-	if total != 1 || len(rankResults) != 1 || rankResults[0].DisplayID != "PENSION-4242" {
+	if total != 1 || len(rankResults) != 1 || !strings.HasSuffix(rankResults[0].DisplayID, "PENSION-4242") {
 		t.Fatalf("unit search got total=%d len=%d results=%#v", total, len(rankResults), rankResults)
 	}
 }
@@ -503,7 +666,7 @@ func TestSoldierService_AdvancedSearch(t *testing.T) {
 	if total != 1 || len(results) != 1 {
 		t.Fatalf("AdvancedSearch total=%d len=%d", total, len(results))
 	}
-	if results[0].DisplayID != "PENSION-2024" {
+	if !strings.HasSuffix(results[0].DisplayID, "PENSION-2024") {
 		t.Fatalf("got display_id %q", results[0].DisplayID)
 	}
 }
@@ -566,7 +729,7 @@ func TestSoldierService_AdvancedSearchByDeathYearOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdvancedSearch: %v", err)
 	}
-	if total != 1 || len(results) != 1 || results[0].DisplayID != "PENSION-4001" {
+	if total != 1 || len(results) != 1 || !strings.HasSuffix(results[0].DisplayID, "PENSION-4001") {
 		t.Fatalf("death-year search got total=%d len=%d results=%#v", total, len(results), results)
 	}
 }

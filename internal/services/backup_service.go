@@ -375,6 +375,7 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 		created, err := soldierSvc.Create(models.Soldier{
 			DisplayID:     soldier.DisplayID,
 			IsGenerated:   soldier.IsGenerated,
+			SyncID:        soldier.SyncID,
 			PensionID:     soldier.PensionID,
 			ApplicationID: soldier.ApplicationID,
 			FirstName:     soldier.FirstName,
@@ -385,6 +386,8 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			RankOut:       soldier.RankOut,
 			Unit:          soldier.Unit,
 			PensionState:  soldier.PensionState,
+			BirthDate:     soldier.BirthDate,
+			DeathDate:     soldier.DeathDate,
 			DeathYear:     soldier.DeathYear,
 			DeathMonth:    soldier.DeathMonth,
 			DeathDay:      soldier.DeathDay,
@@ -469,6 +472,15 @@ func validateStagedBackup(dataDir string, manifest BackupManifest) error {
 			soldierCount++
 			recordCount += len(soldier.Records)
 			imageCount += len(soldier.Images)
+			for _, image := range soldier.Images {
+				imagePath := filepath.Join(dataDir, filepath.FromSlash(normalizeBackupPath(image.FilePath)))
+				if _, err := os.Stat(imagePath); err != nil {
+					if os.IsNotExist(err) {
+						return fmt.Errorf("backup validation missing image file %s", image.FilePath)
+					}
+					return err
+				}
+			}
 		}
 		if len(batch) < exportBatchSize {
 			break
@@ -477,13 +489,6 @@ func validateStagedBackup(dataDir string, manifest BackupManifest) error {
 	}
 	if soldierCount != manifest.Soldiers || recordCount != manifest.Records || imageCount != manifest.Images {
 		return fmt.Errorf("backup validation mismatch: got %d soldiers, %d records, %d images", soldierCount, recordCount, imageCount)
-	}
-	actualImageFiles, err := countFilesUnder(filepath.Join(dataDir, "images"))
-	if err != nil {
-		return err
-	}
-	if actualImageFiles != manifest.Images {
-		return fmt.Errorf("backup validation mismatch: found %d image files on disk", actualImageFiles)
 	}
 	return nil
 }
