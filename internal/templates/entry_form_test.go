@@ -65,25 +65,34 @@ func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	}
 }
 
-func TestExportViewIncludesSharedDatabaseImport(t *testing.T) {
+func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	var buf bytes.Buffer
-	err := ExportView(models.GoogleStatus{}, nil).Render(context.Background(), &buf)
+	err := ShareView(models.GoogleStatus{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 
 	content := buf.String()
-	if !strings.Contains(content, "/import/backup") || !strings.Contains(content, "Load Backup") {
-		t.Fatalf("export view missing backup import action")
+	if !strings.Contains(content, "Export & Backup") || !strings.Contains(content, "Import & Restore") {
+		t.Fatalf("share view missing separated import/export sections")
 	}
-	if !strings.Contains(content, "/export/shared-archive") || !strings.Contains(content, "Export Shared Archive") {
-		t.Fatalf("export view missing shared archive export action")
+	if !strings.Contains(content, "/import/backup") || !strings.Contains(content, "Load Backup (.ddbak)") {
+		t.Fatalf("share view missing backup import action")
 	}
-	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive") {
-		t.Fatalf("export view missing shared backup import action")
+	if !strings.Contains(content, "/export/shared-archive") || !strings.Contains(content, "Export Shared Archive (.ddshare)") {
+		t.Fatalf("share view missing shared archive export action")
+	}
+	if !strings.Contains(content, "/export/static-archive") || !strings.Contains(content, "Export Static Web Archive") {
+		t.Fatalf("share view missing static web archive export action")
+	}
+	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive (.ddshare)") {
+		t.Fatalf("share view missing shared archive import action")
+	}
+	if !strings.Contains(content, "/export/bug-report") || !strings.Contains(content, "Support & Diagnostics") {
+		t.Fatalf("share view missing diagnostics section")
 	}
 	if !strings.Contains(content, ".ddbak") || !strings.Contains(content, ".ddshare") {
-		t.Fatalf("export view missing custom archive extension copy")
+		t.Fatalf("share view missing custom archive extension copy")
 	}
 }
 
@@ -182,9 +191,9 @@ func TestNewEntryFormIncludesFindAGraveScrapeWarning(t *testing.T) {
 	}
 }
 
-func TestExportViewIncludesMergeReviewPanel(t *testing.T) {
+func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := ExportView(models.GoogleStatus{}, []models.MergeReviewConflict{{
+	err := ShareView(models.GoogleStatus{}, []models.MergeReviewConflict{{
 		ID:              42,
 		ConflictType:    "soldier-update",
 		Reason:          "Shared archive changed notes.",
@@ -206,11 +215,11 @@ func TestExportViewIncludesMergeReviewPanel(t *testing.T) {
 
 	content := buf.String()
 	if !strings.Contains(content, "Shared Merge Review") || !strings.Contains(content, "/merge-review/42/use-shared") {
-		t.Fatalf("export view missing merge review actions")
+		t.Fatalf("share view missing merge review actions")
 	}
 }
 
-func TestSearchResultsShowMatchSnippetAndPreview(t *testing.T) {
+func TestSearchResultsShowMatchSnippet(t *testing.T) {
 	var buf bytes.Buffer
 	err := SearchResults([]models.Soldier{{
 		ID:                 7,
@@ -231,14 +240,11 @@ func TestSearchResultsShowMatchSnippetAndPreview(t *testing.T) {
 	if !strings.Contains(content, "Matched on Unit") || !strings.Contains(content, "Forrest&#39;s Cavalry") {
 		t.Fatalf("search results missing quick match snippet")
 	}
-	if !strings.Contains(content, "Hover Preview") || !strings.Contains(content, "Record ID PENSION-4242") {
-		t.Fatalf("search results missing hover preview summary")
-	}
 }
 
-func TestExportViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
+func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 	var buf bytes.Buffer
-	err := ExportView(models.GoogleStatus{}, []models.MergeReviewConflict{{
+	err := ShareView(models.GoogleStatus{}, []models.MergeReviewConflict{{
 		ID:              99,
 		ConflictType:    "display-id-collision",
 		Reason:          "Shared record collides on display ID.",
@@ -260,7 +266,7 @@ func TestExportViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 
 	content := buf.String()
 	if !strings.Contains(content, "/merge-review/99/keep-both") || !strings.Contains(content, "Keep Both") {
-		t.Fatalf("export view missing keep-both action")
+		t.Fatalf("share view missing keep-both action")
 	}
 	if strings.Contains(content, "/merge-review/99/use-shared") {
 		t.Fatalf("display-id collision should not show use-shared action")

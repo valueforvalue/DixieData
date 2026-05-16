@@ -708,6 +708,37 @@ func TestSoldierService_SearchPageMatchesPensionState(t *testing.T) {
 	}
 }
 
+func TestSoldierService_SearchPageUsesContainsMatchingForNamesAndUnits(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	_, err := svc.Create(models.Soldier{
+		DisplayID: "PENSION-5200",
+		FirstName: "Nathan",
+		LastName:  "Forrest",
+		Unit:      "Army of Tennessee",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	nameResults, total, err := svc.SearchPage("orre", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage partial name: %v", err)
+	}
+	if total != 1 || len(nameResults) != 1 {
+		t.Fatalf("partial name search got total=%d len=%d", total, len(nameResults))
+	}
+
+	unitResults, total, err := svc.SearchPage("nnes", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage partial unit: %v", err)
+	}
+	if total != 1 || len(unitResults) != 1 {
+		t.Fatalf("partial unit search got total=%d len=%d", total, len(unitResults))
+	}
+}
+
 func TestSoldierService_SearchPagePaginates(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
@@ -845,5 +876,118 @@ func TestSoldierService_AdvancedSearchByDeathYearOnly(t *testing.T) {
 	}
 	if total != 1 || len(results) != 1 || !strings.HasSuffix(results[0].DisplayID, "PENSION-4001") {
 		t.Fatalf("death-year search got total=%d len=%d results=%#v", total, len(results), results)
+	}
+}
+
+func TestSoldierService_AdvancedSearchExpandedFields(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	_, err := svc.Create(models.Soldier{
+		DisplayID:             "PENSION-5100",
+		FirstName:             "Anna",
+		MiddleName:            "Maria",
+		LastName:              "Bennett",
+		MaidenName:            "Carter",
+		RankIn:                "Private",
+		RankOut:               "Captain",
+		Unit:                  "1st Texas Infantry",
+		PensionState:          "Texas",
+		ConfederateHomeStatus: "Staffer",
+		ConfederateHomeName:   "Texas Confederate Home",
+		BirthDate:             "05/06/1838",
+		DeathYear:             1864,
+		BuriedIn:              "Oakwood Cemetery",
+		Records: []models.Record{
+			{RecordType: "Pension Ledger"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create matching soldier: %v", err)
+	}
+	_, err = svc.Create(models.Soldier{
+		DisplayID:             "PENSION-5101",
+		FirstName:             "Anne",
+		LastName:              "Miller",
+		MaidenName:            "Wilson",
+		RankIn:                "Sergeant",
+		RankOut:               "Major",
+		Unit:                  "3rd Arkansas Cavalry",
+		PensionState:          "Arkansas",
+		ConfederateHomeStatus: "Inmate",
+		ConfederateHomeName:   "Arkansas Confederate Home",
+		BirthDate:             "07/08/1842",
+		DeathYear:             1862,
+		BuriedIn:              "Maple Grove Cemetery",
+		Records: []models.Record{
+			{RecordType: "Muster Roll"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create non-matching soldier: %v", err)
+	}
+
+	results, total, err := svc.AdvancedSearch(models.SoldierSearch{
+		Mode:                  "advanced",
+		FirstName:             "Ann",
+		MiddleName:            "Mari",
+		LastName:              "Benne",
+		MaidenName:            "Cart",
+		RankIn:                "Priv",
+		RankOut:               "Capt",
+		Unit:                  "Texas",
+		RecordType:            "Ledger",
+		PensionState:          "Texas",
+		ConfederateHomeStatus: "Staffer",
+		ConfederateHomeName:   "Confederate Home",
+		BuriedIn:              "Oakwood",
+		BirthYear:             "1838",
+		DeathYear:             "1864",
+	}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch expanded fields: %v", err)
+	}
+	if total != 1 || len(results) != 1 || !strings.HasSuffix(results[0].DisplayID, "PENSION-5100") {
+		t.Fatalf("expanded advanced search got total=%d len=%d results=%#v", total, len(results), results)
+	}
+}
+
+func TestSoldierService_AdvancedSearchYearRanges(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	_, err := svc.Create(models.Soldier{
+		DisplayID: "PENSION-5201",
+		FirstName: "George",
+		LastName:  "Lane",
+		BirthDate: "00/00/1838",
+		DeathYear: 1864,
+	})
+	if err != nil {
+		t.Fatalf("Create first soldier: %v", err)
+	}
+	_, err = svc.Create(models.Soldier{
+		DisplayID: "PENSION-5202",
+		FirstName: "Walter",
+		LastName:  "Hughes",
+		BirthDate: "00/00/1844",
+		DeathYear: 1861,
+	})
+	if err != nil {
+		t.Fatalf("Create second soldier: %v", err)
+	}
+
+	results, total, err := svc.AdvancedSearch(models.SoldierSearch{
+		Mode:        "advanced",
+		BirthYear:   "1837",
+		BirthYearTo: "1839",
+		DeathYear:   "1863",
+		DeathYearTo: "1865",
+	}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch year ranges: %v", err)
+	}
+	if total != 1 || len(results) != 1 || !strings.HasSuffix(results[0].DisplayID, "PENSION-5201") {
+		t.Fatalf("year range search got total=%d len=%d results=%#v", total, len(results), results)
 	}
 }

@@ -39,16 +39,6 @@ templ SoldierCard(s models.Soldier, highlighted bool) {
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) }
 			   class="pill-link">View</a>
 		</div>
-		if highlighted {
-			<div class="pointer-events-none absolute inset-x-4 top-4 z-20 hidden rounded-2xl border border-[rgba(141,116,64,0.6)] bg-[rgba(255,251,241,0.98)] px-4 py-4 text-xs text-[#445260] shadow-[0_16px_28px_rgba(23,33,43,0.2)] group-hover:block">
-				<p class="font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Hover Preview</p>
-				<p class="mt-1 text-sm font-medium text-[#22303d]">{ detailHeading(s) }</p>
-				<p class="mt-1">{ searchPreviewSummary(s) }</p>
-				if strings.TrimSpace(s.Notes) != "" {
-					<p class="mt-2 text-slate-500">{ notesPreview(s.Notes) }</p>
-				}
-			</div>
-		}
 	</div>
 }
 
@@ -81,7 +71,7 @@ func emptyDetail(value string) string {
 	return value
 }
 
-templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
+templ SoldierList(soldiers []models.Soldier, page, total int, query string, suggestions models.SoldierFormSuggestions) {
 	@Layout("Soldiers") {
 		<div data-ui-id={ uiids.PageSoldiersList } class="relative">
 			@SurfaceBadge(uiids.PageSoldiersList)
@@ -118,15 +108,15 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 					@SurfaceBadge(uiids.PanelSoldiersSearchAdvanced)
 					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
-						<p class="mt-2 text-sm text-[#22303d]">Use any one field by itself, or combine multiple fields to narrow the result set.</p>
+						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and record types. Year filters support exact values or a through-year range.</p>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1">Record ID</label>
 						<input type="text" name="display_id" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Rank</label>
-						<input type="text" name="rank" class="field-input"/>
+						<label class="block text-sm text-slate-500 mb-1">Record Type</label>
+						<input type="text" name="record_type" list="advanced-record-type-suggestions" class="field-input"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1">First Name</label>
@@ -140,22 +130,58 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 						<label class="block text-sm text-slate-500 mb-1">Last Name</label>
 						<input type="text" name="last_name" class="field-input"/>
 					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
+						<input type="text" name="maiden_name" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Rank In</label>
+						<input type="text" name="rank_in" list="advanced-rank-in-suggestions" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
+						<input type="text" name="rank_out" list="advanced-rank-out-suggestions" class="field-input"/>
+					</div>
 					<div class="col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Unit</label>
-						<input type="text" name="unit" class="field-input"/>
+						<input type="text" name="unit" list="advanced-unit-suggestions" class="field-input"/>
 					</div>
 					<div class="col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Pension State</label>
-						<select name="pension_state" class="field-input">
-							<option value="">Any state</option>
-							for _, state := range pensionStates() {
-								<option value={ state }>{ state }</option>
+						<input type="text" name="pension_state" list="advanced-pension-state-suggestions" class="field-input" placeholder="Any state"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
+						<select name="confederate_home_status" class="field-input">
+							<option value="">Any status</option>
+							for _, status := range confederateHomeStatuses() {
+								<option value={ status }>{ status }</option>
 							}
 						</select>
 					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
+						<input type="text" name="confederate_home_name" list="advanced-confederate-home-name-suggestions" class="field-input"/>
+					</div>
 					<div class="col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
-						<input type="text" name="buried_in" class="field-input"/>
+						<input type="text" name="buried_in" list="advanced-buried-in-suggestions" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Birth Year</label>
+						<input type="text" name="birth_year" class="field-input" placeholder="1838"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Birth Year Through</label>
+						<input type="text" name="birth_year_to" class="field-input" placeholder="1845"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Death Year</label>
+						<input type="text" name="death_year" class="field-input" placeholder="1864"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Death Year Through</label>
+						<input type="text" name="death_year_to" class="field-input" placeholder="1865"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
@@ -169,8 +195,15 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string) {
 						<button type="submit" class="primary-button">Run Advanced Search</button>
 						<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
 					</div>
-					<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>contains</strong> matching for text fields. Birth and death dates are <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
+					<p class="col-span-2 text-xs text-slate-500">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
 				</form>
+				@SuggestionDatalist("advanced-record-type-suggestions", suggestions.RecordType)
+				@SuggestionDatalist("advanced-rank-in-suggestions", suggestions.RankIn)
+				@SuggestionDatalist("advanced-rank-out-suggestions", suggestions.RankOut)
+				@SuggestionDatalist("advanced-unit-suggestions", suggestions.Unit)
+				@SuggestionDatalist("advanced-pension-state-suggestions", suggestions.PensionState)
+				@SuggestionDatalist("advanced-confederate-home-name-suggestions", suggestions.ConfederateHomeName)
+				@SuggestionDatalist("advanced-buried-in-suggestions", suggestions.BuriedIn)
 			</div>
 			<div id="soldier-list" data-ui-id={ uiids.PanelSoldiersResults } class="relative">
 				@SurfaceBadge(uiids.PanelSoldiersResults)
@@ -320,14 +353,32 @@ func searchParams(search models.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.LastName) != "" {
 			values.Set("last_name", search.LastName)
 		}
+		if strings.TrimSpace(search.MaidenName) != "" {
+			values.Set("maiden_name", search.MaidenName)
+		}
 		if strings.TrimSpace(search.Rank) != "" {
 			values.Set("rank", search.Rank)
+		}
+		if strings.TrimSpace(search.RankIn) != "" {
+			values.Set("rank_in", search.RankIn)
+		}
+		if strings.TrimSpace(search.RankOut) != "" {
+			values.Set("rank_out", search.RankOut)
 		}
 		if strings.TrimSpace(search.Unit) != "" {
 			values.Set("unit", search.Unit)
 		}
+		if strings.TrimSpace(search.RecordType) != "" {
+			values.Set("record_type", search.RecordType)
+		}
 		if strings.TrimSpace(search.PensionState) != "" {
 			values.Set("pension_state", search.PensionState)
+		}
+		if strings.TrimSpace(search.ConfederateHomeStatus) != "" {
+			values.Set("confederate_home_status", search.ConfederateHomeStatus)
+		}
+		if strings.TrimSpace(search.ConfederateHomeName) != "" {
+			values.Set("confederate_home_name", search.ConfederateHomeName)
 		}
 		if strings.TrimSpace(search.BuriedIn) != "" {
 			values.Set("buried_in", search.BuriedIn)
@@ -335,11 +386,20 @@ func searchParams(search models.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.BirthDate) != "" {
 			values.Set("birth_date", search.BirthDate)
 		}
+		if strings.TrimSpace(search.BirthYear) != "" {
+			values.Set("birth_year", search.BirthYear)
+		}
+		if strings.TrimSpace(search.BirthYearTo) != "" {
+			values.Set("birth_year_to", search.BirthYearTo)
+		}
 		if strings.TrimSpace(search.DeathDate) != "" {
 			values.Set("death_date", search.DeathDate)
 		}
 		if strings.TrimSpace(search.DeathYear) != "" {
 			values.Set("death_year", search.DeathYear)
+		}
+		if strings.TrimSpace(search.DeathYearTo) != "" {
+			values.Set("death_year_to", search.DeathYearTo)
 		}
 		if strings.TrimSpace(search.DeathMonth) != "" {
 			values.Set("death_month", search.DeathMonth)
@@ -382,14 +442,32 @@ func searchSummary(search models.SoldierSearch) string {
 	if search.LastName != "" {
 		parts = append(parts, "Last name "+search.LastName)
 	}
+	if search.MaidenName != "" {
+		parts = append(parts, "Maiden name "+search.MaidenName)
+	}
 	if search.Rank != "" {
 		parts = append(parts, "Rank "+search.Rank)
+	}
+	if search.RankIn != "" {
+		parts = append(parts, "Rank in "+search.RankIn)
+	}
+	if search.RankOut != "" {
+		parts = append(parts, "Rank out "+search.RankOut)
 	}
 	if search.Unit != "" {
 		parts = append(parts, "Unit "+search.Unit)
 	}
+	if search.RecordType != "" {
+		parts = append(parts, "Record type "+search.RecordType)
+	}
 	if search.PensionState != "" {
 		parts = append(parts, "Pension state "+search.PensionState)
+	}
+	if search.ConfederateHomeStatus != "" {
+		parts = append(parts, "Confederate home status "+search.ConfederateHomeStatus)
+	}
+	if search.ConfederateHomeName != "" {
+		parts = append(parts, "Confederate home name "+search.ConfederateHomeName)
 	}
 	if search.BuriedIn != "" {
 		parts = append(parts, "Buried in "+search.BuriedIn)
@@ -397,11 +475,22 @@ func searchSummary(search models.SoldierSearch) string {
 	if search.BirthDate != "" {
 		parts = append(parts, "Birth date "+search.BirthDate)
 	}
+	if search.BirthYear != "" && search.BirthYearTo != "" {
+		parts = append(parts, "Birth year "+search.BirthYear+"-"+search.BirthYearTo)
+	} else if search.BirthYear != "" {
+		parts = append(parts, "Birth year "+search.BirthYear)
+	} else if search.BirthYearTo != "" {
+		parts = append(parts, "Birth year through "+search.BirthYearTo)
+	}
 	if search.DeathDate != "" {
 		parts = append(parts, "Death date "+search.DeathDate)
 	}
-	if search.DeathYear != "" {
+	if search.DeathYear != "" && search.DeathYearTo != "" {
+		parts = append(parts, "Death year "+search.DeathYear+"-"+search.DeathYearTo)
+	} else if search.DeathYear != "" {
 		parts = append(parts, "Death year "+search.DeathYear)
+	} else if search.DeathYearTo != "" {
+		parts = append(parts, "Death year through "+search.DeathYearTo)
 	}
 	if search.DeathMonth != "" {
 		parts = append(parts, "Death month "+search.DeathMonth)
@@ -480,37 +569,6 @@ func detailDisplayRank(s models.Soldier) string {
 		return trimmed
 	}
 	return strings.TrimSpace(s.RankIn)
-}
-
-func searchPreviewSummary(s models.Soldier) string {
-	parts := []string{entryBadgeLabel(s), "Record ID " + strings.TrimSpace(s.DisplayID)}
-	if rank := strings.TrimSpace(detailDisplayRank(s)); rank != "" {
-		parts = append(parts, "Rank "+rank)
-	}
-	if unit := strings.TrimSpace(s.Unit); unit != "" {
-		parts = append(parts, "Unit "+unit)
-	}
-	if spouse := strings.TrimSpace(s.SpouseName); spouse != "" {
-		parts = append(parts, "Married to "+spouse)
-	}
-	if state := strings.TrimSpace(s.PensionState); state != "" {
-		parts = append(parts, "Pension state "+state)
-	}
-	if buried := strings.TrimSpace(s.BuriedIn); buried != "" {
-		parts = append(parts, "Buried in "+buried)
-	}
-	if death := strings.TrimSpace(deathDate(s)); death != "" {
-		parts = append(parts, "Death "+death)
-	}
-	return strings.Join(parts, " • ")
-}
-
-func notesPreview(notes string) string {
-	trimmed := strings.TrimSpace(notes)
-	if len(trimmed) <= 140 {
-		return trimmed
-	}
-	return trimmed[:140] + "..."
 }
 
 var linkifiedURLPattern = regexp.MustCompile(`https?://[^\s<]+`)
