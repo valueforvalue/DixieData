@@ -97,3 +97,34 @@ type GoogleStatus struct {
 	SharedClientSource    string
 	UsingSharedClient     bool
 }
+
+type MergeReviewConflict struct {
+	ID              int64
+	SessionID       string
+	ConflictType    string
+	Reason          string
+	LocalSoldierID  int64
+	LocalDisplayID  string
+	SourceDisplayID string
+	Resolution      string
+	CreatedAt       string
+	LocalSoldier    *Soldier
+	SourceSoldier   Soldier
+}
+
+type UserIdentity struct {
+	FirstName  string
+	MiddleName string
+	LastName   string
+	BirthYear  int
+	NodePrefix string
+}
+
+type InitialSetupForm struct {
+	FirstName     string
+	MiddleName    string
+	LastName      string
+	BirthYear     string
+	PrefixPreview string
+	ErrorMessage  string
+}

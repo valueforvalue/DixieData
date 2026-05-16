@@ -60,7 +60,34 @@ CREATE TABLE IF NOT EXISTS images (
     caption      TEXT
 );
 
+CREATE TABLE IF NOT EXISTS merge_review_sessions (
+    id           TEXT PRIMARY KEY,
+    archive_path TEXT NOT NULL,
+    source_root  TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'open',
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS merge_review_conflicts (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id       TEXT NOT NULL REFERENCES merge_review_sessions(id) ON DELETE CASCADE,
+    conflict_type    TEXT NOT NULL,
+    reason           TEXT NOT NULL,
+    soldier_sync_id  TEXT NOT NULL,
+    local_soldier_id INTEGER,
+    local_display_id TEXT,
+    source_display_id TEXT NOT NULL,
+    local_data       TEXT,
+    source_data      TEXT NOT NULL,
+    resolution       TEXT,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at      DATETIME
+);
+
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
+CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
+CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS soldiers_fts USING fts5(
     first_name, last_name, unit, soldier_rank,
@@ -235,6 +262,10 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		query = `PRAGMA table_info(images)`
 	case "system_config":
 		query = `PRAGMA table_info(system_config)`
+	case "merge_review_sessions":
+		query = `PRAGMA table_info(merge_review_sessions)`
+	case "merge_review_conflicts":
+		query = `PRAGMA table_info(merge_review_conflicts)`
 	default:
 		return false, fmt.Errorf("unsupported table for schema introspection: %s", table)
 	}

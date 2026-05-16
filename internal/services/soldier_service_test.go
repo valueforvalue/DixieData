@@ -33,8 +33,8 @@ func TestSoldierService_CreateWithGeneratedID(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if s.DisplayID != "TDM65-DXD-00001" {
-		t.Errorf("expected TDM65-DXD-00001, got %s", s.DisplayID)
+	if s.DisplayID != "TDM65-00001" {
+		t.Errorf("expected TDM65-00001, got %s", s.DisplayID)
 	}
 	if !s.IsGenerated {
 		t.Error("expected IsGenerated=true")

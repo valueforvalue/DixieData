@@ -275,8 +275,15 @@ func TestMonthPDFNameUsesMonthName(t *testing.T) {
 
 func TestBackupArchiveNameIncludesDate(t *testing.T) {
 	name := backupArchiveName(time.Date(2026, time.April, 28, 12, 0, 0, 0, time.UTC))
-	if name != "dixiedata-backup-2026-04-28.zip" {
+	if name != "dixiedata-backup-2026-04-28.ddbak" {
 		t.Fatalf("backup archive name = %q", name)
+	}
+}
+
+func TestSharedArchiveNameIncludesDate(t *testing.T) {
+	name := sharedArchiveName(time.Date(2026, time.April, 28, 12, 0, 0, 0, time.UTC))
+	if name != "dixiedata-shared-2026-04-28.ddshare" {
+		t.Fatalf("shared archive name = %q", name)
 	}
 }
 
@@ -372,8 +379,83 @@ func TestInitializeLocalDataRecreatesFreshArchive(t *testing.T) {
 	if len(soldiers) != 0 || total != 0 {
 		t.Fatalf("expected fresh archive, got %d soldiers total=%d", len(soldiers), total)
 	}
+	if !app.setupRequired {
+		t.Fatal("expected fresh archive to require initial setup")
+	}
 	if _, err := os.Stat(filepath.Join(dataDir, "images", "demo", "sample.txt")); !os.IsNotExist(err) {
 		t.Fatalf("expected image tree to be removed, stat err=%v", err)
+	}
+}
+
+func TestAppServeHTTPRedirectsToInitialSetupWhenRequired(t *testing.T) {
+	app := NewApp()
+	app.setupRequired = true
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusSeeOther)
+	}
+	if location := rec.Header().Get("Location"); location != "/setup" {
+		t.Fatalf("redirect location = %q", location)
+	}
+}
+
+func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodPost, "/setup", strings.NewReader(url.Values{
+		"first_name":  {"Samuel"},
+		"middle_name": {"Thomas"},
+		"last_name":   {"Carter"},
+		"birth_year":  {"1838"},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusSeeOther, rec.Body.String())
+	}
+	if location := rec.Header().Get("Location"); location != "/calendar" {
+		t.Fatalf("redirect location = %q", location)
+	}
+	if app.setupRequired {
+		t.Fatal("expected setup requirement to be cleared")
+	}
+
+	identity, err := database.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity: %v", err)
+	}
+	if identity.NodePrefix != "STC1838" {
+		t.Fatalf("node prefix = %q", identity.NodePrefix)
+	}
+
+	created, err := app.soldiers.Create(models.Soldier{FirstName: "Demo", LastName: "Soldier"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if !strings.HasPrefix(created.DisplayID, "STC1838-") {
+		t.Fatalf("display ID = %q", created.DisplayID)
 	}
 }
 
@@ -391,6 +473,7 @@ func TestSoldierListStartsBlankUntilBrowseOrSearch(t *testing.T) {
 	if err := app.reloadServices(); err != nil {
 		t.Fatalf("reloadServices: %v", err)
 	}
+	configureTestIdentity(t, app)
 	app.setupRoutes()
 
 	created, err := app.soldiers.Create(models.Soldier{FirstName: "Nathan", LastName: "Forrest"})
@@ -428,6 +511,7 @@ func TestBrowseModeShowsAlphabeticalResults(t *testing.T) {
 	if err := app.reloadServices(); err != nil {
 		t.Fatalf("reloadServices: %v", err)
 	}
+	configureTestIdentity(t, app)
 	app.setupRoutes()
 
 	created, err := app.soldiers.Create(models.Soldier{FirstName: "Nathan", LastName: "Forrest"})
@@ -669,6 +753,7 @@ func TestHandleUpdateSoldierRendersFormErrorOnUploadFailure(t *testing.T) {
 	if err := app.reloadServices(); err != nil {
 		t.Fatalf("reloadServices: %v", err)
 	}
+	configureTestIdentity(t, app)
 	app.setupRoutes()
 
 	created, err := app.soldiers.Create(models.Soldier{DisplayID: "CSA-TEST", FirstName: "Edit", LastName: "Target"})
@@ -730,6 +815,16 @@ func multipartRequestBody(t *testing.T, files map[string][]byte) (*bytes.Buffer,
 		t.Fatalf("Close writer: %v", err)
 	}
 	return &body, writer.FormDataContentType()
+}
+
+func configureTestIdentity(t *testing.T, app *App) {
+	t.Helper()
+	if _, err := app.database.ConfigureUserIdentity("Test", "Harness", "User", 1900); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices after identity: %v", err)
+	}
 }
 
 func pngFixture() []byte {

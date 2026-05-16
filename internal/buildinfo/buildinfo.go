@@ -3,7 +3,7 @@ package buildinfo
 const (
 	AppName                 = "DixieData"
 	AppVersion              = "0.1.0"
-	SchemaVersion           = 4
+	SchemaVersion           = 5
 	JSONExportVersion       = 1
 	CSVExportVersion        = 1
 	ICalendarExportVersion  = 1

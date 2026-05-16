@@ -46,13 +46,20 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 	if err := os.WriteFile(scratchpadPath, []byte("temporary notes"), 0o644); err != nil {
 		t.Fatalf("WriteFile scratchpad: %v", err)
 	}
+	logPath := filepath.Join(dataDir, "logs", "shared-merge-latest.log")
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll logs: %v", err)
+	}
+	if err := os.WriteFile(logPath, []byte("merge log"), 0o644); err != nil {
+		t.Fatalf("WriteFile log: %v", err)
+	}
 
 	outPath := filepath.Join(t.TempDir(), "bug-report.zip")
 	manifest, err := diagnosticsSvc.Export(outPath, dataDir)
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
-	if manifest.Soldiers != 1 || manifest.Records != 1 || manifest.Images != 1 || manifest.ScratchpadFiles != 1 {
+	if manifest.Soldiers != 1 || manifest.Records != 1 || manifest.Images != 1 || manifest.ScratchpadFiles != 1 || manifest.LogFiles != 1 {
 		t.Fatalf("manifest = %#v", manifest)
 	}
 
@@ -67,7 +74,7 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 		names = append(names, file.Name)
 	}
 	joined := strings.Join(names, "\n")
-	for _, expected := range []string{"manifest.json", "data/dixiedata.db", "images/pension-77/portrait.png", "scratchpads/PENSION-77.txt"} {
+	for _, expected := range []string{"manifest.json", "data/dixiedata.db", "images/pension-77/portrait.png", "scratchpads/PENSION-77.txt", "logs/shared-merge-latest.log"} {
 		if !strings.Contains(joined, expected) {
 			t.Fatalf("bundle missing %s", expected)
 		}

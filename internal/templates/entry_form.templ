@@ -333,7 +333,59 @@ func formRecords(records []models.Record) []models.Record {
 	return records
 }
 
-templ ExportView(status models.GoogleStatus) {
+templ InitialSetupView(form models.InitialSetupForm) {
+	@Layout("First Launch Setup") {
+		<div class="mx-auto max-w-2xl space-y-6">
+			<h2 class="text-2xl gold font-bold">First Launch Setup</h2>
+			<div class="card rounded-3xl p-8 space-y-4">
+				<div>
+					<p class="text-sm text-slate-600">Enter your name and birth year once. DixieData will use your initials plus birth year as the prefix for new visible IDs so shared archives are easier to trace back to their source.</p>
+				</div>
+				if form.ErrorMessage != "" {
+					<div class="rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+						{ form.ErrorMessage }
+					</div>
+				}
+				<form method="post" action="/setup" class="grid gap-4 md:grid-cols-2">
+					<div>
+						<label class="mb-1 block text-sm text-slate-500">First name</label>
+						<input type="text" name="first_name" value={ form.FirstName } class="field-input" autocomplete="given-name"/>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm text-slate-500">Middle name</label>
+						<input type="text" name="middle_name" value={ form.MiddleName } class="field-input" autocomplete="additional-name"/>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm text-slate-500">Last name</label>
+						<input type="text" name="last_name" value={ form.LastName } class="field-input" autocomplete="family-name"/>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm text-slate-500">Birth year</label>
+						<input type="text" name="birth_year" value={ form.BirthYear } inputmode="numeric" maxlength="4" class="field-input" autocomplete="bday-year"/>
+					</div>
+					if form.PrefixPreview != "" {
+						<div class="md:col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
+							New ID prefix: <strong class="text-[#22303d]">{ form.PrefixPreview }</strong>
+						</div>
+					}
+					<div class="md:col-span-2">
+						<button type="submit" class="primary-button">Save Identity</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	}
+}
+
+func mergeReviewDisplayName(soldier models.Soldier) string {
+	name := strings.TrimSpace(strings.TrimSpace(soldier.FirstName + " " + soldier.MiddleName + " " + soldier.LastName))
+	if name == "" {
+		return soldier.DisplayID
+	}
+	return name
+}
+
+templ ExportView(status models.GoogleStatus, conflicts []models.MergeReviewConflict) {
 	@Layout("Export") {
 		<div data-ui-id={ uiids.PageExport } class="relative mx-auto max-w-2xl space-y-6">
 			@SurfaceBadge(uiids.PageExport)
@@ -359,7 +411,12 @@ templ ExportView(status models.GoogleStatus) {
 					<button hx-post="/export/backup" hx-target="#export-status"
 						class="primary-button justify-start text-left">
 						<div class="font-bold">Export Backup</div>
-						<div class="text-xs text-slate-300">ZIP archive with manifest, DB snapshot, and all images</div>
+						<div class="text-xs text-slate-300">Replacement archive (.ddbak) with manifest, DB snapshot, and all images</div>
+					</button>
+					<button hx-post="/export/shared-archive" hx-target="#export-status"
+						class="secondary-button justify-start text-left">
+						<div class="font-bold">Export Shared Archive</div>
+						<div class="text-xs text-slate-500">Merge archive (.ddshare) for sharing records into another DixieData archive</div>
 					</button>
 					<button hx-post="/export/bug-report" hx-target="#export-status"
 						class="secondary-button justify-start text-left">
@@ -369,11 +426,87 @@ templ ExportView(status models.GoogleStatus) {
 					<button hx-post="/import/backup" hx-target="#export-status" hx-confirm="Load a backup and replace the current local archive?"
 						class="secondary-button justify-start text-left">
 						<div class="font-bold">Load Backup</div>
-						<div class="text-xs text-slate-500">Stages and validates the backup before replacing the current archive</div>
+						<div class="text-xs text-slate-500">Loads a .ddbak archive and replaces the current local archive (legacy .zip backups still supported)</div>
+					</button>
+					<button hx-post="/import/shared-archive" hx-target="#export-status"
+						class="secondary-button justify-start text-left">
+						<div class="font-bold">Import Shared Archive</div>
+						<div class="text-xs text-slate-500">Merges a .ddshare archive into the current local database using the bundled manifest, snapshot, and images</div>
 					</button>
 				</div>
 				<div id="export-status" class="text-sm text-slate-500"></div>
 			</div>
+			if len(conflicts) > 0 {
+				<div class="card rounded-3xl p-8 space-y-4">
+					<div>
+						<h3 class="text-xl gold font-bold">Shared Merge Review</h3>
+						<p class="mt-2 text-sm text-slate-500">These records were staged because the shared archive changed the same person or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
+					</div>
+					for _, conflict := range conflicts {
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] p-4 space-y-4">
+							<div>
+								<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">{ conflict.ConflictType }</div>
+								<h4 class="mt-1 font-bold text-[#22303d]">{ conflict.SourceDisplayID }</h4>
+								<p class="mt-1 text-sm text-slate-600">{ conflict.Reason }</p>
+							</div>
+							<div class="grid gap-4 md:grid-cols-2">
+								<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600">
+									<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">Local</div>
+									if conflict.LocalSoldier != nil {
+										<div class="mt-2 font-bold text-[#22303d]">{ conflict.LocalSoldier.DisplayID } - { mergeReviewDisplayName(*conflict.LocalSoldier) }</div>
+										<div class="mt-2 space-y-1">
+											<div>Type: { conflict.LocalSoldier.EntryType }</div>
+											<div>Unit: { conflict.LocalSoldier.Unit }</div>
+											<div>Pension: { conflict.LocalSoldier.PensionID }</div>
+											<div>Application: { conflict.LocalSoldier.ApplicationID }</div>
+											<div>Death: { conflict.LocalSoldier.DeathDate }</div>
+										</div>
+										if strings.TrimSpace(conflict.LocalSoldier.Notes) != "" {
+											<p class="mt-2 text-xs text-slate-500">{ conflict.LocalSoldier.Notes }</p>
+										}
+									} else {
+										<div class="mt-2 text-slate-500">No local soldier data.</div>
+									}
+								</div>
+								<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600">
+									<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">Shared archive</div>
+									<div class="mt-2 font-bold text-[#22303d]">{ conflict.SourceSoldier.DisplayID } - { mergeReviewDisplayName(conflict.SourceSoldier) }</div>
+									<div class="mt-2 space-y-1">
+										<div>Type: { conflict.SourceSoldier.EntryType }</div>
+										<div>Unit: { conflict.SourceSoldier.Unit }</div>
+										<div>Pension: { conflict.SourceSoldier.PensionID }</div>
+										<div>Application: { conflict.SourceSoldier.ApplicationID }</div>
+										<div>Death: { conflict.SourceSoldier.DeathDate }</div>
+									</div>
+									if strings.TrimSpace(conflict.SourceSoldier.Notes) != "" {
+										<p class="mt-2 text-xs text-slate-500">{ conflict.SourceSoldier.Notes }</p>
+									}
+								</div>
+							</div>
+							<div class="flex flex-wrap gap-3">
+								<button hx-post={ fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID) } hx-target="body"
+									class="secondary-button">
+									Keep Local
+								</button>
+								if conflict.ConflictType == "display-id-collision" {
+									<button hx-post={ fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID) } hx-target="body"
+										class="primary-button">
+										Keep Both
+									</button>
+								} else {
+									<button hx-post={ fmt.Sprintf("/merge-review/%d/use-shared", conflict.ID) } hx-target="body"
+										class="primary-button">
+										Use Shared
+									</button>
+								}
+							</div>
+							if conflict.ConflictType == "display-id-collision" {
+								<p class="text-xs text-slate-500">Keep Both preserves the local record and imports the shared record under a new unique display ID.</p>
+							}
+						</div>
+					}
+				</div>
+			}
 			<div data-ui-id={ uiids.PanelExportGoogle } class="relative card rounded-3xl p-8 space-y-4">
 				@SurfaceBadge(uiids.PanelExportGoogle)
 				<div>

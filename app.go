@@ -37,19 +37,20 @@ import (
 var embeddedQuotes []byte
 
 type App struct {
-	ctx         context.Context
-	database    *db.DB
-	soldiers    *services.SoldierService
-	anniversary *services.AnniversaryService
-	export      *services.ExportService
-	backup      *services.BackupService
-	diagnostics *services.DiagnosticsService
-	google      *services.GoogleService
-	quotes      []models.Quote
-	mux         *http.ServeMux
-	startupErr  error
-	dataDir     string
-	scratchpads scratchpadOpener
+	ctx           context.Context
+	database      *db.DB
+	soldiers      *services.SoldierService
+	anniversary   *services.AnniversaryService
+	export        *services.ExportService
+	backup        *services.BackupService
+	diagnostics   *services.DiagnosticsService
+	google        *services.GoogleService
+	quotes        []models.Quote
+	mux           *http.ServeMux
+	startupErr    error
+	setupRequired bool
+	dataDir       string
+	scratchpads   scratchpadOpener
 }
 
 type scratchpadOpener interface {
@@ -110,6 +111,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/search/advanced", a.handleAdvancedSearch)
 	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
+	mux.HandleFunc("/setup", a.handleInitialSetup)
 	mux.HandleFunc("/export", a.handleExport)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
@@ -117,8 +119,11 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
 	mux.HandleFunc("/export/ical", a.handleExportICalendar)
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
+	mux.HandleFunc("/export/shared-archive", a.handleExportSharedArchive)
 	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
 	mux.HandleFunc("/import/backup", a.handleImportBackup)
+	mux.HandleFunc("/import/shared-archive", a.handleImportSharedArchive)
+	mux.HandleFunc("/merge-review/", a.handleMergeReviewConflict)
 	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
 	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
 	mux.HandleFunc("/integrations/google/backup", a.handleGoogleBackup)
@@ -143,11 +148,28 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, a.startupErr.Error(), http.StatusInternalServerError)
 		return
 	}
+	if a.setupRequired && !setupRequestAllowed(r.URL.Path) {
+		http.Redirect(w, r, "/setup", http.StatusSeeOther)
+		return
+	}
 	if override := requestMethodOverride(r); override != "" {
 		r = r.Clone(r.Context())
 		r.Method = override
 	}
 	a.mux.ServeHTTP(w, r)
+}
+
+func setupRequestAllowed(path string) bool {
+	switch {
+	case path == "/setup":
+		return true
+	case path == "/app.js":
+		return true
+	case strings.HasPrefix(path, "/wailsjs/"):
+		return true
+	default:
+		return false
+	}
 }
 
 func requestMethodOverride(r *http.Request) string {
@@ -207,6 +229,40 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	templates.Calendar(month, calendar, total, selectQuoteOfDay(a.quotes, time.Now())).Render(r.Context(), w)
+}
+
+func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
+	if !a.setupRequired {
+		http.Redirect(w, r, "/calendar", http.StatusSeeOther)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		templates.InitialSetupView(models.InitialSetupForm{}).Render(r.Context(), w)
+	case http.MethodPost:
+		form, birthYear, err := parseInitialSetupForm(r)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			form.ErrorMessage = err.Error()
+			templates.InitialSetupView(form).Render(r.Context(), w)
+			return
+		}
+		_, err = a.database.ConfigureUserIdentity(form.FirstName, form.MiddleName, form.LastName, birthYear)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			form.ErrorMessage = err.Error()
+			templates.InitialSetupView(form).Render(r.Context(), w)
+			return
+		}
+		a.setupRequired = false
+		if err := a.reloadServices(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/calendar", http.StatusSeeOther)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
@@ -513,7 +569,12 @@ func (a *App) handleExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.ExportView(status).Render(r.Context(), w)
+	conflicts, err := a.backup.PendingMergeConflicts()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.ExportView(status, conflicts).Render(r.Context(), w)
 }
 
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -619,7 +680,7 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: backupArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
-			{DisplayName: "Backup archive", Pattern: "*.zip"},
+			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
 		},
 	})
 	if err != nil || path == "" {
@@ -633,6 +694,31 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Backup ready (%d soldiers, %d images):", manifest.Soldiers, manifest.Images), path))
+}
+
+func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: sharedArchiveName(time.Now()),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Shared archive export cancelled.")
+		return
+	}
+
+	manifest, err := a.backup.ExportShared(path, a.dataDir)
+	if err != nil {
+		fmt.Fprintf(w, "Shared archive export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Shared archive ready (%d soldiers, %d images):", manifest.Soldiers, manifest.Images), path))
 }
 
 func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
@@ -668,7 +754,8 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
-			{DisplayName: "Backup archive", Pattern: "*.zip"},
+			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
+			{DisplayName: "Legacy backup archive", Pattern: "*.zip"},
 		},
 	})
 	if err != nil || path == "" {
@@ -695,6 +782,75 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "Backup loaded: %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images)
+}
+
+func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Shared backup import cancelled.")
+		return
+	}
+
+	summary, err := a.backup.ImportSharedBackup(path, a.dataDir)
+	if err != nil {
+		fmt.Fprintf(w, "Shared backup import failed: %v", err)
+		return
+	}
+	if summary.PendingConflicts > 0 {
+		w.Header().Set("X-DixieData-Redirect", "/export")
+	}
+	fmt.Fprintf(w, "Shared backup merged: %d soldiers added, %d updated; %d records added, %d updated; %d images added, %d updated; %d conflicts staged for review. Merge log: %s",
+		summary.SoldiersInserted, summary.SoldiersUpdated,
+		summary.RecordsInserted, summary.RecordsUpdated,
+		summary.ImagesInserted, summary.ImagesUpdated,
+		summary.PendingConflicts,
+		summary.LogPath,
+	)
+}
+
+func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/merge-review/")
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) != 2 {
+		http.NotFound(w, r)
+		return
+	}
+	conflictID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil || conflictID < 1 {
+		http.Error(w, "invalid merge review id", http.StatusBadRequest)
+		return
+	}
+	var decision string
+	switch parts[1] {
+	case "keep-local":
+		decision = "keep-local"
+	case "keep-both":
+		decision = "keep-both"
+	case "use-shared":
+		decision = "use-shared"
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	if err := a.backup.ResolveMergeConflict(conflictID, decision, a.dataDir); err != nil {
+		fmt.Fprintf(w, "Merge review update failed: %v", err)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", "/export")
+	fmt.Fprint(w, "Merge review updated.")
 }
 
 func (a *App) handleGoogleConnect(w http.ResponseWriter, r *http.Request) {
@@ -1388,7 +1544,11 @@ func monthPDFName(month int) string {
 }
 
 func backupArchiveName(now time.Time) string {
-	return fmt.Sprintf("dixiedata-backup-%s.zip", now.Format("2006-01-02"))
+	return fmt.Sprintf("dixiedata-backup-%s.ddbak", now.Format("2006-01-02"))
+}
+
+func sharedArchiveName(now time.Time) string {
+	return fmt.Sprintf("dixiedata-shared-%s.ddshare", now.Format("2006-01-02"))
 }
 
 func sanitizedFileStem(value, fallback string) string {
@@ -1589,6 +1749,13 @@ func (a *App) reloadServices() error {
 	a.diagnostics = services.NewDiagnosticsService(a.database, a.soldiers)
 	a.google = services.NewGoogleService(a.dataDir)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
+	if a.database != nil {
+		required, err := a.database.IdentitySetupRequired()
+		if err != nil {
+			return err
+		}
+		a.setupRequired = required
+	}
 	return nil
 }
 
@@ -1654,6 +1821,28 @@ func selectQuoteOfDay(quotes []models.Quote, now time.Time) models.Quote {
 	}
 	index := (now.YearDay() - 1) % len(quotes)
 	return quotes[index]
+}
+
+func parseInitialSetupForm(r *http.Request) (models.InitialSetupForm, int, error) {
+	if err := r.ParseForm(); err != nil {
+		return models.InitialSetupForm{}, 0, fmt.Errorf("failed to parse setup form")
+	}
+	form := models.InitialSetupForm{
+		FirstName:  strings.TrimSpace(r.FormValue("first_name")),
+		MiddleName: strings.TrimSpace(r.FormValue("middle_name")),
+		LastName:   strings.TrimSpace(r.FormValue("last_name")),
+		BirthYear:  strings.TrimSpace(r.FormValue("birth_year")),
+	}
+	birthYear, err := parseBoundedInt(form.BirthYear, "birth_year", 1000, 9999)
+	if err != nil {
+		return form, 0, err
+	}
+	prefix, err := db.BuildUserNodePrefix(form.FirstName, form.MiddleName, form.LastName, birthYear)
+	if err != nil {
+		return form, 0, err
+	}
+	form.PrefixPreview = prefix
+	return form, birthYear, nil
 }
 
 func parsePage(value string) int {
