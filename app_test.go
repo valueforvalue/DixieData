@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -949,6 +950,102 @@ func TestHandleUpdateSoldierRendersFormErrorOnUploadFailure(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "Save failed.") || !strings.Contains(rec.Body.String(), "timesheet.jpeg") {
 		t.Fatalf("expected inline upload error form, got %q", rec.Body.String())
+	}
+}
+
+func TestFlagReviewStatusAddsRecordToQueue(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{DisplayID: "CSA-REVIEW", FirstName: "Queue", LastName: "Target"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	form := url.Values{
+		"review_reason": {"Manual note for follow-up research"},
+	}
+	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/soldiers/%d/review/flag", created.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != fmt.Sprintf("/soldiers/%d", created.ID) {
+		t.Fatalf("redirect=%q", got)
+	}
+
+	reloaded, err := app.soldiers.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if !reloaded.NeedsReview {
+		t.Fatalf("expected record to be flagged for review")
+	}
+	if reloaded.ReviewReason != "Manual note for follow-up research" {
+		t.Fatalf("review reason=%q", reloaded.ReviewReason)
+	}
+}
+
+func TestHandleCompareUsesRecordBackLinkWhenSourceRecordProvided(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	left, err := app.soldiers.Create(models.Soldier{DisplayID: "CMP-LEFT", FirstName: "Ada", LastName: "Cole"})
+	if err != nil {
+		t.Fatalf("Create left: %v", err)
+	}
+	right, err := app.soldiers.Create(models.Soldier{DisplayID: "CMP-RIGHT", FirstName: "Thomas", LastName: "Cole"})
+	if err != nil {
+		t.Fatalf("Create right: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", left.ID, right.ID, left.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{
+		`data-history-back`,
+		fmt.Sprintf(`data-fallback-href="/soldiers/%d"`, left.ID),
+		"Back to Record",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("comparison view missing %s in %q", needle, body)
+		}
 	}
 }
 

@@ -2,6 +2,7 @@
   const timers = new WeakMap();
   const redirectStateStorageKey = "dixiedata.redirectState";
   const toastStateStorageKey = "dixiedata.toastState";
+  const backStackStorageKey = "dixiedata.backStack";
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   const imageViewerState = {
     baseScale: 1,
@@ -20,6 +21,163 @@
     selectionText: "",
   };
 
+  function loadBackStack() {
+    try {
+      const raw = window.sessionStorage.getItem(backStackStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveBackStack(stack) {
+    try {
+      if (!Array.isArray(stack) || stack.length === 0) {
+        window.sessionStorage.removeItem(backStackStorageKey);
+        return;
+      }
+      window.sessionStorage.setItem(backStackStorageKey, JSON.stringify(stack.slice(-8)));
+    } catch (error) {
+      // Ignore storage failures and fall back to browser history.
+    }
+  }
+
+  function syncClonedFormState(root) {
+    root.querySelectorAll("textarea").forEach((textarea) => {
+      if (textarea instanceof HTMLTextAreaElement) {
+        textarea.textContent = textarea.value;
+      }
+    });
+    root.querySelectorAll("input").forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) {
+        return;
+      }
+      if (input.type === "checkbox" || input.type === "radio") {
+        if (input.checked) {
+          input.setAttribute("checked", "checked");
+        } else {
+          input.removeAttribute("checked");
+        }
+        return;
+      }
+      input.setAttribute("value", input.value);
+    });
+    root.querySelectorAll("select").forEach((select) => {
+      if (!(select instanceof HTMLSelectElement)) {
+        return;
+      }
+      Array.from(select.options).forEach((option) => {
+        option.selected = option.value === select.value;
+        if (option.selected) {
+          option.setAttribute("selected", "selected");
+        } else {
+          option.removeAttribute("selected");
+        }
+      });
+    });
+  }
+
+  function currentViewSnapshot() {
+    const main = document.querySelector("main");
+    if (!(main instanceof HTMLElement)) {
+      return null;
+    }
+    const clone = main.cloneNode(true);
+    if (!(clone instanceof HTMLElement)) {
+      return null;
+    }
+    syncClonedFormState(clone);
+    return {
+      path: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      title: document.title,
+      mainHTML: clone.innerHTML,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    };
+  }
+
+  function pushBackSnapshot() {
+    const snapshot = currentViewSnapshot();
+    if (!snapshot) {
+      return;
+    }
+    const stack = loadBackStack();
+    const previous = stack[stack.length - 1];
+    if (previous && previous.path === snapshot.path && previous.mainHTML === snapshot.mainHTML) {
+      return;
+    }
+    stack.push(snapshot);
+    saveBackStack(stack);
+  }
+
+  function smartBackLabel(path) {
+    const normalized = String(path || "").toLowerCase();
+    if (normalized.startsWith("/calendar")) {
+      return "Back to Calendar";
+    }
+    if (normalized.startsWith("/insights")) {
+      return "Back to Insights";
+    }
+    if (normalized.startsWith("/share")) {
+      return "Back to Share";
+    }
+    if (normalized.startsWith("/review-queue")) {
+      return "Back to Review Queue";
+    }
+    if (normalized.startsWith("/soldiers/search") || normalized.startsWith("/soldiers?") || normalized === "/soldiers") {
+      return "Back to Results";
+    }
+    return "Back";
+  }
+
+  function applySmartBackLabels() {
+    const fallback = loadBackStack().slice(-1)[0];
+    document.querySelectorAll("[data-history-back]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const fallbackLabel = button.getAttribute("data-fallback-label") || "Back";
+      button.textContent = `← ${fallback ? smartBackLabel(fallback.path) : fallbackLabel}`;
+    });
+  }
+
+  function restoreBackSnapshot() {
+    const stack = loadBackStack();
+    const snapshot = stack.pop();
+    saveBackStack(stack);
+    if (!snapshot) {
+      return false;
+    }
+    const main = document.querySelector("main");
+    if (!(main instanceof HTMLElement) || typeof snapshot.mainHTML !== "string") {
+      return false;
+    }
+    document.title = snapshot.title || document.title;
+    main.innerHTML = snapshot.mainHTML;
+    window.history.replaceState(null, "", snapshot.path || window.location.pathname);
+    initializeDynamicContent();
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: Number.isFinite(snapshot.scrollY) ? snapshot.scrollY : 0,
+        left: Number.isFinite(snapshot.scrollX) ? snapshot.scrollX : 0,
+        behavior: "auto",
+      });
+    });
+    return true;
+  }
+
+  function isRecordDetailHref(href) {
+    return /^\/soldiers\/\d+(?:\?.*)?$/.test(href) && !/\/edit(?:\?|$)/.test(href);
+  }
+
+  function closestParentForm(el) {
+    if (el instanceof HTMLFormElement) {
+      return null;
+    }
+    return el.closest("form");
+  }
+
   function getMethod(el) {
     if (el.hasAttribute("hx-post")) {
       return "POST";
@@ -30,23 +188,81 @@
     if (el.hasAttribute("hx-delete")) {
       return "DELETE";
     }
+    const form = closestParentForm(el);
+    if (form) {
+      return getMethod(form);
+    }
     return "GET";
   }
 
   function getUrl(el, method) {
-    return el.getAttribute(`hx-${method.toLowerCase()}`);
+    const direct = el.getAttribute(`hx-${method.toLowerCase()}`);
+    if (direct) {
+      return direct;
+    }
+    const form = closestParentForm(el);
+    return form ? getUrl(form, method) : null;
   }
 
   function getTarget(el) {
     const selector = el.getAttribute("hx-target");
-    if (!selector || selector === "body") {
+    if (!selector) {
+      const form = closestParentForm(el);
+      return form ? getTarget(form) : document.body;
+    }
+    if (selector === "body") {
       return document.body;
     }
     return document.querySelector(selector);
   }
 
   function getSwap(el) {
-    return el.getAttribute("hx-swap") || "innerHTML";
+    const form = closestParentForm(el);
+    return el.getAttribute("hx-swap") || (form ? getSwap(form) : "innerHTML");
+  }
+
+  function syncPrimaryImageSelection(primaryImageId) {
+    document.querySelectorAll("[data-image-card]").forEach((card) => {
+      if (!(card instanceof HTMLElement)) {
+        return;
+      }
+      const isPrimary = card.getAttribute("data-image-id") === String(primaryImageId);
+      const badge = card.querySelector("[data-image-primary-badge]");
+      const action = card.querySelector("[data-image-primary-action]");
+      if (badge instanceof HTMLElement) {
+        badge.classList.toggle("hidden", !isPrimary);
+      }
+      if (action instanceof HTMLElement) {
+        action.classList.toggle("hidden", isPrimary);
+      }
+    });
+  }
+
+  function selectedCompareIDs(group) {
+    return Array.from(document.querySelectorAll(`[data-checkbox-group="${group}"][data-compare-select]:checked`))
+      .map((checkbox) => checkbox instanceof HTMLInputElement ? checkbox.value : "")
+      .filter((value) => value);
+  }
+
+  function syncCompareSelectionUI(group) {
+    const selected = selectedCompareIDs(group);
+    const button = document.querySelector(`[data-compare-selected][data-compare-group="${group}"]`);
+    const status = document.querySelector("[data-compare-selection-status]");
+    if (button instanceof HTMLButtonElement) {
+      const ready = selected.length === 2;
+      button.disabled = !ready;
+      button.classList.toggle("opacity-60", !ready);
+      button.classList.toggle("cursor-not-allowed", !ready);
+    }
+    if (status instanceof HTMLElement) {
+      if (selected.length === 2) {
+        status.textContent = "Two records selected. Compare Selected is ready.";
+      } else if (selected.length === 0) {
+        status.textContent = "Select exactly two records to compare them side by side.";
+      } else {
+        status.textContent = `${selected.length} selected. Choose exactly two records to compare.`;
+      }
+    }
   }
 
   function parseDelay(trigger) {
@@ -62,9 +278,15 @@
     if (el instanceof HTMLFormElement) {
       return new FormData(el);
     }
-    const form = el.closest("form");
+    const form = closestParentForm(el);
     if (form instanceof HTMLFormElement) {
-      return new FormData(form);
+      const payload = new FormData(form);
+      if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) {
+        if (el.name) {
+          payload.append(el.name, el.value ?? "");
+        }
+      }
+      return payload;
     }
     if (el.name) {
       data.append(el.name, el.value ?? "");
@@ -367,6 +589,62 @@
     `;
     document.body.appendChild(viewer);
     return viewer;
+  }
+
+  // Quick preview keeps list triage in-context so people can inspect a record
+  // without losing their place, filters, or compare selections.
+  function ensurePreviewDrawer() {
+    let drawer = document.getElementById("record-preview-drawer");
+    if (drawer) {
+      return drawer;
+    }
+
+    drawer = document.createElement("div");
+    drawer.id = "record-preview-drawer";
+    drawer.className = "fixed inset-0 z-[85] hidden bg-[rgba(15,23,42,0.45)]";
+    drawer.innerHTML = `
+      <div data-preview-backdrop class="absolute inset-0"></div>
+      <aside class="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col overflow-hidden border-l border-[rgba(141,116,64,0.7)] bg-[rgba(246,241,228,0.98)] shadow-[-24px_0_60px_rgba(15,23,42,0.25)]">
+        <div class="flex items-center justify-between gap-3 border-b border-[rgba(141,116,64,0.28)] px-5 py-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Quick Preview</p>
+            <p class="mt-1 text-sm text-slate-600">Review the essentials without leaving the results list.</p>
+          </div>
+          <button type="button" data-preview-close class="secondary-button px-4">Close</button>
+        </div>
+        <div data-preview-body class="flex-1 overflow-y-auto px-5 py-5"></div>
+      </aside>
+    `;
+    document.body.appendChild(drawer);
+    return drawer;
+  }
+
+  function closePreviewDrawer() {
+    const drawer = document.getElementById("record-preview-drawer");
+    if (!(drawer instanceof HTMLElement)) {
+      return;
+    }
+    drawer.classList.add("hidden");
+    document.body.classList.remove("overflow-hidden");
+  }
+
+  function openPreviewDrawer(targetId) {
+    if (!targetId) {
+      return;
+    }
+    const source = document.getElementById(targetId);
+    if (!(source instanceof HTMLElement)) {
+      showToast("Preview content was not available.", "error");
+      return;
+    }
+    const drawer = ensurePreviewDrawer();
+    const body = drawer.querySelector("[data-preview-body]");
+    if (!(body instanceof HTMLElement)) {
+      return;
+    }
+    body.innerHTML = source.innerHTML;
+    drawer.classList.remove("hidden");
+    document.body.classList.add("overflow-hidden");
   }
 
   function imageViewerElements() {
@@ -1202,6 +1480,11 @@
       return;
     }
 
+    if (getSwap(el) === "none") {
+      initializeDynamicContent();
+      return;
+    }
+
     const trimmed = html.trimStart().toLowerCase();
     if (target === document.body && trimmed.startsWith("<!doctype html")) {
       if (requestState) {
@@ -1246,9 +1529,13 @@
     initializeEntryTypeForms();
     restoreRedirectState();
     restorePendingToast();
+    applySmartBackLabels();
   }
 
   function showProgress(el) {
+    if (getSwap(el) === "none") {
+      return;
+    }
     const target = getTarget(el);
     if (!(target instanceof HTMLElement) || target === document.body) {
       return;
@@ -1352,6 +1639,12 @@
         clearDraftForForm(el);
       }
       applyResponse(el, html, requestState);
+      if (response.ok && el instanceof HTMLElement) {
+        const primaryImageId = el.getAttribute("data-primary-image-id");
+        if (primaryImageId) {
+          syncPrimaryImageSelection(primaryImageId);
+        }
+      }
       if (toastMessage) {
         showToast(toastMessage, toastKind);
       }
@@ -1477,6 +1770,7 @@
     initializeFloatingNav();
     restoreRedirectState();
     restorePendingToast();
+    applySmartBackLabels();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -1488,6 +1782,17 @@
       event.preventDefault();
       performTextContextMenuAction(textMenuAction.getAttribute("data-text-menu-action"));
       return;
+    }
+    const recordLink = event.target.closest("a[href]");
+    if (recordLink instanceof HTMLAnchorElement && !event.defaultPrevented) {
+      try {
+        const target = new URL(recordLink.href, window.location.origin);
+        if (target.origin === window.location.origin && isRecordDetailHref(`${target.pathname}${target.search}`)) {
+          pushBackSnapshot();
+        }
+      } catch (error) {
+        // Ignore malformed URLs and continue with normal navigation.
+      }
     }
     if (!event.target.closest("#text-context-menu")) {
       closeTextContextMenu();
@@ -1519,6 +1824,17 @@
         imageTrigger.getAttribute("data-image-file"),
         imageTrigger.getAttribute("data-image-id"),
       );
+      return;
+    }
+    const previewTrigger = event.target.closest("[data-preview-open]");
+    if (previewTrigger instanceof HTMLElement) {
+      event.preventDefault();
+      openPreviewDrawer(previewTrigger.getAttribute("data-preview-target"));
+      return;
+    }
+    if (event.target.closest("[data-preview-close],[data-preview-backdrop]")) {
+      event.preventDefault();
+      closePreviewDrawer();
       return;
     }
     const scratchpadOpen = event.target.closest("[data-scratchpad-open]");
@@ -1591,6 +1907,35 @@
       activateTab(tab);
       return;
     }
+    const historyBack = event.target.closest("[data-history-back]");
+    if (historyBack instanceof HTMLElement) {
+      event.preventDefault();
+      if (restoreBackSnapshot()) {
+        return;
+      }
+      const fallbackHref = historyBack.getAttribute("data-fallback-href");
+      if (fallbackHref) {
+        window.location.assign(fallbackHref);
+      } else if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.assign("/soldiers");
+      }
+      return;
+    }
+    const compareSelected = event.target.closest("[data-compare-selected]");
+    if (compareSelected instanceof HTMLButtonElement) {
+      event.preventDefault();
+      const group = compareSelected.getAttribute("data-compare-group") || "search-compare";
+      const selected = selectedCompareIDs(group);
+      if (selected.length !== 2) {
+        showToast("Choose exactly two records to compare.", "error");
+        syncCompareSelectionUI(group);
+        return;
+      }
+      window.location.assign(`/compare?id1=${encodeURIComponent(selected[0])}&id2=${encodeURIComponent(selected[1])}`);
+      return;
+    }
     const mergeReviewAction = event.target.closest("[data-merge-review-action]");
     if (mergeReviewAction) {
       event.preventDefault();
@@ -1619,7 +1964,7 @@
       return;
     }
     event.preventDefault();
-    request(form);
+    request(event.submitter instanceof HTMLElement ? event.submitter : form);
   });
 
   const triggerInputRequest = (event) => {
@@ -1675,11 +2020,20 @@
     }
     toggleCheckboxGroup(selectAll.getAttribute("data-select-all"), selectAll.checked);
   });
+  document.addEventListener("change", (event) => {
+    const compareSelect = event.target.closest("[data-compare-select]");
+    if (!(compareSelect instanceof HTMLInputElement)) {
+      return;
+    }
+    const group = compareSelect.getAttribute("data-checkbox-group") || "search-compare";
+    syncCompareSelectionUI(group);
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closePrintConfigModal();
       closeTextContextMenu();
       closeImageViewer();
+      closePreviewDrawer();
       const panel = document.querySelector("[data-floating-nav-panel]");
       if (panel instanceof HTMLElement) {
         panel.classList.add("hidden");

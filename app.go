@@ -46,6 +46,7 @@ type App struct {
 	anniversary   *services.AnniversaryService
 	analytics     *services.AnalyticsService
 	audit         *services.AuditService
+	images        *services.ImageService
 	export        *services.ExportService
 	backup        *services.BackupService
 	diagnostics   *services.DiagnosticsService
@@ -123,7 +124,9 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
 	mux.HandleFunc("/review-queue", a.handleReviewQueue)
+	mux.HandleFunc("/review-queue/bulk", a.handleReviewQueueBulk)
 	mux.HandleFunc("/review-queue/compare/", a.handleReviewQueueCompare)
+	mux.HandleFunc("/compare", a.handleCompare)
 	mux.HandleFunc("/setup", a.handleInitialSetup)
 	mux.HandleFunc("/version", a.handleVersion)
 	mux.HandleFunc("/share", a.handleShare)
@@ -132,6 +135,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
+	mux.HandleFunc("/settings/images/orphans/scan", a.handleScanImageOrphans)
+	mux.HandleFunc("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
 	mux.HandleFunc("/export/ical", a.handleExportICalendar)
@@ -161,7 +166,7 @@ func (a *App) setupRoutes() {
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if a.mux == nil {
-		http.Error(w, "Application is still starting up.", http.StatusServiceUnavailable)
+		renderStartupPlaceholder(w, r)
 		return
 	}
 	if a.startupErr != nil {
@@ -177,6 +182,26 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Method = override
 	}
 	a.mux.ServeHTTP(w, r)
+}
+
+func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
+	target := "/calendar"
+	if r != nil && r.URL != nil {
+		if requestPath := strings.TrimSpace(r.URL.RequestURI()); requestPath != "" && requestPath != "/" {
+			target = requestPath
+		}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	fmt.Fprintf(w, `<body hx-get="%s" hx-trigger="load delay:700ms" hx-target="body" hx-swap="outerHTML" class="min-h-screen bg-[linear-gradient(180deg,#d7d2c9_0%%,#c9c2b5_42%%,#b9b1a3_100%%)]">
+<div class="flex min-h-screen items-center justify-center px-6">
+  <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
+    <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Soldier Archive</p>
+    <p class="text-2xl font-semibold text-[#f2ede1]">Loading DixieData...</p>
+    <p class="mt-2 text-sm text-[#d8cfbc]">The archive is still starting up. This screen will refresh automatically.</p>
+  </div>
+</div>
+</body>`, html.EscapeString(target))
 }
 
 func setupRequestAllowed(path string) bool {
@@ -421,6 +446,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 	search := models.SoldierSearch{
 		Mode:                  "advanced",
 		DisplayID:             r.URL.Query().Get("display_id"),
+		EntryType:             r.URL.Query().Get("entry_type"),
 		FirstName:             r.URL.Query().Get("first_name"),
 		MiddleName:            r.URL.Query().Get("middle_name"),
 		LastName:              r.URL.Query().Get("last_name"),
@@ -461,6 +487,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 
 func hasAdvancedSearchInput(search models.SoldierSearch) bool {
 	return strings.TrimSpace(search.DisplayID) != "" ||
+		strings.TrimSpace(search.EntryType) != "" ||
 		strings.TrimSpace(search.FirstName) != "" ||
 		strings.TrimSpace(search.MiddleName) != "" ||
 		strings.TrimSpace(search.LastName) != "" ||
@@ -525,6 +552,7 @@ func (a *App) handleScrapeFindAGrave(w http.ResponseWriter, r *http.Request) {
 	scrape.SourceLabel = result.SourceLabel
 	scrape.WarningLines = result.Warnings
 	scrape.Spouses = result.Spouses
+	scrape.ConfidenceScore = result.ConfidenceScore
 	autofilled := applyFindAGraveAutofill(defaults, result)
 	a.renderEntryFormWithScrapeState(w, r, autofilled, false, "", scrape, http.StatusOK, true)
 }
@@ -604,12 +632,20 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleResolveReviewStatus(w, r, id)
 		return
 	}
+	if len(parts) > 2 && parts[1] == "review" && parts[2] == "flag" {
+		a.handleFlagReviewStatus(w, r, id)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
 		soldier, err := a.soldiers.GetByID(id)
 		if err != nil {
 			http.Error(w, err.Error(), 404)
+			return
+		}
+		if err := a.attachDetailBackLink(soldier, strings.TrimSpace(r.URL.Query().Get("from"))); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		templates.SoldierDetail(*soldier).Render(r.Context(), w)
@@ -713,6 +749,59 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 	templates.ReviewQueueView(entries, page, total, 50).Render(r.Context(), w)
 }
 
+func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	selected, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(selected) == 0 {
+		setToastHeaderWithType(w, "Select at least one review record first.", "warning")
+		fmt.Fprint(w, "Select at least one review record first.")
+		return
+	}
+	action := strings.ToLower(strings.TrimSpace(r.FormValue("bulk_action")))
+	switch action {
+	case "ignore":
+		for _, soldierID := range selected {
+			if err := a.soldiers.MarkReviewResolved(soldierID); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err := a.audit.ResolveFindingsForSoldier(soldierID); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		setToastHeader(w, fmt.Sprintf("Resolved %d review queue item(s).", len(selected)))
+	case "delete":
+		for _, soldierID := range selected {
+			if err := a.audit.ResolveFindingsForSoldier(soldierID); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if err := a.soldiers.Delete(soldierID); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		setToastHeaderWithType(w, fmt.Sprintf("Deleted %d review queue record(s).", len(selected)), "success")
+	default:
+		http.Error(w, "invalid bulk action", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", "/review-queue")
+	fmt.Fprint(w, "Review queue updated.")
+}
+
 func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -748,6 +837,43 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	templates.SettingsView(initializeDataConfirmationWord).Render(r.Context(), w)
+}
+
+func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	orphans, err := a.images.DiscoverOrphans(a.dataDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.SettingsOrphanedImages(orphans).Render(r.Context(), w)
+}
+
+func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	relativePaths := make([]string, 0, len(r.Form["orphan_path"]))
+	for _, value := range r.Form["orphan_path"] {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			relativePaths = append(relativePaths, trimmed)
+		}
+	}
+	moved, trashRoot, err := a.images.MoveOrphansToTrash(a.dataDir, relativePaths)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	setToastHeader(w, fmt.Sprintf("Moved %d orphaned image(s) into temp trash for 30-day retention.", moved))
+	templates.SettingsOrphanCleanupResult(moved, trashRoot).Render(r.Context(), w)
 }
 
 func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
@@ -1183,6 +1309,31 @@ func (a *App) handleResolveReviewStatus(w http.ResponseWriter, r *http.Request, 
 	fmt.Fprint(w, "Review status cleared.")
 }
 
+func (a *App) handleFlagReviewStatus(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	reason := strings.TrimSpace(r.FormValue("review_reason"))
+	if reason == "" {
+		setToastHeaderWithType(w, "Add a review note before sending this record to the queue.", "warning")
+		fmt.Fprint(w, "Add a review note before sending this record to the queue.")
+		return
+	}
+	if err := a.soldiers.SetReviewStatus(id, true, reason); err != nil {
+		setToastHeaderWithType(w, "Review queue update failed.", "error")
+		fmt.Fprintf(w, "Review queue update failed: %v", err)
+		return
+	}
+	setToastHeader(w, "Success: record added to the review queue.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	fmt.Fprint(w, "Review status updated.")
+}
+
 func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/review-queue/compare/")
 	path = strings.Trim(path, "/")
@@ -1218,6 +1369,32 @@ func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
+	}
+	templates.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
+}
+
+func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id1, id2, err := compareIDsFromRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	comparison, err := a.soldiers.ManualComparison(id1, id2)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "record not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from"); err == nil && fromID > 0 {
+		comparison.BackHref = fmt.Sprintf("/soldiers/%d", fromID)
+		comparison.BackLabel = "Back to Record"
 	}
 	templates.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
 }
@@ -1745,7 +1922,7 @@ func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Reques
 		fmt.Fprintf(w, "Primary image update failed: %v", err)
 		return
 	}
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	setToastHeader(w, "Primary image updated.")
 	fmt.Fprint(w, "Primary image updated.")
 }
 
@@ -1774,6 +1951,13 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		return models.Soldier{}, err
 	}
 
+	needsReview := r.FormValue("existing_needs_review") == "1"
+	reviewReason := r.FormValue("existing_review_reason")
+	if findAGraveNeedsReview(r) {
+		needsReview = true
+		reviewReason = findAGraveReviewReason(r)
+	}
+
 	return models.Soldier{
 		ID:                    id,
 		DisplayID:             r.FormValue("display_id"),
@@ -1799,8 +1983,23 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		BirthInfo:             r.FormValue("birth_info"),
 		BuriedIn:              r.FormValue("buried_in"),
 		Notes:                 r.FormValue("notes"),
+		NeedsReview:           needsReview,
+		ReviewReason:          reviewReason,
 		Records:               parseRecordInputs(r),
 	}, nil
+}
+
+func findAGraveNeedsReview(r *http.Request) bool {
+	score, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("scrape_confidence_score")))
+	return strings.TrimSpace(r.FormValue("scrape_source_label")) != "" && score > 0 && score < 70
+}
+
+func findAGraveReviewReason(r *http.Request) string {
+	if !findAGraveNeedsReview(r) {
+		return ""
+	}
+	score, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("scrape_confidence_score")))
+	return fmt.Sprintf("Low-confidence Find a Grave scrape (%d/100). Verify memorial details before clearing review.", score)
 }
 
 func (a *App) newSoldierDefaults() (models.Soldier, error) {
@@ -2173,12 +2372,19 @@ func (a *App) reloadServices() error {
 	a.anniversary = services.NewAnniversaryService(a.database)
 	a.analytics = services.NewAnalyticsService(a.database)
 	a.audit = services.NewAuditService(a.database)
+	a.images = services.NewImageService(a.database)
 	a.export = services.NewExportService(a.database, a.soldiers)
 	a.backup = services.NewBackupService(a.database, a.soldiers)
 	a.diagnostics = services.NewDiagnosticsService(a.database, a.soldiers)
 	a.google = services.NewGoogleService(a.dataDir)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
 	if a.database != nil {
+		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {
+			return err
+		}
+		if err := a.images.PurgeExpiredTrash(a.dataDir); err != nil {
+			return err
+		}
 		required, err := a.database.IdentitySetupRequired()
 		if err != nil {
 			return err
@@ -2288,6 +2494,76 @@ func parsePage(value string) int {
 		return 1
 	}
 	return page
+}
+
+func parseSelectedSoldierIDs(values []string) ([]int64, error) {
+	selected := make([]int64, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(trimmed, 10, 64)
+		if err != nil || id < 1 {
+			return nil, fmt.Errorf("invalid review queue selection")
+		}
+		selected = append(selected, id)
+	}
+	return selected, nil
+}
+
+func compareIDsFromRequest(r *http.Request) (int64, int64, error) {
+	id1, err1 := parseOptionalInt64(strings.TrimSpace(r.URL.Query().Get("id1")), "id1")
+	id2, err2 := parseOptionalInt64(strings.TrimSpace(r.URL.Query().Get("id2")), "id2")
+	if err1 == nil && err2 == nil && id1 > 0 && id2 > 0 {
+		if id1 == id2 {
+			return 0, 0, fmt.Errorf("choose two different records to compare")
+		}
+		return id1, id2, nil
+	}
+	values := r.URL.Query()["compare_ids"]
+	if len(values) != 2 {
+		return 0, 0, fmt.Errorf("choose exactly two records to compare")
+	}
+	selected, err := parseSelectedSoldierIDs(values)
+	if err != nil || len(selected) != 2 {
+		return 0, 0, fmt.Errorf("choose exactly two records to compare")
+	}
+	if selected[0] == selected[1] {
+		return 0, 0, fmt.Errorf("choose two different records to compare")
+	}
+	return selected[0], selected[1], nil
+}
+
+func (a *App) attachDetailBackLink(soldier *models.Soldier, fromValue string) error {
+	if soldier == nil || fromValue == "" {
+		return nil
+	}
+	fromID, err := strconv.ParseInt(fromValue, 10, 64)
+	if err != nil || fromID < 1 || fromID == soldier.ID {
+		return nil
+	}
+	source, err := a.soldiers.GetByID(fromID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+	soldier.BackLinkURL = fmt.Sprintf("/soldiers/%d", fromID)
+	soldier.BackLinkLabel = "Back to " + linkedRecordLabel(*source)
+	return nil
+}
+
+func linkedRecordLabel(s models.Soldier) string {
+	switch strings.TrimSpace(strings.ToLower(s.EntryType)) {
+	case "wife":
+		return "Wife Record"
+	case "widow":
+		return "Widow Record"
+	default:
+		return "Soldier Record"
+	}
 }
 
 func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error {

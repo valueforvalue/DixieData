@@ -162,3 +162,58 @@ func TestSoldierDetailShowsResolveReviewAction(t *testing.T) {
 		}
 	}
 }
+
+func TestSoldierDetailShowsManualReviewFlagAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:        41,
+		DisplayID: "JCM87-00041",
+		FirstName: "Manual",
+		LastName:  "Review",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Send to Review Queue",
+		"Review Note",
+		"/soldiers/41/review/flag",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailConsolidatesRelationshipDisplay(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:              12,
+		DisplayID:       "JCM87-00012",
+		EntryType:       "widow",
+		FirstName:       "Sarah",
+		LastName:        "Cole",
+		SpouseName:      "Thomas Cole",
+		SpouseDisplayID: "JCM87-00011",
+		SpouseSoldierID: 11,
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if strings.Count(content, "Married To") != 1 {
+		t.Fatalf("expected a single Married To label, got %d", strings.Count(content, "Married To"))
+	}
+	for _, needle := range []string{
+		"Family &amp; Relationships",
+		"Thomas Cole (JCM87-00011)",
+		"View Husband",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}

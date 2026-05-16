@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/services"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
@@ -36,6 +37,9 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						}
 						if len(scrape.WarningLines) > 0 {
 							<span class="rounded-full border border-amber-700/30 bg-amber-50 px-3 py-1 text-amber-900">{ fmt.Sprintf("%d warning(s)", len(scrape.WarningLines)) }</span>
+						}
+						if scrape.ConfidenceScore > 0 {
+							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("Confidence %d/100", scrape.ConfidenceScore) }</span>
 						}
 						if len(scrape.Spouses) > 0 {
 							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("%d spouse memorial(s)", len(scrape.Spouses)) }</span>
@@ -110,144 +114,185 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 			data-record-persistence-kind={ draftMode(isEdit) }
 			class="card rounded-3xl p-5 sm:p-8 space-y-5"
 		>
+			<input type="hidden" name="existing_needs_review" value={ boolFlag(s.NeedsReview) }/>
+			<input type="hidden" name="existing_review_reason" value={ s.ReviewReason }/>
+			if scrape.SourceLabel != "" {
+				<input type="hidden" name="scrape_source_label" value={ scrape.SourceLabel }/>
+				<input type="hidden" name="scrape_confidence_score" value={ fmt.Sprintf("%d", scrape.ConfidenceScore) }/>
+			}
 			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
 				<strong class="font-semibold">{ recordPersistenceHeading(isEdit) }</strong>
 				<span class="ml-2">{ recordPersistenceMessage(isEdit) }</span>
 			</div>
-			<div class="responsive-two-col grid gap-4">
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Record ID</label>
-					<input type="text" name="display_id" value={ s.DisplayID }
-						readonly
-						class={ displayIDInputClass(isEdit) }/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Record Type</label>
-					<select name="entry_type" data-entry-type-select class="field-input">
-						for _, entryType := range entryTypes() {
-							<option value={ entryType.Value } if entryType.Value == normalizedEntryType(s) { selected }>{ entryType.Label }</option>
-						}
-					</select>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Prefix</label>
-					<input type="text" name="prefix" value={ s.Prefix }
-						list="prefix-suggestions"
-						class="field-input" placeholder="Capt."/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">First Name</label>
-					<input type="text" name="first_name" value={ s.FirstName }
-						class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Middle Name</label>
-					<input type="text" name="middle_name" value={ s.MiddleName }
-						class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Last Name</label>
-					<input type="text" name="last_name" value={ s.LastName }
-						class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Suffix</label>
-					<input type="text" name="suffix" value={ s.Suffix }
-						list="suffix-suggestions"
-						class="field-input" placeholder="Jr."/>
-				</div>
-				<div data-soldier-only-field>
-					<label class="block text-sm text-slate-500 mb-1">Rank In</label>
-					<input type="text" name="rank_in" value={ s.RankIn }
-						list="rank-in-suggestions"
-						class="field-input"/>
-				</div>
-				<div data-soldier-only-field>
-					<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
-					<input type="text" name="rank_out" value={ rankOutValue(s) }
-						list="rank-out-suggestions"
-						class="field-input"/>
-				</div>
-				<div data-soldier-only-field class="responsive-span-2 col-span-2">
-					<label class="block text-sm text-slate-500 mb-1">Unit</label>
-					<input type="text" name="unit" value={ s.Unit }
-						list="unit-suggestions"
-						class="field-input"/>
-				</div>
-				<div class="responsive-span-2 col-span-2" data-entry-type-special>
-					<label class="block text-sm text-slate-500 mb-1">Married To</label>
-					<select name="spouse_soldier_id" class="field-input">
-						<option value="">Select a soldier</option>
-						for _, candidate := range spouseCandidates {
-							<option value={ fmt.Sprintf("%d", candidate.ID) } if candidate.ID == s.SpouseSoldierID { selected }>{ spouseCandidateLabel(candidate) }</option>
-						}
-					</select>
-				</div>
-				<div class="responsive-span-2 col-span-2" data-entry-type-special>
-					<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
-					<input type="text" name="maiden_name" value={ s.MaidenName }
-						class="field-input"/>
-				</div>
-				<div data-soldier-only-field class="responsive-span-2 col-span-2">
-					<label class="block text-sm text-slate-500 mb-1">Pension State</label>
-					<input type="text" name="pension_state" value={ selectedPensionState(s) } list="pension-state-suggestions" class="field-input"/>
-				</div>
-				<div data-soldier-only-field class="responsive-span-2 col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4">
-					<div class="grid gap-4 md:grid-cols-2">
+			<div class="space-y-5">
+				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
+					<div class="mb-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Identity & Relationship</p>
+						<p class="mt-2 text-sm text-slate-600">Start with who this person is and how the record should behave in the archive.</p>
+					</div>
+					<div class="responsive-two-col grid gap-4">
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
-							<select name="confederate_home_status" class="field-input" data-confederate-home-status>
-								for _, status := range confederateHomeStatuses() {
-									<option value={ status } if status == selectedConfederateHomeStatus(s) { selected }>{ status }</option>
+							<label class="block text-sm text-slate-500 mb-1">Record ID</label>
+							<input type="text" name="display_id" value={ s.DisplayID }
+								readonly
+								class={ displayIDInputClass(isEdit) }/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Record Type</label>
+							<select name="entry_type" data-entry-type-select class="field-input">
+								for _, entryType := range entryTypes() {
+									<option value={ entryType.Value } if entryType.Value == normalizedEntryType(s) { selected }>{ entryType.Label }</option>
 								}
 							</select>
 						</div>
-						<div data-confederate-home-name-field>
-							<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
-							<input type="text" name="confederate_home_name" value={ s.ConfederateHomeName }
-								list="confederate-home-name-suggestions"
-								class="field-input" placeholder="Texas Confederate Home"/>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Prefix</label>
+							<input type="text" name="prefix" value={ s.Prefix }
+								list="prefix-suggestions"
+								class="field-input" placeholder="Capt."/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">First Name</label>
+							<input type="text" name="first_name" value={ s.FirstName }
+								class="field-input"/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Middle Name</label>
+							<input type="text" name="middle_name" value={ s.MiddleName }
+								class="field-input"/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Last Name</label>
+							<input type="text" name="last_name" value={ s.LastName }
+								class="field-input"/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Suffix</label>
+							<input type="text" name="suffix" value={ s.Suffix }
+								list="suffix-suggestions"
+								class="field-input" placeholder="Jr."/>
+						</div>
+						<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4" data-entry-type-special>
+							<div class="mb-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Family Link</p>
+								<p class="mt-1 text-sm text-slate-600">Wife and widow records stay anchored to the linked soldier for navigation and comparisons.</p>
+							</div>
+							<div class="responsive-two-col grid gap-4">
+								<div class="responsive-span-2 col-span-2">
+									<label class="block text-sm text-slate-500 mb-1">Married To</label>
+									<select name="spouse_soldier_id" class="field-input">
+										<option value="">Select a soldier</option>
+										for _, candidate := range spouseCandidates {
+											<option value={ fmt.Sprintf("%d", candidate.ID) } if candidate.ID == s.SpouseSoldierID { selected }>{ spouseCandidateLabel(candidate) }</option>
+										}
+									</select>
+								</div>
+								<div class="responsive-span-2 col-span-2">
+									<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
+									<input type="text" name="maiden_name" value={ s.MaidenName }
+										class="field-input"/>
+								</div>
+							</div>
 						</div>
 					</div>
-				</div>
-				<div data-soldier-or-widow-field>
-					<label class="block text-sm text-slate-500 mb-1">Pension ID</label>
-					<input type="text" name="pension_id" value={ s.PensionID }
-						class="field-input" placeholder="P12345"/>
-				</div>
-				<div data-soldier-or-widow-field>
-					<label class="block text-sm text-slate-500 mb-1">Application ID</label>
-					<input type="text" name="application_id" value={ s.ApplicationID }
-						class="field-input" placeholder="A12345"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
-					<input type="text" name="birth_date" value={ s.BirthDate }
-						class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Death Date</label>
-					<input type="text" name="death_date" value={ s.DeathDate }
-						class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
-					<input type="text" name="birth_info" value={ s.BirthInfo }
-						class="field-input"/>
-				</div>
-				<div>
-					<label class="block text-sm text-slate-500 mb-1">Buried In</label>
-					<input type="text" name="buried_in" value={ s.BuriedIn }
-						list="buried-in-suggestions"
-						class="field-input"/>
-				</div>
-				<div class="responsive-span-2 col-span-2 text-xs text-slate-500">
-					Use <code>MM/DD/YYYY</code>. Unknown month or day should be entered as <code>00</code>, such as <code>11/00/1886</code> or <code>00/00/1886</code>.
-				</div>
-				<div data-ui-id={ uiids.PanelSoldierFormRecords } class="responsive-span-2 relative col-span-2">
+				</section>
+				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
+					<div class="mb-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Service, Pension & Archive Details</p>
+						<p class="mt-2 text-sm text-slate-600">Keep the military story, pension trail, and Confederate Home data together so related research stays in one place.</p>
+					</div>
+					<div class="responsive-two-col grid gap-4">
+						<div data-soldier-only-field>
+							<label class="block text-sm text-slate-500 mb-1">Rank In</label>
+							<input type="text" name="rank_in" value={ s.RankIn }
+								list="rank-in-suggestions"
+								class="field-input"/>
+						</div>
+						<div data-soldier-only-field>
+							<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
+							<input type="text" name="rank_out" value={ rankOutValue(s) }
+								list="rank-out-suggestions"
+								class="field-input"/>
+						</div>
+						<div data-soldier-only-field class="responsive-span-2 col-span-2">
+							<label class="block text-sm text-slate-500 mb-1">Unit</label>
+							<input type="text" name="unit" value={ s.Unit }
+								list="unit-suggestions"
+								class="field-input"/>
+						</div>
+						<div data-soldier-only-field class="responsive-span-2 col-span-2">
+							<label class="block text-sm text-slate-500 mb-1">Pension State</label>
+							<input type="text" name="pension_state" value={ selectedPensionState(s) } list="pension-state-suggestions" class="field-input"/>
+						</div>
+						<div data-soldier-only-field class="responsive-span-2 col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4">
+							<div class="grid gap-4 md:grid-cols-2">
+								<div>
+									<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
+									<select name="confederate_home_status" class="field-input" data-confederate-home-status>
+										for _, status := range confederateHomeStatuses() {
+											<option value={ status } if status == selectedConfederateHomeStatus(s) { selected }>{ status }</option>
+										}
+									</select>
+								</div>
+								<div data-confederate-home-name-field>
+									<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
+									<input type="text" name="confederate_home_name" value={ s.ConfederateHomeName }
+										list="confederate-home-name-suggestions"
+										class="field-input" placeholder="Texas Confederate Home"/>
+								</div>
+							</div>
+						</div>
+						<div data-soldier-or-widow-field>
+							<label class="block text-sm text-slate-500 mb-1">Pension ID</label>
+							<input type="text" name="pension_id" value={ s.PensionID }
+								class="field-input" placeholder="P12345"/>
+						</div>
+						<div data-soldier-or-widow-field>
+							<label class="block text-sm text-slate-500 mb-1">Application ID</label>
+							<input type="text" name="application_id" value={ s.ApplicationID }
+								class="field-input" placeholder="A12345"/>
+						</div>
+					</div>
+				</section>
+				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
+					<div class="mb-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Life Details & Burial</p>
+						<p class="mt-2 text-sm text-slate-600">These fields answer when the person lived and where they ended their story.</p>
+					</div>
+					<div class="responsive-two-col grid gap-4">
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
+							<input type="text" name="birth_date" value={ s.BirthDate }
+								class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Death Date</label>
+							<input type="text" name="death_date" value={ s.DeathDate }
+								class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
+							<input type="text" name="birth_info" value={ s.BirthInfo }
+								class="field-input"/>
+						</div>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Buried In</label>
+							<input type="text" name="buried_in" value={ s.BuriedIn }
+								list="buried-in-suggestions"
+								class="field-input"/>
+						</div>
+						<div class="responsive-span-2 col-span-2 text-xs text-slate-500">
+							Use <code>MM/DD/YYYY</code>. Unknown month or day should be entered as <code>00</code>, such as <code>11/00/1886</code> or <code>00/00/1886</code>.
+						</div>
+					</div>
+				</section>
+				<section data-ui-id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormRecords)
-					<div class="mb-3 flex items-center justify-between gap-3">
-						<label class="block text-sm text-slate-500">Records</label>
+					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Supporting Records</p>
+							<p class="mt-2 text-sm text-slate-600">Attach pension notes, archive references, and source transcripts that should travel with this record.</p>
+						</div>
 						<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Record</button>
 					</div>
 					<div data-record-list class="space-y-3">
@@ -259,14 +304,22 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						@RecordInputRow(models.Record{})
 					</template>
 					<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
-				</div>
-				<div class="responsive-span-2 col-span-2">
+				</section>
+				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
+					<div class="mb-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Notes & Research Context</p>
+						<p class="mt-2 text-sm text-slate-600">Use notes for biography, research leads, and anything that does not fit a structured field.</p>
+					</div>
 					<label class="block text-sm text-slate-500 mb-1">Notes</label>
 					<textarea name="notes" rows="4"
 						class="field-input min-h-32">{ s.Notes }</textarea>
-				</div>
-				<div data-ui-id={ uiids.PanelSoldierFormImages } class="responsive-span-2 relative col-span-2">
+				</section>
+				<section data-ui-id={ uiids.PanelSoldierFormImages } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
+					<div class="mb-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
+						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the record can be saved quickly and enriched later.</p>
+					</div>
 					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
 					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
 						if isEdit {
@@ -292,7 +345,7 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 					if isEdit && len(s.Images) > 0 {
 						<p class="text-xs text-slate-500 mt-2">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
 					}
-				</div>
+				</section>
 			</div>
 			<div class="flex gap-2 pt-2">
 				<button type="submit" class="primary-button">
@@ -547,6 +600,13 @@ func mergeReviewDisplayName(soldier models.Soldier) string {
 	return name
 }
 
+func boolFlag(value bool) string {
+	if value {
+		return "1"
+	}
+	return "0"
+}
+
 templ SettingsView(confirmationWord string) {
 	@Layout("Settings") {
 		<div data-ui-id={ uiids.PageSettings } class="relative mx-auto max-w-3xl space-y-6">
@@ -571,8 +631,50 @@ templ SettingsView(confirmationWord string) {
 				</form>
 				<div id="settings-status" class="text-sm text-slate-600"></div>
 			</div>
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<h3 class="text-xl gold font-bold">Image Maintenance</h3>
+					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
+				</div>
+				<form hx-post="/settings/images/orphans/scan" hx-target="#settings-orphan-results" class="space-y-4">
+					<button type="submit" class="secondary-button">Scan for Orphaned Images</button>
+				</form>
+				<div id="settings-orphan-results" class="space-y-3"></div>
+			</div>
 		</div>
 	}
+}
+
+templ SettingsOrphanedImages(orphans []services.OrphanedImage) {
+	if len(orphans) == 0 {
+		<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">No orphaned image files were found.</div>
+	} else {
+		<form hx-post="/settings/images/orphans/cleanup" hx-target="#settings-orphan-results" class="space-y-3">
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+				Found <strong>{ fmt.Sprintf("%d", len(orphans)) }</strong> orphaned image file(s). Cleanup moves them into temp trash instead of deleting them immediately.
+			</div>
+			<div class="max-h-72 space-y-2 overflow-auto rounded-2xl border border-[rgba(141,116,64,0.25)] bg-[rgba(246,241,228,0.72)] p-3">
+				for _, orphan := range orphans {
+					<input type="hidden" name="orphan_path" value={ orphan.RelativePath }/>
+					<div class="rounded-xl border border-[rgba(141,116,64,0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<div class="font-medium">{ orphan.RelativePath }</div>
+						<div class="mt-1 text-xs text-slate-500">{ orphan.ModifiedAt } · { fmt.Sprintf("%d bytes", orphan.Size) }</div>
+					</div>
+				}
+			</div>
+			<button type="submit" class="danger-button">Move Listed Files to Temp Trash</button>
+		</form>
+	}
+}
+
+templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
+	<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+		if moved == 0 {
+			No orphaned images were moved.
+		} else {
+			Moved <strong>{ fmt.Sprintf("%d", moved) }</strong> orphaned image file(s) to <code>{ trashRoot }</code>.
+		}
+	</div>
 }
 
 templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int) {
@@ -589,11 +691,20 @@ templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page
 			if search.Mode == "basic" && strings.TrimSpace(search.Query) != "" {
 				<p class="mt-1 text-xs text-slate-500">Quick search cards now show the exact matching field for each result.</p>
 			}
-			if search.Mode == "advanced" {
-				<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
-			}
-		</div>
-	}
+				if search.Mode == "advanced" {
+					<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
+				}
+			</div>
+		}
+		if len(soldiers) > 0 {
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
+					<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two records to compare them side by side, or use Quick Preview to inspect a card without leaving the list.</p>
+				</div>
+				<button type="button" data-compare-selected data-compare-group="search-compare" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
+			</div>
+		}
 	if len(soldiers) == 0 {
 		if hasActiveSearch(search) && search.Mode == "advanced" {
 			<p class="text-slate-500 text-sm">No records matched the advanced filters.</p>
@@ -604,7 +715,21 @@ templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page
 		}
 	} else {
 		for _, s := range soldiers {
-			@SoldierCard(s, hasActiveSearch(search))
+			<div class="mb-3 flex items-start gap-3">
+				<div class="mt-4 flex shrink-0 flex-col gap-2">
+					<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+						Compare
+					</label>
+					<button type="button" data-preview-open data-preview-target={ fmt.Sprintf("soldier-preview-%d", s.ID) } class="secondary-button px-3 py-2 text-xs">Quick Preview</button>
+				</div>
+				<div class="min-w-0 flex-1">
+					@SoldierCard(s, hasActiveSearch(search))
+				</div>
+				<div id={ fmt.Sprintf("soldier-preview-%d", s.ID) } class="hidden">
+					@SearchPreviewContent(s)
+				</div>
+			</div>
 		}
 	}
 	if hasActiveSearch(search) {
@@ -630,4 +755,75 @@ templ AnniversaryPartial(soldiers []models.Soldier, month, day int) {
 			@SoldierCard(s, false)
 		}
 	}
+}
+
+templ SearchPreviewContent(s models.Soldier) {
+	<div class="space-y-5">
+		<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(255,255,255,0.7)] px-4 py-4">
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">{ entryBadgeLabel(s) }</p>
+					<h3 class="mt-2 text-xl font-semibold text-[#22303d]">{ detailHeading(s) }</h3>
+					if strings.TrimSpace(detailSubheading(s)) != "" {
+						<p class="mt-1 text-sm text-slate-600">{ detailSubheading(s) }</p>
+					}
+				</div>
+				<span class="gold text-sm font-mono">{ s.DisplayID }</span>
+			</div>
+			<div class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
+				<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">
+					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Birth</div>
+					<div class="mt-1 text-[#22303d]">{ emptyDetail(s.BirthDate) }</div>
+				</div>
+				<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">
+					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Death</div>
+					<div class="mt-1 text-[#22303d]">{ emptyDetail(s.DeathDate) }</div>
+				</div>
+				if strings.TrimSpace(s.Unit) != "" {
+					<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">
+						<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Unit</div>
+						<div class="mt-1 text-[#22303d]">{ s.Unit }</div>
+					</div>
+				}
+				if strings.TrimSpace(s.BuriedIn) != "" {
+					<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">
+						<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Burial</div>
+						<div class="mt-1 text-[#22303d]">{ s.BuriedIn }</div>
+					</div>
+				}
+			</div>
+		</div>
+		if strings.TrimSpace(s.Notes) != "" {
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(36,48,61,0.04)] px-4 py-4">
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Notes Preview</p>
+				<p class="mt-2 text-sm leading-6 text-slate-600">{ previewText(s.Notes, 260) }</p>
+			</div>
+		}
+		if s.NeedsReview {
+			<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-4 py-4 text-sm text-[#6f2c26]">
+				<p class="font-semibold">Needs Review</p>
+				<p class="mt-1">{ emptyDetail(s.ReviewReason) }</p>
+			</div>
+		}
+		<div class="flex flex-wrap gap-3">
+			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) } class="primary-button">Open Full Record</a>
+			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="secondary-button">Edit</a>
+			if s.SpouseSoldierID != 0 {
+				<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">Compare Family Records</a>
+			}
+		</div>
+	</div>
+}
+
+func previewText(value string, limit int) string {
+	trimmed := strings.TrimSpace(strings.ReplaceAll(value, "\r\n", "\n"))
+	if limit <= 0 || len(trimmed) <= limit {
+		return trimmed
+	}
+	candidate := strings.TrimSpace(trimmed[:limit])
+	lastBreak := strings.LastIndexAny(candidate, " \n\t")
+	if lastBreak > 40 {
+		candidate = strings.TrimSpace(candidate[:lastBreak])
+	}
+	return candidate + "..."
 }

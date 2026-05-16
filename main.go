@@ -2,8 +2,10 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"os"
 
+	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -19,7 +21,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:  "DixieData",
+		Title:  fmt.Sprintf("DixieData v%s", db.GetAppVersion()),
 		Width:  1280,
 		Height: 800,
 		Bind: []interface{}{

@@ -68,8 +68,25 @@ func projectRootFrom(start string) (string, bool) {
 
 func RecordImageDir(dataDir, displayID string) (string, string) {
 	safeDisplayID := sanitizePathComponent(displayID)
-	relative := filepath.Join("images", safeDisplayID)
+	shards := imageShardSegments(safeDisplayID)
+	relative := filepath.Join(append([]string{"images"}, append(shards, safeDisplayID)...)...)
 	return filepath.Join(dataDir, relative), relative
+}
+
+func imageShardSegments(safeDisplayID string) []string {
+	upper := strings.ToUpper(strings.TrimSpace(safeDisplayID))
+	if upper == "" {
+		return []string{"U", "N"}
+	}
+	first := string(upper[0])
+	second := "X"
+	for _, r := range upper[1:] {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			second = string(r)
+			break
+		}
+	}
+	return []string{first, second}
 }
 
 func ScratchpadPaths(dataDir, displayID string) (string, string) {

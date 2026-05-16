@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/services"
 	"github.com/valueforvalue/DixieData/internal/uiids"
@@ -20,32 +21,47 @@ templ ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize
 				if len(entries) == 0 {
 					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
 				} else {
-					for _, entry := range entries {
-						<div id={ fmt.Sprintf("review-queue-item-%d", entry.Soldier.ID) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
-							<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-								<div class="min-w-0">
-									<div class="flex flex-wrap items-center gap-2">
-										<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ entry.Soldier.DisplayID }</span>
-										<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
-									</div>
-									<p class="mt-1 font-semibold text-slate-900">{ detailHeading(entry.Soldier) }</p>
-									<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(entry.Soldier.ReviewReason) }</p>
-									<p class="mt-1 text-xs text-slate-500">{ detailSubheading(entry.Soldier) }</p>
-									if len(entry.DuplicateFindings) > 0 {
-										<div class="mt-3 flex flex-wrap gap-2">
-											for _, finding := range entry.DuplicateFindings {
-												<a href={ fmt.Sprintf("/review-queue/compare/%d", finding.ID) } class="pill-link">Compare with { emptyDetail(finding.OtherDisplayID) }</a>
-											}
-										</div>
-									}
-								</div>
-								<div class="flex flex-wrap gap-2">
-									<a href={ fmt.Sprintf("/soldiers/%d", entry.Soldier.ID) } class="pill-link">View</a>
-									<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.Soldier.ID) } hx-target={ fmt.Sprintf("#review-queue-item-%d", entry.Soldier.ID) } hx-swap="outerHTML" class="primary-button">Mark as Resolved</button>
-								</div>
+					<form hx-post="/review-queue/bulk" hx-target="body" class="space-y-4">
+						<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-[rgba(246,241,228,0.72)] px-4 py-3">
+							<label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+								<input type="checkbox" data-select-all="review-queue" class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+								<span>Select all on this page</span>
+							</label>
+							<div class="flex flex-wrap gap-2">
+								<button type="submit" name="bulk_action" value="ignore" class="secondary-button">Ignore Selected</button>
+								<button type="submit" name="bulk_action" value="delete" class="danger-button">Delete Selected</button>
 							</div>
 						</div>
-					}
+						for _, entry := range entries {
+							<div id={ fmt.Sprintf("review-queue-item-%d", entry.Soldier.ID) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+								<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+									<div class="flex min-w-0 gap-3">
+										<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", entry.Soldier.ID) } data-checkbox-group="review-queue" class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+										<div class="min-w-0">
+											<div class="flex flex-wrap items-center gap-2">
+												<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ entry.Soldier.DisplayID }</span>
+												<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+											</div>
+											<p class="mt-1 font-semibold text-slate-900">{ detailHeading(entry.Soldier) }</p>
+											<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(entry.Soldier.ReviewReason) }</p>
+											<p class="mt-1 text-xs text-slate-500">{ detailSubheading(entry.Soldier) }</p>
+											if len(entry.DuplicateFindings) > 0 {
+												<div class="mt-3 flex flex-wrap gap-2">
+													for _, finding := range entry.DuplicateFindings {
+														<a href={ fmt.Sprintf("/review-queue/compare/%d", finding.ID) } class="pill-link">Compare with { emptyDetail(finding.OtherDisplayID) }</a>
+													}
+												</div>
+											}
+										</div>
+									</div>
+									<div class="flex flex-wrap gap-2">
+										<a href={ fmt.Sprintf("/soldiers/%d", entry.Soldier.ID) } class="pill-link">View</a>
+										<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.Soldier.ID) } hx-target={ fmt.Sprintf("#review-queue-item-%d", entry.Soldier.ID) } hx-swap="outerHTML" class="primary-button">Mark as Resolved</button>
+									</div>
+								</div>
+							</div>
+						}
+					</form>
 				}
 				if total > pageSize {
 					<div class="flex flex-wrap items-center justify-between gap-3 pt-2 text-sm text-slate-600">
@@ -66,17 +82,23 @@ templ ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize
 }
 
 templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
-	@Layout("Duplicate Comparison") {
+	@Layout(comparisonTitle(comparison)) {
 		<div data-ui-id={ uiids.PageReviewQueueCompare } class="relative mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageReviewQueueCompare)
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
-					<h2 class="text-2xl gold font-bold">Duplicate Comparison</h2>
+					<h2 class="text-2xl gold font-bold">{ comparisonTitle(comparison) }</h2>
 					<p class="mt-2 text-sm text-slate-600">{ comparison.Reason }</p>
 				</div>
 				<div class="flex flex-wrap gap-2">
-					<a href="/review-queue" class="pill-link">Back to Review Queue</a>
-					if comparison.Status != "resolved" {
+					<button
+						type="button"
+						data-history-back
+						data-fallback-href={ comparisonBackHref(comparison) }
+						data-fallback-label={ comparisonBackLabel(comparison) }
+						class="pill-link"
+					>← { comparisonBackLabel(comparison) }</button>
+					if comparison.FindingID > 0 && comparison.Status != "resolved" {
 						<button hx-post={ fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID) } class="primary-button">Mark Match Resolved</button>
 					}
 				</div>
@@ -120,4 +142,25 @@ templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
 			</section>
 		</div>
 	}
+}
+
+func comparisonTitle(comparison services.DuplicateAuditComparison) string {
+	if strings.TrimSpace(comparison.PageTitle) != "" {
+		return comparison.PageTitle
+	}
+	return "Duplicate Comparison"
+}
+
+func comparisonBackHref(comparison services.DuplicateAuditComparison) string {
+	if strings.TrimSpace(comparison.BackHref) != "" {
+		return comparison.BackHref
+	}
+	return "/review-queue"
+}
+
+func comparisonBackLabel(comparison services.DuplicateAuditComparison) string {
+	if strings.TrimSpace(comparison.BackLabel) != "" {
+		return comparison.BackLabel
+	}
+	return "Back to Review Queue"
 }

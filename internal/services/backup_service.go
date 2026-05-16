@@ -1117,16 +1117,11 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 }
 
 func refreshSoldierFTS(tx *sql.Tx, soldierID int64, soldier models.Soldier) error {
-	if _, err := tx.Exec(`INSERT INTO soldiers_fts(soldiers_fts, rowid) VALUES('delete', ?)`, soldierID); err != nil {
-		return err
-	}
-	return insertSoldierFTS(tx, soldierID, soldier)
+	return nil
 }
 
 func insertSoldierFTS(tx *sql.Tx, soldierID int64, soldier models.Soldier) error {
-	_, err := tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, soldier_rank) VALUES (?,?,?,?,?)`,
-		soldierID, searchableFirstName(soldier), searchableLastName(soldier), searchableUnit(soldier), searchableRank(soldier))
-	return err
+	return nil
 }
 
 func upsertSharedRecord(tx *sql.Tx, targetSoldierID int64, soldierSyncID string, record models.Record) (bool, error) {
