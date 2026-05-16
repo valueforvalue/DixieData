@@ -1,0 +1,171 @@
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/services"
+)
+
+templ ResearchCollectionsHubView(hub services.ResearchCollectionHub) {
+	@Layout("Research Collections") {
+		<div class="mx-auto max-w-6xl space-y-5">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h2 class="text-2xl gold font-bold">Named Research Collections</h2>
+					<p class="mt-2 text-sm text-slate-600">Save custom record groups for a project, family cluster, cemetery visit, or unresolved investigation thread.</p>
+				</div>
+				if hub.Current != nil {
+					<button
+						type="button"
+						data-history-back
+						data-fallback-href={ fmt.Sprintf("/soldiers/%d", hub.Current.ID) }
+						data-fallback-label="Back to Record"
+						class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+					>← Back to Record</button>
+				}
+			</div>
+			if hub.Current != nil {
+				<div class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Current Record</p>
+					<p class="mt-2 text-lg font-semibold text-slate-900">{ detailHeading(*hub.Current) }</p>
+					<p class="mt-1 text-sm text-slate-600">{ hub.Current.DisplayID }</p>
+				</div>
+			}
+			<section class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+				<h3 class="text-lg font-semibold text-slate-900">Create Collection</h3>
+				<form hx-post="/research-collections" class="mt-4 grid gap-4 md:grid-cols-2">
+					if hub.Current != nil {
+						<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.Current.ID) }/>
+					}
+					<div>
+						<label class="block text-sm font-medium text-slate-700">
+							Name
+							<input type="text" name="name" class="field-input mt-2" placeholder="Example: Orange County pension sweep"/>
+						</label>
+					</div>
+					<div class="md:col-span-2">
+						<label class="block text-sm font-medium text-slate-700">
+							Description
+							<textarea name="description" rows="3" class="field-input mt-2 min-h-24" placeholder="What unifies this collection and what is the next research step?"></textarea>
+						</label>
+					</div>
+					<div class="md:col-span-2">
+						<button type="submit" class="primary-button">Create Collection</button>
+					</div>
+				</form>
+			</section>
+			<section class="rounded-3xl border border-slate-200 bg-white/85 p-5">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+					<div>
+						<h3 class="text-lg font-semibold text-slate-900">Collections</h3>
+						<p class="text-sm text-slate-600">Open a collection to browse its members, or add the current record directly from here.</p>
+					</div>
+					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{ fmt.Sprintf("%d collections", len(hub.Collections)) }</p>
+				</div>
+				if len(hub.Collections) == 0 {
+					<p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">No collections yet. Create one above to start grouping records.</p>
+				} else {
+					<div class="mt-4 grid gap-4 md:grid-cols-2">
+						for _, collection := range hub.Collections {
+							<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+								<p class="text-lg font-semibold text-slate-900">{ collection.Name }</p>
+								if strings.TrimSpace(collection.Description) != "" {
+									<p class="mt-2 text-sm leading-6 text-slate-700">{ collection.Description }</p>
+								}
+								<div class="mt-3 flex flex-wrap gap-2">
+									<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ fmt.Sprintf("%d records", collection.ItemCount) }</span>
+									if collection.ContainsCurrent {
+										<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Current record added</span>
+									}
+								</div>
+								<div class="mt-4 flex flex-wrap gap-3">
+									<a href={ researchCollectionDetailHref(collection.ID, hub.Current) } class="pill-link">Open Collection</a>
+									if hub.Current != nil && !collection.ContainsCurrent {
+										<form hx-post={ fmt.Sprintf("/research-collections/%d/add", collection.ID) }>
+											<input type="hidden" name="soldier_id" value={ fmt.Sprintf("%d", hub.Current.ID) }/>
+											<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.Current.ID) }/>
+											<button type="submit" class="secondary-button">Add Current Record</button>
+										</form>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</section>
+		</div>
+	}
+}
+
+templ ResearchCollectionDetailView(detail services.ResearchCollectionDetail) {
+	@Layout("Research Collection") {
+		<div class="mx-auto max-w-6xl space-y-5">
+			<div class="flex flex-wrap items-center gap-3">
+				<button
+					type="button"
+					data-history-back
+					data-fallback-href={ researchCollectionFallbackHref(detail.Current) }
+					data-fallback-label={ researchCollectionBackLabel(detail.Current) }
+					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+				>← { researchCollectionBackLabel(detail.Current) }</button>
+			</div>
+			<div class="card rounded-3xl p-6">
+				<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Research Collection</p>
+				<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detail.Collection.Name }</h2>
+				if strings.TrimSpace(detail.Collection.Description) != "" {
+					<p class="mt-2 text-sm leading-6 text-slate-700">{ detail.Collection.Description }</p>
+				}
+				<div class="mt-4 flex flex-wrap gap-3">
+					<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ fmt.Sprintf("%d records", detail.Collection.ItemCount) }</span>
+					if detail.Current != nil && detail.Collection.ContainsCurrent {
+						<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Current record included</span>
+					}
+				</div>
+			</div>
+			<section class="rounded-3xl border border-slate-200 bg-white/85 p-5">
+				<h3 class="text-lg font-semibold text-slate-900">Collection Members</h3>
+				if len(detail.Members) == 0 {
+					<p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">This collection does not contain any records yet.</p>
+				} else {
+					<div class="mt-4 grid gap-4 md:grid-cols-2">
+						for _, soldier := range detail.Members {
+							<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+								<p class="text-sm font-semibold text-slate-900">{ detailHeading(soldier) }</p>
+								<p class="mt-1 text-sm text-slate-500">{ soldier.DisplayID }</p>
+								<div class="mt-4 flex flex-wrap gap-3">
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", soldier.ID)) } class="pill-link">Open Record</a>
+									if detail.Current != nil && detail.Current.ID != soldier.ID {
+										<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", detail.Current.ID, soldier.ID, detail.Current.ID)) } class="secondary-button">Compare Records</a>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</section>
+		</div>
+	}
+}
+
+func researchCollectionDetailHref(collectionID int64, current *models.Soldier) templ.SafeURL {
+	if current != nil {
+		return templ.SafeURL(fmt.Sprintf("/research-collections/%d?from=%d", collectionID, current.ID))
+	}
+	return templ.SafeURL(fmt.Sprintf("/research-collections/%d", collectionID))
+}
+
+func researchCollectionFallbackHref(current *models.Soldier) string {
+	if current != nil {
+		return fmt.Sprintf("/research-collections?from=%d", current.ID)
+	}
+	return "/research-collections"
+}
+
+func researchCollectionBackLabel(current *models.Soldier) string {
+	if current != nil {
+		return "Back to Collections"
+	}
+	return "Back to Collections"
+}

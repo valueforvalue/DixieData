@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -1127,6 +1128,324 @@ func TestHandleRecentSearchShowsRequestedRecords(t *testing.T) {
 	}
 	if strings.Index(body, "REC-0002") > strings.Index(body, "REC-0001") {
 		t.Fatalf("recent results should preserve requested order: %q", body)
+	}
+}
+
+func TestHandleUnitCamaraderieShowsLinkedPeers(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	central, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CAM-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "Co. A, 1st Texas Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create central: %v", err)
+	}
+	if _, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CAM-1002",
+		FirstName: "Thomas",
+		LastName:  "Reed",
+		Unit:      "Co. B, 1st Texas Infantry",
+	}); err != nil {
+		t.Fatalf("Create peer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/camaraderie", central.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"Unit Camaraderie Graph", "CAM-1001", "CAM-1002", "Compare Records"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("camaraderie response missing %s: %q", needle, body)
+		}
+	}
+}
+
+func TestHandleServiceTimelineShowsChronology(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "TLM-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "1st Texas Infantry",
+		BirthDate: "05/12/1838",
+		DeathDate: "11/03/1904",
+		Records: []models.Record{
+			{RecordType: "Muster Roll", AppID: "APP-1", Details: "Enlisted on 03/11/1862 at Austin."},
+			{RecordType: "Pension", AppID: "APP-2", Details: "Filed in 1901 after moving back to Texas."},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/timeline", created.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"Auto-Built Service Timeline", "TLM-1001", "Muster Roll", "Pension"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("timeline response missing %s: %q", needle, body)
+		}
+	}
+}
+
+func TestHandleResearchLogShowsTasks(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "RLG-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := app.soldiers.AddResearchTask(created.ID, "Locate pension file", "Check state archive holdings.", "pension"); err != nil {
+		t.Fatalf("AddResearchTask: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/research-log", created.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"Research Log &amp; Missing Evidence", "Locate pension file", "Missing-Evidence Suggestions"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("research log response missing %s: %q", needle, body)
+		}
+	}
+}
+
+func TestHandleConflictLedgerShowsEntries(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "LED-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "1st Texas Infantry",
+		PensionID: "P-1",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	localJSONBytes, err := json.Marshal(map[string]any{"soldier": models.Soldier{
+		DisplayID: "LED-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "1st Texas Infantry",
+		PensionID: "P-1",
+	}})
+	if err != nil {
+		t.Fatalf("Marshal local: %v", err)
+	}
+	sourceJSONBytes, err := json.Marshal(map[string]any{"soldier": models.Soldier{
+		DisplayID: "SRC-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "2nd Texas Infantry",
+		PensionID: "P-9",
+	}})
+	if err != nil {
+		t.Fatalf("Marshal source: %v", err)
+	}
+
+	if _, err := database.Conn().Exec(`INSERT INTO merge_review_sessions (id, archive_path, source_root, status, updated_at) VALUES ('session-app-ledger', 'ledger.ddshare', 'C:\\source', 'open', CURRENT_TIMESTAMP)`); err != nil {
+		t.Fatalf("insert session: %v", err)
+	}
+	if _, err := database.Conn().Exec(`
+		INSERT INTO merge_review_conflicts (session_id, conflict_type, reason, soldier_sync_id, local_soldier_id, local_display_id, source_display_id, local_data, source_data, resolution, resolved_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`, "session-app-ledger", "soldier-update", "Shared archive changed unit and pension ID.", created.SyncID, created.ID, created.DisplayID, "SRC-1001", string(localJSONBytes), string(sourceJSONBytes), "keep-local"); err != nil {
+		t.Fatalf("insert conflict: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/conflict-ledger", created.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"Source Conflict Ledger", "SRC-1001", "pension ID"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("conflict ledger response missing %s: %q", needle, body)
+		}
+	}
+}
+
+func TestHandleResearchPackShowsRelatedRecords(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	central, err := app.soldiers.Create(models.Soldier{
+		DisplayID:    "PACK-1001",
+		FirstName:    "Andrew",
+		LastName:     "Cole",
+		PensionState: "Texas",
+		BirthInfo:    "Born 1838 in Orange County, Texas.",
+	})
+	if err != nil {
+		t.Fatalf("Create central: %v", err)
+	}
+	if _, err := app.soldiers.Create(models.Soldier{
+		DisplayID:    "PACK-1002",
+		FirstName:    "Thomas",
+		LastName:     "Reed",
+		PensionState: "Texas",
+		Unit:         "1st Texas Infantry",
+	}); err != nil {
+		t.Fatalf("Create match: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/research-pack/state", central.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"State Research Pack", "Texas", "PACK-1002"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("research pack response missing %s: %q", needle, body)
+		}
+	}
+}
+
+func TestHandleResearchCollectionsShowsHub(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	created, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "COL-1001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := app.soldiers.CreateResearchCollection("Orange County Cluster", "County-focused follow-up list."); err != nil {
+		t.Fatalf("CreateResearchCollection: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/research-collections?from=%d", created.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{"Named Research Collections", "Orange County Cluster", "Add Current Record"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("research collections hub missing %s: %q", needle, body)
+		}
 	}
 }
 

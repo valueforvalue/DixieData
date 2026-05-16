@@ -922,6 +922,243 @@ func TestSoldierService_RecentByIDsPreservesOrder(t *testing.T) {
 	}
 }
 
+func TestSoldierService_UnitCamaraderieGraph(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	central, err := svc.Create(models.Soldier{
+		DisplayID: "CAM-0001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "Co. A, 1st Texas Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create central: %v", err)
+	}
+	exact, err := svc.Create(models.Soldier{
+		DisplayID: "CAM-0002",
+		FirstName: "Thomas",
+		LastName:  "Reed",
+		Unit:      "Co. A, 1st Texas Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create exact: %v", err)
+	}
+	companyVariant, err := svc.Create(models.Soldier{
+		DisplayID: "CAM-0003",
+		FirstName: "Samuel",
+		LastName:  "Lane",
+		Unit:      "Company A 1st Texas Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create company variant: %v", err)
+	}
+	regimentPeer, err := svc.Create(models.Soldier{
+		DisplayID: "CAM-0004",
+		FirstName: "Henry",
+		LastName:  "West",
+		Unit:      "Co. B, 1st Texas Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create regiment peer: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{
+		DisplayID:       "CAM-0005",
+		FirstName:       "Martha",
+		LastName:        "Cole",
+		EntryType:       "widow",
+		SpouseSoldierID: central.ID,
+		Unit:            "Co. A, 1st Texas Infantry",
+	}); err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	graph, err := svc.UnitCamaraderieGraph(central.ID)
+	if err != nil {
+		t.Fatalf("UnitCamaraderieGraph: %v", err)
+	}
+	if graph.Central.ID != central.ID {
+		t.Fatalf("unexpected central record: %#v", graph.Central)
+	}
+	if len(graph.SameUnit) != 1 || graph.SameUnit[0].Soldier.ID != exact.ID {
+		t.Fatalf("unexpected same-unit peers: %#v", graph.SameUnit)
+	}
+	if len(graph.SameCompanyVariant) != 1 || graph.SameCompanyVariant[0].Soldier.ID != companyVariant.ID {
+		t.Fatalf("unexpected company-variant peers: %#v", graph.SameCompanyVariant)
+	}
+	if len(graph.SameRegiment) != 1 || graph.SameRegiment[0].Soldier.ID != regimentPeer.ID {
+		t.Fatalf("unexpected same-regiment peers: %#v", graph.SameRegiment)
+	}
+}
+
+func TestSoldierService_ServiceTimeline(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		DisplayID: "TLM-0001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+		Unit:      "1st Texas Infantry",
+		BirthDate: "05/12/1838",
+		DeathDate: "11/03/1904",
+		BuriedIn:  "Oak Hill Cemetery",
+		Records: []models.Record{
+			{RecordType: "Muster Roll", AppID: "APP-1", Details: "Enlisted on 03/11/1862 at Austin."},
+			{RecordType: "Parole", AppID: "APP-2", Details: "Paroled in April 1865 at Marshall, Texas."},
+			{RecordType: "Pension", AppID: "APP-3", Details: "Filed in 1901 after moving back to Texas."},
+			{RecordType: "Letter", AppID: "APP-4", Details: "Family correspondence with no year listed."},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	timeline, err := svc.ServiceTimeline(created.ID)
+	if err != nil {
+		t.Fatalf("ServiceTimeline: %v", err)
+	}
+	if len(timeline.Events) != 6 {
+		t.Fatalf("expected 6 timeline events, got %d: %#v", len(timeline.Events), timeline.Events)
+	}
+	if timeline.Events[0].Title != "Birth" || timeline.Events[1].Title != "Muster Roll" || timeline.Events[2].Title != "Parole" || timeline.Events[3].Title != "Pension" || timeline.Events[4].Title != "Death" || timeline.Events[5].Title != "Burial recorded" {
+		t.Fatalf("unexpected timeline order: %#v", timeline.Events)
+	}
+	if timeline.ExactEventCount != 3 || timeline.InferredEventCount != 3 {
+		t.Fatalf("unexpected event confidence counts: exact=%d inferred=%d", timeline.ExactEventCount, timeline.InferredEventCount)
+	}
+	if len(timeline.UndatedRecords) != 1 || timeline.UndatedRecords[0].RecordType != "Letter" {
+		t.Fatalf("unexpected undated records: %#v", timeline.UndatedRecords)
+	}
+}
+
+func TestSoldierService_ResearchLogLifecycle(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		DisplayID: "RLG-0001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := svc.AddResearchTask(created.ID, "Locate pension file", "Check state archive holdings.", "pension"); err != nil {
+		t.Fatalf("AddResearchTask: %v", err)
+	}
+
+	log, err := svc.ResearchLog(created.ID)
+	if err != nil {
+		t.Fatalf("ResearchLog: %v", err)
+	}
+	if log.OpenCount != 1 || len(log.Tasks) != 1 {
+		t.Fatalf("unexpected research log counts: %#v", log)
+	}
+	if len(log.Suggestions) == 0 {
+		t.Fatalf("expected missing-evidence suggestions")
+	}
+
+	if err := svc.ResolveResearchTask(created.ID, log.Tasks[0].ID); err != nil {
+		t.Fatalf("ResolveResearchTask: %v", err)
+	}
+	log, err = svc.ResearchLog(created.ID)
+	if err != nil {
+		t.Fatalf("ResearchLog after resolve: %v", err)
+	}
+	if log.OpenCount != 0 || log.ResolvedCount != 1 || log.Tasks[0].Status != "resolved" {
+		t.Fatalf("unexpected resolved research log: %#v", log)
+	}
+}
+
+func TestSoldierService_ResearchPackForSoldier(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	central, err := svc.Create(models.Soldier{
+		DisplayID:    "PACK-0001",
+		FirstName:    "Andrew",
+		LastName:     "Cole",
+		PensionState: "Texas",
+		BirthInfo:    "Born 1838 in Orange County, Texas.",
+	})
+	if err != nil {
+		t.Fatalf("Create central: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{
+		DisplayID:    "PACK-0002",
+		FirstName:    "Thomas",
+		LastName:     "Reed",
+		PensionState: "Texas",
+		Unit:         "1st Texas Infantry",
+		BuriedIn:     "Oak Hill Cemetery",
+	}); err != nil {
+		t.Fatalf("Create state match: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{
+		DisplayID: "PACK-0003",
+		FirstName: "Samuel",
+		LastName:  "Lane",
+		BirthInfo: "Born 1840 in Orange County, Texas.",
+		Unit:      "2nd Texas Infantry",
+		BuriedIn:  "Evergreen Cemetery",
+	}); err != nil {
+		t.Fatalf("Create county match: %v", err)
+	}
+
+	statePack, err := svc.ResearchPackForSoldier(central.ID, "state")
+	if err != nil {
+		t.Fatalf("ResearchPackForSoldier state: %v", err)
+	}
+	if statePack.PlaceLabel != "Texas" || len(statePack.Related) != 2 {
+		t.Fatalf("unexpected state pack: %#v", statePack)
+	}
+
+	countyPack, err := svc.ResearchPackForSoldier(central.ID, "county")
+	if err != nil {
+		t.Fatalf("ResearchPackForSoldier county: %v", err)
+	}
+	if countyPack.PlaceLabel != "Orange County" || len(countyPack.Related) != 1 || countyPack.Related[0].DisplayID != "PACK-0003" {
+		t.Fatalf("unexpected county pack: %#v", countyPack)
+	}
+}
+
+func TestSoldierService_ResearchCollections(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		DisplayID: "COL-0001",
+		FirstName: "Andrew",
+		LastName:  "Cole",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.CreateResearchCollection("Orange County Cluster", "County-focused follow-up list."); err != nil {
+		t.Fatalf("CreateResearchCollection: %v", err)
+	}
+
+	hub, err := svc.ResearchCollectionsHub(created.ID)
+	if err != nil {
+		t.Fatalf("ResearchCollectionsHub: %v", err)
+	}
+	if len(hub.Collections) != 1 || hub.Collections[0].ContainsCurrent {
+		t.Fatalf("unexpected research collections hub: %#v", hub)
+	}
+	if err := svc.AddSoldierToResearchCollection(hub.Collections[0].ID, created.ID); err != nil {
+		t.Fatalf("AddSoldierToResearchCollection: %v", err)
+	}
+	detail, err := svc.ResearchCollectionDetail(hub.Collections[0].ID, created.ID)
+	if err != nil {
+		t.Fatalf("ResearchCollectionDetail: %v", err)
+	}
+	if detail.Collection.ItemCount != 1 || len(detail.Members) != 1 || detail.Members[0].ID != created.ID {
+		t.Fatalf("unexpected research collection detail: %#v", detail)
+	}
+}
+
 func TestSoldierService_SearchPageMatchesPensionState(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
