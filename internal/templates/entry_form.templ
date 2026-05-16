@@ -7,22 +7,90 @@ import (
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ EntryForm(s models.Soldier, spouseCandidates []models.Soldier, isEdit bool) {
+templ EntryForm(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool) {
 	@Layout(formTitle(s, isEdit)) {
-		@EntryFormContent(s, spouseCandidates, isEdit, "")
+		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, "")
 	}
 }
 
-templ EntryFormWithError(s models.Soldier, spouseCandidates []models.Soldier, isEdit bool, errorMessage string) {
+templ EntryFormWithError(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) {
 	@Layout(formTitle(s, isEdit)) {
-		@EntryFormContent(s, spouseCandidates, isEdit, errorMessage)
+		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, errorMessage)
 	}
 }
 
-templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEdit bool, errorMessage string) {
-	<div data-ui-id={ entryFormPageID(isEdit) } class="relative max-w-2xl mx-auto">
+templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+	<div id="entry-form-shell" data-ui-id={ entryFormPageID(isEdit) } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative max-w-2xl mx-auto">
 		@SurfaceBadge(entryFormPageID(isEdit))
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
+		if !isEdit {
+			<details class="card mb-5 rounded-3xl p-4">
+				<summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3">
+					<div>
+						<h3 class="text-base font-semibold text-slate-800">Scrape Find a Grave</h3>
+						<p class="mt-1 text-xs text-slate-600">Paste raw memorial HTML to autofill this form.</p>
+					</div>
+					<div class="flex flex-wrap items-center gap-2 text-xs">
+						if scrape.SourceLabel != "" {
+							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ scrape.SourceLabel }</span>
+						}
+						if len(scrape.WarningLines) > 0 {
+							<span class="rounded-full border border-amber-700/30 bg-amber-50 px-3 py-1 text-amber-900">{ fmt.Sprintf("%d warning(s)", len(scrape.WarningLines)) }</span>
+						}
+						if len(scrape.Spouses) > 0 {
+							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("%d spouse memorial(s)", len(scrape.Spouses)) }</span>
+						}
+						if scrape.ErrorMessage != "" {
+							<span class="rounded-full border border-[#6f2c26]/30 bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs attention</span>
+						}
+					</div>
+				</summary>
+				<div class="mt-4 space-y-3">
+					<p class="text-sm text-slate-600">Paste Find a Grave memorial HTML to prefill this form, then verify every field manually before saving.</p>
+					<form hx-post="/soldiers/scrape-findagrave" hx-target="#entry-form-shell" hx-swap="outerHTML" class="space-y-3">
+						<label class="block text-sm text-slate-500">Find a Grave HTML Source</label>
+						<textarea name="findagrave_source" rows="4" class="field-input min-h-24" placeholder="Paste Find a Grave memorial HTML here">{ scrape.Input }</textarea>
+						<div class="flex flex-wrap items-center gap-3">
+							<button type="submit" class="secondary-button">Fetch Data</button>
+						</div>
+					</form>
+					if scrape.ErrorMessage != "" {
+						<div class="rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+							<strong class="font-semibold">Scrape failed.</strong>
+							<span class="ml-1">{ scrape.ErrorMessage }</span>
+						</div>
+					}
+					if len(scrape.WarningLines) > 0 {
+						<div class="rounded-2xl border border-amber-700/40 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+							<p class="font-semibold">Review scraped data carefully before saving.</p>
+							<ul class="mt-2 list-disc space-y-1 pl-5">
+								for _, warning := range scrape.WarningLines {
+									<li>{ warning }</li>
+								}
+							</ul>
+						</div>
+					}
+					if len(scrape.Spouses) > 0 {
+						<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700">
+							<p class="font-semibold text-slate-800">Spouse memorials found</p>
+							<ul class="mt-2 space-y-1">
+								for _, spouse := range scrape.Spouses {
+									<li>
+										<span class="font-medium">{ spouse.Name }</span>
+										if spouse.MemorialID != "" {
+											<span class="text-slate-500"> · Memorial ID { spouse.MemorialID }</span>
+										}
+										if spouse.URL != "" {
+											<a href={ spouse.URL } class="ml-2 add-link" target="_blank" rel="noreferrer">Open</a>
+										}
+									</li>
+								}
+							</ul>
+						</div>
+					}
+				</div>
+			</details>
+		}
 		if errorMessage != "" {
 			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
 				<strong class="font-semibold">Save failed.</strong>
@@ -32,14 +100,20 @@ templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEd
 		<form
 			if isEdit {
 				hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
+				data-draft-key={ draftKey(s, isEdit) }
 			} else {
 				hx-post="/soldiers"
-				data-draft-key="new-soldier"
+				data-draft-key={ draftKey(s, isEdit) }
 			}
 			hx-target="body"
 			enctype="multipart/form-data"
+			data-record-persistence-kind={ draftMode(isEdit) }
 			class="card rounded-3xl p-8 space-y-5"
 		>
+			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
+				<strong class="font-semibold">{ recordPersistenceHeading(isEdit) }</strong>
+				<span class="ml-2">{ recordPersistenceMessage(isEdit) }</span>
+			</div>
 			<div class="grid grid-cols-2 gap-4">
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">Record ID</label>
@@ -73,16 +147,19 @@ templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEd
 				<div data-soldier-only-field>
 					<label class="block text-sm text-slate-500 mb-1">Rank In</label>
 					<input type="text" name="rank_in" value={ s.RankIn }
+						list="rank-in-suggestions"
 						class="field-input"/>
 				</div>
 				<div data-soldier-only-field>
 					<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
 					<input type="text" name="rank_out" value={ rankOutValue(s) }
+						list="rank-out-suggestions"
 						class="field-input"/>
 				</div>
 				<div data-soldier-only-field class="col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Unit</label>
 					<input type="text" name="unit" value={ s.Unit }
+						list="unit-suggestions"
 						class="field-input"/>
 				</div>
 				<div class="col-span-2" data-entry-type-special>
@@ -101,12 +178,25 @@ templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEd
 				</div>
 				<div data-soldier-only-field class="col-span-2">
 					<label class="block text-sm text-slate-500 mb-1">Pension State</label>
-					<select name="pension_state" class="field-input">
-						<option value="">Select a state</option>
-						for _, state := range pensionStates() {
-							<option value={ state } if state == s.PensionState { selected }>{ state }</option>
-						}
-					</select>
+					<input type="text" name="pension_state" value={ selectedPensionState(s) } list="pension-state-suggestions" class="field-input"/>
+				</div>
+				<div data-soldier-only-field class="col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4">
+					<div class="grid gap-4 md:grid-cols-2">
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
+							<select name="confederate_home_status" class="field-input" data-confederate-home-status>
+								for _, status := range confederateHomeStatuses() {
+									<option value={ status } if status == selectedConfederateHomeStatus(s) { selected }>{ status }</option>
+								}
+							</select>
+						</div>
+						<div data-confederate-home-name-field>
+							<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
+							<input type="text" name="confederate_home_name" value={ s.ConfederateHomeName }
+								list="confederate-home-name-suggestions"
+								class="field-input" placeholder="Texas Confederate Home"/>
+						</div>
+					</div>
 				</div>
 				<div data-soldier-or-widow-field>
 					<label class="block text-sm text-slate-500 mb-1">Pension ID</label>
@@ -136,6 +226,7 @@ templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEd
 				<div>
 					<label class="block text-sm text-slate-500 mb-1">Buried In</label>
 					<input type="text" name="buried_in" value={ s.BuriedIn }
+						list="buried-in-suggestions"
 						class="field-input"/>
 				</div>
 				<div class="col-span-2 text-xs text-slate-500">
@@ -161,19 +252,6 @@ templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEd
 					<label class="block text-sm text-slate-500 mb-1">Notes</label>
 					<textarea name="notes" rows="4"
 						class="field-input min-h-32">{ s.Notes }</textarea>
-				</div>
-				<div data-ui-id={ uiids.PanelSoldierFormScratchpad } class="relative col-span-2">
-					@SurfaceBadge(uiids.PanelSoldierFormScratchpad)
-					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-4 text-sm text-slate-600">
-						<div class="flex flex-wrap items-center justify-between gap-3">
-							<div>
-								<p class="font-medium text-slate-700">Scratch Pad</p>
-								<p class="mt-1">Open a separate native window for temporary notes, pasted text, and quick copy work. It is stored per Record ID outside the database and can stay above other apps when pinned.</p>
-							</div>
-							<button type="button" data-scratchpad-open class="secondary-button">Open Scratch Pad</button>
-						</div>
-						<p data-scratchpad-status class="mt-3 text-xs text-slate-500" aria-live="polite"></p>
-					</div>
 				</div>
 				<div data-ui-id={ uiids.PanelSoldierFormImages } class="relative col-span-2">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
@@ -214,6 +292,13 @@ templ EntryFormContent(s models.Soldier, spouseCandidates []models.Soldier, isEd
 				</button>
 				<a href="/soldiers" class="ghost-link px-4 py-2">Cancel</a>
 			</div>
+			@SuggestionDatalist("rank-in-suggestions", suggestions.RankIn)
+			@SuggestionDatalist("rank-out-suggestions", suggestions.RankOut)
+			@SuggestionDatalist("unit-suggestions", suggestions.Unit)
+			@SuggestionDatalist("pension-state-suggestions", suggestions.PensionState)
+			@SuggestionDatalist("buried-in-suggestions", suggestions.BuriedIn)
+			@SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHomeName)
+			@SuggestionDatalist("record-type-suggestions", suggestions.RecordType)
 		</form>
 	</div>
 }
@@ -240,6 +325,41 @@ func displayIDInputClass(isEdit bool) string {
 	return "field-input bg-slate-100 text-slate-500"
 }
 
+func draftKey(s models.Soldier, isEdit bool) string {
+	if isEdit {
+		return fmt.Sprintf("edit-soldier-%d", s.ID)
+	}
+	return "new-soldier"
+}
+
+func draftMode(isEdit bool) string {
+	if isEdit {
+		return "edit"
+	}
+	return "new"
+}
+
+func recordPersistenceClass(isEdit bool) string {
+	if isEdit {
+		return "rounded-2xl border border-emerald-700/40 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900"
+	}
+	return "rounded-2xl border border-amber-700/40 bg-amber-50/80 px-4 py-3 text-sm text-amber-900"
+}
+
+func recordPersistenceHeading(isEdit bool) string {
+	if isEdit {
+		return "Committed to database."
+	}
+	return "Local draft only."
+}
+
+func recordPersistenceMessage(isEdit bool) string {
+	if isEdit {
+		return "This record currently matches the primary database until you make new local edits."
+	}
+	return "This new record is cached in localStorage until you create it in the database."
+}
+
 func pensionStates() []string {
 	return []string{
 		"None",
@@ -251,6 +371,26 @@ func pensionStates() []string {
 		"North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island",
 		"South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
 		"Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
+	}
+}
+
+func confederateHomeStatuses() []string {
+	return []string{"None", "Inmate", "Staffer", "Trustee"}
+}
+
+func selectedPensionState(s models.Soldier) string {
+	if strings.TrimSpace(s.PensionState) == "" {
+		return "None"
+	}
+	return s.PensionState
+}
+
+func selectedConfederateHomeStatus(s models.Soldier) string {
+	switch strings.TrimSpace(s.ConfederateHomeStatus) {
+	case "Inmate", "Staffer", "Trustee":
+		return s.ConfederateHomeStatus
+	default:
+		return "None"
 	}
 }
 
@@ -312,7 +452,7 @@ templ RecordInputRow(record models.Record) {
 		<div class="grid grid-cols-2 gap-4">
 			<div>
 				<label class="mb-1 block text-sm text-slate-500">Record Type</label>
-				<input type="text" name="record_type" value={ record.RecordType } class="field-input"/>
+				<input type="text" name="record_type" value={ record.RecordType } list="record-type-suggestions" class="field-input"/>
 			</div>
 			<div>
 				<label class="mb-1 block text-sm text-slate-500">App / Record Number</label>
@@ -324,6 +464,14 @@ templ RecordInputRow(record models.Record) {
 			</div>
 		</div>
 	</div>
+}
+
+templ SuggestionDatalist(id string, values []string) {
+	<datalist id={ id }>
+		for _, value := range values {
+			<option value={ value }></option>
+		}
+	</datalist>
 }
 
 func formRecords(records []models.Record) []models.Record {
@@ -593,6 +741,9 @@ templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page
 				}
 			</p>
 			<p class="mt-2 text-sm font-medium text-[#22303d]">{ searchSummary(search) }</p>
+			if search.Mode == "basic" && strings.TrimSpace(search.Query) != "" {
+				<p class="mt-1 text-xs text-slate-500">Quick search cards now show the exact matching field and a compact hover preview summary.</p>
+			}
 			if search.Mode == "advanced" {
 				<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
 			}

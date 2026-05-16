@@ -91,7 +91,7 @@ func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
 	if storedManifest.AppVersion != buildinfo.AppVersion || storedManifest.SchemaVersion != buildinfo.SchemaVersion || storedManifest.DataFormat != "sqlite" {
 		t.Fatalf("unexpected stored manifest: %#v", storedManifest)
 	}
-	if storedManifest.NodePrefix != "STC1838" || storedManifest.OwnerName != "Samuel Thomas Carter" {
+	if storedManifest.NodePrefix != "STC38" || storedManifest.OwnerName != "Samuel Thomas Carter" {
 		t.Fatalf("unexpected origin metadata: %#v", storedManifest)
 	}
 	if storedManifest.ArchiveKind != archiveKindBackup {
@@ -333,6 +333,165 @@ func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
 	}
 }
 
+func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *testing.T) {
+	sourceDir := t.TempDir()
+	sourceDB, err := db.Open(sourceDir)
+	if err != nil {
+		t.Fatalf("db.Open source: %v", err)
+	}
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	created, err := sourceSvc.Create(models.Soldier{FirstName: "Source", LastName: "Soldier"})
+	if err != nil {
+		t.Fatalf("Create source soldier: %v", err)
+	}
+	backupPath := filepath.Join(t.TempDir(), "current.ddbak")
+	if _, err := sourceBackupSvc.Export(backupPath, sourceDir); err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if err := sourceDB.Close(); err != nil {
+		t.Fatalf("Close sourceDB: %v", err)
+	}
+
+	localDB := newTestDB(t)
+	localSvc := NewSoldierService(localDB)
+	localBackupSvc := NewBackupService(localDB, localSvc)
+	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+		t.Fatalf("ConfigureUserIdentity local: %v", err)
+	}
+
+	restoreDir := t.TempDir()
+	if _, err := localBackupSvc.Import(backupPath, restoreDir); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	reopened, err := openExistingTestDB(restoreDir)
+	if err != nil {
+		t.Fatalf("openExistingTestDB: %v", err)
+	}
+	defer reopened.Close()
+
+	identity, err := reopened.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity: %v", err)
+	}
+	if identity.NodePrefix != "LJW04" || identity.FirstName != "Laura" || identity.LastName != "Wilson" {
+		t.Fatalf("restored identity = %#v", identity)
+	}
+	nextID, err := reopened.NextDXDID()
+	if err != nil {
+		t.Fatalf("NextDXDID: %v", err)
+	}
+	if nextID != "LJW04-00001" {
+		t.Fatalf("next ID = %q", nextID)
+	}
+	restoreSvc := NewSoldierService(reopened)
+	results, total, err := restoreSvc.SearchPage(created.DisplayID, 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("restored search total=%d len=%d", total, len(results))
+	}
+}
+
+func TestBackupService_ImportLegacySQLiteKeepsHistoricalRecordsButUsesLocalIdentity(t *testing.T) {
+	localDB := newTestDB(t)
+	localSvc := NewSoldierService(localDB)
+	localBackupSvc := NewBackupService(localDB, localSvc)
+	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+		t.Fatalf("ConfigureUserIdentity local: %v", err)
+	}
+
+	backupPath := filepath.Join(t.TempDir(), "legacy-sqlite.ddbak")
+	legacyDBPath := filepath.Join(t.TempDir(), db.FileName)
+	createLegacySchemaV1DB(t, legacyDBPath)
+
+	file, err := os.Create(backupPath)
+	if err != nil {
+		t.Fatalf("Create backup: %v", err)
+	}
+	zipWriter := zip.NewWriter(file)
+	manifest := BackupManifest{
+		Format:        backupFormatName,
+		Version:       buildinfo.BackupFormatVersion,
+		ArchiveKind:   archiveKindBackup,
+		AppVersion:    buildinfo.AppVersion,
+		SchemaVersion: 1,
+		CreatedAt:     "2026-05-15T18:41:06-05:00",
+		DataFormat:    "sqlite",
+		DatabaseFile:  "data/dixiedata.db",
+		ImageRoot:     "images/",
+		Soldiers:      1,
+		Records:       1,
+		Images:        0,
+	}
+	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	if err := addBackupFile(zipWriter, manifest.DatabaseFile, legacyDBPath); err != nil {
+		t.Fatalf("add database: %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("close file: %v", err)
+	}
+
+	restoreDir := t.TempDir()
+	if _, err := localBackupSvc.Import(backupPath, restoreDir); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	reopened, err := openExistingTestDB(restoreDir)
+	if err != nil {
+		t.Fatalf("openExistingTestDB: %v", err)
+	}
+	defer reopened.Close()
+
+	identity, err := reopened.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity: %v", err)
+	}
+	if identity.NodePrefix != "LJW04" || identity.FirstName != "Laura" || identity.LastName != "Wilson" {
+		t.Fatalf("local identity should be restored after legacy import, got %#v", identity)
+	}
+	nextID, err := reopened.NextDXDID()
+	if err != nil {
+		t.Fatalf("NextDXDID: %v", err)
+	}
+	if nextID != "LJW04-00001" {
+		t.Fatalf("next ID = %q", nextID)
+	}
+
+	restoreSvc := NewSoldierService(reopened)
+	results, total, err := restoreSvc.SearchPage("TDM65-DXD-00001", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage legacy record: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("expected imported legacy record to keep its historical display ID, total=%d len=%d", total, len(results))
+	}
+	firstCreated, err := restoreSvc.Create(models.Soldier{FirstName: "First", LastName: "Added"})
+	if err != nil {
+		t.Fatalf("Create first added soldier: %v", err)
+	}
+	if firstCreated.DisplayID != "LJW04-00001" {
+		t.Fatalf("first created display ID = %q", firstCreated.DisplayID)
+	}
+	secondCreated, err := restoreSvc.Create(models.Soldier{FirstName: "Second", LastName: "Added"})
+	if err != nil {
+		t.Fatalf("Create second added soldier: %v", err)
+	}
+	if secondCreated.DisplayID != "LJW04-00002" {
+		t.Fatalf("second created display ID = %q", secondCreated.DisplayID)
+	}
+}
+
 func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 	targetDir := t.TempDir()
 	targetDB, err := db.Open(targetDir)
@@ -428,6 +587,58 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 	}
 	if len(merged.Images) != 0 {
 		t.Fatalf("shared images not preserved: %#v", merged.Images)
+	}
+}
+
+func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
+	targetDir := t.TempDir()
+	targetDB, err := db.Open(targetDir)
+	if err != nil {
+		t.Fatalf("db.Open target: %v", err)
+	}
+	defer targetDB.Close()
+	if _, err := targetDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+		t.Fatalf("ConfigureUserIdentity target: %v", err)
+	}
+	targetSvc := NewSoldierService(targetDB)
+	targetBackupSvc := NewBackupService(targetDB, targetSvc)
+
+	sourceDir := t.TempDir()
+	sourceDB, err := db.Open(sourceDir)
+	if err != nil {
+		t.Fatalf("db.Open source: %v", err)
+	}
+	defer sourceDB.Close()
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+	if _, err := sourceSvc.Create(models.Soldier{FirstName: "Shared", LastName: "Soldier"}); err != nil {
+		t.Fatalf("Create source soldier: %v", err)
+	}
+	sharedPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+
+	if _, err := targetBackupSvc.ImportSharedBackup(sharedPath, targetDir); err != nil {
+		t.Fatalf("ImportSharedBackup: %v", err)
+	}
+
+	identity, err := targetDB.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity: %v", err)
+	}
+	if identity.NodePrefix != "LJW04" || identity.FirstName != "Laura" || identity.LastName != "Wilson" {
+		t.Fatalf("target identity = %#v", identity)
+	}
+	nextID, err := targetDB.NextDXDID()
+	if err != nil {
+		t.Fatalf("NextDXDID: %v", err)
+	}
+	if nextID != "LJW04-00001" {
+		t.Fatalf("next ID = %q", nextID)
 	}
 }
 

@@ -1,94 +1,190 @@
 {
   "civil_war_quotes": [
     {
-      "author": "Robert E. Lee",
-      "text": "It is well that war is so terrible, or we should get too fond of it.",
-      "context": "Spoken to James Longstreet during the Battle of Fredericksburg, 1862.",
-      "tags": ["war", "reflection"]
+      "author": "Romans 8:28",
+      "text": "And we know that all things work together for good to them that love God, to them who are the called according to his purpose.",
+      "context": "Day 1: Trust in Divine Purpose. This was the favorite verse of Stonewall Jackson. He lived with the conviction that every event in life was directed by God's hand for an ultimate good.",
+      "tags": ["faith", "purpose", "jackson"]
     },
     {
-      "author": "Thomas 'Stonewall' Jackson",
-      "text": "Let us cross over the river, and rest under the shade of the trees.",
-      "context": "Final words, May 10, 1863.",
-      "tags": ["final words", "peace"]
+      "author": "Matthew 26:42",
+      "text": "Thy will be done.",
+      "context": "Day 2: Submission to the Will of God. This simple prayer was the foundation of Robert E. Lee's spiritual life, guiding him to accept both the triumphs and the trials of his career with composure.",
+      "tags": ["faith", "submission", "lee"]
     },
     {
-      "author": "James Longstreet",
-      "text": "I do not think the day is far distant when we shall be as good friends as ever.",
-      "context": "Post-war reflection on national reconciliation.",
-      "tags": ["reconciliation", "future"]
+      "author": "2 Timothy 2:3",
+      "text": "Thou therefore endure hardness, as a good soldier of Jesus Christ.",
+      "context": "Day 3: The Call to Endure. A favorite of J.E.B. Stuart, this verse helped officers and men alike find spiritual meaning in the physical rigors of the field.",
+      "tags": ["endurance", "stuart", "service"]
     },
     {
-      "author": "J.E.B. Stuart",
-      "text": "I had rather die a thousand deaths than betray my country or any part of it.",
-      "context": "Written in a letter to his wife, Flora Stuart.",
-      "tags": ["loyalty", "duty"]
+      "author": "2 Chronicles 20:15",
+      "text": "Be not afraid nor dismayed by reason of this great multitude; for the battle is not yours, but God's.",
+      "context": "Day 4: Courage in the Face of Adversity. Often cited during times of prayer to encourage those facing numerically superior forces.",
+      "tags": ["courage", "battle", "prayer"]
     },
     {
-      "author": "Patrick Cleburne",
-      "text": "If this nation dies, the monument expected to commemorate its glorious institutions will be a monument to our failure.",
-      "context": "From his 1864 memorandum to the Army of Tennessee.",
-      "tags": ["legacy", "warning"]
+      "author": "Psalm 27:1",
+      "text": "The Lord is my light and my salvation; whom shall I fear? The Lord is the strength of my life; of whom shall I be afraid?",
+      "context": "Day 5: The Source of Peace. William Dorsey Pender relied on this Psalm to maintain his courage and focus while away from his family during the war.",
+      "tags": ["peace", "courage", "pender"]
     },
     {
-      "author": "Nathan Bedford Forrest",
-      "text": "Whenever you meet the enemy no matter how few there are of you or how many of them, show fight.",
-      "context": "Attributed tactical philosophy regarding aggressive engagement.",
-      "tags": ["tactics", "resolve"]
+      "author": "1 Corinthians 14:40",
+      "text": "Let all things be done decently and in order.",
+      "context": "Day 6: Discipline and Order. Stonewall Jackson applied this principle to both his religious devotion and the management of his troops.",
+      "tags": ["discipline", "order", "jackson"]
     },
     {
-      "author": "Joseph E. Johnston",
-      "text": "An army is simply a vast community on legs... here one day, and the next day gone.",
-      "context": "Reflecting on the nature of logistics and movement in the field.",
-      "tags": ["military", "logistics"]
+      "author": "Philippians 1:21",
+      "text": "For to me to live is Christ, and to die is gain.",
+      "context": "Day 7: The Eternal Perspective. This verse provided a profound sense of peace to John B. Gordon and others who faced the constant reality of mortality.",
+      "tags": ["mortality", "peace", "gordon"]
     },
     {
-      "author": "P.G.T. Beauregard",
-      "text": "No people ever yet lost their liberties who had the courage to defend them.",
-      "context": "Proclamation to the people of Louisiana, 1862.",
-      "tags": ["liberty", "courage"]
+      "author": "Job 1:21",
+      "text": "The Lord gave, and the Lord hath taken away; blessed be the name of the Lord.",
+      "context": "Day 8: Patience in Loss. D.H. Hill used this verse to find strength and keep his faith intact during the most difficult seasons of the conflict.",
+      "tags": ["loss", "faith", "hill"]
     },
     {
-      "author": "Richard S. Ewell",
-      "text": "It is better to be a dead lion than a living dog.",
-      "context": "Attributed remark regarding the spirit of the infantry.",
-      "tags": ["honor", "valor"]
+      "author": "Romans 13:12",
+      "text": "The night is far spent, the day is at hand: let us therefore cast off the works of darkness, and let us put on the armour of light.",
+      "context": "Day 9: The Armor of Light. Leonidas Polk, who served as both a Bishop and a General, frequently used this passage to exhort his men to lead lives of integrity.",
+      "tags": ["integrity", "light", "polk"]
     },
     {
-      "author": "Thomas 'Stonewall' Jackson",
-      "text": "My duty is to obey orders.",
-      "context": "Jackson's core military philosophy during the Valley Campaign.",
-      "tags": ["duty", "discipline"]
+      "author": "Matthew 25:21",
+      "text": "Well done, thou good and faithful servant: thou hast been faithful over a few things, I will make thee ruler over many things.",
+      "context": "Day 10: Faithfulness in Small Things. Following his conversion, Richard S. Ewell sought to model his leadership after the concept of the faithful steward described here.",
+      "tags": ["faithfulness", "ewell", "leadership"]
     },
     {
-      "author": "Robert E. Lee",
-      "text": "Duty, then, is the sublimest word in our language. Do your duty in all things. You cannot do more, you should never wish to do less.",
-      "context": "Letter to his son, G.W. Custis Lee.",
-      "tags": ["duty", "philosophy"]
+      "author": "Mark 12:10",
+      "text": "The stone which the builders rejected is become the head of the corner.",
+      "context": "Day 11: The Essential Foundation. This verse was used by many to describe the resilience and growth of their cause from humble beginnings.",
+      "tags": ["foundation", "resilience", "growth"]
     },
     {
-      "author": "James Longstreet",
-      "text": "The ground was covered with the dead and dying... it was a scene that I never want to see again.",
-      "context": "Account of the aftermath of the Battle of Antietam.",
-      "tags": ["war", "reality"]
+      "author": "Psalm 46:1",
+      "text": "God is our refuge and strength, a very present help in trouble.",
+      "context": "Day 12: A Help in Trouble. Josiah Gorgas often turned to the Psalms for strength while managing the immense responsibilities of the Ordnance Bureau.",
+      "tags": ["refuge", "strength", "gorgas"]
     },
     {
-      "author": "John Bell Hood",
-      "text": "The time for talking has passed; the time for fighting has come.",
-      "context": "Spoken during the defense of Atlanta, 1864.",
-      "tags": ["action", "resolve"]
+      "author": "Joshua 1:9",
+      "text": "Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the Lord thy God is with thee whithersoever thou goest.",
+      "context": "Day 13: Strength and Courage. Kirby Smith leaned on this promise of God's presence while commanding in the far reaches of the Trans-Mississippi.",
+      "tags": ["courage", "presence", "kirby smith"]
     },
     {
-      "author": "A.P. Hill",
-      "text": "Tell Hill he must come up!",
-      "context": "Both Lee and Jackson reportedly called for Hill on their deathbeds, reflecting his reliability.",
-      "tags": ["legacy", "reliability"]
+      "author": "Romans 13:1",
+      "text": "Let every soul be subject unto the higher powers. For there is no power but of God: the powers that be are ordained of God.",
+      "context": "Day 14: Duty to Authority. William Nelson Pendleton, a minister and artillery officer, viewed military service as a high calling and a religious duty.",
+      "tags": ["duty", "authority", "pendleton"]
     },
     {
-      "author": "Patrick Cleburne",
-      "text": "Every man should be a soldier. This is not the time to be a gentleman.",
-      "context": "Attributed to Cleburne regarding the total commitment required for war.",
-      "tags": ["war", "commitment"]
+      "author": "Isaiah 5:20",
+      "text": "Woe unto them that call evil good, and good evil; that put darkness for light, and light for darkness.",
+      "context": "Day 15: Discerning Right from Wrong. Patrick Cleburne was known for his strong moral convictions and his dedication to what he believed was right.",
+      "tags": ["morality", "cleburne", "discernment"]
+    },
+    {
+      "author": "1 Samuel 14:6",
+      "text": "For there is no restraint to the Lord to save by many or by few.",
+      "context": "Day 16: God's Power to Save. This verse was a source of hope for officers like John Bell Hood when their forces were outnumbered.",
+      "tags": ["hope", "hood", "battle"]
+    },
+    {
+      "author": "2 Timothy 4:7",
+      "text": "I have fought a good fight, I have finished my course, I have kept the faith.",
+      "context": "Day 17: Finishing the Course. This was a defining sentiment for Stephen D. Lee, reflecting a life dedicated to duty and faith.",
+      "tags": ["perseverance", "stephen d. lee", "faith"]
+    },
+    {
+      "author": "John 14:27",
+      "text": "Peace I leave with you, my peace I give unto you: not as the world giveth, give I unto you.",
+      "context": "Day 18: Peace Beyond Understanding. A.P. Hill sought this spiritual peace to sustain him through the pressures and physical illnesses he faced.",
+      "tags": ["peace", "a.p. hill", "comfort"]
+    },
+    {
+      "author": "Psalm 91:1",
+      "text": "He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.",
+      "context": "Day 19: Divine Protection. Known as the Soldier's Psalm, this was a favorite for personal devotions throughout the Army of Northern Virginia.",
+      "tags": ["protection", "psalms", "devotion"]
+    },
+    {
+      "author": "1 Corinthians 16:13",
+      "text": "Watch ye, stand fast in the faith, quit you like men, be strong.",
+      "context": "Day 20: Christian Manliness. Maxcy Gregg embodied this call to strength and steadfastness in both his personal and professional life.",
+      "tags": ["strength", "gregg", "steadfastness"]
+    },
+    {
+      "author": "Psalm 23:4",
+      "text": "Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me.",
+      "context": "Day 21: Comfort in the Valley. This verse provided ultimate comfort to officers such as George Pickett during the most dangerous moments of battle.",
+      "tags": ["comfort", "pickett", "battle"]
+    },
+    {
+      "author": "Proverbs 16:9",
+      "text": "A man's heart deviseth his way: but the Lord directeth his steps.",
+      "context": "Day 22: Divine Direction. Braxton Bragg relied on this proverb to help him understand that ultimate outcomes were in God's hands.",
+      "tags": ["guidance", "bragg", "providence"]
+    },
+    {
+      "author": "1 Samuel 17:45",
+      "text": "Thou comest to me with a sword... but I come to thee in the name of the Lord of hosts.",
+      "context": "Day 23: Reliance on the Lord's Name. This passage was frequently used to frame the commitment of the officers to their spiritual principles.",
+      "tags": ["faith", "battle", "commitment"]
+    },
+    {
+      "author": "Romans 12:19",
+      "text": "Vengeance is mine; I will repay, saith the Lord.",
+      "context": "Day 24: Restraint and Mercy. Robert E. Lee famously used this scripture to remind his men to maintain their honor and show restraint toward non-combatants.",
+      "tags": ["mercy", "lee", "restraint"]
+    },
+    {
+      "author": "Psalm 144:1",
+      "text": "Blessed be the Lord my strength, which teacheth my hands to war, and my fingers to fight.",
+      "context": "Day 25: Preparation for Battle. Many officers viewed their military skills as talents to be used in the service of their faith and their people.",
+      "tags": ["battle", "strength", "preparation"]
+    },
+    {
+      "author": "Matthew 11:28",
+      "text": "Come unto me, all ye that labour and are heavy laden, and I will give you rest.",
+      "context": "Day 26: Rest for the Weary. This invitation was central to the spiritual life of the camps, offering hope to those exhausted by the war.",
+      "tags": ["rest", "comfort", "hope"]
+    },
+    {
+      "author": "Galatians 6:7",
+      "text": "Be not deceived; God is not mocked: for whatsoever a man soweth, that shall he also reap.",
+      "context": "Day 27: The Law of the Harvest. James Longstreet and others understood this as a call to act with integrity and foresight in all things.",
+      "tags": ["integrity", "longstreet", "foresight"]
+    },
+    {
+      "author": "2 Corinthians 12:9",
+      "text": "My grace is sufficient for thee: for my strength is made perfect in weakness.",
+      "context": "Day 28: Strength in Weakness. This verse was a cornerstone of faith for officers who had to persevere through injuries and physical limitations.",
+      "tags": ["grace", "weakness", "perseverance"]
+    },
+    {
+      "author": "Psalm 33:12",
+      "text": "Blessed is the nation whose God is the Lord.",
+      "context": "Day 29: National Faith. This scripture underscored the belief that public life and government should be rooted in spiritual truth.",
+      "tags": ["nation", "faith", "public life"]
+    },
+    {
+      "author": "2 Timothy 2:4",
+      "text": "No man that warreth entangleth himself with the affairs of this life; that he may please him who hath chosen him to be a soldier.",
+      "context": "Day 30: Singleness of Heart. This provided a model for the total dedication many officers felt toward their calling and their men.",
+      "tags": ["dedication", "service", "calling"]
+    },
+    {
+      "author": "Revelation 2:10",
+      "text": "Be thou faithful unto death, and I will give thee a crown of life.",
+      "context": "Day 31: Faithfulness unto Death. This served as the final encouragement for many, emphasizing that the true victory was found in remaining loyal to one's faith and duty to the very end.",
+      "tags": ["faithfulness", "endurance", "reward"]
     }
   ]
 }

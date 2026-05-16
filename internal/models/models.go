@@ -1,36 +1,40 @@
 package models
 
 type Soldier struct {
-	ID              int64    `json:"id"`
-	DisplayID       string   `json:"display_id"`
-	SyncID          string   `json:"sync_id"`
-	EntryType       string   `json:"entry_type"`
-	SpouseSoldierID int64    `json:"spouse_soldier_id"`
-	SpouseName      string   `json:"spouse_name"`
-	MaidenName      string   `json:"maiden_name"`
-	IsGenerated     bool     `json:"is_generated"`
-	PensionID       string   `json:"pension_id"`
-	ApplicationID   string   `json:"application_id"`
-	FirstName       string   `json:"first_name"`
-	MiddleName      string   `json:"middle_name"`
-	LastName        string   `json:"last_name"`
-	Rank            string   `json:"rank"`
-	RankIn          string   `json:"rank_in"`
-	RankOut         string   `json:"rank_out"`
-	Unit            string   `json:"unit"`
-	PensionState    string   `json:"pension_state"`
-	DeathYear       int      `json:"death_year"`
-	DeathMonth      int      `json:"death_month"`
-	DeathDay        int      `json:"death_day"`
-	BirthDate       string   `json:"birth_date"`
-	DeathDate       string   `json:"death_date"`
-	BirthInfo       string   `json:"birth_info"`
-	BuriedIn        string   `json:"buried_in"`
-	Notes           string   `json:"notes"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
-	Records         []Record `json:"records,omitempty"`
-	Images          []Image  `json:"images,omitempty"`
+	ID                    int64    `json:"id"`
+	DisplayID             string   `json:"display_id"`
+	SyncID                string   `json:"sync_id"`
+	EntryType             string   `json:"entry_type"`
+	SpouseSoldierID       int64    `json:"spouse_soldier_id"`
+	SpouseName            string   `json:"spouse_name"`
+	MaidenName            string   `json:"maiden_name"`
+	IsGenerated           bool     `json:"is_generated"`
+	PensionID             string   `json:"pension_id"`
+	ApplicationID         string   `json:"application_id"`
+	FirstName             string   `json:"first_name"`
+	MiddleName            string   `json:"middle_name"`
+	LastName              string   `json:"last_name"`
+	Rank                  string   `json:"rank"`
+	RankIn                string   `json:"rank_in"`
+	RankOut               string   `json:"rank_out"`
+	Unit                  string   `json:"unit"`
+	PensionState          string   `json:"pension_state"`
+	ConfederateHomeStatus string   `json:"confederate_home_status"`
+	ConfederateHomeName   string   `json:"confederate_home_name"`
+	DeathYear             int      `json:"death_year"`
+	DeathMonth            int      `json:"death_month"`
+	DeathDay              int      `json:"death_day"`
+	BirthDate             string   `json:"birth_date"`
+	DeathDate             string   `json:"death_date"`
+	BirthInfo             string   `json:"birth_info"`
+	BuriedIn              string   `json:"buried_in"`
+	Notes                 string   `json:"notes"`
+	CreatedAt             string   `json:"created_at"`
+	UpdatedAt             string   `json:"updated_at"`
+	SearchMatchField      string   `json:"-"`
+	SearchMatchSnippet    string   `json:"-"`
+	Records               []Record `json:"records,omitempty"`
+	Images                []Image  `json:"images,omitempty"`
 }
 
 type SoldierSearch struct {
@@ -50,6 +54,32 @@ type SoldierSearch struct {
 	DeathYear    string
 	DeathMonth   string
 	DeathDay     string
+}
+
+type SoldierFormSuggestions struct {
+	RankIn              []string
+	RankOut             []string
+	Unit                []string
+	PensionState        []string
+	BuriedIn            []string
+	ConfederateHomeName []string
+	RecordType          []string
+}
+
+type ScrapedRelative struct {
+	Name       string
+	MemorialID string
+	URL        string
+	BirthYear  string
+	DeathYear  string
+}
+
+type FindAGraveScrapeState struct {
+	Input        string
+	SourceLabel  string
+	ErrorMessage string
+	WarningLines []string
+	Spouses      []ScrapedRelative
 }
 
 type Record struct {

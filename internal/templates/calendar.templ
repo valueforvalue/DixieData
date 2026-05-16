@@ -28,9 +28,10 @@ templ Calendar(month int, calendar map[int][]models.Soldier, total int, quote mo
 			</div>
 			<div data-ui-id={ uiids.PanelCalendarQuote } class="relative mb-6 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_16px_34px_rgba(21,29,38,0.18)]">
 				@SurfaceBadge(uiids.PanelCalendarQuote)
-				<p class="text-xs font-semibold uppercase tracking-[0.28em] text-[#cfb77a]">Quote of the Day</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.28em] text-[#cfb77a]">Rotating Archive Quote</p>
 				<blockquote class="mt-3 max-w-4xl text-2xl leading-relaxed text-[#f2ede1]">"{ quote.Text }"</blockquote>
 				<p class="mt-3 text-base font-semibold text-[#cfb77a]">{ quote.Author }</p>
+				<p class="mt-1 text-xs uppercase tracking-[0.18em] text-[#bcae88]">Advances every 3 soldiers added to the archive</p>
 				if quote.Context != "" {
 					<p class="mt-1 text-sm text-[#d9d1c1]">{ quote.Context }</p>
 				}

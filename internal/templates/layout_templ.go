@@ -55,13 +55,13 @@ func Layout(title string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(uiDebugValue())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 172, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 172, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"mx-auto max-w-6xl px-8 py-8\"><header class=\"mb-8 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_20px_40px_rgba(21,29,38,0.2)]\"><div><p class=\"text-xs uppercase tracking-[0.28em] text-[#cfb77a]\">Soldier Archive</p><p class=\"gold text-3xl leading-none mt-2\">DixieData</p></div><nav class=\"flex flex-wrap items-center gap-2\"><a href=\"/calendar\" class=\"pill-link\">Calendar</a> <a href=\"/soldiers\" class=\"pill-link\">Soldiers</a> <a href=\"/soldiers/new\" class=\"pill-link\">Add Record</a> <a href=\"/export\" class=\"pill-link\">Export</a> <a href=\"/settings\" class=\"pill-link\">Settings</a></nav></header><main>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"mx-auto max-w-6xl px-8 py-8 pt-32\"><header class=\"fixed left-1/2 top-5 z-40 flex w-[min(92vw,72rem)] -translate-x-1/2 flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur\"><div><p class=\"text-xs uppercase tracking-[0.28em] text-[#cfb77a]\">Soldier Archive</p><p class=\"gold text-3xl leading-none mt-2\">DixieData</p></div><nav class=\"flex flex-wrap items-center gap-2\"><a href=\"/calendar\" class=\"pill-link\">Calendar</a> <a href=\"/soldiers\" class=\"pill-link\">Soldiers</a> <a href=\"/soldiers/new\" class=\"pill-link\">Add Record</a> <a href=\"/export\" class=\"pill-link\">Export</a> <a href=\"/settings\" class=\"pill-link\">Settings</a></nav></header><main>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -69,33 +69,59 @@ func Layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</main><footer class=\"mt-8 text-right text-xs text-slate-600\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</main><div class=\"fixed bottom-6 right-6 z-40\"><div class=\"flex items-center gap-3\"><button type=\"button\" data-scratchpad-open class=\"secondary-button px-5 py-3 shadow-[0_18px_32px_rgba(23,33,43,0.2)]\">Scratch Pad</button> <button type=\"button\" data-floating-nav-toggle class=\"primary-button px-5 py-3 shadow-[0_18px_32px_rgba(23,33,43,0.25)]\">Menu</button></div><p data-floating-scratchpad-status class=\"mt-2 max-w-xs text-right text-xs text-slate-600\" aria-live=\"polite\"></p><div data-floating-nav-panel class=\"mt-3 hidden min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)]\"><p class=\"text-xs uppercase tracking-[0.28em] text-[#cfb77a]\">Quick Navigation</p><nav class=\"mt-3 flex flex-col gap-2\"><a href=\"/calendar\" class=\"pill-link justify-start\">Calendar</a> <a href=\"/soldiers\" class=\"pill-link justify-start\">Soldiers</a> <a href=\"/soldiers/new\" class=\"pill-link justify-start\">Add Record</a> <a href=\"/export\" class=\"pill-link justify-start\">Export</a> <a href=\"/settings\" class=\"pill-link justify-start\">Settings</a></nav></div></div><footer class=\"mt-8 text-right text-xs text-slate-600\" data-build-identity=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(buildinfo.AppLabel())
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(buildinfo.BuildIdentity())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 191, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 207, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " · Schema v")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", buildinfo.SchemaVersion))
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(buildinfo.AppLabel())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 191, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 208, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</footer></div></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " · Schema v")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 string
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", buildinfo.SchemaVersion))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 208, Col: 84}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " · ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(buildinfo.BuildIdentity())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/layout.templ`, Line: 208, Col: 117}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</footer></div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

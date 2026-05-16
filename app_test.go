@@ -96,6 +96,93 @@ func TestAppServeHTTPMethodOverrideFromFormValue(t *testing.T) {
 	}
 }
 
+func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
+	app := NewApp()
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	if !strings.Contains(rec.Body.String(), `"app":"DixieData"`) || !strings.Contains(rec.Body.String(), `"build_identity"`) {
+		t.Fatalf("version body = %q", rec.Body.String())
+	}
+}
+
+func TestHandleCalendarDefaultsToCurrentMonth(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	currentMonth := time.Now().Format("January")
+	if !strings.Contains(rec.Body.String(), currentMonth) {
+		t.Fatalf("calendar body should default to current month %q, got %q", currentMonth, rec.Body.String())
+	}
+}
+
+func TestHandleAdvancedSearchByDeathYearMatchesFullDeathDate(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	if _, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "PENSION-1864",
+		FirstName: "Robert",
+		LastName:  "Taylor",
+		DeathDate: "05/06/1864",
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/soldiers/search/advanced?death_year=1864", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Taylor") {
+		t.Fatalf("advanced search body = %q", rec.Body.String())
+	}
+}
+
 func TestParseSoldierFormRejectsInvalidDeathDate(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(url.Values{
 		"death_date": {"13/99/1886"},
@@ -163,6 +250,51 @@ func TestParseSoldierFormIncludesSpouseFields(t *testing.T) {
 	}
 	if soldier.ID != 12 || soldier.EntryType != "widow" || soldier.SpouseSoldierID != 4 || soldier.MaidenName != "Taylor" || soldier.PensionID != "WP-42" || soldier.ApplicationID != "WA-42" {
 		t.Fatalf("unexpected spouse fields: %#v", soldier)
+	}
+}
+
+func TestHandleScrapeFindAGravePopulatesNewSoldierForm(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	source, err := os.ReadFile("source.txt")
+	if err != nil {
+		t.Fatalf("ReadFile source: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/soldiers/scrape-findagrave", strings.NewReader(url.Values{
+		"findagrave_source": {string(source)},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="first_name" value="Elbert"`) || !strings.Contains(body, `name="middle_name" value="Dixon"`) {
+		t.Fatalf("scrape response missing populated name fields: %q", body)
+	}
+	if !strings.Contains(body, `name="buried_in" value="Antioch Cemetery, Woodruff, Spartanburg County, South Carolina, USA"`) {
+		t.Fatalf("scrape response missing burial field: %q", body)
+	}
+	if !strings.Contains(body, "Review scraped data carefully before saving.") || !strings.Contains(body, "Harriet Clement Anderson") {
+		t.Fatalf("scrape response missing warnings/spouse preview: %q", body)
 	}
 }
 
@@ -331,12 +463,12 @@ func TestLoadQuotesParsesEmbeddedShape(t *testing.T) {
 	}
 }
 
-func TestSelectQuoteOfDayUsesDayOfYear(t *testing.T) {
-	quote := selectQuoteOfDay([]models.Quote{
+func TestSelectQuoteForArchiveRotatesEveryThreeSoldiers(t *testing.T) {
+	quote := selectQuoteForArchive([]models.Quote{
 		{Author: "One"},
 		{Author: "Two"},
 		{Author: "Three"},
-	}, time.Date(2026, time.January, 2, 12, 0, 0, 0, time.UTC))
+	}, 4)
 	if quote.Author != "Two" {
 		t.Fatalf("quote author = %q", quote.Author)
 	}
@@ -446,7 +578,7 @@ func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UserIdentity: %v", err)
 	}
-	if identity.NodePrefix != "STC1838" {
+	if identity.NodePrefix != "STC38" {
 		t.Fatalf("node prefix = %q", identity.NodePrefix)
 	}
 
@@ -454,7 +586,7 @@ func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if !strings.HasPrefix(created.DisplayID, "STC1838-") {
+	if !strings.HasPrefix(created.DisplayID, "STC38-") {
 		t.Fatalf("display ID = %q", created.DisplayID)
 	}
 }

@@ -52,7 +52,14 @@ func TestExportService_ExportCSV(t *testing.T) {
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
 
-	_, _ = soldierSvc.Create(models.Soldier{FirstName: "P.G.T.", LastName: "Beauregard", Unit: "Army of the Potomac (CSA)"})
+	_, _ = soldierSvc.Create(models.Soldier{
+		FirstName:             "P.G.T.",
+		LastName:              "Beauregard",
+		Unit:                  "Army of the Potomac (CSA)",
+		ConfederateHomeStatus: "Inmate",
+		ConfederateHomeName:   "Soldiers Home, Austin",
+		BirthInfo:             "Born circa 1830, New Orleans\npossibly St. Bernard Parish",
+	})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Braxton", LastName: "Bragg", Unit: "Army of Tennessee"})
 
 	outPath := filepath.Join(t.TempDir(), "export.csv")
@@ -87,13 +94,23 @@ func TestExportService_ExportCSV(t *testing.T) {
 		"id": true, "display_id": true, "first_name": true,
 		"entry_type": true, "spouse_soldier_id": true, "maiden_name": true,
 		"pension_id": true, "application_id": true, "middle_name": true,
-		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "birth_date": true, "death_date": true, "buried_in": true,
+		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "confederate_home_status": true, "confederate_home_name": true, "birth_date": true, "death_date": true, "birth_info": true, "buried_in": true,
 	}
 	for _, col := range header {
 		delete(expected, col)
 	}
 	if len(expected) > 0 {
 		t.Errorf("CSV missing columns: %v", expected)
+	}
+	index := map[string]int{}
+	for i, col := range header {
+		index[col] = i
+	}
+	if records[1][index["confederate_home_status"]] != "Inmate" || records[1][index["confederate_home_name"]] != "Soldiers Home, Austin" {
+		t.Fatalf("CSV missing confederate home values: %v", records[1])
+	}
+	if records[1][index["birth_info"]] != "Born circa 1830, New Orleans\npossibly St. Bernard Parish" {
+		t.Fatalf("birth_info corrupted during CSV round trip: %q", records[1][index["birth_info"]])
 	}
 }
 

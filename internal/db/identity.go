@@ -61,7 +61,7 @@ func BuildUserNodePrefix(firstName, middleName, lastName string, birthYear int) 
 	if birthYear < 1000 || birthYear > 9999 {
 		return "", fmt.Errorf("birth year must be four digits")
 	}
-	return firstInitial + middleInitial + lastInitial + fmt.Sprintf("%04d", birthYear), nil
+	return firstInitial + middleInitial + lastInitial + fmt.Sprintf("%02d", birthYear%100), nil
 }
 
 func (d *DB) UserIdentity() (models.UserIdentity, error) {
