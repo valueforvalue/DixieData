@@ -120,9 +120,11 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	created, err := svc.Create(models.Soldier{
 		PensionID:             "P12345",
 		ApplicationID:         "A12345",
+		Prefix:                "Capt.",
 		FirstName:             "John",
 		MiddleName:            "Bell",
 		LastName:              "Hood",
+		Suffix:                "Jr.",
 		RankIn:                "Colonel",
 		RankOut:               "Lieutenant General",
 		PensionState:          "Texas",
@@ -137,7 +139,7 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.MiddleName != "Bell" || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" || got.ConfederateHomeStatus != "Staffer" || got.ConfederateHomeName != "Texas Confederate Home" {
+	if got.Prefix != "Capt." || got.MiddleName != "Bell" || got.Suffix != "Jr." || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" || got.ConfederateHomeStatus != "Staffer" || got.ConfederateHomeName != "Texas Confederate Home" {
 		t.Fatalf("unexpected new fields: %#v", got)
 	}
 	if got.Rank != "Lieutenant General" {
@@ -167,7 +169,7 @@ func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.MiddleName != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "None" || got.ConfederateHomeName != "" {
+	if got.Prefix != "" || got.MiddleName != "" || got.Suffix != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "None" || got.ConfederateHomeName != "" {
 		t.Fatalf("expected empty strings for NULL fields, got %#v", got)
 	}
 }
@@ -196,8 +198,10 @@ func TestSoldierService_FormSuggestions(t *testing.T) {
 	svc := NewSoldierService(d)
 
 	first, err := svc.Create(models.Soldier{
+		Prefix:       "Capt.",
 		FirstName:    "Albert",
 		LastName:     "Smith",
+		Suffix:       "Jr.",
 		RankIn:       "Private",
 		RankOut:      "Corporal",
 		Unit:         "Co. A, 1st Texas Infantry",
@@ -229,6 +233,12 @@ func TestSoldierService_FormSuggestions(t *testing.T) {
 	suggestions, err := svc.FormSuggestions()
 	if err != nil {
 		t.Fatalf("FormSuggestions: %v", err)
+	}
+	if len(suggestions.Prefix) != 1 || suggestions.Prefix[0] != "Capt." {
+		t.Fatalf("prefix suggestions = %#v", suggestions.Prefix)
+	}
+	if len(suggestions.Suffix) != 1 || suggestions.Suffix[0] != "Jr." {
+		t.Fatalf("suffix suggestions = %#v", suggestions.Suffix)
 	}
 	if len(suggestions.RankIn) != 1 || suggestions.RankIn[0] != "Private" {
 		t.Fatalf("rank_in suggestions = %#v", suggestions.RankIn)
@@ -326,7 +336,9 @@ func TestSoldierService_Update(t *testing.T) {
 	}
 
 	created.Notes = "Updated note"
+	created.Prefix = "Gen."
 	created.MiddleName = "A."
+	created.Suffix = "Sr."
 	created.RankIn = "Private"
 	created.RankOut = "Major"
 	created.PensionState = "Georgia"
@@ -337,6 +349,9 @@ func TestSoldierService_Update(t *testing.T) {
 	got, err := svc.GetByID(created.ID)
 	if err != nil {
 		t.Fatalf("GetByID after update: %v", err)
+	}
+	if got.Prefix != "Gen." || got.Suffix != "Sr." {
+		t.Fatalf("expected prefix/suffix after update, got %#v", got)
 	}
 	if got.Notes != "Updated note" {
 		t.Errorf("got notes %q, want 'Updated note'", got.Notes)

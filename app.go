@@ -124,6 +124,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
 	mux.HandleFunc("/export/ical", a.handleExportICalendar)
 	mux.HandleFunc("/export/static-archive", a.handleExportStaticArchive)
+	mux.HandleFunc("/export/database-pdf", a.handleExportDatabasePDF)
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
 	mux.HandleFunc("/export/shared-archive", a.handleExportSharedArchive)
 	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
@@ -773,6 +774,28 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	fmt.Fprint(w, exportLinkMarkup("Static web archive ready:", path))
+}
+
+func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "dixiedata-printable-archive.pdf",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Printable PDF export cancelled.")
+		return
+	}
+	if err := a.export.ExportFullDatabasePDF(path); err != nil {
+		fmt.Fprintf(w, "Printable PDF export failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, exportLinkMarkup("Printable PDF ready:", path))
 }
 
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
@@ -1516,9 +1539,11 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		MaidenName:            r.FormValue("maiden_name"),
 		PensionID:             r.FormValue("pension_id"),
 		ApplicationID:         r.FormValue("application_id"),
+		Prefix:                r.FormValue("prefix"),
 		FirstName:             r.FormValue("first_name"),
 		MiddleName:            r.FormValue("middle_name"),
 		LastName:              r.FormValue("last_name"),
+		Suffix:                r.FormValue("suffix"),
 		Rank:                  r.FormValue("rank_out"),
 		RankIn:                r.FormValue("rank_in"),
 		RankOut:               r.FormValue("rank_out"),

@@ -85,6 +85,9 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	if !strings.Contains(content, "/export/static-archive") || !strings.Contains(content, "Export Static Web Archive") {
 		t.Fatalf("share view missing static web archive export action")
 	}
+	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF") {
+		t.Fatalf("share view missing full database PDF export action")
+	}
 	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive (.ddshare)") {
 		t.Fatalf("share view missing shared archive import action")
 	}
@@ -124,6 +127,8 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 		RankIn:              []string{"Private", "Sergeant"},
 		RankOut:             []string{"Corporal", "Sergeant"},
 		Unit:                []string{"Co. A, 1st Texas Infantry"},
+		Prefix:              []string{"Capt."},
+		Suffix:              []string{"Jr."},
 		PensionState:        []string{"None", "Texas"},
 		BuriedIn:            []string{"Oakwood Cemetery"},
 		ConfederateHomeName: []string{},
@@ -149,8 +154,14 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	if !strings.Contains(content, `list="rank-in-suggestions"`) || !strings.Contains(content, `list="record-type-suggestions"`) {
 		t.Fatalf("new entry form missing datalist attributes")
 	}
+	if !strings.Contains(content, `name="prefix"`) || !strings.Contains(content, `list="prefix-suggestions"`) || !strings.Contains(content, `name="suffix"`) || !strings.Contains(content, `list="suffix-suggestions"`) {
+		t.Fatalf("new entry form missing prefix/suffix datalist fields")
+	}
 	if !strings.Contains(content, `<datalist id="record-type-suggestions">`) {
 		t.Fatalf("new entry form missing datalist markup")
+	}
+	if !strings.Contains(content, `<datalist id="prefix-suggestions">`) || !strings.Contains(content, `value="Capt."`) || !strings.Contains(content, `<datalist id="suffix-suggestions">`) || !strings.Contains(content, `value="Jr."`) {
+		t.Fatalf("new entry form missing prefix/suffix suggestion markup")
 	}
 	if !strings.Contains(content, `list="confederate-home-name-suggestions"`) || !strings.Contains(content, `<datalist id="confederate-home-name-suggestions">`) {
 		t.Fatalf("new entry form missing confederate home name datalist")

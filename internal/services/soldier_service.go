@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at`
+	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at`
 	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
 	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption`
 )
@@ -72,8 +72,8 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 		soldier.UpdatedAt = soldier.CreatedAt
 	}
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, first_name, middle_name, last_name, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
 		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
@@ -205,8 +205,8 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 		soldier.UpdatedAt = currentSQLiteTimestamp()
 	}
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, first_name=?, middle_name=?, last_name=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, updated_at=? WHERE id=?`,
-		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
+	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, updated_at=? WHERE id=?`,
+		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
 		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.UpdatedAt, soldier.ID)
 	if err != nil {
 		return err
@@ -317,7 +317,7 @@ func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.
 }
 
 func quickSearchLikeClause() string {
-	return `display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR confederate_home_status LIKE ? OR confederate_home_name LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ? OR EXISTS (
+	return `display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR prefix LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR suffix LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR confederate_home_status LIKE ? OR confederate_home_name LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ? OR EXISTS (
 		SELECT 1 FROM records
 		WHERE records.soldier_id = soldiers.id
 			AND (record_type LIKE ? OR app_id LIKE ? OR details LIKE ?)
@@ -328,7 +328,7 @@ func quickSearchLikeArgs(query string) []interface{} {
 	like := "%" + query + "%"
 	return []interface{}{
 		like, like, like,
-		like, like, like,
+		like, like, like, like, like,
 		like, like, like, like,
 		like, like, like,
 		like, like,
@@ -672,7 +672,7 @@ func quickSearchMatch(soldier models.Soldier, terms []string) (string, string) {
 		{label: "Record ID", value: strings.TrimSpace(soldier.DisplayID)},
 		{label: "Pension ID", value: strings.TrimSpace(soldier.PensionID)},
 		{label: "Application ID", value: strings.TrimSpace(soldier.ApplicationID)},
-		{label: "Name", value: strings.TrimSpace(strings.Join([]string{soldier.FirstName, soldier.MiddleName, soldier.LastName}, " "))},
+		{label: "Name", value: strings.TrimSpace(soldier.GetFullName())},
 		{label: "Rank", value: soldierSearchRank(soldier)},
 		{label: "Unit", value: strings.TrimSpace(soldier.Unit)},
 		{label: "Pension State", value: strings.TrimSpace(soldier.PensionState)},
@@ -752,9 +752,11 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		spouseSoldierID       sql.NullInt64
 		pensionID             sql.NullString
 		applicationID         sql.NullString
+		prefix                sql.NullString
 		firstName             sql.NullString
 		middleName            sql.NullString
 		lastName              sql.NullString
+		suffix                sql.NullString
 		rank                  sql.NullString
 		rankIn                sql.NullString
 		rankOut               sql.NullString
@@ -784,9 +786,11 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		&s.IsGenerated,
 		nullStringDest(&s.PensionID, &pensionID),
 		nullStringDest(&s.ApplicationID, &applicationID),
+		nullStringDest(&s.Prefix, &prefix),
 		nullStringDest(&s.FirstName, &firstName),
 		nullStringDest(&s.MiddleName, &middleName),
 		nullStringDest(&s.LastName, &lastName),
+		nullStringDest(&s.Suffix, &suffix),
 		nullStringDest(&s.Rank, &rank),
 		nullStringDest(&s.RankIn, &rankIn),
 		nullStringDest(&s.RankOut, &rankOut),
@@ -809,6 +813,11 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 
 func normalizeSoldierEntry(tx *sql.Tx, soldier *models.Soldier) error {
 	soldier.EntryType = normalizeEntryType(soldier.EntryType)
+	soldier.Prefix = strings.TrimSpace(soldier.Prefix)
+	soldier.FirstName = strings.TrimSpace(soldier.FirstName)
+	soldier.MiddleName = strings.TrimSpace(soldier.MiddleName)
+	soldier.LastName = strings.TrimSpace(soldier.LastName)
+	soldier.Suffix = strings.TrimSpace(soldier.Suffix)
 	soldier.MaidenName = strings.TrimSpace(soldier.MaidenName)
 	if soldier.EntryType == "soldier" {
 		soldier.SpouseSoldierID = 0
@@ -879,6 +888,14 @@ func (s *SoldierService) loadFormSuggestions() (models.SoldierFormSuggestions, e
 	if err != nil {
 		return models.SoldierFormSuggestions{}, err
 	}
+	prefix, err := distinctTextValues(s.db.Conn(), `SELECT DISTINCT TRIM(prefix) FROM soldiers WHERE prefix IS NOT NULL AND TRIM(prefix) <> '' ORDER BY TRIM(prefix)`)
+	if err != nil {
+		return models.SoldierFormSuggestions{}, err
+	}
+	suffix, err := distinctTextValues(s.db.Conn(), `SELECT DISTINCT TRIM(suffix) FROM soldiers WHERE suffix IS NOT NULL AND TRIM(suffix) <> '' ORDER BY TRIM(suffix)`)
+	if err != nil {
+		return models.SoldierFormSuggestions{}, err
+	}
 	pensionState, err := distinctTextValues(s.db.Conn(), `SELECT DISTINCT TRIM(pension_state) FROM soldiers WHERE pension_state IS NOT NULL AND TRIM(pension_state) <> '' ORDER BY TRIM(pension_state)`)
 	if err != nil {
 		return models.SoldierFormSuggestions{}, err
@@ -899,6 +916,8 @@ func (s *SoldierService) loadFormSuggestions() (models.SoldierFormSuggestions, e
 		RankIn:              rankIn,
 		RankOut:             rankOut,
 		Unit:                unit,
+		Prefix:              prefix,
+		Suffix:              suffix,
 		PensionState:        pensionState,
 		BuriedIn:            buriedIn,
 		ConfederateHomeName: confederateHomeName,
@@ -987,9 +1006,11 @@ func spouseReference(conn *sql.DB, spouseSoldierID int64) string {
 	if spouseSoldierID < 1 {
 		return ""
 	}
-	var fullName string
-	if err := conn.QueryRow(`SELECT trim(coalesce(first_name, '') || ' ' || coalesce(last_name, '')) FROM soldiers WHERE id = ?`, spouseSoldierID).Scan(&fullName); err == nil && strings.TrimSpace(fullName) != "" {
-		return fullName
+	var spouse models.Soldier
+	if err := conn.QueryRow(`SELECT prefix, first_name, middle_name, last_name, suffix FROM soldiers WHERE id = ?`, spouseSoldierID).Scan(&spouse.Prefix, &spouse.FirstName, &spouse.MiddleName, &spouse.LastName, &spouse.Suffix); err == nil {
+		if fullName := strings.TrimSpace(spouse.GetFullName()); fullName != "" {
+			return fullName
+		}
 	}
 	var displayID string
 	if err := conn.QueryRow(`SELECT display_id FROM soldiers WHERE id = ?`, spouseSoldierID).Scan(&displayID); err == nil {

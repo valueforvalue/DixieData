@@ -97,6 +97,11 @@ type staticArchiveIndexData struct {
 	GeneratedAt  string
 }
 
+type pdfBranding struct {
+	ArchiveTitle string
+	FooterText   string
+}
+
 const staticArchiveIndexHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1245,7 +1250,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	defer w.Flush()
 
 	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "first_name", "middle_name", "last_name", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "created_at"}
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "created_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1274,9 +1279,11 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				fmt.Sprintf("%v", s.IsGenerated),
 				s.PensionID,
 				s.ApplicationID,
+				s.Prefix,
 				s.FirstName,
 				s.MiddleName,
 				s.LastName,
+				s.Suffix,
 				s.Rank,
 				s.RankIn,
 				s.RankOut,
@@ -1408,77 +1415,27 @@ func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier
 }
 
 func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldier, includeImages bool) error {
-	pdf := newPDFDocument("Soldier Report", "soldier-pdf", buildinfo.SoldierPDFExportVersion)
+	pdf, err := e.brandedPDFDocument("L", "Record Card", "soldier-pdf", buildinfo.SoldierPDFExportVersion)
+	if err != nil {
+		return err
+	}
 	pdf.AddPage()
 
-	pdf.SetFont("Times", "B", 20)
-	pdf.CellFormat(0, 12, soldierDisplayName(soldier), "", 1, "", false, 0, "")
-	pdf.SetFont("Times", "", 12)
-	pdf.CellFormat(0, 8, fmt.Sprintf("Database Number: %s", soldier.DisplayID), "", 1, "", false, 0, "")
-	pdf.Ln(2)
-
-	writePDFField(pdf, "Record Type", displayEntryType(soldier))
-	if isSoldierEntry(soldier) {
-		writePDFField(pdf, "Rank In", soldier.RankIn)
-		writePDFField(pdf, "Rank Out", displaySoldierRank(soldier))
-		writePDFField(pdf, "Unit", soldier.Unit)
-		writePDFField(pdf, "Pension State", soldier.PensionState)
-		writePDFField(pdf, "Confederate Home Status", soldier.ConfederateHomeStatus)
-		writePDFField(pdf, "Confederate Home Name", soldier.ConfederateHomeName)
-		writePDFField(pdf, "Pension ID", soldier.PensionID)
-		writePDFField(pdf, "Application ID", soldier.ApplicationID)
-	} else {
-		writePDFField(pdf, "Married To", strings.TrimSpace(soldier.SpouseName))
-		writePDFField(pdf, "Maiden Name", soldier.MaidenName)
-		if soldier.EntryType == "widow" {
-			writePDFField(pdf, "Pension ID", soldier.PensionID)
-			writePDFField(pdf, "Application ID", soldier.ApplicationID)
-		}
-	}
-	writePDFField(pdf, "Death", soldierDeathLine(soldier))
-	writePDFField(pdf, "Birth Info", soldier.BirthInfo)
-	writePDFField(pdf, "Buried In", soldier.BuriedIn)
-	writePDFSection(pdf, "Notes")
-	writePDFBody(pdf, soldier.Notes)
-
-	if len(soldier.Records) > 0 {
-		writePDFSection(pdf, "Records")
-		for _, record := range soldier.Records {
-			line := record.RecordType
-			if strings.TrimSpace(record.AppID) != "" {
-				line += fmt.Sprintf(" (App: %s)", record.AppID)
-			}
-			writePDFBullet(pdf, line)
-			if strings.TrimSpace(record.Details) != "" {
-				writePDFBody(pdf, record.Details)
-			}
-		}
-	}
-
-	if includeImages && len(soldier.Images) > 0 {
-		writePDFSection(pdf, "Images")
-		for _, image := range soldier.Images {
-			writePDFImageRow(pdf, image)
-		}
-	}
-
-	writePDFExportMetadata(pdf, "soldier-pdf", buildinfo.SoldierPDFExportVersion, map[string]string{
-		"Includes Images": fmt.Sprintf("%t", includeImages),
-	})
+	writePDFTitleBlock(pdf, recordPDFTitle(soldier), fmt.Sprintf("%s - %s", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)))
+	writePDFRecordCard(pdf, soldier, includeImages)
 
 	return pdf.OutputFileAndClose(outputPath)
 }
 
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier) error {
-	pdf := newPDFDocument("Monthly Anniversary Report", "monthly-pdf", buildinfo.MonthlyPDFExportVersion)
+	pdf, err := e.brandedPDFDocument("P", "Monthly Anniversary Report", "monthly-pdf", buildinfo.MonthlyPDFExportVersion)
+	if err != nil {
+		return err
+	}
 	pdf.AddPage()
 
 	title := fmt.Sprintf("%s Anniversary Report", monthLabel(month))
-	pdf.SetFont("Times", "B", 20)
-	pdf.CellFormat(0, 12, title, "", 1, "", false, 0, "")
-	pdf.SetFont("Times", "", 12)
-	pdf.CellFormat(0, 8, "Includes soldier names and database numbers for the selected month.", "", 1, "", false, 0, "")
-	pdf.Ln(2)
+	writePDFTitleBlock(pdf, title, "Includes soldier names and database numbers for the selected month.")
 
 	days := make([]int, 0, len(calendar))
 	for day := range calendar {
@@ -1514,16 +1471,99 @@ func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int
 	return pdf.OutputFileAndClose(outputPath)
 }
 
-func newPDFDocument(title, format string, version int) *fpdf.Fpdf {
-	pdf := fpdf.New("P", "mm", "Letter", "")
+func (e *ExportService) ExportFullDatabasePDF(outputPath string) error {
+	pdf, err := e.brandedPDFDocument("L", "Printable Archive Registry", "database-pdf", buildinfo.DatabasePDFExportVersion)
+	if err != nil {
+		return err
+	}
+	pdf.AddPage()
+	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with one landscape record page per entry. Images are intentionally omitted.")
+
+	soldiers, err := exportSoldiers(e.soldier)
+	if err != nil {
+		return err
+	}
+	if len(soldiers) == 0 {
+		writePDFBody(pdf, "No records are currently stored in this archive.")
+		writePDFExportMetadata(pdf, "database-pdf", buildinfo.DatabasePDFExportVersion, map[string]string{"Includes Images": "false"})
+		return pdf.OutputFileAndClose(outputPath)
+	}
+
+	for _, item := range soldiers {
+		soldier, err := e.soldier.GetByID(item.ID)
+		if err != nil {
+			return err
+		}
+		pdf.AddPage()
+		writePDFTitleBlock(
+			pdf,
+			recordPDFTitle(*soldier),
+			fmt.Sprintf("%s | %s | Images omitted in printable export", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(*soldier)),
+		)
+		writePDFRecordCard(pdf, *soldier, false)
+	}
+
+	pdf.AddPage()
+	writePDFExportMetadata(pdf, "database-pdf", buildinfo.DatabasePDFExportVersion, map[string]string{"Includes Images": "false"})
+	return pdf.OutputFileAndClose(outputPath)
+}
+
+func newPDFDocument(orientation, title, format string, version int) *fpdf.Fpdf {
+	pdf := fpdf.New(orientation, "mm", "Letter", "")
 	pdf.SetTitle(title, false)
 	pdf.SetAuthor(buildinfo.AppLabel(), false)
 	pdf.SetCreator(fmt.Sprintf("%s %s export v%d", buildinfo.AppName, format, version), false)
 	pdf.SetSubject(fmt.Sprintf("%s schema v%d", buildinfo.AppName, buildinfo.SchemaVersion), false)
-	pdf.SetMargins(16, 16, 16)
-	pdf.SetAutoPageBreak(true, 16)
+	pdf.SetMargins(16, 28, 16)
+	pdf.SetAutoPageBreak(true, 20)
 	pdf.SetCompression(false)
 	return pdf
+}
+
+func (e *ExportService) brandedPDFDocument(orientation, title, format string, version int) (*fpdf.Fpdf, error) {
+	branding, err := e.pdfBranding()
+	if err != nil {
+		return nil, err
+	}
+	pdf := newPDFDocument(orientation, title, format, version)
+	pdf.SetHeaderFuncMode(func() {
+		pageWidth, _ := pdf.GetPageSize()
+		leftMargin, _, rightMargin, _ := pdf.GetMargins()
+		pdf.SetY(10)
+		pdf.SetFont("Helvetica", "B", 10)
+		pdf.SetTextColor(34, 48, 61)
+		pdf.CellFormat(0, 5, sanitizePDFText(branding.ArchiveTitle), "", 1, "L", false, 0, "")
+		pdf.SetDrawColor(141, 116, 64)
+		pdf.Line(leftMargin, 17, pageWidth-rightMargin, 17)
+		pdf.Ln(3)
+	}, true)
+	pdf.SetFooterFunc(func() {
+		pageWidth, _ := pdf.GetPageSize()
+		leftMargin, _, rightMargin, _ := pdf.GetMargins()
+		pdf.SetY(-11)
+		pdf.SetDrawColor(141, 116, 64)
+		pdf.Line(leftMargin, pdf.GetY(), pageWidth-rightMargin, pdf.GetY())
+		pdf.Ln(1)
+		pdf.SetFont("Helvetica", "", 8)
+		pdf.SetTextColor(68, 82, 96)
+		pdf.CellFormat(0, 4, sanitizePDFText(branding.FooterText), "", 0, "C", false, 0, "")
+	})
+	return pdf, nil
+}
+
+func (e *ExportService) pdfBranding() (pdfBranding, error) {
+	identity, err := e.db.UserIdentity()
+	if err != nil {
+		return pdfBranding{}, err
+	}
+	owner := strings.TrimSpace(identity.BrandingName())
+	if owner == "" {
+		return pdfBranding{}, fmt.Errorf("user identity is incomplete")
+	}
+	return pdfBranding{
+		ArchiveTitle: owner + "'s Civil War Research Archive",
+		FooterText:   "Made with DixieData | Version: " + buildinfo.AppVersion + " | Build: " + buildinfo.BuildIdentity(),
+	}, nil
 }
 
 func newExportMetadata(format string, version int) ExportMetadata {
@@ -1564,21 +1604,16 @@ func (e *ExportService) staticArchiveOwner() (staticArchiveOwner, error) {
 	if err != nil {
 		return staticArchiveOwner{}, err
 	}
-	firstName := strings.TrimSpace(identity.FirstName)
-	lastName := strings.TrimSpace(identity.LastName)
-	if firstName == "" || lastName == "" {
+	displayName := strings.TrimSpace(identity.BrandingName())
+	if displayName == "" {
 		return staticArchiveOwner{}, fmt.Errorf("user identity is incomplete")
 	}
-	initial := staticArchiveInitial(firstName)
-	if initial == "" {
-		return staticArchiveOwner{}, fmt.Errorf("user identity is incomplete")
-	}
-	fileStem := sanitizeStaticArchiveStem(initial + lastName)
+	fileStem := sanitizeStaticArchiveStem(strings.ReplaceAll(displayName, ". ", ""))
 	if fileStem == "" {
 		return staticArchiveOwner{}, fmt.Errorf("user identity is incomplete")
 	}
 	return staticArchiveOwner{
-		DisplayName: initial + ". " + lastName,
+		DisplayName: displayName,
 		FileStem:    fileStem,
 	}, nil
 }
@@ -1837,9 +1872,463 @@ func writeICalendarLine(w io.Writer, line string) error {
 
 func writePDFSection(pdf *fpdf.Fpdf, title string) {
 	pdf.Ln(4)
-	pdf.SetFont("Times", "B", 15)
+	pdf.SetFont("Helvetica", "B", 9)
+	pdf.SetTextColor(141, 116, 64)
 	pdf.CellFormat(0, 8, title, "", 1, "", false, 0, "")
-	pdf.SetFont("Times", "", 12)
+	pdf.SetTextColor(34, 48, 61)
+	pdf.SetFont("Helvetica", "", 11)
+}
+
+func writePDFTitleBlock(pdf *fpdf.Fpdf, title, subtitle string) {
+	pdf.SetFont("Times", "B", 20)
+	pdf.SetTextColor(34, 48, 61)
+	pdf.CellFormat(0, 10, emptyPDFValue(title), "", 1, "", false, 0, "")
+	if strings.TrimSpace(subtitle) != "" {
+		pdf.SetFont("Helvetica", "", 10)
+		pdf.SetTextColor(68, 82, 96)
+		pdf.MultiCell(0, 6, sanitizePDFText(strings.TrimSpace(subtitle)), "", "L", false)
+	}
+	pdf.Ln(1)
+}
+
+type pdfRecordCardLayout struct {
+	LeftWidthRatio       float64
+	SectionTitleFontSize float64
+	SectionTitleLine     float64
+	FieldLabelFontSize   float64
+	FieldValueFontSize   float64
+	FieldLineHeight      float64
+	FieldRowGap          float64
+	ColumnGap            float64
+	SectionGap           float64
+	ImagePanelHeight     float64
+	ImageLabelFontSize   float64
+	ImageLabelLine       float64
+	BodyFontSize         float64
+	BodyLineHeight       float64
+	BulletIndent         float64
+}
+
+func defaultPDFRecordCardLayout() pdfRecordCardLayout {
+	return pdfRecordCardLayout{
+		LeftWidthRatio:       0.52,
+		SectionTitleFontSize: 9,
+		SectionTitleLine:     6,
+		FieldLabelFontSize:   8,
+		FieldValueFontSize:   9,
+		FieldLineHeight:      4.5,
+		FieldRowGap:          1,
+		ColumnGap:            8,
+		SectionGap:           4,
+		ImagePanelHeight:     64,
+		ImageLabelFontSize:   8,
+		ImageLabelLine:       4,
+		BodyFontSize:         9,
+		BodyLineHeight:       5,
+		BulletIndent:         6,
+	}
+}
+
+func (layout pdfRecordCardLayout) scaled(scale float64) pdfRecordCardLayout {
+	return pdfRecordCardLayout{
+		LeftWidthRatio:       layout.LeftWidthRatio,
+		SectionTitleFontSize: layout.SectionTitleFontSize * scale,
+		SectionTitleLine:     maxFloat(4.2, layout.SectionTitleLine*scale),
+		FieldLabelFontSize:   layout.FieldLabelFontSize * scale,
+		FieldValueFontSize:   layout.FieldValueFontSize * scale,
+		FieldLineHeight:      maxFloat(3.4, layout.FieldLineHeight*scale),
+		FieldRowGap:          maxFloat(0.4, layout.FieldRowGap*scale),
+		ColumnGap:            maxFloat(5, layout.ColumnGap*scale),
+		SectionGap:           maxFloat(2, layout.SectionGap*scale),
+		ImagePanelHeight:     maxFloat(38, layout.ImagePanelHeight*scale),
+		ImageLabelFontSize:   layout.ImageLabelFontSize * scale,
+		ImageLabelLine:       maxFloat(3.2, layout.ImageLabelLine*scale),
+		BodyFontSize:         layout.BodyFontSize * scale,
+		BodyLineHeight:       maxFloat(3.8, layout.BodyLineHeight*scale),
+		BulletIndent:         maxFloat(4.5, layout.BulletIndent*scale),
+	}
+}
+
+func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY float64, includeImages bool) pdfRecordCardLayout {
+	_, pageHeight := pdf.GetPageSize()
+	_, _, _, bottomMargin := pdf.GetMargins()
+	availableHeight := pageHeight - bottomMargin - startY - 18
+	base := defaultPDFRecordCardLayout()
+	if !includeImages {
+		base.LeftWidthRatio = 0.43
+	}
+	for _, scale := range []float64{1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58, 0.52, 0.48, 0.44, 0.4} {
+		layout := base.scaled(scale)
+		if estimatePDFRecordCardHeight(pdf, soldier, includeImages, layout) <= availableHeight {
+			return layout
+		}
+	}
+	return base.scaled(0.4)
+}
+
+func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bool, layout pdfRecordCardLayout) float64 {
+	pageWidth, _ := pdf.GetPageSize()
+	leftMargin, _, rightMargin, _ := pdf.GetMargins()
+	contentWidth := pageWidth - leftMargin - rightMargin
+	leftWidth := contentWidth * layout.LeftWidthRatio
+	rightWidth := contentWidth - leftWidth - layout.ColumnGap
+
+	leftHeight := estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordIdentityFields(soldier), layout)
+	leftHeight += layout.SectionGap
+	leftHeight += estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordServiceFields(soldier), layout)
+
+	rightHeight := 0.0
+	if includeImages {
+		if imagePath, _ := firstRecordCardImage(soldier); imagePath != "" {
+			rightHeight += layout.SectionTitleLine + layout.ImagePanelHeight + 2
+		}
+	}
+	householdHeight := estimatePDFCompactFieldSectionHeight(pdf, rightWidth, recordHouseholdFields(soldier), layout)
+	if householdHeight > 0 {
+		if rightHeight > 0 {
+			rightHeight += layout.SectionGap
+		}
+		rightHeight += householdHeight
+	}
+	if strings.TrimSpace(soldier.Notes) != "" {
+		if rightHeight > 0 {
+			rightHeight += layout.SectionGap
+		}
+		rightHeight += estimatePDFRichTextSectionHeight(pdf, rightWidth, soldier.Notes, layout)
+	}
+	if len(soldier.Records) > 0 {
+		if rightHeight > 0 {
+			rightHeight += layout.SectionGap
+		}
+		rightHeight += estimatePDFRecordsSectionHeight(pdf, rightWidth, soldier.Records, layout)
+	}
+
+	return maxFloat(leftHeight, rightHeight)
+}
+
+func estimatePDFCompactFieldSectionHeight(pdf *fpdf.Fpdf, width float64, fields [][2]string, layout pdfRecordCardLayout) float64 {
+	if !hasVisiblePDFField(fields) {
+		return 0
+	}
+	labelWidth := width * 0.32
+	if labelWidth < 28 {
+		labelWidth = 28
+	}
+	if labelWidth > 44 {
+		labelWidth = 44
+	}
+	valueWidth := width - labelWidth - 3
+	height := layout.SectionTitleLine
+	for _, field := range fields {
+		if strings.TrimSpace(field[1]) == "" || strings.TrimSpace(field[1]) == "None" {
+			continue
+		}
+		labelLines := wrappedPDFLineCount(pdf, sanitizePDFText(field[0]), labelWidth, "Helvetica", "B", layout.FieldLabelFontSize)
+		valueLines := wrappedPDFLineCount(pdf, emptyPDFValue(field[1]), valueWidth, "Helvetica", "", layout.FieldValueFontSize)
+		height += float64(maxInt(labelLines, valueLines))*layout.FieldLineHeight + layout.FieldRowGap
+	}
+	return height
+}
+
+func estimatePDFRichTextSectionHeight(pdf *fpdf.Fpdf, width float64, text string, layout pdfRecordCardLayout) float64 {
+	return layout.SectionTitleLine + float64(wrappedPDFMultilineCount(pdf, emptyPDFValue(text), width, "Helvetica", "", layout.BodyFontSize))*layout.BodyLineHeight*1.18
+}
+
+func estimatePDFRecordsSectionHeight(pdf *fpdf.Fpdf, width float64, records []models.Record, layout pdfRecordCardLayout) float64 {
+	height := layout.SectionTitleLine
+	for _, record := range records {
+		line := record.RecordType
+		if strings.TrimSpace(record.AppID) != "" {
+			line += fmt.Sprintf(" (App: %s)", record.AppID)
+		}
+		height += float64(wrappedPDFLineCount(pdf, emptyPDFValue(line), width-layout.BulletIndent, "Helvetica", "", layout.BodyFontSize)) * layout.BodyLineHeight
+		if strings.TrimSpace(record.Details) != "" {
+			height += float64(wrappedPDFMultilineCount(pdf, emptyPDFValue(record.Details), width, "Helvetica", "", layout.BodyFontSize)) * layout.BodyLineHeight * 1.18
+		}
+	}
+	return height
+}
+
+func wrappedPDFLineCount(pdf *fpdf.Fpdf, text string, width float64, family, style string, size float64) int {
+	pdf.SetFont(family, style, size)
+	lines := pdf.SplitText(sanitizePDFText(strings.TrimSpace(text)), width)
+	if len(lines) == 0 {
+		return 1
+	}
+	return len(lines)
+}
+
+func wrappedPDFMultilineCount(pdf *fpdf.Fpdf, text string, width float64, family, style string, size float64) int {
+	count := 0
+	for _, line := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
+		count += wrappedPDFLineCount(pdf, line, width, family, style, size)
+	}
+	if count == 0 {
+		return 1
+	}
+	return count
+}
+
+func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bool) {
+	startY := pdf.GetY()
+	pageWidth, _ := pdf.GetPageSize()
+	leftMargin, _, rightMargin, _ := pdf.GetMargins()
+	_, _, _, bottomMargin := pdf.GetMargins()
+	contentWidth := pageWidth - leftMargin - rightMargin
+	layout := choosePDFRecordCardLayout(pdf, soldier, startY, includeImages)
+	leftWidth := contentWidth * layout.LeftWidthRatio
+	gapWidth := layout.ColumnGap
+	rightWidth := contentWidth - leftWidth - gapWidth
+	rightX := leftMargin + leftWidth + gapWidth
+	defer pdf.SetAutoPageBreak(true, bottomMargin)
+	pdf.SetAutoPageBreak(false, bottomMargin)
+
+	leftY := writePDFCompactFieldSection(pdf, leftMargin, startY, leftWidth, "Identity & Vital Details", recordIdentityFields(soldier), layout)
+	leftY = writePDFCompactFieldSection(pdf, leftMargin, leftY+layout.SectionGap, leftWidth, "Service & Archive Details", recordServiceFields(soldier), layout)
+
+	rightY := startY
+	if includeImages {
+		if imagePath, imageLabel := firstRecordCardImage(soldier); imagePath != "" {
+			rightY = writePDFImagePanel(pdf, rightX, rightY, rightWidth, imagePath, imageLabel, layout)
+		}
+	}
+	householdFields := recordHouseholdFields(soldier)
+	if hasVisiblePDFField(householdFields) {
+		if rightY > startY {
+			rightY += layout.SectionGap
+		}
+		rightY = writePDFCompactFieldSection(pdf, rightX, rightY, rightWidth, "Household & Context", householdFields, layout)
+	}
+	if strings.TrimSpace(soldier.Notes) != "" {
+		if rightY > startY {
+			rightY += layout.SectionGap
+		}
+		rightY = writePDFRichTextColumnSection(pdf, rightX, rightY, rightWidth, "Scratch Pad / Notes", soldier.Notes, layout)
+	}
+	if len(soldier.Records) > 0 {
+		if rightY > startY {
+			rightY += layout.SectionGap
+		}
+		rightY = writePDFRecordsColumnSection(pdf, rightX, rightY, rightWidth, soldier.Records, layout)
+	}
+
+	pdf.SetY(maxPDFY(leftY, rightY) + 2)
+}
+
+func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title string, fields [][2]string, layout pdfRecordCardLayout) float64 {
+	if !hasVisiblePDFField(fields) {
+		return y
+	}
+	pdf.SetXY(x, y)
+	pdf.SetFont("Helvetica", "B", layout.SectionTitleFontSize)
+	pdf.SetTextColor(141, 116, 64)
+	pdf.CellFormat(width, layout.SectionTitleLine, title, "", 1, "L", false, 0, "")
+	currentY := pdf.GetY()
+	labelWidth := width * 0.32
+	if labelWidth < 28 {
+		labelWidth = 28
+	}
+	if labelWidth > 44 {
+		labelWidth = 44
+	}
+	valueWidth := width - labelWidth - 3
+	for _, field := range fields {
+		if strings.TrimSpace(field[1]) == "" || strings.TrimSpace(field[1]) == "None" {
+			continue
+		}
+		rowTop := currentY
+		pdf.SetXY(x, rowTop)
+		pdf.SetFont("Helvetica", "B", layout.FieldLabelFontSize)
+		pdf.SetTextColor(68, 82, 96)
+		pdf.MultiCell(labelWidth, layout.FieldLineHeight, sanitizePDFText(field[0]), "", "L", false)
+		labelBottom := pdf.GetY()
+		pdf.SetXY(x+labelWidth+3, rowTop)
+		pdf.SetFont("Helvetica", "", layout.FieldValueFontSize)
+		pdf.SetTextColor(34, 48, 61)
+		pdf.MultiCell(valueWidth, layout.FieldLineHeight, emptyPDFValue(field[1]), "", "L", false)
+		valueBottom := pdf.GetY()
+		currentY = maxPDFY(labelBottom, valueBottom) + layout.FieldRowGap
+	}
+	return currentY
+}
+
+func writePDFImagePanel(pdf *fpdf.Fpdf, x, y, width float64, imagePath, label string, layout pdfRecordCardLayout) float64 {
+	pdf.SetXY(x, y)
+	pdf.SetFont("Helvetica", "B", layout.SectionTitleFontSize)
+	pdf.SetTextColor(141, 116, 64)
+	pdf.CellFormat(width, layout.SectionTitleLine, "Primary Image", "", 1, "L", false, 0, "")
+	panelY := pdf.GetY()
+	panelHeight := layout.ImagePanelHeight
+	pdf.SetDrawColor(141, 116, 64)
+	pdf.Rect(x, panelY, width, panelHeight, "D")
+	pdf.ImageOptions(imagePath, x+2, panelY+2, width-4, panelHeight-14, false, fpdf.ImageOptions{
+		ImageType: strings.TrimPrefix(strings.ToLower(filepath.Ext(imagePath)), "."),
+	}, 0, "")
+	pdf.SetXY(x+2, panelY+panelHeight-10)
+	pdf.SetFont("Helvetica", "", layout.ImageLabelFontSize)
+	pdf.SetTextColor(68, 82, 96)
+	pdf.MultiCell(width-4, layout.ImageLabelLine, emptyPDFValue(label), "", "L", false)
+	return panelY + panelHeight + 2
+}
+
+func writePDFRichTextColumnSection(pdf *fpdf.Fpdf, x, y, width float64, title, text string, layout pdfRecordCardLayout) float64 {
+	if strings.TrimSpace(text) == "" {
+		return y
+	}
+	pageWidth, _ := pdf.GetPageSize()
+	leftMargin, topMargin, rightMargin, _ := pdf.GetMargins()
+	defer pdf.SetMargins(leftMargin, topMargin, rightMargin)
+	pdf.SetMargins(x, topMargin, pageWidth-(x+width))
+	pdf.SetXY(x, y)
+	pdf.SetFont("Helvetica", "B", layout.SectionTitleFontSize)
+	pdf.SetTextColor(141, 116, 64)
+	pdf.CellFormat(width, layout.SectionTitleLine, title, "", 1, "L", false, 0, "")
+	pdf.SetX(x)
+	pdf.SetFont("Helvetica", "", layout.BodyFontSize)
+	pdf.SetTextColor(34, 48, 61)
+	writePDFRichTextSized(pdf, emptyPDFValue(text), layout.BodyLineHeight, layout.BodyFontSize)
+	return pdf.GetY()
+}
+
+func writePDFRecordsColumnSection(pdf *fpdf.Fpdf, x, y, width float64, records []models.Record, layout pdfRecordCardLayout) float64 {
+	if len(records) == 0 {
+		return y
+	}
+	pageWidth, _ := pdf.GetPageSize()
+	leftMargin, topMargin, rightMargin, _ := pdf.GetMargins()
+	defer pdf.SetMargins(leftMargin, topMargin, rightMargin)
+	pdf.SetMargins(x, topMargin, pageWidth-(x+width))
+	pdf.SetXY(x, y)
+	pdf.SetFont("Helvetica", "B", layout.SectionTitleFontSize)
+	pdf.SetTextColor(141, 116, 64)
+	pdf.CellFormat(width, layout.SectionTitleLine, "Records", "", 1, "L", false, 0, "")
+	for _, record := range records {
+		line := record.RecordType
+		if strings.TrimSpace(record.AppID) != "" {
+			line += fmt.Sprintf(" (App: %s)", record.AppID)
+		}
+		pdf.SetX(x)
+		writePDFBulletSized(pdf, line, layout)
+		if strings.TrimSpace(record.Details) != "" {
+			pdf.SetX(x)
+			writePDFRichTextSized(pdf, emptyPDFValue(record.Details), layout.BodyLineHeight, layout.BodyFontSize)
+		}
+	}
+	return pdf.GetY()
+}
+
+func recordIdentityFields(soldier models.Soldier) [][2]string {
+	fields := [][2]string{
+		{"Prefix", soldier.Prefix},
+		{"First Name", soldier.FirstName},
+		{"Middle Name", soldier.MiddleName},
+		{"Last Name", soldier.LastName},
+		{"Suffix", soldier.Suffix},
+		{"Birth Date", strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))},
+		{"Death Date", soldierDeathLine(soldier)},
+		{"Birth Info", soldier.BirthInfo},
+		{"Buried In", soldier.BuriedIn},
+	}
+	return fields
+}
+
+func recordServiceFields(soldier models.Soldier) [][2]string {
+	fields := [][2]string{
+		{"Record Type", displayEntryType(soldier)},
+		{"Record ID", soldier.DisplayID},
+		{"Rank In", soldier.RankIn},
+		{"Rank Out", displaySoldierRank(soldier)},
+		{"Unit", soldier.Unit},
+		{"Pension State", soldier.PensionState},
+		{"Pension ID", soldier.PensionID},
+		{"Application ID", soldier.ApplicationID},
+		{"Confederate Home Status", soldier.ConfederateHomeStatus},
+		{"Confederate Home Name", soldier.ConfederateHomeName},
+	}
+	return fields
+}
+
+func recordHouseholdFields(soldier models.Soldier) [][2]string {
+	fields := [][2]string{
+		{"Spouse", soldier.SpouseName},
+		{"Linked Spouse Record", func() string {
+			if soldier.SpouseSoldierID > 0 {
+				if strings.TrimSpace(soldier.SpouseName) != "" {
+					return fmt.Sprintf("%s (DB ID %d)", strings.TrimSpace(soldier.SpouseName), soldier.SpouseSoldierID)
+				}
+				return fmt.Sprintf("DB ID %d", soldier.SpouseSoldierID)
+			}
+			return ""
+		}()},
+		{"Maiden Name", soldier.MaidenName},
+	}
+	return fields
+}
+
+func firstRecordCardImage(soldier models.Soldier) (string, string) {
+	for _, image := range soldier.Images {
+		if imagePath := imagePathForPDF(image); imagePath != "" {
+			label := image.FileName
+			if strings.TrimSpace(image.Caption) != "" {
+				label = image.Caption
+			}
+			return imagePath, label
+		}
+	}
+	return "", ""
+}
+
+func recordPDFTitle(soldier models.Soldier) string {
+	if name := strings.TrimSpace(soldier.GetFullName()); name != "" {
+		return name
+	}
+	return soldierDisplayName(soldier)
+}
+
+func maxPDFY(left, right float64) float64 {
+	if left > right {
+		return left
+	}
+	return right
+}
+
+func hasVisiblePDFField(fields [][2]string) bool {
+	for _, field := range fields {
+		if strings.TrimSpace(field[1]) != "" && strings.TrimSpace(field[1]) != "None" {
+			return true
+		}
+	}
+	return false
+}
+
+func maxFloat(left, right float64) float64 {
+	if left > right {
+		return left
+	}
+	return right
+}
+
+func maxInt(left, right int) int {
+	if left > right {
+		return left
+	}
+	return right
+}
+
+func writePDFInlineField(pdf *fpdf.Fpdf, label, value string, width float64) {
+	x := pdf.GetX()
+	y := pdf.GetY()
+	pdf.SetFont("Helvetica", "B", 10)
+	pdf.SetTextColor(34, 48, 61)
+	pdf.CellFormat(34, 6, label, "", 0, "", false, 0, "")
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetTextColor(68, 82, 96)
+	pdf.SetXY(x+34, y)
+	pdf.MultiCell(width-34, 6, emptyPDFValue(value), "", "L", false)
+	if pdf.GetY() < y+6 {
+		pdf.SetY(y + 6)
+	}
+	pdf.SetX(x)
 }
 
 func writePDFExportMetadata(pdf *fpdf.Fpdf, format string, version int, details map[string]string) {
@@ -1860,9 +2349,11 @@ func writePDFExportMetadata(pdf *fpdf.Fpdf, format string, version int, details 
 }
 
 func writePDFField(pdf *fpdf.Fpdf, label, value string) {
-	pdf.SetFont("Times", "B", 12)
+	pdf.SetFont("Helvetica", "B", 10)
+	pdf.SetTextColor(34, 48, 61)
 	pdf.CellFormat(34, 8, label+":", "", 0, "", false, 0, "")
-	pdf.SetFont("Times", "", 12)
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetTextColor(68, 82, 96)
 	pdf.MultiCell(0, 8, emptyPDFValue(value), "", "", false)
 }
 
@@ -1871,12 +2362,22 @@ func writePDFBody(pdf *fpdf.Fpdf, text string) {
 }
 
 func writePDFBullet(pdf *fpdf.Fpdf, text string) {
-	pdf.SetFont("Times", "", 12)
+	pdf.SetFont("Helvetica", "", 10)
 	pdf.CellFormat(6, 7, "-", "", 0, "", false, 0, "")
 	pdf.MultiCell(0, 7, emptyPDFValue(text), "", "", false)
 }
 
+func writePDFBulletSized(pdf *fpdf.Fpdf, text string, layout pdfRecordCardLayout) {
+	pdf.SetFont("Helvetica", "", layout.BodyFontSize)
+	pdf.CellFormat(layout.BulletIndent, layout.BodyLineHeight, "-", "", 0, "", false, 0, "")
+	pdf.MultiCell(0, layout.BodyLineHeight, emptyPDFValue(text), "", "", false)
+}
+
 func writePDFRichText(pdf *fpdf.Fpdf, text string, lineHeight float64) {
+	writePDFRichTextSized(pdf, text, lineHeight, 10)
+}
+
+func writePDFRichTextSized(pdf *fpdf.Fpdf, text string, lineHeight, fontSize float64) {
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	for lineIndex, line := range lines {
 		segments := pdfTextSegments(line)
@@ -1885,14 +2386,14 @@ func writePDFRichText(pdf *fpdf.Fpdf, text string, lineHeight float64) {
 		}
 		for _, segment := range segments {
 			if segment.Link != "" {
-				pdf.SetFont("Times", "I", 12)
+				pdf.SetFont("Helvetica", "I", fontSize)
 				pdf.SetTextColor(48, 87, 122)
 				pdf.WriteLinkString(lineHeight, segment.Text, segment.Link)
 				pdf.SetTextColor(0, 0, 0)
-				pdf.SetFont("Times", "", 12)
+				pdf.SetFont("Helvetica", "", fontSize)
 				continue
 			}
-			pdf.SetFont("Times", "", 12)
+			pdf.SetFont("Helvetica", "", fontSize)
 			pdf.Write(lineHeight, segment.Text)
 		}
 		if lineIndex < len(lines)-1 {
@@ -1968,7 +2469,7 @@ func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {
 	if strings.TrimSpace(image.Caption) != "" {
 		title = fmt.Sprintf("%s - %s", image.FileName, image.Caption)
 	}
-	pdf.SetFont("Times", "", 12)
+	pdf.SetFont("Helvetica", "", 10)
 	pdf.MultiCell(0, 6, emptyPDFValue(title), "", "", false)
 	pdf.SetXY(x+thumbnailWidth+4, y+10)
 	pdf.MultiCell(0, 6, "DB Path: "+emptyPDFValue(image.FilePath), "", "", false)
@@ -1980,11 +2481,130 @@ func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {
 	}
 }
 
+func writePDFRegistryEntry(pdf *fpdf.Fpdf, soldier models.Soldier) {
+	if pdf.GetY() > 230 {
+		pdf.AddPage()
+	}
+	pdf.SetDrawColor(141, 116, 64)
+	pdf.Line(16, pdf.GetY(), 200, pdf.GetY())
+	pdf.Ln(3)
+	pdf.SetFont("Times", "B", 13)
+	pdf.SetTextColor(34, 48, 61)
+	pdf.CellFormat(0, 7, soldierDisplayName(soldier), "", 1, "", false, 0, "")
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetTextColor(68, 82, 96)
+	pdf.CellFormat(0, 5, fmt.Sprintf("%s - %s", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)), "", 1, "", false, 0, "")
+	for _, line := range registryEntryLines(soldier) {
+		writePDFInlineField(pdf, line[0], line[1], 178)
+	}
+	pdf.Ln(2)
+}
+
+func recordCardFields(soldier models.Soldier) [][2]string {
+	fields := [][2]string{
+		{"Record Type", displayEntryType(soldier)},
+		{"Full Name", soldierFullName(soldier)},
+		{"Display ID", soldier.DisplayID},
+		{"Birth", strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))},
+		{"Death", soldierDeathLine(soldier)},
+	}
+	if strings.TrimSpace(soldier.Prefix) != "" {
+		fields = append(fields, [2]string{"Prefix", soldier.Prefix})
+	}
+	if strings.TrimSpace(soldier.Suffix) != "" {
+		fields = append(fields, [2]string{"Suffix", soldier.Suffix})
+	}
+	if isSoldierEntry(soldier) {
+		fields = append(fields,
+			[2]string{"Rank In", soldier.RankIn},
+			[2]string{"Rank Out", displaySoldierRank(soldier)},
+			[2]string{"Unit", soldier.Unit},
+			[2]string{"Pension State", soldier.PensionState},
+			[2]string{"Confederate Home Status", soldier.ConfederateHomeStatus},
+			[2]string{"Confederate Home Name", soldier.ConfederateHomeName},
+		)
+	} else {
+		fields = append(fields,
+			[2]string{"Married To", soldier.SpouseName},
+			[2]string{"Maiden Name", soldier.MaidenName},
+		)
+	}
+	fields = append(fields,
+		[2]string{"Pension ID", soldier.PensionID},
+		[2]string{"Application ID", soldier.ApplicationID},
+		[2]string{"Birth Info", soldier.BirthInfo},
+		[2]string{"Buried In", soldier.BuriedIn},
+	)
+	return fields
+}
+
+func registryEntryLines(soldier models.Soldier) [][2]string {
+	lines := [][2]string{
+		{"Birth Date", strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))},
+		{"Death Date", soldierDeathLine(soldier)},
+		{"Birth Info", soldier.BirthInfo},
+		{"Unit / Rank", strings.TrimSpace(strings.Join(compactPDFValues(soldier.Unit, displaySoldierRank(soldier), soldier.RankIn), " | "))},
+		{"Pension / Application", strings.TrimSpace(strings.Join(compactPDFValues(soldier.PensionState, soldier.PensionID, soldier.ApplicationID), " | "))},
+		{"Confederate Home", strings.TrimSpace(strings.Join(compactPDFValues(soldier.ConfederateHomeStatus, soldier.ConfederateHomeName), " | "))},
+		{"Buried In", soldier.BuriedIn},
+	}
+	if strings.TrimSpace(soldier.SpouseName) != "" || strings.TrimSpace(soldier.MaidenName) != "" {
+		lines = append(lines, [2]string{"Spouse", strings.TrimSpace(strings.Join(compactPDFValues(soldier.SpouseName, soldier.MaidenName), " | "))})
+	}
+	if strings.TrimSpace(soldier.Notes) != "" {
+		lines = append(lines, [2]string{"Notes", soldier.Notes})
+	}
+	if len(soldier.Records) > 0 {
+		recordLines := make([]string, 0, len(soldier.Records))
+		for _, record := range soldier.Records {
+			recordLines = append(recordLines, strings.TrimSpace(strings.Join(compactPDFValues(record.RecordType, record.AppID, record.Details), " | ")))
+		}
+		lines = append(lines, [2]string{"Records", strings.Join(recordLines, "\n")})
+	}
+	return lines
+}
+
+func compactPDFValues(values ...string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" && trimmed != "None" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
 func emptyPDFValue(value string) string {
-	if strings.TrimSpace(value) == "" {
+	sanitized := sanitizePDFText(strings.TrimSpace(value))
+	if sanitized == "" {
 		return "Not recorded"
 	}
-	return value
+	return sanitized
+}
+
+func sanitizePDFText(value string) string {
+	replaced := strings.NewReplacer(
+		"\u2018", "'",
+		"\u2019", "'",
+		"\u201c", `"`,
+		"\u201d", `"`,
+		"\u2013", "-",
+		"\u2014", "-",
+		"\u2026", "...",
+		"\u2022", "-",
+		"\u00a0", " ",
+	).Replace(value)
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			return r
+		case r < 32 || r > 126:
+			return ' '
+		default:
+			return r
+		}
+	}, replaced)
 }
 
 func soldierDisplayName(soldier models.Soldier) string {
@@ -1998,7 +2618,7 @@ func soldierDisplayName(soldier models.Soldier) string {
 }
 
 func soldierFullName(soldier models.Soldier) string {
-	return strings.Join(compactNameParts(soldier.FirstName, soldier.MiddleName, soldier.LastName), " ")
+	return soldier.GetFullName()
 }
 
 func displaySoldierRank(soldier models.Soldier) string {
@@ -2024,16 +2644,6 @@ func displayEntryType(soldier models.Soldier) string {
 	default:
 		return "Soldier"
 	}
-}
-
-func compactNameParts(parts ...string) []string {
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
 }
 
 func soldierDeathLine(soldier models.Soldier) string {

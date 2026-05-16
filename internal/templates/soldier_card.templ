@@ -505,13 +505,7 @@ func searchSummary(search models.SoldierSearch) string {
 }
 
 func soldierFullName(s models.Soldier) string {
-	parts := []string{}
-	for _, part := range []string{s.FirstName, s.MiddleName, s.LastName} {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			parts = append(parts, trimmed)
-		}
-	}
-	return strings.Join(parts, " ")
+	return s.GetFullName()
 }
 
 func isSoldierEntry(s models.Soldier) bool {

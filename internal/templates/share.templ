@@ -41,6 +41,10 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 							<div class="font-bold">Export Static Web Archive</div>
 							<div class="text-xs text-slate-500">Standalone HTML archive with images, live search, and expandable record cards</div>
 						</button>
+						<button hx-post="/export/database-pdf" hx-target="#share-status" class="secondary-button justify-start text-left">
+							<div class="font-bold">Full Database Printable PDF</div>
+							<div class="text-xs text-slate-500">Landscape printable export with one branded record page per entry and no images</div>
+						</button>
 						<button hx-post="/export/backup" hx-target="#share-status" class="primary-button justify-start text-left">
 							<div class="font-bold">Export Backup (.ddbak)</div>
 							<div class="text-xs text-slate-300">Replacement archive with manifest, DB snapshot, and all images</div>

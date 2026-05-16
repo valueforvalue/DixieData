@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,13 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
+
+func configureExportIdentity(t *testing.T, database *db.DB) {
+	t.Helper()
+	if _, err := database.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+}
 
 func TestExportService_ExportJSON(t *testing.T) {
 	d := newTestDB(t)
@@ -94,8 +102,9 @@ func TestExportService_ExportCSV(t *testing.T) {
 		"app_version": true, "schema_version": true, "export_version": true, "generated_at": true,
 		"id": true, "display_id": true, "first_name": true,
 		"entry_type": true, "spouse_soldier_id": true, "maiden_name": true,
-		"pension_id": true, "application_id": true, "middle_name": true,
+		"pension_id": true, "application_id": true, "prefix": true, "middle_name": true,
 		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "confederate_home_status": true, "confederate_home_name": true, "birth_date": true, "death_date": true, "birth_info": true, "buried_in": true,
+		"suffix": true,
 	}
 	for _, col := range header {
 		delete(expected, col)
@@ -125,9 +134,7 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 
 	soldierSvc := NewSoldierService(database)
 	exportSvc := NewExportService(database, soldierSvc)
-	if _, err := database.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
-		t.Fatalf("ConfigureUserIdentity: %v", err)
-	}
+	configureExportIdentity(t, database)
 
 	soldier, err := soldierSvc.Create(models.Soldier{
 		DisplayID: "PENSION-0042",
@@ -205,13 +212,16 @@ func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
 
 	outPath := filepath.Join(t.TempDir(), "wife.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
 		DisplayID:     "TDM65-DXD-00002",
 		EntryType:     "widow",
+		Prefix:        "Mrs.",
 		FirstName:     "Martha",
 		LastName:      "Taylor",
+		Suffix:        "Sr.",
 		SpouseName:    "John Taylor",
 		MaidenName:    "Cole",
 		PensionID:     "WP-42",
@@ -229,7 +239,7 @@ func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
 	if !strings.Contains(text, "Record Type") || !strings.Contains(text, "Widow") {
 		t.Fatalf("pdf missing spouse record type")
 	}
-	if !strings.Contains(text, "Married To") || !strings.Contains(text, "John Taylor") {
+	if !strings.Contains(text, "Spouse") || !strings.Contains(text, "John Taylor") {
 		t.Fatalf("pdf missing spouse reference")
 	}
 	if !strings.Contains(text, "Maiden Name") || !strings.Contains(text, "Cole") {
@@ -238,12 +248,16 @@ func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
 	if !strings.Contains(text, "Pension ID") || !strings.Contains(text, "WP-42") || !strings.Contains(text, "Application ID") || !strings.Contains(text, "WA-42") {
 		t.Fatalf("pdf missing widow pension identifiers")
 	}
+	if !strings.Contains(text, "S. Carter's Civil War Research Archive") || !strings.Contains(text, "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
+		t.Fatalf("pdf missing standardized branding")
+	}
 }
 
 func TestExportService_ExportImages(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
 
 	tempDir := t.TempDir()
 	firstPath := filepath.Join(tempDir, "front.png")
@@ -287,6 +301,7 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
 
 	imagePath := filepath.Join(t.TempDir(), "portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
@@ -317,17 +332,11 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 		t.Fatalf("output is not a PDF")
 	}
 	text := string(data)
-	if !strings.Contains(text, "DB Path: images\\\\pension-42\\\\portrait.png") {
-		t.Fatalf("pdf missing image db path: %q", text)
-	}
-	if !strings.Contains(text, "Full Path:") || !strings.Contains(text, "portrait.png") {
-		t.Fatalf("pdf missing full image path")
-	}
 	if !strings.Contains(text, "Hollywood Cemetery") {
 		t.Fatalf("pdf missing buried-in text")
 	}
-	if !strings.Contains(text, "Includes Images") || !strings.Contains(text, "true") {
-		t.Fatalf("pdf missing report metadata")
+	if !strings.Contains(text, "S. Carter's Civil War Research Archive") {
+		t.Fatalf("pdf missing standardized branding")
 	}
 	if !strings.Contains(text, "https://example.com/notes") || !strings.Contains(text, "https://example.com/record") {
 		t.Fatalf("pdf missing expected URL text")
@@ -341,6 +350,7 @@ func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
 
 	imagePath := filepath.Join(t.TempDir(), "portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
@@ -363,11 +373,8 @@ func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 	text := string(data)
-	if strings.Contains(text, "DB Path:") || strings.Contains(text, "portrait.png") {
-		t.Fatalf("image details should be omitted from no-images PDF")
-	}
-	if !strings.Contains(text, "Includes Images") || !strings.Contains(text, "false") {
-		t.Fatalf("pdf missing no-images metadata")
+	if strings.Contains(text, "Primary Image") || strings.Contains(text, "portrait.png") {
+		t.Fatalf("no-images PDF should not render image panel content")
 	}
 }
 
@@ -375,6 +382,7 @@ func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
 
 	outPath := filepath.Join(t.TempDir(), "monthly.pdf")
 	err := exportSvc.ExportMonthlyAnniversaryPDF(outPath, 4, map[int][]models.Soldier{
@@ -393,6 +401,117 @@ func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 	}
 	if len(data) == 0 || string(data[:4]) != "%PDF" {
 		t.Fatalf("output is not a PDF")
+	}
+}
+
+func TestExportService_ExportFullDatabasePDF(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	first, err := soldierSvc.Create(models.Soldier{
+		Prefix:                "Capt.",
+		FirstName:             "John",
+		MiddleName:            "Bell",
+		LastName:              "Hood",
+		Suffix:                "Jr.",
+		Unit:                  "Texas Brigade",
+		RankIn:                "Captain",
+		RankOut:               "General",
+		PensionState:          "Texas",
+		PensionID:             "P-42",
+		ApplicationID:         "A-42",
+		ConfederateHomeStatus: "Trustee",
+		ConfederateHomeName:   "Texas Confederate Home",
+		Notes:                 "Registry note.",
+	})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := soldierSvc.Create(models.Soldier{
+		EntryType:       "widow",
+		FirstName:       "Mary",
+		LastName:        "Hood",
+		SpouseSoldierID: first.ID,
+		MaidenName:      "Jones",
+	})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+	if _, err := soldierSvc.GetByID(second.ID); err != nil {
+		t.Fatalf("GetByID second: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "registry.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(outPath); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if len(data) == 0 || string(data[:4]) != "%PDF" {
+		t.Fatalf("output is not a PDF")
+	}
+	if !strings.Contains(text, "Printable Archive Registry") || !strings.Contains(text, "S. Carter's Civil War Research Archive") {
+		t.Fatalf("registry PDF missing expected branding")
+	}
+	if !strings.Contains(text, "Capt. John Bell Hood, Jr.") || !strings.Contains(text, "Registry note.") {
+		t.Fatalf("registry PDF missing expected record content")
+	}
+	if !strings.Contains(text, "Pension State") || !strings.Contains(text, "Texas") || !strings.Contains(text, "Trustee") || !strings.Contains(text, "Texas Confederate Home") {
+		t.Fatalf("registry PDF missing expanded status fields")
+	}
+	if !strings.Contains(text, "Linked Spouse Record") || !strings.Contains(text, "John Bell Hood") || !strings.Contains(text, "Maiden Name") || !strings.Contains(text, "Jones") {
+		t.Fatalf("registry PDF missing spouse linkage fields")
+	}
+}
+
+func TestExportService_ExportFullDatabasePDFFitsSingleRecordPage(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	longNote := strings.Repeat("This is a long note intended to pressure the right column layout without forcing a second page when the printable export shrinks typography appropriately. ", 18)
+	_, err := soldierSvc.Create(models.Soldier{
+		Prefix:                "Capt.",
+		FirstName:             "Thomas",
+		LastName:              "Carter",
+		Suffix:                "Sr.",
+		RankIn:                "Captain",
+		RankOut:               "Colonel",
+		Unit:                  "Virginia Cavalry",
+		PensionState:          "Virginia",
+		PensionID:             "WP-900",
+		ApplicationID:         "WA-900",
+		ConfederateHomeStatus: "Staffer",
+		ConfederateHomeName:   "Virginia Soldiers Home",
+		Notes:                 longNote,
+		Records: []models.Record{
+			{RecordType: "Pension", AppID: "900", Details: longNote},
+			{RecordType: "Correspondence", AppID: "901", Details: longNote},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "single-page.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(outPath); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(data, -1))
+	if pageCount != 3 {
+		t.Fatalf("pageCount = %d, want 3 pages (title, record, metadata)", pageCount)
 	}
 }
 
