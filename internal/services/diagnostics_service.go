@@ -24,10 +24,12 @@ type DiagnosticsManifest struct {
 	DatabaseFile    string            `json:"database_file"`
 	ImageRoot       string            `json:"image_root"`
 	ScratchpadRoot  string            `json:"scratchpad_root"`
+	LogRoot         string            `json:"log_root"`
 	Soldiers        int               `json:"soldiers"`
 	Records         int               `json:"records"`
 	Images          int               `json:"images"`
 	ScratchpadFiles int               `json:"scratchpad_files"`
+	LogFiles        int               `json:"log_files"`
 	GOOS            string            `json:"goos"`
 	GOARCH          string            `json:"goarch"`
 	Executable      string            `json:"executable"`
@@ -82,6 +84,9 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 	if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads")); err != nil {
 		return DiagnosticsManifest{}, err
 	}
+	if err := addBackupImages(zipWriter, filepath.Join(dataDir, "logs")); err != nil {
+		return DiagnosticsManifest{}, err
+	}
 
 	return manifest, nil
 }
@@ -92,6 +97,10 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 		return DiagnosticsManifest{}, err
 	}
 	scratchpadFiles, err := countFilesUnder(filepath.Join(dataDir, "scratchpads"))
+	if err != nil {
+		return DiagnosticsManifest{}, err
+	}
+	logFiles, err := countFilesUnder(filepath.Join(dataDir, "logs"))
 	if err != nil {
 		return DiagnosticsManifest{}, err
 	}
@@ -108,10 +117,12 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 		DatabaseFile:    filepath.ToSlash(filepath.Join("data", db.FileName)),
 		ImageRoot:       "images/",
 		ScratchpadRoot:  "scratchpads/",
+		LogRoot:         "logs/",
 		Soldiers:        soldiers,
 		Records:         records,
 		Images:          images,
 		ScratchpadFiles: scratchpadFiles,
+		LogFiles:        logFiles,
 		GOOS:            runtime.GOOS,
 		GOARCH:          runtime.GOARCH,
 		Executable:      executable,

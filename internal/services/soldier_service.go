@@ -34,6 +34,7 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	}
 	defer tx.Rollback()
 
+	generatedDisplayID := strings.TrimSpace(soldier.DisplayID) == ""
 	if soldier.DisplayID == "" {
 		id, err := s.db.NextDXDID()
 		if err != nil {
@@ -58,7 +59,7 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	if err := normalizeSoldierDates(&soldier); err != nil {
 		return nil, err
 	}
-	soldier.IsGenerated = isGeneratedDisplayID(soldier.DisplayID)
+	soldier.IsGenerated = generatedDisplayID || isGeneratedDisplayID(soldier.DisplayID)
 	soldier.Rank = canonicalRank(soldier)
 	if strings.TrimSpace(soldier.CreatedAt) == "" {
 		soldier.CreatedAt = currentSQLiteTimestamp()
@@ -95,20 +96,37 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 
 func isGeneratedDisplayID(displayID string) bool {
 	trimmed := strings.TrimSpace(displayID)
-	switch {
-	case strings.HasPrefix(trimmed, "DXD-"):
-		trimmed = trimmed[len("DXD-"):]
-	default:
-		marker := strings.LastIndex(trimmed, "-DXD-")
-		if marker <= 0 {
+	parts := strings.Split(trimmed, "-")
+	switch len(parts) {
+	case 2:
+		if parts[0] == "" || !prefixSegmentContainsDigit(parts[0]) {
 			return false
 		}
-		trimmed = trimmed[marker+len("-DXD-"):]
-	}
-	if len(trimmed) != 5 {
+		return isFiveDigitGeneratedSuffix(parts[1])
+	case 3:
+		if strings.ToUpper(parts[1]) != "DXD" || parts[0] == "" {
+			return false
+		}
+		return isFiveDigitGeneratedSuffix(parts[2])
+	default:
 		return false
 	}
-	for _, r := range trimmed {
+}
+
+func prefixSegmentContainsDigit(value string) bool {
+	for _, r := range value {
+		if r >= '0' && r <= '9' {
+			return true
+		}
+	}
+	return false
+}
+
+func isFiveDigitGeneratedSuffix(value string) bool {
+	if len(value) != 5 {
+		return false
+	}
+	for _, r := range value {
 		if r < '0' || r > '9' {
 			return false
 		}

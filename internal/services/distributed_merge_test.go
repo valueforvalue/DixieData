@@ -227,10 +227,10 @@ func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
 			t.Fatalf("author B image identity mismatch: %#v soldier=%#v", image, sharedBFinal)
 		}
 	}
-	if newAuthorA.DisplayID != "ALPHA-DXD-00001" {
+	if newAuthorA.DisplayID != "ALPHA-00001" {
 		t.Fatalf("author A generated display id = %q", newAuthorA.DisplayID)
 	}
-	if newAuthorB.DisplayID != "BRAVO-DXD-00001" {
+	if newAuthorB.DisplayID != "BRAVO-00001" {
 		t.Fatalf("author B generated display id = %q", newAuthorB.DisplayID)
 	}
 	seen := map[string]struct{}{
