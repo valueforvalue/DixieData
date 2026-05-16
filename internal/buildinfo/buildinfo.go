@@ -8,10 +8,11 @@ const (
 	SchemaVersion            = 9
 	JSONExportVersion        = 3
 	CSVExportVersion         = 4
-	ICalendarExportVersion   = 1
-	SoldierPDFExportVersion  = 3
+	XLSXExportVersion        = 1
+	ICalendarExportVersion   = 2
+	SoldierPDFExportVersion  = 4
 	MonthlyPDFExportVersion  = 1
-	DatabasePDFExportVersion = 1
+	DatabasePDFExportVersion = 2
 	BackupFormatVersion      = 2
 )
 

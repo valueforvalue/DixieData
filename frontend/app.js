@@ -1196,6 +1196,79 @@
     }
   }
 
+  function printConfigModal() {
+    const modal = document.querySelector("[data-print-config-modal]");
+    return modal instanceof HTMLElement ? modal : null;
+  }
+
+  function printConfigForm() {
+    const form = document.getElementById("share-print-config-form");
+    return form instanceof HTMLFormElement ? form : null;
+  }
+
+  function openPrintConfigModal() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closePrintConfigModal() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function readPrintSettings(form) {
+    return {
+      sortBy: (form.querySelector('input[name="sort_by"]:checked')?.value || "last_name").trim(),
+      groupByUnit: form.querySelector('input[name="group_by_unit"]')?.checked === true,
+      groupByPensionState: form.querySelector('input[name="group_by_pension_state"]')?.checked === true,
+      groupByConfederateHomeStatus: form.querySelector('input[name="group_by_confederate_home_status"]')?.checked === true,
+    };
+  }
+
+  function shareStatusTarget() {
+    const target = document.getElementById("share-status");
+    return target instanceof HTMLElement ? target : null;
+  }
+
+  async function submitPrintConfig(form, trigger) {
+    const bridge = window.go?.main?.App?.ExportFullDatabasePDF;
+    if (typeof bridge !== "function") {
+      closePrintConfigModal();
+      request(form);
+      return;
+    }
+
+    const status = shareStatusTarget();
+    const settings = readPrintSettings(form);
+    setBusyState(trigger, true);
+    if (status) {
+      status.textContent = "Preparing printable PDF...";
+    }
+    try {
+      const markup = await bridge(settings);
+      closePrintConfigModal();
+      if (status) {
+        status.innerHTML = markup || "Printable PDF export finished.";
+      }
+    } catch (error) {
+      if (status) {
+        status.textContent = `Printable PDF export failed: ${error?.message || error || "unknown error"}`;
+      }
+    } finally {
+      setBusyState(trigger, false);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     initializeTabs();
     initializeDraftForms();
@@ -1220,6 +1293,18 @@
     if (externalLink instanceof HTMLAnchorElement) {
       event.preventDefault();
       openExternalLinkInChrome(externalLink.href);
+      return;
+    }
+    const openPrintConfig = event.target.closest("[data-print-config-open]");
+    if (openPrintConfig) {
+      event.preventDefault();
+      openPrintConfigModal();
+      return;
+    }
+    const closePrintConfig = event.target.closest("[data-print-config-close]");
+    if (closePrintConfig) {
+      event.preventDefault();
+      closePrintConfigModal();
       return;
     }
     const imageTrigger = event.target.closest("[data-image-preview]");
@@ -1316,6 +1401,11 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
+    if (form.id === "share-print-config-form") {
+      event.preventDefault();
+      submitPrintConfig(form, event.submitter instanceof HTMLElement ? event.submitter : form);
+      return;
+    }
     if (!form.hasAttribute("hx-get") && !form.hasAttribute("hx-post") && !form.hasAttribute("hx-put")) {
       return;
     }
@@ -1378,6 +1468,7 @@
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      closePrintConfigModal();
       closeTextContextMenu();
       closeImageViewer();
       const panel = document.querySelector("[data-floating-nav-panel]");
@@ -1403,6 +1494,11 @@
     openTextContextMenu(editableTarget instanceof HTMLElement ? editableTarget : document.activeElement, event.clientX, event.clientY);
   });
   document.addEventListener("mousedown", (event) => {
+    const modal = printConfigModal();
+    if (modal && event.target === modal) {
+      closePrintConfigModal();
+      return;
+    }
     const stage = event.target.closest("[data-image-stage]");
     if (!(stage instanceof HTMLElement) || imageViewerState.zoom <= 1) {
       return;

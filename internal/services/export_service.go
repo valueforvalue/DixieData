@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/xuri/excelize/v2"
 )
 
 const exportBatchSize = 500
@@ -33,6 +35,29 @@ var pdfURLPattern = regexp.MustCompile(`https?://[^\s<]+`)
 type ExportService struct {
 	db      *db.DB
 	soldier *SoldierService
+}
+
+type PrintSettings struct {
+	SortBy                       string `json:"sortBy"`
+	GroupByUnit                  bool   `json:"groupByUnit"`
+	GroupByPensionState          bool   `json:"groupByPensionState"`
+	GroupByConfederateHomeStatus bool   `json:"groupByConfederateHomeStatus"`
+}
+
+const (
+	PrintSortLastName  = "last_name"
+	PrintSortBirthYear = "birth_year"
+	PrintSortDeathYear = "death_year"
+)
+
+func (s PrintSettings) Normalize() PrintSettings {
+	s.SortBy = strings.TrimSpace(strings.ToLower(s.SortBy))
+	switch s.SortBy {
+	case PrintSortBirthYear, PrintSortDeathYear:
+	default:
+		s.SortBy = PrintSortLastName
+	}
+	return s
 }
 
 type ExportMetadata struct {
@@ -1161,6 +1186,262 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 	return enc.Encode(payload)
 }
 
+func (e *ExportService) ExportExcel(outputPath string) error {
+	const (
+		archiveSheet  = "Archive Export"
+		metadataSheet = "Metadata"
+		spouseSheet   = "Linked Spouses"
+	)
+
+	soldiers, err := exportDetailedSoldiers(e.soldier)
+	if err != nil {
+		return err
+	}
+	sort.Slice(soldiers, func(i, j int) bool {
+		leftLast := strings.ToLower(strings.TrimSpace(soldiers[i].LastName))
+		rightLast := strings.ToLower(strings.TrimSpace(soldiers[j].LastName))
+		if leftLast != rightLast {
+			return leftLast < rightLast
+		}
+		leftName := strings.ToLower(strings.TrimSpace(soldierFullName(soldiers[i])))
+		rightName := strings.ToLower(strings.TrimSpace(soldierFullName(soldiers[j])))
+		if leftName != rightName {
+			return leftName < rightName
+		}
+		return strings.ToLower(strings.TrimSpace(soldiers[i].DisplayID)) < strings.ToLower(strings.TrimSpace(soldiers[j].DisplayID))
+	})
+
+	workbook := excelize.NewFile()
+	workbook.SetSheetName(workbook.GetSheetName(0), archiveSheet)
+	workbook.NewSheet(metadataSheet)
+	workbook.NewSheet(spouseSheet)
+
+	headerStyle, textStyle, dateStyle, wrapStyle, err := excelExportStyles(workbook)
+	if err != nil {
+		return err
+	}
+
+	metadata := newExportMetadata("xlsx", buildinfo.XLSXExportVersion)
+	spouseIndex := map[int64]models.Soldier{}
+	for _, soldier := range soldiers {
+		spouseIndex[soldier.ID] = soldier
+	}
+
+	metadataHeaders := []string{"app_version", "schema_version", "export_version", "generated_at", "format"}
+	metadataValues := []string{
+		metadata.AppVersion,
+		fmt.Sprintf("%d", metadata.SchemaVersion),
+		fmt.Sprintf("%d", metadata.Version),
+		metadata.GeneratedAt,
+		metadata.Format,
+	}
+	metadataWidths, err := writeExcelHeaderRow(workbook, metadataSheet, metadataHeaders, headerStyle)
+	if err != nil {
+		return err
+	}
+	for index, value := range metadataValues {
+		cell, _ := excelize.CoordinatesToCellName(index+1, 2)
+		if err := workbook.SetCellValue(metadataSheet, cell, value); err != nil {
+			return err
+		}
+		if err := workbook.SetCellStyle(metadataSheet, cell, cell, textStyle); err != nil {
+			return err
+		}
+		updateExcelColumnWidth(metadataWidths, index, value)
+	}
+	if err := finalizeExcelSheet(workbook, metadataSheet, metadataWidths, 2); err != nil {
+		return err
+	}
+
+	archiveHeaders := []string{
+		"app_version", "schema_version", "export_version", "generated_at",
+		"db_id", "display_id", "entry_type",
+		"linked_spouse_db_id", "linked_spouse_display_id", "linked_spouse_name",
+		"maiden_name", "is_generated", "pension_id", "application_id",
+		"prefix", "first_name", "middle_name", "last_name", "suffix",
+		"rank", "rank_in", "rank_out", "unit", "pension_state",
+		"confederate_home_status", "confederate_home_name",
+		"birth_date", "death_date", "birth_info", "buried_in", "notes",
+		"added_by", "last_edited_by", "last_edited_fields", "last_edited_at",
+		"created_at", "updated_at", "records_count", "images_count",
+	}
+	archiveWidths, err := writeExcelHeaderRow(workbook, archiveSheet, archiveHeaders, headerStyle)
+	if err != nil {
+		return err
+	}
+	for rowIndex, soldier := range soldiers {
+		rowNumber := rowIndex + 2
+		spouse, spouseLinked := spouseIndex[soldier.SpouseSoldierID]
+		linkedSpouseDisplayID := ""
+		linkedSpouseName := strings.TrimSpace(soldier.SpouseName)
+		if spouseLinked {
+			linkedSpouseDisplayID = strings.TrimSpace(spouse.DisplayID)
+			if linkedSpouseName == "" {
+				linkedSpouseName = strings.TrimSpace(soldierFullName(spouse))
+			}
+		}
+		values := []string{
+			metadata.AppVersion,
+			fmt.Sprintf("%d", metadata.SchemaVersion),
+			fmt.Sprintf("%d", metadata.Version),
+			metadata.GeneratedAt,
+			fmt.Sprintf("%d", soldier.ID),
+			soldier.DisplayID,
+			soldier.EntryType,
+			func() string {
+				if soldier.SpouseSoldierID <= 0 {
+					return ""
+				}
+				return fmt.Sprintf("%d", soldier.SpouseSoldierID)
+			}(),
+			linkedSpouseDisplayID,
+			linkedSpouseName,
+			soldier.MaidenName,
+			fmt.Sprintf("%t", soldier.IsGenerated),
+			soldier.PensionID,
+			soldier.ApplicationID,
+			soldier.Prefix,
+			soldier.FirstName,
+			soldier.MiddleName,
+			soldier.LastName,
+			soldier.Suffix,
+			soldier.Rank,
+			soldier.RankIn,
+			soldier.RankOut,
+			soldier.Unit,
+			soldier.PensionState,
+			soldier.ConfederateHomeStatus,
+			soldier.ConfederateHomeName,
+			soldier.BirthDate,
+			soldier.DeathDate,
+			soldier.BirthInfo,
+			soldier.BuriedIn,
+			soldier.Notes,
+			soldier.AddedBy,
+			soldier.LastEditedBy,
+			soldier.LastEditedFields,
+			soldier.LastEditedAt,
+			soldier.CreatedAt,
+			soldier.UpdatedAt,
+			fmt.Sprintf("%d", len(soldier.Records)),
+			fmt.Sprintf("%d", len(soldier.Images)),
+		}
+		for columnIndex, value := range values {
+			cell, _ := excelize.CoordinatesToCellName(columnIndex+1, rowNumber)
+			switch archiveHeaders[columnIndex] {
+			case "db_id", "records_count", "images_count", "schema_version", "export_version":
+				parsed, parseErr := strconv.Atoi(value)
+				if parseErr == nil {
+					if err := workbook.SetCellValue(archiveSheet, cell, parsed); err != nil {
+						return err
+					}
+				} else if err := workbook.SetCellValue(archiveSheet, cell, value); err != nil {
+					return err
+				}
+			case "birth_date", "death_date":
+				displayValue, err := setExcelHistoricalDateCell(workbook, archiveSheet, cell, value, dateStyle, textStyle)
+				if err != nil {
+					return err
+				}
+				updateExcelColumnWidth(archiveWidths, columnIndex, displayValue)
+				continue
+			case "display_id", "linked_spouse_display_id", "app_version", "generated_at", "entry_type", "linked_spouse_name", "maiden_name", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at":
+				if err := workbook.SetCellValue(archiveSheet, cell, value); err != nil {
+					return err
+				}
+				if err := workbook.SetCellStyle(archiveSheet, cell, cell, textStyle); err != nil {
+					return err
+				}
+				if archiveHeaders[columnIndex] == "birth_info" || archiveHeaders[columnIndex] == "notes" || archiveHeaders[columnIndex] == "last_edited_fields" {
+					if err := workbook.SetCellStyle(archiveSheet, cell, cell, wrapStyle); err != nil {
+						return err
+					}
+				}
+			case "is_generated":
+				if err := workbook.SetCellValue(archiveSheet, cell, soldier.IsGenerated); err != nil {
+					return err
+				}
+			default:
+				if err := workbook.SetCellValue(archiveSheet, cell, value); err != nil {
+					return err
+				}
+			}
+			updateExcelColumnWidth(archiveWidths, columnIndex, value)
+		}
+	}
+	if err := finalizeExcelSheet(workbook, archiveSheet, archiveWidths, len(soldiers)+1); err != nil {
+		return err
+	}
+
+	spouseHeaders := []string{
+		"record_display_id", "record_name", "record_entry_type",
+		"linked_spouse_db_id", "linked_spouse_display_id", "linked_spouse_name", "linked_spouse_entry_type",
+		"maiden_name",
+	}
+	spouseWidths, err := writeExcelHeaderRow(workbook, spouseSheet, spouseHeaders, headerStyle)
+	if err != nil {
+		return err
+	}
+	spouseRow := 2
+	for _, soldier := range soldiers {
+		if soldier.SpouseSoldierID <= 0 && strings.TrimSpace(soldier.SpouseName) == "" && strings.TrimSpace(soldier.MaidenName) == "" {
+			continue
+		}
+		spouse, spouseLinked := spouseIndex[soldier.SpouseSoldierID]
+		rowValues := []string{
+			soldier.DisplayID,
+			soldierDisplayName(soldier),
+			displayEntryType(soldier),
+			func() string {
+				if soldier.SpouseSoldierID <= 0 {
+					return ""
+				}
+				return fmt.Sprintf("%d", soldier.SpouseSoldierID)
+			}(),
+			func() string {
+				if spouseLinked {
+					return spouse.DisplayID
+				}
+				return ""
+			}(),
+			func() string {
+				if strings.TrimSpace(soldier.SpouseName) != "" {
+					return soldier.SpouseName
+				}
+				if spouseLinked {
+					return soldierFullName(spouse)
+				}
+				return ""
+			}(),
+			func() string {
+				if spouseLinked {
+					return displayEntryType(spouse)
+				}
+				return ""
+			}(),
+			soldier.MaidenName,
+		}
+		for columnIndex, value := range rowValues {
+			cell, _ := excelize.CoordinatesToCellName(columnIndex+1, spouseRow)
+			if err := workbook.SetCellValue(spouseSheet, cell, value); err != nil {
+				return err
+			}
+			if err := workbook.SetCellStyle(spouseSheet, cell, cell, textStyle); err != nil {
+				return err
+			}
+			updateExcelColumnWidth(spouseWidths, columnIndex, value)
+		}
+		spouseRow++
+	}
+	if err := finalizeExcelSheet(workbook, spouseSheet, spouseWidths, spouseRow-1); err != nil {
+		return err
+	}
+
+	activeSheet, _ := workbook.GetSheetIndex(archiveSheet)
+	workbook.SetActiveSheet(activeSheet)
+	return workbook.SaveAs(outputPath)
+}
+
 func (e *ExportService) ExportICalendar(outputPath string) error {
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -1174,13 +1455,14 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 	}
 
 	now := time.Now()
+	dtstamp := now.UTC()
 	for _, line := range []string{
 		"BEGIN:VCALENDAR",
 		"VERSION:2.0",
-		fmt.Sprintf("PRODID:-//%s v%s//Anniversaries v%d//EN", buildinfo.AppName, buildinfo.AppVersion, buildinfo.ICalendarExportVersion),
+		fmt.Sprintf("PRODID:-//%s v%s//Memorial Anniversaries v%d//EN", buildinfo.AppName, buildinfo.AppVersion, buildinfo.ICalendarExportVersion),
 		"CALSCALE:GREGORIAN",
 		"METHOD:PUBLISH",
-		"X-WR-CALNAME:DixieData Anniversaries",
+		"X-WR-CALNAME:DixieData Memorial Anniversaries",
 		fmt.Sprintf("X-DIXIEDATA-APP-VERSION:%s", buildinfo.AppVersion),
 		fmt.Sprintf("X-DIXIEDATA-SCHEMA-VERSION:%d", buildinfo.SchemaVersion),
 		fmt.Sprintf("X-DIXIEDATA-EXPORT-VERSION:%d", buildinfo.ICalendarExportVersion),
@@ -1197,18 +1479,42 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 		start := nextGoogleAnniversaryDate(soldier, now)
 		start = time.Date(start.Year(), start.Month(), start.Day(), 9, 0, 0, 0, time.Local)
 		end := start.Add(time.Hour)
-		description := fmt.Sprintf("Database Number: %s\nUnit: %s\nBuried In: %s\nOriginal Death Date: %s\nGenerated by DixieData.",
-			soldier.DisplayID,
-			soldier.Unit,
-			soldier.BuriedIn,
-			soldierDeathLine(soldier),
-		)
+		description := strings.Join(compactICalendarDescriptionLines(
+			"Record ID: "+emptyPDFValue(strings.TrimSpace(soldier.DisplayID)),
+			"Entry Type: "+displayEntryType(soldier),
+			"Full Name: "+emptyPDFValue(strings.TrimSpace(recordPDFTitle(soldier))),
+			func() string {
+				rank := strings.TrimSpace(displaySoldierRank(soldier))
+				if rank == "" {
+					return ""
+				}
+				return "Rank: " + rank
+			}(),
+			func() string {
+				rankIn := strings.TrimSpace(soldier.RankIn)
+				if rankIn == "" {
+					return ""
+				}
+				return "Rank In: " + rankIn
+			}(),
+			func() string {
+				rankOut := strings.TrimSpace(soldier.RankOut)
+				if rankOut == "" {
+					return ""
+				}
+				return "Rank Out: " + rankOut
+			}(),
+			"Unit: "+emptyPDFValue(strings.TrimSpace(soldier.Unit)),
+			"Buried In: "+emptyPDFValue(strings.TrimSpace(soldier.BuriedIn)),
+			"Original Death Date: "+emptyPDFValue(soldierDeathLine(soldier)),
+			"Generated by DixieData.",
+		), "\n")
 
 		lines := []string{
 			"BEGIN:VEVENT",
 			fmt.Sprintf("UID:%s", icalText("dixiedata-"+strings.ToLower(soldier.DisplayID)+"@dixiedata.local")),
-			fmt.Sprintf("DTSTAMP:%s", now.Format("20060102T150405Z")),
-			fmt.Sprintf("SUMMARY:%s", icalText("DixieData Anniversary: "+soldierDisplayName(soldier))),
+			fmt.Sprintf("DTSTAMP:%s", dtstamp.Format("20060102T150405Z")),
+			fmt.Sprintf("SUMMARY:%s", icalText("Memorial Anniversary: "+soldierDisplayName(soldier))),
 			fmt.Sprintf("DESCRIPTION:%s", icalText(description)),
 			fmt.Sprintf("DTSTART:%s", start.Format("20060102T150405")),
 			fmt.Sprintf("DTEND:%s", end.Format("20060102T150405")),
@@ -1218,12 +1524,12 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 			"BEGIN:VALARM",
 			"TRIGGER:-P1D",
 			"ACTION:DISPLAY",
-			fmt.Sprintf("DESCRIPTION:%s", icalText("Upcoming anniversary for "+soldierDisplayName(soldier))),
+			fmt.Sprintf("DESCRIPTION:%s", icalText("Upcoming memorial anniversary for "+soldierDisplayName(soldier))),
 			"END:VALARM",
 			"BEGIN:VALARM",
 			"TRIGGER:-PT1H",
 			"ACTION:DISPLAY",
-			fmt.Sprintf("DESCRIPTION:%s", icalText("Anniversary in one hour for "+soldierDisplayName(soldier))),
+			fmt.Sprintf("DESCRIPTION:%s", icalText("Memorial anniversary in one hour for "+soldierDisplayName(soldier))),
 			"END:VALARM",
 			"END:VEVENT",
 		}
@@ -1320,6 +1626,143 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	return nil
 }
 
+func excelExportStyles(workbook *excelize.File) (int, int, int, int, error) {
+	headerStyle, err := workbook.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true, Color: "22303D"},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"F2EDE1"}, Pattern: 1},
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "8D7440", Style: 1},
+		},
+		Alignment: &excelize.Alignment{Vertical: "center"},
+	})
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	textStyle, err := workbook.NewStyle(&excelize.Style{
+		NumFmt:    49,
+		Alignment: &excelize.Alignment{Vertical: "top"},
+	})
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	dateStyle, err := workbook.NewStyle(&excelize.Style{
+		CustomNumFmt: excelStringPtr("mm/dd/yyyy"),
+		Alignment:    &excelize.Alignment{Vertical: "top"},
+	})
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	wrapStyle, err := workbook.NewStyle(&excelize.Style{
+		NumFmt: 49,
+		Alignment: &excelize.Alignment{
+			Vertical: "top",
+			WrapText: true,
+		},
+	})
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	return headerStyle, textStyle, dateStyle, wrapStyle, nil
+}
+
+func writeExcelHeaderRow(workbook *excelize.File, sheet string, headers []string, headerStyle int) ([]float64, error) {
+	widths := make([]float64, len(headers))
+	for index, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(index+1, 1)
+		if err := workbook.SetCellValue(sheet, cell, header); err != nil {
+			return nil, err
+		}
+		if err := workbook.SetCellStyle(sheet, cell, cell, headerStyle); err != nil {
+			return nil, err
+		}
+		updateExcelColumnWidth(widths, index, header)
+	}
+	return widths, nil
+}
+
+func finalizeExcelSheet(workbook *excelize.File, sheet string, widths []float64, rowCount int) error {
+	if rowCount > 0 && len(widths) > 0 {
+		lastColumn, _ := excelize.ColumnNumberToName(len(widths))
+		if err := workbook.AutoFilter(sheet, fmt.Sprintf("A1:%s%d", lastColumn, rowCount), []excelize.AutoFilterOptions{}); err != nil {
+			return err
+		}
+	}
+	for index, width := range widths {
+		column, _ := excelize.ColumnNumberToName(index + 1)
+		if err := workbook.SetColWidth(sheet, column, column, width); err != nil {
+			return err
+		}
+	}
+	return workbook.SetPanes(sheet, &excelize.Panes{
+		Freeze:      true,
+		Split:       false,
+		XSplit:      0,
+		YSplit:      1,
+		TopLeftCell: "A2",
+		ActivePane:  "bottomLeft",
+	})
+}
+
+func updateExcelColumnWidth(widths []float64, index int, value string) {
+	if index < 0 || index >= len(widths) {
+		return
+	}
+	estimated := float64(len(strings.TrimSpace(value)))*1.15 + 2
+	if estimated < 10 {
+		estimated = 10
+	}
+	if estimated > 64 {
+		estimated = 64
+	}
+	if estimated > widths[index] {
+		widths[index] = estimated
+	}
+}
+
+func setExcelHistoricalDateCell(workbook *excelize.File, sheet, cell, canonical string, dateStyle, textStyle int) (string, error) {
+	if dateValue, ok := excelDateValue(canonical); ok {
+		if err := workbook.SetCellValue(sheet, cell, dateValue); err != nil {
+			return "", err
+		}
+		if err := workbook.SetCellStyle(sheet, cell, cell, dateStyle); err != nil {
+			return "", err
+		}
+		return dateValue.Format("01/02/2006"), nil
+	}
+	if err := workbook.SetCellValue(sheet, cell, canonical); err != nil {
+		return "", err
+	}
+	if err := workbook.SetCellStyle(sheet, cell, cell, textStyle); err != nil {
+		return "", err
+	}
+	return canonical, nil
+}
+
+func excelDateValue(canonical string) (time.Time, bool) {
+	partial, err := dates.ParseCanonical(strings.TrimSpace(canonical))
+	if err != nil {
+		return time.Time{}, false
+	}
+	if partial.Year <= 0 || partial.Month <= 0 || partial.Day <= 0 {
+		return time.Time{}, false
+	}
+	return time.Date(partial.Year, time.Month(partial.Month), partial.Day, 0, 0, 0, 0, time.UTC), true
+}
+
+func compactICalendarDescriptionLines(lines ...string) []string {
+	compacted := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			compacted = append(compacted, trimmed)
+		}
+	}
+	return compacted
+}
+
+func excelStringPtr(value string) *string {
+	return &value
+}
+
 func (e *ExportService) StaticArchiveFileName(now time.Time) (string, error) {
 	owner, err := e.staticArchiveOwner()
 	if err != nil {
@@ -1375,15 +1818,11 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 }
 
 func (e *ExportService) ExportImages(outputPath string, images []models.Image) error {
-	f, err := os.Create(outputPath)
-	if err != nil {
+	if err := os.MkdirAll(outputPath, 0o755); err != nil {
 		return err
 	}
-	defer f.Close()
 
-	zipWriter := zip.NewWriter(f)
-	defer zipWriter.Close()
-
+	usedNames := map[string]bool{}
 	for _, image := range images {
 		source, err := os.Open(image.FilePath)
 		if err != nil {
@@ -1394,14 +1833,18 @@ func (e *ExportService) ExportImages(outputPath string, images []models.Image) e
 		if entryName == "" {
 			entryName = filepath.Base(image.FilePath)
 		}
-
-		entry, err := zipWriter.Create(entryName)
+		destPath := uniqueCopiedImagePath(outputPath, entryName, usedNames)
+		target, err := os.Create(destPath)
 		if err != nil {
 			source.Close()
 			return err
 		}
-
-		if _, err := io.Copy(entry, source); err != nil {
+		if _, err := io.Copy(target, source); err != nil {
+			target.Close()
+			source.Close()
+			return err
+		}
+		if err := target.Close(); err != nil {
 			source.Close()
 			return err
 		}
@@ -1409,6 +1852,32 @@ func (e *ExportService) ExportImages(outputPath string, images []models.Image) e
 	}
 
 	return nil
+}
+
+func uniqueCopiedImagePath(rootDir, fileName string, usedNames map[string]bool) string {
+	base := strings.TrimSpace(fileName)
+	if base == "" {
+		base = "image"
+	}
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	if stem == "" {
+		stem = "image"
+	}
+	candidate := base
+	index := 2
+	for {
+		fullPath := filepath.Join(rootDir, candidate)
+		key := strings.ToLower(candidate)
+		if !usedNames[key] {
+			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+				usedNames[key] = true
+				return fullPath
+			}
+		}
+		candidate = fmt.Sprintf("%s-%d%s", stem, index, ext)
+		index++
+	}
 }
 
 func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier) error {
@@ -1476,7 +1945,8 @@ func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int
 	return pdf.OutputFileAndClose(outputPath)
 }
 
-func (e *ExportService) ExportFullDatabasePDF(outputPath string) error {
+func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintSettings) error {
+	settings = settings.Normalize()
 	pdf, err := e.brandedPDFDocument("L", "Printable Archive Registry", "database-pdf", buildinfo.DatabasePDFExportVersion)
 	if err != nil {
 		return err
@@ -1484,32 +1954,38 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string) error {
 	pdf.AddPage()
 	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with one landscape record page per entry. Images are intentionally omitted.")
 
-	soldiers, err := exportSoldiers(e.soldier)
+	soldiers, err := exportDetailedSoldiers(e.soldier)
 	if err != nil {
 		return err
 	}
 	if len(soldiers) == 0 {
 		writePDFBody(pdf, "No records are currently stored in this archive.")
-		writePDFExportMetadata(pdf, "database-pdf", buildinfo.DatabasePDFExportVersion, map[string]string{"Includes Images": "false"})
+		writePDFExportMetadata(pdf, "database-pdf", buildinfo.DatabasePDFExportVersion, printablePDFMetadataDetails(settings))
 		return pdf.OutputFileAndClose(outputPath)
 	}
 
-	for _, item := range soldiers {
-		soldier, err := e.soldier.GetByID(item.ID)
-		if err != nil {
-			return err
+	sortPrintableSoldiers(soldiers, settings)
+	groupOrder := selectedPrintGroups(settings)
+	lastGroupValues := map[string]string{}
+	firstRecord := true
+
+	for _, soldier := range soldiers {
+		for _, groupChange := range changedPrintGroups(lastGroupValues, soldier, groupOrder, firstRecord) {
+			pdf.AddPage()
+			writePDFGroupDividerPage(pdf, groupChange.Label, groupChange.Value, groupChange.Level)
 		}
+		firstRecord = false
 		pdf.AddPage()
 		writePDFTitleBlock(
 			pdf,
-			recordPDFTitle(*soldier),
-			fmt.Sprintf("%s | %s | Images omitted in printable export", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(*soldier)),
+			recordPDFTitle(soldier),
+			fmt.Sprintf("%s | %s | Images omitted in printable export", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)),
 		)
-		writePDFRecordCard(pdf, *soldier, false)
+		writePDFRecordCard(pdf, soldier, false)
 	}
 
 	pdf.AddPage()
-	writePDFExportMetadata(pdf, "database-pdf", buildinfo.DatabasePDFExportVersion, map[string]string{"Includes Images": "false"})
+	writePDFExportMetadata(pdf, "database-pdf", buildinfo.DatabasePDFExportVersion, printablePDFMetadataDetails(settings))
 	return pdf.OutputFileAndClose(outputPath)
 }
 
@@ -1602,6 +2078,256 @@ func exportSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
 		return strings.ToLower(all[i].DisplayID) < strings.ToLower(all[j].DisplayID)
 	})
 	return all, nil
+}
+
+func exportDetailedSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
+	batch, err := exportSoldiers(soldierSvc)
+	if err != nil {
+		return nil, err
+	}
+	all := make([]models.Soldier, 0, len(batch))
+	for _, item := range batch {
+		soldier, err := soldierSvc.GetByID(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, *soldier)
+	}
+	return all, nil
+}
+
+type printGroupChange struct {
+	Key   string
+	Label string
+	Value string
+	Level int
+}
+
+func printablePDFMetadataDetails(settings PrintSettings) map[string]string {
+	settings = settings.Normalize()
+	return map[string]string{
+		"Includes Images": "false",
+		"Sort By":         printableSortLabel(settings.SortBy),
+		"Group By":        printableGroupSummary(settings),
+	}
+}
+
+func printableSortLabel(sortBy string) string {
+	switch strings.TrimSpace(sortBy) {
+	case PrintSortBirthYear:
+		return "Chronological by Birth Year"
+	case PrintSortDeathYear:
+		return "Chronological by Death Year"
+	default:
+		return "Alphabetical by Last Name"
+	}
+}
+
+func printableGroupSummary(settings PrintSettings) string {
+	fields := selectedPrintGroups(settings.Normalize())
+	if len(fields) == 0 {
+		return "None"
+	}
+	labels := make([]string, 0, len(fields))
+	for _, field := range fields {
+		labels = append(labels, printGroupLabel(field))
+	}
+	return strings.Join(labels, ", ")
+}
+
+func selectedPrintGroups(settings PrintSettings) []string {
+	fields := []string{}
+	if settings.GroupByUnit {
+		fields = append(fields, "unit")
+	}
+	if settings.GroupByPensionState {
+		fields = append(fields, "pension_state")
+	}
+	if settings.GroupByConfederateHomeStatus {
+		fields = append(fields, "confederate_home_status")
+	}
+	return fields
+}
+
+func changedPrintGroups(previous map[string]string, soldier models.Soldier, groupOrder []string, firstRecord bool) []printGroupChange {
+	changes := []printGroupChange{}
+	startLevel := len(groupOrder)
+	if firstRecord {
+		startLevel = 0
+	} else {
+		for index, field := range groupOrder {
+			value := printGroupValue(soldier, field)
+			if previous[field] != value {
+				startLevel = index
+				break
+			}
+		}
+	}
+	if startLevel >= len(groupOrder) {
+		return changes
+	}
+	for index := startLevel; index < len(groupOrder); index++ {
+		field := groupOrder[index]
+		value := printGroupValue(soldier, field)
+		previous[field] = value
+		changes = append(changes, printGroupChange{
+			Key:   field,
+			Label: printGroupLabel(field),
+			Value: value,
+			Level: index,
+		})
+	}
+	return changes
+}
+
+func sortPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) {
+	settings = settings.Normalize()
+	groupOrder := selectedPrintGroups(settings)
+	sort.Slice(soldiers, func(i, j int) bool {
+		left := soldiers[i]
+		right := soldiers[j]
+
+		for _, field := range groupOrder {
+			leftValue := printGroupSortKey(left, field)
+			rightValue := printGroupSortKey(right, field)
+			if leftValue != rightValue {
+				return leftValue < rightValue
+			}
+		}
+
+		switch settings.SortBy {
+		case PrintSortBirthYear:
+			leftYear, leftHasYear := printBirthYear(left)
+			rightYear, rightHasYear := printBirthYear(right)
+			if result, decided := compareOptionalYears(leftYear, leftHasYear, rightYear, rightHasYear); decided {
+				return result
+			}
+			leftDate := strings.TrimSpace(left.BirthDate)
+			rightDate := strings.TrimSpace(right.BirthDate)
+			if leftDate != rightDate {
+				return leftDate < rightDate
+			}
+		case PrintSortDeathYear:
+			leftYear, leftHasYear := printDeathYear(left)
+			rightYear, rightHasYear := printDeathYear(right)
+			if result, decided := compareOptionalYears(leftYear, leftHasYear, rightYear, rightHasYear); decided {
+				return result
+			}
+			leftDate := strings.TrimSpace(left.DeathDate)
+			rightDate := strings.TrimSpace(right.DeathDate)
+			if leftDate != rightDate {
+				return leftDate < rightDate
+			}
+		default:
+			leftLast := strings.ToLower(strings.TrimSpace(left.LastName))
+			rightLast := strings.ToLower(strings.TrimSpace(right.LastName))
+			if leftLast != rightLast {
+				return leftLast < rightLast
+			}
+		}
+
+		leftName := strings.ToLower(strings.TrimSpace(soldierFullName(left)))
+		rightName := strings.ToLower(strings.TrimSpace(soldierFullName(right)))
+		if leftName != rightName {
+			return leftName < rightName
+		}
+		return strings.ToLower(strings.TrimSpace(left.DisplayID)) < strings.ToLower(strings.TrimSpace(right.DisplayID))
+	})
+}
+
+func compareOptionalYears(left int, leftOK bool, right int, rightOK bool) (bool, bool) {
+	switch {
+	case leftOK && rightOK && left != right:
+		return left < right, true
+	case leftOK != rightOK:
+		return leftOK, true
+	default:
+		return false, false
+	}
+}
+
+func printBirthYear(soldier models.Soldier) (int, bool) {
+	if year := printYearFromCanonical(strings.TrimSpace(soldier.BirthDate)); year > 0 {
+		return year, true
+	}
+	if year := firstFourDigitYear(strings.TrimSpace(soldier.BirthInfo)); year > 0 {
+		return year, true
+	}
+	return 0, false
+}
+
+func printDeathYear(soldier models.Soldier) (int, bool) {
+	if soldier.DeathYear > 0 {
+		return soldier.DeathYear, true
+	}
+	if year := printYearFromCanonical(strings.TrimSpace(soldier.DeathDate)); year > 0 {
+		return year, true
+	}
+	return 0, false
+}
+
+func printYearFromCanonical(value string) int {
+	if len(value) < 4 {
+		return 0
+	}
+	year := strings.TrimSpace(value[len(value)-4:])
+	if len(year) != 4 {
+		return 0
+	}
+	if year == "0000" {
+		return 0
+	}
+	parsed, err := strconv.Atoi(year)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func firstFourDigitYear(value string) int {
+	match := regexp.MustCompile(`\b(1[0-9]{3}|20[0-9]{2})\b`).FindString(value)
+	if match == "" {
+		return 0
+	}
+	parsed, err := strconv.Atoi(match)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func printGroupLabel(field string) string {
+	switch field {
+	case "unit":
+		return "Unit"
+	case "pension_state":
+		return "Pension State"
+	case "confederate_home_status":
+		return "Confederate Home Status"
+	default:
+		return "Group"
+	}
+}
+
+func printGroupSortKey(soldier models.Soldier, field string) string {
+	return strings.ToLower(printGroupValue(soldier, field))
+}
+
+func printGroupValue(soldier models.Soldier, field string) string {
+	switch field {
+	case "unit":
+		return emptyPDFValue(strings.TrimSpace(soldier.Unit))
+	case "pension_state":
+		return emptyPDFValue(strings.TrimSpace(soldier.PensionState))
+	case "confederate_home_status":
+		value := strings.TrimSpace(soldier.ConfederateHomeStatus)
+		if value == "" {
+			return "None"
+		}
+		return value
+	default:
+		return "Not recorded"
+	}
 }
 
 func (e *ExportService) staticArchiveOwner() (staticArchiveOwner, error) {
@@ -2074,6 +2800,21 @@ func wrappedPDFMultilineCount(pdf *fpdf.Fpdf, text string, width float64, family
 	return count
 }
 
+func writePDFGroupDividerPage(pdf *fpdf.Fpdf, label, value string, level int) {
+	pdf.SetY(maxFloat(pdf.GetY(), 46))
+	pdf.SetFont("Helvetica", "B", 11)
+	pdf.SetTextColor(141, 116, 64)
+	pdf.CellFormat(0, 7, sanitizePDFText("Grouped by "+label), "", 1, "L", false, 0, "")
+	pdf.Ln(float64(level) * 2)
+	pdf.SetFont("Times", "B", maxFloat(20, 28-float64(level)*2))
+	pdf.SetTextColor(34, 48, 61)
+	pdf.MultiCell(0, 11, sanitizePDFText(emptyPDFValue(value)), "", "L", false)
+	pdf.Ln(2)
+	pdf.SetFont("Helvetica", "", 10)
+	pdf.SetTextColor(68, 82, 96)
+	pdf.MultiCell(0, 6, sanitizePDFText("The following record pages belong to this section."), "", "L", false)
+}
+
 func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bool) {
 	startY := pdf.GetY()
 	pageWidth, _ := pdf.GetPageSize()
@@ -2166,9 +2907,12 @@ func writePDFImagePanel(pdf *fpdf.Fpdf, x, y, width float64, imagePath, label st
 	panelHeight := layout.ImagePanelHeight
 	pdf.SetDrawColor(141, 116, 64)
 	pdf.Rect(x, panelY, width, panelHeight, "D")
-	pdf.ImageOptions(imagePath, x+2, panelY+2, width-4, panelHeight-14, false, fpdf.ImageOptions{
-		ImageType: strings.TrimPrefix(strings.ToLower(filepath.Ext(imagePath)), "."),
-	}, 0, "")
+	imageX, imageY, imageWidth, imageHeight, ok := fitPDFImageToBounds(imagePath, x+2, panelY+2, width-4, panelHeight-14)
+	if ok {
+		pdf.ImageOptions(imagePath, imageX, imageY, imageWidth, imageHeight, false, fpdf.ImageOptions{
+			ImageType: strings.TrimPrefix(strings.ToLower(filepath.Ext(imagePath)), "."),
+		}, 0, "")
+	}
 	pdf.SetXY(x+2, panelY+panelHeight-10)
 	pdf.SetFont("Helvetica", "", layout.ImageLabelFontSize)
 	pdf.SetTextColor(68, 82, 96)
@@ -2454,6 +3198,7 @@ func splitPDFURLSuffix(value string) (string, string) {
 
 func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {
 	const thumbnailWidth = 34.0
+	const thumbnailHeight = 22.0
 	const rowHeight = 36.0
 
 	_, pageHeight := pdf.GetPageSize()
@@ -2464,13 +3209,15 @@ func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {
 	x := pdf.GetX()
 	y := pdf.GetY()
 	imagePath := imagePathForPDF(image)
+	pdf.Rect(x, y, thumbnailWidth, thumbnailHeight, "D")
 
 	if imagePath != "" {
-		pdf.ImageOptions(imagePath, x, y, thumbnailWidth, 0, false, fpdf.ImageOptions{
-			ImageType: strings.TrimPrefix(strings.ToLower(filepath.Ext(imagePath)), "."),
-		}, 0, "")
-	} else {
-		pdf.Rect(x, y, thumbnailWidth, 22, "D")
+		imageX, imageY, imageWidth, imageHeight, ok := fitPDFImageToBounds(imagePath, x, y, thumbnailWidth, thumbnailHeight)
+		if ok {
+			pdf.ImageOptions(imagePath, imageX, imageY, imageWidth, imageHeight, false, fpdf.ImageOptions{
+				ImageType: strings.TrimPrefix(strings.ToLower(filepath.Ext(imagePath)), "."),
+			}, 0, "")
+		}
 	}
 
 	pdf.SetXY(x+thumbnailWidth+4, y)
@@ -2687,6 +3434,38 @@ func imagePathForPDF(image models.Image) string {
 		return ""
 	}
 	return candidate
+}
+
+func fitPDFImageToBounds(imagePath string, x, y, maxWidth, maxHeight float64) (float64, float64, float64, float64, bool) {
+	if maxWidth <= 0 || maxHeight <= 0 {
+		return x, y, 0, 0, false
+	}
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return x, y, 0, 0, false
+	}
+	defer file.Close()
+
+	config, _, err := image.DecodeConfig(file)
+	if err != nil || config.Width <= 0 || config.Height <= 0 {
+		return x, y, 0, 0, false
+	}
+
+	width := float64(config.Width)
+	height := float64(config.Height)
+	scale := maxWidth / width
+	if height*scale > maxHeight {
+		scale = maxHeight / height
+	}
+	if scale <= 0 {
+		return x, y, 0, 0, false
+	}
+
+	fittedWidth := width * scale
+	fittedHeight := height * scale
+	fittedX := x + (maxWidth-fittedWidth)/2
+	fittedY := y + (maxHeight-fittedHeight)/2
+	return fittedX, fittedY, fittedWidth, fittedHeight, true
 }
 
 func validPDFImage(path string) bool {

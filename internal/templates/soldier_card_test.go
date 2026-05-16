@@ -47,3 +47,37 @@ func TestSoldierListShowsExpandedAdvancedSearchFields(t *testing.T) {
 		}
 	}
 }
+
+func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:               42,
+		DisplayID:        "STC38-00001",
+		FirstName:        "John",
+		LastName:         "Taylor",
+		AddedBy:          "STC38",
+		LastEditedBy:     "MDC42",
+		LastEditedAt:     "2026-05-16T18:05:00Z",
+		LastEditedFields: "Unit changed from \"4th OK Inf.\" to \"1st OK Cav.\".\nRecords updated.",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Record Metadata &amp; History",
+		"Created By",
+		"Last Updated By",
+		"Last Update Time",
+		"STC38",
+		"MDC42",
+		"May 16, 2026",
+		"Unit changed from &#34;4th OK Inf.&#34; to &#34;1st OK Cav.&#34;.",
+		"Records updated.",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("metadata/history panel missing %s", needle)
+		}
+	}
+}

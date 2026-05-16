@@ -20,6 +20,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/services"
 )
 
 type scratchpadStub struct {
@@ -110,6 +111,26 @@ func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"app":"DixieData"`) || !strings.Contains(rec.Body.String(), `"build_identity"`) {
 		t.Fatalf("version body = %q", rec.Body.String())
+	}
+}
+
+func TestParsePrintSettingsRequest(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
+		"sort_by":                          {"birth_year"},
+		"group_by_unit":                    {"1"},
+		"group_by_confederate_home_status": {"1"},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	settings, err := parsePrintSettingsRequest(req)
+	if err != nil {
+		t.Fatalf("parsePrintSettingsRequest: %v", err)
+	}
+	if settings.SortBy != services.PrintSortBirthYear {
+		t.Fatalf("SortBy = %q", settings.SortBy)
+	}
+	if !settings.GroupByUnit || !settings.GroupByConfederateHomeStatus || settings.GroupByPensionState {
+		t.Fatalf("unexpected parsed settings: %#v", settings)
 	}
 }
 
@@ -370,10 +391,10 @@ func TestSelectedSoldierImagesUsesSelectedIDs(t *testing.T) {
 	}
 }
 
-func TestImageArchiveNameUsesDisplayID(t *testing.T) {
-	name := imageArchiveName(models.Soldier{DisplayID: "PENSION 42"})
-	if name != "PENSION-42-images.zip" {
-		t.Fatalf("archive name = %q", name)
+func TestImageExportFolderNameUsesDisplayID(t *testing.T) {
+	name := imageExportFolderName(models.Soldier{DisplayID: "PENSION 42"})
+	if name != "PENSION-42_Images" {
+		t.Fatalf("folder name = %q", name)
 	}
 }
 

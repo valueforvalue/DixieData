@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
@@ -69,6 +70,49 @@ func emptyDetail(value string) string {
 		return "Not recorded"
 	}
 	return value
+}
+
+func formatAuditTimestamp(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	for _, layout := range []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04:05"} {
+		if parsed, err := time.Parse(layout, trimmed); err == nil {
+			return parsed.Local().Format("Jan 2, 2006 3:04 PM")
+		}
+	}
+	return trimmed
+}
+
+func auditHistoryLines(value string) []string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	parts := []string{}
+	if strings.Contains(trimmed, "\n") {
+		parts = strings.Split(trimmed, "\n")
+	} else {
+		parts = strings.Split(trimmed, ",")
+	}
+	lines := make([]string, 0, len(parts))
+	for _, part := range parts {
+		item := strings.TrimSpace(part)
+		if item == "" {
+			continue
+		}
+		if strings.Contains(item, " changed from ") || strings.HasSuffix(item, ".") {
+			lines = append(lines, item)
+			continue
+		}
+		label := strings.TrimSpace(strings.ReplaceAll(item, "_", " "))
+		if label == "" {
+			continue
+		}
+		lines = append(lines, strings.Title(label)+" updated.")
+	}
+	return lines
 }
 
 templ SoldierList(soldiers []models.Soldier, page, total int, query string, suggestions models.SoldierFormSuggestions) {
@@ -248,14 +292,38 @@ templ SoldierDetail(s models.Soldier) {
 					<dt class="text-slate-500">Death</dt><dd>{ deathDate(s) }</dd>
 					<dt class="text-slate-500">Birth Info</dt><dd>{ emptyDetail(s.BirthInfo) }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
-					<dt class="text-slate-500">Added By</dt><dd>{ emptyDetail(s.AddedBy) }</dd>
-					<dt class="text-slate-500">Last Edited By</dt><dd>{ emptyDetail(s.LastEditedBy) }</dd>
-					<dt class="text-slate-500">Last Edited At</dt><dd>{ emptyDetail(s.LastEditedAt) }</dd>
-					<dt class="text-slate-500">Last Edited Fields</dt><dd>{ emptyDetail(s.LastEditedFields) }</dd>
 				</dl>
 				if s.Notes != "" {
 					@LinkedText(s.Notes, "mt-4 text-sm text-slate-600 leading-6")
 				}
+				<details class="mt-5 overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)]">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Record Metadata &amp; History</p>
+							<p class="mt-1 text-sm text-slate-500">Created/updated provenance and the latest tracked field changes.</p>
+						</div>
+						<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Expand</span>
+					</summary>
+					<div class="border-t border-[rgba(141,116,64,0.28)] px-4 py-4">
+						<dl class="responsive-two-col grid gap-2 text-sm">
+							<dt class="text-slate-500">Created By</dt><dd>{ emptyDetail(s.AddedBy) }</dd>
+							<dt class="text-slate-500">Last Updated By</dt><dd>{ emptyDetail(s.LastEditedBy) }</dd>
+							<dt class="text-slate-500">Last Update Time</dt><dd>{ emptyDetail(formatAuditTimestamp(s.LastEditedAt)) }</dd>
+						</dl>
+						<div class="mt-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Recent Field Changes</p>
+							if len(auditHistoryLines(s.LastEditedFields)) == 0 {
+								<p class="mt-2 text-sm text-slate-500">No tracked field changes are available for this record.</p>
+							} else {
+								<ul class="mt-3 space-y-2 text-sm text-slate-600">
+									for _, line := range auditHistoryLines(s.LastEditedFields) {
+										<li class="rounded-xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2 leading-6">{ line }</li>
+									}
+								</ul>
+							}
+						</div>
+					</div>
+				</details>
 				<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.75)] p-4">
 					<div class="flex flex-wrap gap-3">
 						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" class="primary-button px-5 py-3 text-base">Export PDF Report</button>
