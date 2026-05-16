@@ -75,27 +75,42 @@ type JSONExportDocument struct {
 }
 
 type StaticArchiveRecord struct {
-	DisplayID    string                     `json:"displayId"`
-	EntryType    string                     `json:"entryType"`
-	Name         string                     `json:"name"`
-	Dates        string                     `json:"dates"`
-	Rank         string                     `json:"rank,omitempty"`
-	RankIn       string                     `json:"rankIn,omitempty"`
-	RankOut      string                     `json:"rankOut,omitempty"`
-	Unit         string                     `json:"unit,omitempty"`
-	Location     string                     `json:"location,omitempty"`
-	Notes        string                     `json:"notes,omitempty"`
-	MaidenName   string                     `json:"maidenName,omitempty"`
-	SpouseName   string                     `json:"spouseName,omitempty"`
-	PensionID    string                     `json:"pensionId,omitempty"`
-	AppID        string                     `json:"appId,omitempty"`
-	PensionState string                     `json:"pensionState,omitempty"`
-	HomeStatus   string                     `json:"homeStatus,omitempty"`
-	HomeName     string                     `json:"homeName,omitempty"`
-	ImagePath    string                     `json:"imagePath,omitempty"`
-	Images       []StaticArchiveImage       `json:"images,omitempty"`
-	Records      []StaticArchiveRecordEntry `json:"records,omitempty"`
-	DisplayType  string                     `json:"displayType"`
+	DisplayID        string                     `json:"displayId"`
+	EntryType        string                     `json:"entryType"`
+	DisplayType      string                     `json:"displayType"`
+	Name             string                     `json:"name"`
+	Dates            string                     `json:"dates"`
+	Prefix           string                     `json:"prefix,omitempty"`
+	FirstName        string                     `json:"firstName,omitempty"`
+	MiddleName       string                     `json:"middleName,omitempty"`
+	LastName         string                     `json:"lastName,omitempty"`
+	Suffix           string                     `json:"suffix,omitempty"`
+	Rank             string                     `json:"rank,omitempty"`
+	RankIn           string                     `json:"rankIn,omitempty"`
+	RankOut          string                     `json:"rankOut,omitempty"`
+	Unit             string                     `json:"unit,omitempty"`
+	Location         string                     `json:"location,omitempty"`
+	BirthDate        string                     `json:"birthDate,omitempty"`
+	DeathDate        string                     `json:"deathDate,omitempty"`
+	BirthInfo        string                     `json:"birthInfo,omitempty"`
+	Notes            string                     `json:"notes,omitempty"`
+	MaidenName       string                     `json:"maidenName,omitempty"`
+	SpouseName       string                     `json:"spouseName,omitempty"`
+	SpouseDisplayID  string                     `json:"spouseDisplayId,omitempty"`
+	PensionID        string                     `json:"pensionId,omitempty"`
+	AppID            string                     `json:"appId,omitempty"`
+	PensionState     string                     `json:"pensionState,omitempty"`
+	HomeStatus       string                     `json:"homeStatus,omitempty"`
+	HomeName         string                     `json:"homeName,omitempty"`
+	NeedsReview      bool                       `json:"needsReview,omitempty"`
+	ReviewReason     string                     `json:"reviewReason,omitempty"`
+	AddedBy          string                     `json:"addedBy,omitempty"`
+	LastEditedBy     string                     `json:"lastEditedBy,omitempty"`
+	LastEditedAt     string                     `json:"lastEditedAt,omitempty"`
+	LastEditedFields string                     `json:"lastEditedFields,omitempty"`
+	ImagePath        string                     `json:"imagePath,omitempty"`
+	Images           []StaticArchiveImage       `json:"images,omitempty"`
+	Records          []StaticArchiveRecordEntry `json:"records,omitempty"`
 }
 
 type StaticArchiveImage struct {
@@ -134,7 +149,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ .ArchiveTitle }}</title>
-  <script defer src="./data.js"></script>
+  <script defer src="./archive_data.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -541,6 +556,36 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       text-underline-offset: 2px;
     }
 
+    .related-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .related-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .related-card {
+      border: 1px solid rgba(141, 116, 64, 0.24);
+      border-radius: 18px;
+      background: rgba(255, 251, 241, 0.72);
+      padding: 12px 14px;
+    }
+
+    .related-card strong {
+      color: var(--ink);
+    }
+
+    .detail-grid.compact {
+      margin-top: 10px;
+      gap: 8px 10px;
+      font-size: 0.9rem;
+    }
+
     .image-overlay {
       position: fixed;
       inset: 0;
@@ -766,8 +811,22 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         record.homeName,
         record.location,
         record.name,
+        record.prefix,
+        record.firstName,
+        record.middleName,
+        record.lastName,
+        record.suffix,
         record.maidenName,
         record.spouseName,
+        record.spouseDisplayId,
+        record.birthDate,
+        record.deathDate,
+        record.birthInfo,
+        record.reviewReason,
+        record.addedBy,
+        record.lastEditedBy,
+        record.lastEditedAt,
+        record.lastEditedFields,
         record.notes,
         recordText
         ].filter(Boolean).join(' ').toLowerCase();
@@ -784,13 +843,31 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       });
     }
 
-    function renderRecord(record, index) {
+    function detailValue(value) {
+      const text = String(value || '').trim();
+      return text || 'Not recorded';
+    }
+
+    function detailLink(displayId) {
+      return '#record=' + encodeURIComponent(String(displayId || '').trim());
+    }
+
+    function relatedFamilyRecords(record, allRecords) {
+      return Array.isArray(allRecords) ? allRecords.filter(function(item) {
+        return item.displayId !== record.displayId && item.spouseDisplayId && item.spouseDisplayId === record.displayId;
+      }) : [];
+    }
+
+    function renderRecord(record, index, allRecords) {
+      const relatedFamily = relatedFamilyRecords(record, allRecords);
       return '' +
         '<article class="record-row" data-record-index="' + index + '">' +
           '<div class="row-main">' +
             '<div class="row-meta">' +
               '<span class="pill">' + escapeHtml(record.displayType) + '</span>' +
               '<span class="pill">' + escapeHtml(record.displayId) + '</span>' +
+              (record.spouseDisplayId || relatedFamily.length ? '<span class="pill">Family Linked</span>' : '') +
+              (record.needsReview ? '<span class="pill">Needs Review</span>' : '') +
             '</div>' +
             '<h3 class="row-title">' + escapeHtml(record.name) + '</h3>' +
             '<div class="row-summary">' +
@@ -804,38 +881,62 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         '</article>';
     }
 
-    function renderDetail(record) {
+    function renderDetail(record, allRecords) {
+      const spouseLink = record.spouseDisplayId
+        ? '<a class="image-button" href="' + detailLink(record.spouseDisplayId) + '">Open Linked Soldier</a>'
+        : '';
+      const relatedFamily = relatedFamilyRecords(record, allRecords);
       const details = [
+        ['Record Type', detailValue(record.displayType)],
+        ['Record ID', detailValue(record.displayId)],
+        ['Prefix', detailValue(record.prefix)],
+        ['First Name', detailValue(record.firstName)],
+        ['Middle Name', detailValue(record.middleName)],
+        ['Last Name', detailValue(record.lastName)],
+        ['Suffix', detailValue(record.suffix)],
         ['Dates', record.dates || 'Not recorded'],
-        ['Rank', record.rankOut || record.rank || record.rankIn || 'Not recorded'],
-        ['Unit', record.unit || 'Not recorded'],
-        ['Location', record.location || 'Not recorded'],
-        ['Record ID', record.displayId || 'Not recorded']
+        ['Birth Date', detailValue(record.birthDate)],
+        ['Death Date', detailValue(record.deathDate)],
+        ['Birth Info', detailValue(record.birthInfo)],
+        ['Buried In', detailValue(record.location)]
       ];
-      if (record.spouseName) {
-        details.push(['Married To', record.spouseName]);
-      }
-      if (record.maidenName) {
-        details.push(['Maiden Name', record.maidenName]);
-      }
-      if (record.homeStatus) {
-        details.push(['Confederate Home Status', record.homeStatus]);
-      }
-      if (record.homeName) {
-        details.push(['Confederate Home Name', record.homeName]);
-      }
-      if (record.pensionId) {
-        details.push(['Pension ID', record.pensionId]);
-      }
-      if (record.appId) {
-        details.push(['Application ID', record.appId]);
-      }
-      if (record.pensionState) {
-        details.push(['Pension State', record.pensionState]);
+      if (record.entryType === 'wife' || record.entryType === 'widow') {
+        details.push(['Married To', detailValue(record.spouseName)]);
+        details.push(['Linked Soldier Record', detailValue(record.spouseDisplayId)]);
+        details.push(['Maiden Name', detailValue(record.maidenName)]);
+        if (record.entryType === 'widow') {
+          details.push(['Pension ID', detailValue(record.pensionId)]);
+          details.push(['Application ID', detailValue(record.appId)]);
+        }
+      } else {
+        details.push(['Rank', detailValue(record.rankOut || record.rank || record.rankIn)]);
+        details.push(['Rank In', detailValue(record.rankIn)]);
+        details.push(['Rank Out', detailValue(record.rankOut || record.rank)]);
+        details.push(['Unit', detailValue(record.unit)]);
+        details.push(['Pension State', detailValue(record.pensionState)]);
+        details.push(['Confederate Home Status', detailValue(record.homeStatus)]);
+        details.push(['Confederate Home Name', detailValue(record.homeName)]);
+        details.push(['Pension ID', detailValue(record.pensionId)]);
+        details.push(['Application ID', detailValue(record.appId)]);
       }
 
       const primarySections = [];
       const sideSections = [];
+      if (spouseLink || relatedFamily.length) {
+        primarySections.push(
+          '<section class="detail-section"><h4>Family Links</h4>' +
+            (spouseLink ? '<div class="related-links">' + spouseLink + '</div>' : '') +
+            (relatedFamily.length ? '<div class="related-list">' + relatedFamily.map(function(item) {
+              return '' +
+                '<div class="related-card">' +
+                  '<strong>' + escapeHtml(item.name) + '</strong>' +
+                  '<p>' + escapeHtml(item.displayType + ' • ' + item.displayId) + '</p>' +
+                  '<div class="related-links"><a class="image-button" href="' + detailLink(item.displayId) + '">Open Related Record</a></div>' +
+                '</div>';
+            }).join('') + '</div>' : '') +
+          '</section>'
+        );
+      }
       if (record.notes) {
         primarySections.push('<section class="detail-section"><h4>Notes</h4><p>' + escapeHtml(record.notes) + '</p></section>');
       }
@@ -850,6 +951,16 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           '</ul></section>'
         );
       }
+      sideSections.push(
+        '<section class="detail-section"><h4>Archive Metadata</h4><dl class="detail-grid compact">' +
+          '<dt>Review Status</dt><dd>' + escapeHtml(record.needsReview ? 'Needs Review' : 'Clean') + '</dd>' +
+          '<dt>Review Reason</dt><dd>' + escapeHtml(detailValue(record.reviewReason)) + '</dd>' +
+          '<dt>Added By</dt><dd>' + escapeHtml(detailValue(record.addedBy)) + '</dd>' +
+          '<dt>Last Edited By</dt><dd>' + escapeHtml(detailValue(record.lastEditedBy)) + '</dd>' +
+          '<dt>Last Edited At</dt><dd>' + escapeHtml(detailValue(record.lastEditedAt)) + '</dd>' +
+          '<dt>Last Edited Fields</dt><dd>' + escapeHtml(detailValue(record.lastEditedFields)) + '</dd>' +
+        '</dl></section>'
+      );
       if (record.images && record.images.length) {
         sideSections.push(
           '<section class="detail-section"><h4>Images</h4><div class="image-list">' +
@@ -873,6 +984,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           '<div class="row-meta">' +
             '<span class="pill">' + escapeHtml(record.displayType) + '</span>' +
             '<span class="pill">' + escapeHtml(record.displayId) + '</span>' +
+            (record.needsReview ? '<span class="pill">Needs Review</span>' : '') +
           '</div>' +
           '<h3>' + escapeHtml(record.name) + '</h3>' +
         '</div>' +
@@ -913,7 +1025,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     function showDetailScreen(record, index, visibleCount) {
       document.getElementById('archive-list-screen').classList.add('hidden');
       document.getElementById('archive-detail-screen').classList.remove('hidden');
-      document.getElementById('detail-content').innerHTML = renderDetail(record);
+      document.getElementById('detail-content').innerHTML = renderDetail(record, records);
       document.getElementById('detail-position').textContent = 'Record ' + (index + 1) + ' of ' + visibleCount;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1001,7 +1113,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       const count = document.getElementById('result-count');
 
       results.innerHTML = filtered.map(function(item) {
-        return renderRecord(item.record, item.index);
+        return renderRecord(item.record, item.index, records);
       }).join('');
       empty.style.display = filtered.length ? 'none' : 'block';
       count.textContent = filtered.length + (filtered.length === 1 ? ' record' : ' records');
@@ -1009,7 +1121,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-      const records = Array.isArray(window.archiveData) ? window.archiveData : [];
+      const records = Array.isArray(window.DIXIE_DATA) ? window.DIXIE_DATA : [];
       const searchInput = document.getElementById('archive-search');
       const previewStage = document.getElementById('image-preview-stage');
       let filteredRecords = updateResults(records, '');
@@ -1796,8 +1908,8 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	if err != nil {
 		return err
 	}
-	dataJS := "const archiveData = " + string(dataPayload) + ";\nwindow.archiveData = archiveData;\n"
-	if err := os.WriteFile(filepath.Join(exportRoot, "data.js"), []byte(dataJS), 0o644); err != nil {
+	dataJS := "window.DIXIE_DATA = " + string(dataPayload) + ";\n"
+	if err := os.WriteFile(filepath.Join(exportRoot, "archive_data.js"), []byte(dataJS), 0o644); err != nil {
 		return err
 	}
 
@@ -1809,6 +1921,9 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 		GeneratedAt:  time.Now().Format("January 2, 2006"),
 	})
 	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(exportRoot, "viewer.html"), []byte(indexHTML), 0o644); err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(exportRoot, "index.html"), []byte(indexHTML), 0o644); err != nil {
@@ -2417,13 +2532,20 @@ func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	records := make([]StaticArchiveRecord, 0, len(batch))
+	fullSoldiers := make([]models.Soldier, 0, len(batch))
+	idIndex := make(map[int64]models.Soldier, len(batch))
 	for _, item := range batch {
 		soldier, err := e.soldier.GetByID(item.ID)
 		if err != nil {
 			return nil, err
 		}
-		records = append(records, newStaticArchiveRecord(*soldier))
+		fullSoldier := *soldier
+		fullSoldiers = append(fullSoldiers, fullSoldier)
+		idIndex[fullSoldier.ID] = fullSoldier
+	}
+	records := make([]StaticArchiveRecord, 0, len(fullSoldiers))
+	for _, soldier := range fullSoldiers {
+		records = append(records, newStaticArchiveRecord(soldier, idIndex))
 	}
 	sort.Slice(records, func(i, j int) bool {
 		left := strings.ToLower(records[i].Name + " " + records[i].DisplayID)
@@ -2433,34 +2555,62 @@ func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 	return records, nil
 }
 
-func newStaticArchiveRecord(soldier models.Soldier) StaticArchiveRecord {
+func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Soldier) StaticArchiveRecord {
 	record := StaticArchiveRecord{
-		DisplayID:    strings.TrimSpace(soldier.DisplayID),
-		EntryType:    strings.TrimSpace(soldier.EntryType),
-		DisplayType:  displayEntryType(soldier),
-		Name:         soldierDisplayName(soldier),
-		Dates:        staticArchiveDateSummary(soldier),
-		Rank:         strings.TrimSpace(soldier.Rank),
-		RankIn:       strings.TrimSpace(soldier.RankIn),
-		RankOut:      strings.TrimSpace(soldier.RankOut),
-		Unit:         strings.TrimSpace(soldier.Unit),
-		Location:     strings.TrimSpace(soldier.BuriedIn),
-		Notes:        strings.TrimSpace(soldier.Notes),
-		MaidenName:   strings.TrimSpace(soldier.MaidenName),
-		SpouseName:   strings.TrimSpace(soldier.SpouseName),
-		PensionID:    strings.TrimSpace(soldier.PensionID),
-		AppID:        strings.TrimSpace(soldier.ApplicationID),
-		PensionState: strings.TrimSpace(soldier.PensionState),
-		HomeStatus:   strings.TrimSpace(soldier.ConfederateHomeStatus),
-		HomeName:     strings.TrimSpace(soldier.ConfederateHomeName),
-		Images:       make([]StaticArchiveImage, 0, len(soldier.Images)),
-		Records:      make([]StaticArchiveRecordEntry, 0, len(soldier.Records)),
+		DisplayID:        strings.TrimSpace(soldier.DisplayID),
+		EntryType:        strings.TrimSpace(soldier.EntryType),
+		DisplayType:      displayEntryType(soldier),
+		Name:             soldierDisplayName(soldier),
+		Dates:            staticArchiveDateSummary(soldier),
+		Prefix:           strings.TrimSpace(soldier.Prefix),
+		FirstName:        strings.TrimSpace(soldier.FirstName),
+		MiddleName:       strings.TrimSpace(soldier.MiddleName),
+		LastName:         strings.TrimSpace(soldier.LastName),
+		Suffix:           strings.TrimSpace(soldier.Suffix),
+		Rank:             strings.TrimSpace(soldier.Rank),
+		RankIn:           strings.TrimSpace(soldier.RankIn),
+		RankOut:          strings.TrimSpace(soldier.RankOut),
+		Unit:             strings.TrimSpace(soldier.Unit),
+		Location:         strings.TrimSpace(soldier.BuriedIn),
+		BirthDate:        strings.TrimSpace(dates.Display(soldier.BirthDate)),
+		DeathDate:        strings.TrimSpace(dates.Display(soldier.DeathDate)),
+		BirthInfo:        strings.TrimSpace(soldier.BirthInfo),
+		Notes:            strings.TrimSpace(soldier.Notes),
+		MaidenName:       strings.TrimSpace(soldier.MaidenName),
+		SpouseName:       strings.TrimSpace(soldier.SpouseName),
+		PensionID:        strings.TrimSpace(soldier.PensionID),
+		AppID:            strings.TrimSpace(soldier.ApplicationID),
+		PensionState:     strings.TrimSpace(soldier.PensionState),
+		HomeStatus:       strings.TrimSpace(soldier.ConfederateHomeStatus),
+		HomeName:         strings.TrimSpace(soldier.ConfederateHomeName),
+		NeedsReview:      soldier.NeedsReview,
+		ReviewReason:     strings.TrimSpace(soldier.ReviewReason),
+		AddedBy:          strings.TrimSpace(soldier.AddedBy),
+		LastEditedBy:     strings.TrimSpace(soldier.LastEditedBy),
+		LastEditedAt:     strings.TrimSpace(soldier.LastEditedAt),
+		LastEditedFields: strings.TrimSpace(soldier.LastEditedFields),
+		Images:           make([]StaticArchiveImage, 0, len(soldier.Images)),
+		Records:          make([]StaticArchiveRecordEntry, 0, len(soldier.Records)),
 	}
 	if record.HomeStatus == "None" {
 		record.HomeStatus = ""
 	}
 	if record.PensionState == "None" {
 		record.PensionState = ""
+	}
+	if strings.EqualFold(record.BirthDate, "Not recorded") {
+		record.BirthDate = ""
+	}
+	if strings.EqualFold(record.DeathDate, "Not recorded") {
+		record.DeathDate = ""
+	}
+	if soldier.SpouseSoldierID > 0 {
+		if linked, ok := idIndex[soldier.SpouseSoldierID]; ok {
+			record.SpouseDisplayID = strings.TrimSpace(linked.DisplayID)
+			if record.SpouseName == "" {
+				record.SpouseName = soldierDisplayName(linked)
+			}
+		}
 	}
 	for _, image := range soldier.Images {
 		filePath := staticArchiveImagePath(image.FilePath)

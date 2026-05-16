@@ -83,12 +83,6 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	id, _ := res.LastInsertId()
 	soldier.ID = id
 
-	_, err = tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, soldier_rank) VALUES (?,?,?,?,?)`,
-		id, searchableFirstName(soldier), searchableLastName(soldier), searchableUnit(soldier), searchableRank(soldier))
-	if err != nil {
-		return nil, err
-	}
-
 	if err := replaceRecords(tx, soldier.ID, soldier.SyncID, soldier.Records); err != nil {
 		return nil, err
 	}
@@ -151,6 +145,7 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 		soldier.Images = append(soldier.Images, img)
 	}
 	soldier.SpouseName = spouseReference(conn, soldier.SpouseSoldierID)
+	soldier.SpouseDisplayID = spouseDisplayID(conn, soldier.SpouseSoldierID)
 
 	return soldier, nil
 }
@@ -192,17 +187,6 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
 		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.ID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(`INSERT INTO soldiers_fts(soldiers_fts, rowid) VALUES('delete', ?)`,
-		soldier.ID)
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(`INSERT INTO soldiers_fts(rowid, first_name, last_name, unit, soldier_rank) VALUES (?,?,?,?,?)`,
-		soldier.ID, searchableFirstName(soldier), searchableLastName(soldier), searchableUnit(soldier), searchableRank(soldier))
 	if err != nil {
 		return err
 	}
@@ -384,14 +368,95 @@ func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.
 
 	offset := (page - 1) * pageSize
 	soldiers, total, err := s.searchWithFTS(query, pageSize, offset)
-	if err == nil {
+	if err != nil {
+		return nil, 0, err
+	}
+	if total > 0 {
 		return soldiers, total, nil
 	}
 	return s.searchWithLike(query, pageSize, offset)
 }
 
+func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]models.Soldier, int, error) {
+	if err := s.db.SyncScratchpadSearchIndex(); err != nil {
+		return nil, 0, err
+	}
+	conn := s.db.Conn()
+	matchQuery := ftsSearchExpression(query)
+	if matchQuery == "" {
+		return []models.Soldier{}, 0, nil
+	}
+	recordArgs := recordSearchLikeArgs(query)
+
+	var total int
+	err := conn.QueryRow(`
+		SELECT COUNT(*) FROM (
+			SELECT soldier_id AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
+			UNION
+			SELECT soldier_id AS id FROM records WHERE `+recordSearchLikeClause()+`
+		) matches
+	`, append([]interface{}{matchQuery}, recordArgs...)...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rowArgs := append(append([]interface{}{matchQuery}, recordArgs...), pageSize, offset)
+	rows, err := conn.Query(`
+		WITH matches AS (
+			SELECT soldier_id,
+				COALESCE(snippet(soldiers_fts, 18, '', '', '...', 12), '') AS notes_snippet,
+				COALESCE(snippet(soldiers_fts, 19, '', '', '...', 12), '') AS scratch_snippet,
+				bm25(soldiers_fts) AS score
+			FROM soldiers_fts
+			WHERE soldiers_fts MATCH ?
+			UNION
+			SELECT soldier_id, '', '', 1000.0
+			FROM records
+			WHERE `+recordSearchLikeClause()+`
+		)
+		SELECT `+soldierSelectColumns+`, COALESCE(MAX(notes_snippet), ''), COALESCE(MAX(scratch_snippet), '')
+		FROM soldiers
+		JOIN matches ON matches.soldier_id = soldiers.id
+		GROUP BY soldiers.id
+		ORDER BY MIN(score), last_name, first_name
+		LIMIT ? OFFSET ?
+	`, rowArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	soldiers := []models.Soldier{}
+	for rows.Next() {
+		var (
+			soldier        models.Soldier
+			notesSnippet   string
+			scratchSnippet string
+		)
+		if err := rows.Scan(append(soldierScanDest(&soldier), &notesSnippet, &scratchSnippet)...); err != nil {
+			return nil, 0, err
+		}
+		hydrateLegacyDeathParts(&soldier)
+		normalizeConfederateHomeFields(&soldier)
+		if snippetContainsQuery(notesSnippet, query) {
+			soldier.SearchMatchField = "Notes"
+			soldier.SearchMatchSnippet = strings.TrimSpace(notesSnippet)
+		} else if snippetContainsQuery(scratchSnippet, query) {
+			soldier.SearchMatchField = "Scratch Pad"
+			soldier.SearchMatchSnippet = strings.TrimSpace(scratchSnippet)
+		} else {
+			soldier.SearchMatchField, soldier.SearchMatchSnippet = quickSearchMatch(soldier, quickSearchTerms(query))
+		}
+		soldiers = append(soldiers, soldier)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return soldiers, total, nil
+}
+
 func quickSearchLikeClause() string {
-	return `display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR prefix LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR suffix LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR confederate_home_status LIKE ? OR confederate_home_name LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ? OR EXISTS (
+	return `display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR prefix LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR suffix LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR confederate_home_status LIKE ? OR confederate_home_name LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ? OR notes LIKE ? OR EXISTS (
 		SELECT 1 FROM records
 		WHERE records.soldier_id = soldiers.id
 			AND (record_type LIKE ? OR app_id LIKE ? OR details LIKE ?)
@@ -405,46 +470,9 @@ func quickSearchLikeArgs(query string) []interface{} {
 		like, like, like, like, like,
 		like, like, like, like,
 		like, like, like,
-		like, like,
+		like, like, like,
 		like, like, like,
 	}
-}
-
-func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]models.Soldier, int, error) {
-	conn := s.db.Conn()
-	likeArgs := quickSearchLikeArgs(query)
-
-	var total int
-	err := conn.QueryRow(`
-		SELECT COUNT(*) FROM (
-			SELECT id FROM soldiers WHERE `+quickSearchLikeClause()+`
-			UNION
-			SELECT rowid AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
-		) matches
-	`, append(likeArgs, query)...).Scan(&total)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	rowArgs := append(append([]interface{}{}, likeArgs...), query, pageSize, offset)
-	rows, err := conn.Query(`
-		SELECT `+soldierSelectColumns+`
-		FROM soldiers
-		WHERE id IN (
-			SELECT id FROM soldiers WHERE `+quickSearchLikeClause()+`
-			UNION
-			SELECT rowid AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
-		)
-		ORDER BY last_name, first_name
-		LIMIT ? OFFSET ?
-	`, rowArgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	soldiers, err := scanSoldiers(rows)
-	return annotateQuickSearchMatches(soldiers, query), total, err
 }
 
 func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]models.Soldier, int, error) {
@@ -477,6 +505,44 @@ func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]m
 	return annotateQuickSearchMatches(soldiers, query), total, err
 }
 
+func recordSearchLikeClause() string {
+	return `record_type LIKE ? OR app_id LIKE ? OR details LIKE ?`
+}
+
+func recordSearchLikeArgs(query string) []interface{} {
+	like := "%" + query + "%"
+	return []interface{}{like, like, like}
+}
+
+func ftsSearchExpression(query string) string {
+	terms := quickSearchTerms(query)
+	if len(terms) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(terms))
+	for _, term := range terms {
+		trimmed := strings.TrimSpace(term)
+		if trimmed == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf(`"%s"*`, strings.ReplaceAll(trimmed, `"`, `""`)))
+	}
+	return strings.Join(parts, " AND ")
+}
+
+func snippetContainsQuery(snippet, query string) bool {
+	if strings.TrimSpace(snippet) == "" {
+		return false
+	}
+	lowerSnippet := strings.ToLower(snippet)
+	for _, term := range quickSearchTerms(query) {
+		if term != "" && strings.Contains(lowerSnippet, term) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1
@@ -486,6 +552,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	}
 
 	search.DisplayID = strings.TrimSpace(search.DisplayID)
+	search.EntryType = strings.TrimSpace(strings.ToLower(search.EntryType))
 	search.FirstName = strings.TrimSpace(search.FirstName)
 	search.MiddleName = strings.TrimSpace(search.MiddleName)
 	search.LastName = strings.TrimSpace(search.LastName)
@@ -565,6 +632,13 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 
 	if search.DisplayID != "" {
 		appendContainsFilter("display_id", search.DisplayID)
+	}
+	switch search.EntryType {
+	case "soldier":
+		whereParts = append(whereParts, "(entry_type IS NULL OR TRIM(entry_type) = '' OR LOWER(TRIM(entry_type)) = 'soldier')")
+	case "wife", "widow":
+		whereParts = append(whereParts, "LOWER(TRIM(entry_type)) = ?")
+		args = append(args, search.EntryType)
 	}
 	if search.FirstName != "" {
 		appendContainsFilter("first_name", search.FirstName)
@@ -780,6 +854,34 @@ func soldierSearchRank(soldier models.Soldier) string {
 		}
 	}
 	return ""
+}
+
+func (s *SoldierService) ManualComparison(leftID, rightID int64) (*DuplicateAuditComparison, error) {
+	if leftID < 1 || rightID < 1 || leftID == rightID {
+		return nil, fmt.Errorf("choose two different records to compare")
+	}
+	leftSoldier, err := s.GetByID(leftID)
+	if err != nil {
+		return nil, err
+	}
+	rightSoldier, err := s.GetByID(rightID)
+	if err != nil {
+		return nil, err
+	}
+	fields := buildDuplicateAuditComparisonFields(*leftSoldier, *rightSoldier, map[string]struct{}{})
+	for index := range fields {
+		fields[index].Highlighted = fields[index].LeftValue != fields[index].RightValue
+	}
+	return &DuplicateAuditComparison{
+		PageTitle:    "Record Comparison",
+		BackHref:     "/soldiers",
+		BackLabel:    "Back",
+		Reason:       "Manual side-by-side comparison of two selected records.",
+		Status:       "manual",
+		LeftSoldier:  *leftSoldier,
+		RightSoldier: *rightSoldier,
+		Fields:       fields,
+	}, nil
 }
 
 func replaceRecords(tx *sql.Tx, soldierID int64, soldierSyncID string, records []models.Record) error {
@@ -1109,6 +1211,17 @@ func spouseReference(conn *sql.DB, spouseSoldierID int64) string {
 		return strings.TrimSpace(displayID)
 	}
 	return ""
+}
+
+func spouseDisplayID(conn *sql.DB, spouseSoldierID int64) string {
+	if spouseSoldierID < 1 {
+		return ""
+	}
+	var displayID string
+	if err := conn.QueryRow(`SELECT display_id FROM soldiers WHERE id = ?`, spouseSoldierID).Scan(&displayID); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(displayID)
 }
 
 func normalizeDisplayID(displayID, nodePrefix string) string {

@@ -41,6 +41,9 @@ type Soldier struct {
 	UpdatedAt             string   `json:"updated_at"`
 	SearchMatchField      string   `json:"-"`
 	SearchMatchSnippet    string   `json:"-"`
+	SpouseDisplayID       string   `json:"-"`
+	BackLinkURL           string   `json:"-"`
+	BackLinkLabel         string   `json:"-"`
 	Records               []Record `json:"records,omitempty"`
 	Images                []Image  `json:"images,omitempty"`
 }
@@ -59,6 +62,7 @@ type SoldierSearch struct {
 	Query                 string
 	Browse                bool
 	DisplayID             string
+	EntryType             string
 	FirstName             string
 	MiddleName            string
 	LastName              string
@@ -104,11 +108,12 @@ type ScrapedRelative struct {
 }
 
 type FindAGraveScrapeState struct {
-	Input        string
-	SourceLabel  string
-	ErrorMessage string
-	WarningLines []string
-	Spouses      []ScrapedRelative
+	Input           string
+	SourceLabel     string
+	ErrorMessage    string
+	WarningLines    []string
+	Spouses         []ScrapedRelative
+	ConfidenceScore int
 }
 
 type Record struct {

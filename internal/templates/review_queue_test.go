@@ -76,3 +76,41 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewQueueCompareViewSupportsManualComparison(t *testing.T) {
+	var buf bytes.Buffer
+	err := ReviewQueueCompareView(services.DuplicateAuditComparison{
+		PageTitle:   "Record Comparison",
+		BackHref:    "/soldiers",
+		BackLabel:   "Back",
+		Reason:      "Manual side-by-side comparison of two selected records.",
+		Status:      "manual",
+		LeftSoldier: models.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns"},
+		RightSoldier: models.Soldier{
+			DisplayID: "JCM87-00008",
+			FirstName: "Jon",
+			LastName:  "Kerns",
+		},
+		Fields: []services.DuplicateAuditComparisonField{
+			{Label: "First Name", LeftValue: "John", RightValue: "Jon", Highlighted: true},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Record Comparison",
+		"data-history-back",
+		"Back",
+		"Manual side-by-side comparison of two selected records.",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("manual comparison view missing %s", needle)
+		}
+	}
+	if strings.Contains(content, "Mark Match Resolved") {
+		t.Fatalf("manual comparison should not show resolve action: %s", content)
+	}
+}

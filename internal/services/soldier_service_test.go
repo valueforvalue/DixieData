@@ -2,9 +2,12 @@ package services
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -941,6 +944,52 @@ func TestSoldierService_SearchPagePaginates(t *testing.T) {
 	}
 }
 
+func TestSoldierService_SearchPageMatchesNotesAndScratchPad(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{
+		DisplayID: "PENSION-7777",
+		FirstName: "Thomas",
+		LastName:  "Green",
+		Notes:     "Camp ledger mentions a silver pocket watch.",
+		BirthDate: "01/01/1840",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	noteResults, total, err := svc.SearchPage("pocket watch", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage notes: %v", err)
+	}
+	if total != 1 || len(noteResults) != 1 {
+		t.Fatalf("notes search got total=%d len=%d", total, len(noteResults))
+	}
+	if noteResults[0].SearchMatchField != "Notes" || !strings.Contains(noteResults[0].SearchMatchSnippet, "pocket watch") {
+		t.Fatalf("unexpected notes match metadata: %#v", noteResults[0])
+	}
+
+	textPath, _ := appdata.ScratchpadPaths(d.DataDir(), soldier.DisplayID)
+	if err := os.MkdirAll(filepath.Dir(textPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll scratchpad: %v", err)
+	}
+	if err := os.WriteFile(textPath, []byte("Private memo about the Roswell depot."), 0o644); err != nil {
+		t.Fatalf("WriteFile scratchpad: %v", err)
+	}
+
+	scratchResults, total, err := svc.SearchPage("Roswell", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage scratchpad: %v", err)
+	}
+	if total != 1 || len(scratchResults) != 1 {
+		t.Fatalf("scratchpad search got total=%d len=%d", total, len(scratchResults))
+	}
+	if scratchResults[0].SearchMatchField != "Scratch Pad" || !strings.Contains(scratchResults[0].SearchMatchSnippet, "Roswell depot") {
+		t.Fatalf("unexpected scratchpad match metadata: %#v", scratchResults[0])
+	}
+}
+
 func TestSoldierService_AdvancedSearch(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
@@ -1222,5 +1271,94 @@ func TestSoldierService_AdvancedSearchReviewStatusAndQueue(t *testing.T) {
 	}
 	if counts.TotalSoldiers != 2 || counts.TotalWivesWidows != 0 {
 		t.Fatalf("review flags should not affect archive counts: %#v", counts)
+	}
+}
+
+func TestSoldierService_AdvancedSearchByEntryType(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "Thomas", LastName: "Avery", EntryType: "soldier"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+	wife, err := svc.Create(models.Soldier{FirstName: "Sarah", LastName: "Avery", EntryType: "wife", SpouseSoldierID: soldier.ID})
+	if err != nil {
+		t.Fatalf("Create wife: %v", err)
+	}
+	widow, err := svc.Create(models.Soldier{FirstName: "Martha", LastName: "Avery", EntryType: "widow", SpouseSoldierID: soldier.ID})
+	if err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	soldierResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "soldier"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch soldier entry type: %v", err)
+	}
+	if total != 1 || len(soldierResults) != 1 || soldierResults[0].ID != soldier.ID {
+		t.Fatalf("soldier entry-type filter returned total=%d len=%d results=%#v", total, len(soldierResults), soldierResults)
+	}
+
+	wifeResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "wife"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch wife entry type: %v", err)
+	}
+	if total != 1 || len(wifeResults) != 1 || wifeResults[0].ID != wife.ID {
+		t.Fatalf("wife entry-type filter returned total=%d len=%d results=%#v", total, len(wifeResults), wifeResults)
+	}
+
+	widowResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "widow"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch widow entry type: %v", err)
+	}
+	if total != 1 || len(widowResults) != 1 || widowResults[0].ID != widow.ID {
+		t.Fatalf("widow entry-type filter returned total=%d len=%d results=%#v", total, len(widowResults), widowResults)
+	}
+}
+
+func TestSoldierService_ManualComparison(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	left, err := svc.Create(models.Soldier{
+		DisplayID: "CMP-0001",
+		FirstName: "John",
+		LastName:  "Morris",
+		Unit:      "4th Texas Infantry",
+		BirthDate: "00/00/1838",
+	})
+	if err != nil {
+		t.Fatalf("Create left soldier: %v", err)
+	}
+	right, err := svc.Create(models.Soldier{
+		DisplayID: "CMP-0002",
+		FirstName: "Jon",
+		LastName:  "Morris",
+		Unit:      "4th Texas Infantry",
+		BirthDate: "00/00/1839",
+	})
+	if err != nil {
+		t.Fatalf("Create right soldier: %v", err)
+	}
+
+	comparison, err := svc.ManualComparison(left.ID, right.ID)
+	if err != nil {
+		t.Fatalf("ManualComparison: %v", err)
+	}
+	if comparison.PageTitle != "Record Comparison" || comparison.BackHref != "/soldiers" || comparison.BackLabel != "Back" {
+		t.Fatalf("unexpected comparison header metadata: %#v", comparison)
+	}
+	if comparison.LeftSoldier.ID != left.ID || comparison.RightSoldier.ID != right.ID {
+		t.Fatalf("unexpected comparison soldiers: %#v", comparison)
+	}
+	highlighted := false
+	for _, field := range comparison.Fields {
+		if field.Label == "First Name" && field.Highlighted && field.LeftValue == "John" && field.RightValue == "Jon" {
+			highlighted = true
+			break
+		}
+	}
+	if !highlighted {
+		t.Fatalf("expected differing fields to be highlighted: %#v", comparison.Fields)
 	}
 }

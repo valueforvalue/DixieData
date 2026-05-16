@@ -60,6 +60,9 @@ type DuplicateAuditComparisonField struct {
 type DuplicateAuditComparison struct {
 	FindingID    int64
 	FindingType  string
+	PageTitle    string
+	BackHref     string
+	BackLabel    string
 	Reason       string
 	Status       string
 	LeftSoldier  models.Soldier
@@ -381,6 +384,9 @@ func (s *AuditService) Comparison(findingID int64) (*DuplicateAuditComparison, e
 	return &DuplicateAuditComparison{
 		FindingID:    findingID,
 		FindingType:  findingType,
+		PageTitle:    "Duplicate Comparison",
+		BackHref:     "/review-queue",
+		BackLabel:    "Back to Review Queue",
 		Reason:       reason,
 		Status:       status,
 		LeftSoldier:  *leftSoldier,

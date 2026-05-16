@@ -230,18 +230,42 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	configureExportIdentity(t, database)
 
 	soldier, err := soldierSvc.Create(models.Soldier{
-		DisplayID: "PENSION-0042",
-		FirstName: "Robert",
-		LastName:  "Lee",
-		Unit:      "Army of Northern Virginia",
-		BuriedIn:  "Hollywood Cemetery",
-		Notes:     "Detailed archive note.",
+		DisplayID:        "PENSION-0042",
+		Prefix:           "Gen.",
+		FirstName:        "Robert",
+		MiddleName:       "Edward",
+		LastName:         "Lee",
+		Suffix:           "Sr.",
+		Unit:             "Army of Northern Virginia",
+		BirthDate:        "01/19/1807",
+		DeathDate:        "10/12/1870",
+		BirthInfo:        "Stratford Hall, Virginia",
+		BuriedIn:         "Hollywood Cemetery",
+		Notes:            "Detailed archive note.",
+		NeedsReview:      true,
+		ReviewReason:     "Potential duplicate from archive merge.",
+		AddedBy:          "STC38",
+		LastEditedBy:     "JCM87",
+		LastEditedAt:     "2026-05-16T16:00:00Z",
+		LastEditedFields: "notes,review_reason",
 		Records: []models.Record{
 			{RecordType: "Pension", AppID: "42", Details: "Filed in 1880."},
 		},
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+	widow, err := soldierSvc.Create(models.Soldier{
+		FirstName:       "Mary",
+		LastName:        "Lee",
+		EntryType:       "widow",
+		SpouseSoldierID: soldier.ID,
+		MaidenName:      "Custis",
+		PensionID:       "WP-42",
+		ApplicationID:   "WA-42",
+	})
+	if err != nil {
+		t.Fatalf("Create widow: %v", err)
 	}
 
 	imageRelative := filepath.ToSlash(filepath.Join("images", "PENSION-0042", "portrait.png"))
@@ -284,17 +308,29 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if _, ok := entries["index.html"]; !ok {
 		t.Fatalf("archive missing index.html: %v", entries)
 	}
-	if _, ok := entries["data.js"]; !ok {
-		t.Fatalf("archive missing data.js: %v", entries)
+	if _, ok := entries["viewer.html"]; !ok {
+		t.Fatalf("archive missing viewer.html: %v", entries)
+	}
+	if _, ok := entries["archive_data.js"]; !ok {
+		t.Fatalf("archive missing archive_data.js: %v", entries)
 	}
 	if _, ok := entries["images/PENSION-0042/portrait.png"]; !ok {
 		t.Fatalf("archive missing copied image: %v", entries)
 	}
-	if !strings.Contains(entries["data.js"], "const archiveData = [") || !strings.Contains(entries["data.js"], "./images/PENSION-0042/portrait.png") {
-		t.Fatalf("data.js missing expected archive payload: %s", entries["data.js"])
+	if !strings.Contains(entries["archive_data.js"], "window.DIXIE_DATA = [") || !strings.Contains(entries["archive_data.js"], "./images/PENSION-0042/portrait.png") {
+		t.Fatalf("archive_data.js missing expected archive payload: %s", entries["archive_data.js"])
+	}
+	if !strings.Contains(entries["archive_data.js"], `"spouseDisplayId": "PENSION-0042"`) {
+		t.Fatalf("archive_data.js missing spouse link to soldier: %s", entries["archive_data.js"])
+	}
+	if !strings.Contains(entries["archive_data.js"], widow.DisplayID) || !strings.Contains(entries["archive_data.js"], `"reviewReason": "Potential duplicate from archive merge."`) || !strings.Contains(entries["archive_data.js"], `"addedBy": "STC38"`) {
+		t.Fatalf("archive_data.js missing full-detail fields: %s", entries["archive_data.js"])
 	}
 	if !strings.Contains(entries["index.html"], "S. Carter&#39;s Civil War Research Archive") {
 		t.Fatalf("index.html missing owner title: %s", entries["index.html"])
+	}
+	if !strings.Contains(entries["viewer.html"], "Family Links") || !strings.Contains(entries["viewer.html"], "Archive Metadata") {
+		t.Fatalf("viewer.html missing expanded detail sections: %s", entries["viewer.html"])
 	}
 	if !strings.Contains(entries["index.html"], "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
 		t.Fatalf("index.html missing version/build footer")

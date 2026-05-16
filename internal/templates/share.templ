@@ -59,17 +59,29 @@ templ ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConfli
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Import & Restore</p>
 						<h3 class="mt-2 text-xl gold font-bold">Bring data back into this archive</h3>
-						<p class="mt-2 text-sm text-slate-500">Restore a full backup or merge a shared archive into your current local data.</p>
+						<p class="mt-2 text-sm text-slate-500">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p>
 					</div>
-					<div class="flex flex-col gap-3">
-						<button hx-post="/import/backup" hx-target="#share-status" hx-confirm="Load a backup and replace the current local archive?" class="primary-button justify-start text-left">
-							<div class="font-bold">Load Backup (.ddbak)</div>
-							<div class="text-xs text-slate-300">Restore a replacement archive and replace the current local archive (legacy .zip backups still supported)</div>
-						</button>
-						<button hx-post="/import/shared-archive" hx-target="#share-status" class="secondary-button justify-start text-left">
-							<div class="font-bold">Import Shared Archive (.ddshare)</div>
-							<div class="text-xs text-slate-500">Merge a shared archive into the current local database using the bundled manifest, snapshot, and images</div>
-						</button>
+					<div class="space-y-4">
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Collaborative Merge</p>
+							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a share file and you want to review conflicts instead of replacing your archive.</p>
+							<div class="mt-4">
+								<button hx-post="/import/shared-archive" hx-target="#share-status" class="primary-button justify-start text-left">
+									<div class="font-bold">Import Shared Archive (.ddshare)</div>
+									<div class="text-xs text-slate-300">Merge a shared archive into the current local database using the bundled manifest, snapshot, and images</div>
+								</button>
+							</div>
+						</div>
+						<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Replace Local Archive</p>
+							<p class="mt-2 text-sm text-[#6f2c26]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
+							<div class="mt-4">
+								<button hx-post="/import/backup" hx-target="#share-status" hx-confirm="Load a backup and replace the current local archive?" class="danger-button justify-start text-left">
+									<div class="font-bold">Load Backup (.ddbak)</div>
+									<div class="text-xs text-[#f6ddd6]">Restore a replacement archive and replace the current local archive (legacy .zip backups still supported)</div>
+								</button>
+							</div>
+						</div>
 					</div>
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
 						<strong class="text-[#22303d]">Restore caution:</strong> loading a <code>.ddbak</code> backup replaces the local archive, while importing a <code>.ddshare</code> archive stages merge conflicts for review when needed.

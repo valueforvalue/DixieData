@@ -167,6 +167,15 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 						<input type="text" name="display_id" class="field-input"/>
 					</div>
 					<div>
+						<label class="block text-sm text-slate-500 mb-1">Entry Type</label>
+						<select name="entry_type" class="field-input">
+							<option value="">All</option>
+							<option value="soldier">Soldier</option>
+							<option value="wife">Wife</option>
+							<option value="widow">Widow</option>
+						</select>
+					</div>
+					<div>
 						<label class="block text-sm text-slate-500 mb-1">Record Type</label>
 						<input type="text" name="record_type" list="advanced-record-type-suggestions" class="field-input"/>
 					</div>
@@ -275,13 +284,88 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 
 templ SoldierDetail(s models.Soldier) {
 	@Layout(soldierFullName(s)) {
-		<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
-			@SurfaceBadge(uiids.PageSoldierDetail)
-			<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-5 sm:p-8">
-				@SurfaceBadge(uiids.PanelSoldierDetailSummary)
-				<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-between">
-					<h2 class="text-2xl font-bold">{ detailHeading(s) }</h2>
-					<span class="gold text-lg font-mono">{ s.DisplayID }</span>
+			<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
+				@SurfaceBadge(uiids.PageSoldierDetail)
+				<div class="mb-4 flex flex-wrap gap-3">
+					<button
+						type="button"
+						data-history-back
+						data-fallback-href={ strings.TrimSpace(s.BackLinkURL) }
+						data-fallback-label={ backButtonLabel(s) }
+						class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+					>← { backButtonLabel(s) }</button>
+				</div>
+				<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-5 sm:p-8">
+					@SurfaceBadge(uiids.PanelSoldierDetailSummary)
+					<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+						<div>
+							<h2 class="text-2xl font-bold">{ detailHeading(s) }</h2>
+							if isSoldierEntry(s) && strings.TrimSpace(detailSubheading(s)) != "" {
+								<p class="mt-2 text-sm text-slate-600">{ detailSubheading(s) }</p>
+							}
+						</div>
+					<div class="flex flex-wrap items-center gap-2">
+						<span class="gold rounded-full border border-[rgba(141,116,64,0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
+						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link">Edit Record</a>
+						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" class="primary-button">Export PDF</button>
+						if s.SpouseSoldierID != 0 {
+							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">Compare Family Records</a>
+						}
+					</div>
+				</div>
+				<div class="mb-5 grid gap-4 lg:grid-cols-2">
+					if !isSoldierEntry(s) || s.SpouseSoldierID != 0 {
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Family &amp; Relationships</p>
+							<p class="mt-2 text-sm text-slate-600">Relationship details live here so they do not repeat in the summary area.</p>
+							if !isSoldierEntry(s) {
+								<dl class="mt-4 grid gap-2 text-sm text-slate-700">
+									<dt class="text-slate-500">Married To</dt>
+									<dd>{ emptyDetail(s.SpouseName) }</dd>
+									<dt class="text-slate-500">Linked Soldier Record</dt>
+									<dd>{ relationshipLabel(s) }</dd>
+								</dl>
+							}
+							<div class="mt-4 flex flex-wrap gap-3">
+								if s.SpouseSoldierID != 0 {
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.SpouseSoldierID, s.ID)) } class="primary-button">
+										View Husband
+									</a>
+									<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">
+										Compare Couple
+									</a>
+								}
+							</div>
+						</div>
+					}
+					<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Review Queue</p>
+						if s.NeedsReview {
+							<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(s.ReviewReason) }</p>
+						} else {
+							<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this record for follow-up research or duplicate checking and it will appear in the review queue.</p>
+						}
+						<form hx-post={ fmt.Sprintf("/soldiers/%d/review/flag", s.ID) } hx-target="#review-resolution-status" class="mt-4 space-y-3">
+							<label class="block text-sm font-medium text-[#6f2c26]">
+								Review Note
+								<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
+							</label>
+							<div class="flex flex-wrap gap-3">
+								<button type="submit" class="primary-button">
+									if s.NeedsReview {
+										Update Review Note
+									} else {
+										Send to Review Queue
+									}
+								</button>
+								if s.NeedsReview {
+									<a href="/review-queue" class="secondary-button">Open Review Queue</a>
+									<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve", s.ID) } hx-target="#review-resolution-status" class="secondary-button" type="button">Mark as Resolved</button>
+								}
+							</div>
+						</form>
+						<div id="review-resolution-status" class="mt-3 text-sm text-slate-600"></div>
+					</div>
 				</div>
 				<dl class="responsive-two-col grid gap-2 text-sm">
 					<dt class="text-slate-500">Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
@@ -297,7 +381,6 @@ templ SoldierDetail(s models.Soldier) {
 						<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
 						<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
 					} else {
-						<dt class="text-slate-500">Married To</dt><dd>{ emptyDetail(s.SpouseName) }</dd>
 						<dt class="text-slate-500">Maiden Name</dt><dd>{ emptyDetail(s.MaidenName) }</dd>
 						if isWidowEntry(s) {
 							<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
@@ -328,13 +411,6 @@ templ SoldierDetail(s models.Soldier) {
 							<dt class="text-slate-500">Last Updated By</dt><dd>{ emptyDetail(s.LastEditedBy) }</dd>
 							<dt class="text-slate-500">Last Update Time</dt><dd>{ emptyDetail(formatAuditTimestamp(s.LastEditedAt)) }</dd>
 						</dl>
-						if s.NeedsReview {
-							<div class="mt-4 flex flex-wrap gap-3">
-								<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve", s.ID) } hx-target="#review-resolution-status" class="primary-button">Mark as Resolved</button>
-								<p class="text-sm text-slate-500">This clears the review flag and removes the record from the Review Queue.</p>
-							</div>
-							<div id="review-resolution-status" class="mt-3 text-sm text-slate-600"></div>
-						}
 						<div class="mt-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Recent Field Changes</p>
 							if len(auditHistoryLines(s.LastEditedFields)) == 0 {
@@ -351,13 +427,16 @@ templ SoldierDetail(s models.Soldier) {
 				</details>
 				<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.75)] p-4">
 					<div class="flex flex-wrap gap-3">
-						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" class="primary-button px-5 py-3 text-base">Export PDF Report</button>
 						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf/no-images", s.ID) } hx-target="#soldier-export-status" class="secondary-button px-5 py-3 text-base">Export PDF Report (No Images)</button>
 						<a href="/soldiers" class="ghost-link px-5 py-3 text-base font-semibold">← Back to Soldiers</a>
 					</div>
-					<div class="flex flex-wrap gap-2">
-						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link">Edit</a>
-						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this record?" hx-target="body" class="danger-button">Delete</button>
+					<p class="text-sm text-slate-500">Primary work stays at the top of the page. Secondary export and return actions stay here.</p>
+				</div>
+				<div class="mt-5 rounded-2xl border border-[rgba(111,44,38,0.42)] bg-[rgba(111,44,38,0.08)] p-4">
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
+					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
+					<div class="mt-4">
+						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this record?" hx-target="body" class="danger-button">Delete Record</button>
 					</div>
 				</div>
 				<div id="soldier-export-status" class="mt-3 text-sm text-slate-600"></div>
@@ -396,18 +475,15 @@ templ SoldierDetail(s models.Soldier) {
 						if len(s.Images) > 0 {
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								for _, img := range s.Images {
-									<div class="card rounded-2xl p-3">
+									<div data-image-card data-image-id={ fmt.Sprintf("%d", img.ID) } class="card rounded-2xl p-3">
 										<div class="mb-3 flex items-center justify-between gap-3">
 											<label class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
 												<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
 												Select
 											</label>
 											<div class="flex flex-wrap items-center justify-end gap-2">
-												if img.IsPrimary {
-													<span class="rounded-full bg-[rgba(141,116,64,0.14)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Primary Image</span>
-												} else {
-													<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/primary/%d", s.ID, img.ID) } hx-target="#image-download-status" class="pill-link">Set as Primary</button>
-												}
+												<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
+												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } hx-post={ fmt.Sprintf("/soldiers/%d/images/primary/%d", s.ID, img.ID) } hx-target="#image-download-status" hx-swap="none" class={ primaryImageButtonClass(img.IsPrimary) }>Set as Primary</button>
 												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
 											</div>
 										</div>
@@ -447,6 +523,9 @@ func searchParams(search models.SoldierSearch) url.Values {
 	if search.Mode == "advanced" {
 		if strings.TrimSpace(search.DisplayID) != "" {
 			values.Set("display_id", search.DisplayID)
+		}
+		if strings.TrimSpace(search.EntryType) != "" {
+			values.Set("entry_type", search.EntryType)
 		}
 		if strings.TrimSpace(search.FirstName) != "" {
 			values.Set("first_name", search.FirstName)
@@ -539,6 +618,16 @@ func searchSummary(search models.SoldierSearch) string {
 	parts := []string{}
 	if search.DisplayID != "" {
 		parts = append(parts, "Record ID "+search.DisplayID)
+	}
+	if search.EntryType != "" {
+		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
+		case "wife":
+			parts = append(parts, "Entry type Wife")
+		case "widow":
+			parts = append(parts, "Entry type Widow")
+		default:
+			parts = append(parts, "Entry type Soldier")
+		}
 	}
 	if search.FirstName != "" {
 		parts = append(parts, "First name "+search.FirstName)
@@ -677,6 +766,33 @@ func detailSubheading(s models.Soldier) string {
 	return strings.TrimSpace(s.MaidenName)
 }
 
+func relationshipLabel(s models.Soldier) string {
+	name := strings.TrimSpace(s.SpouseName)
+	displayID := strings.TrimSpace(s.SpouseDisplayID)
+	switch {
+	case name != "" && displayID != "":
+		return name + " (" + displayID + ")"
+	case name != "":
+		if s.SpouseSoldierID > 0 {
+			return fmt.Sprintf("%s (DB ID %d)", name, s.SpouseSoldierID)
+		}
+		return name
+	case displayID != "":
+		return displayID
+	case s.SpouseSoldierID > 0:
+		return fmt.Sprintf("DB ID %d", s.SpouseSoldierID)
+	default:
+		return "Not recorded"
+	}
+}
+
+func backButtonLabel(s models.Soldier) string {
+	if strings.TrimSpace(s.BackLinkLabel) != "" {
+		return s.BackLinkLabel
+	}
+	return "Back"
+}
+
 func detailDisplayRank(s models.Soldier) string {
 	if trimmed := strings.TrimSpace(s.RankOut); trimmed != "" {
 		return trimmed
@@ -764,4 +880,20 @@ func imageURL(filePath string) templ.SafeURL {
 		return templ.SafeURL("file:///" + strings.TrimPrefix(cleaned, "/"))
 	}
 	return templ.SafeURL("/media/" + strings.TrimPrefix(cleaned, "/"))
+}
+
+func primaryImageBadgeClass(isPrimary bool) string {
+	className := "rounded-full bg-[rgba(141,116,64,0.14)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]"
+	if !isPrimary {
+		className += " hidden"
+	}
+	return className
+}
+
+func primaryImageButtonClass(isPrimary bool) string {
+	className := "pill-link"
+	if isPrimary {
+		className += " hidden"
+	}
+	return className
 }

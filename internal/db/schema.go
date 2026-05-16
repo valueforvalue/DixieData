@@ -6,11 +6,21 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/dates"
 )
 
+const CurrentSchemaVersion = 14
+
+func GetAppVersion() string {
+	return fmt.Sprintf("1.0.%d", CurrentSchemaVersion)
+}
+
 const schema = `
+CREATE TABLE IF NOT EXISTS schema_version (
+    version    INTEGER PRIMARY KEY,
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS soldiers (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     display_id   TEXT UNIQUE NOT NULL,
@@ -117,11 +127,6 @@ CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_status ON duplicate_audit_findings(status);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_soldier_id);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_soldier_id);
-
-CREATE VIRTUAL TABLE IF NOT EXISTS soldiers_fts USING fts5(
-    first_name, last_name, unit, soldier_rank,
-    content=soldiers, content_rowid=id
-);
 `
 
 const phase1DistributedMergeMigration = `
@@ -313,7 +318,13 @@ func applySchema(db *DB) error {
 	if err := migrateCanonicalDateData(tx); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, buildinfo.SchemaVersion)); err != nil {
+	if err := ensureSoldierFTS(tx); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO schema_version(version) VALUES (?)`, CurrentSchemaVersion); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, CurrentSchemaVersion)); err != nil {
 		return err
 	}
 
@@ -362,6 +373,138 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		}
 	}
 	return false, rows.Err()
+}
+
+func ensureSoldierFTS(tx *sql.Tx) error {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS scratchpad_cache (
+			soldier_id INTEGER PRIMARY KEY REFERENCES soldiers(id) ON DELETE CASCADE,
+			scratch_pad TEXT NOT NULL DEFAULT '',
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`DELETE FROM scratchpad_cache WHERE soldier_id NOT IN (SELECT id FROM soldiers)`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_ai`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_au`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_ad`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_ai`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_au`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_ad`,
+		`DROP TABLE IF EXISTS soldiers_fts`,
+		`CREATE VIRTUAL TABLE soldiers_fts USING fts5(
+			soldier_id UNINDEXED,
+			display_id,
+			pension_id,
+			application_id,
+			prefix,
+			first_name,
+			middle_name,
+			last_name,
+			suffix,
+			unit,
+			soldier_rank,
+			rank_in_text,
+			rank_out_text,
+			pension_state,
+			confederate_home_status,
+			confederate_home_name,
+			buried_in,
+			maiden_name,
+			notes,
+			scratch_pad
+		)`,
+		`CREATE TRIGGER soldiers_fts_ai AFTER INSERT ON soldiers BEGIN
+			INSERT INTO soldiers_fts (
+				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name,
+				notes, scratch_pad
+			) VALUES (
+				new.id, new.id, COALESCE(new.display_id, ''), COALESCE(new.pension_id, ''), COALESCE(new.application_id, ''), COALESCE(new.prefix, ''), COALESCE(new.first_name, ''),
+				COALESCE(new.middle_name, ''), COALESCE(new.last_name, ''), COALESCE(new.suffix, ''), COALESCE(new.unit, ''), COALESCE(new.rank, ''), COALESCE(new.rank_in, ''),
+				COALESCE(new.rank_out, ''), COALESCE(new.pension_state, ''), COALESCE(new.confederate_home_status, ''), COALESCE(new.confederate_home_name, ''), COALESCE(new.buried_in, ''),
+				COALESCE(new.maiden_name, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
+			);
+		END`,
+		`CREATE TRIGGER soldiers_fts_au AFTER UPDATE ON soldiers BEGIN
+			DELETE FROM soldiers_fts WHERE rowid = old.id;
+			INSERT INTO soldiers_fts (
+				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name,
+				notes, scratch_pad
+			) VALUES (
+				new.id, new.id, COALESCE(new.display_id, ''), COALESCE(new.pension_id, ''), COALESCE(new.application_id, ''), COALESCE(new.prefix, ''), COALESCE(new.first_name, ''),
+				COALESCE(new.middle_name, ''), COALESCE(new.last_name, ''), COALESCE(new.suffix, ''), COALESCE(new.unit, ''), COALESCE(new.rank, ''), COALESCE(new.rank_in, ''),
+				COALESCE(new.rank_out, ''), COALESCE(new.pension_state, ''), COALESCE(new.confederate_home_status, ''), COALESCE(new.confederate_home_name, ''), COALESCE(new.buried_in, ''),
+				COALESCE(new.maiden_name, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
+			);
+		END`,
+		`CREATE TRIGGER soldiers_fts_ad AFTER DELETE ON soldiers BEGIN
+			DELETE FROM soldiers_fts WHERE rowid = old.id;
+			DELETE FROM scratchpad_cache WHERE soldier_id = old.id;
+		END`,
+		`CREATE TRIGGER scratchpad_cache_ai AFTER INSERT ON scratchpad_cache BEGIN
+			DELETE FROM soldiers_fts WHERE rowid = new.soldier_id;
+			INSERT INTO soldiers_fts (
+				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name,
+				notes, scratch_pad
+			)
+			SELECT
+				s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
+				COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
+				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
+				COALESCE(s.maiden_name, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
+			FROM soldiers s
+			WHERE s.id = new.soldier_id;
+		END`,
+		`CREATE TRIGGER scratchpad_cache_au AFTER UPDATE ON scratchpad_cache BEGIN
+			DELETE FROM soldiers_fts WHERE rowid = new.soldier_id;
+			INSERT INTO soldiers_fts (
+				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name,
+				notes, scratch_pad
+			)
+			SELECT
+				s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
+				COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
+				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
+				COALESCE(s.maiden_name, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
+			FROM soldiers s
+			WHERE s.id = new.soldier_id;
+		END`,
+		`CREATE TRIGGER scratchpad_cache_ad AFTER DELETE ON scratchpad_cache BEGIN
+			DELETE FROM soldiers_fts WHERE rowid = old.soldier_id;
+			INSERT INTO soldiers_fts (
+				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name,
+				notes, scratch_pad
+			)
+			SELECT
+				s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
+				COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
+				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
+				COALESCE(s.maiden_name, ''), COALESCE(s.notes, ''), ''
+			FROM soldiers s
+			WHERE s.id = old.soldier_id;
+		END`,
+		`INSERT INTO soldiers_fts (
+			rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+			unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name,
+			notes, scratch_pad
+		)
+		SELECT
+			s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
+			COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
+			COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
+			COALESCE(s.maiden_name, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
+		FROM soldiers s
+		LEFT JOIN scratchpad_cache c ON c.soldier_id = s.id`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrateNodePrefixConfiguration(tx *sql.Tx) error {

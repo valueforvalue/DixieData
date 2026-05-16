@@ -27,10 +27,10 @@ func TestProjectRootFromFindsNearestWailsConfig(t *testing.T) {
 
 func TestRecordImageDirUsesSanitizedDisplayID(t *testing.T) {
 	absolute, relative := RecordImageDir(`C:\repo\.dixiedata`, `PENSION/42 A`)
-	if absolute != `C:\repo\.dixiedata\images\PENSION-42-A` {
+	if absolute != `C:\repo\.dixiedata\images\P\E\PENSION-42-A` {
 		t.Fatalf("absolute=%q", absolute)
 	}
-	if relative != `images\PENSION-42-A` {
+	if relative != `images\P\E\PENSION-42-A` {
 		t.Fatalf("relative=%q", relative)
 	}
 }

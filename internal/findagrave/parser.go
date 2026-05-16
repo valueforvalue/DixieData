@@ -11,18 +11,19 @@ import (
 )
 
 type Result struct {
-	SourceLabel string
-	MemorialID  string
-	MemorialURL string
-	FirstName   string
-	MiddleName  string
-	LastName    string
-	BirthDate   string
-	BirthInfo   string
-	DeathDate   string
-	BuriedIn    string
-	Warnings    []string
-	Spouses     []models.ScrapedRelative
+	SourceLabel     string
+	MemorialID      string
+	MemorialURL     string
+	FirstName       string
+	MiddleName      string
+	LastName        string
+	BirthDate       string
+	BirthInfo       string
+	DeathDate       string
+	BuriedIn        string
+	Warnings        []string
+	Spouses         []models.ScrapedRelative
+	ConfidenceScore int
 }
 
 func ParseInput(ctx context.Context, input string) (Result, error) {
@@ -44,8 +45,9 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 	}
 
 	result := Result{
-		SourceLabel: sourceLabel,
-		MemorialURL: strings.TrimSpace(sourceURL),
+		SourceLabel:     sourceLabel,
+		MemorialURL:     strings.TrimSpace(sourceURL),
+		ConfidenceScore: 100,
 	}
 
 	jsFirstName, firstNameFromJS := jsStringValue(html, "firstName")
@@ -57,6 +59,7 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 	} else {
 		result.FirstName, result.MiddleName = splitGivenAndMiddle(cleanText(doc.Find("#bio-name").First().Text()))
 		result.Warnings = append(result.Warnings, "Name fields fell back to visible page text because the embedded memorial object did not provide a usable firstName value.")
+		result.ConfidenceScore -= 15
 	}
 
 	if value, ok := jsStringValue(html, "lastName"); ok {
@@ -64,6 +67,9 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 	}
 	if result.LastName == "" {
 		result.LastName = lastToken(cleanText(doc.Find("#bio-name").First().Text()))
+		if result.LastName != "" {
+			result.ConfidenceScore -= 5
+		}
 	}
 
 	if value, ok := jsStringValue(html, "memorialId"); ok {
@@ -71,6 +77,9 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 	}
 	if result.MemorialID == "" {
 		result.MemorialID = cleanText(doc.Find("#memNumberLabel").First().Text())
+		if result.MemorialID != "" {
+			result.ConfidenceScore -= 3
+		}
 	}
 
 	if result.MemorialURL == "" {
@@ -81,17 +90,25 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 	if result.MemorialURL == "" {
 		if href, ok := doc.Find(`link[rel="canonical"]`).Attr("href"); ok {
 			result.MemorialURL = strings.TrimSpace(href)
+			if result.MemorialURL != "" {
+				result.ConfidenceScore -= 3
+			}
 		}
 	}
 
 	birthYear, birthFromJS := jsStringValue(html, "birthYear")
 	if birthYear == "" {
-		birthYear = extractYear(cleanText(doc.Find(`#birthDateLabel,[itemprop="birthDate"]`).First().Text()))
+		birthYear = firstNonBlank(
+			extractYear(cleanText(doc.Find(`#birthDateLabel,[itemprop="birthDate"]`).First().Text())),
+			extractYear(findLabelValue(doc, "birth")),
+		)
 		if birthYear != "" {
 			result.Warnings = append(result.Warnings, "Birth year fell back to the visible memorial vitals instead of the embedded memorial object.")
+			result.ConfidenceScore -= 10
 		}
 	} else if !birthFromJS {
 		result.Warnings = append(result.Warnings, "Birth year fell back to the visible memorial vitals instead of the embedded memorial object.")
+		result.ConfidenceScore -= 10
 	}
 	if birthYear != "" {
 		result.BirthInfo = birthYear
@@ -100,12 +117,17 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 
 	deathYear, deathFromJS := jsStringValue(html, "deathYear")
 	if deathYear == "" {
-		deathYear = extractYear(cleanText(doc.Find(`#deathDateLabel,[itemprop="deathDate"]`).First().Text()))
+		deathYear = firstNonBlank(
+			extractYear(cleanText(doc.Find(`#deathDateLabel,[itemprop="deathDate"]`).First().Text())),
+			extractYear(findLabelValue(doc, "death")),
+		)
 		if deathYear != "" {
 			result.Warnings = append(result.Warnings, "Death year fell back to the visible memorial vitals instead of the embedded memorial object.")
+			result.ConfidenceScore -= 10
 		}
 	} else if !deathFromJS {
 		result.Warnings = append(result.Warnings, "Death year fell back to the visible memorial vitals instead of the embedded memorial object.")
+		result.ConfidenceScore -= 10
 	}
 	if deathYear != "" {
 		result.DeathDate = partialYearDate(deathYear)
@@ -114,12 +136,17 @@ func ParseHTML(html, sourceLabel, sourceURL string) (Result, error) {
 	result.BuriedIn = buildBurialLocation(html, doc)
 	if result.BuriedIn == "" {
 		result.Warnings = append(result.Warnings, "Burial location could not be fully assembled from the memorial source and should be completed manually if needed.")
+		result.ConfidenceScore -= 15
 	}
 	if value, ok := jsStringValue(html, "locationName"); ok && strings.TrimSpace(value) == "" {
 		result.Warnings = append(result.Warnings, "Find a Grave locationName was blank in this memorial, so burial details were built from cemetery and address fields instead.")
+		result.ConfidenceScore -= 8
 	}
 
 	result.Spouses = parseSpouses(doc)
+	if result.ConfidenceScore < 0 {
+		result.ConfidenceScore = 0
+	}
 	result.Warnings = append([]string{"Verify all scraped data manually before saving, especially names, year-only dates, cemetery text, and any spouse relationships."}, result.Warnings...)
 	return result, nil
 }
@@ -173,17 +200,53 @@ func partialYearDate(year string) string {
 func buildBurialLocation(html string, doc *goquery.Document) string {
 	parts := []string{}
 	for _, value := range []string{
-		firstNonBlank(jsValueOrEmpty(html, "cemeteryName"), cleanText(doc.Find("#cemeteryNameLabel").First().Text())),
-		firstNonBlank(jsValueOrEmpty(html, "cemeteryCityName"), cleanText(doc.Find("#cemeteryCityName").First().Text())),
-		firstNonBlank(jsValueOrEmpty(html, "cemeteryCountyName"), cleanText(doc.Find("#cemeteryCountyName").First().Text())),
-		firstNonBlank(jsValueOrEmpty(html, "cemeteryStateName"), cleanText(doc.Find("#cemeteryStateName").First().Text())),
-		firstNonBlank(jsValueOrEmpty(html, "cemeteryCountryAbbrev"), cleanText(doc.Find("#cemeteryCountryName").First().Text())),
+		firstNonBlank(jsValueOrEmpty(html, "cemeteryName"), cleanText(doc.Find("#cemeteryNameLabel").First().Text()), findLabelValue(doc, "cemetery")),
+		firstNonBlank(jsValueOrEmpty(html, "cemeteryCityName"), cleanText(doc.Find("#cemeteryCityName").First().Text()), findLabelValue(doc, "city")),
+		firstNonBlank(jsValueOrEmpty(html, "cemeteryCountyName"), cleanText(doc.Find("#cemeteryCountyName").First().Text()), findLabelValue(doc, "county")),
+		firstNonBlank(jsValueOrEmpty(html, "cemeteryStateName"), cleanText(doc.Find("#cemeteryStateName").First().Text()), findLabelValue(doc, "state")),
+		firstNonBlank(jsValueOrEmpty(html, "cemeteryCountryAbbrev"), cleanText(doc.Find("#cemeteryCountryName").First().Text()), findLabelValue(doc, "country")),
 	} {
 		if value != "" {
 			parts = append(parts, value)
 		}
 	}
 	return strings.Join(parts, ", ")
+}
+
+func findLabelValue(doc *goquery.Document, label string) string {
+	label = strings.ToLower(strings.TrimSpace(label))
+	if label == "" {
+		return ""
+	}
+	value := ""
+	doc.Find("div,span,p,li,td,th,strong,h2,h3").EachWithBreak(func(_ int, item *goquery.Selection) bool {
+		text := cleanText(item.Text())
+		lower := strings.ToLower(text)
+		if !strings.Contains(lower, label) {
+			return true
+		}
+		if strings.Contains(text, ":") {
+			parts := strings.SplitN(text, ":", 2)
+			if strings.Contains(strings.ToLower(parts[0]), label) && strings.TrimSpace(parts[1]) != "" {
+				value = cleanText(parts[1])
+				return false
+			}
+		}
+		next := cleanText(item.Next().Text())
+		if next != "" && !strings.EqualFold(next, text) {
+			value = next
+			return false
+		}
+		parentText := cleanText(item.Parent().Text())
+		if parentText != "" && parentText != text {
+			value = strings.TrimSpace(strings.TrimPrefix(parentText, text))
+			if value != "" {
+				return false
+			}
+		}
+		return true
+	})
+	return cleanText(value)
 }
 
 func parseSpouses(doc *goquery.Document) []models.ScrapedRelative {

@@ -1,11 +1,13 @@
 package buildinfo
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/db"
+)
 
 const (
 	AppName                   = "DixieData"
-	AppVersion                = "1.0.1"
-	SchemaVersion             = 13
 	JSONExportVersion         = 3
 	CSVExportVersion          = 4
 	XLSXExportVersion         = 1
@@ -15,6 +17,11 @@ const (
 	DatabasePDFExportVersion  = 3
 	AnalyticsPDFExportVersion = 1
 	BackupFormatVersion       = 2
+)
+
+var (
+	AppVersion    = db.GetAppVersion()
+	SchemaVersion = db.CurrentSchemaVersion
 )
 
 var GitCommit = "dev"
