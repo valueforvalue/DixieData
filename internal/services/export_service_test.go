@@ -132,7 +132,7 @@ func TestExportService_ExportExcel(t *testing.T) {
 	if len(sheets) < 3 || sheets[0] != "Archive Export" {
 		t.Fatalf("unexpected workbook sheets: %v", sheets)
 	}
-	if value, err := workbook.GetCellValue("Archive Export", "F2"); err != nil || value != "TDM65-STC38-00001" {
+	if value, err := workbook.GetCellValue("Archive Export", "F2"); err != nil || value != "STC38-00001" {
 		t.Fatalf("display ID cell = %q err=%v", value, err)
 	}
 	if value, err := workbook.GetCellValue("Archive Export", "I2"); err != nil || value != "" {
@@ -141,7 +141,7 @@ func TestExportService_ExportExcel(t *testing.T) {
 	if value, err := workbook.GetCellValue("Archive Export", "AA2"); err != nil || value != "1831-11-09T00:00:00Z" {
 		t.Fatalf("birth date cell = %q err=%v", value, err)
 	}
-	if value, err := workbook.GetCellValue("Linked Spouses", "A2"); err != nil || value != "TDM65-STC38-00002" {
+	if value, err := workbook.GetCellValue("Linked Spouses", "A2"); err != nil || value != "STC38-00002" {
 		t.Fatalf("linked spouse sheet missing widow row: %q err=%v", value, err)
 	}
 	if value, err := workbook.GetCellValue("Linked Spouses", "F2"); err != nil || value != "Capt. John Hood" {
@@ -875,7 +875,7 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	if !strings.Contains(text, "SUMMARY:Memorial Anniversary: John Smith") {
 		t.Fatalf("ics missing summary: %q", text)
 	}
-	if !strings.Contains(normalizedText, "DESCRIPTION:Record ID: TDM65-CSA-1\\nEntry Type: Soldier\\nFull Name: John Smith") ||
+	if !strings.Contains(normalizedText, "DESCRIPTION:Record ID: CSA-1\\nEntry Type: Soldier\\nFull Name: John Smith") ||
 		!strings.Contains(normalizedText, "\\nUnit: 1st Virginia") ||
 		!strings.Contains(normalizedText, "\\nBuried In: Richmond") ||
 		!strings.Contains(normalizedText, "\\nOriginal Death Date: April 9\\, 1862") {

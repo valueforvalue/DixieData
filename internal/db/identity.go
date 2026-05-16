@@ -10,16 +10,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
-const DefaultNodePrefix = "TDM65"
-
-func NormalizeNodePrefix(prefix string) string {
-	trimmed := strings.ToUpper(strings.TrimSpace(prefix))
-	if trimmed == "" {
-		return DefaultNodePrefix
-	}
-	return trimmed
-}
-
 func (d *DB) SystemConfig(key string) (string, error) {
 	var value string
 	err := d.conn.QueryRow(`SELECT value FROM system_config WHERE key = ?`, key).Scan(&value)
@@ -105,15 +95,11 @@ func (d *DB) IdentitySetupRequired() (bool, error) {
 	if strings.TrimSpace(complete) == "1" {
 		return false, nil
 	}
-	nodePrefix, err := d.NodePrefix()
-	if err != nil {
-		return false, err
-	}
 	var soldierCount int
 	if err := d.conn.QueryRow(`SELECT COUNT(*) FROM soldiers`).Scan(&soldierCount); err != nil {
 		return false, err
 	}
-	return soldierCount == 0 && nodePrefix == DefaultNodePrefix, nil
+	return soldierCount == 0, nil
 }
 
 func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birthYear int) (models.UserIdentity, error) {

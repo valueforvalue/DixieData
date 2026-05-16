@@ -35,6 +35,7 @@ func TestSoldierListShowsExpandedAdvancedSearchFields(t *testing.T) {
 		`name="birth_year"`,
 		`name="birth_year_to"`,
 		`name="death_year_to"`,
+		`name="review_status"`,
 		`list="advanced-record-type-suggestions"`,
 		`list="advanced-rank-in-suggestions"`,
 		`list="advanced-rank-out-suggestions"`,
@@ -106,6 +107,58 @@ func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("primary image controls missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierCardShowsReviewBadge(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierCard(models.Soldier{
+		ID:           7,
+		DisplayID:    "JCM87-00007",
+		FirstName:    "Flagged",
+		LastName:     "Record",
+		NeedsReview:  true,
+		ReviewReason: "Potential duplicate from JCM87 import",
+	}, false).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Needs Review",
+		"Potential duplicate from JCM87 import",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier card missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsResolveReviewAction(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:           42,
+		DisplayID:    "JCM87-00042",
+		FirstName:    "Review",
+		LastName:     "Needed",
+		NeedsReview:  true,
+		ReviewReason: "Potential duplicate from import",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Review Status",
+		"Review Reason",
+		"Mark as Resolved",
+		"/soldiers/42/review/resolve",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
 		}
 	}
 }

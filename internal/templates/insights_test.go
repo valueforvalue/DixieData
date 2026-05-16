@@ -24,6 +24,12 @@ func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 		UnitRepresentation:      []services.AnalyticsCount{{Label: "1st Texas Infantry", Count: 4}},
 		BirthDecadeDistribution: []services.AnalyticsCount{{Label: "1830s", Count: 6}},
 		DeathDecadeDistribution: []services.AnalyticsCount{{Label: "1900s", Count: 2}},
+		DuplicateAudit: services.DuplicateAuditSummary{
+			OpenFindings:        3,
+			ResolvedFindings:    1,
+			LastRunAt:           "2026-05-16 15:00:00",
+			SimilarityThreshold: 2,
+		},
 	}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -39,6 +45,8 @@ func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 		"Pension Distribution",
 		"1st Texas Infantry",
 		"Birth and Death Decades",
+		"Advanced Duplicate Discovery",
+		"Audit Now",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("insights view missing %s", needle)

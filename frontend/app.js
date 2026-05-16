@@ -1,5 +1,7 @@
 (() => {
   const timers = new WeakMap();
+  const redirectStateStorageKey = "dixiedata.redirectState";
+  const toastStateStorageKey = "dixiedata.toastState";
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   const imageViewerState = {
     baseScale: 1,
@@ -1030,7 +1032,171 @@
     document.close();
   }
 
-  function applyResponse(el, html) {
+  function normalizedRedirectPath(path) {
+    if (path === "/export") {
+      return "/share";
+    }
+    return path;
+  }
+
+  function saveRedirectState(state) {
+    try {
+      window.sessionStorage.setItem(redirectStateStorageKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn("Failed to persist redirect state", error);
+    }
+  }
+
+  function clearRedirectState() {
+    try {
+      window.sessionStorage.removeItem(redirectStateStorageKey);
+    } catch (error) {
+      console.warn("Failed to clear redirect state", error);
+    }
+  }
+
+  function loadRedirectState() {
+    try {
+      const raw = window.sessionStorage.getItem(redirectStateStorageKey);
+      if (!raw) {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch (error) {
+      console.warn("Failed to read redirect state", error);
+      clearRedirectState();
+      return null;
+    }
+  }
+
+  function toastRegion() {
+    const region = document.querySelector("[data-toast-region]");
+    return region instanceof HTMLElement ? region : null;
+  }
+
+  function savePendingToast(state) {
+    try {
+      window.sessionStorage.setItem(toastStateStorageKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn("Failed to persist toast state", error);
+    }
+  }
+
+  function loadPendingToast() {
+    try {
+      const raw = window.sessionStorage.getItem(toastStateStorageKey);
+      if (!raw) {
+        return null;
+      }
+      window.sessionStorage.removeItem(toastStateStorageKey);
+      return JSON.parse(raw);
+    } catch (error) {
+      console.warn("Failed to read toast state", error);
+      return null;
+    }
+  }
+
+  function showToast(message, kind = "success") {
+    const region = toastRegion();
+    if (!(region instanceof HTMLElement) || !message) {
+      return;
+    }
+    const toast = document.createElement("div");
+    toast.className = "toast-card";
+    toast.setAttribute("data-toast-kind", kind);
+    toast.innerHTML = `
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">${kind === "error" ? "Attention" : "Success"}</div>
+        <div class="mt-1 text-sm text-[#22303d]">${message}</div>
+      </div>
+      <button type="button" class="secondary-button px-3 py-1 text-xs" data-toast-dismiss>Dismiss</button>
+    `;
+    region.appendChild(toast);
+    const dismiss = () => {
+      toast.remove();
+    };
+    toast.querySelector("[data-toast-dismiss]")?.addEventListener("click", dismiss);
+    window.setTimeout(dismiss, 4200);
+  }
+
+  function restorePendingToast() {
+    const pending = loadPendingToast();
+    if (!pending || !pending.message) {
+      return;
+    }
+    showToast(pending.message, pending.kind || "success");
+  }
+
+  function rememberRedirectState(el, redirectTo, responseText, requestState) {
+    const normalizedPath = normalizedRedirectPath(redirectTo);
+    const redirectState = {
+      path: normalizedPath,
+      scrollX: requestState?.scrollX ?? window.scrollX,
+      scrollY: requestState?.scrollY ?? window.scrollY,
+      kind: "generic",
+      message: "",
+    };
+
+    if (el.closest("[data-merge-review-item]")) {
+      redirectState.kind = "merge-action";
+    } else if (normalizedPath === "/share" && /conflicts?\s+staged\s+for\s+review/i.test(responseText)) {
+      redirectState.kind = "merge-import";
+      const conflictMatch = responseText.match(/(\d+)\s+conflicts?\s+staged\s+for\s+review/i);
+      if (conflictMatch) {
+        redirectState.message = `Data Loaded: ${conflictMatch[1]} Conflicts Found`;
+      }
+    }
+
+    if (redirectState.kind === "generic" && normalizedPath !== window.location.pathname) {
+      return;
+    }
+
+    saveRedirectState(redirectState);
+  }
+
+  function focusFirstMergeReviewAction() {
+    const nextAction = document.querySelector("[data-merge-review-container] [data-merge-review-action]");
+    if (nextAction instanceof HTMLElement) {
+      const nextItem = nextAction.closest("[data-merge-review-item]");
+      if (nextItem instanceof HTMLElement) {
+        nextItem.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      nextAction.focus({ preventScroll: true });
+    }
+  }
+
+  function restoreRedirectState() {
+    const redirectState = loadRedirectState();
+    if (!redirectState || redirectState.path !== window.location.pathname) {
+      return;
+    }
+    clearRedirectState();
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: Number.isFinite(redirectState.scrollY) ? redirectState.scrollY : window.scrollY,
+        left: Number.isFinite(redirectState.scrollX) ? redirectState.scrollX : window.scrollX,
+        behavior: "auto",
+      });
+
+      const mergeReviewContainer = document.getElementById("merge-review-section");
+      const mergeReviewStatus = document.querySelector("[data-merge-review-loaded-status]");
+      if (mergeReviewStatus instanceof HTMLElement && redirectState.message) {
+        mergeReviewStatus.textContent = redirectState.message;
+      }
+
+      if (redirectState.kind === "merge-import" && mergeReviewContainer instanceof HTMLElement) {
+        mergeReviewContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      if (redirectState.kind === "merge-action") {
+        focusFirstMergeReviewAction();
+      }
+    });
+  }
+
+  function applyResponse(el, html, requestState) {
     const target = getTarget(el);
     if (!target) {
       return;
@@ -1038,11 +1204,29 @@
 
     const trimmed = html.trimStart().toLowerCase();
     if (target === document.body && trimmed.startsWith("<!doctype html")) {
+      if (requestState) {
+        saveRedirectState({
+          path: window.location.pathname,
+          scrollX: requestState.scrollX,
+          scrollY: requestState.scrollY,
+          kind: "generic",
+          message: "",
+        });
+      }
       renderDocument(html);
       return;
     }
 
     if (target === document.body && trimmed.startsWith("<html")) {
+      if (requestState) {
+        saveRedirectState({
+          path: window.location.pathname,
+          scrollX: requestState.scrollX,
+          scrollY: requestState.scrollY,
+          kind: "generic",
+          message: "",
+        });
+      }
       renderDocument(html);
       return;
     }
@@ -1060,6 +1244,8 @@
   function initializeDynamicContent() {
     initializeTabs();
     initializeEntryTypeForms();
+    restoreRedirectState();
+    restorePendingToast();
   }
 
   function showProgress(el) {
@@ -1144,20 +1330,34 @@
 
     showProgress(el);
     setBusyState(el, true);
+    const requestState = {
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    };
     try {
       const response = await fetch(requestUrl, options);
       const html = await response.text();
       const redirectTo = response.headers.get("X-DixieData-Redirect");
+      const toastMessage = response.headers.get("X-DixieData-Toast");
+      const toastKind = response.headers.get("X-DixieData-Toast-Type") || "success";
       if (redirectTo) {
+        if (toastMessage) {
+          savePendingToast({ message: toastMessage, kind: toastKind });
+        }
+        rememberRedirectState(el, redirectTo, html, requestState);
         window.location.assign(redirectTo);
         return;
       }
       if (el instanceof HTMLFormElement && response.ok && response.redirected) {
         clearDraftForForm(el);
       }
-      applyResponse(el, html);
+      applyResponse(el, html, requestState);
+      if (toastMessage) {
+        showToast(toastMessage, toastKind);
+      }
     } catch (error) {
-      applyResponse(el, "Request failed.");
+      applyResponse(el, "Request failed.", requestState);
+      showToast("Request failed.", "error");
     } finally {
       setBusyState(el, false);
     }
@@ -1275,6 +1475,8 @@
     initializeDraftForms();
     initializeEntryTypeForms();
     initializeFloatingNav();
+    restoreRedirectState();
+    restorePendingToast();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -1387,6 +1589,12 @@
     if (tab) {
       event.preventDefault();
       activateTab(tab);
+      return;
+    }
+    const mergeReviewAction = event.target.closest("[data-merge-review-action]");
+    if (mergeReviewAction) {
+      event.preventDefault();
+      request(mergeReviewAction);
       return;
     }
     const el = event.target.closest("[hx-get],[hx-post],[hx-delete]");

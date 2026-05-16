@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
@@ -40,6 +41,8 @@ CREATE TABLE IF NOT EXISTS soldiers (
     birth_info   TEXT,
     buried_in    TEXT,
     notes        TEXT,
+    needs_review BOOLEAN DEFAULT 0,
+    review_reason TEXT,
     added_by     TEXT,
     last_edited_by TEXT,
     last_edited_fields TEXT,
@@ -94,9 +97,26 @@ CREATE TABLE IF NOT EXISTS merge_review_conflicts (
     resolved_at      DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS duplicate_audit_findings (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    pair_key         TEXT UNIQUE NOT NULL,
+    left_soldier_id  INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    right_soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    finding_type     TEXT NOT NULL,
+    reason           TEXT NOT NULL,
+    highlight_fields TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'open',
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_detected_at DATETIME,
+    resolved_at      DATETIME
+);
+
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
+CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_status ON duplicate_audit_findings(status);
+CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_soldier_id);
+CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_soldier_id);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS soldiers_fts USING fts5(
     first_name, last_name, unit, soldier_rank,
@@ -110,12 +130,6 @@ CREATE TABLE IF NOT EXISTS system_config (
     value      TEXT NOT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-UPDATE soldiers
-SET display_id = 'TDM65-' || display_id
-WHERE display_id IS NOT NULL
-  AND TRIM(display_id) <> ''
-  AND display_id NOT LIKE 'TDM65-%';
 
 UPDATE soldiers
 SET birth_date = '00/00/0000'
@@ -134,7 +148,7 @@ SET sync_id = ` + syncIDSQL + `
 WHERE sync_id IS NULL OR TRIM(sync_id) = '';
 
 INSERT INTO system_config(key, value)
-SELECT 'node_prefix', 'TDM65'
+SELECT 'node_prefix', 'DXD'
 WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_prefix');
 
 INSERT INTO system_config(key, value)
@@ -225,6 +239,8 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "maiden_name", sql: `ALTER TABLE soldiers ADD COLUMN maiden_name TEXT`},
 		{table: "soldiers", column: "birth_date", sql: `ALTER TABLE soldiers ADD COLUMN birth_date TEXT`},
 		{table: "soldiers", column: "death_date", sql: `ALTER TABLE soldiers ADD COLUMN death_date TEXT`},
+		{table: "soldiers", column: "needs_review", sql: `ALTER TABLE soldiers ADD COLUMN needs_review BOOLEAN DEFAULT 0`},
+		{table: "soldiers", column: "review_reason", sql: `ALTER TABLE soldiers ADD COLUMN review_reason TEXT`},
 		{table: "soldiers", column: "added_by", sql: `ALTER TABLE soldiers ADD COLUMN added_by TEXT`},
 		{table: "soldiers", column: "last_edited_by", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_by TEXT`},
 		{table: "soldiers", column: "last_edited_fields", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_fields TEXT`},
@@ -259,6 +275,12 @@ func applySchema(db *DB) error {
 	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'None' WHERE confederate_home_status IS NULL OR TRIM(confederate_home_status) = ''`); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`UPDATE soldiers SET needs_review = 0 WHERE needs_review IS NULL`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET review_reason = '' WHERE review_reason IS NULL`); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_name IS NULL`); err != nil {
 		return err
 	}
@@ -280,6 +302,12 @@ func applySchema(db *DB) error {
 		return err
 	}
 	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`); err != nil {
+		return err
+	}
+	if err := migrateNodePrefixConfiguration(tx); err != nil {
+		return err
+	}
+	if err := migrateSanitizedDisplayIDs(tx); err != nil {
 		return err
 	}
 	if err := migrateCanonicalDateData(tx); err != nil {
@@ -307,6 +335,8 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		query = `PRAGMA table_info(merge_review_sessions)`
 	case "merge_review_conflicts":
 		query = `PRAGMA table_info(merge_review_conflicts)`
+	case "duplicate_audit_findings":
+		query = `PRAGMA table_info(duplicate_audit_findings)`
 	default:
 		return false, fmt.Errorf("unsupported table for schema introspection: %s", table)
 	}
@@ -332,6 +362,109 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		}
 	}
 	return false, rows.Err()
+}
+
+func migrateNodePrefixConfiguration(tx *sql.Tx) error {
+	var (
+		complete   sql.NullString
+		firstName  sql.NullString
+		middleName sql.NullString
+		lastName   sql.NullString
+		birthYear  sql.NullString
+	)
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'user_identity_complete'`).Scan(&complete); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if strings.TrimSpace(complete.String) != "1" {
+		return nil
+	}
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'user_first_name'`).Scan(&firstName); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'user_middle_name'`).Scan(&middleName); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'user_last_name'`).Scan(&lastName); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'user_birth_year'`).Scan(&birthYear); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	parsedBirthYear, err := strconv.Atoi(strings.TrimSpace(birthYear.String))
+	if err != nil {
+		return nil
+	}
+	nodePrefix, err := BuildUserNodePrefix(firstName.String, middleName.String, lastName.String, parsedBirthYear)
+	if err != nil {
+		return nil
+	}
+	_, err = tx.Exec(`
+		INSERT INTO system_config(key, value)
+		VALUES ('node_prefix', ?)
+		ON CONFLICT(key) DO UPDATE SET
+			value = excluded.value,
+			updated_at = CURRENT_TIMESTAMP
+	`, nodePrefix)
+	return err
+}
+
+func migrateSanitizedDisplayIDs(tx *sql.Tx) error {
+	type displayRecord struct {
+		id        int64
+		displayID string
+	}
+
+	nodePrefix := NormalizeNodePrefix("")
+	var storedPrefix sql.NullString
+	if err := tx.QueryRow(`SELECT value FROM system_config WHERE key = 'node_prefix'`).Scan(&storedPrefix); err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if strings.TrimSpace(storedPrefix.String) != "" {
+		nodePrefix = NormalizeNodePrefix(storedPrefix.String)
+	}
+
+	rows, err := tx.Query(`SELECT id, display_id FROM soldiers ORDER BY id`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var (
+		records []displayRecord
+		maxSeq  int
+		taken   = map[string]int64{}
+	)
+	for rows.Next() {
+		var record displayRecord
+		if err := rows.Scan(&record.id, &record.displayID); err != nil {
+			return err
+		}
+		records = append(records, record)
+		taken[record.displayID] = record.id
+		if _, sequence, ok := CanonicalDisplayID(record.displayID); ok && sequence > maxSeq {
+			maxSeq = sequence
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		sanitized := SanitizeID(record.displayID, nodePrefix)
+		if sanitized == record.displayID {
+			continue
+		}
+		if existingID, exists := taken[sanitized]; exists && existingID != record.id {
+			maxSeq++
+			sanitized = NextGeneratedDisplayID(nodePrefix, maxSeq)
+		}
+		if _, err := tx.Exec(`UPDATE soldiers SET display_id = ? WHERE id = ?`, sanitized, record.id); err != nil {
+			return err
+		}
+		delete(taken, record.displayID)
+		taken[sanitized] = record.id
+	}
+	return nil
 }
 
 func migrateCanonicalDateData(tx *sql.Tx) error {

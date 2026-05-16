@@ -1,0 +1,123 @@
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+)
+
+templ ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize int) {
+	@Layout("Review Queue") {
+		<div data-ui-id={ uiids.PageReviewQueue } class="relative mx-auto max-w-5xl space-y-6">
+			@SurfaceBadge(uiids.PageReviewQueue)
+			<div>
+				<h2 class="text-2xl gold font-bold">Review Queue</h2>
+				<p class="mt-2 text-sm text-slate-600">Records flagged for duplicate review or follow-up research appear here until they are resolved.</p>
+			</div>
+			<section data-ui-id={ uiids.PanelReviewQueueList } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				@SurfaceBadge(uiids.PanelReviewQueueList)
+				if len(entries) == 0 {
+					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
+				} else {
+					for _, entry := range entries {
+						<div id={ fmt.Sprintf("review-queue-item-%d", entry.Soldier.ID) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+								<div class="min-w-0">
+									<div class="flex flex-wrap items-center gap-2">
+										<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ entry.Soldier.DisplayID }</span>
+										<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+									</div>
+									<p class="mt-1 font-semibold text-slate-900">{ detailHeading(entry.Soldier) }</p>
+									<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(entry.Soldier.ReviewReason) }</p>
+									<p class="mt-1 text-xs text-slate-500">{ detailSubheading(entry.Soldier) }</p>
+									if len(entry.DuplicateFindings) > 0 {
+										<div class="mt-3 flex flex-wrap gap-2">
+											for _, finding := range entry.DuplicateFindings {
+												<a href={ fmt.Sprintf("/review-queue/compare/%d", finding.ID) } class="pill-link">Compare with { emptyDetail(finding.OtherDisplayID) }</a>
+											}
+										</div>
+									}
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<a href={ fmt.Sprintf("/soldiers/%d", entry.Soldier.ID) } class="pill-link">View</a>
+									<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.Soldier.ID) } hx-target={ fmt.Sprintf("#review-queue-item-%d", entry.Soldier.ID) } hx-swap="outerHTML" class="primary-button">Mark as Resolved</button>
+								</div>
+							</div>
+						</div>
+					}
+				}
+				if total > pageSize {
+					<div class="flex flex-wrap items-center justify-between gap-3 pt-2 text-sm text-slate-600">
+						<span>Page { fmt.Sprintf("%d", page) } of { fmt.Sprintf("%d", (total+pageSize-1)/pageSize) }</span>
+						<div class="flex flex-wrap gap-2">
+							if page > 1 {
+								<a href={ fmt.Sprintf("/review-queue?page=%d", page-1) } class="pill-link">Previous</a>
+							}
+							if page*pageSize < total {
+								<a href={ fmt.Sprintf("/review-queue?page=%d", page+1) } class="pill-link">Next</a>
+							}
+						</div>
+					</div>
+				}
+			</section>
+		</div>
+	}
+}
+
+templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
+	@Layout("Duplicate Comparison") {
+		<div data-ui-id={ uiids.PageReviewQueueCompare } class="relative mx-auto max-w-6xl space-y-6">
+			@SurfaceBadge(uiids.PageReviewQueueCompare)
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<div>
+					<h2 class="text-2xl gold font-bold">Duplicate Comparison</h2>
+					<p class="mt-2 text-sm text-slate-600">{ comparison.Reason }</p>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<a href="/review-queue" class="pill-link">Back to Review Queue</a>
+					if comparison.Status != "resolved" {
+						<button hx-post={ fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID) } class="primary-button">Mark Match Resolved</button>
+					}
+				</div>
+			</div>
+			<section data-ui-id={ uiids.PanelReviewQueueCompare } class="relative card rounded-3xl p-5 sm:p-8">
+				@SurfaceBadge(uiids.PanelReviewQueueCompare)
+				<div class="grid gap-6 lg:grid-cols-2">
+					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.LeftSoldier.DisplayID }</div>
+						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.LeftSoldier) }</div>
+						<div class="mt-1 text-sm text-slate-500">{ detailSubheading(comparison.LeftSoldier) }</div>
+					</div>
+					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.RightSoldier.DisplayID }</div>
+						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.RightSoldier) }</div>
+						<div class="mt-1 text-sm text-slate-500">{ detailSubheading(comparison.RightSoldier) }</div>
+					</div>
+				</div>
+				<div class="mt-6 overflow-hidden rounded-3xl border border-[rgba(141,116,64,0.35)] bg-white/72">
+					<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[rgba(141,116,64,0.2)] bg-[rgba(246,241,228,0.88)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+						<div>Field</div>
+						<div>{ comparison.LeftSoldier.DisplayID }</div>
+						<div>{ comparison.RightSoldier.DisplayID }</div>
+					</div>
+					for _, field := range comparison.Fields {
+						if field.Highlighted {
+							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgba(141,116,64,0.16)] bg-[rgba(141,116,64,0.12)] px-4 py-3 text-sm text-[#22303d]">
+								<div class="font-semibold">{ field.Label }</div>
+								<div>{ field.LeftValue }</div>
+								<div>{ field.RightValue }</div>
+							</div>
+						} else {
+							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgba(141,116,64,0.16)] px-4 py-3 text-sm text-[#22303d]">
+								<div class="font-semibold">{ field.Label }</div>
+								<div>{ field.LeftValue }</div>
+								<div>{ field.RightValue }</div>
+							</div>
+						}
+					}
+				</div>
+			</section>
+		</div>
+	}
+}

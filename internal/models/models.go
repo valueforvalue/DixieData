@@ -31,6 +31,8 @@ type Soldier struct {
 	BirthInfo             string   `json:"birth_info"`
 	BuriedIn              string   `json:"buried_in"`
 	Notes                 string   `json:"notes"`
+	NeedsReview           bool     `json:"needs_review"`
+	ReviewReason          string   `json:"review_reason"`
 	AddedBy               string   `json:"added_by"`
 	LastEditedBy          string   `json:"last_edited_by"`
 	LastEditedFields      string   `json:"last_edited_fields"`
@@ -70,6 +72,7 @@ type SoldierSearch struct {
 	ConfederateHomeStatus string
 	ConfederateHomeName   string
 	BuriedIn              string
+	ReviewStatus          string
 	BirthDate             string
 	BirthYear             string
 	BirthYearTo           string

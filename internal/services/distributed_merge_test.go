@@ -88,7 +88,7 @@ func TestBackupService_ImportSQLiteBackupMigratesSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if restored.DisplayID != "TDM65-DXD-00001" {
+	if restored.DisplayID != "DXD-00001" {
 		t.Fatalf("DisplayID = %q", restored.DisplayID)
 	}
 	if restored.SyncID == "" || restored.DeathDate == "" || restored.UpdatedAt == "" {
@@ -227,10 +227,10 @@ func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
 			t.Fatalf("author B image identity mismatch: %#v soldier=%#v", image, sharedBFinal)
 		}
 	}
-	if newAuthorA.DisplayID != "ALPHA-00001" {
+	if newAuthorA.DisplayID != "ALPHA-00002" {
 		t.Fatalf("author A generated display id = %q", newAuthorA.DisplayID)
 	}
-	if newAuthorB.DisplayID != "BRAVO-00001" {
+	if newAuthorB.DisplayID != "BRAVO-00002" {
 		t.Fatalf("author B generated display id = %q", newAuthorB.DisplayID)
 	}
 	seen := map[string]struct{}{

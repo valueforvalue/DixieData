@@ -45,6 +45,7 @@ type App struct {
 	soldiers      *services.SoldierService
 	anniversary   *services.AnniversaryService
 	analytics     *services.AnalyticsService
+	audit         *services.AuditService
 	export        *services.ExportService
 	backup        *services.BackupService
 	diagnostics   *services.DiagnosticsService
@@ -121,10 +122,13 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
 	mux.HandleFunc("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
+	mux.HandleFunc("/review-queue", a.handleReviewQueue)
+	mux.HandleFunc("/review-queue/compare/", a.handleReviewQueueCompare)
 	mux.HandleFunc("/setup", a.handleInitialSetup)
 	mux.HandleFunc("/version", a.handleVersion)
 	mux.HandleFunc("/share", a.handleShare)
 	mux.HandleFunc("/insights", a.handleInsights)
+	mux.HandleFunc("/insights/audit/duplicates", a.handleRunDuplicateAudit)
 	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
@@ -430,6 +434,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		ConfederateHomeStatus: r.URL.Query().Get("confederate_home_status"),
 		ConfederateHomeName:   r.URL.Query().Get("confederate_home_name"),
 		BuriedIn:              r.URL.Query().Get("buried_in"),
+		ReviewStatus:          r.URL.Query().Get("review_status"),
 		BirthDate:             r.URL.Query().Get("birth_date"),
 		BirthYear:             r.URL.Query().Get("birth_year"),
 		BirthYearTo:           r.URL.Query().Get("birth_year_to"),
@@ -469,6 +474,7 @@ func hasAdvancedSearchInput(search models.SoldierSearch) bool {
 		strings.TrimSpace(search.ConfederateHomeStatus) != "" ||
 		strings.TrimSpace(search.ConfederateHomeName) != "" ||
 		strings.TrimSpace(search.BuriedIn) != "" ||
+		strings.TrimSpace(search.ReviewStatus) != "" ||
 		strings.TrimSpace(search.BirthDate) != "" ||
 		strings.TrimSpace(search.BirthYear) != "" ||
 		strings.TrimSpace(search.BirthYearTo) != "" ||
@@ -594,6 +600,10 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleSetPrimarySoldierImage(w, r, id, imageID)
 		return
 	}
+	if len(parts) > 2 && parts[1] == "review" && parts[2] == "resolve" {
+		a.handleResolveReviewStatus(w, r, id)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -673,6 +683,36 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	templates.ShareView(status, conflicts).Render(r.Context(), w)
 }
 
+func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	page := parsePage(r.URL.Query().Get("page"))
+	soldiers, total, err := a.soldiers.ReviewQueue(page, 50)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	soldierIDs := make([]int64, 0, len(soldiers))
+	for _, soldier := range soldiers {
+		soldierIDs = append(soldierIDs, soldier.ID)
+	}
+	findings, err := a.audit.FindingsForSoldiers(soldierIDs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	entries := make([]services.ReviewQueueEntry, 0, len(soldiers))
+	for _, soldier := range soldiers {
+		entries = append(entries, services.ReviewQueueEntry{
+			Soldier:           soldier,
+			DuplicateFindings: findings[soldier.ID],
+		})
+	}
+	templates.ReviewQueueView(entries, page, total, 50).Render(r.Context(), w)
+}
+
 func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -684,6 +724,22 @@ func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	templates.InsightsView(snapshot).Render(r.Context(), w)
+}
+
+func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	result, err := a.audit.RunDuplicateAudit()
+	if err != nil {
+		setToastHeaderWithType(w, "Duplicate audit failed.", "error")
+		fmt.Fprintf(w, "Duplicate audit failed: %v", err)
+		return
+	}
+	message := fmt.Sprintf("Success: scanned %d records and found %d candidate duplicate pairs (%d suppressed by prior resolutions).", result.ScannedRecords, result.FindingsDiscovered, result.FindingsSuppressed)
+	setToastHeader(w, message)
+	fmt.Fprintf(w, `<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">Scanned <strong>%d</strong> records. <strong>%d</strong> candidate duplicate pairs remain open in the Review Queue.</div>`, result.ScannedRecords, result.OpenFindings)
 }
 
 func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -881,6 +937,25 @@ func parsePrintSettingsRequest(r *http.Request) (services.PrintSettings, error) 
 	}, nil
 }
 
+func setToastHeader(w http.ResponseWriter, message string) {
+	if strings.TrimSpace(message) == "" {
+		return
+	}
+	w.Header().Set("X-DixieData-Toast", message)
+	w.Header().Set("X-DixieData-Toast-Type", "success")
+}
+
+func setToastHeaderWithType(w http.ResponseWriter, message, kind string) {
+	if strings.TrimSpace(message) == "" {
+		return
+	}
+	if strings.TrimSpace(kind) == "" {
+		kind = "success"
+	}
+	w.Header().Set("X-DixieData-Toast", message)
+	w.Header().Set("X-DixieData-Toast-Type", kind)
+}
+
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -1009,6 +1084,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	setToastHeader(w, fmt.Sprintf("Success: %d records imported from backup.", manifest.Soldiers))
 	fmt.Fprintf(w, "Backup loaded: %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images)
 }
 
@@ -1036,6 +1112,7 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 	if summary.PendingConflicts > 0 {
 		w.Header().Set("X-DixieData-Redirect", "/export")
 	}
+	setToastHeader(w, fmt.Sprintf("Success: %d records imported, %d flagged for review.", summary.SoldiersInserted+summary.SoldiersUpdated, summary.PendingConflicts))
 	fmt.Fprintf(w, "Shared backup merged: %d soldiers added, %d updated; %d records added, %d updated; %d images added, %d updated; %d conflicts staged for review. Merge log: %s",
 		summary.SoldiersInserted, summary.SoldiersUpdated,
 		summary.RecordsInserted, summary.RecordsUpdated,
@@ -1067,6 +1144,8 @@ func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) 
 		decision = "keep-local"
 	case "keep-both":
 		decision = "keep-both"
+	case "keep-shared":
+		decision = "keep-shared"
 	case "use-shared":
 		decision = "use-shared"
 	default:
@@ -1078,7 +1157,69 @@ func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Header().Set("X-DixieData-Redirect", "/export")
+	setToastHeader(w, "Success: merge review updated.")
 	fmt.Fprint(w, "Merge review updated.")
+}
+
+func (a *App) handleResolveReviewStatus(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.audit.ResolveFindingsForSoldier(id); err != nil {
+		fmt.Fprintf(w, "Review queue update failed: %v", err)
+		return
+	}
+	if err := a.soldiers.MarkReviewResolved(id); err != nil {
+		fmt.Fprintf(w, "Review queue update failed: %v", err)
+		return
+	}
+	setToastHeader(w, "Success: review item resolved.")
+	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("context")), "queue") {
+		fmt.Fprint(w, "")
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
+	fmt.Fprint(w, "Review status cleared.")
+}
+
+func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/review-queue/compare/")
+	path = strings.Trim(path, "/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+	parts := strings.Split(path, "/")
+	findingID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid comparison id", http.StatusBadRequest)
+		return
+	}
+	if len(parts) > 1 && parts[1] == "resolve" {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := a.audit.ResolveFinding(findingID); err != nil {
+			fmt.Fprintf(w, "Duplicate audit resolution failed: %v", err)
+			return
+		}
+		setToastHeader(w, "Success: duplicate pair resolved.")
+		w.Header().Set("X-DixieData-Redirect", "/review-queue")
+		fmt.Fprint(w, "Duplicate pair resolved.")
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	comparison, err := a.audit.Comparison(findingID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	templates.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
 }
 
 func (a *App) handleGoogleConnect(w http.ResponseWriter, r *http.Request) {
@@ -2031,6 +2172,7 @@ func (a *App) reloadServices() error {
 	a.soldiers = services.NewSoldierService(a.database)
 	a.anniversary = services.NewAnniversaryService(a.database)
 	a.analytics = services.NewAnalyticsService(a.database)
+	a.audit = services.NewAuditService(a.database)
 	a.export = services.NewExportService(a.database, a.soldiers)
 	a.backup = services.NewBackupService(a.database, a.soldiers)
 	a.diagnostics = services.NewDiagnosticsService(a.database, a.soldiers)

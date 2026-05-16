@@ -16,8 +16,8 @@ func TestNextDXDID_Format(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextDXDID: %v", err)
 	}
-	if id != "TDM65-00001" {
-		t.Errorf("expected TDM65-00001, got %s", id)
+	if id != "DXD-00001" {
+		t.Errorf("expected DXD-00001, got %s", id)
 	}
 }
 
@@ -30,7 +30,7 @@ func TestNextDXDID_Increment(t *testing.T) {
 
 	// Insert some generated soldiers
 	for i := 0; i < 5; i++ {
-		displayID := fmt.Sprintf("TDM65-%05d", i+1)
+		displayID := fmt.Sprintf("DXD-%05d", i+1)
 		_, err := d.conn.Exec(
 			`INSERT INTO soldiers (display_id, is_generated) VALUES (?, 1)`,
 			displayID,
@@ -44,8 +44,8 @@ func TestNextDXDID_Increment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextDXDID: %v", err)
 	}
-	if id != "TDM65-00006" {
-		t.Errorf("expected TDM65-00006, got %s", id)
+	if id != "DXD-00006" {
+		t.Errorf("expected DXD-00006, got %s", id)
 	}
 }
 
@@ -68,8 +68,8 @@ func TestNextDXDID_NonGeneratedIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextDXDID: %v", err)
 	}
-	if id != "TDM65-00001" {
-		t.Errorf("expected TDM65-00001 (non-generated ignored), got %s", id)
+	if id != "DXD-00001" {
+		t.Errorf("expected DXD-00001 (non-generated ignored), got %s", id)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestNextDXDID_UsesExistingDXDIDsWithoutGeneratedFlag(t *testing.T) {
 	}
 	defer d.Close()
 
-	_, err = d.conn.Exec(`INSERT INTO soldiers (display_id, is_generated) VALUES ('TDM65-DXD-00007', 0)`)
+	_, err = d.conn.Exec(`INSERT INTO soldiers (display_id, is_generated) VALUES ('DXD-00007', 0)`)
 	if err != nil {
 		t.Fatalf("insert legacy dxd soldier: %v", err)
 	}
@@ -89,8 +89,8 @@ func TestNextDXDID_UsesExistingDXDIDsWithoutGeneratedFlag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextDXDID: %v", err)
 	}
-	if id != "TDM65-00008" {
-		t.Fatalf("expected TDM65-00008, got %s", id)
+	if id != "DXD-00008" {
+		t.Fatalf("expected DXD-00008, got %s", id)
 	}
 }
 

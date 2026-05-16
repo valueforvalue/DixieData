@@ -5,7 +5,7 @@ import "strings"
 const (
 	AppName                   = "DixieData"
 	AppVersion                = "1.0.1"
-	SchemaVersion             = 10
+	SchemaVersion             = 13
 	JSONExportVersion         = 3
 	CSVExportVersion          = 4
 	XLSXExportVersion         = 1
