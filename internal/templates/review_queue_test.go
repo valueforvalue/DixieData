@@ -66,6 +66,11 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 	for _, needle := range []string{
 		"Duplicate Comparison",
 		"Mark Match Resolved",
+		"differing field(s)",
+		"matching field(s)",
+		"Differences to Review First",
+		"Open Left Record",
+		"Open Right Record",
 		"First Name",
 		"John",
 		"Jon",
@@ -105,6 +110,8 @@ func TestReviewQueueCompareViewSupportsManualComparison(t *testing.T) {
 		"data-history-back",
 		"Back",
 		"Manual side-by-side comparison of two selected records.",
+		"Open Left Record",
+		"Open Right Record",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("manual comparison view missing %s", needle)

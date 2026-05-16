@@ -284,7 +284,7 @@ templ SoldierList(soldiers []models.Soldier, page, total int, query string, sugg
 
 templ SoldierDetail(s models.Soldier) {
 	@Layout(soldierFullName(s)) {
-			<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
+			<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				@SurfaceBadge(uiids.PageSoldierDetail)
 				<div class="mb-4 flex flex-wrap gap-3">
 					<button
@@ -428,7 +428,13 @@ templ SoldierDetail(s models.Soldier) {
 				<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.75)] p-4">
 					<div class="flex flex-wrap gap-3">
 						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf/no-images", s.ID) } hx-target="#soldier-export-status" class="secondary-button px-5 py-3 text-base">Export PDF Report (No Images)</button>
-						<a href="/soldiers" class="ghost-link px-5 py-3 text-base font-semibold">← Back to Soldiers</a>
+						<button
+							type="button"
+							data-history-back
+							data-fallback-href={ soldierDetailBackHref(s) }
+							data-fallback-label={ backButtonLabel(s) }
+							class="ghost-link px-5 py-3 text-base font-semibold"
+						>← { backButtonLabel(s) }</button>
 					</div>
 					<p class="text-sm text-slate-500">Primary work stays at the top of the page. Secondary export and return actions stay here.</p>
 				</div>
@@ -791,6 +797,13 @@ func backButtonLabel(s models.Soldier) string {
 		return s.BackLinkLabel
 	}
 	return "Back"
+}
+
+func soldierDetailBackHref(s models.Soldier) string {
+	if strings.TrimSpace(s.BackLinkURL) != "" {
+		return strings.TrimSpace(s.BackLinkURL)
+	}
+	return "/soldiers"
 }
 
 func detailDisplayRank(s models.Soldier) string {

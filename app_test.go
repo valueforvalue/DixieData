@@ -1049,6 +1049,87 @@ func TestHandleCompareUsesRecordBackLinkWhenSourceRecordProvided(t *testing.T) {
 	}
 }
 
+func TestHandleInsightsDrilldownShowsFilteredRecords(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	if _, err := app.soldiers.Create(models.Soldier{DisplayID: "INS-0001", FirstName: "Andrew", LastName: "Cole", BuriedIn: "Oak Hill Cemetery"}); err != nil {
+		t.Fatalf("Create matching: %v", err)
+	}
+	if _, err := app.soldiers.Create(models.Soldier{DisplayID: "INS-0002", FirstName: "Thomas", LastName: "Reed", BuriedIn: "Hollywood Cemetery"}); err != nil {
+		t.Fatalf("Create non-matching: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/insights/drilldown?scope=buried_in&value="+url.QueryEscape("Oak Hill Cemetery"), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Burial Drilldown") || !strings.Contains(body, "INS-0001") || strings.Contains(body, "INS-0002") {
+		t.Fatalf("unexpected drilldown response: %q", body)
+	}
+}
+
+func TestHandleRecentSearchShowsRequestedRecords(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	first, err := app.soldiers.Create(models.Soldier{DisplayID: "REC-0001", FirstName: "Andrew", LastName: "Cole"})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := app.soldiers.Create(models.Soldier{DisplayID: "REC-0002", FirstName: "Thomas", LastName: "Reed"})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/search/recent?ids=%d,%d", second.ID, first.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Recently Accessed") || !strings.Contains(body, "REC-0002") || !strings.Contains(body, "REC-0001") {
+		t.Fatalf("unexpected recent search response: %q", body)
+	}
+	if strings.Index(body, "REC-0002") > strings.Index(body, "REC-0001") {
+		t.Fatalf("recent results should preserve requested order: %q", body)
+	}
+}
+
 func multipartRequestBody(t *testing.T, files map[string][]byte) (*bytes.Buffer, string) {
 	t.Helper()
 	var body bytes.Buffer

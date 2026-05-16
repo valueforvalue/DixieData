@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
-	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
-	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
+	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.soldier_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.soldier_id = soldiers.id)`
+	recordSelectColumns      = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
+	imageSelectColumns       = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
 
 type SoldierService struct {
@@ -414,7 +415,7 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 			FROM records
 			WHERE `+recordSearchLikeClause()+`
 		)
-		SELECT `+soldierSelectColumns+`, COALESCE(MAX(notes_snippet), ''), COALESCE(MAX(scratch_snippet), '')
+		SELECT `+soldierListSelectColumns+`, COALESCE(MAX(notes_snippet), ''), COALESCE(MAX(scratch_snippet), '')
 		FROM soldiers
 		JOIN matches ON matches.soldier_id = soldiers.id
 		GROUP BY soldiers.id
@@ -433,7 +434,7 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 			notesSnippet   string
 			scratchSnippet string
 		)
-		if err := rows.Scan(append(soldierScanDest(&soldier), &notesSnippet, &scratchSnippet)...); err != nil {
+		if err := rows.Scan(append(soldierListScanDest(&soldier), &notesSnippet, &scratchSnippet)...); err != nil {
 			return nil, 0, err
 		}
 		hydrateLegacyDeathParts(&soldier)
@@ -490,7 +491,7 @@ func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]m
 	}
 
 	rows, err := conn.Query(`
-		SELECT `+soldierSelectColumns+`
+		SELECT `+soldierListSelectColumns+`
 		FROM soldiers
 		WHERE `+quickSearchLikeClause()+`
 		ORDER BY last_name, first_name
@@ -501,7 +502,7 @@ func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]m
 	}
 	defer rows.Close()
 
-	soldiers, err := scanSoldiers(rows)
+	soldiers, err := scanListSoldiers(rows)
 	return annotateQuickSearchMatches(soldiers, query), total, err
 }
 
@@ -746,7 +747,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 
 	offset := (page - 1) * pageSize
 	rows, err := conn.Query(
-		"SELECT "+soldierSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
+		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
 		append(args, pageSize, offset)...,
 	)
 	if err != nil {
@@ -754,7 +755,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	}
 	defer rows.Close()
 
-	soldiers, err := scanSoldiers(rows)
+	soldiers, err := scanListSoldiers(rows)
 	return soldiers, total, err
 }
 
@@ -765,13 +766,94 @@ func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error)
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	rows, err := conn.Query(`SELECT `+soldierSelectColumns+` FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
+	rows, err := conn.Query(`SELECT `+soldierListSelectColumns+` FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
-	soldiers, err := scanSoldiers(rows)
+	soldiers, err := scanListSoldiers(rows)
 	return soldiers, total, err
+}
+
+func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize int) ([]models.Soldier, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	normalized := make([]string, 0, len(entryTypes))
+	for _, entryType := range entryTypes {
+		trimmed := strings.TrimSpace(strings.ToLower(entryType))
+		if trimmed != "" {
+			normalized = append(normalized, trimmed)
+		}
+	}
+	if len(normalized) == 0 {
+		return []models.Soldier{}, 0, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(normalized)), ",")
+	args := make([]interface{}, 0, len(normalized))
+	for _, entryType := range normalized {
+		args = append(args, entryType)
+	}
+	whereClause := fmt.Sprintf("LOWER(TRIM(entry_type)) IN (%s)", placeholders)
+	conn := s.db.Conn()
+	var total int
+	if err := conn.QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	rows, err := conn.Query(
+		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
+		append(args, pageSize, offset)...,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	soldiers, err := scanListSoldiers(rows)
+	return soldiers, total, err
+}
+
+func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, error) {
+	if limit < 1 {
+		limit = 10
+	}
+	if len(ids) == 0 {
+		return []models.Soldier{}, nil
+	}
+	if len(ids) > limit {
+		ids = ids[:limit]
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(ids)), ",")
+	args := make([]interface{}, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	rows, err := s.db.Conn().Query(
+		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE id IN ("+placeholders+")",
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	soldiers, err := scanListSoldiers(rows)
+	if err != nil {
+		return nil, err
+	}
+	index := make(map[int64]models.Soldier, len(soldiers))
+	for _, soldier := range soldiers {
+		index[soldier.ID] = soldier
+	}
+	ordered := make([]models.Soldier, 0, len(ids))
+	for _, id := range ids {
+		if soldier, ok := index[id]; ok {
+			ordered = append(ordered, soldier)
+		}
+	}
+	return ordered, nil
 }
 
 func scanSoldier(row *sql.Row) (*models.Soldier, error) {
@@ -790,6 +872,23 @@ func scanSoldiers(rows *sql.Rows) ([]models.Soldier, error) {
 	for rows.Next() {
 		var s models.Soldier
 		if err := rows.Scan(soldierScanDest(&s)...); err != nil {
+			return nil, err
+		}
+		hydrateLegacyDeathParts(&s)
+		normalizeConfederateHomeFields(&s)
+		soldiers = append(soldiers, s)
+	}
+	if soldiers == nil {
+		soldiers = []models.Soldier{}
+	}
+	return soldiers, rows.Err()
+}
+
+func scanListSoldiers(rows *sql.Rows) ([]models.Soldier, error) {
+	var soldiers []models.Soldier
+	for rows.Next() {
+		var s models.Soldier
+		if err := rows.Scan(soldierListScanDest(&s)...); err != nil {
 			return nil, err
 		}
 		hydrateLegacyDeathParts(&s)
@@ -1003,6 +1102,12 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.CreatedAt, &createdAt),
 		nullStringDest(&s.UpdatedAt, &updatedAt),
 	}
+}
+
+func soldierListScanDest(s *models.Soldier) []interface{} {
+	dest := soldierScanDest(s)
+	dest = append(dest, &s.SpouseDisplayID, &s.RecordCount, &s.ImageCount)
+	return dest
 }
 
 func normalizeSoldierEntry(tx *sql.Tx, soldier *models.Soldier) error {

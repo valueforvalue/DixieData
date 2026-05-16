@@ -217,3 +217,29 @@ func TestSoldierDetailConsolidatesRelationshipDisplay(t *testing.T) {
 		}
 	}
 }
+
+func TestSoldierDetailSecondaryBackActionUsesSmartBack(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(models.Soldier{
+		ID:            12,
+		DisplayID:     "JCM87-00012",
+		FirstName:     "Sarah",
+		LastName:      "Cole",
+		BackLinkURL:   "/review-queue",
+		BackLinkLabel: "Back to Review Queue",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`data-history-back`,
+		`data-fallback-href="/review-queue"`,
+		"Back to Review Queue",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail secondary back action missing %s", needle)
+		}
+	}
+}
