@@ -3,6 +3,7 @@
   const redirectStateStorageKey = "dixiedata.redirectState";
   const toastStateStorageKey = "dixiedata.toastState";
   const backStackStorageKey = "dixiedata.backStack";
+  const recentRecordsStorageKey = "dixiedata.recentRecords";
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   const imageViewerState = {
     baseScale: 1,
@@ -40,6 +41,72 @@
       window.sessionStorage.setItem(backStackStorageKey, JSON.stringify(stack.slice(-8)));
     } catch (error) {
       // Ignore storage failures and fall back to browser history.
+    }
+  }
+
+  function loadRecentRecords() {
+    try {
+      const raw = window.localStorage.getItem(recentRecordsStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((value) => Number.isInteger(value) && value > 0) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveRecentRecords(ids) {
+    try {
+      const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, 10);
+      if (normalized.length === 0) {
+        window.localStorage.removeItem(recentRecordsStorageKey);
+        return;
+      }
+      window.localStorage.setItem(recentRecordsStorageKey, JSON.stringify(normalized));
+    } catch (error) {
+      // Ignore storage failures.
+    }
+  }
+
+  function rememberRecentRecordFromPage() {
+    const detail = document.querySelector("[data-recent-record-id]");
+    if (!(detail instanceof HTMLElement)) {
+      return;
+    }
+    const id = Number.parseInt(detail.getAttribute("data-recent-record-id") || "", 10);
+    if (!Number.isInteger(id) || id < 1) {
+      return;
+    }
+    const next = [id].concat(loadRecentRecords().filter((value) => value !== id)).slice(0, 10);
+    saveRecentRecords(next);
+  }
+
+  async function hydrateRecentSearchResults() {
+    const emptyState = document.querySelector("[data-recent-records-empty]");
+    const target = document.getElementById("soldier-list");
+    const queryInput = document.querySelector('input[name="q"][hx-get="/soldiers/search"]');
+    if (!(emptyState instanceof HTMLElement) || !(target instanceof HTMLElement) || !(queryInput instanceof HTMLInputElement)) {
+      return;
+    }
+    if (queryInput.value.trim() !== "") {
+      return;
+    }
+    const ids = loadRecentRecords();
+    if (ids.length === 0) {
+      return;
+    }
+    try {
+      const response = await fetch(`/soldiers/search/recent?ids=${encodeURIComponent(ids.join(","))}`, {
+        headers: {
+          "X-Requested-With": "fetch",
+        },
+      });
+      if (!response.ok) {
+        return;
+      }
+      target.innerHTML = await response.text();
+      initializeDynamicContent();
+    } catch (error) {
+      // Leave the empty state in place if the recent list cannot be loaded.
     }
   }
 
@@ -167,8 +234,21 @@
     return true;
   }
 
-  function isRecordDetailHref(href) {
-    return /^\/soldiers\/\d+(?:\?.*)?$/.test(href) && !/\/edit(?:\?|$)/.test(href);
+  function shouldCaptureBackSnapshot(href) {
+    const normalized = String(href || "");
+    if (/^\/soldiers\/\d+(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/\d+\/edit(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/soldiers\/new(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    if (/^\/compare(?:\?.*)?$/.test(normalized)) {
+      return true;
+    }
+    return false;
   }
 
   function closestParentForm(el) {
@@ -238,14 +318,26 @@
     });
   }
 
-  function selectedCompareIDs(group) {
+  function selectedCompareEntries(group) {
     return Array.from(document.querySelectorAll(`[data-checkbox-group="${group}"][data-compare-select]:checked`))
-      .map((checkbox) => checkbox instanceof HTMLInputElement ? checkbox.value : "")
-      .filter((value) => value);
+      .map((checkbox) => {
+        if (!(checkbox instanceof HTMLInputElement)) {
+          return null;
+        }
+        return {
+          id: checkbox.value,
+          label: checkbox.getAttribute("data-compare-label") || checkbox.value,
+        };
+      })
+      .filter((entry) => entry && entry.id);
+  }
+
+  function selectedCompareIDs(group) {
+    return selectedCompareEntries(group).map((entry) => entry.id);
   }
 
   function syncCompareSelectionUI(group) {
-    const selected = selectedCompareIDs(group);
+    const selected = selectedCompareEntries(group);
     const button = document.querySelector(`[data-compare-selected][data-compare-group="${group}"]`);
     const status = document.querySelector("[data-compare-selection-status]");
     if (button instanceof HTMLButtonElement) {
@@ -253,14 +345,15 @@
       button.disabled = !ready;
       button.classList.toggle("opacity-60", !ready);
       button.classList.toggle("cursor-not-allowed", !ready);
+      button.textContent = ready ? `Compare Selected (${selected[0].label} vs ${selected[1].label})` : "Compare Selected";
     }
     if (status instanceof HTMLElement) {
       if (selected.length === 2) {
-        status.textContent = "Two records selected. Compare Selected is ready.";
+        status.textContent = `Ready to compare ${selected[0].label} and ${selected[1].label}.`;
       } else if (selected.length === 0) {
         status.textContent = "Select exactly two records to compare them side by side.";
       } else {
-        status.textContent = `${selected.length} selected. Choose exactly two records to compare.`;
+        status.textContent = `${selected[0].label} selected. Choose one more record to compare.`;
       }
     }
   }
@@ -607,8 +700,8 @@
       <aside class="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col overflow-hidden border-l border-[rgba(141,116,64,0.7)] bg-[rgba(246,241,228,0.98)] shadow-[-24px_0_60px_rgba(15,23,42,0.25)]">
         <div class="flex items-center justify-between gap-3 border-b border-[rgba(141,116,64,0.28)] px-5 py-4">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Quick Preview</p>
-            <p class="mt-1 text-sm text-slate-600">Review the essentials without leaving the results list.</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Quick View</p>
+            <p class="mt-1 text-sm text-slate-600">Research notes, archive signals, and family context without leaving the results list.</p>
           </div>
           <button type="button" data-preview-close class="secondary-button px-4">Close</button>
         </div>
@@ -643,6 +736,7 @@
       return;
     }
     body.innerHTML = source.innerHTML;
+    body.scrollTop = 0;
     drawer.classList.remove("hidden");
     document.body.classList.add("overflow-hidden");
   }
@@ -1530,6 +1624,8 @@
     restoreRedirectState();
     restorePendingToast();
     applySmartBackLabels();
+    rememberRecentRecordFromPage();
+    hydrateRecentSearchResults();
   }
 
   function showProgress(el) {
@@ -1771,6 +1867,8 @@
     restoreRedirectState();
     restorePendingToast();
     applySmartBackLabels();
+    rememberRecentRecordFromPage();
+    hydrateRecentSearchResults();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -1787,7 +1885,7 @@
     if (recordLink instanceof HTMLAnchorElement && !event.defaultPrevented) {
       try {
         const target = new URL(recordLink.href, window.location.origin);
-        if (target.origin === window.location.origin && isRecordDetailHref(`${target.pathname}${target.search}`)) {
+        if (target.origin === window.location.origin && shouldCaptureBackSnapshot(`${target.pathname}${target.search}`)) {
           pushBackSnapshot();
         }
       } catch (error) {
@@ -1933,6 +2031,7 @@
         syncCompareSelectionUI(group);
         return;
       }
+      pushBackSnapshot();
       window.location.assign(`/compare?id1=${encodeURIComponent(selected[0])}&id2=${encodeURIComponent(selected[1])}`);
       return;
     }

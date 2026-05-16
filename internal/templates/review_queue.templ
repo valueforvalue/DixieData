@@ -89,6 +89,10 @@ templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
 				<div>
 					<h2 class="text-2xl gold font-bold">{ comparisonTitle(comparison) }</h2>
 					<p class="mt-2 text-sm text-slate-600">{ comparison.Reason }</p>
+					<div class="mt-3 flex flex-wrap gap-2 text-xs">
+						<span class="rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(246,241,228,0.92)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ fmt.Sprintf("%d differing field(s)", comparisonDifferenceCount(comparison)) }</span>
+						<span class="rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-1 font-semibold uppercase tracking-[0.18em] text-slate-600">{ fmt.Sprintf("%d matching field(s)", comparisonMatchingCount(comparison)) }</span>
+					</div>
 				</div>
 				<div class="flex flex-wrap gap-2">
 					<button
@@ -110,13 +114,43 @@ templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
 						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.LeftSoldier.DisplayID }</div>
 						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.LeftSoldier) }</div>
 						<div class="mt-1 text-sm text-slate-500">{ detailSubheading(comparison.LeftSoldier) }</div>
+						<div class="mt-4 flex flex-wrap gap-2 text-xs">
+							<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d record(s)", len(comparison.LeftSoldier.Records)) }</span>
+							<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.LeftSoldier.Images)) }</span>
+							if comparison.LeftSoldier.NeedsReview {
+								<span class="rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
+							}
+						</div>
+						<div class="mt-4">
+							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.LeftSoldier.ID)) } class="pill-link">Open Left Record</a>
+						</div>
 					</div>
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
 						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.RightSoldier.DisplayID }</div>
 						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.RightSoldier) }</div>
 						<div class="mt-1 text-sm text-slate-500">{ detailSubheading(comparison.RightSoldier) }</div>
+						<div class="mt-4 flex flex-wrap gap-2 text-xs">
+							<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d record(s)", len(comparison.RightSoldier.Records)) }</span>
+							<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.92)] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.RightSoldier.Images)) }</span>
+							if comparison.RightSoldier.NeedsReview {
+								<span class="rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
+							}
+						</div>
+						<div class="mt-4">
+							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.RightSoldier.ID)) } class="pill-link">Open Right Record</a>
+						</div>
 					</div>
 				</div>
+				if len(comparisonDifferenceFields(comparison)) > 0 {
+					<div class="mt-6 rounded-3xl border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.7)] p-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Differences to Review First</p>
+						<div class="mt-3 flex flex-wrap gap-2">
+							for _, field := range comparisonDifferenceFields(comparison) {
+								<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-white/80 px-3 py-1 text-sm text-[#22303d]">{ field.Label }</span>
+							}
+						</div>
+					</div>
+				}
 				<div class="mt-6 overflow-hidden rounded-3xl border border-[rgba(141,116,64,0.35)] bg-white/72">
 					<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[rgba(141,116,64,0.2)] bg-[rgba(246,241,228,0.88)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 						<div>Field</div>
@@ -163,4 +197,22 @@ func comparisonBackLabel(comparison services.DuplicateAuditComparison) string {
 		return comparison.BackLabel
 	}
 	return "Back to Review Queue"
+}
+
+func comparisonDifferenceFields(comparison services.DuplicateAuditComparison) []services.DuplicateAuditComparisonField {
+	fields := make([]services.DuplicateAuditComparisonField, 0, len(comparison.Fields))
+	for _, field := range comparison.Fields {
+		if field.Highlighted {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func comparisonDifferenceCount(comparison services.DuplicateAuditComparison) int {
+	return len(comparisonDifferenceFields(comparison))
+}
+
+func comparisonMatchingCount(comparison services.DuplicateAuditComparison) int {
+	return len(comparison.Fields) - comparisonDifferenceCount(comparison)
 }

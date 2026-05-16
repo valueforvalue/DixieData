@@ -119,6 +119,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/anniversary/", a.handleAnniversary)
 	mux.HandleFunc("/soldiers", a.handleSoldiers)
 	mux.HandleFunc("/soldiers/search", a.handleSearch)
+	mux.HandleFunc("/soldiers/search/recent", a.handleRecentSearch)
 	mux.HandleFunc("/soldiers/search/advanced", a.handleAdvancedSearch)
 	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
 	mux.HandleFunc("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
@@ -131,6 +132,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/version", a.handleVersion)
 	mux.HandleFunc("/share", a.handleShare)
 	mux.HandleFunc("/insights", a.handleInsights)
+	mux.HandleFunc("/insights/drilldown", a.handleInsightsDrilldown)
 	mux.HandleFunc("/insights/audit/duplicates", a.handleRunDuplicateAudit)
 	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
 	mux.HandleFunc("/settings", a.handleSettings)
@@ -435,6 +437,24 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	templates.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+}
+
+func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	ids, err := parseCSVInt64s(r.URL.Query().Get("ids"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	soldiers, err := a.soldiers.RecentByIDs(ids, 10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	templates.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)
 }
 
 func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
@@ -813,6 +833,98 @@ func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	templates.InsightsView(snapshot).Render(r.Context(), w)
+}
+
+func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	scope := strings.TrimSpace(r.URL.Query().Get("scope"))
+	value := strings.TrimSpace(r.URL.Query().Get("value"))
+	page := parsePage(r.URL.Query().Get("page"))
+
+	title, description, search, useGroupedSpouseQuery, err := insightDrilldownConfig(scope, value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var (
+		soldiers []models.Soldier
+		total    int
+	)
+	if useGroupedSpouseQuery {
+		soldiers, total, err = a.soldiers.ListByEntryTypes([]string{"wife", "widow"}, page, 50)
+	} else {
+		soldiers, total, err = a.soldiers.AdvancedSearch(search, page, 50)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	templates.InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w)
+}
+
+func insightDrilldownConfig(scope, value string) (string, string, models.SoldierSearch, bool, error) {
+	search := models.SoldierSearch{Mode: "advanced"}
+	switch scope {
+	case "entry_type":
+		switch strings.ToLower(value) {
+		case "soldier":
+			search.EntryType = "soldier"
+			return "Soldier Records", "Records included in the Insights soldier total.", search, false, nil
+		case "spouse":
+			return "Spouse Records", "Wife and widow records included in the Insights spouse total.", search, true, nil
+		}
+	case "buried_in":
+		search.BuriedIn = value
+		return "Burial Drilldown", fmt.Sprintf("Records buried in %s.", value), search, false, nil
+	case "confederate_home_status":
+		search.ConfederateHomeStatus = value
+		return "Confederate Home Status", fmt.Sprintf("Records with Confederate Home status set to %s.", value), search, false, nil
+	case "confederate_home_name":
+		search.ConfederateHomeName = value
+		return "Confederate Home Name", fmt.Sprintf("Records tied to %s.", value), search, false, nil
+	case "pension_state":
+		search.PensionState = value
+		return "Pension State", fmt.Sprintf("Records with pension state %s.", value), search, false, nil
+	case "unit":
+		search.Unit = value
+		return "Unit Drilldown", fmt.Sprintf("Records tied to %s.", value), search, false, nil
+	case "birth_decade":
+		decade, err := insightDecadeValue(value)
+		if err != nil {
+			return "", "", models.SoldierSearch{}, false, err
+		}
+		search.BirthYear = fmt.Sprintf("%d", decade)
+		search.BirthYearTo = fmt.Sprintf("%d", decade+9)
+		return "Birth Decade Drilldown", fmt.Sprintf("Records with birth years in the %ds.", decade), search, false, nil
+	case "death_decade":
+		decade, err := insightDecadeValue(value)
+		if err != nil {
+			return "", "", models.SoldierSearch{}, false, err
+		}
+		search.DeathYear = fmt.Sprintf("%d", decade)
+		search.DeathYearTo = fmt.Sprintf("%d", decade+9)
+		return "Death Decade Drilldown", fmt.Sprintf("Records with death years in the %ds.", decade), search, false, nil
+	case "review_status":
+		search.ReviewStatus = value
+		return "Review Queue Drilldown", "Records currently flagged for review from the duplicate audit and research queue.", search, false, nil
+	}
+	return "", "", models.SoldierSearch{}, false, fmt.Errorf("unknown insight drilldown")
+}
+
+func insightDecadeValue(value string) (int, error) {
+	trimmed := strings.TrimSpace(strings.TrimSuffix(strings.ToLower(value), "s"))
+	if len(trimmed) != 4 {
+		return 0, fmt.Errorf("invalid decade")
+	}
+	decade, err := strconv.Atoi(trimmed)
+	if err != nil {
+		return 0, fmt.Errorf("invalid decade")
+	}
+	return decade, nil
 }
 
 func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
@@ -2494,6 +2606,28 @@ func parsePage(value string) int {
 		return 1
 	}
 	return page
+}
+
+func parseCSVInt64s(value string) ([]int64, error) {
+	parts := strings.Split(strings.TrimSpace(value), ",")
+	results := make([]int64, 0, len(parts))
+	seen := map[int64]struct{}{}
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(part, 10, 64)
+		if err != nil || id < 1 {
+			return nil, fmt.Errorf("invalid ids")
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		results = append(results, id)
+	}
+	return results, nil
 }
 
 func parseSelectedSoldierIDs(values []string) ([]int64, error) {

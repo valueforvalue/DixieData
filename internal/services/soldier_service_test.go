@@ -735,14 +735,23 @@ func TestSoldierService_List(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 
+	var firstID int64
 	for i := 0; i < 5; i++ {
-		_, err := svc.Create(models.Soldier{
-			FirstName: "Soldier",
-			LastName:  "Test",
-		})
+		soldier := models.Soldier{FirstName: "Soldier", LastName: "Test"}
+		if i == 0 {
+			soldier.FirstName = "Aaron"
+			soldier.Records = []models.Record{{RecordType: "Pension", AppID: "A-1", Details: "Filed in 1901"}}
+		}
+		created, err := svc.Create(soldier)
 		if err != nil {
 			t.Fatalf("Create %d: %v", i, err)
 		}
+		if i == 0 {
+			firstID = created.ID
+		}
+	}
+	if err := svc.AddImage(firstID, "portrait.jpg", `images\portrait.jpg`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
 	}
 
 	soldiers, total, err := svc.List(1, 3)
@@ -754,6 +763,9 @@ func TestSoldierService_List(t *testing.T) {
 	}
 	if len(soldiers) != 3 {
 		t.Errorf("page size=%d, want 3", len(soldiers))
+	}
+	if soldiers[0].RecordCount != 1 || soldiers[0].ImageCount != 1 {
+		t.Fatalf("list should include record/image counts, got %#v", soldiers[0])
 	}
 }
 
@@ -856,6 +868,57 @@ func TestSoldierService_SearchPage(t *testing.T) {
 	}
 	if total != 1 || len(rankResults) != 1 || !strings.HasSuffix(rankResults[0].DisplayID, "PENSION-4242") {
 		t.Fatalf("unit search got total=%d len=%d results=%#v", total, len(rankResults), rankResults)
+	}
+}
+
+func TestSoldierService_ListByEntryTypes(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "Thomas", LastName: "Avery", EntryType: "soldier"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{FirstName: "Sarah", LastName: "Avery", EntryType: "wife", SpouseSoldierID: soldier.ID}); err != nil {
+		t.Fatalf("Create wife: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{FirstName: "Martha", LastName: "Avery", EntryType: "widow", SpouseSoldierID: soldier.ID}); err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	results, total, err := svc.ListByEntryTypes([]string{"wife", "widow"}, 1, 10)
+	if err != nil {
+		t.Fatalf("ListByEntryTypes: %v", err)
+	}
+	if total != 2 || len(results) != 2 {
+		t.Fatalf("unexpected grouped spouse results: total=%d len=%d results=%#v", total, len(results), results)
+	}
+	for _, result := range results {
+		if result.EntryType != "wife" && result.EntryType != "widow" {
+			t.Fatalf("unexpected entry type in grouped spouse results: %#v", result)
+		}
+	}
+}
+
+func TestSoldierService_RecentByIDsPreservesOrder(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	first, err := svc.Create(models.Soldier{DisplayID: "REC-0001", FirstName: "First", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := svc.Create(models.Soldier{DisplayID: "REC-0002", FirstName: "Second", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+
+	results, err := svc.RecentByIDs([]int64{second.ID, first.ID}, 10)
+	if err != nil {
+		t.Fatalf("RecentByIDs: %v", err)
+	}
+	if len(results) != 2 || results[0].ID != second.ID || results[1].ID != first.ID {
+		t.Fatalf("recent results did not preserve order: %#v", results)
 	}
 }
 

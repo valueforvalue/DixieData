@@ -44,6 +44,8 @@ type Soldier struct {
 	SpouseDisplayID       string   `json:"-"`
 	BackLinkURL           string   `json:"-"`
 	BackLinkLabel         string   `json:"-"`
+	RecordCount           int      `json:"-"`
+	ImageCount            int      `json:"-"`
 	Records               []Record `json:"records,omitempty"`
 	Images                []Image  `json:"images,omitempty"`
 }
@@ -61,6 +63,7 @@ type SoldierSearch struct {
 	Mode                  string
 	Query                 string
 	Browse                bool
+	Recent                bool
 	DisplayID             string
 	EntryType             string
 	FirstName             string

@@ -280,6 +280,70 @@ func TestSearchResultsShowMatchSnippet(t *testing.T) {
 	}
 }
 
+func TestSearchPreviewContentShowsResearchOnlyDetails(t *testing.T) {
+	var buf bytes.Buffer
+	err := SearchPreviewContent(models.Soldier{
+		ID:                 7,
+		DisplayID:          "PENSION-4242",
+		EntryType:          "widow",
+		FirstName:          "Nathan",
+		LastName:           "Forrest",
+		Unit:               "Forrest's Cavalry",
+		BuriedIn:           "Memphis",
+		Notes:              "Known for his cavalry leadership in Tennessee.",
+		SearchMatchField:   "Unit",
+		SearchMatchSnippet: "Forrest's Cavalry",
+		SpouseSoldierID:    8,
+		SpouseDisplayID:    "PENSION-4243",
+		RecordCount:        3,
+		ImageCount:         2,
+		LastEditedBy:       "STC38",
+		LastEditedAt:       "2026-05-16T18:05:00Z",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Archive Signals",
+		"Research Context",
+		"Family &amp; Links",
+		"Attached Records",
+		"PENSION-4243",
+		"Open Linked Soldier",
+		"Compare Family Records",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("search preview missing %s", needle)
+		}
+	}
+}
+
+func TestSearchResultsShowsRecentAccessBanner(t *testing.T) {
+	var buf bytes.Buffer
+	err := SearchResults([]models.Soldier{{
+		ID:        7,
+		DisplayID: "PENSION-4242",
+		FirstName: "Nathan",
+		LastName:  "Forrest",
+	}}, models.SoldierSearch{Mode: "basic", Recent: true}, 1, 1, 10).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Recently Accessed",
+		"Your ten most recently opened records.",
+		"Compare Selected",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("recent results missing %s", needle)
+		}
+	}
+}
+
 func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(models.GoogleStatus{}, []models.MergeReviewConflict{{

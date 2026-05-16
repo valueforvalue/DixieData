@@ -355,7 +355,13 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						Create Record
 					}
 				</button>
-				<a href="/soldiers" class="ghost-link px-4 py-2">Cancel</a>
+				<button
+					type="button"
+					data-history-back
+					data-fallback-href={ entryFormBackHref(s, isEdit) }
+					data-fallback-label="Cancel"
+					class="ghost-link px-4 py-2"
+				>Cancel</button>
 			</div>
 			@SuggestionDatalist("rank-in-suggestions", suggestions.RankIn)
 			@SuggestionDatalist("rank-out-suggestions", suggestions.RankOut)
@@ -626,7 +632,7 @@ templ SettingsView(confirmationWord string) {
 					</div>
 					<div class="flex flex-wrap gap-3">
 						<button type="submit" class="danger-button">Initialize Data</button>
-						<a href="/calendar" class="ghost-link px-4 py-2">Back</a>
+						<button type="button" data-history-back data-fallback-href="/calendar" data-fallback-label="Back" class="ghost-link px-4 py-2">Back</button>
 					</div>
 				</form>
 				<div id="settings-status" class="text-sm text-slate-600"></div>
@@ -678,35 +684,50 @@ templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
 }
 
 templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int) {
-	if hasActiveSearch(search) {
+	if hasActiveSearch(search) || search.Recent {
 		<div class="mb-4 rounded-2xl border border-[rgba(197,171,104,0.9)] bg-[rgba(245,241,230,0.94)] px-4 py-3 shadow-[0_0_28px_rgba(197,171,104,0.15)]">
 			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">
-				if search.Browse {
+				if search.Recent {
+					Recently Accessed
+				} else if search.Browse {
 					Browse Results
 				} else {
 					Matched Results
 				}
 			</p>
-			<p class="mt-2 text-sm font-medium text-[#22303d]">{ searchSummary(search) }</p>
+			if search.Recent {
+				<p class="mt-2 text-sm font-medium text-[#22303d]">Your ten most recently opened records.</p>
+			} else {
+				<p class="mt-2 text-sm font-medium text-[#22303d]">{ searchSummary(search) }</p>
+			}
 			if search.Mode == "basic" && strings.TrimSpace(search.Query) != "" {
 				<p class="mt-1 text-xs text-slate-500">Quick search cards now show the exact matching field for each result.</p>
 			}
-				if search.Mode == "advanced" {
-					<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
-				}
+			if search.Mode == "advanced" {
+				<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
+			}
+			if search.Recent {
+				<p class="mt-1 text-xs text-slate-500">This list updates as you open record detail pages.</p>
+			}
 			</div>
 		}
 		if len(soldiers) > 0 {
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3">
 				<div>
 					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
-					<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two records to compare them side by side, or use Quick Preview to inspect a card without leaving the list.</p>
+					<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two records to compare them side by side. Quick View is the in-list research panel for notes, archive signals, family links, and counts.</p>
 				</div>
 				<button type="button" data-compare-selected data-compare-group="search-compare" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
 			</div>
 		}
 	if len(soldiers) == 0 {
-		if hasActiveSearch(search) && search.Mode == "advanced" {
+		if search.Recent {
+			<p class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">No recent records yet. Open a record detail page and it will appear here.</p>
+		} else if !hasActiveSearch(search) {
+			<div data-recent-records-empty class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">
+				Start typing to search the archive. Your recently opened records will appear here automatically.
+			</div>
+		} else if hasActiveSearch(search) && search.Mode == "advanced" {
 			<p class="text-slate-500 text-sm">No records matched the advanced filters.</p>
 		} else if hasActiveSearch(search) && search.Query != "" {
 			<p class="text-slate-500 text-sm">No results found for "{ search.Query }".</p>
@@ -718,10 +739,10 @@ templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page
 			<div class="mb-3 flex items-start gap-3">
 				<div class="mt-4 flex shrink-0 flex-col gap-2">
 					<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select data-compare-label={ s.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 						Compare
 					</label>
-					<button type="button" data-preview-open data-preview-target={ fmt.Sprintf("soldier-preview-%d", s.ID) } class="secondary-button px-3 py-2 text-xs">Quick Preview</button>
+					<button type="button" data-preview-open data-preview-target={ fmt.Sprintf("soldier-preview-%d", s.ID) } class="secondary-button px-3 py-2 text-xs">Quick View</button>
 				</div>
 				<div class="min-w-0 flex-1">
 					@SoldierCard(s, hasActiveSearch(search))
@@ -793,6 +814,67 @@ templ SearchPreviewContent(s models.Soldier) {
 				}
 			</div>
 		</div>
+		<div class="grid gap-3 lg:grid-cols-3">
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Archive Signals</p>
+				<dl class="mt-3 space-y-2">
+					<dt class="text-slate-500">Record Type</dt>
+					<dd class="text-[#22303d]">{ entryBadgeLabel(s) }</dd>
+					<dt class="text-slate-500">Attached Records</dt>
+					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.RecordCount) }</dd>
+					<dt class="text-slate-500">Images</dt>
+					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.ImageCount) }</dd>
+					<dt class="text-slate-500">Review Status</dt>
+					<dd class="text-[#22303d]">{ reviewStatusLabel(s) }</dd>
+				</dl>
+			</div>
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Research Context</p>
+				<dl class="mt-3 space-y-2">
+					if strings.TrimSpace(s.SearchMatchSnippet) != "" {
+						<dt class="text-slate-500">Search Match</dt>
+						<dd class="text-[#22303d]">{ s.SearchMatchField }: { s.SearchMatchSnippet }</dd>
+					}
+					if strings.TrimSpace(s.PensionID) != "" {
+						<dt class="text-slate-500">Pension ID</dt>
+						<dd class="text-[#22303d]">{ s.PensionID }</dd>
+					}
+					if strings.TrimSpace(s.ApplicationID) != "" {
+						<dt class="text-slate-500">Application ID</dt>
+						<dd class="text-[#22303d]">{ s.ApplicationID }</dd>
+					}
+					if strings.TrimSpace(s.BirthInfo) != "" {
+						<dt class="text-slate-500">Birth Detail</dt>
+						<dd class="text-[#22303d]">{ s.BirthInfo }</dd>
+					}
+					if strings.TrimSpace(s.LastEditedBy) != "" || strings.TrimSpace(s.LastEditedAt) != "" {
+						<dt class="text-slate-500">Last Updated</dt>
+						<dd class="text-[#22303d]">{ previewUpdatedByline(s) }</dd>
+					}
+				</dl>
+			</div>
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Family &amp; Links</p>
+				<dl class="mt-3 space-y-2">
+					if strings.TrimSpace(s.SpouseDisplayID) != "" {
+						<dt class="text-slate-500">Linked Soldier</dt>
+						<dd class="text-[#22303d]">{ s.SpouseDisplayID }</dd>
+					}
+					if strings.TrimSpace(s.MaidenName) != "" {
+						<dt class="text-slate-500">Maiden Name</dt>
+						<dd class="text-[#22303d]">{ s.MaidenName }</dd>
+					}
+					if strings.TrimSpace(s.ConfederateHomeStatus) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "None" {
+						<dt class="text-slate-500">Confederate Home</dt>
+						<dd class="text-[#22303d]">{ previewConfederateHomeLabel(s) }</dd>
+					}
+					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.MaidenName) == "" && strings.TrimSpace(s.ConfederateHomeStatus) == "" {
+						<dt class="text-slate-500">Purpose</dt>
+						<dd class="text-[#22303d]">Use the full record for deeper editing; this quick view is for in-list triage.</dd>
+					}
+				</dl>
+			</div>
+		</div>
 		if strings.TrimSpace(s.Notes) != "" {
 			<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(36,48,61,0.04)] px-4 py-4">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Notes Preview</p>
@@ -809,10 +891,40 @@ templ SearchPreviewContent(s models.Soldier) {
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) } class="primary-button">Open Full Record</a>
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="secondary-button">Edit</a>
 			if s.SpouseSoldierID != 0 {
+				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.SpouseSoldierID, s.ID)) } class="secondary-button">Open Linked Soldier</a>
+			}
+			if s.SpouseSoldierID != 0 {
 				<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">Compare Family Records</a>
 			}
 		</div>
 	</div>
+}
+
+func previewUpdatedByline(s models.Soldier) string {
+	if strings.TrimSpace(s.LastEditedBy) != "" && strings.TrimSpace(s.LastEditedAt) != "" {
+		return s.LastEditedBy + " • " + formatAuditTimestamp(s.LastEditedAt)
+	}
+	if strings.TrimSpace(s.LastEditedBy) != "" {
+		return s.LastEditedBy
+	}
+	return formatAuditTimestamp(s.LastEditedAt)
+}
+
+func previewConfederateHomeLabel(s models.Soldier) string {
+	if strings.TrimSpace(s.ConfederateHomeName) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "" {
+		return s.ConfederateHomeStatus + " • " + s.ConfederateHomeName
+	}
+	if strings.TrimSpace(s.ConfederateHomeName) != "" {
+		return s.ConfederateHomeName
+	}
+	return s.ConfederateHomeStatus
+}
+
+func entryFormBackHref(s models.Soldier, isEdit bool) string {
+	if isEdit && s.ID > 0 {
+		return fmt.Sprintf("/soldiers/%d", s.ID)
+	}
+	return "/soldiers"
 }
 
 func previewText(value string, limit int) string {
