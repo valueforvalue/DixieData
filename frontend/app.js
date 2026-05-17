@@ -276,6 +276,14 @@
     return el.closest("form");
   }
 
+  function ownerForm(el) {
+    if (el instanceof HTMLFormElement) {
+      return el;
+    }
+    const form = closestParentForm(el);
+    return form instanceof HTMLFormElement ? form : null;
+  }
+
   function getMethod(el) {
     if (el.hasAttribute("hx-post")) {
       return "POST";
@@ -1260,6 +1268,18 @@
     syncRecordPersistenceIndicator(form, false);
   }
 
+  function discardDraftFromControl(control) {
+    const form = ownerForm(control);
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    clearDraftForForm(form);
+    const resetPath = control.getAttribute("data-clear-draft-path");
+    if (resetPath) {
+      window.location.assign(resetPath);
+    }
+  }
+
   function ensureRecordRowCount(form, targetCount) {
     if (!(form instanceof HTMLFormElement) || targetCount < 1) {
       return;
@@ -1686,6 +1706,7 @@
   }
 
   async function request(el) {
+    const form = ownerForm(el);
     const method = getMethod(el);
     const url = getUrl(el, method);
     if (!url) {
@@ -1699,7 +1720,7 @@
 
     const data = formDataFromElement(el);
     const includesFiles = hasFiles(data);
-    if (includesFiles && el instanceof HTMLFormElement && submitMultipartForm(el)) {
+    if (includesFiles && form instanceof HTMLFormElement && submitMultipartForm(form)) {
       return;
     }
     const transportMethod = includesFiles && method !== "GET" && method !== "POST" ? "POST" : method;
@@ -1742,6 +1763,9 @@
       const toastMessage = response.headers.get("X-DixieData-Toast");
       const toastKind = response.headers.get("X-DixieData-Toast-Type") || "success";
       if (redirectTo) {
+        if (form instanceof HTMLFormElement && response.ok) {
+          clearDraftForForm(form);
+        }
         if (toastMessage) {
           savePendingToast({ message: toastMessage, kind: toastKind });
         }
@@ -1749,8 +1773,8 @@
         window.location.assign(redirectTo);
         return;
       }
-      if (el instanceof HTMLFormElement && response.ok && response.redirected) {
-        clearDraftForForm(el);
+      if (form instanceof HTMLFormElement && response.ok && response.redirected) {
+        clearDraftForForm(form);
       }
       applyResponse(el, html, requestState);
       if (response.ok && el instanceof HTMLElement) {
@@ -2009,6 +2033,12 @@
         persistDraftForForm(form);
         syncRecordPersistenceIndicator(form, true);
       }
+      return;
+    }
+    const clearDraft = event.target.closest("[data-clear-draft]");
+    if (clearDraft instanceof HTMLElement) {
+      event.preventDefault();
+      discardDraftFromControl(clearDraft);
       return;
     }
     const imageClose = event.target.closest("[data-image-close]");
