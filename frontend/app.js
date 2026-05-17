@@ -1236,6 +1236,11 @@
     if (!(target instanceof HTMLElement)) {
       return;
     }
+    const headingNode = target.querySelector("[data-record-persistence-heading]");
+    const messageNode = target.querySelector("[data-record-persistence-message]");
+    if (!(headingNode instanceof HTMLElement) || !(messageNode instanceof HTMLElement)) {
+      return;
+    }
     const kind = target.getAttribute("data-record-persistence-kind") || "new";
     target.classList.remove("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900", "border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     let heading = "";
@@ -1253,7 +1258,8 @@
       message = "This new record exists only in localStorage until you create it in the database.";
       target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     }
-    target.innerHTML = `<strong class="font-semibold">${heading}</strong><span class="ml-2">${message}</span>`;
+    headingNode.textContent = heading;
+    messageNode.textContent = message;
   }
 
   function clearDraftForForm(form) {

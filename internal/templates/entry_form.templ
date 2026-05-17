@@ -123,8 +123,8 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<strong class="font-semibold">{ recordPersistenceHeading(isEdit) }</strong>
-						<span class="ml-2">{ recordPersistenceMessage(isEdit) }</span>
+						<strong class="font-semibold" data-record-persistence-heading>{ recordPersistenceHeading(isEdit) }</strong>
+						<span class="ml-2" data-record-persistence-message>{ recordPersistenceMessage(isEdit) }</span>
 					</div>
 					<button
 						type="button"

@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.20 - Patch Release
+
+- Fixed the entry-form draft recovery banner so the **Discard local draft** button remains visible after the page initializes and after draft-status updates run.
+- Carried the release line forward to `v1.1.20` so the schema version, runtime metadata, Wails title, and packaged release artifacts stay aligned.
+
 ## v1.1.19 - Patch Release
 
 - Fixed the new-record localStorage draft flow so successful creates clear the cached entry instead of repopulating the next record form.
