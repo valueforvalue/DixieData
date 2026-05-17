@@ -3,14 +3,22 @@
 ## Project snapshot
 
 - **App:** DixieData
-- **Version:** `1.0.1`
-- **Schema version:** `14`
+- **Version:** `1.1.16`
+- **Schema version:** `16`
 - **Platform:** Wails desktop app (Windows-first workflow)
 - **Backend:** Go + SQLite
 - **Frontend:** server-rendered Templ HTML, Tailwind CDN styling, custom `frontend\app.js`
 - **Primary repo entry points:** `main.go`, `app.go`
 
 DixieData is a desktop archive manager for Civil War / Confederate research records. The app stores soldiers plus spouse records, supporting notes, records, images, scratch pads, printable reports, portable exports, mergeable shared archives, analytics, duplicate review, and Google integrations.
+
+Recent v1.1 hardening highlights:
+
+- Smart Back restores the previous browse context after detail/edit navigation
+- quick search is FTS5-backed and indexes scratch-pad content
+- advanced search includes entry-type filtering for soldiers, wives, and widows
+- image storage is sharded on disk for scale
+- `.ddshare` exports are merge-ready record packages instead of full SQLite snapshots
 
 ## Current architecture
 
@@ -257,6 +265,8 @@ Behavior:
 - the same logical person already exists locally
 - a display ID collides
 - content matches a human duplicate heuristic
+
+The v1.1 shared-archive format is `manifest.json` + `data\soldiers.json` + referenced images. Newly inserted shared records regenerate into the receiver namespace while preserving sender attribution fields.
 
 ### Conflict resolution options
 

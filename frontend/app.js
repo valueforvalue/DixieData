@@ -669,30 +669,30 @@
 
     viewer = document.createElement("div");
     viewer.id = "image-viewer";
-    viewer.className = "fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-6";
+    viewer.className = "fixed inset-0 z-50 hidden items-center justify-center bg-[rgba(15,23,42,0.7)] p-6";
     viewer.innerHTML = `
-      <div data-ui-id="overlay.image.viewer" class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-slate-700 bg-slate-950 shadow-2xl">
+      <div data-ui-id="overlay.image.viewer" class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(36,48,61,0.97)] shadow-2xl">
         ${debugSurfaceIDsEnabled() ? '<div class="ui-debug-badge" aria-hidden="true">overlay.image.viewer</div>' : ""}
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-5 py-4 text-slate-200">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(141,116,64,0.35)] px-5 py-4 text-[#f4ead0]">
           <div>
-            <p data-image-caption class="text-sm font-semibold tracking-[0.14em] text-slate-100"></p>
-            <p data-image-file class="mt-1 text-xs text-slate-400"></p>
+            <p data-image-caption class="text-sm font-semibold tracking-[0.14em] text-[#eddca6]"></p>
+            <p data-image-file class="mt-1 text-xs text-[rgba(244,234,208,0.72)]"></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <span data-image-zoom-label class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">100%</span>
-            <button type="button" data-image-rotate-ccw class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Rotate CCW</button>
-            <button type="button" data-image-rotate-cw class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Rotate CW</button>
-            <button type="button" data-image-zoom-out class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">-</button>
-            <button type="button" data-image-zoom-in class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">+</button>
-            <button type="button" data-image-reset class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Reset</button>
-            <button type="button" data-image-screenshot class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Screenshot</button>
-            <button type="button" data-image-close class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">Close</button>
+            <span data-image-zoom-label class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-xs text-[rgba(244,234,208,0.82)]">100%</span>
+            <button type="button" data-image-rotate-ccw class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Rotate CCW</button>
+            <button type="button" data-image-rotate-cw class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Rotate CW</button>
+            <button type="button" data-image-zoom-out class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">-</button>
+            <button type="button" data-image-zoom-in class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">+</button>
+            <button type="button" data-image-reset class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Reset</button>
+            <button type="button" data-image-screenshot class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Screenshot</button>
+            <button type="button" data-image-close class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Close</button>
           </div>
         </div>
-        <div data-image-stage class="relative h-[78vh] overflow-hidden bg-slate-900">
+        <div data-image-stage class="relative h-[78vh] overflow-hidden bg-[rgba(21,29,38,0.96)]">
           <img data-image-element class="absolute left-1/2 top-1/2 max-w-none select-none rounded-2xl bg-white shadow-2xl" alt="" draggable="false" />
         </div>
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-5 py-3 text-xs text-slate-400">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(141,116,64,0.35)] px-5 py-3 text-xs text-[rgba(244,234,208,0.68)]">
           <p>Mouse wheel zooms. Drag to move when zoomed in.</p>
           <p data-image-status></p>
         </div>

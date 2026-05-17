@@ -12,7 +12,7 @@ import (
 const CurrentSchemaVersion = 16
 
 func GetAppVersion() string {
-	return fmt.Sprintf("1.0.%d", CurrentSchemaVersion)
+	return fmt.Sprintf("1.1.%d", CurrentSchemaVersion)
 }
 
 const schema = `

@@ -22,3 +22,5 @@ Thumbs.db
 *.test
 google-oauth-defaults.json
 release/
+tests/goldmaster/artifacts/
+tests/goldmaster/playwright/node_modules/

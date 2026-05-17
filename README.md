@@ -3,6 +3,18 @@ A tool for keeping track of our Confederate dead.
 
 UI surface IDs for pages, panels, tabs, and overlays are documented in `docs\ui-ids.md`.
 
+## Release line
+
+The current production line is **v1.1.16** and is derived directly from `internal\db\schema.go`.
+
+Key v1.1 features include:
+
+- Smart Back navigation that preserves the researcher’s place when returning from detail and edit views
+- quick search backed by FTS5 with scratch-pad indexing and recent-record defaults in the browse view
+- advanced search filters for entry type, review status, burial data, and other research fields
+- sharded image storage under `.dixiedata\images\<A>\<B>\<display-id>\...` for better large-archive scaling
+- merge-oriented `.ddshare` archives and full replacement `.ddbak` backups
+
 ## Documentation
 
 - `docs\ai-handoff.md` - comprehensive project handoff for another AI or engineer
@@ -19,3 +31,5 @@ UI surface IDs for pages, panels, tabs, and overlays are documented in `docs\ui-
 - `.\run-debug.ps1` launches the current build with `--debug-ui-ids`, and `-Rebuild` forces a fresh debug build first.
 
 These scripts preserve `build\bin\google-oauth-defaults.json` across `wails build -clean` so local shared Google OAuth defaults are not lost on rebuild.
+
+The Wails window title is driven from `db.GetAppVersion()` in `main.go`, and runtime metadata uses the same dynamic version through `internal\buildinfo`.
