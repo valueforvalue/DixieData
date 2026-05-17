@@ -115,22 +115,15 @@ func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest
 	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
 	manifest.DatabaseFile = ""
 
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return BackupManifest{}, err
-	}
-	defer file.Close()
-
-	zipWriter := zip.NewWriter(file)
-	defer zipWriter.Close()
-
-	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
-		return BackupManifest{}, err
-	}
-	if err := writeBackupJSON(zipWriter, manifest.DataFile, soldiers); err != nil {
-		return BackupManifest{}, err
-	}
-	if err := addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers)); err != nil {
+	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
+		if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+			return err
+		}
+		if err := writeBackupJSON(zipWriter, manifest.DataFile, soldiers); err != nil {
+			return err
+		}
+		return addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers))
+	}); err != nil {
 		return BackupManifest{}, err
 	}
 
@@ -154,22 +147,15 @@ func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (
 		return BackupManifest{}, err
 	}
 
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return BackupManifest{}, err
-	}
-	defer file.Close()
-
-	zipWriter := zip.NewWriter(file)
-	defer zipWriter.Close()
-
-	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
-		return BackupManifest{}, err
-	}
-	if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
-		return BackupManifest{}, err
-	}
-	if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images")); err != nil {
+	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
+		if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+			return err
+		}
+		if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
+			return err
+		}
+		return addBackupImages(zipWriter, filepath.Join(dataDir, "images"))
+	}); err != nil {
 		return BackupManifest{}, err
 	}
 

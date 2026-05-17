@@ -3,8 +3,8 @@
 ## Project snapshot
 
 - **App:** DixieData
-- **Version:** `1.1.17`
-- **Schema version:** `17`
+- **Version:** `1.1.18`
+- **Schema version:** `18`
 - **Platform:** Wails desktop app (Windows-first workflow)
 - **Backend:** Go + SQLite
 - **Frontend:** server-rendered Templ HTML, Tailwind CDN styling, custom `frontend\app.js`

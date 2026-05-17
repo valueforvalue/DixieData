@@ -2743,36 +2743,30 @@ func copyFile(sourcePath, destPath string) error {
 }
 
 func zipDirectory(outputPath, root string) error {
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	zipWriter := zip.NewWriter(file)
-	defer zipWriter.Close()
-
-	return filepath.Walk(root, func(current string, info os.FileInfo, err error) error {
-		if err != nil {
+	return writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
+		return filepath.Walk(root, func(current string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			relative, err := filepath.Rel(root, current)
+			if err != nil {
+				return err
+			}
+			entry, err := zipWriter.Create(filepath.ToSlash(relative))
+			if err != nil {
+				return err
+			}
+			source, err := os.Open(current)
+			if err != nil {
+				return err
+			}
+			defer source.Close()
+			_, err = io.Copy(entry, source)
 			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		relative, err := filepath.Rel(root, current)
-		if err != nil {
-			return err
-		}
-		entry, err := zipWriter.Create(filepath.ToSlash(relative))
-		if err != nil {
-			return err
-		}
-		source, err := os.Open(current)
-		if err != nil {
-			return err
-		}
-		defer source.Close()
-		_, err = io.Copy(entry, source)
-		return err
+		})
 	})
 }
 

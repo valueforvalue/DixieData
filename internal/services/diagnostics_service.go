@@ -63,28 +63,21 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 		return DiagnosticsManifest{}, err
 	}
 
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return DiagnosticsManifest{}, err
-	}
-	defer file.Close()
-
-	zipWriter := zip.NewWriter(file)
-	defer zipWriter.Close()
-
-	if err := writeDiagnosticsJSON(zipWriter, "manifest.json", manifest); err != nil {
-		return DiagnosticsManifest{}, err
-	}
-	if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
-		return DiagnosticsManifest{}, err
-	}
-	if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images")); err != nil {
-		return DiagnosticsManifest{}, err
-	}
-	if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads")); err != nil {
-		return DiagnosticsManifest{}, err
-	}
-	if err := addBackupImages(zipWriter, filepath.Join(dataDir, "logs")); err != nil {
+	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
+		if err := writeDiagnosticsJSON(zipWriter, "manifest.json", manifest); err != nil {
+			return err
+		}
+		if err := addBackupFile(zipWriter, manifest.DatabaseFile, snapshotPath); err != nil {
+			return err
+		}
+		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "images")); err != nil {
+			return err
+		}
+		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads")); err != nil {
+			return err
+		}
+		return addBackupImages(zipWriter, filepath.Join(dataDir, "logs"))
+	}); err != nil {
 		return DiagnosticsManifest{}, err
 	}
 

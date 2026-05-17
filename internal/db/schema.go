@@ -9,7 +9,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 )
 
-const CurrentSchemaVersion = 17
+const CurrentSchemaVersion = 18
 
 func GetAppVersion() string {
 	return fmt.Sprintf("1.1.%d", CurrentSchemaVersion)

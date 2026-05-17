@@ -14,8 +14,9 @@ Write-Host "Release build ready:" (Join-Path $binDir "DixieData.exe")
 if ($Archive) {
     $releaseDir = Join-Path $root "release"
     New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+    $appVersion = Get-DixieDataAppVersion -Root $root
 
-    $archivePath = Join-Path $releaseDir ("DixieData-release-{0}.zip" -f (Get-Date -Format "yyyy-MM-dd"))
+    $archivePath = Join-Path $releaseDir ("DixieData-release-{0}.zip" -f $appVersion)
     if (Test-Path $archivePath) {
         Remove-Item $archivePath -Force
     }

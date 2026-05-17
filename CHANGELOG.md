@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.18 - Full Release
+
+- Hardened `.ddbak`, `.ddshare`, diagnostics, and static archive ZIP creation to write through a temp file, verify ZIP finalization, and only then replace the destination file.
+- This avoids success-shaped partial archives caused by unverified final ZIP close/flush behavior at the final save path.
+
 ## v1.1.17 - Patch Release
 
 - Fixed the static web archive detail view so exported `index.html` and `viewer.html` can open a selected person without leaving the expanded data area blank.
