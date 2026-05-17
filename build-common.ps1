@@ -19,6 +19,22 @@ function Get-DixieDataBuildBinDir {
     return Join-Path $Root "build\bin"
 }
 
+function Get-DixieDataAppVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    $schemaPath = Join-Path $Root "internal\db\schema.go"
+    $content = Get-Content -Path $schemaPath -Raw
+    $match = [regex]::Match($content, "CurrentSchemaVersion\s*=\s*(\d+)")
+    if (-not $match.Success) {
+        throw "Failed to determine CurrentSchemaVersion from $schemaPath"
+    }
+
+    return "v1.1.{0}" -f $match.Groups[1].Value
+}
+
 function Get-DixieDataOAuthDefaultsBuildPath {
     param(
         [Parameter(Mandatory = $true)]
