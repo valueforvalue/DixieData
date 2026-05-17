@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.19 - Patch Release
+
+- Fixed the new-record localStorage draft flow so successful creates clear the cached entry instead of repopulating the next record form.
+- Added an in-app **Discard local draft** recovery action on new/edit record forms so stuck entry drafts can be cleared without DevTools or a debug build.
+- Enabled Confederate Home fields for wife and widow records in the entry form.
+- Carried the release line forward to `v1.1.19` so the schema version, runtime metadata, Wails title, and packaged release artifacts stay aligned.
+
 ## v1.1.18 - Full Release
 
 - Hardened `.ddbak`, `.ddshare`, diagnostics, and static archive ZIP creation to write through a temp file, verify ZIP finalization, and only then replace the destination file.

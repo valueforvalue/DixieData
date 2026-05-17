@@ -121,8 +121,20 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 				<input type="hidden" name="scrape_confidence_score" value={ fmt.Sprintf("%d", scrape.ConfidenceScore) }/>
 			}
 			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
-				<strong class="font-semibold">{ recordPersistenceHeading(isEdit) }</strong>
-				<span class="ml-2">{ recordPersistenceMessage(isEdit) }</span>
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<strong class="font-semibold">{ recordPersistenceHeading(isEdit) }</strong>
+						<span class="ml-2">{ recordPersistenceMessage(isEdit) }</span>
+					</div>
+					<button
+						type="button"
+						class="secondary-button whitespace-nowrap"
+						data-clear-draft
+						data-clear-draft-path={ draftResetPath(s, isEdit) }
+					>
+						Discard local draft
+					</button>
+				</div>
 			</div>
 			<div class="space-y-5">
 				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
@@ -410,6 +422,13 @@ func draftMode(isEdit bool) string {
 		return "edit"
 	}
 	return "new"
+}
+
+func draftResetPath(s models.Soldier, isEdit bool) string {
+	if isEdit {
+		return fmt.Sprintf("/soldiers/%d/edit", s.ID)
+	}
+	return "/soldiers/new"
 }
 
 func recordPersistenceClass(isEdit bool) string {
