@@ -12,6 +12,8 @@ DixieData is a Wails-based desktop archive for managing Civil War research recor
 - import/export and merge workflows
 - review queue and duplicate auditing
 
+The current release line is **v1.1.16**.
+
 ## 2. Technical stack
 
 | Layer | Implementation |
@@ -56,6 +58,8 @@ The app uses a custom HTTP-driven interaction pattern:
 - responses are inserted into the DOM without a separate SPA framework
 
 This keeps server-side rendering as the main UI model while still supporting rich desktop interactivity.
+
+The same client layer also preserves navigation context for the app’s Smart Back behavior.
 
 ## 4. Data directory layout
 
@@ -191,6 +195,7 @@ Global search uses FTS5 over:
 - scratch pad text
 
 The UI also shows the matching field/snippet.
+The empty-state browse surface can also show recent records for quick reopening.
 
 ### Advanced search
 
@@ -206,6 +211,7 @@ Supports filters such as:
 - Confederate Home fields
 - burial location
 - review status
+- entry type
 - birth/death date components
 
 ## 6.5 Calendar and anniversary view
@@ -218,6 +224,8 @@ The home page is calendar-driven and includes:
 - archive counts for soldiers and wives/widows
 
 ## 6.6 Share / export / import
+
+`.ddshare` archives are merge-oriented JSON packages containing record payloads plus referenced images, while `.ddbak` archives remain full replacement SQLite snapshots.
 
 The Share page centralizes portability features.
 

@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## v1.1.16 - Gold Master
 
-- Added persistent image rotation controls in the image viewer overlay.
-- Added native image import access in the soldier form flow and improved image-management behavior.
-- Added soldier fields for middle name, rank in, rank out, and pension state across schema, forms, detail views, search, and exports.
-- Hardened soldier loading so legacy rows with `NULL` values in new columns do not crash the app.
-- Added an explicit `None` option for pension state selection.
+- Synced the production version line to `v1.1.16` so the schema version, runtime metadata, and Wails title all report the same release.
+- Added Smart Back behavior that preserves browse context when returning from record detail and edit surfaces.
+- Expanded archive search with FTS5-backed quick search, scratch-pad indexing, recent-record defaults, and advanced filters for entry type and review state.
+- Hardened spouse and entry-type workflows across create, edit, detail, export, and review flows.
+- Added persistent image rotation controls, native image import, and sharded image storage for better large-archive scaling.
+- Added gold-master validation tooling for outputs, stress coverage, and archive portability auditing.
+- Converted `.ddshare` archives into merge-ready record packages with referenced-image bundling and receiver-namespace ID regeneration.
+- Preserved `.ddbak` as the full replacement backup format with schema-aware manifest metadata.

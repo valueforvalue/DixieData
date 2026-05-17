@@ -6,6 +6,8 @@ DixieData is a desktop research archive for managing Civil War records, notes, i
 
 This manual explains how to use the application day to day.
 
+The current release line is **v1.1.16**.
+
 ## 2. First launch
 
 When you open DixieData for the first time, the app asks for your identity details:
@@ -45,6 +47,7 @@ This is the main archive browsing area. From here you can:
 
 - browse records
 - run quick searches
+- reopen recently accessed records before typing a search
 - open records
 - access advanced search
 
@@ -170,6 +173,8 @@ Use edit mode to:
 - add/remove source records
 - manage images
 
+When you use the normal return actions from detail and edit pages, DixieData uses **Smart Back** behavior to bring you back to the right browse or report surface with its earlier filters and scroll position preserved.
+
 ## 7. Working with images
 
 Each record can have multiple images.
@@ -181,6 +186,8 @@ From a record page:
 1. choose image import
 2. select one or more files
 3. the files are copied into DixieData storage
+
+Stored media now uses a sharded on-disk layout under `.dixiedata\images\<A>\<B>\<display-id>\...` so large archives stay manageable.
 
 ### Deleting images
 
@@ -225,6 +232,8 @@ Quick search looks across major record text, including:
 
 The result cards show the field that matched.
 
+The quick-search index uses SQLite **FTS5** plus the record scratch-pad cache, so scratch-pad text participates in the same archive-wide search experience.
+
 ## 9.2 Advanced search
 
 Advanced search supports more precise filtering.
@@ -236,6 +245,7 @@ Examples:
 - filter by pension state
 - filter by burial location
 - filter by maiden name
+- filter by entry type
 - filter by date ranges
 
 ### Review status filter

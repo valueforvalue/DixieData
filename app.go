@@ -163,7 +163,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/images/rotate", a.handleImageRotate)
 	mux.HandleFunc("/open-link", a.handleOpenLink)
 	mux.HandleFunc("/scratchpad/open", a.handleScratchpadOpen)
-	mux.Handle("/media/", http.StripPrefix("/media/", http.FileServer(http.Dir(a.dataDir))))
+	mux.HandleFunc("/media/", a.handleMedia)
 
 	a.mux = mux
 }
@@ -2643,6 +2643,53 @@ func (a *App) handleScratchpadOpen(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = fmt.Fprintf(w, "Scratch pad ready for %s.", displayID)
+}
+
+func (a *App) handleMedia(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	relative := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/media/"))
+	relative = strings.TrimLeft(relative, `/\`)
+	if relative == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	baseDir := filepath.Clean(a.dataDir)
+	resolved := filepath.Join(baseDir, filepath.FromSlash(relative))
+	withinBase, err := filepath.Rel(baseDir, resolved)
+	if err != nil || strings.HasPrefix(withinBase, "..") {
+		http.NotFound(w, r)
+		return
+	}
+
+	info, err := os.Stat(resolved)
+	if err == nil && !info.IsDir() {
+		http.ServeFile(w, r, resolved)
+		return
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-label="Image Missing">
+<rect width="480" height="320" rx="28" fill="#f6f1e4"/>
+<rect x="16" y="16" width="448" height="288" rx="22" fill="#fff" stroke="#8d7440" stroke-width="4" stroke-dasharray="12 8"/>
+<path d="M96 224l56-72 52 48 44-56 88 80" fill="none" stroke="#324253" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="164" cy="116" r="24" fill="#c5ab68"/>
+<text x="240" y="264" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#22303d">Image Missing</text>
+<text x="240" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#324253">%s</text>
+</svg>`, html.EscapeString(filepath.Base(relative)))
 }
 
 func normalizeChromeOpenTarget(target string) (string, error) {

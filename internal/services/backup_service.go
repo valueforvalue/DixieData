@@ -103,7 +103,38 @@ func (b *BackupService) Export(outputPath, dataDir string) (BackupManifest, erro
 }
 
 func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest, error) {
-	return b.exportArchive(outputPath, dataDir, archiveKindShared)
+	manifest, err := b.loadBackupData(archiveKindShared)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	soldiers, err := listAllSoldiers(b.soldier)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	manifest.DataFormat = "json"
+	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
+	manifest.DatabaseFile = ""
+
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	defer file.Close()
+
+	zipWriter := zip.NewWriter(file)
+	defer zipWriter.Close()
+
+	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+		return BackupManifest{}, err
+	}
+	if err := writeBackupJSON(zipWriter, manifest.DataFile, soldiers); err != nil {
+		return BackupManifest{}, err
+	}
+	if err := addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers)); err != nil {
+		return BackupManifest{}, err
+	}
+
+	return manifest, nil
 }
 
 func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (BackupManifest, error) {
@@ -456,6 +487,49 @@ func addBackupImages(zipWriter *zip.Writer, imageRoot string) error {
 		_, err = io.Copy(entry, source)
 		return err
 	})
+}
+
+func addSelectedBackupImages(zipWriter *zip.Writer, imageRoot string, selectedPaths []string) error {
+	if len(selectedPaths) == 0 {
+		return nil
+	}
+	if _, err := os.Stat(imageRoot); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	added := map[string]struct{}{}
+	for _, selectedPath := range selectedPaths {
+		normalized := normalizeBackupPath(selectedPath)
+		if normalized == "" {
+			continue
+		}
+		if _, seen := added[normalized]; seen {
+			continue
+		}
+
+		sourcePath := filepath.Join(filepath.Dir(imageRoot), filepath.FromSlash(normalized))
+		source, err := os.Open(sourcePath)
+		if err != nil {
+			return err
+		}
+		entry, err := zipWriter.Create(normalized)
+		if err != nil {
+			source.Close()
+			return err
+		}
+		if _, err := io.Copy(entry, source); err != nil {
+			source.Close()
+			return err
+		}
+		if err := source.Close(); err != nil {
+			return err
+		}
+		added[normalized] = struct{}{}
+	}
+	return nil
 }
 
 func readBackupContents(reader *zip.Reader) (backupContents, error) {
@@ -891,6 +965,25 @@ func listAllSoldiers(svc *SoldierService) ([]models.Soldier, error) {
 	return all, nil
 }
 
+func collectImagePaths(soldiers []models.Soldier) []string {
+	paths := make([]string, 0)
+	seen := map[string]struct{}{}
+	for _, soldier := range soldiers {
+		for _, image := range soldier.Images {
+			normalized := normalizeBackupPath(image.FilePath)
+			if normalized == "" {
+				continue
+			}
+			if _, ok := seen[normalized]; ok {
+				continue
+			}
+			seen[normalized] = struct{}{}
+			paths = append(paths, normalized)
+		}
+	}
+	return paths
+}
+
 func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourceSoldiers []models.Soldier, sourceDataDir, targetDataDir string, logger *mergeLogger) (SharedImportSummary, error) {
 	tx, err := b.db.Conn().Begin()
 	if err != nil {
@@ -1143,27 +1236,28 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 		return 0, false, "", fmt.Errorf("shared database soldier missing sync_id")
 	}
 
-	displayID, err := resolveSharedDisplayID(tx, soldier.DisplayID, syncID)
-	if err != nil {
-		return 0, false, "", err
-	}
-
 	var existingID int64
-	err = tx.QueryRow(`SELECT id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID)
+	var existingDisplayID string
+	err := tx.QueryRow(`SELECT id, display_id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID, &existingDisplayID)
 	if err == nil {
 		_, err = tx.Exec(`UPDATE soldiers
 			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, needs_review = ?, review_reason = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
 			WHERE id = ?`,
-			displayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
+			existingDisplayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
 		if err != nil {
 			return 0, false, "", err
 		}
 		if err := refreshSoldierFTS(tx, existingID, soldier); err != nil {
 			return 0, false, "", err
 		}
-		return existingID, true, displayID, nil
+		return existingID, true, existingDisplayID, nil
 	}
 	if err != sql.ErrNoRows {
+		return 0, false, "", err
+	}
+
+	displayID, err := resolveSharedDisplayID(tx, soldier.DisplayID, syncID)
+	if err != nil {
 		return 0, false, "", err
 	}
 
@@ -1257,7 +1351,8 @@ func resolveSharedDisplayID(tx *sql.Tx, desiredDisplayID, syncID string) (string
 		return "", err
 	}
 	candidate := db.SanitizeID(desiredDisplayID, nodePrefix)
-	if candidate == "" {
+	namespace, _, ok := db.CanonicalDisplayID(candidate)
+	if !ok || !strings.EqualFold(namespace, db.NormalizeNodePrefix(nodePrefix)) {
 		return nextLocalGeneratedDisplayID(tx)
 	}
 	return ensureUniqueDisplayID(tx, candidate, syncID)

@@ -131,12 +131,6 @@ func NewSoldierService(database *db.DB) *SoldierService {
 
 func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error) {
 	conn := s.db.Conn()
-	tx, err := conn.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	generatedDisplayID := strings.TrimSpace(soldier.DisplayID) == ""
 	if soldier.DisplayID == "" {
 		id, err := s.db.NextDXDID()
@@ -156,6 +150,13 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 			return nil, err
 		}
 	}
+
+	tx, err := conn.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
 	if err := normalizeSoldierEntry(tx, &soldier); err != nil {
 		return nil, err
 	}
@@ -252,6 +253,10 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 
 func (s *SoldierService) Update(soldier models.Soldier) error {
 	conn := s.db.Conn()
+	nodePrefix, err := s.db.NodePrefix()
+	if err != nil {
+		return err
+	}
 	tx, err := conn.Begin()
 	if err != nil {
 		return err
@@ -264,10 +269,6 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	}
 
 	soldier.Rank = canonicalRank(soldier)
-	nodePrefix, err := s.db.NodePrefix()
-	if err != nil {
-		return err
-	}
 	soldier.DisplayID = normalizeDisplayID(soldier.DisplayID, nodePrefix)
 	if err := hydrateSoldierIdentity(tx, &soldier); err != nil {
 		return err

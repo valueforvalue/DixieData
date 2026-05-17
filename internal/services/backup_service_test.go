@@ -113,6 +113,87 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 	if manifest.ArchiveKind != archiveKindShared {
 		t.Fatalf("manifest = %#v", manifest)
 	}
+	if manifest.DataFormat != "json" || manifest.DataFile != "data/soldiers.json" || manifest.DatabaseFile != "" {
+		t.Fatalf("shared manifest should use json payloads: %#v", manifest)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	names := make([]string, 0, len(reader.File))
+	for _, file := range reader.File {
+		names = append(names, file.Name)
+	}
+	joined := strings.Join(names, "\n")
+	for _, expected := range []string{"manifest.json", "data/soldiers.json"} {
+		if !strings.Contains(joined, expected) {
+			t.Fatalf("shared archive missing %s", expected)
+		}
+	}
+	if strings.Contains(joined, "data/dixiedata.db") {
+		t.Fatalf("shared archive should not include an sqlite snapshot: %s", joined)
+	}
+}
+
+func TestBackupService_ExportSharedIncludesReferencedImagesOnly(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	backupSvc := NewBackupService(d, soldierSvc)
+
+	dataDir := t.TempDir()
+	created, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "SHARED-1",
+		FirstName: "Shared",
+		LastName:  "Image",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	imagePath := filepath.Join(dataDir, "images", "shared-1", "portrait.png")
+	if err := os.MkdirAll(filepath.Dir(imagePath), 0o755); err != nil {
+		t.Fatalf("MkdirAll image: %v", err)
+	}
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile image: %v", err)
+	}
+	if err := soldierSvc.AddImage(created.ID, "portrait.png", `images\shared-1\portrait.png`, "Portrait"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	orphanPath := filepath.Join(dataDir, "images", "orphaned", "orphan.png")
+	if err := os.MkdirAll(filepath.Dir(orphanPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll orphan: %v", err)
+	}
+	if err := os.WriteFile(orphanPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile orphan: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	if _, err := backupSvc.ExportShared(outPath, dataDir); err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	names := make([]string, 0, len(reader.File))
+	for _, file := range reader.File {
+		names = append(names, file.Name)
+	}
+	joined := strings.Join(names, "\n")
+	if !strings.Contains(joined, "images/shared-1/portrait.png") {
+		t.Fatalf("shared archive missing referenced image: %s", joined)
+	}
+	if strings.Contains(joined, "images/orphaned/orphan.png") {
+		t.Fatalf("shared archive should exclude orphan images: %s", joined)
+	}
 }
 
 func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
@@ -643,6 +724,16 @@ func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
 	}
 	if nextID != "LJW04-00002" {
 		t.Fatalf("next ID = %q", nextID)
+	}
+	results, total, err := targetSvc.SearchPage("Shared Soldier", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("shared search total=%d len=%d", total, len(results))
+	}
+	if !strings.HasPrefix(results[0].DisplayID, "LJW04-") {
+		t.Fatalf("shared import should regenerate into the local namespace: %#v", results[0])
 	}
 }
 

@@ -133,7 +133,8 @@ func (d *DB) SyncScratchpadSearchIndex() error {
 	entries, err := os.ReadDir(scratchpadDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if d.scratchpadIndexReady && len(d.scratchpadIndexState) == 0 {
+			if len(d.scratchpadIndexState) == 0 {
+				d.scratchpadIndexReady = true
 				return nil
 			}
 			if _, clearErr := d.conn.Exec(`DELETE FROM scratchpad_cache`); clearErr != nil {
