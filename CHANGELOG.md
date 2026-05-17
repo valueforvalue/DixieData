@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.17 - Patch Release
+
+- Fixed the static web archive detail view so exported `index.html` and `viewer.html` can open a selected person without leaving the expanded data area blank.
+- Carried the release line forward to `v1.1.17` so the runtime metadata, Wails title, exported artifacts, and docs stay aligned.
+
 ## v1.1.16 - Gold Master
 
 - Synced the production version line to `v1.1.16` so the schema version, runtime metadata, and Wails title all report the same release.

@@ -332,6 +332,11 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if !strings.Contains(entries["viewer.html"], "Family Links") || !strings.Contains(entries["viewer.html"], "Archive Metadata") {
 		t.Fatalf("viewer.html missing expanded detail sections: %s", entries["viewer.html"])
 	}
+	if !strings.Contains(entries["viewer.html"], "function showDetailScreen(record, index, visibleCount, allRecords)") ||
+		!strings.Contains(entries["viewer.html"], "renderDetail(record, allRecords)") ||
+		!strings.Contains(entries["viewer.html"], "showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records);") {
+		t.Fatalf("viewer.html missing static detail render wiring fix: %s", entries["viewer.html"])
+	}
 	if !strings.Contains(entries["index.html"], "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
 		t.Fatalf("index.html missing version/build footer")
 	}
