@@ -6,7 +6,7 @@ DixieData is a desktop research archive for managing Civil War records, notes, i
 
 This manual explains how to use the application day to day.
 
-The current release line is **v1.1.19**.
+The current release line is **v1.1.20**.
 
 ## 2. First launch
 
