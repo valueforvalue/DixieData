@@ -872,7 +872,7 @@ func EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sugg
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" list=\"pension-state-suggestions\" class=\"field-input\"></div><div data-soldier-only-field class=\"responsive-span-2 col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4\"><div class=\"grid gap-4 md:grid-cols-2\"><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Status</label> <select name=\"confederate_home_status\" class=\"field-input\" data-confederate-home-status>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "\" list=\"pension-state-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4\"><div class=\"grid gap-4 md:grid-cols-2\"><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Status</label> <select name=\"confederate_home_status\" class=\"field-input\" data-confederate-home-status>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
