@@ -5,7 +5,7 @@ UI surface IDs for pages, panels, tabs, and overlays are documented in `docs\ui-
 
 ## Release line
 
-The current production line is **v1.1.16** and is derived directly from `internal\db\schema.go`.
+The current production line is **v1.1.17** and is derived directly from `internal\db\schema.go`.
 
 Key v1.1 features include:
 

@@ -1022,10 +1022,10 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       });
     }
 
-    function showDetailScreen(record, index, visibleCount) {
+    function showDetailScreen(record, index, visibleCount, allRecords) {
       document.getElementById('archive-list-screen').classList.add('hidden');
       document.getElementById('archive-detail-screen').classList.remove('hidden');
-      document.getElementById('detail-content').innerHTML = renderDetail(record, records);
+      document.getElementById('detail-content').innerHTML = renderDetail(record, allRecords);
       document.getElementById('detail-position').textContent = 'Record ' + (index + 1) + ' of ' + visibleCount;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1145,7 +1145,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           showListScreen();
           return;
         }
-        showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length);
+        showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records);
       }
 
       syncViewFromHash();
