@@ -12,11 +12,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Component {
+func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -61,7 +60,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", hub.Current.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 23, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 22, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -84,7 +83,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(*hub.Current))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 32, Col: 87}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 31, Col: 87}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -97,7 +96,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(hub.Current.DisplayID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 33, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 32, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -120,7 +119,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.Current.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 40, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 39, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -138,7 +137,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d collections", len(hub.Collections)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 65, Col: 133}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 64, Col: 133}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -166,7 +165,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(collection.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 73, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 72, Col: 73}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -184,7 +183,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 						var templ_7745c5c3_Var9 string
 						templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(collection.Description)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 75, Col: 82}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 74, Col: 82}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 						if templ_7745c5c3_Err != nil {
@@ -202,7 +201,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d records", collection.ItemCount))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 78, Col: 193}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 77, Col: 193}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -225,7 +224,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 					var templ_7745c5c3_Var11 templ.SafeURL
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(researchCollectionDetailHref(collection.ID, hub.Current))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 84, Col: 75}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 83, Col: 75}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -243,7 +242,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 						var templ_7745c5c3_Var12 string
 						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/research-collections/%d/add", collection.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 86, Col: 84}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 85, Col: 84}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
@@ -256,7 +255,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 						var templ_7745c5c3_Var13 string
 						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.Current.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 87, Col: 91}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 86, Col: 91}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 						if templ_7745c5c3_Err != nil {
@@ -269,7 +268,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 						var templ_7745c5c3_Var14 string
 						templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.Current.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 88, Col: 85}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 87, Col: 85}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 						if templ_7745c5c3_Err != nil {
@@ -304,7 +303,7 @@ func ResearchCollectionsHubView(hub services.ResearchCollectionHub) templ.Compon
 	})
 }
 
-func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) templ.Component {
+func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -344,7 +343,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionFallbackHref(detail.Current))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 109, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 108, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -357,7 +356,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionBackLabel(detail.Current))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 110, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 109, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -370,7 +369,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionBackLabel(detail.Current))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 112, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 111, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -383,7 +382,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(detail.Collection.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 116, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 115, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -401,7 +400,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(detail.Collection.Description)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 118, Col: 85}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 117, Col: 85}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -419,7 +418,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d records", detail.Collection.ItemCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 121, Col: 196}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 120, Col: 196}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -457,7 +456,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 					var templ_7745c5c3_Var23 string
 					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(soldier))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 135, Col: 80}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 134, Col: 80}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 					if templ_7745c5c3_Err != nil {
@@ -470,7 +469,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 					var templ_7745c5c3_Var24 string
 					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(soldier.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 136, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 135, Col: 66}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {
@@ -483,7 +482,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 					var templ_7745c5c3_Var25 templ.SafeURL
 					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", soldier.ID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 138, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 137, Col: 73}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {
@@ -501,7 +500,7 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 						var templ_7745c5c3_Var26 templ.SafeURL
 						templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", detail.Current.ID, soldier.ID, detail.Current.ID)))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 140, Col: 130}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 139, Col: 130}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 						if templ_7745c5c3_Err != nil {
@@ -536,21 +535,21 @@ func ResearchCollectionDetailView(detail services.ResearchCollectionDetail) temp
 	})
 }
 
-func researchCollectionDetailHref(collectionID int64, current *models.Soldier) templ.SafeURL {
+func researchCollectionDetailHref(collectionID int64, current *viewmodel.Soldier) templ.SafeURL {
 	if current != nil {
 		return templ.SafeURL(fmt.Sprintf("/research-collections/%d?from=%d", collectionID, current.ID))
 	}
 	return templ.SafeURL(fmt.Sprintf("/research-collections/%d", collectionID))
 }
 
-func researchCollectionFallbackHref(current *models.Soldier) string {
+func researchCollectionFallbackHref(current *viewmodel.Soldier) string {
 	if current != nil {
 		return fmt.Sprintf("/research-collections?from=%d", current.ID)
 	}
 	return "/research-collections"
 }
 
-func researchCollectionBackLabel(current *models.Soldier) string {
+func researchCollectionBackLabel(current *viewmodel.Soldier) string {
 	if current != nil {
 		return "Back to Collections"
 	}

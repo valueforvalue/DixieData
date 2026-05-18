@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/services"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize int) templ.Component {
+func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -363,7 +363,7 @@ func ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize 
 	})
 }
 
-func ReviewQueueCompareView(comparison services.DuplicateAuditComparison) templ.Component {
+func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -896,29 +896,29 @@ func ReviewQueueCompareView(comparison services.DuplicateAuditComparison) templ.
 	})
 }
 
-func comparisonTitle(comparison services.DuplicateAuditComparison) string {
+func comparisonTitle(comparison viewmodel.DuplicateAuditComparison) string {
 	if strings.TrimSpace(comparison.PageTitle) != "" {
 		return comparison.PageTitle
 	}
 	return "Duplicate Comparison"
 }
 
-func comparisonBackHref(comparison services.DuplicateAuditComparison) string {
+func comparisonBackHref(comparison viewmodel.DuplicateAuditComparison) string {
 	if strings.TrimSpace(comparison.BackHref) != "" {
 		return comparison.BackHref
 	}
 	return "/review-queue"
 }
 
-func comparisonBackLabel(comparison services.DuplicateAuditComparison) string {
+func comparisonBackLabel(comparison viewmodel.DuplicateAuditComparison) string {
 	if strings.TrimSpace(comparison.BackLabel) != "" {
 		return comparison.BackLabel
 	}
 	return "Back to Review Queue"
 }
 
-func comparisonDifferenceFields(comparison services.DuplicateAuditComparison) []services.DuplicateAuditComparisonField {
-	fields := make([]services.DuplicateAuditComparisonField, 0, len(comparison.Fields))
+func comparisonDifferenceFields(comparison viewmodel.DuplicateAuditComparison) []viewmodel.DuplicateAuditComparisonField {
+	fields := make([]viewmodel.DuplicateAuditComparisonField, 0, len(comparison.Fields))
 	for _, field := range comparison.Fields {
 		if field.Highlighted {
 			fields = append(fields, field)
@@ -927,11 +927,11 @@ func comparisonDifferenceFields(comparison services.DuplicateAuditComparison) []
 	return fields
 }
 
-func comparisonDifferenceCount(comparison services.DuplicateAuditComparison) int {
+func comparisonDifferenceCount(comparison viewmodel.DuplicateAuditComparison) int {
 	return len(comparisonDifferenceFields(comparison))
 }
 
-func comparisonMatchingCount(comparison services.DuplicateAuditComparison) int {
+func comparisonMatchingCount(comparison viewmodel.DuplicateAuditComparison) int {
 	return len(comparison.Fields) - comparisonDifferenceCount(comparison)
 }
 

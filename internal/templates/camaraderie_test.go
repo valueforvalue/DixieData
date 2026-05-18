@@ -6,14 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestUnitCamaraderieViewRendersConnections(t *testing.T) {
 	var buf bytes.Buffer
-	err := UnitCamaraderieView(services.UnitCamaraderieGraph{
-		Central: models.Soldier{
+	err := UnitCamaraderieView(viewmodel.UnitCamaraderieGraph{
+		Central: viewmodel.Soldier{
 			ID:        9,
 			DisplayID: "CAM-0009",
 			FirstName: "Andrew",
@@ -23,8 +22,8 @@ func TestUnitCamaraderieViewRendersConnections(t *testing.T) {
 		UnitLabel:     "Co. A, 1st Texas Infantry",
 		RegimentLabel: "1st Texas Infantry",
 		CompanyLabel:  "Company A",
-		SameUnit: []services.UnitCamaraderieConnection{{
-			Soldier: models.Soldier{
+		SameUnit: []viewmodel.UnitCamaraderieConnection{{
+			Soldier: viewmodel.Soldier{
 				ID:        10,
 				DisplayID: "CAM-0010",
 				FirstName: "Thomas",

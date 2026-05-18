@@ -3,24 +3,23 @@ package templates
 import (
 	"fmt"
 	"strings"
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ EntryForm(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool) {
+templ EntryForm(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) {
 	@Layout(formTitle(s, isEdit)) {
 		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, "")
 	}
 }
 
-templ EntryFormWithError(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+templ EntryFormWithError(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
 	@Layout(formTitle(s, isEdit)) {
 		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, errorMessage)
 	}
 }
 
-templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
 	<div id="entry-form-shell" data-ui-id={ entryFormPageID(isEdit) } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		@SurfaceBadge(entryFormPageID(isEdit))
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
@@ -313,7 +312,7 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 						}
 					</div>
 					<template data-record-template>
-						@RecordInputRow(models.Record{})
+						@RecordInputRow(viewmodel.Record{})
 					</template>
 					<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
 				</section>
@@ -388,7 +387,7 @@ templ EntryFormFragment(s models.Soldier, spouseCandidates []models.Soldier, sug
 	</div>
 }
 
-func formTitle(s models.Soldier, isEdit bool) string {
+func formTitle(s viewmodel.Soldier, isEdit bool) string {
 	label := entryTypeLabel(normalizedEntryType(s))
 	if isEdit {
 		return "Edit " + label + " Record"
@@ -410,7 +409,7 @@ func displayIDInputClass(isEdit bool) string {
 	return "field-input bg-slate-100 text-slate-500"
 }
 
-func draftKey(s models.Soldier, isEdit bool) string {
+func draftKey(s viewmodel.Soldier, isEdit bool) string {
 	if isEdit {
 		return fmt.Sprintf("edit-soldier-%d", s.ID)
 	}
@@ -424,7 +423,7 @@ func draftMode(isEdit bool) string {
 	return "new"
 }
 
-func draftResetPath(s models.Soldier, isEdit bool) string {
+func draftResetPath(s viewmodel.Soldier, isEdit bool) string {
 	if isEdit {
 		return fmt.Sprintf("/soldiers/%d/edit", s.ID)
 	}
@@ -470,14 +469,14 @@ func confederateHomeStatuses() []string {
 	return []string{"None", "Inmate", "Staffer", "Trustee"}
 }
 
-func selectedPensionState(s models.Soldier) string {
+func selectedPensionState(s viewmodel.Soldier) string {
 	if strings.TrimSpace(s.PensionState) == "" {
 		return "None"
 	}
 	return s.PensionState
 }
 
-func selectedConfederateHomeStatus(s models.Soldier) string {
+func selectedConfederateHomeStatus(s viewmodel.Soldier) string {
 	switch strings.TrimSpace(s.ConfederateHomeStatus) {
 	case "Inmate", "Staffer", "Trustee":
 		return s.ConfederateHomeStatus
@@ -486,7 +485,7 @@ func selectedConfederateHomeStatus(s models.Soldier) string {
 	}
 }
 
-func rankOutValue(s models.Soldier) string {
+func rankOutValue(s viewmodel.Soldier) string {
 	if s.RankOut != "" {
 		return s.RankOut
 	}
@@ -506,7 +505,7 @@ func entryTypes() []entryTypeOption {
 	}
 }
 
-func normalizedEntryType(s models.Soldier) string {
+func normalizedEntryType(s viewmodel.Soldier) string {
 	switch s.EntryType {
 	case "wife", "widow":
 		return s.EntryType
@@ -524,7 +523,7 @@ func entryTypeLabel(entryType string) string {
 	return "Soldier"
 }
 
-func spouseCandidateLabel(s models.Soldier) string {
+func spouseCandidateLabel(s viewmodel.Soldier) string {
 	label := strings.TrimSpace(s.GetFullName())
 	if label == "" {
 		label = strings.TrimSpace(s.DisplayID)
@@ -535,7 +534,7 @@ func spouseCandidateLabel(s models.Soldier) string {
 	return label + " (" + s.DisplayID + ")"
 }
 
-templ RecordInputRow(record models.Record) {
+templ RecordInputRow(record viewmodel.Record) {
 	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
 		<div class="mb-3 flex items-center justify-between gap-3">
 			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Record Entry</span>
@@ -566,14 +565,14 @@ templ SuggestionDatalist(id string, values []string) {
 	</datalist>
 }
 
-func formRecords(records []models.Record) []models.Record {
+func formRecords(records []viewmodel.Record) []viewmodel.Record {
 	if len(records) == 0 {
-		return []models.Record{{}}
+		return []viewmodel.Record{{}}
 	}
 	return records
 }
 
-templ InitialSetupView(form models.InitialSetupForm) {
+templ InitialSetupView(form viewmodel.InitialSetupForm) {
 	@Layout("First Launch Setup") {
 		<div class="mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold">First Launch Setup</h2>
@@ -617,7 +616,7 @@ templ InitialSetupView(form models.InitialSetupForm) {
 	}
 }
 
-func mergeReviewDisplayName(soldier models.Soldier) string {
+func mergeReviewDisplayName(soldier viewmodel.Soldier) string {
 	name := strings.TrimSpace(soldier.GetFullName())
 	if name == "" {
 		return soldier.DisplayID
@@ -670,7 +669,7 @@ templ SettingsView(confirmationWord string) {
 	}
 }
 
-templ SettingsOrphanedImages(orphans []services.OrphanedImage) {
+templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 	if len(orphans) == 0 {
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">No orphaned image files were found.</div>
 	} else {
@@ -702,7 +701,7 @@ templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
 	</div>
 }
 
-templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int) {
+templ SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch, page, total, pageSize int) {
 	if hasActiveSearch(search) || search.Recent {
 		<div class="mb-4 rounded-2xl border border-[rgba(197,171,104,0.9)] bg-[rgba(245,241,230,0.94)] px-4 py-3 shadow-[0_0_28px_rgba(197,171,104,0.15)]">
 			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">
@@ -786,7 +785,7 @@ templ SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page
 	}
 }
 
-templ AnniversaryPartial(soldiers []models.Soldier, month, day int) {
+templ AnniversaryPartial(soldiers []viewmodel.Soldier, month, day int) {
 	<h4 class="gold text-4xl leading-none mb-4">{ monthName(month) } { fmt.Sprintf("%d", day) }</h4>
 	if len(soldiers) == 0 {
 		<p class="text-lg leading-relaxed text-[#6e4f22]">No records for this date.</p>
@@ -797,7 +796,7 @@ templ AnniversaryPartial(soldiers []models.Soldier, month, day int) {
 	}
 }
 
-templ SearchPreviewContent(s models.Soldier) {
+templ SearchPreviewContent(s viewmodel.Soldier) {
 	<div class="space-y-5">
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(255,255,255,0.7)] px-4 py-4">
 			<div class="flex flex-wrap items-start justify-between gap-3">
@@ -919,7 +918,7 @@ templ SearchPreviewContent(s models.Soldier) {
 	</div>
 }
 
-func previewUpdatedByline(s models.Soldier) string {
+func previewUpdatedByline(s viewmodel.Soldier) string {
 	if strings.TrimSpace(s.LastEditedBy) != "" && strings.TrimSpace(s.LastEditedAt) != "" {
 		return s.LastEditedBy + " • " + formatAuditTimestamp(s.LastEditedAt)
 	}
@@ -929,7 +928,7 @@ func previewUpdatedByline(s models.Soldier) string {
 	return formatAuditTimestamp(s.LastEditedAt)
 }
 
-func previewConfederateHomeLabel(s models.Soldier) string {
+func previewConfederateHomeLabel(s viewmodel.Soldier) string {
 	if strings.TrimSpace(s.ConfederateHomeName) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "" {
 		return s.ConfederateHomeStatus + " • " + s.ConfederateHomeName
 	}
@@ -939,7 +938,7 @@ func previewConfederateHomeLabel(s models.Soldier) string {
 	return s.ConfederateHomeStatus
 }
 
-func entryFormBackHref(s models.Soldier, isEdit bool) string {
+func entryFormBackHref(s viewmodel.Soldier, isEdit bool) string {
 	if isEdit && s.ID > 0 {
 		return fmt.Sprintf("/soldiers/%d", s.ID)
 	}

@@ -25,14 +25,16 @@ import (
 
 	_ "embed"
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/findagrave"
+	"github.com/valueforvalue/DixieData/internal/integrations"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
-	"github.com/valueforvalue/DixieData/internal/services"
-	"github.com/valueforvalue/DixieData/internal/templates"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -42,15 +44,15 @@ var embeddedQuotes []byte
 type App struct {
 	ctx           context.Context
 	database      *db.DB
-	soldiers      *services.SoldierService
-	anniversary   *services.AnniversaryService
-	analytics     *services.AnalyticsService
-	audit         *services.AuditService
-	images        *services.ImageService
-	export        *services.ExportService
-	backup        *services.BackupService
-	diagnostics   *services.DiagnosticsService
-	google        *services.GoogleService
+	soldiers      soldiersFacade
+	anniversary   anniversaryFacade
+	analytics     analyticsFacade
+	audit         reviewFacade
+	images        imageFacade
+	export        exportFacade
+	backup        backupFacade
+	diagnostics   diagnosticsFacade
+	google        integrationFacade
 	quotes        []models.Quote
 	mux           *http.ServeMux
 	startupErr    error
@@ -279,7 +281,7 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+	presentation.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
 }
 
 func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
@@ -289,20 +291,20 @@ func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		templates.InitialSetupView(models.InitialSetupForm{}).Render(r.Context(), w)
+		presentation.InitialSetupView(models.InitialSetupForm{}).Render(r.Context(), w)
 	case http.MethodPost:
 		form, birthYear, err := parseInitialSetupForm(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			form.ErrorMessage = err.Error()
-			templates.InitialSetupView(form).Render(r.Context(), w)
+			presentation.InitialSetupView(form).Render(r.Context(), w)
 			return
 		}
 		_, err = a.database.ConfigureUserIdentity(form.FirstName, form.MiddleName, form.LastName, birthYear)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			form.ErrorMessage = err.Error()
-			templates.InitialSetupView(form).Render(r.Context(), w)
+			presentation.InitialSetupView(form).Render(r.Context(), w)
 			return
 		}
 		a.setupRequired = false
@@ -355,7 +357,7 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+	presentation.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
 }
 
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +385,7 @@ func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.AnniversaryPartial(soldiers, month, day).Render(r.Context(), w)
+	presentation.AnniversaryPartial(soldiers, month, day).Render(r.Context(), w)
 }
 
 func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
@@ -405,7 +407,7 @@ func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.SoldierList(nil, page, 0, "", suggestions).Render(r.Context(), w)
+	presentation.SoldierList(nil, page, 0, "", suggestions).Render(r.Context(), w)
 }
 
 func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -421,7 +423,7 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Browse: r.URL.Query().Get("browse") == "1",
 	}
 	if strings.TrimSpace(q) == "" && !search.Browse {
-		templates.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
+		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
 		return
 	}
 	if strings.TrimSpace(q) == "" && search.Browse {
@@ -430,7 +432,7 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		templates.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+		presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
 		return
 	}
 	soldiers, total, err := a.soldiers.SearchPage(q, page, 50)
@@ -438,7 +440,7 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	templates.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+	presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
 }
 
 func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
@@ -456,7 +458,7 @@ func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)
+	presentation.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)
 }
 
 func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
@@ -494,7 +496,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	page := parsePage(r.URL.Query().Get("page"))
 	if !hasAdvancedSearchInput(search) {
-		templates.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
+		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
 		return
 	}
 
@@ -504,7 +506,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+	presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
 }
 
 func hasAdvancedSearchInput(search models.SoldierSearch) bool {
@@ -690,7 +692,7 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		templates.SoldierDetail(*soldier).Render(r.Context(), w)
+		presentation.SoldierDetail(*soldier).Render(r.Context(), w)
 	case http.MethodPut:
 		a.handleUpdateSoldier(w, r, id)
 	case http.MethodDelete:
@@ -718,7 +720,7 @@ func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id i
 		http.Error(w, err.Error(), status)
 		return
 	}
-	templates.UnitCamaraderieView(*graph).Render(r.Context(), w)
+	presentation.UnitCamaraderieView(*graph).Render(r.Context(), w)
 }
 
 func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id int64) {
@@ -735,7 +737,7 @@ func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id i
 		http.Error(w, err.Error(), status)
 		return
 	}
-	templates.ServiceTimelineView(*timeline).Render(r.Context(), w)
+	presentation.ServiceTimelineView(*timeline).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64, parts []string) {
@@ -745,7 +747,7 @@ func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		templates.ResearchLogView(*log).Render(r.Context(), w)
+		presentation.ResearchLogView(*log).Render(r.Context(), w)
 		return
 	}
 	if len(parts) == 2 && parts[1] == "tasks" && r.Method == http.MethodPost {
@@ -803,7 +805,7 @@ func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id in
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	templates.SourceConflictLedgerView(*ledger).Render(r.Context(), w)
+	presentation.SourceConflictLedgerView(*ledger).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int64, scope string) {
@@ -816,7 +818,7 @@ func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int6
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	templates.ResearchPackView(*pack).Render(r.Context(), w)
+	presentation.ResearchPackView(*pack).Render(r.Context(), w)
 }
 
 func (a *App) handleEditSoldier(w http.ResponseWriter, r *http.Request, id int64) {
@@ -873,7 +875,7 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.ShareView(status, conflicts).Render(r.Context(), w)
+	presentation.ShareView(status, conflicts).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) {
@@ -889,7 +891,7 @@ func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) 
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		templates.ResearchCollectionsHubView(*hub).Render(r.Context(), w)
+		presentation.ResearchCollectionsHubView(*hub).Render(r.Context(), w)
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "failed to parse form", http.StatusBadRequest)
@@ -959,7 +961,7 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		templates.ResearchCollectionDetailView(*detail).Render(r.Context(), w)
+		presentation.ResearchCollectionDetailView(*detail).Render(r.Context(), w)
 		return
 	}
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -985,14 +987,7 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	entries := make([]services.ReviewQueueEntry, 0, len(soldiers))
-	for _, soldier := range soldiers {
-		entries = append(entries, services.ReviewQueueEntry{
-			Soldier:           soldier,
-			DuplicateFindings: findings[soldier.ID],
-		})
-	}
-	templates.ReviewQueueView(entries, page, total, 50).Render(r.Context(), w)
+	presentation.ReviewQueueView(soldiers, findings, page, total, 50).Render(r.Context(), w)
 }
 
 func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
@@ -1058,7 +1053,7 @@ func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.InsightsView(snapshot).Render(r.Context(), w)
+	presentation.InsightsView(snapshot).Render(r.Context(), w)
 }
 
 func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
@@ -1089,7 +1084,7 @@ func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	templates.InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w)
+	presentation.InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w)
 }
 
 func insightDrilldownConfig(scope, value string) (string, string, models.SoldierSearch, bool, error) {
@@ -1174,7 +1169,7 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	templates.SettingsView(initializeDataConfirmationWord).Render(r.Context(), w)
+	presentation.SettingsView(initializeDataConfirmationWord).Render(r.Context(), w)
 }
 
 func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
@@ -1187,7 +1182,7 @@ func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	templates.SettingsOrphanedImages(orphans).Render(r.Context(), w)
+	presentation.SettingsOrphanedImages(orphans).Render(r.Context(), w)
 }
 
 func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) {
@@ -1211,7 +1206,7 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Moved %d orphaned image(s) into temp trash for 30-day retention.", moved))
-	templates.SettingsOrphanCleanupResult(moved, trashRoot).Render(r.Context(), w)
+	presentation.SettingsOrphanCleanupResult(moved, trashRoot).Render(r.Context(), w)
 }
 
 func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
@@ -1372,7 +1367,7 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, message)
 }
 
-func (a *App) ExportFullDatabasePDF(settings services.PrintSettings) (string, error) {
+func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-printable-archive.pdf",
 		Filters: []runtime.FileFilter{
@@ -1388,11 +1383,11 @@ func (a *App) ExportFullDatabasePDF(settings services.PrintSettings) (string, er
 	return exportLinkMarkup("Printable PDF ready:", path), nil
 }
 
-func parsePrintSettingsRequest(r *http.Request) (services.PrintSettings, error) {
+func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 	if err := r.ParseForm(); err != nil {
-		return services.PrintSettings{}, fmt.Errorf("failed to parse print settings")
+		return archive.PrintSettings{}, fmt.Errorf("failed to parse print settings")
 	}
-	return services.PrintSettings{
+	return archive.PrintSettings{
 		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),
 		GroupByUnit:                  r.FormValue("group_by_unit") != "",
 		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
@@ -1477,7 +1472,7 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: services.DiagnosticsBundleName(time.Now()),
+		DefaultFilename: archive.DiagnosticsBundleName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Bug report bundle", Pattern: "*.zip"},
 		},
@@ -1708,7 +1703,7 @@ func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	templates.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
+	presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
 }
 
 func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
@@ -1734,7 +1729,7 @@ func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
 		comparison.BackHref = fmt.Sprintf("/soldiers/%d", fromID)
 		comparison.BackLabel = "Back to Record"
 	}
-	templates.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
+	presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
 }
 
 func (a *App) handleGoogleConnect(w http.ResponseWriter, r *http.Request) {
@@ -2397,14 +2392,14 @@ func (a *App) renderEntryFormWithScrapeState(w http.ResponseWriter, r *http.Requ
 	}
 	w.WriteHeader(statusCode)
 	if fragmentOnly {
-		templates.EntryFormFragment(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
+		presentation.EntryFormFragment(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
 		return
 	}
 	if errorMessage != "" {
-		templates.EntryFormWithError(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
+		presentation.EntryFormWithError(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
 		return
 	}
-	templates.EntryForm(soldier, candidates, suggestions, scrape, isEdit).Render(r.Context(), w)
+	presentation.EntryForm(soldier, candidates, suggestions, scrape, isEdit).Render(r.Context(), w)
 }
 
 func applyFindAGraveAutofill(base models.Soldier, result findagrave.Result) models.Soldier {
@@ -2753,15 +2748,16 @@ func findChromeExecutable() (string, error) {
 }
 
 func (a *App) reloadServices() error {
-	a.soldiers = services.NewSoldierService(a.database)
-	a.anniversary = services.NewAnniversaryService(a.database)
-	a.analytics = services.NewAnalyticsService(a.database)
-	a.audit = services.NewAuditService(a.database)
-	a.images = services.NewImageService(a.database)
-	a.export = services.NewExportService(a.database, a.soldiers)
-	a.backup = services.NewBackupService(a.database, a.soldiers)
-	a.diagnostics = services.NewDiagnosticsService(a.database, a.soldiers)
-	a.google = services.NewGoogleService(a.dataDir)
+	soldierSvc := records.NewSoldierService(a.database)
+	a.soldiers = soldierSvc
+	a.anniversary = records.NewAnniversaryService(a.database)
+	a.analytics = records.NewAnalyticsService(a.database)
+	a.audit = records.NewAuditService(a.database)
+	a.images = archive.NewImageService(a.database)
+	a.export = archive.NewExportService(a.database, soldierSvc)
+	a.backup = archive.NewBackupService(a.database, soldierSvc)
+	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
+	a.google = integrations.NewGoogleService(a.dataDir)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {
