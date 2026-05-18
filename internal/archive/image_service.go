@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -251,4 +252,20 @@ func moveFile(source, target string) error {
 		return err
 	}
 	return nil
+}
+
+func safeJoinWithinRoot(root, relative string) (string, error) {
+	cleanRelative := filepath.Clean(filepath.FromSlash(strings.TrimSpace(relative)))
+	if cleanRelative == "." || cleanRelative == "" {
+		return "", fmt.Errorf("invalid image path")
+	}
+	candidate := filepath.Join(root, cleanRelative)
+	rel, err := filepath.Rel(root, candidate)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid image path")
+	}
+	return candidate, nil
 }
