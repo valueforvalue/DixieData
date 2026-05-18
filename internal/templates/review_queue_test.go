@@ -6,14 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 	var buf bytes.Buffer
-	err := ReviewQueueView([]services.ReviewQueueEntry{{
-		Soldier: models.Soldier{
+	err := ReviewQueueView([]viewmodel.ReviewQueueEntry{{
+		Soldier: viewmodel.Soldier{
 			ID:           12,
 			DisplayID:    "JCM87-00012",
 			FirstName:    "Andrew",
@@ -21,7 +20,7 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 			NeedsReview:  true,
 			ReviewReason: "Potential duplicate from JCM87 import",
 		},
-		DuplicateFindings: []services.DuplicateAuditFindingSummary{{
+		DuplicateFindings: []viewmodel.DuplicateAuditFindingSummary{{
 			ID:             9,
 			OtherSoldierID: 18,
 			OtherDisplayID: "JCM87-00018",
@@ -47,13 +46,13 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 
 func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 	var buf bytes.Buffer
-	err := ReviewQueueCompareView(services.DuplicateAuditComparison{
+	err := ReviewQueueCompareView(viewmodel.DuplicateAuditComparison{
 		FindingID:    4,
 		FindingType:  "fuzzy-first-name",
 		Reason:       `Duplicate Audit: Fuzzy match: "John" and "Jon" share the same last name and birth year.`,
-		LeftSoldier:  models.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
-		RightSoldier: models.Soldier{DisplayID: "JCM87-00008", FirstName: "Jon", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
-		Fields: []services.DuplicateAuditComparisonField{
+		LeftSoldier:  viewmodel.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
+		RightSoldier: viewmodel.Soldier{DisplayID: "JCM87-00008", FirstName: "Jon", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
+		Fields: []viewmodel.DuplicateAuditComparisonField{
 			{Label: "First Name", LeftValue: "John", RightValue: "Jon", Highlighted: true},
 			{Label: "Birth Year", LeftValue: "1840", RightValue: "1840", Highlighted: true},
 		},
@@ -84,19 +83,19 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 
 func TestReviewQueueCompareViewSupportsManualComparison(t *testing.T) {
 	var buf bytes.Buffer
-	err := ReviewQueueCompareView(services.DuplicateAuditComparison{
+	err := ReviewQueueCompareView(viewmodel.DuplicateAuditComparison{
 		PageTitle:   "Record Comparison",
 		BackHref:    "/soldiers",
 		BackLabel:   "Back",
 		Reason:      "Manual side-by-side comparison of two selected records.",
 		Status:      "manual",
-		LeftSoldier: models.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns"},
-		RightSoldier: models.Soldier{
+		LeftSoldier: viewmodel.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns"},
+		RightSoldier: viewmodel.Soldier{
 			DisplayID: "JCM87-00008",
 			FirstName: "Jon",
 			LastName:  "Kerns",
 		},
-		Fields: []services.DuplicateAuditComparisonField{
+		Fields: []viewmodel.DuplicateAuditComparisonField{
 			{Label: "First Name", LeftValue: "John", RightValue: "Jon", Highlighted: true},
 		},
 	}).Render(context.Background(), &buf)

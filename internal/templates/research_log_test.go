@@ -6,14 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestResearchLogViewRendersTasksAndSuggestions(t *testing.T) {
 	var buf bytes.Buffer
-	err := ResearchLogView(services.ResearchLog{
-		Central: models.Soldier{
+	err := ResearchLogView(viewmodel.ResearchLog{
+		Central: viewmodel.Soldier{
 			ID:        14,
 			DisplayID: "RLG-0014",
 			FirstName: "Andrew",
@@ -21,12 +20,12 @@ func TestResearchLogViewRendersTasksAndSuggestions(t *testing.T) {
 		},
 		OpenCount:     1,
 		ResolvedCount: 1,
-		Suggestions: []services.ResearchTaskSuggestion{{
+		Suggestions: []viewmodel.ResearchTaskSuggestion{{
 			Title:        "Locate pension or application file",
 			Notes:        "No pension ID or application ID is attached yet.",
 			EvidenceType: "pension",
 		}},
-		Tasks: []services.ResearchTask{{
+		Tasks: []viewmodel.ResearchTask{{
 			ID:           8,
 			Title:        "Locate pension file",
 			Notes:        "Check state archive holdings.",

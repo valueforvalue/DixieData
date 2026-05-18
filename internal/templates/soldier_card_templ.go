@@ -11,8 +11,8 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 	"github.com/valueforvalue/DixieData/internal/dates"
-	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-func SoldierCard(s models.Soldier, highlighted bool) templ.Component {
+func SoldierCard(s viewmodel.Soldier, highlighted bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -272,7 +272,7 @@ func soldierCardClass(highlighted bool) string {
 	return className
 }
 
-func hasActiveSearch(search models.SoldierSearch) bool {
+func hasActiveSearch(search viewmodel.SoldierSearch) bool {
 	if search.Browse {
 		return true
 	}
@@ -282,7 +282,7 @@ func hasActiveSearch(search models.SoldierSearch) bool {
 	return strings.TrimSpace(search.Query) != ""
 }
 
-func deathDate(s models.Soldier) string {
+func deathDate(s viewmodel.Soldier) string {
 	return dates.Display(s.DeathDate)
 }
 
@@ -336,7 +336,7 @@ func auditHistoryLines(value string) []string {
 	return lines
 }
 
-func SoldierList(soldiers []models.Soldier, page, total int, query string, suggestions models.SoldierFormSuggestions) templ.Component {
+func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, suggestions viewmodel.SoldierFormSuggestions) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -576,7 +576,7 @@ func SoldierList(soldiers []models.Soldier, page, total int, query string, sugge
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Query: query}, page, total, 50).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = SearchResults(soldiers, viewmodel.SoldierSearch{Mode: "basic", Query: query}, page, total, 50).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -594,7 +594,7 @@ func SoldierList(soldiers []models.Soldier, page, total int, query string, sugge
 	})
 }
 
-func SoldierDetail(s models.Soldier) templ.Component {
+func SoldierDetail(s viewmodel.Soldier) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1975,11 +1975,11 @@ func SoldierDetail(s models.Soldier) templ.Component {
 	})
 }
 
-func pageHref(search models.SoldierSearch, page int) templ.SafeURL {
+func pageHref(search viewmodel.SoldierSearch, page int) templ.SafeURL {
 	return templ.SafeURL(pageRequestURL(search, page))
 }
 
-func pageRequestURL(search models.SoldierSearch, page int) string {
+func pageRequestURL(search viewmodel.SoldierSearch, page int) string {
 	params := searchParams(search)
 	params.Set("page", fmt.Sprintf("%d", page))
 	if search.Mode == "advanced" {
@@ -1988,7 +1988,7 @@ func pageRequestURL(search models.SoldierSearch, page int) string {
 	return "/soldiers/search?" + params.Encode()
 }
 
-func searchParams(search models.SoldierSearch) url.Values {
+func searchParams(search viewmodel.SoldierSearch) url.Values {
 	values := url.Values{}
 	if search.Mode == "advanced" {
 		if strings.TrimSpace(search.DisplayID) != "" {
@@ -2074,7 +2074,7 @@ func searchParams(search models.SoldierSearch) url.Values {
 	return values
 }
 
-func searchSummary(search models.SoldierSearch) string {
+func searchSummary(search viewmodel.SoldierSearch) string {
 	if search.Mode != "advanced" {
 		if search.Browse {
 			return "Browse: alphabetical list"
@@ -2178,26 +2178,26 @@ func searchSummary(search models.SoldierSearch) string {
 	return "Advanced filters: " + strings.Join(parts, ", ")
 }
 
-func reviewStatusLabel(s models.Soldier) string {
+func reviewStatusLabel(s viewmodel.Soldier) string {
 	if s.NeedsReview {
 		return "Needs Review"
 	}
 	return "Clean"
 }
 
-func soldierFullName(s models.Soldier) string {
+func soldierFullName(s viewmodel.Soldier) string {
 	return s.GetFullName()
 }
 
-func isSoldierEntry(s models.Soldier) bool {
+func isSoldierEntry(s viewmodel.Soldier) bool {
 	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == "soldier"
 }
 
-func soldierHasCamaraderie(s models.Soldier) bool {
+func soldierHasCamaraderie(s viewmodel.Soldier) bool {
 	return isSoldierEntry(s) && strings.TrimSpace(s.Unit) != ""
 }
 
-func soldierHasTimeline(s models.Soldier) bool {
+func soldierHasTimeline(s viewmodel.Soldier) bool {
 	if !isSoldierEntry(s) {
 		return false
 	}
@@ -2210,7 +2210,7 @@ func soldierHasTimeline(s models.Soldier) bool {
 	return len(s.Records) > 0
 }
 
-func soldierStateResearchPackLabel(s models.Soldier) string {
+func soldierStateResearchPackLabel(s viewmodel.Soldier) string {
 	if trimmed := strings.TrimSpace(s.PensionState); trimmed != "" {
 		return trimmed
 	}
@@ -2218,12 +2218,12 @@ func soldierStateResearchPackLabel(s models.Soldier) string {
 	return state
 }
 
-func soldierCountyResearchPackLabel(s models.Soldier) string {
+func soldierCountyResearchPackLabel(s viewmodel.Soldier) string {
 	county, _ := soldierBirthInfoResearchPackLabels(s.BirthInfo)
 	return county
 }
 
-func soldierHasResearchPack(s models.Soldier) bool {
+func soldierHasResearchPack(s viewmodel.Soldier) bool {
 	return soldierStateResearchPackLabel(s) != "" || soldierCountyResearchPackLabel(s) != ""
 }
 
@@ -2247,11 +2247,11 @@ func soldierBirthInfoResearchPackLabels(value string) (string, string) {
 	return "", ""
 }
 
-func isWidowEntry(s models.Soldier) bool {
+func isWidowEntry(s viewmodel.Soldier) bool {
 	return s.EntryType == "widow"
 }
 
-func entryBadgeLabel(s models.Soldier) string {
+func entryBadgeLabel(s viewmodel.Soldier) string {
 	switch s.EntryType {
 	case "wife":
 		return "Wife"
@@ -2262,7 +2262,7 @@ func entryBadgeLabel(s models.Soldier) string {
 	}
 }
 
-func detailHeading(s models.Soldier) string {
+func detailHeading(s viewmodel.Soldier) string {
 	name := strings.TrimSpace(soldierFullName(s))
 	if isSoldierEntry(s) {
 		rank := strings.TrimSpace(detailDisplayRank(s))
@@ -2280,7 +2280,7 @@ func detailHeading(s models.Soldier) string {
 	return entryBadgeLabel(s)
 }
 
-func detailSubheading(s models.Soldier) string {
+func detailSubheading(s viewmodel.Soldier) string {
 	if isSoldierEntry(s) {
 		return strings.TrimSpace(s.Unit)
 	}
@@ -2290,7 +2290,7 @@ func detailSubheading(s models.Soldier) string {
 	return strings.TrimSpace(s.MaidenName)
 }
 
-func relationshipLabel(s models.Soldier) string {
+func relationshipLabel(s viewmodel.Soldier) string {
 	name := strings.TrimSpace(s.SpouseName)
 	displayID := strings.TrimSpace(s.SpouseDisplayID)
 	switch {
@@ -2310,21 +2310,21 @@ func relationshipLabel(s models.Soldier) string {
 	}
 }
 
-func backButtonLabel(s models.Soldier) string {
+func backButtonLabel(s viewmodel.Soldier) string {
 	if strings.TrimSpace(s.BackLinkLabel) != "" {
 		return s.BackLinkLabel
 	}
 	return "Back"
 }
 
-func soldierDetailBackHref(s models.Soldier) string {
+func soldierDetailBackHref(s viewmodel.Soldier) string {
 	if strings.TrimSpace(s.BackLinkURL) != "" {
 		return strings.TrimSpace(s.BackLinkURL)
 	}
 	return "/soldiers"
 }
 
-func detailDisplayRank(s models.Soldier) string {
+func detailDisplayRank(s viewmodel.Soldier) string {
 	if trimmed := strings.TrimSpace(s.RankOut); trimmed != "" {
 		return trimmed
 	}

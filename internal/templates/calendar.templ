@@ -2,11 +2,11 @@ package templates
 
 import (
 	"fmt"
-	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ Calendar(month int, calendar map[int][]models.Soldier, counts models.ArchiveCounts, quote models.Quote) {
+templ Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) {
 	@Layout("Calendar") {
 		<div data-ui-id={ uiids.PageCalendar } class="relative">
 			@SurfaceBadge(uiids.PageCalendar)
