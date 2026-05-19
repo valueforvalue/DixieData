@@ -71,7 +71,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">Archive Insights</h2><p class=\"mt-2 max-w-3xl text-sm text-slate-600\">High-level analytics for the current archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p></div><div class=\"flex flex-col items-start gap-3 lg:items-end\"><button hx-post=\"/insights/report/pdf\" hx-target=\"#insights-export-status\" class=\"primary-button\">Export Analytics Report</button><div id=\"insights-export-status\" class=\"text-sm text-slate-600\"></div></div></div><div class=\"responsive-two-col grid gap-6\"><section data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">Local Archive Insights</h2><p class=\"mt-2 max-w-3xl text-sm text-slate-600\">High-level analytics for the current local archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p></div><div class=\"flex flex-col items-start gap-3 lg:items-end\"><button hx-post=\"/insights/report/pdf\" hx-target=\"#insights-export-status\" class=\"primary-button\">Export Analytics Report</button><div id=\"insights-export-status\" class=\"text-sm text-slate-600\"></div></div></div><div class=\"responsive-two-col grid gap-6\"><section data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -92,7 +92,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Overview</p><h3 class=\"mt-2 text-xl gold font-bold\">Record Type Snapshot</h3><div class=\"mt-5 grid gap-4 sm:grid-cols-2\"><a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Overview</p><h3 class=\"mt-2 text-xl gold font-bold\">Person Record Type Snapshot</h3><div class=\"mt-5 grid gap-4 sm:grid-cols-2\"><a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -110,9 +110,9 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.RecordTypes.TotalSoldiers))
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.SoldierCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 34, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 34, Col: 118}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -136,15 +136,15 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.RecordTypes.TotalWivesWidows))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.SpouseRecordCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 38, Col: 116}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 38, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"mt-1 text-xs uppercase tracking-[0.18em] text-slate-500\">Spouses (Wives & Widows)</div></a></div></section><section data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"mt-1 text-xs uppercase tracking-[0.18em] text-slate-500\">Spouse Records</div></a></div></section><section data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -514,7 +514,7 @@ func InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage str
 	})
 }
 
-func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch, page, total, pageSize int, scope, value string) templ.Component {
+func InsightsDrilldownView(title, description string, personRecords []viewmodel.PersonRecord, search viewmodel.PersonRecordSearch, page, total, pageSize int, scope, value string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -590,7 +590,7 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(soldiers) == 0 {
+			if len(personRecords) == 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<p class=\"rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500\">No records matched this insight.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -600,15 +600,15 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, s := range soldiers {
+				for _, personRecord := range personRecords {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<div class=\"flex items-start gap-3\"><div class=\"mt-4 flex shrink-0 flex-col gap-2\"><label class=\"inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500\"><input type=\"checkbox\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var30 string
-					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.ID))
+					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", personRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 168, Col: 63}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 168, Col: 74}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 					if templ_7745c5c3_Err != nil {
@@ -619,9 +619,9 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var31 string
-					templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
+					templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(personRecord.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 168, Col: 156}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 168, Col: 178}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 					if templ_7745c5c3_Err != nil {
@@ -632,9 +632,9 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var32 string
-					templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("insight-preview-%d", s.ID))
+					templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("insight-preview-%d", personRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 171, Col: 109}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 171, Col: 120}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 					if templ_7745c5c3_Err != nil {
@@ -644,7 +644,7 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = SoldierCard(s, true).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = SoldierCard(personRecord, true).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -653,9 +653,9 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var33 string
-					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("insight-preview-%d", s.ID))
+					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("insight-preview-%d", personRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 176, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 176, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 					if templ_7745c5c3_Err != nil {
@@ -665,7 +665,7 @@ func InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldi
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = SearchPreviewContent(s).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = SearchPreviewContent(personRecord).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

@@ -18,19 +18,19 @@ func InitialSetupView(form models.InitialSetupForm) templ.Component {
 }
 
 func AnniversaryPartial(soldiers []models.Soldier, month, day int) templ.Component {
-	return templates.AnniversaryPartial(viewmodel.SoldiersFromModels(soldiers), month, day)
+	return templates.AnniversaryPartial(viewmodel.PersonRecordsFromModels(soldiers), month, day)
 }
 
 func SoldierList(soldiers []models.Soldier, page, total int, query string, suggestions models.SoldierFormSuggestions) templ.Component {
-	return templates.SoldierList(viewmodel.SoldiersFromModels(soldiers), page, total, query, viewmodel.SoldierFormSuggestionsFromModel(suggestions))
+	return templates.SoldierList(viewmodel.PersonRecordsFromModels(soldiers), page, total, query, viewmodel.PersonRecordFormSuggestionsFromModel(suggestions))
 }
 
 func SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int) templ.Component {
-	return templates.SearchResults(viewmodel.SoldiersFromModels(soldiers), viewmodel.SoldierSearchFromModel(search), page, total, pageSize)
+	return templates.SearchResults(viewmodel.PersonRecordsFromModels(soldiers), viewmodel.PersonRecordSearchFromModel(search), page, total, pageSize)
 }
 
 func SoldierDetail(soldier models.Soldier) templ.Component {
-	return templates.SoldierDetail(viewmodel.SoldierFromModel(soldier))
+	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier))
 }
 
 func UnitCamaraderieView(graph records.UnitCamaraderieGraph) templ.Component {
@@ -45,8 +45,8 @@ func ResearchLogView(log records.ResearchLog) templ.Component {
 	return templates.ResearchLogView(viewmodel.ResearchLogFromDomain(log))
 }
 
-func SourceConflictLedgerView(ledger archive.SourceConflictLedger) templ.Component {
-	return templates.SourceConflictLedgerView(viewmodel.SourceConflictLedgerFromDomain(ledger))
+func MergeReviewLedgerView(ledger archive.SourceConflictLedger) templ.Component {
+	return templates.MergeReviewLedgerView(viewmodel.MergeReviewLedgerFromDomain(ledger))
 }
 
 func ResearchPackView(pack records.ResearchPack) templ.Component {
@@ -74,7 +74,7 @@ func InsightsView(snapshot records.AnalyticsSnapshot) templ.Component {
 }
 
 func InsightsDrilldownView(title, description string, soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int, scope, value string) templ.Component {
-	return templates.InsightsDrilldownView(title, description, viewmodel.SoldiersFromModels(soldiers), viewmodel.SoldierSearchFromModel(search), page, total, pageSize, scope, value)
+	return templates.InsightsDrilldownView(title, description, viewmodel.PersonRecordsFromModels(soldiers), viewmodel.PersonRecordSearchFromModel(search), page, total, pageSize, scope, value)
 }
 
 func SettingsView(confirmationWord string) templ.Component {
@@ -94,13 +94,13 @@ func ReviewQueueCompareView(comparison records.DuplicateAuditComparison) templ.C
 }
 
 func EntryForm(soldier models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool) templ.Component {
-	return templates.EntryForm(viewmodel.SoldierFromModel(soldier), viewmodel.SoldiersFromModels(spouseCandidates), viewmodel.SoldierFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit)
+	return templates.EntryForm(viewmodel.PersonRecordFromModel(soldier), viewmodel.PersonRecordsFromModels(spouseCandidates), viewmodel.PersonRecordFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit)
 }
 
 func EntryFormWithError(soldier models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
-	return templates.EntryFormWithError(viewmodel.SoldierFromModel(soldier), viewmodel.SoldiersFromModels(spouseCandidates), viewmodel.SoldierFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit, errorMessage)
+	return templates.EntryFormWithError(viewmodel.PersonRecordFromModel(soldier), viewmodel.PersonRecordsFromModels(spouseCandidates), viewmodel.PersonRecordFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit, errorMessage)
 }
 
 func EntryFormFragment(soldier models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
-	return templates.EntryFormFragment(viewmodel.SoldierFromModel(soldier), viewmodel.SoldiersFromModels(spouseCandidates), viewmodel.SoldierFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit, errorMessage)
+	return templates.EntryFormFragment(viewmodel.PersonRecordFromModel(soldier), viewmodel.PersonRecordsFromModels(spouseCandidates), viewmodel.PersonRecordFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit, errorMessage)
 }

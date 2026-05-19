@@ -12,8 +12,8 @@ import (
 func TestCalendarShowsSplitArchiveCounts(t *testing.T) {
 	var buf bytes.Buffer
 	err := Calendar(5, map[int][]viewmodel.Soldier{}, viewmodel.ArchiveCounts{
-		TotalSoldiers:    12,
-		TotalWivesWidows: 5,
+		SoldierCount:      12,
+		SpouseRecordCount: 5,
 	}, viewmodel.Quote{
 		Author: "Test Author",
 		Text:   "Test quote",
@@ -27,7 +27,7 @@ func TestCalendarShowsSplitArchiveCounts(t *testing.T) {
 		">12<",
 		">5<",
 		"Soldiers",
-		"Wives & Widows",
+		"Spouse Records",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("calendar header missing %s", needle)

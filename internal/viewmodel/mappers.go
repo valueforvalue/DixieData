@@ -6,13 +6,13 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
-func SoldierFromModel(input models.Soldier) Soldier {
-	return Soldier{
+func PersonRecordFromModel(input models.Soldier) PersonRecord {
+	return PersonRecord{
 		ID:                    input.ID,
 		DisplayID:             input.DisplayID,
 		SyncID:                input.SyncID,
 		EntryType:             input.EntryType,
-		SpouseSoldierID:       input.SpouseSoldierID,
+		LinkedSoldierID:       input.SpouseSoldierID,
 		SpouseName:            input.SpouseName,
 		MaidenName:            input.MaidenName,
 		IsGenerated:           input.IsGenerated,
@@ -51,43 +51,81 @@ func SoldierFromModel(input models.Soldier) Soldier {
 		SpouseDisplayID:       input.SpouseDisplayID,
 		BackLinkURL:           input.BackLinkURL,
 		BackLinkLabel:         input.BackLinkLabel,
-		RecordCount:           input.RecordCount,
+		SourceRecordCount:     input.RecordCount,
 		ImageCount:            input.ImageCount,
-		Records:               RecordsFromModels(input.Records),
+		SourceRecords:         SourceRecordsFromModels(input.Records),
 		Images:                ImagesFromModels(input.Images),
 	}
 }
 
-func SoldierPtrFromModel(input *models.Soldier) *Soldier {
+func SoldierFromModel(input models.Soldier) PersonRecord {
+	return PersonRecordFromModel(input)
+}
+
+func PersonRecordPtrFromModel(input *models.Soldier) *PersonRecord {
 	if input == nil {
 		return nil
 	}
-	mapped := SoldierFromModel(*input)
+	mapped := PersonRecordFromModel(*input)
 	return &mapped
 }
 
-func SoldiersFromModels(inputs []models.Soldier) []Soldier {
-	items := make([]Soldier, 0, len(inputs))
+func SoldierPtrFromModel(input *models.Soldier) *PersonRecord {
+	return PersonRecordPtrFromModel(input)
+}
+
+func PersonRecordsFromModels(inputs []models.Soldier) []PersonRecord {
+	items := make([]PersonRecord, 0, len(inputs))
 	for _, input := range inputs {
-		items = append(items, SoldierFromModel(input))
+		items = append(items, PersonRecordFromModel(input))
 	}
 	return items
 }
 
-func RecordFromModel(input models.Record) Record {
-	return Record(input)
+func SoldiersFromModels(inputs []models.Soldier) []PersonRecord {
+	return PersonRecordsFromModels(inputs)
 }
 
-func RecordsFromModels(inputs []models.Record) []Record {
-	items := make([]Record, 0, len(inputs))
+func SourceRecordFromModel(input models.Record) SourceRecord {
+	return SourceRecord{
+		ID:                 input.ID,
+		SyncID:             input.SyncID,
+		PersonRecordID:     input.SoldierID,
+		PersonRecordSyncID: input.SoldierSyncID,
+		SourceRecordType:   input.RecordType,
+		AppID:              input.AppID,
+		Details:            input.Details,
+	}
+}
+
+func RecordFromModel(input models.Record) SourceRecord {
+	return SourceRecordFromModel(input)
+}
+
+func SourceRecordsFromModels(inputs []models.Record) []SourceRecord {
+	items := make([]SourceRecord, 0, len(inputs))
 	for _, input := range inputs {
-		items = append(items, RecordFromModel(input))
+		items = append(items, SourceRecordFromModel(input))
 	}
 	return items
+}
+
+func RecordsFromModels(inputs []models.Record) []SourceRecord {
+	return SourceRecordsFromModels(inputs)
 }
 
 func ImageFromModel(input models.Image) Image {
-	return Image(input)
+	return Image{
+		ID:                 input.ID,
+		SyncID:             input.SyncID,
+		PersonRecordID:     input.SoldierID,
+		PersonRecordSyncID: input.SoldierSyncID,
+		FileName:           input.FileName,
+		FilePath:           input.FilePath,
+		Caption:            input.Caption,
+		IsPrimary:          input.IsPrimary,
+		ResolvedPath:       input.ResolvedPath,
+	}
 }
 
 func ImagesFromModels(inputs []models.Image) []Image {
@@ -99,7 +137,10 @@ func ImagesFromModels(inputs []models.Image) []Image {
 }
 
 func ArchiveCountsFromModel(input models.ArchiveCounts) ArchiveCounts {
-	return ArchiveCounts(input)
+	return ArchiveCounts{
+		SoldierCount:      input.TotalSoldiers,
+		SpouseRecordCount: input.TotalWivesWidows,
+	}
 }
 
 func QuoteFromModel(input models.Quote) Quote { return Quote(input) }
@@ -112,16 +153,69 @@ func QuotesFromModels(inputs []models.Quote) []Quote {
 	return items
 }
 
-func SoldierSearchFromModel(input models.SoldierSearch) SoldierSearch { return SoldierSearch(input) }
-func SoldierFormSuggestionsFromModel(input models.SoldierFormSuggestions) SoldierFormSuggestions {
-	return SoldierFormSuggestions(input)
+func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch {
+	return PersonRecordSearch{
+		Mode:                  input.Mode,
+		Query:                 input.Query,
+		Browse:                input.Browse,
+		Recent:                input.Recent,
+		DisplayID:             input.DisplayID,
+		EntryType:             input.EntryType,
+		FirstName:             input.FirstName,
+		MiddleName:            input.MiddleName,
+		LastName:              input.LastName,
+		MaidenName:            input.MaidenName,
+		Rank:                  input.Rank,
+		RankIn:                input.RankIn,
+		RankOut:               input.RankOut,
+		Unit:                  input.Unit,
+		SourceRecordType:      input.RecordType,
+		PensionState:          input.PensionState,
+		ConfederateHomeStatus: input.ConfederateHomeStatus,
+		ConfederateHomeName:   input.ConfederateHomeName,
+		BuriedIn:              input.BuriedIn,
+		ReviewStatus:          input.ReviewStatus,
+		BirthDate:             input.BirthDate,
+		BirthYear:             input.BirthYear,
+		BirthYearTo:           input.BirthYearTo,
+		DeathDate:             input.DeathDate,
+		DeathYear:             input.DeathYear,
+		DeathYearTo:           input.DeathYearTo,
+		DeathMonth:            input.DeathMonth,
+		DeathDay:              input.DeathDay,
+	}
 }
+
+func SoldierSearchFromModel(input models.SoldierSearch) PersonRecordSearch {
+	return PersonRecordSearchFromModel(input)
+}
+
+func PersonRecordFormSuggestionsFromModel(input models.SoldierFormSuggestions) PersonRecordFormSuggestions {
+	return PersonRecordFormSuggestions{
+		RankIn:           append([]string(nil), input.RankIn...),
+		RankOut:          append([]string(nil), input.RankOut...),
+		Unit:             append([]string(nil), input.Unit...),
+		Prefix:           append([]string(nil), input.Prefix...),
+		Suffix:           append([]string(nil), input.Suffix...),
+		PensionState:     append([]string(nil), input.PensionState...),
+		BuriedIn:         append([]string(nil), input.BuriedIn...),
+		ConfederateHome:  append([]string(nil), input.ConfederateHomeName...),
+		SourceRecordType: append([]string(nil), input.RecordType...),
+	}
+}
+
+func SoldierFormSuggestionsFromModel(input models.SoldierFormSuggestions) PersonRecordFormSuggestions {
+	return PersonRecordFormSuggestionsFromModel(input)
+}
+
 func InitialSetupFormFromModel(input models.InitialSetupForm) InitialSetupForm {
 	return InitialSetupForm(input)
 }
+
 func ScrapedRelativeFromModel(input models.ScrapedRelative) ScrapedRelative {
 	return ScrapedRelative(input)
 }
+
 func FindAGraveScrapeStateFromModel(input models.FindAGraveScrapeState) FindAGraveScrapeState {
 	spouses := make([]ScrapedRelative, 0, len(input.Spouses))
 	for _, spouse := range input.Spouses {
@@ -136,9 +230,11 @@ func FindAGraveScrapeStateFromModel(input models.FindAGraveScrapeState) FindAGra
 		ConfidenceScore: input.ConfidenceScore,
 	}
 }
+
 func GoogleSettingsFromModel(input models.GoogleSettings) GoogleSettings {
 	return GoogleSettings(input)
 }
+
 func GoogleStatusFromModel(input models.GoogleStatus) GoogleStatus {
 	return GoogleStatus{
 		Settings:              GoogleSettingsFromModel(input.Settings),
@@ -154,17 +250,17 @@ func GoogleStatusFromModel(input models.GoogleStatus) GoogleStatus {
 
 func MergeReviewConflictFromModel(input models.MergeReviewConflict) MergeReviewConflict {
 	return MergeReviewConflict{
-		ID:              input.ID,
-		SessionID:       input.SessionID,
-		ConflictType:    input.ConflictType,
-		Reason:          input.Reason,
-		LocalSoldierID:  input.LocalSoldierID,
-		LocalDisplayID:  input.LocalDisplayID,
-		SourceDisplayID: input.SourceDisplayID,
-		Resolution:      input.Resolution,
-		CreatedAt:       input.CreatedAt,
-		LocalSoldier:    SoldierPtrFromModel(input.LocalSoldier),
-		SourceSoldier:   SoldierFromModel(input.SourceSoldier),
+		ID:                input.ID,
+		SessionID:         input.SessionID,
+		ConflictType:      input.ConflictType,
+		Reason:            input.Reason,
+		LocalRecordID:     input.LocalSoldierID,
+		LocalDisplayID:    input.LocalDisplayID,
+		IncomingDisplayID: input.SourceDisplayID,
+		Resolution:        input.Resolution,
+		CreatedAt:         input.CreatedAt,
+		LocalRecord:       PersonRecordPtrFromModel(input.LocalSoldier),
+		IncomingRecord:    PersonRecordFromModel(input.SourceSoldier),
 	}
 }
 
@@ -177,7 +273,13 @@ func MergeReviewConflictsFromModels(inputs []models.MergeReviewConflict) []Merge
 }
 
 func DuplicateAuditFindingSummaryFromDomain(input records.DuplicateAuditFindingSummary) DuplicateAuditFindingSummary {
-	return DuplicateAuditFindingSummary(input)
+	return DuplicateAuditFindingSummary{
+		ID:                  input.ID,
+		OtherPersonRecordID: input.OtherSoldierID,
+		OtherDisplayID:      input.OtherDisplayID,
+		OtherName:           input.OtherName,
+		Reason:              input.Reason,
+	}
 }
 
 func DuplicateAuditComparisonFieldFromDomain(input records.DuplicateAuditComparisonField) DuplicateAuditComparisonField {
@@ -188,15 +290,18 @@ func DuplicateAuditSummaryFromDomain(input records.DuplicateAuditSummary) Duplic
 	return DuplicateAuditSummary(input)
 }
 
-func ReviewQueueEntriesFromDomain(soldiers []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary) []ReviewQueueEntry {
-	entries := make([]ReviewQueueEntry, 0, len(soldiers))
-	for _, soldier := range soldiers {
-		duplicates := findings[soldier.ID]
+func ReviewQueueEntriesFromDomain(personRecords []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary) []ReviewQueueEntry {
+	entries := make([]ReviewQueueEntry, 0, len(personRecords))
+	for _, personRecord := range personRecords {
+		duplicates := findings[personRecord.ID]
 		mappedFindings := make([]DuplicateAuditFindingSummary, 0, len(duplicates))
 		for _, finding := range duplicates {
 			mappedFindings = append(mappedFindings, DuplicateAuditFindingSummaryFromDomain(finding))
 		}
-		entries = append(entries, ReviewQueueEntry{Soldier: SoldierFromModel(soldier), DuplicateFindings: mappedFindings})
+		entries = append(entries, ReviewQueueEntry{
+			PersonRecord:      PersonRecordFromModel(personRecord),
+			DuplicateFindings: mappedFindings,
+		})
 	}
 	return entries
 }
@@ -207,16 +312,16 @@ func DuplicateAuditComparisonFromDomain(input records.DuplicateAuditComparison) 
 		fields = append(fields, DuplicateAuditComparisonFieldFromDomain(field))
 	}
 	return DuplicateAuditComparison{
-		FindingID:    input.FindingID,
-		FindingType:  input.FindingType,
-		PageTitle:    input.PageTitle,
-		BackHref:     input.BackHref,
-		BackLabel:    input.BackLabel,
-		Reason:       input.Reason,
-		Status:       input.Status,
-		LeftSoldier:  SoldierFromModel(input.LeftSoldier),
-		RightSoldier: SoldierFromModel(input.RightSoldier),
-		Fields:       fields,
+		FindingID:         input.FindingID,
+		FindingType:       input.FindingType,
+		PageTitle:         input.PageTitle,
+		BackHref:          input.BackHref,
+		BackLabel:         input.BackLabel,
+		Reason:            input.Reason,
+		Status:            input.Status,
+		LeftPersonRecord:  PersonRecordFromModel(input.LeftSoldier),
+		RightPersonRecord: PersonRecordFromModel(input.RightSoldier),
+		Fields:            fields,
 	}
 }
 
@@ -233,7 +338,7 @@ func AnalyticsSnapshotFromDomain(input records.AnalyticsSnapshot) AnalyticsSnaps
 		return items
 	}
 	return AnalyticsSnapshot{
-		RecordTypes:             ArchiveCountsFromModel(input.RecordTypes),
+		PersonRecordTypes:       ArchiveCountsFromModel(input.RecordTypes),
 		CemeteryDensity:         mapCounts(input.CemeteryDensity),
 		ConfederateHomeStatus:   mapCounts(input.ConfederateHomeStatus),
 		ConfederateHomeNames:    mapCounts(input.ConfederateHomeNames),
@@ -249,12 +354,17 @@ func UnitCamaraderieGraphFromDomain(input records.UnitCamaraderieGraph) UnitCama
 	mapConnections := func(values []records.UnitCamaraderieConnection) []UnitCamaraderieConnection {
 		items := make([]UnitCamaraderieConnection, 0, len(values))
 		for _, value := range values {
-			items = append(items, UnitCamaraderieConnection{Soldier: SoldierFromModel(value.Soldier), Relation: value.Relation, Strength: value.Strength, StrengthText: value.StrengthText})
+			items = append(items, UnitCamaraderieConnection{
+				Soldier:      PersonRecordFromModel(value.Soldier),
+				Relation:     value.Relation,
+				Strength:     value.Strength,
+				StrengthText: value.StrengthText,
+			})
 		}
 		return items
 	}
 	return UnitCamaraderieGraph{
-		Central:            SoldierFromModel(input.Central),
+		CentralSoldier:     PersonRecordFromModel(input.Central),
 		UnitLabel:          input.UnitLabel,
 		RegimentLabel:      input.RegimentLabel,
 		CompanyLabel:       input.CompanyLabel,
@@ -265,9 +375,9 @@ func UnitCamaraderieGraphFromDomain(input records.UnitCamaraderieGraph) UnitCama
 }
 
 func ServiceTimelineFromDomain(input records.ServiceTimeline) ServiceTimeline {
-	events := make([]ServiceTimelineEvent, 0, len(input.Events))
+	events := make([]TimelineEvent, 0, len(input.Events))
 	for _, event := range input.Events {
-		events = append(events, ServiceTimelineEvent{
+		events = append(events, TimelineEvent{
 			Title:           event.Title,
 			DateLabel:       event.DateLabel,
 			Description:     event.Description,
@@ -278,31 +388,41 @@ func ServiceTimelineFromDomain(input records.ServiceTimeline) ServiceTimeline {
 		})
 	}
 	return ServiceTimeline{
-		Central:            SoldierFromModel(input.Central),
-		Events:             events,
-		UndatedRecords:     RecordsFromModels(input.UndatedRecords),
-		StartLabel:         input.StartLabel,
-		EndLabel:           input.EndLabel,
-		ExactEventCount:    input.ExactEventCount,
-		InferredEventCount: input.InferredEventCount,
+		SubjectSoldier:       PersonRecordFromModel(input.Central),
+		TimelineEvents:       events,
+		UndatedSourceRecords: SourceRecordsFromModels(input.UndatedRecords),
+		StartLabel:           input.StartLabel,
+		EndLabel:             input.EndLabel,
+		ExactEventCount:      input.ExactEventCount,
+		InferredEventCount:   input.InferredEventCount,
 	}
 }
 
 func ResearchLogFromDomain(input records.ResearchLog) ResearchLog {
 	tasks := make([]ResearchTask, 0, len(input.Tasks))
 	for _, task := range input.Tasks {
-		tasks = append(tasks, ResearchTask(task))
+		tasks = append(tasks, ResearchTask{
+			ID:             task.ID,
+			PersonRecordID: task.SoldierID,
+			Title:          task.Title,
+			Notes:          task.Notes,
+			EvidenceType:   task.EvidenceType,
+			Status:         task.Status,
+			CreatedAt:      task.CreatedAt,
+			UpdatedAt:      task.UpdatedAt,
+			ResolvedAt:     task.ResolvedAt,
+		})
 	}
 	suggestions := make([]ResearchTaskSuggestion, 0, len(input.Suggestions))
 	for _, suggestion := range input.Suggestions {
 		suggestions = append(suggestions, ResearchTaskSuggestion(suggestion))
 	}
 	return ResearchLog{
-		Central:       SoldierFromModel(input.Central),
-		Tasks:         tasks,
-		Suggestions:   suggestions,
-		OpenCount:     input.OpenCount,
-		ResolvedCount: input.ResolvedCount,
+		SubjectPersonRecord: PersonRecordFromModel(input.Central),
+		Tasks:               tasks,
+		Suggestions:         suggestions,
+		OpenCount:           input.OpenCount,
+		ResolvedCount:       input.ResolvedCount,
 	}
 }
 
@@ -315,14 +435,14 @@ func ResearchPackFromDomain(input records.ResearchPack) ResearchPack {
 		return items
 	}
 	return ResearchPack{
-		Central:         SoldierFromModel(input.Central),
-		Scope:           input.Scope,
-		PlaceLabel:      input.PlaceLabel,
-		Description:     input.Description,
-		Related:         SoldiersFromModels(input.Related),
-		TopUnits:        mapCounts(input.TopUnits),
-		TopCemeteries:   mapCounts(input.TopCemeteries),
-		OpenReviewCount: input.OpenReviewCount,
+		AnchorPersonRecord:   PersonRecordFromModel(input.Central),
+		Scope:                input.Scope,
+		PlaceLabel:           input.PlaceLabel,
+		Description:          input.Description,
+		RelatedPersonRecords: PersonRecordsFromModels(input.Related),
+		TopUnits:             mapCounts(input.TopUnits),
+		TopCemeteries:        mapCounts(input.TopCemeteries),
+		OpenReviewCount:      input.OpenReviewCount,
 	}
 }
 
@@ -335,39 +455,46 @@ func ResearchCollectionHubFromDomain(input records.ResearchCollectionHub) Resear
 	for _, collection := range input.Collections {
 		collections = append(collections, ResearchCollectionFromDomain(collection))
 	}
-	return ResearchCollectionHub{Current: SoldierPtrFromModel(input.Current), Collections: collections}
+	return ResearchCollectionHub{
+		CurrentPersonRecord: PersonRecordPtrFromModel(input.Current),
+		Collections:         collections,
+	}
 }
 
 func ResearchCollectionDetailFromDomain(input records.ResearchCollectionDetail) ResearchCollectionDetail {
 	return ResearchCollectionDetail{
-		Collection: ResearchCollectionFromDomain(input.Collection),
-		Current:    SoldierPtrFromModel(input.Current),
-		Members:    SoldiersFromModels(input.Members),
+		Collection:          ResearchCollectionFromDomain(input.Collection),
+		CurrentPersonRecord: PersonRecordPtrFromModel(input.Current),
+		PersonRecords:       PersonRecordsFromModels(input.Members),
 	}
 }
 
-func SourceConflictLedgerFromDomain(input archive.SourceConflictLedger) SourceConflictLedger {
-	entries := make([]SourceConflictLedgerEntry, 0, len(input.Entries))
+func MergeReviewLedgerFromDomain(input archive.SourceConflictLedger) MergeReviewLedger {
+	entries := make([]MergeReviewLedgerEntry, 0, len(input.Entries))
 	for _, entry := range input.Entries {
-		entries = append(entries, SourceConflictLedgerEntry{
-			ID:               entry.ID,
-			ConflictType:     entry.ConflictType,
-			Reason:           entry.Reason,
-			SourceDisplayID:  entry.SourceDisplayID,
-			Resolution:       entry.Resolution,
-			CreatedAt:        entry.CreatedAt,
-			ResolvedAt:       entry.ResolvedAt,
-			LocalSnapshot:    SoldierFromModel(entry.LocalSnapshot),
-			SourceSnapshot:   SoldierFromModel(entry.SourceSnapshot),
-			DifferenceFields: append([]string(nil), entry.DifferenceFields...),
+		entries = append(entries, MergeReviewLedgerEntry{
+			ID:                  entry.ID,
+			ConflictType:        entry.ConflictType,
+			Reason:              entry.Reason,
+			IncomingDisplayID:   entry.SourceDisplayID,
+			Resolution:          entry.Resolution,
+			CreatedAt:           entry.CreatedAt,
+			ResolvedAt:          entry.ResolvedAt,
+			LocalRecordSnapshot: PersonRecordFromModel(entry.LocalSnapshot),
+			IncomingSnapshot:    PersonRecordFromModel(entry.SourceSnapshot),
+			DifferenceFields:    append([]string(nil), entry.DifferenceFields...),
 		})
 	}
-	return SourceConflictLedger{
-		Central:       SoldierFromModel(input.Central),
-		Entries:       entries,
-		OpenCount:     input.OpenCount,
-		ResolvedCount: input.ResolvedCount,
+	return MergeReviewLedger{
+		SubjectPersonRecord: PersonRecordFromModel(input.Central),
+		Entries:             entries,
+		OpenCount:           input.OpenCount,
+		ResolvedCount:       input.ResolvedCount,
 	}
+}
+
+func SourceConflictLedgerFromDomain(input archive.SourceConflictLedger) MergeReviewLedger {
+	return MergeReviewLedgerFromDomain(input)
 }
 
 func OrphanedImagesFromDomain(inputs []archive.OrphanedImage) []OrphanedImage {
@@ -378,10 +505,10 @@ func OrphanedImagesFromDomain(inputs []archive.OrphanedImage) []OrphanedImage {
 	return items
 }
 
-func CalendarFromModels(input map[int][]models.Soldier) map[int][]Soldier {
-	calendar := make(map[int][]Soldier, len(input))
-	for day, soldiers := range input {
-		calendar[day] = SoldiersFromModels(soldiers)
+func CalendarFromModels(input map[int][]models.Soldier) map[int][]PersonRecord {
+	calendar := make(map[int][]PersonRecord, len(input))
+	for day, personRecords := range input {
+		calendar[day] = PersonRecordsFromModels(personRecords)
 	}
 	return calendar
 }

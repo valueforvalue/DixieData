@@ -46,7 +46,7 @@ func TestEntryFormKeepsDisplayIDReadonlyOnEdit(t *testing.T) {
 
 func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{EntryType: "wife", SpouseSoldierID: 7}, []viewmodel.Soldier{
+	err := EntryForm(viewmodel.Soldier{EntryType: "wife", LinkedSoldierID: 7}, []viewmodel.Soldier{
 		{ID: 7, DisplayID: "TDM65-DXD-00007", FirstName: "John", LastName: "Smith"},
 	}, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
 	if err != nil {
@@ -103,11 +103,11 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{
 		{
-			ID:              7,
-			ConflictType:    "soldier-update",
-			SourceDisplayID: "STC38-00007",
-			Reason:          "Shared record changed notes.",
-			SourceSoldier:   viewmodel.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
+			ID:                7,
+			ConflictType:      "soldier-update",
+			IncomingDisplayID: "STC38-00007",
+			Reason:            "Shared record changed notes.",
+			IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
 		},
 	}).Render(context.Background(), &buf)
 	if err != nil {
@@ -151,15 +151,15 @@ func TestInitialSetupViewIncludesIdentityFields(t *testing.T) {
 func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "None", ConfederateHomeStatus: "None"}, nil, viewmodel.SoldierFormSuggestions{
-		RankIn:              []string{"Private", "Sergeant"},
-		RankOut:             []string{"Corporal", "Sergeant"},
-		Unit:                []string{"Co. A, 1st Texas Infantry"},
-		Prefix:              []string{"Capt."},
-		Suffix:              []string{"Jr."},
-		PensionState:        []string{"None", "Texas"},
-		BuriedIn:            []string{"Oakwood Cemetery"},
-		ConfederateHomeName: []string{},
-		RecordType:          []string{"Pension"},
+		RankIn:           []string{"Private", "Sergeant"},
+		RankOut:          []string{"Corporal", "Sergeant"},
+		Unit:             []string{"Co. A, 1st Texas Infantry"},
+		Prefix:           []string{"Capt."},
+		Suffix:           []string{"Jr."},
+		PensionState:     []string{"None", "Texas"},
+		BuriedIn:         []string{"Oakwood Cemetery"},
+		ConfederateHome:  []string{},
+		SourceRecordType: []string{"Pension"},
 	}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -218,7 +218,7 @@ func TestNewEntryFormIncludesFindAGraveScrapeWarning(t *testing.T) {
 	if !strings.Contains(content, "Scrape Find a Grave") || !strings.Contains(content, `name="findagrave_source"`) {
 		t.Fatalf("entry form missing Find a Grave scrape UI")
 	}
-	if !strings.Contains(content, "Parsed from pasted HTML") || !strings.Contains(content, "1 warning(s)") || !strings.Contains(content, "1 spouse memorial(s)") {
+	if !strings.Contains(content, "Parsed from pasted HTML") || !strings.Contains(content, "1 warning(s)") || !strings.Contains(content, "1 spouse record memorial(s)") {
 		t.Fatalf("entry form missing compact scrape summary badges")
 	}
 	if !strings.Contains(content, "Review scraped data carefully before saving.") {
@@ -232,16 +232,16 @@ func TestNewEntryFormIncludesFindAGraveScrapeWarning(t *testing.T) {
 func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{{
-		ID:              42,
-		ConflictType:    "soldier-update",
-		Reason:          "Shared archive changed notes.",
-		SourceDisplayID: "TDM65-00042",
-		LocalSoldier: &viewmodel.Soldier{
+		ID:                42,
+		ConflictType:      "soldier-update",
+		Reason:            "Shared archive changed notes.",
+		IncomingDisplayID: "TDM65-00042",
+		LocalRecord: &viewmodel.Soldier{
 			DisplayID: "TDM65-00042",
 			FirstName: "Local",
 			LastName:  "Version",
 		},
-		SourceSoldier: viewmodel.Soldier{
+		IncomingRecord: viewmodel.Soldier{
 			DisplayID: "TDM65-00042",
 			FirstName: "Shared",
 			LastName:  "Version",
@@ -252,7 +252,7 @@ func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 	}
 
 	content := buf.String()
-	if !strings.Contains(content, "Shared Merge Review") || !strings.Contains(content, "/merge-review/42/keep-shared") {
+	if !strings.Contains(content, "Merge Review") || !strings.Contains(content, "/merge-review/42/keep-shared") {
 		t.Fatalf("share view missing merge review actions")
 	}
 }
@@ -293,9 +293,9 @@ func TestSearchPreviewContentShowsResearchOnlyDetails(t *testing.T) {
 		Notes:              "Known for his cavalry leadership in Tennessee.",
 		SearchMatchField:   "Unit",
 		SearchMatchSnippet: "Forrest's Cavalry",
-		SpouseSoldierID:    8,
+		LinkedSoldierID:    8,
 		SpouseDisplayID:    "PENSION-4243",
-		RecordCount:        3,
+		SourceRecordCount:  3,
 		ImageCount:         2,
 		LastEditedBy:       "STC38",
 		LastEditedAt:       "2026-05-16T18:05:00Z",
@@ -306,13 +306,13 @@ func TestSearchPreviewContentShowsResearchOnlyDetails(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
-		"Archive Signals",
+		"Local Archive Signals",
 		"Research Context",
 		"Family &amp; Links",
-		"Attached Records",
+		"Source Records",
 		"PENSION-4243",
 		"Open Linked Soldier",
-		"Compare Family Records",
+		"Compare Family Person Records",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("search preview missing %s", needle)
@@ -335,7 +335,7 @@ func TestSearchResultsShowsRecentAccessBanner(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"Recently Accessed",
-		"Your ten most recently opened records.",
+		"Your ten most recently opened person records.",
 		"Compare Selected",
 	} {
 		if !strings.Contains(content, needle) {
@@ -347,16 +347,16 @@ func TestSearchResultsShowsRecentAccessBanner(t *testing.T) {
 func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{{
-		ID:              99,
-		ConflictType:    "display-id-collision",
-		Reason:          "Shared record collides on display ID.",
-		SourceDisplayID: "TDM65-LOCAL-COLLIDE",
-		LocalSoldier: &viewmodel.Soldier{
+		ID:                99,
+		ConflictType:      "display-id-collision",
+		Reason:            "Shared record collides on display ID.",
+		IncomingDisplayID: "TDM65-LOCAL-COLLIDE",
+		LocalRecord: &viewmodel.Soldier{
 			DisplayID: "TDM65-LOCAL-COLLIDE",
 			FirstName: "Thomas",
 			LastName:  "Lewis",
 		},
-		SourceSoldier: viewmodel.Soldier{
+		IncomingRecord: viewmodel.Soldier{
 			DisplayID: "TDM65-LOCAL-COLLIDE",
 			FirstName: "Andrew",
 			LastName:  "Morris",

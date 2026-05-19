@@ -1,11 +1,11 @@
 package viewmodel
 
-type Soldier struct {
+type PersonRecord struct {
 	ID                    int64
 	DisplayID             string
 	SyncID                string
 	EntryType             string
-	SpouseSoldierID       int64
+	LinkedSoldierID       int64
 	SpouseName            string
 	MaidenName            string
 	IsGenerated           bool
@@ -44,37 +44,37 @@ type Soldier struct {
 	SpouseDisplayID       string
 	BackLinkURL           string
 	BackLinkLabel         string
-	RecordCount           int
+	SourceRecordCount     int
 	ImageCount            int
-	Records               []Record
+	SourceRecords         []SourceRecord
 	Images                []Image
 }
 
-type Record struct {
-	ID            int64
-	SyncID        string
-	SoldierID     int64
-	SoldierSyncID string
-	RecordType    string
-	AppID         string
-	Details       string
+type SourceRecord struct {
+	ID                 int64
+	SyncID             string
+	PersonRecordID     int64
+	PersonRecordSyncID string
+	SourceRecordType   string
+	AppID              string
+	Details            string
 }
 
 type Image struct {
-	ID            int64
-	SyncID        string
-	SoldierID     int64
-	SoldierSyncID string
-	FileName      string
-	FilePath      string
-	Caption       string
-	IsPrimary     bool
-	ResolvedPath  string
+	ID                 int64
+	SyncID             string
+	PersonRecordID     int64
+	PersonRecordSyncID string
+	FileName           string
+	FilePath           string
+	Caption            string
+	IsPrimary          bool
+	ResolvedPath       string
 }
 
 type ArchiveCounts struct {
-	TotalSoldiers    int
-	TotalWivesWidows int
+	SoldierCount      int
+	SpouseRecordCount int
 }
 
 type Quote struct {
@@ -84,7 +84,7 @@ type Quote struct {
 	Tags    []string
 }
 
-type SoldierSearch struct {
+type PersonRecordSearch struct {
 	Mode                  string
 	Query                 string
 	Browse                bool
@@ -99,7 +99,7 @@ type SoldierSearch struct {
 	RankIn                string
 	RankOut               string
 	Unit                  string
-	RecordType            string
+	SourceRecordType      string
 	PensionState          string
 	ConfederateHomeStatus string
 	ConfederateHomeName   string
@@ -115,16 +115,16 @@ type SoldierSearch struct {
 	DeathDay              string
 }
 
-type SoldierFormSuggestions struct {
-	RankIn              []string
-	RankOut             []string
-	Unit                []string
-	Prefix              []string
-	Suffix              []string
-	PensionState        []string
-	BuriedIn            []string
-	ConfederateHomeName []string
-	RecordType          []string
+type PersonRecordFormSuggestions struct {
+	RankIn           []string
+	RankOut          []string
+	Unit             []string
+	Prefix           []string
+	Suffix           []string
+	PensionState     []string
+	BuriedIn         []string
+	ConfederateHome  []string
+	SourceRecordType []string
 }
 
 type ScrapedRelative struct {
@@ -172,17 +172,17 @@ type GoogleStatus struct {
 }
 
 type MergeReviewConflict struct {
-	ID              int64
-	SessionID       string
-	ConflictType    string
-	Reason          string
-	LocalSoldierID  int64
-	LocalDisplayID  string
-	SourceDisplayID string
-	Resolution      string
-	CreatedAt       string
-	LocalSoldier    *Soldier
-	SourceSoldier   Soldier
+	ID                int64
+	SessionID         string
+	ConflictType      string
+	Reason            string
+	LocalRecordID     int64
+	LocalDisplayID    string
+	IncomingDisplayID string
+	Resolution        string
+	CreatedAt         string
+	LocalRecord       *PersonRecord
+	IncomingRecord    PersonRecord
 }
 
 type DuplicateAuditSummary struct {
@@ -193,15 +193,15 @@ type DuplicateAuditSummary struct {
 }
 
 type DuplicateAuditFindingSummary struct {
-	ID             int64
-	OtherSoldierID int64
-	OtherDisplayID string
-	OtherName      string
-	Reason         string
+	ID                  int64
+	OtherPersonRecordID int64
+	OtherDisplayID      string
+	OtherName           string
+	Reason              string
 }
 
 type ReviewQueueEntry struct {
-	Soldier           Soldier
+	PersonRecord      PersonRecord
 	DuplicateFindings []DuplicateAuditFindingSummary
 }
 
@@ -214,16 +214,16 @@ type DuplicateAuditComparisonField struct {
 }
 
 type DuplicateAuditComparison struct {
-	FindingID    int64
-	FindingType  string
-	PageTitle    string
-	BackHref     string
-	BackLabel    string
-	Reason       string
-	Status       string
-	LeftSoldier  Soldier
-	RightSoldier Soldier
-	Fields       []DuplicateAuditComparisonField
+	FindingID         int64
+	FindingType       string
+	PageTitle         string
+	BackHref          string
+	BackLabel         string
+	Reason            string
+	Status            string
+	LeftPersonRecord  PersonRecord
+	RightPersonRecord PersonRecord
+	Fields            []DuplicateAuditComparisonField
 }
 
 type AnalyticsCount struct {
@@ -232,7 +232,7 @@ type AnalyticsCount struct {
 }
 
 type AnalyticsSnapshot struct {
-	RecordTypes             ArchiveCounts
+	PersonRecordTypes       ArchiveCounts
 	CemeteryDensity         []AnalyticsCount
 	ConfederateHomeStatus   []AnalyticsCount
 	ConfederateHomeNames    []AnalyticsCount
@@ -244,7 +244,7 @@ type AnalyticsSnapshot struct {
 }
 
 type UnitCamaraderieGraph struct {
-	Central            Soldier
+	CentralSoldier     PersonRecord
 	UnitLabel          string
 	RegimentLabel      string
 	CompanyLabel       string
@@ -254,23 +254,23 @@ type UnitCamaraderieGraph struct {
 }
 
 type UnitCamaraderieConnection struct {
-	Soldier      Soldier
+	Soldier      PersonRecord
 	Relation     string
 	Strength     int
 	StrengthText string
 }
 
 type ServiceTimeline struct {
-	Central            Soldier
-	Events             []ServiceTimelineEvent
-	UndatedRecords     []Record
-	StartLabel         string
-	EndLabel           string
-	ExactEventCount    int
-	InferredEventCount int
+	SubjectSoldier       PersonRecord
+	TimelineEvents       []TimelineEvent
+	UndatedSourceRecords []SourceRecord
+	StartLabel           string
+	EndLabel             string
+	ExactEventCount      int
+	InferredEventCount   int
 }
 
-type ServiceTimelineEvent struct {
+type TimelineEvent struct {
 	Title           string
 	DateLabel       string
 	Description     string
@@ -281,15 +281,15 @@ type ServiceTimelineEvent struct {
 }
 
 type ResearchTask struct {
-	ID           int64
-	SoldierID    int64
-	Title        string
-	Notes        string
-	EvidenceType string
-	Status       string
-	CreatedAt    string
-	UpdatedAt    string
-	ResolvedAt   string
+	ID             int64
+	PersonRecordID int64
+	Title          string
+	Notes          string
+	EvidenceType   string
+	Status         string
+	CreatedAt      string
+	UpdatedAt      string
+	ResolvedAt     string
 }
 
 type ResearchTaskSuggestion struct {
@@ -299,22 +299,22 @@ type ResearchTaskSuggestion struct {
 }
 
 type ResearchLog struct {
-	Central       Soldier
-	Tasks         []ResearchTask
-	Suggestions   []ResearchTaskSuggestion
-	OpenCount     int
-	ResolvedCount int
+	SubjectPersonRecord PersonRecord
+	Tasks               []ResearchTask
+	Suggestions         []ResearchTaskSuggestion
+	OpenCount           int
+	ResolvedCount       int
 }
 
 type ResearchPack struct {
-	Central         Soldier
-	Scope           string
-	PlaceLabel      string
-	Description     string
-	Related         []Soldier
-	TopUnits        []AnalyticsCount
-	TopCemeteries   []AnalyticsCount
-	OpenReviewCount int
+	AnchorPersonRecord   PersonRecord
+	Scope                string
+	PlaceLabel           string
+	Description          string
+	RelatedPersonRecords []PersonRecord
+	TopUnits             []AnalyticsCount
+	TopCemeteries        []AnalyticsCount
+	OpenReviewCount      int
 }
 
 type ResearchCollection struct {
@@ -328,34 +328,34 @@ type ResearchCollection struct {
 }
 
 type ResearchCollectionHub struct {
-	Current     *Soldier
-	Collections []ResearchCollection
+	CurrentPersonRecord *PersonRecord
+	Collections         []ResearchCollection
 }
 
 type ResearchCollectionDetail struct {
-	Collection ResearchCollection
-	Current    *Soldier
-	Members    []Soldier
+	Collection          ResearchCollection
+	CurrentPersonRecord *PersonRecord
+	PersonRecords       []PersonRecord
 }
 
-type SourceConflictLedger struct {
-	Central       Soldier
-	Entries       []SourceConflictLedgerEntry
-	OpenCount     int
-	ResolvedCount int
+type MergeReviewLedger struct {
+	SubjectPersonRecord PersonRecord
+	Entries             []MergeReviewLedgerEntry
+	OpenCount           int
+	ResolvedCount       int
 }
 
-type SourceConflictLedgerEntry struct {
-	ID               int64
-	ConflictType     string
-	Reason           string
-	SourceDisplayID  string
-	Resolution       string
-	CreatedAt        string
-	ResolvedAt       string
-	LocalSnapshot    Soldier
-	SourceSnapshot   Soldier
-	DifferenceFields []string
+type MergeReviewLedgerEntry struct {
+	ID                  int64
+	ConflictType        string
+	Reason              string
+	IncomingDisplayID   string
+	Resolution          string
+	CreatedAt           string
+	ResolvedAt          string
+	LocalRecordSnapshot PersonRecord
+	IncomingSnapshot    PersonRecord
+	DifferenceFields    []string
 }
 
 type OrphanedImage struct {
@@ -363,3 +363,11 @@ type OrphanedImage struct {
 	Size         int64
 	ModifiedAt   string
 }
+
+type Soldier = PersonRecord
+type Record = SourceRecord
+type SoldierSearch = PersonRecordSearch
+type SoldierFormSuggestions = PersonRecordFormSuggestions
+type ServiceTimelineEvent = TimelineEvent
+type SourceConflictLedger = MergeReviewLedger
+type SourceConflictLedgerEntry = MergeReviewLedgerEntry

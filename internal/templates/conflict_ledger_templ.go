@@ -15,7 +15,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Component {
+func MergeReviewLedgerView(ledger viewmodel.MergeReviewLedger) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -53,35 +53,35 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", ledger.Central.ID))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", ledger.SubjectPersonRecord.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 17, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 17, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Record</button> <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Person Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Person Record</button> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", ledger.Central.ID)))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", ledger.SubjectPersonRecord.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 21, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 21, Col: 87}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Detail Card</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Source Conflict Ledger</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Person Record</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Merge Review Ledger</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(ledger.Central))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(ledger.SubjectPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 26, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 26, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -92,9 +92,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(ledger.Central.DisplayID)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(ledger.SubjectPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 27, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 27, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -190,9 +190,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var13 string
-					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(entry.SourceDisplayID)
+					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(entry.IncomingDisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 55, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 55, Col: 89}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
@@ -280,14 +280,14 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"mt-5 grid gap-4 md:grid-cols-2\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4 text-sm text-slate-700\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Local Snapshot</p><p class=\"mt-3 font-semibold text-slate-900\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"mt-5 grid gap-4 md:grid-cols-2\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4 text-sm text-slate-700\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Local Record Snapshot</p><p class=\"mt-3 font-semibold text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var18 string
-					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalSnapshot.DisplayID))
+					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalRecordSnapshot.DisplayID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 75, Col: 99}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 75, Col: 105}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
@@ -298,9 +298,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var19 string
-					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(detailHeading(entry.LocalSnapshot)))
+					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(detailHeading(entry.LocalRecordSnapshot)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 76, Col: 75}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 76, Col: 81}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 					if templ_7745c5c3_Err != nil {
@@ -311,9 +311,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var20 string
-					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalSnapshot.Unit))
+					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalRecordSnapshot.Unit))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 78, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 78, Col: 96}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -324,9 +324,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var21 string
-					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalSnapshot.PensionID))
+					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalRecordSnapshot.PensionID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 79, Col: 98}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 79, Col: 104}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 					if templ_7745c5c3_Err != nil {
@@ -337,22 +337,22 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var22 string
-					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalSnapshot.ApplicationID))
+					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.LocalRecordSnapshot.ApplicationID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 80, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 80, Col: 112}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</dd></dl></div><div class=\"rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-sm text-slate-700\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-blue-600\">Shared Snapshot</p><p class=\"mt-3 font-semibold text-slate-900\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</dd></dl></div><div class=\"rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-sm text-slate-700\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-blue-600\">Incoming Record Snapshot</p><p class=\"mt-3 font-semibold text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var23 string
-					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.SourceSnapshot.DisplayID))
+					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.IncomingSnapshot.DisplayID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 85, Col: 100}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 85, Col: 102}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 					if templ_7745c5c3_Err != nil {
@@ -363,9 +363,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var24 string
-					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(detailHeading(entry.SourceSnapshot)))
+					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(detailHeading(entry.IncomingSnapshot)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 86, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 86, Col: 78}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {
@@ -376,9 +376,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var25 string
-					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.SourceSnapshot.Unit))
+					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.IncomingSnapshot.Unit))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 88, Col: 91}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 88, Col: 93}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {
@@ -389,9 +389,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var26 string
-					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.SourceSnapshot.PensionID))
+					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.IncomingSnapshot.PensionID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 89, Col: 99}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 89, Col: 101}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
@@ -402,9 +402,9 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var27 string
-					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.SourceSnapshot.ApplicationID))
+					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.IncomingSnapshot.ApplicationID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 90, Col: 107}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/conflict_ledger.templ`, Line: 90, Col: 109}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 					if templ_7745c5c3_Err != nil {
@@ -422,7 +422,7 @@ func SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) templ.Compo
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Layout("Source Conflict Ledger").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Layout("Merge Review Ledger").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

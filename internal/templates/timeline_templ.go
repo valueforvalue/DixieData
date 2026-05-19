@@ -53,35 +53,35 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", timeline.Central.ID))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", timeline.SubjectSoldier.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 17, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 17, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Record</button> <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Person Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Person Record</button> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", timeline.Central.ID)))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", timeline.SubjectSoldier.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 21, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 21, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Detail Card</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Auto-Built Service Timeline</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Person Record</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Auto-Built Service Timeline</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(timeline.Central))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(timeline.SubjectSoldier))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 26, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 26, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -92,9 +92,9 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(timeline.Central.DisplayID)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(timeline.SubjectSoldier.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 27, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 27, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -105,9 +105,9 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(timeline.Central.Unit))
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(timeline.SubjectSoldier.Unit))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 31, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 31, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -117,15 +117,15 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if strings.TrimSpace(detailDisplayRank(timeline.Central)) != "" {
+			if strings.TrimSpace(detailDisplayRank(timeline.SubjectSoldier)) != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"mt-1 text-slate-600\">Rank out: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(detailDisplayRank(timeline.Central))
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(detailDisplayRank(timeline.SubjectSoldier))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 33, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 33, Col: 93}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -136,15 +136,15 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if strings.TrimSpace(timeline.Central.RankIn) != "" {
+			if strings.TrimSpace(timeline.SubjectSoldier.RankIn) != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"mt-1 text-slate-600\">Rank in: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
-				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(timeline.Central.RankIn)
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(timeline.SubjectSoldier.RankIn)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 36, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 36, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -160,9 +160,9 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(timeline.Events)))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(timeline.TimelineEvents)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 42, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 42, Col: 107}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -230,15 +230,15 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if len(timeline.UndatedRecords) > 0 {
+			if len(timeline.UndatedSourceRecords) > 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"rounded-2xl border border-slate-200 bg-white/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">Undated Sources</p><p class=\"mt-2 font-medium text-slate-900\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var15 string
-				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d records", len(timeline.UndatedRecords)))
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d source records", len(timeline.UndatedSourceRecords)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 62, Col: 108}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 62, Col: 121}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -249,12 +249,12 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div></aside><div class=\"space-y-5\"><div class=\"rounded-3xl border border-blue-200 bg-blue-50/70 p-5\"><p class=\"text-sm text-slate-700\">The timeline is assembled from structured birth and death fields plus date clues found inside attached record details such as muster, parole, pension, or memorial notes.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div></aside><div class=\"space-y-5\"><div class=\"rounded-3xl border border-blue-200 bg-blue-50/70 p-5\"><p class=\"text-sm text-slate-700\">The timeline is assembled from structured birth and death fields plus date clues found inside attached source record details such as muster, parole, pension, or memorial notes.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(timeline.Events) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"rounded-3xl border border-dashed border-slate-300 bg-white/75 p-6 text-sm text-slate-500\">No dated events could be inferred yet. Add dates to the profile or include years in attached record details to populate this timeline.</div>")
+			if len(timeline.TimelineEvents) == 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"rounded-3xl border border-dashed border-slate-300 bg-white/75 p-6 text-sm text-slate-500\">No dated timeline events could be inferred yet. Add dates to the profile or include years in attached source record details to populate this timeline.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -263,7 +263,7 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, event := range timeline.Events {
+				for _, event := range timeline.TimelineEvents {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"rounded-3xl border border-slate-200 bg-white/85 p-5 shadow-sm\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between\"><div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -394,15 +394,15 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if len(timeline.UndatedRecords) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<section class=\"rounded-3xl border border-slate-200 bg-white/85 p-5\"><div class=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\"><div><h3 class=\"text-lg font-semibold text-slate-900\">Undated Archive Sources</h3><p class=\"text-sm text-slate-600\">These records add context but did not contain a parseable date yet.</p></div><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">")
+			if len(timeline.UndatedSourceRecords) > 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<section class=\"rounded-3xl border border-slate-200 bg-white/85 p-5\"><div class=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\"><div><h3 class=\"text-lg font-semibold text-slate-900\">Undated Source Records</h3><p class=\"text-sm text-slate-600\">These source records add context but did not contain a parseable date yet.</p></div><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var24 string
-				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d records", len(timeline.UndatedRecords)))
+				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d source records", len(timeline.UndatedSourceRecords)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 104, Col: 140}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 104, Col: 153}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -412,15 +412,15 @@ func ServiceTimelineView(timeline viewmodel.ServiceTimeline) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, record := range timeline.UndatedRecords {
+				for _, record := range timeline.UndatedSourceRecords {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"rounded-2xl border border-slate-200 bg-slate-50/70 p-4\"><p class=\"text-sm font-semibold text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var25 string
-					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(record.RecordType))
+					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(record.SourceRecordType))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 109, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/timeline.templ`, Line: 109, Col: 96}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {
@@ -497,7 +497,7 @@ func serviceTimelineCategoryLabel(category string) string {
 	case "life":
 		return "Life Event"
 	case "service":
-		return "Service Record"
+		return "Service Event"
 	case "pension":
 		return "Pension Trail"
 	case "burial":
@@ -505,7 +505,7 @@ func serviceTimelineCategoryLabel(category string) string {
 	case "death":
 		return "Death Record"
 	default:
-		return "Archive Context"
+		return "Source Context"
 	}
 }
 

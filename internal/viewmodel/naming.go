@@ -2,7 +2,7 @@ package viewmodel
 
 import "strings"
 
-func (s Soldier) GetFullName() string {
+func (s PersonRecord) GetFullName() string {
 	nameParts := compactNameParts(s.Prefix, s.FirstName, s.MiddleName, s.LastName)
 	name := strings.Join(nameParts, " ")
 	suffix := strings.TrimSpace(s.Suffix)

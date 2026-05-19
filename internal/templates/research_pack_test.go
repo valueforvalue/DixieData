@@ -12,11 +12,11 @@ import (
 func TestResearchPackViewRendersLocationClusters(t *testing.T) {
 	var buf bytes.Buffer
 	err := ResearchPackView(viewmodel.ResearchPack{
-		Central:     viewmodel.Soldier{ID: 22, DisplayID: "PACK-0022", FirstName: "Andrew", LastName: "Cole"},
-		Scope:       "state",
-		PlaceLabel:  "Texas",
-		Description: "Records tied to Texas through pension filing or birth-place context.",
-		Related: []viewmodel.Soldier{{
+		AnchorPersonRecord: viewmodel.Soldier{ID: 22, DisplayID: "PACK-0022", FirstName: "Andrew", LastName: "Cole"},
+		Scope:              "state",
+		PlaceLabel:         "Texas",
+		Description:        "Records tied to Texas through pension filing or birth-place context.",
+		RelatedPersonRecords: []viewmodel.Soldier{{
 			ID:           23,
 			DisplayID:    "PACK-0023",
 			FirstName:    "Thomas",
@@ -39,7 +39,7 @@ func TestResearchPackViewRendersLocationClusters(t *testing.T) {
 		`data-history-back`,
 		"Texas",
 		"1st Texas Infantry",
-		"Open Record",
+		"Open Person Record",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("research pack view missing %s", needle)

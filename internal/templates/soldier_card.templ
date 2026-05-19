@@ -12,7 +12,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ SoldierCard(s viewmodel.Soldier, highlighted bool) {
+templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 		<div class={ soldierCardClass(highlighted) }>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0">
@@ -46,7 +46,7 @@ templ SoldierCard(s viewmodel.Soldier, highlighted bool) {
 				}
 			</div>
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) }
-			   class="pill-link self-start sm:self-auto">View</a>
+			   class="pill-link self-start sm:self-auto">View Person Record</a>
 			</div>
 		</div>
 }
@@ -59,7 +59,7 @@ func soldierCardClass(highlighted bool) string {
 	return className
 }
 
-func hasActiveSearch(search viewmodel.SoldierSearch) bool {
+func hasActiveSearch(search viewmodel.PersonRecordSearch) bool {
 	if search.Browse {
 		return true
 	}
@@ -69,7 +69,7 @@ func hasActiveSearch(search viewmodel.SoldierSearch) bool {
 	return strings.TrimSpace(search.Query) != ""
 }
 
-func deathDate(s viewmodel.Soldier) string {
+func deathDate(s viewmodel.PersonRecord) string {
 	return dates.Display(s.DeathDate)
 }
 
@@ -123,14 +123,14 @@ func auditHistoryLines(value string) []string {
 	return lines
 }
 
-templ SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, suggestions viewmodel.SoldierFormSuggestions) {
+templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query string, suggestions viewmodel.PersonRecordFormSuggestions) {
 	@Layout("Soldiers") {
 		<div data-ui-id={ uiids.PageSoldiersList } class="relative">
 			@SurfaceBadge(uiids.PageSoldiersList)
 			<div class="mb-4">
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<h2 class="text-2xl gold font-bold">Soldier Records</h2>
-					<a href="/soldiers/new" class="primary-button">+ Add</a>
+					<h2 class="text-2xl gold font-bold">Person Records</h2>
+					<a href="/soldiers/new" class="primary-button">+ Add Person Record</a>
 				</div>
 				<div class="mb-3 flex flex-wrap gap-2">
 					<button type="button" data-ui-id={ uiids.TabSoldiersSearchBasic } data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
@@ -146,24 +146,24 @@ templ SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, s
 				</div>
 				<div data-ui-id={ uiids.PanelSoldiersSearchBasic } data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
 					@SurfaceBadge(uiids.PanelSoldiersSearchBasic)
-					<input type="text" placeholder="Search by name, unit, rank, pension state, record ID, or burial place..." name="q"
+					<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
 						value={ query }
 						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
 						class="field-input"/>
 					<div class="flex flex-wrap items-center gap-3">
 						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
 					</div>
-					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, pension states, burial locations, and record numbers.</p>
+					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, pension states, burial locations, and display IDs.</p>
 				</div>
 				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
 					hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
 					@SurfaceBadge(uiids.PanelSoldiersSearchAdvanced)
 					<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
-						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and record types. Year filters support exact values or a through-year range.</p>
+						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Record ID</label>
+						<label class="block text-sm text-slate-500 mb-1">Display ID</label>
 						<input type="text" name="display_id" class="field-input"/>
 					</div>
 					<div>
@@ -176,7 +176,7 @@ templ SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, s
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Record Type</label>
+						<label class="block text-sm text-slate-500 mb-1">Source Record Type</label>
 						<input type="text" name="record_type" list="advanced-record-type-suggestions" class="field-input"/>
 					</div>
 					<div>
@@ -231,8 +231,8 @@ templ SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, s
 					<div class="col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Status</label>
 						<select name="review_status" class="field-input">
-							<option value="">All Records</option>
-							<option value="clean">Clean Records Only</option>
+							<option value="">All Person Records</option>
+							<option value="clean">Clean Person Records Only</option>
 							<option value="review">Review Queue Only</option>
 						</select>
 					</div>
@@ -266,23 +266,23 @@ templ SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, s
 					</div>
 					<p class="responsive-span-2 col-span-2 text-xs text-slate-500">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
 				</form>
-				@SuggestionDatalist("advanced-record-type-suggestions", suggestions.RecordType)
+				@SuggestionDatalist("advanced-record-type-suggestions", suggestions.SourceRecordType)
 				@SuggestionDatalist("advanced-rank-in-suggestions", suggestions.RankIn)
 				@SuggestionDatalist("advanced-rank-out-suggestions", suggestions.RankOut)
 				@SuggestionDatalist("advanced-unit-suggestions", suggestions.Unit)
 				@SuggestionDatalist("advanced-pension-state-suggestions", suggestions.PensionState)
-				@SuggestionDatalist("advanced-confederate-home-name-suggestions", suggestions.ConfederateHomeName)
+				@SuggestionDatalist("advanced-confederate-home-name-suggestions", suggestions.ConfederateHome)
 				@SuggestionDatalist("advanced-buried-in-suggestions", suggestions.BuriedIn)
 			</div>
 			<div id="soldier-list" data-ui-id={ uiids.PanelSoldiersResults } class="relative">
 				@SurfaceBadge(uiids.PanelSoldiersResults)
-				@SearchResults(soldiers, viewmodel.SoldierSearch{Mode: "basic", Query: query}, page, total, 50)
+				@SearchResults(soldiers, viewmodel.PersonRecordSearch{Mode: "basic", Query: query}, page, total, 50)
 			</div>
 		</div>
 	}
 }
 
-templ SoldierDetail(s viewmodel.Soldier) {
+templ SoldierDetail(s viewmodel.PersonRecord) {
 	@Layout(soldierFullName(s)) {
 			<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				@SurfaceBadge(uiids.PageSoldierDetail)
@@ -306,14 +306,14 @@ templ SoldierDetail(s viewmodel.Soldier) {
 						</div>
 					<div class="flex flex-wrap items-center gap-2">
 						<span class="gold rounded-full border border-[rgba(141,116,64,0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
-						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link">Edit Record</a>
+						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link">Edit Person Record</a>
 						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" class="primary-button">Export PDF</button>
-						if s.SpouseSoldierID != 0 {
-							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">Compare Family Records</a>
+						if s.LinkedSoldierID != 0 {
+							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">Compare Family Person Records</a>
 						}
 					</div>
 				</div>
-				if !isSoldierEntry(s) || s.SpouseSoldierID != 0 {
+				if !isSoldierEntry(s) || s.LinkedSoldierID != 0 {
 					<div class="mb-5 grid gap-4 lg:grid-cols-2">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Family &amp; Relationships</p>
@@ -322,16 +322,16 @@ templ SoldierDetail(s viewmodel.Soldier) {
 								<dl class="mt-4 grid gap-2 text-sm text-slate-700">
 									<dt class="text-slate-500">Married To</dt>
 									<dd>{ emptyDetail(s.SpouseName) }</dd>
-									<dt class="text-slate-500">Linked Soldier Record</dt>
+									<dt class="text-slate-500">Linked Soldier</dt>
 									<dd>{ relationshipLabel(s) }</dd>
 								</dl>
 							}
 							<div class="mt-4 flex flex-wrap gap-3">
-								if s.SpouseSoldierID != 0 {
-									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.SpouseSoldierID, s.ID)) } class="primary-button">
+								if s.LinkedSoldierID != 0 {
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)) } class="primary-button">
 										View Husband
 									</a>
-									<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">
+									<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">
 										Compare Couple
 									</a>
 								}
@@ -340,8 +340,8 @@ templ SoldierDetail(s viewmodel.Soldier) {
 					</div>
 				}
 				<dl class="responsive-two-col grid gap-2 text-sm">
-					<dt class="text-slate-500">Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
-					<dt class="text-slate-500">Record ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
+					<dt class="text-slate-500">Person Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
+					<dt class="text-slate-500">Display ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
 					<dt class="text-slate-500">Middle Name</dt><dd>{ emptyDetail(s.MiddleName) }</dd>
 					if isSoldierEntry(s) {
 						<dt class="text-slate-500">Rank In</dt><dd>{ emptyDetail(s.RankIn) }</dd>
@@ -380,7 +380,7 @@ templ SoldierDetail(s viewmodel.Soldier) {
 							if soldierHasCamaraderie(s) {
 								<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Unit Camaraderie</p>
-									<p class="mt-2 text-sm text-slate-700">Trace nearby service connections from this record to the same unit, regiment family, and company variants without losing your place in the archive.</p>
+									<p class="mt-2 text-sm text-slate-700">Trace nearby service connections from this person record to the same unit, regiment family, and company variants without losing your place in the local archive.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/camaraderie", s.ID)) } class="secondary-button">Open Unit Graph</a>
 									</div>
@@ -389,7 +389,7 @@ templ SoldierDetail(s viewmodel.Soldier) {
 							if soldierHasTimeline(s) {
 								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Service Timeline</p>
-									<p class="mt-2 text-sm text-slate-700">Build a chronology from profile dates plus dated record details like muster, parole, pension, and memorial notes.</p>
+									<p class="mt-2 text-sm text-slate-700">Build a chronology from profile dates plus dated source record details like muster, parole, pension, and memorial notes.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/timeline", s.ID)) } class="secondary-button">Open Timeline</a>
 									</div>
@@ -403,16 +403,16 @@ templ SoldierDetail(s viewmodel.Soldier) {
 								</div>
 							</div>
 							<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Conflict Ledger</p>
-								<p class="mt-2 text-sm text-slate-700">Review shared-import conflicts tied to this record, including which fields differed and how each disagreement was resolved.</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Merge Review Ledger</p>
+								<p class="mt-2 text-sm text-slate-700">Review shared-import conflicts tied to this person record, including which fields differed and how each disagreement was resolved.</p>
 								<div class="mt-4 flex flex-wrap gap-3">
-									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/conflict-ledger", s.ID)) } class="secondary-button">Open Conflict Ledger</a>
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/conflict-ledger", s.ID)) } class="secondary-button">Open Merge Review Ledger</a>
 								</div>
 							</div>
 							if soldierHasResearchPack(s) {
 								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Research Packs</p>
-									<p class="mt-2 text-sm text-slate-700">Jump into a pre-built county or state cohort using the place clues already attached to this record.</p>
+									<p class="mt-2 text-sm text-slate-700">Jump into a pre-built county or state cohort using the place clues already attached to this person record.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										if soldierStateResearchPackLabel(s) != "" {
 											<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-pack/state", s.ID)) } class="secondary-button">Open State Pack</a>
@@ -425,7 +425,7 @@ templ SoldierDetail(s viewmodel.Soldier) {
 							}
 							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Research Collections</p>
-								<p class="mt-2 text-sm text-slate-700">Save this record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p>
+								<p class="mt-2 text-sm text-slate-700">Save this person record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p>
 								<div class="mt-4 flex flex-wrap gap-3">
 									<a href={ templ.SafeURL(fmt.Sprintf("/research-collections?from=%d", s.ID)) } class="secondary-button">Manage Collections</a>
 								</div>
@@ -435,12 +435,12 @@ templ SoldierDetail(s viewmodel.Soldier) {
 								if s.NeedsReview {
 									<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(s.ReviewReason) }</p>
 								} else {
-									<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this record for follow-up research or duplicate checking and it will appear in the review queue.</p>
+									<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this person record for follow-up research or duplicate checking and it will appear in the review queue.</p>
 								}
 								<form hx-post={ fmt.Sprintf("/soldiers/%d/review/flag", s.ID) } hx-target="#review-resolution-status" class="mt-4 space-y-3">
 									<label class="block text-sm font-medium text-[#6f2c26]">
 										Review Note
-										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
+										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow person record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
 									</label>
 									<div class="flex flex-wrap gap-3">
 										<button type="submit" class="primary-button">
@@ -480,7 +480,7 @@ templ SoldierDetail(s viewmodel.Soldier) {
 						<div class="mt-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Recent Field Changes</p>
 							if len(auditHistoryLines(s.LastEditedFields)) == 0 {
-								<p class="mt-2 text-sm text-slate-500">No tracked field changes are available for this record.</p>
+								<p class="mt-2 text-sm text-slate-500">No tracked field changes are available for this person record.</p>
 							} else {
 								<ul class="mt-3 space-y-2 text-sm text-slate-600">
 									for _, line := range auditHistoryLines(s.LastEditedFields) {
@@ -508,17 +508,17 @@ templ SoldierDetail(s viewmodel.Soldier) {
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
 					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">
-						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this record?" hx-target="body" class="danger-button">Delete Record</button>
+						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this person record?" hx-target="body" class="danger-button">Delete Person Record</button>
 					</div>
 				</div>
 				<div id="soldier-export-status" class="mt-3 text-sm text-slate-600"></div>
-				if len(s.Records) > 0 {
+				if len(s.SourceRecords) > 0 {
 					<section data-ui-id={ uiids.PanelSoldierDetailRecords } class="relative">
 						@SurfaceBadge(uiids.PanelSoldierDetailRecords)
-						<h3 class="mt-8 text-lg gold font-semibold">Records</h3>
-						for _, r := range s.Records {
+						<h3 class="mt-8 text-lg gold font-semibold">Source Records</h3>
+						for _, r := range s.SourceRecords {
 							<div class="card rounded-2xl p-4 mt-3 text-sm">
-								<span class="gold">{ r.RecordType }</span>
+								<span class="gold">{ r.SourceRecordType }</span>
 								if r.AppID != "" {
 									<span class="ml-2 text-slate-500">App: { r.AppID }</span>
 								}
@@ -577,11 +577,11 @@ templ SoldierDetail(s viewmodel.Soldier) {
 	}
 }
 
-func pageHref(search viewmodel.SoldierSearch, page int) templ.SafeURL {
+func pageHref(search viewmodel.PersonRecordSearch, page int) templ.SafeURL {
 	return templ.SafeURL(pageRequestURL(search, page))
 }
 
-func pageRequestURL(search viewmodel.SoldierSearch, page int) string {
+func pageRequestURL(search viewmodel.PersonRecordSearch, page int) string {
 	params := searchParams(search)
 	params.Set("page", fmt.Sprintf("%d", page))
 	if search.Mode == "advanced" {
@@ -590,7 +590,7 @@ func pageRequestURL(search viewmodel.SoldierSearch, page int) string {
 	return "/soldiers/search?" + params.Encode()
 }
 
-func searchParams(search viewmodel.SoldierSearch) url.Values {
+func searchParams(search viewmodel.PersonRecordSearch) url.Values {
 	values := url.Values{}
 	if search.Mode == "advanced" {
 		if strings.TrimSpace(search.DisplayID) != "" {
@@ -623,8 +623,8 @@ func searchParams(search viewmodel.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.Unit) != "" {
 			values.Set("unit", search.Unit)
 		}
-		if strings.TrimSpace(search.RecordType) != "" {
-			values.Set("record_type", search.RecordType)
+		if strings.TrimSpace(search.SourceRecordType) != "" {
+			values.Set("record_type", search.SourceRecordType)
 		}
 		if strings.TrimSpace(search.PensionState) != "" {
 			values.Set("pension_state", search.PensionState)
@@ -676,7 +676,7 @@ func searchParams(search viewmodel.SoldierSearch) url.Values {
 	return values
 }
 
-func searchSummary(search viewmodel.SoldierSearch) string {
+func searchSummary(search viewmodel.PersonRecordSearch) string {
 	if search.Mode != "advanced" {
 		if search.Browse {
 			return "Browse: alphabetical list"
@@ -689,7 +689,7 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 
 	parts := []string{}
 	if search.DisplayID != "" {
-		parts = append(parts, "Record ID "+search.DisplayID)
+		parts = append(parts, "Display ID "+search.DisplayID)
 	}
 	if search.EntryType != "" {
 		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
@@ -725,8 +725,8 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 	if search.Unit != "" {
 		parts = append(parts, "Unit "+search.Unit)
 	}
-	if search.RecordType != "" {
-		parts = append(parts, "Record type "+search.RecordType)
+	if search.SourceRecordType != "" {
+		parts = append(parts, "Source record type "+search.SourceRecordType)
 	}
 	if search.PensionState != "" {
 		parts = append(parts, "Pension state "+search.PensionState)
@@ -743,7 +743,7 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 	if search.ReviewStatus != "" {
 		switch strings.ToLower(strings.TrimSpace(search.ReviewStatus)) {
 		case "clean":
-			parts = append(parts, "Clean records only")
+			parts = append(parts, "Clean person records only")
 		case "review":
 			parts = append(parts, "Review queue only")
 		}
@@ -780,26 +780,26 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 	return "Advanced filters: " + strings.Join(parts, ", ")
 }
 
-func reviewStatusLabel(s viewmodel.Soldier) string {
+func reviewStatusLabel(s viewmodel.PersonRecord) string {
 	if s.NeedsReview {
 		return "Needs Review"
 	}
 	return "Clean"
 }
 
-func soldierFullName(s viewmodel.Soldier) string {
+func soldierFullName(s viewmodel.PersonRecord) string {
 	return s.GetFullName()
 }
 
-func isSoldierEntry(s viewmodel.Soldier) bool {
+func isSoldierEntry(s viewmodel.PersonRecord) bool {
 	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == "soldier"
 }
 
-func soldierHasCamaraderie(s viewmodel.Soldier) bool {
+func soldierHasCamaraderie(s viewmodel.PersonRecord) bool {
 	return isSoldierEntry(s) && strings.TrimSpace(s.Unit) != ""
 }
 
-func soldierHasTimeline(s viewmodel.Soldier) bool {
+func soldierHasTimeline(s viewmodel.PersonRecord) bool {
 	if !isSoldierEntry(s) {
 		return false
 	}
@@ -809,10 +809,10 @@ func soldierHasTimeline(s viewmodel.Soldier) bool {
 	if s.DeathYear > 0 || s.DeathMonth > 0 || s.DeathDay > 0 {
 		return true
 	}
-	return len(s.Records) > 0
+	return len(s.SourceRecords) > 0
 }
 
-func soldierStateResearchPackLabel(s viewmodel.Soldier) string {
+func soldierStateResearchPackLabel(s viewmodel.PersonRecord) string {
 	if trimmed := strings.TrimSpace(s.PensionState); trimmed != "" {
 		return trimmed
 	}
@@ -820,12 +820,12 @@ func soldierStateResearchPackLabel(s viewmodel.Soldier) string {
 	return state
 }
 
-func soldierCountyResearchPackLabel(s viewmodel.Soldier) string {
+func soldierCountyResearchPackLabel(s viewmodel.PersonRecord) string {
 	county, _ := soldierBirthInfoResearchPackLabels(s.BirthInfo)
 	return county
 }
 
-func soldierHasResearchPack(s viewmodel.Soldier) bool {
+func soldierHasResearchPack(s viewmodel.PersonRecord) bool {
 	return soldierStateResearchPackLabel(s) != "" || soldierCountyResearchPackLabel(s) != ""
 }
 
@@ -849,11 +849,11 @@ func soldierBirthInfoResearchPackLabels(value string) (string, string) {
 	return "", ""
 }
 
-func isWidowEntry(s viewmodel.Soldier) bool {
+func isWidowEntry(s viewmodel.PersonRecord) bool {
 	return s.EntryType == "widow"
 }
 
-func entryBadgeLabel(s viewmodel.Soldier) string {
+func entryBadgeLabel(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
 	case "wife":
 		return "Wife"
@@ -864,7 +864,7 @@ func entryBadgeLabel(s viewmodel.Soldier) string {
 	}
 }
 
-func detailHeading(s viewmodel.Soldier) string {
+func detailHeading(s viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(soldierFullName(s))
 	if isSoldierEntry(s) {
 		rank := strings.TrimSpace(detailDisplayRank(s))
@@ -882,7 +882,7 @@ func detailHeading(s viewmodel.Soldier) string {
 	return entryBadgeLabel(s)
 }
 
-func detailSubheading(s viewmodel.Soldier) string {
+func detailSubheading(s viewmodel.PersonRecord) string {
 	if isSoldierEntry(s) {
 		return strings.TrimSpace(s.Unit)
 	}
@@ -892,41 +892,41 @@ func detailSubheading(s viewmodel.Soldier) string {
 	return strings.TrimSpace(s.MaidenName)
 }
 
-func relationshipLabel(s viewmodel.Soldier) string {
+func relationshipLabel(s viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(s.SpouseName)
 	displayID := strings.TrimSpace(s.SpouseDisplayID)
 	switch {
 	case name != "" && displayID != "":
 		return name + " (" + displayID + ")"
 	case name != "":
-		if s.SpouseSoldierID > 0 {
-			return fmt.Sprintf("%s (DB ID %d)", name, s.SpouseSoldierID)
+		if s.LinkedSoldierID > 0 {
+			return fmt.Sprintf("%s (DB ID %d)", name, s.LinkedSoldierID)
 		}
 		return name
 	case displayID != "":
 		return displayID
-	case s.SpouseSoldierID > 0:
-		return fmt.Sprintf("DB ID %d", s.SpouseSoldierID)
+	case s.LinkedSoldierID > 0:
+		return fmt.Sprintf("DB ID %d", s.LinkedSoldierID)
 	default:
 		return "Not recorded"
 	}
 }
 
-func backButtonLabel(s viewmodel.Soldier) string {
+func backButtonLabel(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.BackLinkLabel) != "" {
 		return s.BackLinkLabel
 	}
 	return "Back"
 }
 
-func soldierDetailBackHref(s viewmodel.Soldier) string {
+func soldierDetailBackHref(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.BackLinkURL) != "" {
 		return strings.TrimSpace(s.BackLinkURL)
 	}
 	return "/soldiers"
 }
 
-func detailDisplayRank(s viewmodel.Soldier) string {
+func detailDisplayRank(s viewmodel.PersonRecord) string {
 	if trimmed := strings.TrimSpace(s.RankOut); trimmed != "" {
 		return trimmed
 	}

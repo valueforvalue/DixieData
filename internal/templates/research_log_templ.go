@@ -53,35 +53,35 @@ func ResearchLogView(log viewmodel.ResearchLog) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", log.Central.ID))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", log.SubjectPersonRecord.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 17, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 17, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Record</button> <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Person Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Person Record</button> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", log.Central.ID)))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", log.SubjectPersonRecord.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 21, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 21, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Detail Card</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Research Log &amp; Missing Evidence</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Person Record</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Research Log &amp; Missing Evidence</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(log.Central))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(log.SubjectPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 26, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 26, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -92,9 +92,9 @@ func ResearchLogView(log viewmodel.ResearchLog) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(log.Central.DisplayID)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(log.SubjectPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 27, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 27, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -144,15 +144,15 @@ func ResearchLogView(log viewmodel.ResearchLog) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/research-log/tasks", log.Central.ID))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/research-log/tasks", log.SubjectPersonRecord.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 52, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 52, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"mt-4 grid gap-4 md:grid-cols-2\"><div class=\"md:col-span-2\"><label class=\"block text-sm font-medium text-slate-700\">Task Title <input type=\"text\" name=\"title\" class=\"field-input mt-2\" placeholder=\"Example: Locate pension packet in Texas state files\"></label></div><div><label class=\"block text-sm font-medium text-slate-700\">Evidence Type <select name=\"evidence_type\" class=\"field-input mt-2\"><option value=\"general\">General</option> <option value=\"service\">Service</option> <option value=\"pension\">Pension</option> <option value=\"burial\">Burial</option> <option value=\"vital\">Vital</option> <option value=\"family\">Family</option> <option value=\"archive\">Archive</option></select></label></div><div class=\"md:col-span-2\"><label class=\"block text-sm font-medium text-slate-700\">Research Notes <textarea name=\"notes\" rows=\"4\" class=\"field-input mt-2 min-h-28\" placeholder=\"What is missing, where should it be checked, and what evidence would resolve it?\"></textarea></label></div><div class=\"md:col-span-2\"><button type=\"submit\" class=\"primary-button\">Add Research Task</button></div></form></section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"mt-4 grid gap-4 md:grid-cols-2\"><div class=\"md:col-span-2\"><label class=\"block text-sm font-medium text-slate-700\">Task Title <input type=\"text\" name=\"title\" class=\"field-input mt-2\" placeholder=\"Example: Locate pension packet in Texas state files\"></label></div><div><label class=\"block text-sm font-medium text-slate-700\">Evidence Type <select name=\"evidence_type\" class=\"field-input mt-2\"><option value=\"general\">General</option> <option value=\"service\">Service</option> <option value=\"pension\">Pension</option> <option value=\"burial\">Burial</option> <option value=\"vital\">Vital</option> <option value=\"family\">Family</option> <option value=\"archive\">Local Archive</option></select></label></div><div class=\"md:col-span-2\"><label class=\"block text-sm font-medium text-slate-700\">Research Notes <textarea name=\"notes\" rows=\"4\" class=\"field-input mt-2 min-h-28\" placeholder=\"What is missing, where should it be checked, and what evidence would resolve it?\"></textarea></label></div><div class=\"md:col-span-2\"><button type=\"submit\" class=\"primary-button\">Add Research Task</button></div></form></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -167,9 +167,9 @@ func ResearchLogView(log viewmodel.ResearchLog) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var11 string
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/research-log/tasks", log.Central.ID))
+					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/research-log/tasks", log.SubjectPersonRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 94, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 94, Col: 99}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -421,9 +421,9 @@ func ResearchLogView(log viewmodel.ResearchLog) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var27 string
-						templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/research-log/tasks/%d/resolve", log.Central.ID, task.ID))
+						templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/research-log/tasks/%d/resolve", log.SubjectPersonRecord.ID, task.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 137, Col: 112}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_log.templ`, Line: 137, Col: 124}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 						if templ_7745c5c3_Err != nil {
@@ -471,7 +471,7 @@ func researchEvidenceTypeLabel(value string) string {
 	case "family":
 		return "Family"
 	case "archive":
-		return "Archive"
+		return "Local Archive"
 	default:
 		return "General"
 	}

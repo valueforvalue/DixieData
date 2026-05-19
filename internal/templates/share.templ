@@ -14,14 +14,14 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 			@SurfaceBadge(uiids.PageExport)
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
-				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData archive from one shared workspace.</p>
+				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
 			</div>
 			<div data-ui-id={ uiids.PanelExportActions } class="responsive-two-col relative grid gap-6">
 				@SurfaceBadge(uiids.PanelExportActions)
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Export & Backup</p>
-						<h3 class="mt-2 text-xl gold font-bold">Create files to share or archive</h3>
+						<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
 						<p class="mt-2 text-sm text-slate-500">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
 					</div>
 					<div class="flex flex-col gap-3">
@@ -39,7 +39,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</button>
 						<button hx-post="/export/static-archive" hx-target="#share-status" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export Static Web Archive</div>
-							<div class="text-xs text-slate-500">Standalone HTML archive with images, live search, and expandable record cards</div>
+							<div class="text-xs text-slate-500">Standalone static archive with images, live search, and expandable person record cards</div>
 						</button>
 						<button type="button" data-print-config-open class="secondary-button justify-start text-left">
 							<div class="font-bold">Full Database Printable PDF</div>
@@ -47,28 +47,28 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</button>
 						<button hx-post="/export/backup" hx-target="#share-status" class="primary-button justify-start text-left">
 							<div class="font-bold">Export Backup (.ddbak)</div>
-							<div class="text-xs text-slate-300">Replacement archive with manifest, DB snapshot, and all images</div>
+							<div class="text-xs text-slate-300">Replacement backup archive with manifest, DB snapshot, and all images</div>
 						</button>
 						<button hx-post="/export/shared-archive" hx-target="#share-status" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export Shared Archive (.ddshare)</div>
-							<div class="text-xs text-slate-500">Merge archive for sharing records into another DixieData archive</div>
+							<div class="text-xs text-slate-500">Shared archive for sharing person records into another DixieData local archive</div>
 						</button>
 					</div>
 				</section>
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Import & Restore</p>
-						<h3 class="mt-2 text-xl gold font-bold">Bring data back into this archive</h3>
+						<h3 class="mt-2 text-xl gold font-bold">Bring data back into this local archive</h3>
 						<p class="mt-2 text-sm text-slate-500">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p>
 					</div>
 					<div class="space-y-4">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Collaborative Merge</p>
-							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a share file and you want to review conflicts instead of replacing your archive.</p>
+							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review instead of replacing your local archive.</p>
 							<div class="mt-4">
 								<button hx-post="/import/shared-archive" hx-target="#share-status" class="primary-button justify-start text-left">
 									<div class="font-bold">Import Shared Archive (.ddshare)</div>
-									<div class="text-xs text-slate-300">Merge a shared archive into the current local database using the bundled manifest, snapshot, and images</div>
+									<div class="text-xs text-slate-300">Merge a shared archive into the current local archive using the bundled manifest, snapshot, and images</div>
 								</button>
 							</div>
 						</div>
@@ -76,15 +76,15 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Replace Local Archive</p>
 							<p class="mt-2 text-sm text-[#6f2c26]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
 							<div class="mt-4">
-								<button hx-post="/import/backup" hx-target="#share-status" hx-confirm="Load a backup and replace the current local archive?" class="danger-button justify-start text-left">
+								<button hx-post="/import/backup" hx-target="#share-status" hx-confirm="Load a backup archive and replace the current local archive?" class="danger-button justify-start text-left">
 									<div class="font-bold">Load Backup (.ddbak)</div>
-									<div class="text-xs text-[#f6ddd6]">Restore a replacement archive and replace the current local archive (legacy .zip backups still supported)</div>
+									<div class="text-xs text-[#f6ddd6]">Restore a backup archive and replace the current local archive (legacy .zip backups still supported)</div>
 								</button>
 							</div>
 						</div>
 					</div>
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
-						<strong class="text-[#22303d]">Restore caution:</strong> loading a <code>.ddbak</code> backup replaces the local archive, while importing a <code>.ddshare</code> archive stages merge conflicts for review when needed.
+						<strong class="text-[#22303d]">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.
 					</div>
 				</section>
 				<section class="responsive-span-2 card rounded-3xl p-5 sm:p-8 space-y-4 md:col-span-2">
@@ -160,48 +160,48 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 			if len(conflicts) > 0 {
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
-						<h3 class="text-xl gold font-bold">Shared Merge Review</h3>
-						<p class="mt-2 text-sm text-slate-500">These records were staged because the shared archive changed the same person, matched an existing researcher record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
+								<h3 class="text-xl gold font-bold">Merge Review</h3>
+								<p class="mt-2 text-sm text-slate-500">These person records were staged because the shared archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
 						<div id="merge-review-loaded-status" data-merge-review-loaded-status class="mt-3 inline-flex rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]" aria-live="polite">Data Loaded: { fmt.Sprintf("%d", len(conflicts)) } Conflicts Found</div>
 					</div>
 					for _, conflict := range conflicts {
 						<div data-merge-review-item class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] p-4 space-y-4">
 							<div>
 								<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">{ conflict.ConflictType }</div>
-								<h4 class="mt-1 font-bold text-[#22303d]">{ conflict.SourceDisplayID }</h4>
+								<h4 class="mt-1 font-bold text-[#22303d]">{ conflict.IncomingDisplayID }</h4>
 								<p class="mt-1 text-sm text-slate-600">{ conflict.Reason }</p>
 							</div>
 							<div class="responsive-two-col grid gap-4">
 								<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600">
-									<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">Local</div>
-									if conflict.LocalSoldier != nil {
-										<div class="mt-2 font-bold text-[#22303d]">{ conflict.LocalSoldier.DisplayID } - { mergeReviewDisplayName(*conflict.LocalSoldier) }</div>
+									<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">Local Record</div>
+									if conflict.LocalRecord != nil {
+										<div class="mt-2 font-bold text-[#22303d]">{ conflict.LocalRecord.DisplayID } - { mergeReviewDisplayName(*conflict.LocalRecord) }</div>
 										<div class="mt-2 space-y-1">
-											<div>Type: { conflict.LocalSoldier.EntryType }</div>
-											<div>Unit: { conflict.LocalSoldier.Unit }</div>
-											<div>Pension: { conflict.LocalSoldier.PensionID }</div>
-											<div>Application: { conflict.LocalSoldier.ApplicationID }</div>
-											<div>Death: { conflict.LocalSoldier.DeathDate }</div>
+											<div>Type: { conflict.LocalRecord.EntryType }</div>
+											<div>Unit: { conflict.LocalRecord.Unit }</div>
+											<div>Pension: { conflict.LocalRecord.PensionID }</div>
+											<div>Application: { conflict.LocalRecord.ApplicationID }</div>
+											<div>Death: { conflict.LocalRecord.DeathDate }</div>
 										</div>
-										if strings.TrimSpace(conflict.LocalSoldier.Notes) != "" {
-											<p class="mt-2 text-xs text-slate-500">{ conflict.LocalSoldier.Notes }</p>
+										if strings.TrimSpace(conflict.LocalRecord.Notes) != "" {
+											<p class="mt-2 text-xs text-slate-500">{ conflict.LocalRecord.Notes }</p>
 										}
 									} else {
-										<div class="mt-2 text-slate-500">No local soldier data.</div>
+										<div class="mt-2 text-slate-500">No local person record data.</div>
 									}
 								</div>
 								<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600">
-									<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">Shared archive</div>
-									<div class="mt-2 font-bold text-[#22303d]">{ conflict.SourceSoldier.DisplayID } - { mergeReviewDisplayName(conflict.SourceSoldier) }</div>
+									<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">Incoming Record</div>
+									<div class="mt-2 font-bold text-[#22303d]">{ conflict.IncomingRecord.DisplayID } - { mergeReviewDisplayName(conflict.IncomingRecord) }</div>
 									<div class="mt-2 space-y-1">
-										<div>Type: { conflict.SourceSoldier.EntryType }</div>
-										<div>Unit: { conflict.SourceSoldier.Unit }</div>
-										<div>Pension: { conflict.SourceSoldier.PensionID }</div>
-										<div>Application: { conflict.SourceSoldier.ApplicationID }</div>
-										<div>Death: { conflict.SourceSoldier.DeathDate }</div>
+										<div>Type: { conflict.IncomingRecord.EntryType }</div>
+										<div>Unit: { conflict.IncomingRecord.Unit }</div>
+										<div>Pension: { conflict.IncomingRecord.PensionID }</div>
+										<div>Application: { conflict.IncomingRecord.ApplicationID }</div>
+										<div>Death: { conflict.IncomingRecord.DeathDate }</div>
 									</div>
-									if strings.TrimSpace(conflict.SourceSoldier.Notes) != "" {
-										<p class="mt-2 text-xs text-slate-500">{ conflict.SourceSoldier.Notes }</p>
+									if strings.TrimSpace(conflict.IncomingRecord.Notes) != "" {
+										<p class="mt-2 text-xs text-slate-500">{ conflict.IncomingRecord.Notes }</p>
 									}
 								</div>
 							</div>
@@ -210,7 +210,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 									Keep Local
 								</button>
 								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID) } hx-target="#share-status" class="primary-button">
-									Keep Shared
+									Keep Incoming
 								</button>
 								if conflict.ConflictType == "display-id-collision" {
 									<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID) } hx-target="#share-status" class="secondary-button">
@@ -219,7 +219,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 								}
 							</div>
 							if conflict.ConflictType == "display-id-collision" {
-								<p class="text-xs text-slate-500">Keep Both preserves the local record and imports the shared record under a new unique display ID.</p>
+								<p class="text-xs text-slate-500">Keep Both preserves the local record and imports the incoming record under a new unique display ID.</p>
 							}
 						</div>
 					}

@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-func SoldierCard(s viewmodel.Soldier, highlighted bool) templ.Component {
+func SoldierCard(s viewmodel.PersonRecord, highlighted bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -256,7 +256,7 @@ func SoldierCard(s viewmodel.Soldier, highlighted bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" class=\"pill-link self-start sm:self-auto\">View</a></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" class=\"pill-link self-start sm:self-auto\">View Person Record</a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -272,7 +272,7 @@ func soldierCardClass(highlighted bool) string {
 	return className
 }
 
-func hasActiveSearch(search viewmodel.SoldierSearch) bool {
+func hasActiveSearch(search viewmodel.PersonRecordSearch) bool {
 	if search.Browse {
 		return true
 	}
@@ -282,7 +282,7 @@ func hasActiveSearch(search viewmodel.SoldierSearch) bool {
 	return strings.TrimSpace(search.Query) != ""
 }
 
-func deathDate(s viewmodel.Soldier) string {
+func deathDate(s viewmodel.PersonRecord) string {
 	return dates.Display(s.DeathDate)
 }
 
@@ -336,7 +336,7 @@ func auditHistoryLines(value string) []string {
 	return lines
 }
 
-func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, suggestions viewmodel.SoldierFormSuggestions) templ.Component {
+func SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query string, suggestions viewmodel.PersonRecordFormSuggestions) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -390,7 +390,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"mb-4\"><div class=\"mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\"><h2 class=\"text-2xl gold font-bold\">Soldier Records</h2><a href=\"/soldiers/new\" class=\"primary-button\">+ Add</a></div><div class=\"mb-3 flex flex-wrap gap-2\"><button type=\"button\" data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"mb-4\"><div class=\"mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\"><h2 class=\"text-2xl gold font-bold\">Person Records</h2><a href=\"/soldiers/new\" class=\"primary-button\">+ Add Person Record</a></div><div class=\"mb-3 flex flex-wrap gap-2\"><button type=\"button\" data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -453,7 +453,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<input type=\"text\" placeholder=\"Search by name, unit, rank, pension state, record ID, or burial place...\" name=\"q\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<input type=\"text\" placeholder=\"Search by name, unit, rank, pension state, display ID, or burial place...\" name=\"q\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -466,7 +466,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" hx-get=\"/soldiers/search\" hx-target=\"#soldier-list\" hx-trigger=\"keyup changed delay:300ms\" class=\"field-input\"><div class=\"flex flex-wrap items-center gap-3\"><button type=\"button\" hx-get=\"/soldiers/search?browse=1\" hx-target=\"#soldier-list\" class=\"secondary-button\">Browse Alphabetically</button></div><p class=\"text-xs text-slate-500\">Quick search matches names, units, ranks, pension states, burial locations, and record numbers.</p></div><form data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" hx-get=\"/soldiers/search\" hx-target=\"#soldier-list\" hx-trigger=\"keyup changed delay:300ms\" class=\"field-input\"><div class=\"flex flex-wrap items-center gap-3\"><button type=\"button\" hx-get=\"/soldiers/search?browse=1\" hx-target=\"#soldier-list\" class=\"secondary-button\">Browse Alphabetically</button></div><p class=\"text-xs text-slate-500\">Quick search matches names, units, ranks, pension states, burial locations, and display IDs.</p></div><form data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -487,7 +487,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Advanced Search Active</p><p class=\"mt-2 text-sm text-[#22303d]\">Use broad text matching for names, ranks, units, locations, and record types. Year filters support exact values or a through-year range.</p></div><div><label class=\"block text-sm text-slate-500 mb-1\">Record ID</label> <input type=\"text\" name=\"display_id\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Entry Type</label> <select name=\"entry_type\" class=\"field-input\"><option value=\"\">All</option> <option value=\"soldier\">Soldier</option> <option value=\"wife\">Wife</option> <option value=\"widow\">Widow</option></select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Record Type</label> <input type=\"text\" name=\"record_type\" list=\"advanced-record-type-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Middle Name</label> <input type=\"text\" name=\"middle_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Maiden Name</label> <input type=\"text\" name=\"maiden_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank In</label> <input type=\"text\" name=\"rank_in\" list=\"advanced-rank-in-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank Out</label> <input type=\"text\" name=\"rank_out\" list=\"advanced-rank-out-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" list=\"advanced-unit-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Pension State</label> <input type=\"text\" name=\"pension_state\" list=\"advanced-pension-state-suggestions\" class=\"field-input\" placeholder=\"Any state\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Status</label> <select name=\"confederate_home_status\" class=\"field-input\"><option value=\"\">Any status</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Advanced Search Active</p><p class=\"mt-2 text-sm text-[#22303d]\">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p></div><div><label class=\"block text-sm text-slate-500 mb-1\">Display ID</label> <input type=\"text\" name=\"display_id\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Entry Type</label> <select name=\"entry_type\" class=\"field-input\"><option value=\"\">All</option> <option value=\"soldier\">Soldier</option> <option value=\"wife\">Wife</option> <option value=\"widow\">Widow</option></select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Source Record Type</label> <input type=\"text\" name=\"record_type\" list=\"advanced-record-type-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Middle Name</label> <input type=\"text\" name=\"middle_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Maiden Name</label> <input type=\"text\" name=\"maiden_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank In</label> <input type=\"text\" name=\"rank_in\" list=\"advanced-rank-in-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank Out</label> <input type=\"text\" name=\"rank_out\" list=\"advanced-rank-out-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" list=\"advanced-unit-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Pension State</label> <input type=\"text\" name=\"pension_state\" list=\"advanced-pension-state-suggestions\" class=\"field-input\" placeholder=\"Any state\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Status</label> <select name=\"confederate_home_status\" class=\"field-input\"><option value=\"\">Any status</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -523,11 +523,11 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Name</label> <input type=\"text\" name=\"confederate_home_name\" list=\"advanced-confederate-home-name-suggestions\" class=\"field-input\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Buried In</label> <input type=\"text\" name=\"buried_in\" list=\"advanced-buried-in-suggestions\" class=\"field-input\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Status</label> <select name=\"review_status\" class=\"field-input\"><option value=\"\">All Records</option> <option value=\"clean\">Clean Records Only</option> <option value=\"review\">Review Queue Only</option></select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Year</label> <input type=\"text\" name=\"birth_year\" class=\"field-input\" placeholder=\"1838\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Year Through</label> <input type=\"text\" name=\"birth_year_to\" class=\"field-input\" placeholder=\"1845\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Year</label> <input type=\"text\" name=\"death_year\" class=\"field-input\" placeholder=\"1864\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Year Through</label> <input type=\"text\" name=\"death_year_to\" class=\"field-input\" placeholder=\"1865\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Date</label> <input type=\"text\" name=\"birth_date\" class=\"field-input\" placeholder=\"MM/DD/YYYY or 11/00/1886\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Date</label> <input type=\"text\" name=\"death_date\" class=\"field-input\" placeholder=\"MM/DD/YYYY or 11/00/1886\"></div><div class=\"responsive-span-2 col-span-2 flex flex-wrap gap-2 items-center\"><button type=\"submit\" class=\"primary-button\">Run Advanced Search</button> <button type=\"reset\" class=\"ghost-link px-4 py-2\">Reset Filters</button></div><p class=\"responsive-span-2 col-span-2 text-xs text-slate-500\">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Name</label> <input type=\"text\" name=\"confederate_home_name\" list=\"advanced-confederate-home-name-suggestions\" class=\"field-input\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Buried In</label> <input type=\"text\" name=\"buried_in\" list=\"advanced-buried-in-suggestions\" class=\"field-input\"></div><div class=\"col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Status</label> <select name=\"review_status\" class=\"field-input\"><option value=\"\">All Person Records</option> <option value=\"clean\">Clean Person Records Only</option> <option value=\"review\">Review Queue Only</option></select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Year</label> <input type=\"text\" name=\"birth_year\" class=\"field-input\" placeholder=\"1838\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Year Through</label> <input type=\"text\" name=\"birth_year_to\" class=\"field-input\" placeholder=\"1845\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Year</label> <input type=\"text\" name=\"death_year\" class=\"field-input\" placeholder=\"1864\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Year Through</label> <input type=\"text\" name=\"death_year_to\" class=\"field-input\" placeholder=\"1865\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Birth Date</label> <input type=\"text\" name=\"birth_date\" class=\"field-input\" placeholder=\"MM/DD/YYYY or 11/00/1886\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Death Date</label> <input type=\"text\" name=\"death_date\" class=\"field-input\" placeholder=\"MM/DD/YYYY or 11/00/1886\"></div><div class=\"responsive-span-2 col-span-2 flex flex-wrap gap-2 items-center\"><button type=\"submit\" class=\"primary-button\">Run Advanced Search</button> <button type=\"reset\" class=\"ghost-link px-4 py-2\">Reset Filters</button></div><p class=\"responsive-span-2 col-span-2 text-xs text-slate-500\">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = SuggestionDatalist("advanced-record-type-suggestions", suggestions.RecordType).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = SuggestionDatalist("advanced-record-type-suggestions", suggestions.SourceRecordType).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -547,7 +547,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = SuggestionDatalist("advanced-confederate-home-name-suggestions", suggestions.ConfederateHomeName).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = SuggestionDatalist("advanced-confederate-home-name-suggestions", suggestions.ConfederateHome).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -576,7 +576,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = SearchResults(soldiers, viewmodel.SoldierSearch{Mode: "basic", Query: query}, page, total, 50).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = SearchResults(soldiers, viewmodel.PersonRecordSearch{Mode: "basic", Query: query}, page, total, 50).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -594,7 +594,7 @@ func SoldierList(soldiers []viewmodel.Soldier, page, total int, query string, su
 	})
 }
 
-func SoldierDetail(s viewmodel.Soldier) templ.Component {
+func SoldierDetail(s viewmodel.PersonRecord) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -796,7 +796,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" class=\"pill-link\">Edit Record</a> <button hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" class=\"pill-link\">Edit Person Record</a> <button hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -813,13 +813,13 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if s.SpouseSoldierID != 0 {
+			if s.LinkedSoldierID != 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var40 templ.SafeURL
-				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)))
+				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 312, Col: 108}
 				}
@@ -827,7 +827,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\" class=\"secondary-button\">Compare Family Records</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\" class=\"secondary-button\">Compare Family Person Records</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -836,7 +836,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if !isSoldierEntry(s) || s.SpouseSoldierID != 0 {
+			if !isSoldierEntry(s) || s.LinkedSoldierID != 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<div class=\"mb-5 grid gap-4 lg:grid-cols-2\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]\">Family &amp; Relationships</p><p class=\"mt-2 text-sm text-slate-600\">Relationship details live here so they do not repeat in the summary area.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -855,7 +855,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</dd><dt class=\"text-slate-500\">Linked Soldier Record</dt><dd>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</dd><dt class=\"text-slate-500\">Linked Soldier</dt><dd>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -877,13 +877,13 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				if s.SpouseSoldierID != 0 {
+				if s.LinkedSoldierID != 0 {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<a href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var43 templ.SafeURL
-					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.SpouseSoldierID, s.ID)))
+					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)))
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 331, Col: 94}
 					}
@@ -896,7 +896,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var44 templ.SafeURL
-					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)))
+					templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)))
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 334, Col: 110}
 					}
@@ -914,27 +914,27 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<dl class=\"responsive-two-col grid gap-2 text-sm\"><dt class=\"text-slate-500\">Record Type</dt><dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<dl class=\"responsive-two-col grid gap-2 text-sm\"><dt class=\"text-slate-500\">Person Record Type</dt><dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(entryBadgeLabel(s))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 343, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 343, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</dd><dt class=\"text-slate-500\">Record ID</dt><dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</dd><dt class=\"text-slate-500\">Display ID</dt><dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(s.DisplayID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 344, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 344, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
@@ -1184,7 +1184,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if soldierHasCamaraderie(s) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "<div class=\"rounded-2xl border border-blue-200 bg-blue-50/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Unit Camaraderie</p><p class=\"mt-2 text-sm text-slate-700\">Trace nearby service connections from this record to the same unit, regiment family, and company variants without losing your place in the archive.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "<div class=\"rounded-2xl border border-blue-200 bg-blue-50/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Unit Camaraderie</p><p class=\"mt-2 text-sm text-slate-700\">Trace nearby service connections from this person record to the same unit, regiment family, and company variants without losing your place in the local archive.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1203,7 +1203,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 				}
 			}
 			if soldierHasTimeline(s) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "<div class=\"rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]\">Service Timeline</p><p class=\"mt-2 text-sm text-slate-700\">Build a chronology from profile dates plus dated record details like muster, parole, pension, and memorial notes.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 98, "<div class=\"rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]\">Service Timeline</p><p class=\"mt-2 text-sm text-slate-700\">Build a chronology from profile dates plus dated source record details like muster, parole, pension, and memorial notes.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1234,7 +1234,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\" class=\"secondary-button\">Open Research Log</a></div></div><div class=\"rounded-2xl border border-blue-200 bg-blue-50/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Conflict Ledger</p><p class=\"mt-2 text-sm text-slate-700\">Review shared-import conflicts tied to this record, including which fields differed and how each disagreement was resolved.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\" class=\"secondary-button\">Open Research Log</a></div></div><div class=\"rounded-2xl border border-blue-200 bg-blue-50/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Merge Review Ledger</p><p class=\"mt-2 text-sm text-slate-700\">Review shared-import conflicts tied to this person record, including which fields differed and how each disagreement was resolved.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1247,12 +1247,12 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" class=\"secondary-button\">Open Conflict Ledger</a></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "\" class=\"secondary-button\">Open Merge Review Ledger</a></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if soldierHasResearchPack(s) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<div class=\"rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]\">Research Packs</p><p class=\"mt-2 text-sm text-slate-700\">Jump into a pre-built county or state cohort using the place clues already attached to this record.</p><div class=\"mt-4 flex flex-wrap gap-3\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 103, "<div class=\"rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]\">Research Packs</p><p class=\"mt-2 text-sm text-slate-700\">Jump into a pre-built county or state cohort using the place clues already attached to this person record.</p><div class=\"mt-4 flex flex-wrap gap-3\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1299,7 +1299,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "<div class=\"rounded-2xl border border-slate-200 bg-white/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-slate-500\">Research Collections</p><p class=\"mt-2 text-sm text-slate-700\">Save this record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "<div class=\"rounded-2xl border border-slate-200 bg-white/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-slate-500\">Research Collections</p><p class=\"mt-2 text-sm text-slate-700\">Save this person record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p><div class=\"mt-4 flex flex-wrap gap-3\"><a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1335,7 +1335,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<p class=\"mt-2 text-sm text-[#6f2c26]\">Manually flag this record for follow-up research or duplicate checking and it will appear in the review queue.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<p class=\"mt-2 text-sm text-[#6f2c26]\">Manually flag this person record for follow-up research or duplicate checking and it will appear in the review queue.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1353,14 +1353,14 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "\" hx-target=\"#review-resolution-status\" class=\"mt-4 space-y-3\"><label class=\"block text-sm font-medium text-[#6f2c26]\">Review Note <textarea name=\"review_reason\" rows=\"3\" class=\"field-input mt-2 min-h-24\" placeholder=\"Example: Check pension packet against widow record or verify duplicate candidate.\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 115, "\" hx-target=\"#review-resolution-status\" class=\"mt-4 space-y-3\"><label class=\"block text-sm font-medium text-[#6f2c26]\">Review Note <textarea name=\"review_reason\" rows=\"3\" class=\"field-input mt-2 min-h-24\" placeholder=\"Example: Check pension packet against widow person record or verify duplicate candidate.\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var72 string
 			templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(s.ReviewReason)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 443, Col: 196}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 443, Col: 203}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 			if templ_7745c5c3_Err != nil {
@@ -1474,7 +1474,7 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(auditHistoryLines(s.LastEditedFields)) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "<p class=\"mt-2 text-sm text-slate-500\">No tracked field changes are available for this record.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 128, "<p class=\"mt-2 text-sm text-slate-500\">No tracked field changes are available for this person record.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1572,11 +1572,11 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "\" hx-confirm=\"Delete this record?\" hx-target=\"body\" class=\"danger-button\">Delete Record</button></div></div><div id=\"soldier-export-status\" class=\"mt-3 text-sm text-slate-600\"></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 138, "\" hx-confirm=\"Delete this person record?\" hx-target=\"body\" class=\"danger-button\">Delete Person Record</button></div></div><div id=\"soldier-export-status\" class=\"mt-3 text-sm text-slate-600\"></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(s.Records) > 0 {
+			if len(s.SourceRecords) > 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 139, "<section data-ui-id=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -1598,19 +1598,19 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "<h3 class=\"mt-8 text-lg gold font-semibold\">Records</h3>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "<h3 class=\"mt-8 text-lg gold font-semibold\">Source Records</h3>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, r := range s.Records {
+				for _, r := range s.SourceRecords {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 142, "<div class=\"card rounded-2xl p-4 mt-3 text-sm\"><span class=\"gold\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var86 string
-					templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(r.RecordType)
+					templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(r.SourceRecordType)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 521, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 521, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 					if templ_7745c5c3_Err != nil {
@@ -1975,11 +1975,11 @@ func SoldierDetail(s viewmodel.Soldier) templ.Component {
 	})
 }
 
-func pageHref(search viewmodel.SoldierSearch, page int) templ.SafeURL {
+func pageHref(search viewmodel.PersonRecordSearch, page int) templ.SafeURL {
 	return templ.SafeURL(pageRequestURL(search, page))
 }
 
-func pageRequestURL(search viewmodel.SoldierSearch, page int) string {
+func pageRequestURL(search viewmodel.PersonRecordSearch, page int) string {
 	params := searchParams(search)
 	params.Set("page", fmt.Sprintf("%d", page))
 	if search.Mode == "advanced" {
@@ -1988,7 +1988,7 @@ func pageRequestURL(search viewmodel.SoldierSearch, page int) string {
 	return "/soldiers/search?" + params.Encode()
 }
 
-func searchParams(search viewmodel.SoldierSearch) url.Values {
+func searchParams(search viewmodel.PersonRecordSearch) url.Values {
 	values := url.Values{}
 	if search.Mode == "advanced" {
 		if strings.TrimSpace(search.DisplayID) != "" {
@@ -2021,8 +2021,8 @@ func searchParams(search viewmodel.SoldierSearch) url.Values {
 		if strings.TrimSpace(search.Unit) != "" {
 			values.Set("unit", search.Unit)
 		}
-		if strings.TrimSpace(search.RecordType) != "" {
-			values.Set("record_type", search.RecordType)
+		if strings.TrimSpace(search.SourceRecordType) != "" {
+			values.Set("record_type", search.SourceRecordType)
 		}
 		if strings.TrimSpace(search.PensionState) != "" {
 			values.Set("pension_state", search.PensionState)
@@ -2074,7 +2074,7 @@ func searchParams(search viewmodel.SoldierSearch) url.Values {
 	return values
 }
 
-func searchSummary(search viewmodel.SoldierSearch) string {
+func searchSummary(search viewmodel.PersonRecordSearch) string {
 	if search.Mode != "advanced" {
 		if search.Browse {
 			return "Browse: alphabetical list"
@@ -2087,7 +2087,7 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 
 	parts := []string{}
 	if search.DisplayID != "" {
-		parts = append(parts, "Record ID "+search.DisplayID)
+		parts = append(parts, "Display ID "+search.DisplayID)
 	}
 	if search.EntryType != "" {
 		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
@@ -2123,8 +2123,8 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 	if search.Unit != "" {
 		parts = append(parts, "Unit "+search.Unit)
 	}
-	if search.RecordType != "" {
-		parts = append(parts, "Record type "+search.RecordType)
+	if search.SourceRecordType != "" {
+		parts = append(parts, "Source record type "+search.SourceRecordType)
 	}
 	if search.PensionState != "" {
 		parts = append(parts, "Pension state "+search.PensionState)
@@ -2141,7 +2141,7 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 	if search.ReviewStatus != "" {
 		switch strings.ToLower(strings.TrimSpace(search.ReviewStatus)) {
 		case "clean":
-			parts = append(parts, "Clean records only")
+			parts = append(parts, "Clean person records only")
 		case "review":
 			parts = append(parts, "Review queue only")
 		}
@@ -2178,26 +2178,26 @@ func searchSummary(search viewmodel.SoldierSearch) string {
 	return "Advanced filters: " + strings.Join(parts, ", ")
 }
 
-func reviewStatusLabel(s viewmodel.Soldier) string {
+func reviewStatusLabel(s viewmodel.PersonRecord) string {
 	if s.NeedsReview {
 		return "Needs Review"
 	}
 	return "Clean"
 }
 
-func soldierFullName(s viewmodel.Soldier) string {
+func soldierFullName(s viewmodel.PersonRecord) string {
 	return s.GetFullName()
 }
 
-func isSoldierEntry(s viewmodel.Soldier) bool {
+func isSoldierEntry(s viewmodel.PersonRecord) bool {
 	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == "soldier"
 }
 
-func soldierHasCamaraderie(s viewmodel.Soldier) bool {
+func soldierHasCamaraderie(s viewmodel.PersonRecord) bool {
 	return isSoldierEntry(s) && strings.TrimSpace(s.Unit) != ""
 }
 
-func soldierHasTimeline(s viewmodel.Soldier) bool {
+func soldierHasTimeline(s viewmodel.PersonRecord) bool {
 	if !isSoldierEntry(s) {
 		return false
 	}
@@ -2207,10 +2207,10 @@ func soldierHasTimeline(s viewmodel.Soldier) bool {
 	if s.DeathYear > 0 || s.DeathMonth > 0 || s.DeathDay > 0 {
 		return true
 	}
-	return len(s.Records) > 0
+	return len(s.SourceRecords) > 0
 }
 
-func soldierStateResearchPackLabel(s viewmodel.Soldier) string {
+func soldierStateResearchPackLabel(s viewmodel.PersonRecord) string {
 	if trimmed := strings.TrimSpace(s.PensionState); trimmed != "" {
 		return trimmed
 	}
@@ -2218,12 +2218,12 @@ func soldierStateResearchPackLabel(s viewmodel.Soldier) string {
 	return state
 }
 
-func soldierCountyResearchPackLabel(s viewmodel.Soldier) string {
+func soldierCountyResearchPackLabel(s viewmodel.PersonRecord) string {
 	county, _ := soldierBirthInfoResearchPackLabels(s.BirthInfo)
 	return county
 }
 
-func soldierHasResearchPack(s viewmodel.Soldier) bool {
+func soldierHasResearchPack(s viewmodel.PersonRecord) bool {
 	return soldierStateResearchPackLabel(s) != "" || soldierCountyResearchPackLabel(s) != ""
 }
 
@@ -2247,11 +2247,11 @@ func soldierBirthInfoResearchPackLabels(value string) (string, string) {
 	return "", ""
 }
 
-func isWidowEntry(s viewmodel.Soldier) bool {
+func isWidowEntry(s viewmodel.PersonRecord) bool {
 	return s.EntryType == "widow"
 }
 
-func entryBadgeLabel(s viewmodel.Soldier) string {
+func entryBadgeLabel(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
 	case "wife":
 		return "Wife"
@@ -2262,7 +2262,7 @@ func entryBadgeLabel(s viewmodel.Soldier) string {
 	}
 }
 
-func detailHeading(s viewmodel.Soldier) string {
+func detailHeading(s viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(soldierFullName(s))
 	if isSoldierEntry(s) {
 		rank := strings.TrimSpace(detailDisplayRank(s))
@@ -2280,7 +2280,7 @@ func detailHeading(s viewmodel.Soldier) string {
 	return entryBadgeLabel(s)
 }
 
-func detailSubheading(s viewmodel.Soldier) string {
+func detailSubheading(s viewmodel.PersonRecord) string {
 	if isSoldierEntry(s) {
 		return strings.TrimSpace(s.Unit)
 	}
@@ -2290,41 +2290,41 @@ func detailSubheading(s viewmodel.Soldier) string {
 	return strings.TrimSpace(s.MaidenName)
 }
 
-func relationshipLabel(s viewmodel.Soldier) string {
+func relationshipLabel(s viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(s.SpouseName)
 	displayID := strings.TrimSpace(s.SpouseDisplayID)
 	switch {
 	case name != "" && displayID != "":
 		return name + " (" + displayID + ")"
 	case name != "":
-		if s.SpouseSoldierID > 0 {
-			return fmt.Sprintf("%s (DB ID %d)", name, s.SpouseSoldierID)
+		if s.LinkedSoldierID > 0 {
+			return fmt.Sprintf("%s (DB ID %d)", name, s.LinkedSoldierID)
 		}
 		return name
 	case displayID != "":
 		return displayID
-	case s.SpouseSoldierID > 0:
-		return fmt.Sprintf("DB ID %d", s.SpouseSoldierID)
+	case s.LinkedSoldierID > 0:
+		return fmt.Sprintf("DB ID %d", s.LinkedSoldierID)
 	default:
 		return "Not recorded"
 	}
 }
 
-func backButtonLabel(s viewmodel.Soldier) string {
+func backButtonLabel(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.BackLinkLabel) != "" {
 		return s.BackLinkLabel
 	}
 	return "Back"
 }
 
-func soldierDetailBackHref(s viewmodel.Soldier) string {
+func soldierDetailBackHref(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.BackLinkURL) != "" {
 		return strings.TrimSpace(s.BackLinkURL)
 	}
 	return "/soldiers"
 }
 
-func detailDisplayRank(s viewmodel.Soldier) string {
+func detailDisplayRank(s viewmodel.PersonRecord) string {
 	if trimmed := strings.TrimSpace(s.RankOut); trimmed != "" {
 		return trimmed
 	}

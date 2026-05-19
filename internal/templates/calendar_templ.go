@@ -14,7 +14,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) templ.Component {
+func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -73,9 +73,9 @@ func Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", counts.TotalSoldiers))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", counts.SoldierCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 18, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 18, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -86,15 +86,15 @@ func Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", counts.TotalWivesWidows))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", counts.SpouseRecordCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 22, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 22, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div class=\"text-sm uppercase tracking-[0.18em] text-[#6a7a88]\">Wives & Widows</div></div></div><div id=\"calendar-export-status\" class=\"mt-3 text-sm text-[#445260]\"></div></div><div class=\"mt-1 flex flex-wrap items-center gap-3 text-base text-[#445260]\"><label for=\"month-select\">Month</label> <select id=\"month-select\" class=\"field-input w-40\" onchange=\"window.location.href='/calendar/' + this.value\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div><div class=\"text-sm uppercase tracking-[0.18em] text-[#6a7a88]\">Spouse Records</div></div></div><div id=\"calendar-export-status\" class=\"mt-3 text-sm text-[#445260]\"></div></div><div class=\"mt-1 flex flex-wrap items-center gap-3 text-base text-[#445260]\"><label for=\"month-select\">Month</label> <select id=\"month-select\" class=\"field-input w-40\" onchange=\"window.location.href='/calendar/' + this.value\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -174,7 +174,7 @@ func Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-xs font-semibold uppercase tracking-[0.28em] text-[#cfb77a]\">Rotating Archive Quote</p><blockquote class=\"mt-3 max-w-4xl text-2xl leading-relaxed text-[#f2ede1]\">\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-xs font-semibold uppercase tracking-[0.28em] text-[#cfb77a]\">Rotating Local Archive Quote</p><blockquote class=\"mt-3 max-w-4xl text-2xl leading-relaxed text-[#f2ede1]\">\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -200,7 +200,7 @@ func Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><p class=\"mt-1 text-xs uppercase tracking-[0.18em] text-[#bcae88]\">Advances every 3 soldiers added to the archive</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><p class=\"mt-1 text-xs uppercase tracking-[0.18em] text-[#bcae88]\">Advances every 3 soldiers added to the local archive</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -668,7 +668,7 @@ func buildDuplicateAuditComparisonFields(left, right models.Soldier, highlights 
 	birthYearLeft, _ := auditBirthYear(left.BirthDate)
 	birthYearRight, _ := auditBirthYear(right.BirthDate)
 	fields := []DuplicateAuditComparisonField{
-		{Key: "display_id", Label: "Record ID", LeftValue: auditComparisonValue(left.DisplayID), RightValue: auditComparisonValue(right.DisplayID)},
+		{Key: "display_id", Label: "Display ID", LeftValue: auditComparisonValue(left.DisplayID), RightValue: auditComparisonValue(right.DisplayID)},
 		{Key: "prefix", Label: "Prefix", LeftValue: auditComparisonValue(left.Prefix), RightValue: auditComparisonValue(right.Prefix)},
 		{Key: "first_name", Label: "First Name", LeftValue: auditComparisonValue(left.FirstName), RightValue: auditComparisonValue(right.FirstName)},
 		{Key: "middle_name", Label: "Middle Name", LeftValue: auditComparisonValue(left.MiddleName), RightValue: auditComparisonValue(right.MiddleName)},
@@ -679,7 +679,7 @@ func buildDuplicateAuditComparisonFields(left, right models.Soldier, highlights 
 		{Key: "unit", Label: "Unit", LeftValue: auditComparisonValue(left.Unit), RightValue: auditComparisonValue(right.Unit)},
 		{Key: "maiden_name", Label: "Maiden Name", LeftValue: auditComparisonValue(left.MaidenName), RightValue: auditComparisonValue(right.MaidenName)},
 		{Key: "buried_in", Label: "Buried In", LeftValue: auditComparisonValue(left.BuriedIn), RightValue: auditComparisonValue(right.BuriedIn)},
-		{Key: "entry_type", Label: "Record Type", LeftValue: auditComparisonValue(left.EntryType), RightValue: auditComparisonValue(right.EntryType)},
+		{Key: "entry_type", Label: "Person Record Type", LeftValue: auditComparisonValue(left.EntryType), RightValue: auditComparisonValue(right.EntryType)},
 		{Key: "added_by", Label: "Created By", LeftValue: auditComparisonValue(left.AddedBy), RightValue: auditComparisonValue(right.AddedBy)},
 	}
 	for index := range fields {

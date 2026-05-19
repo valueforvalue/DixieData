@@ -7,19 +7,19 @@ import (
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ EntryForm(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) {
+templ EntryForm(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) {
 	@Layout(formTitle(s, isEdit)) {
 		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, "")
 	}
 }
 
-templ EntryFormWithError(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+templ EntryFormWithError(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
 	@Layout(formTitle(s, isEdit)) {
 		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, errorMessage)
 	}
 }
 
-templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
 	<div id="entry-form-shell" data-ui-id={ entryFormPageID(isEdit) } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		@SurfaceBadge(entryFormPageID(isEdit))
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
@@ -41,7 +41,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("Confidence %d/100", scrape.ConfidenceScore) }</span>
 						}
 						if len(scrape.Spouses) > 0 {
-							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("%d spouse memorial(s)", len(scrape.Spouses)) }</span>
+							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("%d spouse record memorial(s)", len(scrape.Spouses)) }</span>
 						}
 						if scrape.ErrorMessage != "" {
 							<span class="rounded-full border border-[#6f2c26]/30 bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs attention</span>
@@ -75,7 +75,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 					}
 					if len(scrape.Spouses) > 0 {
 						<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700">
-							<p class="font-semibold text-slate-800">Spouse memorials found</p>
+							<p class="font-semibold text-slate-800">Spouse record memorials found</p>
 							<ul class="mt-2 space-y-1">
 								for _, spouse := range scrape.Spouses {
 									<li>
@@ -139,17 +139,17 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Identity & Relationship</p>
-						<p class="mt-2 text-sm text-slate-600">Start with who this person is and how the record should behave in the archive.</p>
+						<p class="mt-2 text-sm text-slate-600">Start with who this person is and how the person record should behave in the local archive.</p>
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Record ID</label>
+							<label class="block text-sm text-slate-500 mb-1">Display ID</label>
 							<input type="text" name="display_id" value={ s.DisplayID }
 								readonly
 								class={ displayIDInputClass(isEdit) }/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Record Type</label>
+							<label class="block text-sm text-slate-500 mb-1">Person Record Type</label>
 							<select name="entry_type" data-entry-type-select class="field-input">
 								for _, entryType := range entryTypes() {
 									<option value={ entryType.Value } if entryType.Value == normalizedEntryType(s) { selected }>{ entryType.Label }</option>
@@ -186,7 +186,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 						<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4" data-entry-type-special>
 							<div class="mb-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Family Link</p>
-								<p class="mt-1 text-sm text-slate-600">Wife and widow records stay anchored to the linked soldier for navigation and comparisons.</p>
+								<p class="mt-1 text-sm text-slate-600">Wife and widow person records stay anchored to the linked soldier for navigation and comparisons.</p>
 							</div>
 							<div class="responsive-two-col grid gap-4">
 								<div class="responsive-span-2 col-span-2">
@@ -194,7 +194,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 									<select name="spouse_soldier_id" class="field-input">
 										<option value="">Select a soldier</option>
 										for _, candidate := range spouseCandidates {
-											<option value={ fmt.Sprintf("%d", candidate.ID) } if candidate.ID == s.SpouseSoldierID { selected }>{ spouseCandidateLabel(candidate) }</option>
+											<option value={ fmt.Sprintf("%d", candidate.ID) } if candidate.ID == s.LinkedSoldierID { selected }>{ spouseCandidateLabel(candidate) }</option>
 										}
 									</select>
 								</div>
@@ -301,20 +301,20 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 					@SurfaceBadge(uiids.PanelSoldierFormRecords)
 					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Supporting Records</p>
-							<p class="mt-2 text-sm text-slate-600">Attach pension notes, archive references, and source transcripts that should travel with this record.</p>
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
 						</div>
-						<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Record</button>
+						<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Source Record</button>
 					</div>
 					<div data-record-list class="space-y-3">
-						for _, record := range formRecords(s.Records) {
+						for _, record := range formRecords(s.SourceRecords) {
 							@RecordInputRow(record)
 						}
 					</div>
 					<template data-record-template>
-						@RecordInputRow(viewmodel.Record{})
+						@RecordInputRow(viewmodel.SourceRecord{})
 					</template>
-					<p class="mt-2 text-xs text-slate-500">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p>
+					<p class="mt-2 text-xs text-slate-500">Source records shown here are saved with the person record and appear in the detail view and PDF exports.</p>
 				</section>
 				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					<div class="mb-4">
@@ -329,7 +329,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
-						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the record can be saved quickly and enriched later.</p>
+						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p>
 					</div>
 					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
 					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
@@ -344,7 +344,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 						} else {
 							<div class="flex flex-wrap items-center justify-between gap-3">
 								<div>
-									<p>Create the record first, then use <strong>Add Images From Computer</strong> on the soldier page to import one or more images.</p>
+									<p>Create the person record first, then use <strong>Add Images From Computer</strong> on the detail page to import one or more images.</p>
 								</div>
 								<button type="button" class="primary-button opacity-60 cursor-not-allowed" disabled>Add Images From Computer</button>
 							</div>
@@ -363,7 +363,7 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 					if isEdit {
 						Save Changes
 					} else {
-						Create Record
+						Create Person Record
 					}
 				</button>
 				<button
@@ -381,18 +381,18 @@ templ EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 			@SuggestionDatalist("suffix-suggestions", suggestions.Suffix)
 			@SuggestionDatalist("pension-state-suggestions", suggestions.PensionState)
 			@SuggestionDatalist("buried-in-suggestions", suggestions.BuriedIn)
-			@SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHomeName)
-			@SuggestionDatalist("record-type-suggestions", suggestions.RecordType)
+			@SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHome)
+			@SuggestionDatalist("record-type-suggestions", suggestions.SourceRecordType)
 		</form>
 	</div>
 }
 
-func formTitle(s viewmodel.Soldier, isEdit bool) string {
+func formTitle(s viewmodel.PersonRecord, isEdit bool) string {
 	label := entryTypeLabel(normalizedEntryType(s))
 	if isEdit {
-		return "Edit " + label + " Record"
+		return "Edit " + label + " Person Record"
 	}
-	return "New " + label + " Record"
+	return "New " + label + " Person Record"
 }
 
 func entryFormPageID(isEdit bool) string {
@@ -409,7 +409,7 @@ func displayIDInputClass(isEdit bool) string {
 	return "field-input bg-slate-100 text-slate-500"
 }
 
-func draftKey(s viewmodel.Soldier, isEdit bool) string {
+func draftKey(s viewmodel.PersonRecord, isEdit bool) string {
 	if isEdit {
 		return fmt.Sprintf("edit-soldier-%d", s.ID)
 	}
@@ -423,7 +423,7 @@ func draftMode(isEdit bool) string {
 	return "new"
 }
 
-func draftResetPath(s viewmodel.Soldier, isEdit bool) string {
+func draftResetPath(s viewmodel.PersonRecord, isEdit bool) string {
 	if isEdit {
 		return fmt.Sprintf("/soldiers/%d/edit", s.ID)
 	}
@@ -446,9 +446,9 @@ func recordPersistenceHeading(isEdit bool) string {
 
 func recordPersistenceMessage(isEdit bool) string {
 	if isEdit {
-		return "This record currently matches the primary database until you make new local edits."
+		return "This person record currently matches the primary database until you make new local edits."
 	}
-	return "This new record is cached in localStorage until you create it in the database."
+	return "This new person record is cached in localStorage until you create it in the database."
 }
 
 func pensionStates() []string {
@@ -469,14 +469,14 @@ func confederateHomeStatuses() []string {
 	return []string{"None", "Inmate", "Staffer", "Trustee"}
 }
 
-func selectedPensionState(s viewmodel.Soldier) string {
+func selectedPensionState(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.PensionState) == "" {
 		return "None"
 	}
 	return s.PensionState
 }
 
-func selectedConfederateHomeStatus(s viewmodel.Soldier) string {
+func selectedConfederateHomeStatus(s viewmodel.PersonRecord) string {
 	switch strings.TrimSpace(s.ConfederateHomeStatus) {
 	case "Inmate", "Staffer", "Trustee":
 		return s.ConfederateHomeStatus
@@ -485,7 +485,7 @@ func selectedConfederateHomeStatus(s viewmodel.Soldier) string {
 	}
 }
 
-func rankOutValue(s viewmodel.Soldier) string {
+func rankOutValue(s viewmodel.PersonRecord) string {
 	if s.RankOut != "" {
 		return s.RankOut
 	}
@@ -505,7 +505,7 @@ func entryTypes() []entryTypeOption {
 	}
 }
 
-func normalizedEntryType(s viewmodel.Soldier) string {
+func normalizedEntryType(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
 	case "wife", "widow":
 		return s.EntryType
@@ -523,7 +523,7 @@ func entryTypeLabel(entryType string) string {
 	return "Soldier"
 }
 
-func spouseCandidateLabel(s viewmodel.Soldier) string {
+func spouseCandidateLabel(s viewmodel.PersonRecord) string {
 	label := strings.TrimSpace(s.GetFullName())
 	if label == "" {
 		label = strings.TrimSpace(s.DisplayID)
@@ -534,19 +534,19 @@ func spouseCandidateLabel(s viewmodel.Soldier) string {
 	return label + " (" + s.DisplayID + ")"
 }
 
-templ RecordInputRow(record viewmodel.Record) {
+templ RecordInputRow(record viewmodel.SourceRecord) {
 	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
 		<div class="mb-3 flex items-center justify-between gap-3">
-			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Record Entry</span>
+			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Source Record Entry</span>
 			<button type="button" data-record-remove class="pill-link">Remove</button>
 		</div>
 		<div class="responsive-two-col grid gap-4">
 			<div>
-				<label class="mb-1 block text-sm text-slate-500">Record Type</label>
-				<input type="text" name="record_type" value={ record.RecordType } list="record-type-suggestions" class="field-input"/>
+				<label class="mb-1 block text-sm text-slate-500">Source Record Type</label>
+				<input type="text" name="record_type" value={ record.SourceRecordType } list="record-type-suggestions" class="field-input"/>
 			</div>
 			<div>
-				<label class="mb-1 block text-sm text-slate-500">App / Record Number</label>
+				<label class="mb-1 block text-sm text-slate-500">App / Source Record Number</label>
 				<input type="text" name="record_app_id" value={ record.AppID } class="field-input"/>
 			</div>
 			<div class="responsive-span-2 col-span-2">
@@ -565,9 +565,9 @@ templ SuggestionDatalist(id string, values []string) {
 	</datalist>
 }
 
-func formRecords(records []viewmodel.Record) []viewmodel.Record {
+func formRecords(records []viewmodel.SourceRecord) []viewmodel.SourceRecord {
 	if len(records) == 0 {
-		return []viewmodel.Record{{}}
+		return []viewmodel.SourceRecord{{}}
 	}
 	return records
 }
@@ -616,7 +616,7 @@ templ InitialSetupView(form viewmodel.InitialSetupForm) {
 	}
 }
 
-func mergeReviewDisplayName(soldier viewmodel.Soldier) string {
+func mergeReviewDisplayName(soldier viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(soldier.GetFullName())
 	if name == "" {
 		return soldier.DisplayID
@@ -701,7 +701,7 @@ templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
 	</div>
 }
 
-templ SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch, page, total, pageSize int) {
+templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRecordSearch, page, total, pageSize int) {
 	if hasActiveSearch(search) || search.Recent {
 		<div class="mb-4 rounded-2xl border border-[rgba(197,171,104,0.9)] bg-[rgba(245,241,230,0.94)] px-4 py-3 shadow-[0_0_28px_rgba(197,171,104,0.15)]">
 			<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">
@@ -714,7 +714,7 @@ templ SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch
 				}
 			</p>
 			if search.Recent {
-				<p class="mt-2 text-sm font-medium text-[#22303d]">Your ten most recently opened records.</p>
+				<p class="mt-2 text-sm font-medium text-[#22303d]">Your ten most recently opened person records.</p>
 			} else {
 				<p class="mt-2 text-sm font-medium text-[#22303d]">{ searchSummary(search) }</p>
 			}
@@ -722,10 +722,10 @@ templ SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch
 				<p class="mt-1 text-xs text-slate-500">Quick search cards now show the exact matching field for each result.</p>
 			}
 			if search.Mode == "advanced" {
-				<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>
+				<p class="mt-1 text-xs text-slate-500">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same person record.</p>
 			}
 			if search.Recent {
-				<p class="mt-1 text-xs text-slate-500">This list updates as you open record detail pages.</p>
+				<p class="mt-1 text-xs text-slate-500">This list updates as you open person record detail pages.</p>
 			}
 			</div>
 		}
@@ -733,24 +733,24 @@ templ SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3">
 				<div>
 					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
-					<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two records to compare them side by side. Quick View is the in-list research panel for notes, archive signals, family links, and counts.</p>
+					<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
 				</div>
 				<button type="button" data-compare-selected data-compare-group="search-compare" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
 			</div>
 		}
 	if len(soldiers) == 0 {
 		if search.Recent {
-			<p class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">No recent records yet. Open a record detail page and it will appear here.</p>
+			<p class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">No recent person records yet. Open a detail page and it will appear here.</p>
 		} else if !hasActiveSearch(search) {
 			<div data-recent-records-empty class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">
-				Start typing to search the archive. Your recently opened records will appear here automatically.
+				Start typing to search the local archive. Your recently opened person records will appear here automatically.
 			</div>
 		} else if hasActiveSearch(search) && search.Mode == "advanced" {
-			<p class="text-slate-500 text-sm">No records matched the advanced filters.</p>
+			<p class="text-slate-500 text-sm">No person records matched the advanced filters.</p>
 		} else if hasActiveSearch(search) && search.Query != "" {
 			<p class="text-slate-500 text-sm">No results found for "{ search.Query }".</p>
 		} else if hasActiveSearch(search) {
-			<p class="text-slate-500 text-sm">No records found in browse mode.</p>
+			<p class="text-slate-500 text-sm">No person records found in browse mode.</p>
 		}
 	} else {
 		for _, s := range soldiers {
@@ -785,10 +785,10 @@ templ SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch
 	}
 }
 
-templ AnniversaryPartial(soldiers []viewmodel.Soldier, month, day int) {
+templ AnniversaryPartial(soldiers []viewmodel.PersonRecord, month, day int) {
 	<h4 class="gold text-4xl leading-none mb-4">{ monthName(month) } { fmt.Sprintf("%d", day) }</h4>
 	if len(soldiers) == 0 {
-		<p class="text-lg leading-relaxed text-[#6e4f22]">No records for this date.</p>
+		<p class="text-lg leading-relaxed text-[#6e4f22]">No person records for this date.</p>
 	} else {
 		for _, s := range soldiers {
 			@SoldierCard(s, false)
@@ -796,7 +796,7 @@ templ AnniversaryPartial(soldiers []viewmodel.Soldier, month, day int) {
 	}
 }
 
-templ SearchPreviewContent(s viewmodel.Soldier) {
+templ SearchPreviewContent(s viewmodel.PersonRecord) {
 	<div class="space-y-5">
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(255,255,255,0.7)] px-4 py-4">
 			<div class="flex flex-wrap items-start justify-between gap-3">
@@ -834,12 +834,12 @@ templ SearchPreviewContent(s viewmodel.Soldier) {
 		</div>
 		<div class="grid gap-3 lg:grid-cols-3">
 			<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600">
-				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Archive Signals</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Local Archive Signals</p>
 				<dl class="mt-3 space-y-2">
-					<dt class="text-slate-500">Record Type</dt>
+					<dt class="text-slate-500">Person Record Type</dt>
 					<dd class="text-[#22303d]">{ entryBadgeLabel(s) }</dd>
-					<dt class="text-slate-500">Attached Records</dt>
-					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.RecordCount) }</dd>
+					<dt class="text-slate-500">Source Records</dt>
+					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.SourceRecordCount) }</dd>
 					<dt class="text-slate-500">Images</dt>
 					<dd class="text-[#22303d]">{ fmt.Sprintf("%d", s.ImageCount) }</dd>
 					<dt class="text-slate-500">Review Status</dt>
@@ -888,7 +888,7 @@ templ SearchPreviewContent(s viewmodel.Soldier) {
 					}
 					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.MaidenName) == "" && strings.TrimSpace(s.ConfederateHomeStatus) == "" {
 						<dt class="text-slate-500">Purpose</dt>
-						<dd class="text-[#22303d]">Use the full record for deeper editing; this quick view is for in-list triage.</dd>
+						<dd class="text-[#22303d]">Use the full person record for deeper editing; this quick view is for in-list triage.</dd>
 					}
 				</dl>
 			</div>
@@ -906,19 +906,19 @@ templ SearchPreviewContent(s viewmodel.Soldier) {
 			</div>
 		}
 		<div class="flex flex-wrap gap-3">
-			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) } class="primary-button">Open Full Record</a>
+			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) } class="primary-button">Open Full Person Record</a>
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="secondary-button">Edit</a>
-			if s.SpouseSoldierID != 0 {
-				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.SpouseSoldierID, s.ID)) } class="secondary-button">Open Linked Soldier</a>
+			if s.LinkedSoldierID != 0 {
+				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)) } class="secondary-button">Open Linked Soldier</a>
 			}
-			if s.SpouseSoldierID != 0 {
-				<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)) } class="secondary-button">Compare Family Records</a>
+			if s.LinkedSoldierID != 0 {
+				<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">Compare Family Person Records</a>
 			}
 		</div>
 	</div>
 }
 
-func previewUpdatedByline(s viewmodel.Soldier) string {
+func previewUpdatedByline(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.LastEditedBy) != "" && strings.TrimSpace(s.LastEditedAt) != "" {
 		return s.LastEditedBy + " • " + formatAuditTimestamp(s.LastEditedAt)
 	}
@@ -928,7 +928,7 @@ func previewUpdatedByline(s viewmodel.Soldier) string {
 	return formatAuditTimestamp(s.LastEditedAt)
 }
 
-func previewConfederateHomeLabel(s viewmodel.Soldier) string {
+func previewConfederateHomeLabel(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.ConfederateHomeName) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "" {
 		return s.ConfederateHomeStatus + " • " + s.ConfederateHomeName
 	}
@@ -938,7 +938,7 @@ func previewConfederateHomeLabel(s viewmodel.Soldier) string {
 	return s.ConfederateHomeStatus
 }
 
-func entryFormBackHref(s viewmodel.Soldier, isEdit bool) string {
+func entryFormBackHref(s viewmodel.PersonRecord, isEdit bool) string {
 	if isEdit && s.ID > 0 {
 		return fmt.Sprintf("/soldiers/%d", s.ID)
 	}

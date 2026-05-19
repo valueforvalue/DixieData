@@ -12,7 +12,7 @@ import (
 func TestResearchCollectionsHubViewRendersCurrentRecordContext(t *testing.T) {
 	var buf bytes.Buffer
 	err := ResearchCollectionsHubView(viewmodel.ResearchCollectionHub{
-		Current: &viewmodel.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
+		CurrentPersonRecord: &viewmodel.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
 		Collections: []viewmodel.ResearchCollection{{
 			ID:              7,
 			Name:            "Orange County Cluster",
@@ -29,7 +29,7 @@ func TestResearchCollectionsHubViewRendersCurrentRecordContext(t *testing.T) {
 	for _, needle := range []string{
 		"Named Research Collections",
 		"/research-collections/7?from=30",
-		"Add Current Record",
+		"Add Current Person Record",
 		`data-history-back`,
 	} {
 		if !strings.Contains(content, needle) {
@@ -48,8 +48,8 @@ func TestResearchCollectionDetailViewRendersMembers(t *testing.T) {
 			ItemCount:       1,
 			ContainsCurrent: true,
 		},
-		Current: &viewmodel.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
-		Members: []viewmodel.Soldier{{
+		CurrentPersonRecord: &viewmodel.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
+		PersonRecords: []viewmodel.Soldier{{
 			ID:        30,
 			DisplayID: "COL-0030",
 			FirstName: "Andrew",
@@ -64,8 +64,8 @@ func TestResearchCollectionDetailViewRendersMembers(t *testing.T) {
 	for _, needle := range []string{
 		"Research Collection",
 		"Orange County Cluster",
-		"Current record included",
-		"Open Record",
+		"Current person record included",
+		"Open Person Record",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("research collection detail missing %s", needle)

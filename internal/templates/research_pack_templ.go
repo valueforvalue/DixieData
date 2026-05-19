@@ -52,28 +52,28 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", pack.Central.ID))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", pack.AnchorPersonRecord.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 16, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 16, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Record</button> <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Person Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Person Record</button> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", pack.Central.ID)))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", pack.AnchorPersonRecord.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 20, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 20, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Detail Card</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Person Record</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><aside class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -112,14 +112,14 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><div class=\"mt-5 space-y-3\"><div class=\"rounded-2xl border border-blue-100 bg-blue-50/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-blue-600\">Related Records</p><p class=\"mt-2 text-2xl font-bold text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><div class=\"mt-5 space-y-3\"><div class=\"rounded-2xl border border-blue-100 bg-blue-50/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-blue-600\">Related Person Records</p><p class=\"mt-2 text-2xl font-bold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(pack.Related)))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(pack.RelatedPersonRecords)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 30, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 30, Col: 108}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -138,14 +138,14 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p></div><div class=\"rounded-2xl border border-slate-200 bg-white/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">Anchor Record</p><p class=\"mt-2 text-sm font-semibold text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p></div><div class=\"rounded-2xl border border-slate-200 bg-white/80 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">Anchor Person Record</p><p class=\"mt-2 text-sm font-semibold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(pack.Central))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(pack.AnchorPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 38, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 38, Col: 100}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -156,9 +156,9 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(pack.Central.DisplayID)
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(pack.AnchorPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 39, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 39, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -180,12 +180,12 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</section></div><section class=\"rounded-3xl border border-slate-200 bg-white/85 p-5\"><div class=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\"><div><h3 class=\"text-lg font-semibold text-slate-900\">Related Records</h3><p class=\"text-sm text-slate-600\">Use the pack to branch into related records without rebuilding the same county or state context by hand.</p></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</section></div><section class=\"rounded-3xl border border-slate-200 bg-white/85 p-5\"><div class=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\"><div><h3 class=\"text-lg font-semibold text-slate-900\">Related Person Records</h3><p class=\"text-sm text-slate-600\">Use the pack to branch into related person records without rebuilding the same county or state context by hand.</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(pack.Related) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500\">No additional records matched this pack yet.</p>")
+			if len(pack.RelatedPersonRecords) == 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500\">No additional person records matched this pack yet.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -194,15 +194,15 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, soldier := range pack.Related {
+				for _, personRecord := range pack.RelatedPersonRecords {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"rounded-2xl border border-slate-200 bg-slate-50/70 p-4\"><p class=\"text-sm font-semibold text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var12 string
-					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(soldier))
+					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(personRecord))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 67, Col: 82}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 67, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 					if templ_7745c5c3_Err != nil {
@@ -213,9 +213,9 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var13 string
-					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(soldier.DisplayID)
+					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(personRecord.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 68, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 68, Col: 73}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
@@ -226,9 +226,9 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var14 string
-					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(soldier.Unit))
+					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(personRecord.Unit))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 70, Col: 78}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 70, Col: 83}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 					if templ_7745c5c3_Err != nil {
@@ -239,9 +239,9 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var15 string
-					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(soldier.PensionState))
+					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(personRecord.PensionState))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 71, Col: 95}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 71, Col: 100}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
@@ -252,9 +252,9 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var16 string
-					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(soldier.BuriedIn))
+					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(personRecord.BuriedIn))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 72, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 72, Col: 92}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
@@ -265,28 +265,28 @@ func ResearchPackView(pack viewmodel.ResearchPack) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var17 templ.SafeURL
-					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", soldier.ID, pack.Central.ID)))
+					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", personRecord.ID, pack.AnchorPersonRecord.ID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 75, Col: 100}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 75, Col: 116}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"pill-link\">Open Record</a> <a href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"pill-link\">Open Person Record</a> <a href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var18 templ.SafeURL
-					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", pack.Central.ID, soldier.ID, pack.Central.ID)))
+					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", pack.AnchorPersonRecord.ID, personRecord.ID, pack.AnchorPersonRecord.ID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 76, Col: 127}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_pack.templ`, Line: 76, Col: 154}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" class=\"secondary-button\">Compare Records</a></div></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" class=\"secondary-button\">Compare Person Records</a></div></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

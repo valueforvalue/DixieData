@@ -7,24 +7,24 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) {
-	@Layout("Source Conflict Ledger") {
+templ MergeReviewLedgerView(ledger viewmodel.MergeReviewLedger) {
+	@Layout("Merge Review Ledger") {
 		<div class="mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-wrap items-center gap-3">
 				<button
 					type="button"
 					data-history-back
-					data-fallback-href={ fmt.Sprintf("/soldiers/%d", ledger.Central.ID) }
-					data-fallback-label="Back to Record"
+					data-fallback-href={ fmt.Sprintf("/soldiers/%d", ledger.SubjectPersonRecord.ID) }
+					data-fallback-label="Back to Person Record"
 					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-				>← Back to Record</button>
-				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", ledger.Central.ID)) } class="pill-link">Open Detail Card</a>
+				>← Back to Person Record</button>
+				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", ledger.SubjectPersonRecord.ID)) } class="pill-link">Open Person Record</a>
 			</div>
 			<div class="grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
 				<aside class="card rounded-3xl p-6">
-					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Source Conflict Ledger</p>
-					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(ledger.Central) }</h2>
-					<p class="mt-2 text-sm text-slate-600">{ ledger.Central.DisplayID }</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Merge Review Ledger</p>
+					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(ledger.SubjectPersonRecord) }</h2>
+					<p class="mt-2 text-sm text-slate-600">{ ledger.SubjectPersonRecord.DisplayID }</p>
 					<div class="mt-5 space-y-3">
 						<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Open Conflicts</p>
@@ -52,7 +52,7 @@ templ SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) {
 											<span class={ conflictLedgerStatusClass(entry.Resolution) }>{ conflictLedgerStatusLabel(entry.Resolution) }</span>
 											<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ entry.ConflictType }</span>
 										</div>
-										<h3 class="mt-3 text-lg font-semibold text-slate-900">{ entry.SourceDisplayID }</h3>
+										<h3 class="mt-3 text-lg font-semibold text-slate-900">{ entry.IncomingDisplayID }</h3>
 										<p class="mt-2 text-sm leading-6 text-slate-700">{ entry.Reason }</p>
 									</div>
 									<div class="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
@@ -71,23 +71,23 @@ templ SourceConflictLedgerView(ledger viewmodel.SourceConflictLedger) {
 								}
 								<div class="mt-5 grid gap-4 md:grid-cols-2">
 									<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)] p-4 text-sm text-slate-700">
-										<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Local Snapshot</p>
-										<p class="mt-3 font-semibold text-slate-900">{ emptyDetail(entry.LocalSnapshot.DisplayID) }</p>
-										<p class="mt-2">{ emptyDetail(detailHeading(entry.LocalSnapshot)) }</p>
+										<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Local Record Snapshot</p>
+										<p class="mt-3 font-semibold text-slate-900">{ emptyDetail(entry.LocalRecordSnapshot.DisplayID) }</p>
+										<p class="mt-2">{ emptyDetail(detailHeading(entry.LocalRecordSnapshot)) }</p>
 										<dl class="mt-3 grid gap-1">
-											<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(entry.LocalSnapshot.Unit) }</dd>
-											<dt class="text-slate-500">Pension</dt><dd>{ emptyDetail(entry.LocalSnapshot.PensionID) }</dd>
-											<dt class="text-slate-500">Application</dt><dd>{ emptyDetail(entry.LocalSnapshot.ApplicationID) }</dd>
+											<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(entry.LocalRecordSnapshot.Unit) }</dd>
+											<dt class="text-slate-500">Pension</dt><dd>{ emptyDetail(entry.LocalRecordSnapshot.PensionID) }</dd>
+											<dt class="text-slate-500">Application</dt><dd>{ emptyDetail(entry.LocalRecordSnapshot.ApplicationID) }</dd>
 										</dl>
 									</div>
 									<div class="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 text-sm text-slate-700">
-										<p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Shared Snapshot</p>
-										<p class="mt-3 font-semibold text-slate-900">{ emptyDetail(entry.SourceSnapshot.DisplayID) }</p>
-										<p class="mt-2">{ emptyDetail(detailHeading(entry.SourceSnapshot)) }</p>
+										<p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Incoming Record Snapshot</p>
+										<p class="mt-3 font-semibold text-slate-900">{ emptyDetail(entry.IncomingSnapshot.DisplayID) }</p>
+										<p class="mt-2">{ emptyDetail(detailHeading(entry.IncomingSnapshot)) }</p>
 										<dl class="mt-3 grid gap-1">
-											<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(entry.SourceSnapshot.Unit) }</dd>
-											<dt class="text-slate-500">Pension</dt><dd>{ emptyDetail(entry.SourceSnapshot.PensionID) }</dd>
-											<dt class="text-slate-500">Application</dt><dd>{ emptyDetail(entry.SourceSnapshot.ApplicationID) }</dd>
+											<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(entry.IncomingSnapshot.Unit) }</dd>
+											<dt class="text-slate-500">Pension</dt><dd>{ emptyDetail(entry.IncomingSnapshot.PensionID) }</dd>
+											<dt class="text-slate-500">Application</dt><dd>{ emptyDetail(entry.IncomingSnapshot.ApplicationID) }</dd>
 										</dl>
 									</div>
 								</div>

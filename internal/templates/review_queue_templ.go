@@ -107,9 +107,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var5 string
-					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("review-queue-item-%d", entry.Soldier.ID))
+					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("review-queue-item-%d", entry.PersonRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 36, Col: 70}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 36, Col: 75}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -120,9 +120,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var6 string
-					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", entry.Soldier.ID))
+					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", entry.PersonRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 39, Col: 96}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 39, Col: 101}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -133,9 +133,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var7 string
-					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(entry.Soldier.DisplayID)
+					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(entry.PersonRecord.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 42, Col: 105}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 42, Col: 110}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -146,9 +146,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var8 string
-					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(entry.Soldier))
+					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(entry.PersonRecord))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 45, Col: 86}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 45, Col: 91}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -159,9 +159,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var9 string
-					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.Soldier.ReviewReason))
+					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(entry.PersonRecord.ReviewReason))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 46, Col: 91}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 46, Col: 96}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -172,9 +172,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var10 string
-					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(entry.Soldier))
+					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(entry.PersonRecord))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 47, Col: 83}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 47, Col: 88}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -231,22 +231,22 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var13 templ.SafeURL
-					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(fmt.Sprintf("/soldiers/%d", entry.Soldier.ID))
+					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(fmt.Sprintf("/soldiers/%d", entry.PersonRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 58, Col: 65}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 58, Col: 70}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" class=\"pill-link\">View</a> <button hx-post=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "\" class=\"pill-link\">View Person Record</a> <button hx-post=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var14 string
-					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.Soldier.ID))
+					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 59, Col: 102}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 59, Col: 107}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 					if templ_7745c5c3_Err != nil {
@@ -257,9 +257,9 @@ func ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var15 string
-					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("#review-queue-item-%d", entry.Soldier.ID))
+					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("#review-queue-item-%d", entry.PersonRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 59, Col: 171}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 59, Col: 181}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
@@ -557,9 +557,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var32 string
-			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.LeftSoldier.DisplayID)
+			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.LeftPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 114, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 114, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -570,9 +570,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var33 string
-			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(comparison.LeftSoldier))
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(comparison.LeftPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 115, Col: 100}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 115, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -583,9 +583,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var34 string
-			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(comparison.LeftSoldier))
+			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(comparison.LeftPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 116, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 116, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -596,9 +596,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var35 string
-			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d record(s)", len(comparison.LeftSoldier.Records)))
+			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d source record(s)", len(comparison.LeftPersonRecord.SourceRecords)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 118, Col: 191}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 118, Col: 209}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -609,9 +609,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var36 string
-			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d image(s)", len(comparison.LeftSoldier.Images)))
+			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d image(s)", len(comparison.LeftPersonRecord.Images)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 119, Col: 189}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 119, Col: 194}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -621,7 +621,7 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if comparison.LeftSoldier.NeedsReview {
+			if comparison.LeftPersonRecord.NeedsReview {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<span class=\"rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]\">Needs Review</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -632,22 +632,22 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var37 templ.SafeURL
-			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.LeftSoldier.ID)))
+			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.LeftPersonRecord.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 125, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 125, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" class=\"pill-link\">Open Left Record</a></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4\"><div class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" class=\"pill-link\">Open Left Person Record</a></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4\"><div class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var38 string
-			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.RightSoldier.DisplayID)
+			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.RightPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 129, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 129, Col: 124}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -658,9 +658,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var39 string
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(comparison.RightSoldier))
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(comparison.RightPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 130, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 130, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -671,9 +671,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(comparison.RightSoldier))
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(comparison.RightPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 131, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 131, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
@@ -684,9 +684,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d record(s)", len(comparison.RightSoldier.Records)))
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d source record(s)", len(comparison.RightPersonRecord.SourceRecords)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 133, Col: 192}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 133, Col: 210}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
@@ -697,9 +697,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d image(s)", len(comparison.RightSoldier.Images)))
+			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d image(s)", len(comparison.RightPersonRecord.Images)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 134, Col: 190}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 134, Col: 195}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
@@ -709,7 +709,7 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if comparison.RightSoldier.NeedsReview {
+			if comparison.RightPersonRecord.NeedsReview {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<span class=\"rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]\">Needs Review</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -720,15 +720,15 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var43 templ.SafeURL
-			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.RightSoldier.ID)))
+			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.RightPersonRecord.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 140, Col: 87}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 140, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" class=\"pill-link\">Open Right Record</a></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" class=\"pill-link\">Open Right Person Record</a></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -766,9 +766,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var45 string
-			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.LeftSoldier.DisplayID)
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.LeftPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 157, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 157, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -779,9 +779,9 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var46 string
-			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.RightSoldier.DisplayID)
+			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(comparison.RightPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 158, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/review_queue.templ`, Line: 158, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
