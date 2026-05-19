@@ -12,7 +12,7 @@ DixieData is a Wails-based desktop archive for managing Civil War research recor
 - import/export and merge workflows
 - review queue and duplicate auditing
 
-The current release line is **v1.1.20**.
+The current release line is **v1.1.21**.
 
 ## 2. Technical stack
 
@@ -22,7 +22,7 @@ The current release line is **v1.1.20**.
 | Backend | Go |
 | DB | SQLite |
 | UI rendering | Templ |
-| Styling | Tailwind via CDN + app-specific CSS in templates |
+| Styling | Local bundled Tailwind CSS (`frontend\app.css`) + app-specific CSS in templates |
 | Client interactivity | `frontend\app.js` |
 | Search | SQLite FTS5 + fallback `LIKE` |
 | PDF generation | `github.com/go-pdf/fpdf` |
