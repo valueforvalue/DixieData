@@ -22,9 +22,13 @@ DixieData is a Windows-first Wails desktop archive for Civil War research record
 
 - `go test ./...` runs the full Go test suite
 - `go build ./...` runs the baseline compile check
+- `npm install` installs the local Tailwind CSS toolchain used for offline UI styling
+- `npm run build:css` regenerates `frontend\app.css` after utility class changes in `frontend\`, `internal\templates\`, or `internal\appshell\app.go`
 - `.\scripts\build-release.ps1` builds the production executable in `build\bin\DixieData.exe`
 - `.\scripts\build-debug.ps1` builds the debug executable and launcher
 - `.\scripts\run-debug.ps1` launches the current debug build with UI IDs enabled
+
+The debug and release build scripts now regenerate the checked-in offline CSS bundle automatically before invoking Wails.
 
 ## Current release line
 

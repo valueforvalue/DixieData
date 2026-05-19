@@ -16,10 +16,16 @@ func TestFrontendIndexUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, `src="/app.js"`) {
 		t.Fatalf("frontend index should load local app.js")
 	}
+	if !strings.Contains(content, `href="/app.css"`) {
+		t.Fatalf("frontend index should load local app.css")
+	}
 	if !strings.Contains(content, `hx-get="/calendar"`) {
 		t.Fatalf("frontend index should bootstrap from /calendar")
 	}
 	if strings.Contains(content, "unpkg.com/htmx.org") {
 		t.Fatalf("frontend index should not depend on remote htmx")
+	}
+	if strings.Contains(content, "cdn.tailwindcss.com") {
+		t.Fatalf("frontend index should not depend on remote tailwind")
 	}
 }

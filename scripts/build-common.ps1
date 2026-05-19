@@ -38,6 +38,15 @@ function Get-DixieDataBuildBinDir {
     return Join-Path $Root "build\bin"
 }
 
+function Get-DixieDataTailwindMarkerPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    return Join-Path $Root "node_modules\tailwindcss\package.json"
+}
+
 function Get-DixieDataAppVersion {
     param(
         [Parameter(Mandatory = $true)]
@@ -187,6 +196,29 @@ exit $exitCode
     return $launcherPath
 }
 
+function Invoke-DixieDataFrontendAssetBuild {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    Set-DixieDataBuildLocation -Root $Root
+
+    if (-not (Test-Path (Get-DixieDataTailwindMarkerPath -Root $Root))) {
+        Write-Host "Installing frontend build dependencies..."
+        & npm install
+        if ($LASTEXITCODE -ne 0) {
+            throw "npm install failed with exit code $LASTEXITCODE"
+        }
+    }
+
+    Write-Host "Regenerating frontend CSS bundle..."
+    & npm run build:css
+    if ($LASTEXITCODE -ne 0) {
+        throw "npm run build:css failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Invoke-DixieDataBuild {
     param(
         [Parameter(Mandatory = $true)]
@@ -198,6 +230,8 @@ function Invoke-DixieDataBuild {
     $preservedOAuth = Save-DixieDataOAuthDefaults -Root $Root
     try {
         Set-DixieDataBuildLocation -Root $Root
+
+        Invoke-DixieDataFrontendAssetBuild -Root $Root
 
         go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
         if ($LASTEXITCODE -ne 0) {
