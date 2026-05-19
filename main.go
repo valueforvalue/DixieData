@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/valueforvalue/DixieData/internal/appshell"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/wailsapp/wails/v2"
@@ -18,7 +19,7 @@ var assets embed.FS
 func main() {
 	uiids.EnableFromArgs(os.Args[1:])
 
-	app := NewApp()
+	app := appshell.NewApp()
 
 	err := wails.Run(&options.App{
 		Title:  fmt.Sprintf("DixieData v%s", db.GetAppVersion()),
@@ -31,8 +32,8 @@ func main() {
 			Assets:  assets,
 			Handler: app,
 		},
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
+		OnStartup:  app.Startup,
+		OnShutdown: app.Shutdown,
 	})
 	if err != nil {
 		panic(err)

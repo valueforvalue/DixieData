@@ -1,6 +1,25 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Get-DixieDataRoot {
+    param(
+        [string]$StartPath = $PSScriptRoot
+    )
+
+    $current = (Resolve-Path $StartPath).Path
+    while ($true) {
+        if (Test-Path (Join-Path $current "wails.json")) {
+            return $current
+        }
+
+        $parent = Split-Path -Parent $current
+        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $current) {
+            throw "Failed to locate repository root from $StartPath"
+        }
+        $current = $parent
+    }
+}
+
 function Set-DixieDataBuildLocation {
     param(
         [Parameter(Mandatory = $true)]

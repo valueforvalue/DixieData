@@ -4,8 +4,10 @@ param(
     [long]$Seed = 1865
 )
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
-. (Join-Path $root "build-common.ps1")
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptRoot "build-common.ps1")
+
+$root = Get-DixieDataRoot -StartPath $scriptRoot
 
 Set-DixieDataBuildLocation -Root $root
 

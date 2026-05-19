@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 func TestLegacyBombMigratesToCurrentSchema(t *testing.T) {
@@ -13,8 +14,8 @@ func TestLegacyBombMigratesToCurrentSchema(t *testing.T) {
 	createLegacyBackupZip(t, backupPath)
 
 	restoreDB, _ := newStressDB(t)
-	restoreSvc := services.NewSoldierService(restoreDB)
-	backupSvc := services.NewBackupService(restoreDB, restoreSvc)
+	restoreSvc := records.NewSoldierService(restoreDB)
+	backupSvc := archive.NewBackupService(restoreDB, restoreSvc)
 	restoreDir := filepath.Join(t.TempDir(), ".dixiedata")
 
 	if _, err := backupSvc.Import(backupPath, restoreDir); err != nil {
@@ -59,8 +60,8 @@ func TestModernBackupPreservesPrefixAndSuffixAcrossImport(t *testing.T) {
 	}
 
 	restoreDB, _ := newStressDB(t)
-	restoreSvc := services.NewSoldierService(restoreDB)
-	restoreBackupSvc := services.NewBackupService(restoreDB, restoreSvc)
+	restoreSvc := records.NewSoldierService(restoreDB)
+	restoreBackupSvc := archive.NewBackupService(restoreDB, restoreSvc)
 	restoreDir := filepath.Join(t.TempDir(), ".dixiedata")
 
 	if _, err := restoreBackupSvc.Import(backupPath, restoreDir); err != nil {
@@ -73,7 +74,7 @@ func TestModernBackupPreservesPrefixAndSuffixAcrossImport(t *testing.T) {
 		t.Fatalf("openExistingStressDB: %v", err)
 	}
 	defer reopened.Close()
-	reopenedSvc := services.NewSoldierService(reopened)
+	reopenedSvc := records.NewSoldierService(reopened)
 	results, total, err := reopenedSvc.SearchPage("Modern", 1, 10)
 	if err != nil {
 		t.Fatalf("SearchPage: %v", err)

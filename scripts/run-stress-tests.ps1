@@ -4,10 +4,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptRoot "build-common.ps1")
+
+$root = Get-DixieDataRoot -StartPath $scriptRoot
+Set-DixieDataBuildLocation -Root $root
+
 $resolvedArtifactRoot = if ([System.IO.Path]::IsPathRooted($ArtifactRoot)) {
     $ArtifactRoot
 } else {
-    Join-Path (Get-Location) $ArtifactRoot
+    Join-Path $root $ArtifactRoot
 }
 New-Item -ItemType Directory -Force -Path $resolvedArtifactRoot | Out-Null
 
@@ -59,11 +65,11 @@ Invoke-StressStep "Capture stdout/stderr stress log" {
 }
 
 Invoke-StressStep "Run filesystem chaos script" {
-    & .\tests\stress\filesystem-chaos.ps1 -ArtifactRoot $resolvedArtifactRoot
+    & (Join-Path $root "tests\stress\filesystem-chaos.ps1") -ArtifactRoot $resolvedArtifactRoot
 }
 
 Invoke-StressStep "Audit stress log" {
-    python .\tests\stress\analyze_stress_log.py $logPath
+    python (Join-Path $root "tests\stress\analyze_stress_log.py") $logPath
 }
 
 Write-Host "Stress suite complete. Report: tests\stress\top-break-points.txt"

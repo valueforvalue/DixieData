@@ -3,7 +3,7 @@ package stress
 import (
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 func TestGenerateGarbageDatabase(t *testing.T) {
@@ -24,7 +24,7 @@ func TestGenerateGarbageDatabase(t *testing.T) {
 		t.Fatalf("openExistingStressDB: %v", err)
 	}
 	defer database.Close()
-	soldierSvc := services.NewSoldierService(database)
+	soldierSvc := records.NewSoldierService(database)
 
 	results, total, err := soldierSvc.SearchPage("DROP TABLE soldiers", 1, 10)
 	if err != nil {

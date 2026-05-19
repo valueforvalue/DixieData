@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/services"
 )
 
 func TestCorruptBackupImportRejectsPoisonArchives(t *testing.T) {
@@ -63,7 +63,7 @@ func TestCorruptBackupImportRejectsPoisonArchives(t *testing.T) {
 		if err != nil {
 			t.Fatalf("zip.NewReader: %v", err)
 		}
-		manifest := services.BackupManifest{}
+		manifest := archive.BackupManifest{}
 		files := map[string][]byte{}
 		for _, file := range reader.File {
 			rc, err := file.Open()
@@ -100,7 +100,7 @@ func TestCorruptSharedImportRejectsPoisonArchives(t *testing.T) {
 
 	t.Run("wrong archive kind", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "wrong-kind.ddshare")
-		manifest := services.BackupManifest{
+		manifest := archive.BackupManifest{
 			Format:        "dixiedata-backup",
 			Version:       buildinfo.BackupFormatVersion,
 			ArchiveKind:   "backup",
@@ -123,7 +123,7 @@ func TestCorruptSharedImportRejectsPoisonArchives(t *testing.T) {
 
 	t.Run("schema from future", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "future.ddshare")
-		manifest := services.BackupManifest{
+		manifest := archive.BackupManifest{
 			Format:        "dixiedata-backup",
 			Version:       buildinfo.BackupFormatVersion,
 			ArchiveKind:   "shared",

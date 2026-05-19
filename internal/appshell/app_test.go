@@ -1,4 +1,4 @@
-package main
+package appshell
 
 import (
 	"bytes"
@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
 )
 
 type scratchpadStub struct {
@@ -129,7 +129,7 @@ func TestParsePrintSettingsRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsePrintSettingsRequest: %v", err)
 	}
-	if settings.SortBy != services.PrintSortBirthYear {
+	if settings.SortBy != archive.PrintSortBirthYear {
 		t.Fatalf("SortBy = %q", settings.SortBy)
 	}
 	if !settings.GroupByUnit || !settings.GroupByConfederateHomeStatus || !settings.GroupByBuriedIn || settings.GroupByPensionState {
@@ -294,7 +294,7 @@ func TestHandleScrapeFindAGravePopulatesNewSoldierForm(t *testing.T) {
 	configureTestIdentity(t, app)
 	app.setupRoutes()
 
-	source, err := os.ReadFile("source.txt")
+	source, err := os.ReadFile(repoFixturePath(t, "tests", "testdata", "findagrave-source.html"))
 	if err != nil {
 		t.Fatalf("ReadFile source: %v", err)
 	}

@@ -1,4 +1,4 @@
-package main
+package appshell
 
 import (
 	"context"
@@ -69,6 +69,14 @@ const initializeDataConfirmationWord = "INITIALIZE"
 
 func NewApp() *App {
 	return &App{}
+}
+
+func (a *App) Startup(ctx context.Context) {
+	a.startup(ctx)
+}
+
+func (a *App) Shutdown(ctx context.Context) {
+	a.shutdown(ctx)
 }
 
 func (a *App) startup(ctx context.Context) {

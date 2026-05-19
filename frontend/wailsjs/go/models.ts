@@ -1,3 +1,28 @@
+export namespace archive {
+	
+	export class PrintSettings {
+	    sortBy: string;
+	    groupByUnit: boolean;
+	    groupByPensionState: boolean;
+	    groupByConfederateHomeStatus: boolean;
+	    groupByBuriedIn: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrintSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sortBy = source["sortBy"];
+	        this.groupByUnit = source["groupByUnit"];
+	        this.groupByPensionState = source["groupByPensionState"];
+	        this.groupByConfederateHomeStatus = source["groupByConfederateHomeStatus"];
+	        this.groupByBuriedIn = source["groupByBuriedIn"];
+	    }
+	}
+
+}
+
 export namespace http {
 	
 	export class Response {
@@ -280,31 +305,6 @@ export namespace pkix {
 		    }
 		    return a;
 		}
-	}
-
-}
-
-export namespace services {
-	
-	export class PrintSettings {
-	    sortBy: string;
-	    groupByUnit: boolean;
-	    groupByPensionState: boolean;
-	    groupByConfederateHomeStatus: boolean;
-	    groupByBuriedIn: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new PrintSettings(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.sortBy = source["sortBy"];
-	        this.groupByUnit = source["groupByUnit"];
-	        this.groupByPensionState = source["groupByPensionState"];
-	        this.groupByConfederateHomeStatus = source["groupByConfederateHomeStatus"];
-	        this.groupByBuriedIn = source["groupByBuriedIn"];
-	    }
 	}
 
 }
