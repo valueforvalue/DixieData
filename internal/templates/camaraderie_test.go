@@ -12,7 +12,7 @@ import (
 func TestUnitCamaraderieViewRendersConnections(t *testing.T) {
 	var buf bytes.Buffer
 	err := UnitCamaraderieView(viewmodel.UnitCamaraderieGraph{
-		Central: viewmodel.Soldier{
+		CentralSoldier: viewmodel.Soldier{
 			ID:        9,
 			DisplayID: "CAM-0009",
 			FirstName: "Andrew",
@@ -45,7 +45,7 @@ func TestUnitCamaraderieViewRendersConnections(t *testing.T) {
 		"CAM-0009",
 		"CAM-0010",
 		"Same Recorded Unit",
-		"Compare Records",
+		"Compare Person Records",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("unit camaraderie view missing %s", needle)

@@ -52,21 +52,21 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if hub.Current != nil {
+			if hub.CurrentPersonRecord != nil {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<button type=\"button\" data-history-back data-fallback-href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var3 string
-				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", hub.Current.ID))
+				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", hub.CurrentPersonRecord.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 22, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 22, Col: 82}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-fallback-label=\"Back to Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Record</button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-fallback-label=\"Back to Person Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Person Record</button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -75,15 +75,15 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if hub.Current != nil {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"rounded-3xl border border-blue-200 bg-blue-50/70 p-5\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-blue-600\">Current Record</p><p class=\"mt-2 text-lg font-semibold text-slate-900\">")
+			if hub.CurrentPersonRecord != nil {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"rounded-3xl border border-blue-200 bg-blue-50/70 p-5\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-blue-600\">Current Person Record</p><p class=\"mt-2 text-lg font-semibold text-slate-900\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(*hub.Current))
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(*hub.CurrentPersonRecord))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 31, Col: 87}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 31, Col: 99}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -94,9 +94,9 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(hub.Current.DisplayID)
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(hub.CurrentPersonRecord.DisplayID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 32, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 32, Col: 79}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -111,15 +111,15 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if hub.Current != nil {
+			if hub.CurrentPersonRecord != nil {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<input type=\"hidden\" name=\"from\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.Current.ID))
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.CurrentPersonRecord.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 39, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 39, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -130,7 +130,7 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div><label class=\"block text-sm font-medium text-slate-700\">Name <input type=\"text\" name=\"name\" class=\"field-input mt-2\" placeholder=\"Example: Orange County pension sweep\"></label></div><div class=\"md:col-span-2\"><label class=\"block text-sm font-medium text-slate-700\">Description <textarea name=\"description\" rows=\"3\" class=\"field-input mt-2 min-h-24\" placeholder=\"What unifies this collection and what is the next research step?\"></textarea></label></div><div class=\"md:col-span-2\"><button type=\"submit\" class=\"primary-button\">Create Collection</button></div></form></section><section class=\"rounded-3xl border border-slate-200 bg-white/85 p-5\"><div class=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\"><div><h3 class=\"text-lg font-semibold text-slate-900\">Collections</h3><p class=\"text-sm text-slate-600\">Open a collection to browse its members, or add the current record directly from here.</p></div><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div><label class=\"block text-sm font-medium text-slate-700\">Name <input type=\"text\" name=\"name\" class=\"field-input mt-2\" placeholder=\"Example: Orange County pension sweep\"></label></div><div class=\"md:col-span-2\"><label class=\"block text-sm font-medium text-slate-700\">Description <textarea name=\"description\" rows=\"3\" class=\"field-input mt-2 min-h-24\" placeholder=\"What unifies this collection and what is the next research step?\"></textarea></label></div><div class=\"md:col-span-2\"><button type=\"submit\" class=\"primary-button\">Create Collection</button></div></form></section><section class=\"rounded-3xl border border-slate-200 bg-white/85 p-5\"><div class=\"flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between\"><div><h3 class=\"text-lg font-semibold text-slate-900\">Collections</h3><p class=\"text-sm text-slate-600\">Open a collection to browse its members, or add the current person record directly from here.</p></div><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-slate-500\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -148,7 +148,7 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 				return templ_7745c5c3_Err
 			}
 			if len(hub.Collections) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500\">No collections yet. Create one above to start grouping records.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500\">No collections yet. Create one above to start grouping person records.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -199,9 +199,9 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var10 string
-					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d records", collection.ItemCount))
+					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d person records", collection.ItemCount))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 77, Col: 193}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 77, Col: 200}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
@@ -212,7 +212,7 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					if collection.ContainsCurrent {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<span class=\"rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Current record added</span>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<span class=\"rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Current person record added</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -222,9 +222,9 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var11 templ.SafeURL
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(researchCollectionDetailHref(collection.ID, hub.Current))
+					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinURLErrs(researchCollectionDetailHref(collection.ID, hub.CurrentPersonRecord))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 83, Col: 75}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 83, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if hub.Current != nil && !collection.ContainsCurrent {
+					if hub.CurrentPersonRecord != nil && !collection.ContainsCurrent {
 						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<form hx-post=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
@@ -253,9 +253,9 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var13 string
-						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.Current.ID))
+						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.CurrentPersonRecord.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 86, Col: 91}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 86, Col: 103}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 						if templ_7745c5c3_Err != nil {
@@ -266,15 +266,15 @@ func ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) templ.Compo
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var14 string
-						templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.Current.ID))
+						templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", hub.CurrentPersonRecord.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 87, Col: 85}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 87, Col: 97}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\"> <button type=\"submit\" class=\"secondary-button\">Add Current Record</button></form>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\"> <button type=\"submit\" class=\"secondary-button\">Add Current Person Record</button></form>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -341,9 +341,9 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionFallbackHref(detail.Current))
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionFallbackHref(detail.CurrentPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 108, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 108, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -354,9 +354,9 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
-			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionBackLabel(detail.Current))
+			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionBackLabel(detail.CurrentPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 109, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 109, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -367,9 +367,9 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
-			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionBackLabel(detail.Current))
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(researchCollectionBackLabel(detail.CurrentPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 111, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 111, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -416,9 +416,9 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var22 string
-			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d records", detail.Collection.ItemCount))
+			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d person records", detail.Collection.ItemCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 120, Col: 196}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 120, Col: 203}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -428,8 +428,8 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if detail.Current != nil && detail.Collection.ContainsCurrent {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span class=\"rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Current record included</span>")
+			if detail.CurrentPersonRecord != nil && detail.Collection.ContainsCurrent {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span class=\"rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Current person record included</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -438,8 +438,8 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(detail.Members) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500\">This collection does not contain any records yet.</p>")
+			if len(detail.PersonRecords) == 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500\">This collection does not contain any person records yet.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -448,15 +448,15 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, soldier := range detail.Members {
+				for _, personRecord := range detail.PersonRecords {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"rounded-2xl border border-slate-200 bg-slate-50/70 p-4\"><p class=\"text-sm font-semibold text-slate-900\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var23 string
-					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(soldier))
+					templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(personRecord))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 134, Col: 80}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 134, Col: 85}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 					if templ_7745c5c3_Err != nil {
@@ -467,9 +467,9 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var24 string
-					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(soldier.DisplayID)
+					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(personRecord.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 135, Col: 66}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 135, Col: 71}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 					if templ_7745c5c3_Err != nil {
@@ -480,33 +480,33 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var25 templ.SafeURL
-					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", soldier.ID)))
+					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", personRecord.ID)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 137, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 137, Col: 78}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"pill-link\">Open Record</a> ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"pill-link\">Open Person Record</a> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if detail.Current != nil && detail.Current.ID != soldier.ID {
+					if detail.CurrentPersonRecord != nil && detail.CurrentPersonRecord.ID != personRecord.ID {
 						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<a href=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var26 templ.SafeURL
-						templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", detail.Current.ID, soldier.ID, detail.Current.ID)))
+						templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", detail.CurrentPersonRecord.ID, personRecord.ID, detail.CurrentPersonRecord.ID)))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 139, Col: 130}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/research_collections.templ`, Line: 139, Col: 159}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"secondary-button\">Compare Records</a>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"secondary-button\">Compare Person Records</a>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -535,21 +535,21 @@ func ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) tem
 	})
 }
 
-func researchCollectionDetailHref(collectionID int64, current *viewmodel.Soldier) templ.SafeURL {
+func researchCollectionDetailHref(collectionID int64, current *viewmodel.PersonRecord) templ.SafeURL {
 	if current != nil {
 		return templ.SafeURL(fmt.Sprintf("/research-collections/%d?from=%d", collectionID, current.ID))
 	}
 	return templ.SafeURL(fmt.Sprintf("/research-collections/%d", collectionID))
 }
 
-func researchCollectionFallbackHref(current *viewmodel.Soldier) string {
+func researchCollectionFallbackHref(current *viewmodel.PersonRecord) string {
 	if current != nil {
 		return fmt.Sprintf("/research-collections?from=%d", current.ID)
 	}
 	return "/research-collections"
 }
 
-func researchCollectionBackLabel(current *viewmodel.Soldier) string {
+func researchCollectionBackLabel(current *viewmodel.PersonRecord) string {
 	if current != nil {
 		return "Back to Collections"
 	}

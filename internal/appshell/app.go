@@ -44,7 +44,7 @@ var embeddedQuotes []byte
 type App struct {
 	ctx           context.Context
 	database      *db.DB
-	soldiers      soldiersFacade
+	soldiers      personRecordsFacade
 	anniversary   anniversaryFacade
 	analytics     analyticsFacade
 	audit         reviewFacade
@@ -210,9 +210,9 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `<body hx-get="%s" hx-trigger="load delay:700ms" hx-target="body" hx-swap="outerHTML" class="min-h-screen bg-[linear-gradient(180deg,#d7d2c9_0%%,#c9c2b5_42%%,#b9b1a3_100%%)]">
 <div class="flex min-h-screen items-center justify-center px-6">
   <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
-    <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Soldier Archive</p>
+    <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Local Archive</p>
     <p class="text-2xl font-semibold text-[#f2ede1]">Loading DixieData...</p>
-    <p class="mt-2 text-sm text-[#d8cfbc]">The archive is still starting up. This screen will refresh automatically.</p>
+    <p class="mt-2 text-sm text-[#d8cfbc]">The local archive is still starting up. This screen will refresh automatically.</p>
   </div>
 </div>
 </body>`, html.EscapeString(target))
@@ -813,7 +813,7 @@ func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id in
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	presentation.SourceConflictLedgerView(*ledger).Render(r.Context(), w)
+	presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int64, scope string) {
@@ -1735,7 +1735,7 @@ func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
 	}
 	if fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from"); err == nil && fromID > 0 {
 		comparison.BackHref = fmt.Sprintf("/soldiers/%d", fromID)
-		comparison.BackLabel = "Back to Record"
+		comparison.BackLabel = "Back to Person Record"
 	}
 	presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
 }
@@ -2636,7 +2636,7 @@ func (a *App) handleScratchpadOpen(w http.ResponseWriter, r *http.Request) {
 	}
 	displayID := strings.TrimSpace(r.FormValue("display_id"))
 	if displayID == "" {
-		http.Error(w, "A Record ID is required before opening the scratch pad.", http.StatusBadRequest)
+		http.Error(w, "A Display ID is required before opening the scratch pad.", http.StatusBadRequest)
 		return
 	}
 	seed := r.FormValue("scratchpad_seed")

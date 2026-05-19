@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func EntryForm(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) templ.Component {
+func EntryForm(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -62,7 +62,7 @@ func EntryForm(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, sugges
 	})
 }
 
-func EntryFormWithError(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
+func EntryFormWithError(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -109,7 +109,7 @@ func EntryFormWithError(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldie
 	})
 }
 
-func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier, suggestions viewmodel.SoldierFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
+func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -249,9 +249,9 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var12 string
-				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d spouse memorial(s)", len(scrape.Spouses)))
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d spouse record memorial(s)", len(scrape.Spouses)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 44, Col: 154}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 44, Col: 161}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -334,7 +334,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 				}
 			}
 			if len(scrape.Spouses) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700\"><p class=\"font-semibold text-slate-800\">Spouse memorials found</p><ul class=\"mt-2 space-y-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700\"><p class=\"font-semibold text-slate-800\">Spouse record memorials found</p><ul class=\"mt-2 space-y-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -627,7 +627,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\">Discard local draft</button></div></div><div class=\"space-y-5\"><section class=\"rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5\"><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Identity & Relationship</p><p class=\"mt-2 text-sm text-slate-600\">Start with who this person is and how the record should behave in the archive.</p></div><div class=\"responsive-two-col grid gap-4\"><div><label class=\"block text-sm text-slate-500 mb-1\">Record ID</label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\">Discard local draft</button></div></div><div class=\"space-y-5\"><section class=\"rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5\"><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Identity & Relationship</p><p class=\"mt-2 text-sm text-slate-600\">Start with who this person is and how the person record should behave in the local archive.</p></div><div class=\"responsive-two-col grid gap-4\"><div><label class=\"block text-sm text-slate-500 mb-1\">Display ID</label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -662,7 +662,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Record Type</label> <select name=\"entry_type\" data-entry-type-select class=\"field-input\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Person Record Type</label> <select name=\"entry_type\" data-entry-type-select class=\"field-input\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -773,7 +773,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\" list=\"suffix-suggestions\" class=\"field-input\" placeholder=\"Jr.\"></div><div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\" data-entry-type-special><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Family Link</p><p class=\"mt-1 text-sm text-slate-600\">Wife and widow records stay anchored to the linked soldier for navigation and comparisons.</p></div><div class=\"responsive-two-col grid gap-4\"><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Married To</label> <select name=\"spouse_soldier_id\" class=\"field-input\"><option value=\"\">Select a soldier</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\" list=\"suffix-suggestions\" class=\"field-input\" placeholder=\"Jr.\"></div><div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\" data-entry-type-special><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Family Link</p><p class=\"mt-1 text-sm text-slate-600\">Wife and widow person records stay anchored to the linked soldier for navigation and comparisons.</p></div><div class=\"responsive-two-col grid gap-4\"><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Married To</label> <select name=\"spouse_soldier_id\" class=\"field-input\"><option value=\"\">Select a soldier</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -795,7 +795,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if candidate.ID == s.SpouseSoldierID {
+			if candidate.ID == s.LinkedSoldierID {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, " selected")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -1042,11 +1042,11 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<div class=\"mb-4 flex flex-wrap items-start justify-between gap-3\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Supporting Records</p><p class=\"mt-2 text-sm text-slate-600\">Attach pension notes, archive references, and source transcripts that should travel with this record.</p></div><button type=\"button\" data-record-add class=\"ghost-link px-4 py-2\">+ Add Record</button></div><div data-record-list class=\"space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "<div class=\"mb-4 flex flex-wrap items-start justify-between gap-3\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Source Records</p><p class=\"mt-2 text-sm text-slate-600\">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p></div><button type=\"button\" data-record-add class=\"ghost-link px-4 py-2\">+ Add Source Record</button></div><div data-record-list class=\"space-y-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, record := range formRecords(s.Records) {
+		for _, record := range formRecords(s.SourceRecords) {
 			templ_7745c5c3_Err = RecordInputRow(record).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -1056,11 +1056,11 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = RecordInputRow(viewmodel.Record{}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = RecordInputRow(viewmodel.SourceRecord{}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "</template><p class=\"mt-2 text-xs text-slate-500\">Records shown here are saved with the soldier and appear in the detail view and PDF exports.</p></section><section class=\"rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5\"><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Notes & Research Context</p><p class=\"mt-2 text-sm text-slate-600\">Use notes for biography, research leads, and anything that does not fit a structured field.</p></div><label class=\"block text-sm text-slate-500 mb-1\">Notes</label> <textarea name=\"notes\" rows=\"4\" class=\"field-input min-h-32\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 96, "</template><p class=\"mt-2 text-xs text-slate-500\">Source records shown here are saved with the person record and appear in the detail view and PDF exports.</p></section><section class=\"rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5\"><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Notes & Research Context</p><p class=\"mt-2 text-sm text-slate-600\">Use notes for biography, research leads, and anything that does not fit a structured field.</p></div><label class=\"block text-sm text-slate-500 mb-1\">Notes</label> <textarea name=\"notes\" rows=\"4\" class=\"field-input min-h-32\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1094,7 +1094,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "<div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Images</p><p class=\"mt-2 text-sm text-slate-600\">Import photographs after the core facts are in place so the record can be saved quickly and enriched later.</p></div><label class=\"block text-sm text-slate-500 mb-1\">Upload Images</label><div class=\"rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 99, "<div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Images</p><p class=\"mt-2 text-sm text-slate-600\">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p></div><label class=\"block text-sm text-slate-500 mb-1\">Upload Images</label><div class=\"rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1117,7 +1117,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "<div class=\"flex flex-wrap items-center justify-between gap-3\"><div><p>Create the record first, then use <strong>Add Images From Computer</strong> on the soldier page to import one or more images.</p></div><button type=\"button\" class=\"primary-button opacity-60 cursor-not-allowed\" disabled>Add Images From Computer</button></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 102, "<div class=\"flex flex-wrap items-center justify-between gap-3\"><div><p>Create the person record first, then use <strong>Add Images From Computer</strong> on the detail page to import one or more images.</p></div><button type=\"button\" class=\"primary-button opacity-60 cursor-not-allowed\" disabled>Add Images From Computer</button></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1161,7 +1161,7 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "Create Record")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 109, "Create Person Record")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1211,11 +1211,11 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHomeName).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHome).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SuggestionDatalist("record-type-suggestions", suggestions.RecordType).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SuggestionDatalist("record-type-suggestions", suggestions.SourceRecordType).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1227,12 +1227,12 @@ func EntryFormFragment(s viewmodel.Soldier, spouseCandidates []viewmodel.Soldier
 	})
 }
 
-func formTitle(s viewmodel.Soldier, isEdit bool) string {
+func formTitle(s viewmodel.PersonRecord, isEdit bool) string {
 	label := entryTypeLabel(normalizedEntryType(s))
 	if isEdit {
-		return "Edit " + label + " Record"
+		return "Edit " + label + " Person Record"
 	}
-	return "New " + label + " Record"
+	return "New " + label + " Person Record"
 }
 
 func entryFormPageID(isEdit bool) string {
@@ -1249,7 +1249,7 @@ func displayIDInputClass(isEdit bool) string {
 	return "field-input bg-slate-100 text-slate-500"
 }
 
-func draftKey(s viewmodel.Soldier, isEdit bool) string {
+func draftKey(s viewmodel.PersonRecord, isEdit bool) string {
 	if isEdit {
 		return fmt.Sprintf("edit-soldier-%d", s.ID)
 	}
@@ -1263,7 +1263,7 @@ func draftMode(isEdit bool) string {
 	return "new"
 }
 
-func draftResetPath(s viewmodel.Soldier, isEdit bool) string {
+func draftResetPath(s viewmodel.PersonRecord, isEdit bool) string {
 	if isEdit {
 		return fmt.Sprintf("/soldiers/%d/edit", s.ID)
 	}
@@ -1286,9 +1286,9 @@ func recordPersistenceHeading(isEdit bool) string {
 
 func recordPersistenceMessage(isEdit bool) string {
 	if isEdit {
-		return "This record currently matches the primary database until you make new local edits."
+		return "This person record currently matches the primary database until you make new local edits."
 	}
-	return "This new record is cached in localStorage until you create it in the database."
+	return "This new person record is cached in localStorage until you create it in the database."
 }
 
 func pensionStates() []string {
@@ -1309,14 +1309,14 @@ func confederateHomeStatuses() []string {
 	return []string{"None", "Inmate", "Staffer", "Trustee"}
 }
 
-func selectedPensionState(s viewmodel.Soldier) string {
+func selectedPensionState(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.PensionState) == "" {
 		return "None"
 	}
 	return s.PensionState
 }
 
-func selectedConfederateHomeStatus(s viewmodel.Soldier) string {
+func selectedConfederateHomeStatus(s viewmodel.PersonRecord) string {
 	switch strings.TrimSpace(s.ConfederateHomeStatus) {
 	case "Inmate", "Staffer", "Trustee":
 		return s.ConfederateHomeStatus
@@ -1325,7 +1325,7 @@ func selectedConfederateHomeStatus(s viewmodel.Soldier) string {
 	}
 }
 
-func rankOutValue(s viewmodel.Soldier) string {
+func rankOutValue(s viewmodel.PersonRecord) string {
 	if s.RankOut != "" {
 		return s.RankOut
 	}
@@ -1345,7 +1345,7 @@ func entryTypes() []entryTypeOption {
 	}
 }
 
-func normalizedEntryType(s viewmodel.Soldier) string {
+func normalizedEntryType(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
 	case "wife", "widow":
 		return s.EntryType
@@ -1363,7 +1363,7 @@ func entryTypeLabel(entryType string) string {
 	return "Soldier"
 }
 
-func spouseCandidateLabel(s viewmodel.Soldier) string {
+func spouseCandidateLabel(s viewmodel.PersonRecord) string {
 	label := strings.TrimSpace(s.GetFullName())
 	if label == "" {
 		label = strings.TrimSpace(s.DisplayID)
@@ -1374,7 +1374,7 @@ func spouseCandidateLabel(s viewmodel.Soldier) string {
 	return label + " (" + s.DisplayID + ")"
 }
 
-func RecordInputRow(record viewmodel.Record) templ.Component {
+func RecordInputRow(record viewmodel.SourceRecord) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1395,20 +1395,20 @@ func RecordInputRow(record viewmodel.Record) templ.Component {
 			templ_7745c5c3_Var66 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<div data-record-row class=\"rounded-2xl border border-slate-200 bg-white/70 p-4\"><div class=\"mb-3 flex items-center justify-between gap-3\"><span class=\"text-xs font-semibold uppercase tracking-[0.24em] text-slate-500\">Record Entry</span> <button type=\"button\" data-record-remove class=\"pill-link\">Remove</button></div><div class=\"responsive-two-col grid gap-4\"><div><label class=\"mb-1 block text-sm text-slate-500\">Record Type</label> <input type=\"text\" name=\"record_type\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "<div data-record-row class=\"rounded-2xl border border-slate-200 bg-white/70 p-4\"><div class=\"mb-3 flex items-center justify-between gap-3\"><span class=\"text-xs font-semibold uppercase tracking-[0.24em] text-slate-500\">Source Record Entry</span> <button type=\"button\" data-record-remove class=\"pill-link\">Remove</button></div><div class=\"responsive-two-col grid gap-4\"><div><label class=\"mb-1 block text-sm text-slate-500\">Source Record Type</label> <input type=\"text\" name=\"record_type\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var67 string
-		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(record.RecordType)
+		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(record.SourceRecordType)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 546, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 546, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\" list=\"record-type-suggestions\" class=\"field-input\"></div><div><label class=\"mb-1 block text-sm text-slate-500\">App / Record Number</label> <input type=\"text\" name=\"record_app_id\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "\" list=\"record-type-suggestions\" class=\"field-input\"></div><div><label class=\"mb-1 block text-sm text-slate-500\">App / Source Record Number</label> <input type=\"text\" name=\"record_app_id\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1507,9 +1507,9 @@ func SuggestionDatalist(id string, values []string) templ.Component {
 	})
 }
 
-func formRecords(records []viewmodel.Record) []viewmodel.Record {
+func formRecords(records []viewmodel.SourceRecord) []viewmodel.SourceRecord {
 	if len(records) == 0 {
-		return []viewmodel.Record{{}}
+		return []viewmodel.SourceRecord{{}}
 	}
 	return records
 }
@@ -1659,7 +1659,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 	})
 }
 
-func mergeReviewDisplayName(soldier viewmodel.Soldier) string {
+func mergeReviewDisplayName(soldier viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(soldier.GetFullName())
 	if name == "" {
 		return soldier.DisplayID
@@ -1957,7 +1957,7 @@ func SettingsOrphanCleanupResult(moved int, trashRoot string) templ.Component {
 	})
 }
 
-func SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch, page, total, pageSize int) templ.Component {
+func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRecordSearch, page, total, pageSize int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2004,7 +2004,7 @@ func SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch,
 				return templ_7745c5c3_Err
 			}
 			if search.Recent {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "<p class=\"mt-2 text-sm font-medium text-[#22303d]\">Your ten most recently opened records.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 159, "<p class=\"mt-2 text-sm font-medium text-[#22303d]\">Your ten most recently opened person records.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2034,13 +2034,13 @@ func SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch,
 				}
 			}
 			if search.Mode == "advanced" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 163, "<p class=\"mt-1 text-xs text-slate-500\">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same soldier.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 163, "<p class=\"mt-1 text-xs text-slate-500\">Text filters use contains matching. Death year, month, and day are exact. Every filled filter must match the same person record.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			if search.Recent {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, "<p class=\"mt-1 text-xs text-slate-500\">This list updates as you open record detail pages.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, "<p class=\"mt-1 text-xs text-slate-500\">This list updates as you open person record detail pages.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2051,24 +2051,24 @@ func SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch,
 			}
 		}
 		if len(soldiers) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 166, "<div class=\"mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]\">Manual Comparison</p><p data-compare-selection-status class=\"mt-1 text-sm text-slate-600\">Select exactly two records to compare them side by side. Quick View is the in-list research panel for notes, archive signals, family links, and counts.</p></div><button type=\"button\" data-compare-selected data-compare-group=\"search-compare\" class=\"secondary-button opacity-60 cursor-not-allowed\" disabled>Compare Selected</button></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 166, "<div class=\"mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]\">Manual Comparison</p><p data-compare-selection-status class=\"mt-1 text-sm text-slate-600\">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p></div><button type=\"button\" data-compare-selected data-compare-group=\"search-compare\" class=\"secondary-button opacity-60 cursor-not-allowed\" disabled>Compare Selected</button></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if len(soldiers) == 0 {
 			if search.Recent {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "<p class=\"rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500\">No recent records yet. Open a record detail page and it will appear here.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "<p class=\"rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500\">No recent person records yet. Open a detail page and it will appear here.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else if !hasActiveSearch(search) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 168, "<div data-recent-records-empty class=\"rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500\">Start typing to search the archive. Your recently opened records will appear here automatically.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 168, "<div data-recent-records-empty class=\"rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500\">Start typing to search the local archive. Your recently opened person records will appear here automatically.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else if hasActiveSearch(search) && search.Mode == "advanced" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 169, "<p class=\"text-slate-500 text-sm\">No records matched the advanced filters.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 169, "<p class=\"text-slate-500 text-sm\">No person records matched the advanced filters.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2091,7 +2091,7 @@ func SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch,
 					return templ_7745c5c3_Err
 				}
 			} else if hasActiveSearch(search) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 172, "<p class=\"text-slate-500 text-sm\">No records found in browse mode.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 172, "<p class=\"text-slate-500 text-sm\">No person records found in browse mode.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2289,7 +2289,7 @@ func SearchResults(soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch,
 	})
 }
 
-func AnniversaryPartial(soldiers []viewmodel.Soldier, month, day int) templ.Component {
+func AnniversaryPartial(soldiers []viewmodel.PersonRecord, month, day int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2341,7 +2341,7 @@ func AnniversaryPartial(soldiers []viewmodel.Soldier, month, day int) templ.Comp
 			return templ_7745c5c3_Err
 		}
 		if len(soldiers) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "<p class=\"text-lg leading-relaxed text-[#6e4f22]\">No records for this date.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "<p class=\"text-lg leading-relaxed text-[#6e4f22]\">No person records for this date.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2357,7 +2357,7 @@ func AnniversaryPartial(soldiers []viewmodel.Soldier, month, day int) templ.Comp
 	})
 }
 
-func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
+func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2508,7 +2508,7 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "</div></div><div class=\"grid gap-3 lg:grid-cols-3\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600\"><p class=\"text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]\">Archive Signals</p><dl class=\"mt-3 space-y-2\"><dt class=\"text-slate-500\">Record Type</dt><dd class=\"text-[#22303d]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "</div></div><div class=\"grid gap-3 lg:grid-cols-3\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.3)] bg-white/75 px-4 py-4 text-sm text-slate-600\"><p class=\"text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]\">Local Archive Signals</p><dl class=\"mt-3 space-y-2\"><dt class=\"text-slate-500\">Person Record Type</dt><dd class=\"text-[#22303d]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2521,14 +2521,14 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "</dd><dt class=\"text-slate-500\">Attached Records</dt><dd class=\"text-[#22303d]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "</dd><dt class=\"text-slate-500\">Source Records</dt><dd class=\"text-[#22303d]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var122 string
-		templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.RecordCount))
+		templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.SourceRecordCount))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 842, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 842, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var122))
 		if templ_7745c5c3_Err != nil {
@@ -2734,7 +2734,7 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 			}
 		}
 		if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.MaidenName) == "" && strings.TrimSpace(s.ConfederateHomeStatus) == "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 231, "<dt class=\"text-slate-500\">Purpose</dt><dd class=\"text-[#22303d]\">Use the full record for deeper editing; this quick view is for in-list triage.</dd>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 231, "<dt class=\"text-slate-500\">Purpose</dt><dd class=\"text-[#22303d]\">Use the full person record for deeper editing; this quick view is for in-list triage.</dd>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2794,7 +2794,7 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "\" class=\"primary-button\">Open Full Record</a> <a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "\" class=\"primary-button\">Open Full Person Record</a> <a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2811,13 +2811,13 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if s.SpouseSoldierID != 0 {
+		if s.LinkedSoldierID != 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 240, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var138 templ.SafeURL
-			templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.SpouseSoldierID, s.ID)))
+			templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 912, Col: 89}
 			}
@@ -2830,13 +2830,13 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		if s.SpouseSoldierID != 0 {
+		if s.LinkedSoldierID != 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 242, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var139 templ.SafeURL
-			templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.SpouseSoldierID, s.ID)))
+			templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 915, Col: 105}
 			}
@@ -2844,7 +2844,7 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 243, "\" class=\"secondary-button\">Compare Family Records</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 243, "\" class=\"secondary-button\">Compare Family Person Records</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2857,7 +2857,7 @@ func SearchPreviewContent(s viewmodel.Soldier) templ.Component {
 	})
 }
 
-func previewUpdatedByline(s viewmodel.Soldier) string {
+func previewUpdatedByline(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.LastEditedBy) != "" && strings.TrimSpace(s.LastEditedAt) != "" {
 		return s.LastEditedBy + " • " + formatAuditTimestamp(s.LastEditedAt)
 	}
@@ -2867,7 +2867,7 @@ func previewUpdatedByline(s viewmodel.Soldier) string {
 	return formatAuditTimestamp(s.LastEditedAt)
 }
 
-func previewConfederateHomeLabel(s viewmodel.Soldier) string {
+func previewConfederateHomeLabel(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.ConfederateHomeName) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "" {
 		return s.ConfederateHomeStatus + " • " + s.ConfederateHomeName
 	}
@@ -2877,7 +2877,7 @@ func previewConfederateHomeLabel(s viewmodel.Soldier) string {
 	return s.ConfederateHomeStatus
 }
 
-func entryFormBackHref(s viewmodel.Soldier, isEdit bool) string {
+func entryFormBackHref(s viewmodel.PersonRecord, isEdit bool) string {
 	if isEdit && s.ID > 0 {
 		return fmt.Sprintf("/soldiers/%d", s.ID)
 	}

@@ -12,13 +12,13 @@ import (
 func TestSoldierListShowsExpandedAdvancedSearchFields(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierList(nil, 1, 0, "", viewmodel.SoldierFormSuggestions{
-		RankIn:              []string{"Private"},
-		RankOut:             []string{"Captain"},
-		Unit:                []string{"1st Texas Infantry"},
-		PensionState:        []string{"Texas"},
-		BuriedIn:            []string{"Oakwood Cemetery"},
-		ConfederateHomeName: []string{"Texas Confederate Home"},
-		RecordType:          []string{"Pension Ledger"},
+		RankIn:           []string{"Private"},
+		RankOut:          []string{"Captain"},
+		Unit:             []string{"1st Texas Infantry"},
+		PensionState:     []string{"Texas"},
+		BuriedIn:         []string{"Oakwood Cemetery"},
+		ConfederateHome:  []string{"Texas Confederate Home"},
+		SourceRecordType: []string{"Pension Ledger"},
 	}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -197,7 +197,7 @@ func TestSoldierDetailConsolidatesRelationshipDisplay(t *testing.T) {
 		LastName:        "Cole",
 		SpouseName:      "Thomas Cole",
 		SpouseDisplayID: "JCM87-00011",
-		SpouseSoldierID: 11,
+		LinkedSoldierID: 11,
 	}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -277,10 +277,10 @@ func TestSoldierDetailShowsServiceTimelineAction(t *testing.T) {
 		FirstName: "Andrew",
 		LastName:  "Cole",
 		BirthDate: "05/12/1838",
-		Records: []viewmodel.Record{{
-			RecordType: "Muster Roll",
-			AppID:      "APP-19",
-			Details:    "Enlisted on 03/11/1862 at Austin.",
+		SourceRecords: []viewmodel.Record{{
+			SourceRecordType: "Muster Roll",
+			AppID:            "APP-19",
+			Details:          "Enlisted on 03/11/1862 at Austin.",
 		}},
 	}).Render(context.Background(), &buf)
 	if err != nil {
@@ -337,9 +337,9 @@ func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
-		"Conflict Ledger",
+		"Merge Review Ledger",
 		"/soldiers/21/conflict-ledger",
-		"Open Conflict Ledger",
+		"Open Merge Review Ledger",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("soldier detail missing %s", needle)
@@ -408,10 +408,10 @@ func TestSoldierDetailGroupsAdvancedToolsUnderAccordion(t *testing.T) {
 		LastName:  "Cole",
 		Unit:      "Co. A, 1st Texas Infantry",
 		BirthDate: "05/12/1838",
-		Records: []viewmodel.Record{{
-			RecordType: "Muster Roll",
-			AppID:      "APP-24",
-			Details:    "Enlisted on 03/11/1862 at Austin.",
+		SourceRecords: []viewmodel.Record{{
+			SourceRecordType: "Muster Roll",
+			AppID:            "APP-24",
+			Details:          "Enlisted on 03/11/1862 at Austin.",
 		}},
 	}).Render(context.Background(), &buf)
 	if err != nil {

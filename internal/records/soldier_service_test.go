@@ -1645,7 +1645,7 @@ func TestSoldierService_ManualComparison(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ManualComparison: %v", err)
 	}
-	if comparison.PageTitle != "Record Comparison" || comparison.BackHref != "/soldiers" || comparison.BackLabel != "Back" {
+	if comparison.PageTitle != "Person Record Comparison" || comparison.BackHref != "/soldiers" || comparison.BackLabel != "Back" {
 		t.Fatalf("unexpected comparison header metadata: %#v", comparison)
 	}
 	if comparison.LeftSoldier.ID != left.ID || comparison.RightSoldier.ID != right.ID {

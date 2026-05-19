@@ -15,8 +15,8 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
 			@SurfaceBadge(uiids.PageInsights)
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
-					<h2 class="text-2xl gold font-bold">Archive Insights</h2>
-					<p class="mt-2 max-w-3xl text-sm text-slate-600">High-level analytics for the current archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p>
+					<h2 class="text-2xl gold font-bold">Local Archive Insights</h2>
+					<p class="mt-2 max-w-3xl text-sm text-slate-600">High-level analytics for the current local archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p>
 				</div>
 				<div class="flex flex-col items-start gap-3 lg:items-end">
 					<button hx-post="/insights/report/pdf" hx-target="#insights-export-status" class="primary-button">Export Analytics Report</button>
@@ -28,15 +28,15 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
 				<section data-ui-id={ uiids.PanelInsightsOverview } class="relative card rounded-3xl p-5 sm:p-8">
 					@SurfaceBadge(uiids.PanelInsightsOverview)
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Overview</p>
-					<h3 class="mt-2 text-xl gold font-bold">Record Type Snapshot</h3>
+					<h3 class="mt-2 text-xl gold font-bold">Person Record Type Snapshot</h3>
 					<div class="mt-5 grid gap-4 sm:grid-cols-2">
 						<a href={ insightDrilldownHref("entry_type", "soldier") } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgba(141,116,64,0.55)] hover:bg-[rgba(246,241,228,0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.RecordTypes.TotalSoldiers) }</div>
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SoldierCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Soldiers</div>
 						</a>
 						<a href={ insightDrilldownHref("entry_type", "spouse") } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgba(141,116,64,0.55)] hover:bg-[rgba(246,241,228,0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.RecordTypes.TotalWivesWidows) }</div>
-							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Spouses (Wives & Widows)</div>
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SpouseRecordCount) }</div>
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Spouse Records</div>
 						</a>
 					</div>
 				</section>
@@ -137,7 +137,7 @@ templ InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage st
 	}
 }
 
-templ InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch, page, total, pageSize int, scope, value string) {
+templ InsightsDrilldownView(title, description string, personRecords []viewmodel.PersonRecord, search viewmodel.PersonRecordSearch, page, total, pageSize int, scope, value string) {
 	@Layout(title) {
 		<div class="mx-auto max-w-6xl space-y-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -150,7 +150,7 @@ templ InsightsDrilldownView(title, description string, soldiers []viewmodel.Sold
 			<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(246,241,228,0.72)] px-4 py-3 text-sm text-slate-600">
 				Showing <strong>{ fmt.Sprintf("%d", total) }</strong> matching record(s).
 			</div>
-			if len(soldiers) == 0 {
+			if len(personRecords) == 0 {
 				<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">No records matched this insight.</p>
 			} else {
 				<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3">
@@ -161,20 +161,20 @@ templ InsightsDrilldownView(title, description string, soldiers []viewmodel.Sold
 					<button type="button" data-compare-selected data-compare-group="insight-compare" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
 				</div>
 				<div class="space-y-3">
-					for _, s := range soldiers {
+					for _, personRecord := range personRecords {
 						<div class="flex items-start gap-3">
 							<div class="mt-4 flex shrink-0 flex-col gap-2">
 								<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-									<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="insight-compare" data-compare-select data-compare-label={ s.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+									<input type="checkbox" value={ fmt.Sprintf("%d", personRecord.ID) } data-checkbox-group="insight-compare" data-compare-select data-compare-label={ personRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 									Compare
 								</label>
-								<button type="button" data-preview-open data-preview-target={ fmt.Sprintf("insight-preview-%d", s.ID) } class="secondary-button px-3 py-2 text-xs">Quick View</button>
+								<button type="button" data-preview-open data-preview-target={ fmt.Sprintf("insight-preview-%d", personRecord.ID) } class="secondary-button px-3 py-2 text-xs">Quick View</button>
 							</div>
 							<div class="min-w-0 flex-1">
-								@SoldierCard(s, true)
+								@SoldierCard(personRecord, true)
 							</div>
-							<div id={ fmt.Sprintf("insight-preview-%d", s.ID) } class="hidden">
-								@SearchPreviewContent(s)
+							<div id={ fmt.Sprintf("insight-preview-%d", personRecord.ID) } class="hidden">
+								@SearchPreviewContent(personRecord)
 							</div>
 						</div>
 					}

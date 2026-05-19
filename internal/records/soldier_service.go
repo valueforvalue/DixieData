@@ -1405,7 +1405,7 @@ func quickSearchMatch(soldier models.Soldier, terms []string) (string, string) {
 		label string
 		value string
 	}{
-		{label: "Record ID", value: strings.TrimSpace(soldier.DisplayID)},
+		{label: "Display ID", value: strings.TrimSpace(soldier.DisplayID)},
 		{label: "Pension ID", value: strings.TrimSpace(soldier.PensionID)},
 		{label: "Application ID", value: strings.TrimSpace(soldier.ApplicationID)},
 		{label: "Name", value: strings.TrimSpace(soldier.GetFullName())},
@@ -1837,10 +1837,10 @@ func (s *SoldierService) ManualComparison(leftID, rightID int64) (*DuplicateAudi
 		fields[index].Highlighted = fields[index].LeftValue != fields[index].RightValue
 	}
 	return &DuplicateAuditComparison{
-		PageTitle:    "Record Comparison",
+		PageTitle:    "Person Record Comparison",
 		BackHref:     "/soldiers",
 		BackLabel:    "Back",
-		Reason:       "Manual side-by-side comparison of two selected records.",
+		Reason:       "Manual side-by-side comparison of two selected person records.",
 		Status:       "manual",
 		LeftSoldier:  *leftSoldier,
 		RightSoldier: *rightSoldier,
@@ -2316,8 +2316,8 @@ func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
 		after  string
 	}
 	fields := []comparedField{
-		{"Record ID", auditDisplayID(strings.TrimSpace(before.DisplayID)), auditDisplayID(strings.TrimSpace(after.DisplayID))},
-		{"Record Type", auditEntryType(strings.TrimSpace(before.EntryType)), auditEntryType(strings.TrimSpace(after.EntryType))},
+		{"Display ID", auditDisplayID(strings.TrimSpace(before.DisplayID)), auditDisplayID(strings.TrimSpace(after.DisplayID))},
+		{"Person Record Type", auditEntryType(strings.TrimSpace(before.EntryType)), auditEntryType(strings.TrimSpace(after.EntryType))},
 		{"Linked Spouse Record", auditSpouseID(before.SpouseSoldierID), auditSpouseID(after.SpouseSoldierID)},
 		{"Maiden Name", auditTextValue(before.MaidenName), auditTextValue(after.MaidenName)},
 		{"Pension ID", auditTextValue(before.PensionID), auditTextValue(after.PensionID)},

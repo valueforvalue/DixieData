@@ -53,35 +53,35 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", graph.Central.ID))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", graph.CentralSoldier.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 17, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 17, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Record</button> <a href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-fallback-label=\"Back to Person Record\" class=\"inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700\">← Back to Person Record</button> <a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", graph.Central.ID)))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", graph.CentralSoldier.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 21, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 21, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Detail Card</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><div class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Unit Camaraderie Graph</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"pill-link\">Open Person Record</a></div><div class=\"grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]\"><div class=\"card rounded-3xl p-6\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-blue-600\">Unit Camaraderie Graph</p><h2 class=\"mt-3 text-2xl font-bold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(graph.Central))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(graph.CentralSoldier))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 26, Col: 86}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 26, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -92,9 +92,9 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(graph.Central.DisplayID)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(graph.CentralSoldier.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 27, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 27, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -198,15 +198,15 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.Central.ID, "border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)]").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.CentralSoldier.ID, "border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)]").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = unitCamaraderieSection("Company Variants", "Likely close matches where the regiment is shared and the company marker aligns even if the unit text varies.", graph.SameCompanyVariant, graph.Central.ID, "border-blue-200 bg-blue-50/70").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = unitCamaraderieSection("Company Variants", "Likely close matches where the regiment is shared and the company marker aligns even if the unit text varies.", graph.SameCompanyVariant, graph.CentralSoldier.ID, "border-blue-200 bg-blue-50/70").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = unitCamaraderieSection("Same Regiment", "Broader context for soldiers who likely served in the same regiment family.", graph.SameRegiment, graph.Central.ID, "border-slate-200 bg-white/80").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = unitCamaraderieSection("Same Regiment", "Broader context for soldiers who likely served in the same regiment family.", graph.SameRegiment, graph.CentralSoldier.ID, "border-slate-200 bg-white/80").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -294,9 +294,9 @@ func unitCamaraderieSection(title, description string, peers []viewmodel.UnitCam
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d linked records", len(peers)))
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d linked person records", len(peers)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 81, Col: 124}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 81, Col: 131}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -307,7 +307,7 @@ func unitCamaraderieSection(title, description string, peers []viewmodel.UnitCam
 			return templ_7745c5c3_Err
 		}
 		if len(peers) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-sm text-slate-500\">No records surfaced for this relationship tier yet.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-sm text-slate-500\">No person records surfaced for this relationship tier yet.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -421,7 +421,7 @@ func unitCamaraderieSection(title, description string, peers []viewmodel.UnitCam
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" class=\"pill-link\">Open Record</a> <a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" class=\"pill-link\">Open Person Record</a> <a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -434,7 +434,7 @@ func unitCamaraderieSection(title, description string, peers []viewmodel.UnitCam
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"secondary-button\">Compare Records</a></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"secondary-button\">Compare Person Records</a></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

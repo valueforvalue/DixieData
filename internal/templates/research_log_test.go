@@ -12,7 +12,7 @@ import (
 func TestResearchLogViewRendersTasksAndSuggestions(t *testing.T) {
 	var buf bytes.Buffer
 	err := ResearchLogView(viewmodel.ResearchLog{
-		Central: viewmodel.Soldier{
+		SubjectPersonRecord: viewmodel.Soldier{
 			ID:        14,
 			DisplayID: "RLG-0014",
 			FirstName: "Andrew",

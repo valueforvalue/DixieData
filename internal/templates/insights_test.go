@@ -12,9 +12,9 @@ import (
 func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 	var buf bytes.Buffer
 	err := InsightsView(viewmodel.AnalyticsSnapshot{
-		RecordTypes: viewmodel.ArchiveCounts{
-			TotalSoldiers:    12,
-			TotalWivesWidows: 4,
+		PersonRecordTypes: viewmodel.ArchiveCounts{
+			SoldierCount:      12,
+			SpouseRecordCount: 4,
 		},
 		CemeteryDensity:         []viewmodel.AnalyticsCount{{Label: "Oak Hill Cemetery", Count: 7}},
 		ConfederateHomeStatus:   []viewmodel.AnalyticsCount{{Label: "Inmate", Count: 3}},
@@ -36,7 +36,7 @@ func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
-		"Archive Insights",
+		"Local Archive Insights",
 		"/insights/report/pdf",
 		"/insights/drilldown?scope=entry_type&amp;value=soldier",
 		"/insights/drilldown?scope=buried_in&amp;value=Oak+Hill+Cemetery",
@@ -61,15 +61,15 @@ func TestInsightsDrilldownViewRendersLinkedResults(t *testing.T) {
 		"Burial Drilldown",
 		"Records buried in Oak Hill Cemetery.",
 		[]viewmodel.Soldier{{
-			ID:           9,
-			DisplayID:    "JCM87-00009",
-			FirstName:    "Andrew",
-			LastName:     "Cole",
-			BuriedIn:     "Oak Hill Cemetery",
-			RecordCount:  2,
-			ImageCount:   1,
-			NeedsReview:  true,
-			ReviewReason: "Potential duplicate from import",
+			ID:                9,
+			DisplayID:         "JCM87-00009",
+			FirstName:         "Andrew",
+			LastName:          "Cole",
+			BuriedIn:          "Oak Hill Cemetery",
+			SourceRecordCount: 2,
+			ImageCount:        1,
+			NeedsReview:       true,
+			ReviewReason:      "Potential duplicate from import",
 		}},
 		viewmodel.SoldierSearch{Mode: "advanced", BuriedIn: "Oak Hill Cemetery"},
 		1,

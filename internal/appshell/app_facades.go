@@ -10,37 +10,41 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
-type soldiersFacade interface {
+type personRecord = models.Soldier
+type personRecordSearch = models.SoldierSearch
+type personRecordSuggestions = models.SoldierFormSuggestions
+
+type personRecordsFacade interface {
 	ArchiveCounts() (models.ArchiveCounts, error)
-	FormSuggestions() (models.SoldierFormSuggestions, error)
-	List(page, pageSize int) ([]models.Soldier, int, error)
-	SearchPage(query string, page, pageSize int) ([]models.Soldier, int, error)
-	RecentByIDs(ids []int64, limit int) ([]models.Soldier, error)
-	AdvancedSearch(search models.SoldierSearch, page, pageSize int) ([]models.Soldier, int, error)
-	Create(soldier models.Soldier) (*models.Soldier, error)
-	GetByID(id int64) (*models.Soldier, error)
-	Update(soldier models.Soldier) error
+	FormSuggestions() (personRecordSuggestions, error)
+	List(page, pageSize int) ([]personRecord, int, error)
+	SearchPage(query string, page, pageSize int) ([]personRecord, int, error)
+	RecentByIDs(ids []int64, limit int) ([]personRecord, error)
+	AdvancedSearch(search personRecordSearch, page, pageSize int) ([]personRecord, int, error)
+	Create(personRecord personRecord) (*personRecord, error)
+	GetByID(id int64) (*personRecord, error)
+	Update(personRecord personRecord) error
 	Delete(id int64) error
-	UnitCamaraderieGraph(soldierID int64) (*records.UnitCamaraderieGraph, error)
-	ServiceTimeline(soldierID int64) (*records.ServiceTimeline, error)
-	ResearchLog(soldierID int64) (*records.ResearchLog, error)
-	AddResearchTask(soldierID int64, title, notes, evidenceType string) error
-	ResolveResearchTask(soldierID, taskID int64) error
-	ResearchPackForSoldier(soldierID int64, scope string) (*records.ResearchPack, error)
-	ResearchCollectionsHub(currentSoldierID int64) (*records.ResearchCollectionHub, error)
+	UnitCamaraderieGraph(personRecordID int64) (*records.UnitCamaraderieGraph, error)
+	ServiceTimeline(personRecordID int64) (*records.ServiceTimeline, error)
+	ResearchLog(personRecordID int64) (*records.ResearchLog, error)
+	AddResearchTask(personRecordID int64, title, notes, evidenceType string) error
+	ResolveResearchTask(personRecordID, taskID int64) error
+	ResearchPackForSoldier(personRecordID int64, scope string) (*records.ResearchPack, error)
+	ResearchCollectionsHub(currentPersonRecordID int64) (*records.ResearchCollectionHub, error)
 	CreateResearchCollection(name, description string) error
-	AddSoldierToResearchCollection(collectionID, soldierID int64) error
-	ResearchCollectionDetail(collectionID, currentSoldierID int64) (*records.ResearchCollectionDetail, error)
-	ReviewQueue(page, pageSize int) ([]models.Soldier, int, error)
-	MarkReviewResolved(soldierID int64) error
-	SetReviewStatus(soldierID int64, needsReview bool, reason string) error
-	ListByEntryTypes(entryTypes []string, page, pageSize int) ([]models.Soldier, int, error)
+	AddSoldierToResearchCollection(collectionID, personRecordID int64) error
+	ResearchCollectionDetail(collectionID, currentPersonRecordID int64) (*records.ResearchCollectionDetail, error)
+	ReviewQueue(page, pageSize int) ([]personRecord, int, error)
+	MarkReviewResolved(personRecordID int64) error
+	SetReviewStatus(personRecordID int64, needsReview bool, reason string) error
+	ListByEntryTypes(entryTypes []string, page, pageSize int) ([]personRecord, int, error)
 	ManualComparison(leftID, rightID int64) (*records.DuplicateAuditComparison, error)
 	GetImageByID(imageID int64) (*models.Image, error)
-	DeleteImages(soldierID int64, imageIDs []int64) error
-	SetPrimaryImage(soldierID, imageID int64) error
-	MarriageCandidates() ([]models.Soldier, error)
-	AddImage(soldierID int64, fileName, filePath, caption string) error
+	DeleteImages(personRecordID int64, imageIDs []int64) error
+	SetPrimaryImage(personRecordID, imageID int64) error
+	MarriageCandidates() ([]personRecord, error)
+	AddImage(personRecordID int64, fileName, filePath, caption string) error
 }
 
 type anniversaryFacade interface {

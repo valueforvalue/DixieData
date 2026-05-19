@@ -1042,7 +1042,7 @@ func TestHandleCompareUsesRecordBackLinkWhenSourceRecordProvided(t *testing.T) {
 	for _, needle := range []string{
 		`data-history-back`,
 		fmt.Sprintf(`data-fallback-href="/soldiers/%d"`, left.ID),
-		"Back to Record",
+		"Back to Person Record",
 	} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("comparison view missing %s in %q", needle, body)
@@ -1175,7 +1175,7 @@ func TestHandleUnitCamaraderieShowsLinkedPeers(t *testing.T) {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, needle := range []string{"Unit Camaraderie Graph", "CAM-1001", "CAM-1002", "Compare Records"} {
+	for _, needle := range []string{"Unit Camaraderie Graph", "CAM-1001", "CAM-1002", "Compare Person Records"} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("camaraderie response missing %s: %q", needle, body)
 		}
@@ -1344,7 +1344,7 @@ func TestHandleConflictLedgerShowsEntries(t *testing.T) {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, needle := range []string{"Source Conflict Ledger", "SRC-1001", "pension ID"} {
+	for _, needle := range []string{"Merge Review Ledger", "SRC-1001", "pension ID"} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("conflict ledger response missing %s: %q", needle, body)
 		}
@@ -1442,7 +1442,7 @@ func TestHandleResearchCollectionsShowsHub(t *testing.T) {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
-	for _, needle := range []string{"Named Research Collections", "Orange County Cluster", "Add Current Record"} {
+	for _, needle := range []string{"Named Research Collections", "Orange County Cluster", "Add Current Person Record"} {
 		if !strings.Contains(body, needle) {
 			t.Fatalf("research collections hub missing %s: %q", needle, body)
 		}

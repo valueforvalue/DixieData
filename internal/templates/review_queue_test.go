@@ -12,7 +12,7 @@ import (
 func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 	var buf bytes.Buffer
 	err := ReviewQueueView([]viewmodel.ReviewQueueEntry{{
-		Soldier: viewmodel.Soldier{
+		PersonRecord: viewmodel.Soldier{
 			ID:           12,
 			DisplayID:    "JCM87-00012",
 			FirstName:    "Andrew",
@@ -21,9 +21,9 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 			ReviewReason: "Potential duplicate from JCM87 import",
 		},
 		DuplicateFindings: []viewmodel.DuplicateAuditFindingSummary{{
-			ID:             9,
-			OtherSoldierID: 18,
-			OtherDisplayID: "JCM87-00018",
+			ID:                  9,
+			OtherPersonRecordID: 18,
+			OtherDisplayID:      "JCM87-00018",
 		}},
 	}}, 1, 1, 50).Render(context.Background(), &buf)
 	if err != nil {
@@ -47,11 +47,11 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 	var buf bytes.Buffer
 	err := ReviewQueueCompareView(viewmodel.DuplicateAuditComparison{
-		FindingID:    4,
-		FindingType:  "fuzzy-first-name",
-		Reason:       `Duplicate Audit: Fuzzy match: "John" and "Jon" share the same last name and birth year.`,
-		LeftSoldier:  viewmodel.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
-		RightSoldier: viewmodel.Soldier{DisplayID: "JCM87-00008", FirstName: "Jon", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
+		FindingID:         4,
+		FindingType:       "fuzzy-first-name",
+		Reason:            `Duplicate Audit: Fuzzy match: "John" and "Jon" share the same last name and birth year.`,
+		LeftPersonRecord:  viewmodel.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
+		RightPersonRecord: viewmodel.Soldier{DisplayID: "JCM87-00008", FirstName: "Jon", LastName: "Kerns", BirthDate: "01/01/1840", Unit: "4th OK Inf."},
 		Fields: []viewmodel.DuplicateAuditComparisonField{
 			{Label: "First Name", LeftValue: "John", RightValue: "Jon", Highlighted: true},
 			{Label: "Birth Year", LeftValue: "1840", RightValue: "1840", Highlighted: true},
@@ -68,8 +68,8 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 		"differing field(s)",
 		"matching field(s)",
 		"Differences to Review First",
-		"Open Left Record",
-		"Open Right Record",
+		"Open Left Person Record",
+		"Open Right Person Record",
 		"First Name",
 		"John",
 		"Jon",
@@ -84,13 +84,13 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 func TestReviewQueueCompareViewSupportsManualComparison(t *testing.T) {
 	var buf bytes.Buffer
 	err := ReviewQueueCompareView(viewmodel.DuplicateAuditComparison{
-		PageTitle:   "Record Comparison",
-		BackHref:    "/soldiers",
-		BackLabel:   "Back",
-		Reason:      "Manual side-by-side comparison of two selected records.",
-		Status:      "manual",
-		LeftSoldier: viewmodel.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns"},
-		RightSoldier: viewmodel.Soldier{
+		PageTitle:        "Person Record Comparison",
+		BackHref:         "/soldiers",
+		BackLabel:        "Back",
+		Reason:           "Manual side-by-side comparison of two selected person records.",
+		Status:           "manual",
+		LeftPersonRecord: viewmodel.Soldier{DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns"},
+		RightPersonRecord: viewmodel.Soldier{
 			DisplayID: "JCM87-00008",
 			FirstName: "Jon",
 			LastName:  "Kerns",
@@ -105,12 +105,12 @@ func TestReviewQueueCompareViewSupportsManualComparison(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
-		"Record Comparison",
+		"Person Record Comparison",
 		"data-history-back",
 		"Back",
-		"Manual side-by-side comparison of two selected records.",
-		"Open Left Record",
-		"Open Right Record",
+		"Manual side-by-side comparison of two selected person records.",
+		"Open Left Person Record",
+		"Open Right Person Record",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("manual comparison view missing %s", needle)

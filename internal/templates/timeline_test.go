@@ -12,7 +12,7 @@ import (
 func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 	var buf bytes.Buffer
 	err := ServiceTimelineView(viewmodel.ServiceTimeline{
-		Central: viewmodel.Soldier{
+		SubjectSoldier: viewmodel.Soldier{
 			ID:        12,
 			DisplayID: "TLM-0012",
 			FirstName: "Andrew",
@@ -23,7 +23,7 @@ func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 		EndLabel:           "November 3, 1904",
 		ExactEventCount:    2,
 		InferredEventCount: 1,
-		Events: []viewmodel.ServiceTimelineEvent{
+		TimelineEvents: []viewmodel.ServiceTimelineEvent{
 			{
 				Title:           "Birth",
 				DateLabel:       "May 12, 1838",
@@ -41,10 +41,10 @@ func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 				Approximate:     true,
 			},
 		},
-		UndatedRecords: []viewmodel.Record{{
-			RecordType: "Letter",
-			AppID:      "APP-4",
-			Details:    "Family correspondence with no year listed.",
+		UndatedSourceRecords: []viewmodel.Record{{
+			SourceRecordType: "Letter",
+			AppID:            "APP-4",
+			Details:          "Family correspondence with no year listed.",
 		}},
 	}).Render(context.Background(), &buf)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 		`data-history-back`,
 		"TLM-0012",
 		"Pension Trail",
-		"Undated Archive Sources",
+		"Undated Source Records",
 		"APP-4",
 	} {
 		if !strings.Contains(content, needle) {
