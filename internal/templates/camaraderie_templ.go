@@ -12,10 +12,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func UnitCamaraderieView(graph services.UnitCamaraderieGraph) templ.Component {
+func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -224,7 +224,7 @@ func UnitCamaraderieView(graph services.UnitCamaraderieGraph) templ.Component {
 	})
 }
 
-func unitCamaraderieSection(title, description string, peers []services.UnitCamaraderieConnection, originID int64, sectionClass string) templ.Component {
+func unitCamaraderieSection(title, description string, peers []viewmodel.UnitCamaraderieConnection, originID int64, sectionClass string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

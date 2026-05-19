@@ -10,11 +10,11 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func Calendar(month int, calendar map[int][]models.Soldier, counts models.ArchiveCounts, quote models.Quote) templ.Component {
+func Calendar(month int, calendar map[int][]viewmodel.Soldier, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

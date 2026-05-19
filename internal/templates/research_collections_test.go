@@ -6,15 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestResearchCollectionsHubViewRendersCurrentRecordContext(t *testing.T) {
 	var buf bytes.Buffer
-	err := ResearchCollectionsHubView(services.ResearchCollectionHub{
-		Current: &models.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
-		Collections: []services.ResearchCollection{{
+	err := ResearchCollectionsHubView(viewmodel.ResearchCollectionHub{
+		Current: &viewmodel.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
+		Collections: []viewmodel.ResearchCollection{{
 			ID:              7,
 			Name:            "Orange County Cluster",
 			Description:     "County-focused follow-up list.",
@@ -41,16 +40,16 @@ func TestResearchCollectionsHubViewRendersCurrentRecordContext(t *testing.T) {
 
 func TestResearchCollectionDetailViewRendersMembers(t *testing.T) {
 	var buf bytes.Buffer
-	err := ResearchCollectionDetailView(services.ResearchCollectionDetail{
-		Collection: services.ResearchCollection{
+	err := ResearchCollectionDetailView(viewmodel.ResearchCollectionDetail{
+		Collection: viewmodel.ResearchCollection{
 			ID:              7,
 			Name:            "Orange County Cluster",
 			Description:     "County-focused follow-up list.",
 			ItemCount:       1,
 			ContainsCurrent: true,
 		},
-		Current: &models.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
-		Members: []models.Soldier{{
+		Current: &viewmodel.Soldier{ID: 30, DisplayID: "COL-0030", FirstName: "Andrew", LastName: "Cole"},
+		Members: []viewmodel.Soldier{{
 			ID:        30,
 			DisplayID: "COL-0030",
 			FirstName: "Andrew",

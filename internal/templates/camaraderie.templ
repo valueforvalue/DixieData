@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ UnitCamaraderieView(graph services.UnitCamaraderieGraph) {
+templ UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) {
 	@Layout("Unit Camaraderie") {
 		<div class="mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-wrap items-center gap-3">
@@ -71,7 +71,7 @@ templ UnitCamaraderieView(graph services.UnitCamaraderieGraph) {
 	}
 }
 
-templ unitCamaraderieSection(title, description string, peers []services.UnitCamaraderieConnection, originID int64, sectionClass string) {
+templ unitCamaraderieSection(title, description string, peers []viewmodel.UnitCamaraderieConnection, originID int64, sectionClass string) {
 	<section class={ "rounded-3xl border p-5 " + sectionClass }>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 			<div>

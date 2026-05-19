@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize int) {
+templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSize int) {
 	@Layout("Review Queue") {
 		<div data-ui-id={ uiids.PageReviewQueue } class="relative mx-auto max-w-5xl space-y-6">
 			@SurfaceBadge(uiids.PageReviewQueue)
@@ -81,7 +81,7 @@ templ ReviewQueueView(entries []services.ReviewQueueEntry, page, total, pageSize
 	}
 }
 
-templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
+templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 	@Layout(comparisonTitle(comparison)) {
 		<div data-ui-id={ uiids.PageReviewQueueCompare } class="relative mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageReviewQueueCompare)
@@ -178,29 +178,29 @@ templ ReviewQueueCompareView(comparison services.DuplicateAuditComparison) {
 	}
 }
 
-func comparisonTitle(comparison services.DuplicateAuditComparison) string {
+func comparisonTitle(comparison viewmodel.DuplicateAuditComparison) string {
 	if strings.TrimSpace(comparison.PageTitle) != "" {
 		return comparison.PageTitle
 	}
 	return "Duplicate Comparison"
 }
 
-func comparisonBackHref(comparison services.DuplicateAuditComparison) string {
+func comparisonBackHref(comparison viewmodel.DuplicateAuditComparison) string {
 	if strings.TrimSpace(comparison.BackHref) != "" {
 		return comparison.BackHref
 	}
 	return "/review-queue"
 }
 
-func comparisonBackLabel(comparison services.DuplicateAuditComparison) string {
+func comparisonBackLabel(comparison viewmodel.DuplicateAuditComparison) string {
 	if strings.TrimSpace(comparison.BackLabel) != "" {
 		return comparison.BackLabel
 	}
 	return "Back to Review Queue"
 }
 
-func comparisonDifferenceFields(comparison services.DuplicateAuditComparison) []services.DuplicateAuditComparisonField {
-	fields := make([]services.DuplicateAuditComparisonField, 0, len(comparison.Fields))
+func comparisonDifferenceFields(comparison viewmodel.DuplicateAuditComparison) []viewmodel.DuplicateAuditComparisonField {
+	fields := make([]viewmodel.DuplicateAuditComparisonField, 0, len(comparison.Fields))
 	for _, field := range comparison.Fields {
 		if field.Highlighted {
 			fields = append(fields, field)
@@ -209,10 +209,10 @@ func comparisonDifferenceFields(comparison services.DuplicateAuditComparison) []
 	return fields
 }
 
-func comparisonDifferenceCount(comparison services.DuplicateAuditComparison) int {
+func comparisonDifferenceCount(comparison viewmodel.DuplicateAuditComparison) int {
 	return len(comparisonDifferenceFields(comparison))
 }
 
-func comparisonMatchingCount(comparison services.DuplicateAuditComparison) int {
+func comparisonMatchingCount(comparison viewmodel.DuplicateAuditComparison) int {
 	return len(comparison.Fields) - comparisonDifferenceCount(comparison)
 }

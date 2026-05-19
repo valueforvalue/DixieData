@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestCalendarShowsSplitArchiveCounts(t *testing.T) {
 	var buf bytes.Buffer
-	err := Calendar(5, map[int][]models.Soldier{}, models.ArchiveCounts{
+	err := Calendar(5, map[int][]viewmodel.Soldier{}, viewmodel.ArchiveCounts{
 		TotalSoldiers:    12,
 		TotalWivesWidows: 5,
-	}, models.Quote{
+	}, viewmodel.Quote{
 		Author: "Test Author",
 		Text:   "Test quote",
 	}).Render(context.Background(), &buf)

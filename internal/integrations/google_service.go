@@ -1,4 +1,4 @@
-package services
+package integrations
 
 import (
 	"context"
@@ -796,6 +796,19 @@ func legacyDisplayID(displayID string) string {
 		return ""
 	}
 	return displayID[index+1:]
+}
+
+func soldierDeathLine(soldier models.Soldier) string {
+	if strings.TrimSpace(soldier.DeathDate) != "" {
+		return soldier.DeathDate
+	}
+	if soldier.DeathYear > 0 {
+		if soldier.DeathMonth > 0 && soldier.DeathDay > 0 {
+			return fmt.Sprintf("%02d/%02d/%04d", soldier.DeathMonth, soldier.DeathDay, soldier.DeathYear)
+		}
+		return fmt.Sprintf("%d", soldier.DeathYear)
+	}
+	return "Unknown"
 }
 
 func googleCalendarEvent(soldier models.Soldier) *gcal.Event {

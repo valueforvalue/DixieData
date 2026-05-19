@@ -3,10 +3,10 @@ package templates
 import (
 	"fmt"
 
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ResearchPackView(pack services.ResearchPack) {
+templ ResearchPackView(pack viewmodel.ResearchPack) {
 	@Layout("Research Pack") {
 		<div class="mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-wrap items-center gap-3">
@@ -86,7 +86,7 @@ templ ResearchPackView(pack services.ResearchPack) {
 	}
 }
 
-templ researchPackCounts(counts []services.AnalyticsCount, emptyText string) {
+templ researchPackCounts(counts []viewmodel.AnalyticsCount, emptyText string) {
 	if len(counts) == 0 {
 		<p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">{ emptyText }</p>
 	} else {
