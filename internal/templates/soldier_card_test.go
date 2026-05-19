@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestSoldierListShowsExpandedAdvancedSearchFields(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierList(nil, 1, 0, "", models.SoldierFormSuggestions{
+	err := SoldierList(nil, 1, 0, "", viewmodel.SoldierFormSuggestions{
 		RankIn:              []string{"Private"},
 		RankOut:             []string{"Captain"},
 		Unit:                []string{"1st Texas Infantry"},
@@ -51,7 +51,7 @@ func TestSoldierListShowsExpandedAdvancedSearchFields(t *testing.T) {
 
 func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:               42,
 		DisplayID:        "STC38-00001",
 		FirstName:        "John",
@@ -85,12 +85,12 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 
 func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        42,
 		DisplayID: "STC38-00001",
 		FirstName: "John",
 		LastName:  "Taylor",
-		Images: []models.Image{
+		Images: []viewmodel.Image{
 			{ID: 7, FileName: "front.png", FilePath: `images\front.png`, Caption: "Front", IsPrimary: true},
 			{ID: 8, FileName: "side.png", FilePath: `images\side.png`, Caption: "Side"},
 		},
@@ -113,7 +113,7 @@ func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 
 func TestSoldierCardShowsReviewBadge(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierCard(models.Soldier{
+	err := SoldierCard(viewmodel.Soldier{
 		ID:           7,
 		DisplayID:    "JCM87-00007",
 		FirstName:    "Flagged",
@@ -138,7 +138,7 @@ func TestSoldierCardShowsReviewBadge(t *testing.T) {
 
 func TestSoldierDetailShowsResolveReviewAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:           42,
 		DisplayID:    "JCM87-00042",
 		FirstName:    "Review",
@@ -165,7 +165,7 @@ func TestSoldierDetailShowsResolveReviewAction(t *testing.T) {
 
 func TestSoldierDetailShowsManualReviewFlagAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        41,
 		DisplayID: "JCM87-00041",
 		FirstName: "Manual",
@@ -189,7 +189,7 @@ func TestSoldierDetailShowsManualReviewFlagAction(t *testing.T) {
 
 func TestSoldierDetailConsolidatesRelationshipDisplay(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:              12,
 		DisplayID:       "JCM87-00012",
 		EntryType:       "widow",
@@ -220,7 +220,7 @@ func TestSoldierDetailConsolidatesRelationshipDisplay(t *testing.T) {
 
 func TestSoldierDetailSecondaryBackActionUsesSmartBack(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:            12,
 		DisplayID:     "JCM87-00012",
 		FirstName:     "Sarah",
@@ -246,7 +246,7 @@ func TestSoldierDetailSecondaryBackActionUsesSmartBack(t *testing.T) {
 
 func TestSoldierDetailShowsUnitCamaraderieAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        18,
 		DisplayID: "JCM87-00018",
 		FirstName: "Andrew",
@@ -271,13 +271,13 @@ func TestSoldierDetailShowsUnitCamaraderieAction(t *testing.T) {
 
 func TestSoldierDetailShowsServiceTimelineAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        19,
 		DisplayID: "JCM87-00019",
 		FirstName: "Andrew",
 		LastName:  "Cole",
 		BirthDate: "05/12/1838",
-		Records: []models.Record{{
+		Records: []viewmodel.Record{{
 			RecordType: "Muster Roll",
 			AppID:      "APP-19",
 			Details:    "Enlisted on 03/11/1862 at Austin.",
@@ -301,7 +301,7 @@ func TestSoldierDetailShowsServiceTimelineAction(t *testing.T) {
 
 func TestSoldierDetailShowsResearchLogAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        20,
 		DisplayID: "JCM87-00020",
 		FirstName: "Andrew",
@@ -325,7 +325,7 @@ func TestSoldierDetailShowsResearchLogAction(t *testing.T) {
 
 func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        21,
 		DisplayID: "JCM87-00021",
 		FirstName: "Andrew",
@@ -349,7 +349,7 @@ func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
 
 func TestSoldierDetailShowsResearchPackActions(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:           22,
 		DisplayID:    "JCM87-00022",
 		FirstName:    "Andrew",
@@ -377,7 +377,7 @@ func TestSoldierDetailShowsResearchPackActions(t *testing.T) {
 
 func TestSoldierDetailShowsResearchCollectionsAction(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        23,
 		DisplayID: "JCM87-00023",
 		FirstName: "Andrew",
@@ -401,14 +401,14 @@ func TestSoldierDetailShowsResearchCollectionsAction(t *testing.T) {
 
 func TestSoldierDetailGroupsAdvancedToolsUnderAccordion(t *testing.T) {
 	var buf bytes.Buffer
-	err := SoldierDetail(models.Soldier{
+	err := SoldierDetail(viewmodel.Soldier{
 		ID:        24,
 		DisplayID: "JCM87-00024",
 		FirstName: "Andrew",
 		LastName:  "Cole",
 		Unit:      "Co. A, 1st Texas Infantry",
 		BirthDate: "05/12/1838",
-		Records: []models.Record{{
+		Records: []viewmodel.Record{{
 			RecordType: "Muster Roll",
 			AppID:      "APP-24",
 			Details:    "Enlisted on 03/11/1862 at Austin.",

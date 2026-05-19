@@ -6,25 +6,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 	var buf bytes.Buffer
-	err := InsightsView(services.AnalyticsSnapshot{
-		RecordTypes: models.ArchiveCounts{
+	err := InsightsView(viewmodel.AnalyticsSnapshot{
+		RecordTypes: viewmodel.ArchiveCounts{
 			TotalSoldiers:    12,
 			TotalWivesWidows: 4,
 		},
-		CemeteryDensity:         []services.AnalyticsCount{{Label: "Oak Hill Cemetery", Count: 7}},
-		ConfederateHomeStatus:   []services.AnalyticsCount{{Label: "Inmate", Count: 3}},
-		ConfederateHomeNames:    []services.AnalyticsCount{{Label: "Texas Confederate Home", Count: 2}},
-		PensionDistribution:     []services.AnalyticsCount{{Label: "Texas", Count: 5}},
-		UnitRepresentation:      []services.AnalyticsCount{{Label: "1st Texas Infantry", Count: 4}},
-		BirthDecadeDistribution: []services.AnalyticsCount{{Label: "1830s", Count: 6}},
-		DeathDecadeDistribution: []services.AnalyticsCount{{Label: "1900s", Count: 2}},
-		DuplicateAudit: services.DuplicateAuditSummary{
+		CemeteryDensity:         []viewmodel.AnalyticsCount{{Label: "Oak Hill Cemetery", Count: 7}},
+		ConfederateHomeStatus:   []viewmodel.AnalyticsCount{{Label: "Inmate", Count: 3}},
+		ConfederateHomeNames:    []viewmodel.AnalyticsCount{{Label: "Texas Confederate Home", Count: 2}},
+		PensionDistribution:     []viewmodel.AnalyticsCount{{Label: "Texas", Count: 5}},
+		UnitRepresentation:      []viewmodel.AnalyticsCount{{Label: "1st Texas Infantry", Count: 4}},
+		BirthDecadeDistribution: []viewmodel.AnalyticsCount{{Label: "1830s", Count: 6}},
+		DeathDecadeDistribution: []viewmodel.AnalyticsCount{{Label: "1900s", Count: 2}},
+		DuplicateAudit: viewmodel.DuplicateAuditSummary{
 			OpenFindings:        3,
 			ResolvedFindings:    1,
 			LastRunAt:           "2026-05-16 15:00:00",
@@ -61,7 +60,7 @@ func TestInsightsDrilldownViewRendersLinkedResults(t *testing.T) {
 	err := InsightsDrilldownView(
 		"Burial Drilldown",
 		"Records buried in Oak Hill Cemetery.",
-		[]models.Soldier{{
+		[]viewmodel.Soldier{{
 			ID:           9,
 			DisplayID:    "JCM87-00009",
 			FirstName:    "Andrew",
@@ -72,7 +71,7 @@ func TestInsightsDrilldownViewRendersLinkedResults(t *testing.T) {
 			NeedsReview:  true,
 			ReviewReason: "Potential duplicate from import",
 		}},
-		models.SoldierSearch{Mode: "advanced", BuriedIn: "Oak Hill Cemetery"},
+		viewmodel.SoldierSearch{Mode: "advanced", BuriedIn: "Oak Hill Cemetery"},
 		1,
 		1,
 		50,

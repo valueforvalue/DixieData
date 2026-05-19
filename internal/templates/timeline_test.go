@@ -6,14 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 	var buf bytes.Buffer
-	err := ServiceTimelineView(services.ServiceTimeline{
-		Central: models.Soldier{
+	err := ServiceTimelineView(viewmodel.ServiceTimeline{
+		Central: viewmodel.Soldier{
 			ID:        12,
 			DisplayID: "TLM-0012",
 			FirstName: "Andrew",
@@ -24,7 +23,7 @@ func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 		EndLabel:           "November 3, 1904",
 		ExactEventCount:    2,
 		InferredEventCount: 1,
-		Events: []services.ServiceTimelineEvent{
+		Events: []viewmodel.ServiceTimelineEvent{
 			{
 				Title:           "Birth",
 				DateLabel:       "May 12, 1838",
@@ -42,7 +41,7 @@ func TestServiceTimelineViewRendersEventsAndUndatedSources(t *testing.T) {
 				Approximate:     true,
 			},
 		},
-		UndatedRecords: []models.Record{{
+		UndatedRecords: []viewmodel.Record{{
 			RecordType: "Letter",
 			AppID:      "APP-4",
 			Details:    "Family correspondence with no year listed.",

@@ -5,12 +5,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ InsightsView(snapshot services.AnalyticsSnapshot) {
+templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
 	@Layout("Insights") {
 		<div data-ui-id={ uiids.PageInsights } class="mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageInsights)
@@ -123,7 +122,7 @@ templ InsightsView(snapshot services.AnalyticsSnapshot) {
 	}
 }
 
-templ InsightsCountList(items []services.AnalyticsCount, scope, emptyMessage string) {
+templ InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage string) {
 	if len(items) == 0 {
 		<p class="mt-4 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">{ emptyMessage }</p>
 	} else {
@@ -138,7 +137,7 @@ templ InsightsCountList(items []services.AnalyticsCount, scope, emptyMessage str
 	}
 }
 
-templ InsightsDrilldownView(title, description string, soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int, scope, value string) {
+templ InsightsDrilldownView(title, description string, soldiers []viewmodel.Soldier, search viewmodel.SoldierSearch, page, total, pageSize int, scope, value string) {
 	@Layout(title) {
 		<div class="mx-auto max-w-6xl space-y-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

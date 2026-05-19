@@ -20,8 +20,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/services"
-	"github.com/valueforvalue/DixieData/internal/templates"
 )
 
 type checkResult struct {
@@ -328,7 +328,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 
 	renderStart := time.Now()
 	var rendered bytes.Buffer
-	if err := templates.InsightsView(snapshot).Render(context.Background(), &rendered); err != nil {
+	if err := presentation.InsightsView(snapshot).Render(context.Background(), &rendered); err != nil {
 		return report{}, err
 	}
 	renderDuration := time.Since(renderStart)

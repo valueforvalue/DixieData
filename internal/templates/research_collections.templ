@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ResearchCollectionsHubView(hub services.ResearchCollectionHub) {
+templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 	@Layout("Research Collections") {
 		<div class="mx-auto max-w-6xl space-y-5">
 			<div class="flex flex-wrap items-center justify-between gap-3">
@@ -99,7 +98,7 @@ templ ResearchCollectionsHubView(hub services.ResearchCollectionHub) {
 	}
 }
 
-templ ResearchCollectionDetailView(detail services.ResearchCollectionDetail) {
+templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 	@Layout("Research Collection") {
 		<div class="mx-auto max-w-6xl space-y-5">
 			<div class="flex flex-wrap items-center gap-3">
@@ -149,21 +148,21 @@ templ ResearchCollectionDetailView(detail services.ResearchCollectionDetail) {
 	}
 }
 
-func researchCollectionDetailHref(collectionID int64, current *models.Soldier) templ.SafeURL {
+func researchCollectionDetailHref(collectionID int64, current *viewmodel.Soldier) templ.SafeURL {
 	if current != nil {
 		return templ.SafeURL(fmt.Sprintf("/research-collections/%d?from=%d", collectionID, current.ID))
 	}
 	return templ.SafeURL(fmt.Sprintf("/research-collections/%d", collectionID))
 }
 
-func researchCollectionFallbackHref(current *models.Soldier) string {
+func researchCollectionFallbackHref(current *viewmodel.Soldier) string {
 	if current != nil {
 		return fmt.Sprintf("/research-collections?from=%d", current.ID)
 	}
 	return "/research-collections"
 }
 
-func researchCollectionBackLabel(current *models.Soldier) string {
+func researchCollectionBackLabel(current *viewmodel.Soldier) string {
 	if current != nil {
 		return "Back to Collections"
 	}
