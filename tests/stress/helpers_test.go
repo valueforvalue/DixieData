@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/records"
 	_ "modernc.org/sqlite"
 )
 
@@ -41,11 +42,11 @@ func openExistingStressDB(dataDir string) (*db.DB, error) {
 	return db.Open(dataDir)
 }
 
-func newStressServices(t *testing.T) (*db.DB, *services.SoldierService, *services.BackupService, string) {
+func newStressServices(t *testing.T) (*db.DB, *records.SoldierService, *archive.BackupService, string) {
 	t.Helper()
 	database, dataDir := newStressDB(t)
-	soldierSvc := services.NewSoldierService(database)
-	backupSvc := services.NewBackupService(database, soldierSvc)
+	soldierSvc := records.NewSoldierService(database)
+	backupSvc := archive.NewBackupService(database, soldierSvc)
 	return database, soldierSvc, backupSvc, dataDir
 }
 
@@ -164,7 +165,7 @@ func GenerateGarbageDatabase(dataDir string, records int) (GarbageDatabaseSummar
 	return summary, nil
 }
 
-func writePoisonArchive(path string, manifest services.BackupManifest, files map[string][]byte) error {
+func writePoisonArchive(path string, manifest archive.BackupManifest, files map[string][]byte) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -256,7 +257,7 @@ func createLegacyBackupZip(t *testing.T, outputPath string) {
 	t.Helper()
 	legacyDBPath := filepath.Join(t.TempDir(), db.FileName)
 	createLegacySchemaV1DB(t, legacyDBPath)
-	manifest := services.BackupManifest{
+	manifest := archive.BackupManifest{
 		Format:        "dixiedata-backup",
 		Version:       buildinfo.BackupFormatVersion,
 		ArchiveKind:   "backup",

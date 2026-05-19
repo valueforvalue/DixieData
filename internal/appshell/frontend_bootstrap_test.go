@@ -1,4 +1,4 @@
-package main
+package appshell
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestFrontendIndexUsesLocalBootstrapScript(t *testing.T) {
-	data, err := os.ReadFile("frontend/index.html")
+	data, err := os.ReadFile(repoFixturePath(t, "frontend", "index.html"))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}

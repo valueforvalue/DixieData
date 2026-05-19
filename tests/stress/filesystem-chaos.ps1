@@ -4,6 +4,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$helper = Join-Path $PSScriptRoot "..\..\scripts\build-common.ps1"
+. $helper
+
+$root = Get-DixieDataRoot -StartPath $PSScriptRoot
+Set-Location $root
+
 $chaosRoot = Join-Path $ArtifactRoot "filesystem-chaos"
 New-Item -ItemType Directory -Force -Path $chaosRoot | Out-Null
 
@@ -23,4 +29,4 @@ try {
 
 Write-Host "Created sparse 1GB dummy file: $dummyFile"
 Write-Host "Running in-process filesystem chaos stress test..."
-go test . -run TestStressFilesystemChaosGracefulFailure -count=1
+go test .\internal\appshell -run TestStressFilesystemChaosGracefulFailure -count=1

@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseHTMLExtractsMemorialFieldsAndWarnings(t *testing.T) {
-	sourcePath := filepath.Join("..", "..", "source.txt")
+	sourcePath := filepath.Join("..", "..", "tests", "testdata", "findagrave-source.html")
 	data, err := os.ReadFile(sourcePath)
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)

@@ -7,10 +7,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$helper = Join-Path $PSScriptRoot "..\..\scripts\build-common.ps1"
+. $helper
+
+$root = Get-DixieDataRoot -StartPath $PSScriptRoot
+Set-Location $root
+
 $resolvedArtifactRoot = if ([System.IO.Path]::IsPathRooted($ArtifactRoot)) {
     $ArtifactRoot
 } else {
-    Join-Path (Get-Location) $ArtifactRoot
+    Join-Path $root $ArtifactRoot
 }
 
 if (Test-Path $resolvedArtifactRoot) {
@@ -22,10 +28,10 @@ Write-Host "==> Output integrity audit"
 go run .\cmd\gold-master -mode output-audit -report-dir (Join-Path $resolvedArtifactRoot "output")
 
 Write-Host "==> Gold-master Go workflow tests"
-go test . -run 'TestGoldMaster|TestHandleVersionReturnsBuildMetadata|TestHandleInsightsDrilldownShowsFilteredRecords|TestStressBridgeConcurrentSearchAndSave|TestStressAppLoggingToFile' -count=1
+go test .\internal\appshell -run 'TestGoldMaster|TestHandleVersionReturnsBuildMetadata|TestHandleInsightsDrilldownShowsFilteredRecords|TestStressBridgeConcurrentSearchAndSave|TestStressAppLoggingToFile' -count=1
 
 Write-Host "==> Install Playwright dependencies"
-Push-Location .\tests\goldmaster\playwright
+Push-Location (Join-Path $root "tests\goldmaster\playwright")
 if (-not (Test-Path ".\node_modules")) {
     npm install --no-fund --no-audit
 }
@@ -37,7 +43,7 @@ $server = Start-Process -FilePath "python" -ArgumentList "-m", "http.server", "$
 try {
     Start-Sleep -Seconds 3
     Write-Host "==> Playwright static archive verification"
-    Push-Location .\tests\goldmaster\playwright
+    Push-Location (Join-Path $root "tests\goldmaster\playwright")
     $env:GOLD_MASTER_ARCHIVE_URL = "http://127.0.0.1:$PlaywrightPort"
     npx playwright test
     Pop-Location
@@ -49,6 +55,6 @@ try {
 }
 
 Write-Host "==> Stress and scale suite"
-python .\tests\goldmaster\stress_suite.py --repo-root . --report-dir (Join-Path $resolvedArtifactRoot "stress") --data-dir (Join-Path $resolvedArtifactRoot "stress\data") --soldiers $Soldiers --seed-soldiers $SeedSoldiers
+python (Join-Path $root "tests\goldmaster\stress_suite.py") --repo-root $root --report-dir (Join-Path $resolvedArtifactRoot "stress") --data-dir (Join-Path $resolvedArtifactRoot "stress\data") --soldiers $Soldiers --seed-soldiers $SeedSoldiers
 
 Write-Host "Gold-master suite complete."

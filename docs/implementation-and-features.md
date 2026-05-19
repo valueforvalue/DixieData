@@ -35,14 +35,14 @@ The current release line is **v1.1.20**.
 Startup flow:
 
 1. Wails launches `main.go`
-2. `NewApp()` constructs the app
+2. `internal\appshell\NewApp()` constructs the app shell
 3. `App.startup()`:
    - configures logging
    - resolves `.dixiedata`
    - loads quotes
    - opens SQLite
    - applies schema and migrations
-   - reloads services
+   - reloads Facades over the Deep Modules
    - ensures route registration
 4. `App.ServeHTTP()` handles every app route
 
@@ -60,6 +60,17 @@ The app uses a custom HTTP-driven interaction pattern:
 This keeps server-side rendering as the main UI model while still supporting rich desktop interactivity.
 
 The same client layer also preserves navigation context for the app’s Smart Back behavior.
+
+### 3.3 Architectural boundaries
+
+The runtime is organized around four explicit layers:
+
+- **App Shell:** `main.go` plus `internal\appshell`, where routing and Wails delivery live
+- **Facades:** `internal\appshell\app_facades.go`, which declares the contracts exposed to the delivery layer
+- **Deep Modules:** `internal\records`, `internal\archive`, and `internal\integrations`, which own the core behavioral complexity
+- **Grey Box:** `internal\presentation` plus `internal\viewmodel`, which translate domain objects into DTOs/ViewModels for templates
+
+Templates should only consume DTOs/ViewModels. Raw domain models should be adapted in `internal\presentation` before rendering.
 
 ## 4. Data directory layout
 
@@ -408,12 +419,13 @@ Repository validation commands:
 - `templ generate`
 - `go test ./...`
 - `go build ./...`
-- `.\build-release.ps1`
+- `.\scripts\build-release.ps1`
 
 There are tests for:
 
 - templates
-- services
+- Deep Modules
+- the App Shell
 - DB helpers
 - stress workflow
 - exports

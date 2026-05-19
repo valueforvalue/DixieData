@@ -8,7 +8,7 @@
 - **Platform:** Wails desktop app (Windows-first workflow)
 - **Backend:** Go + SQLite
 - **Frontend:** server-rendered Templ HTML, Tailwind CDN styling, custom `frontend\app.js`
-- **Primary repo entry points:** `main.go`, `app.go`
+- **Primary repo entry points:** `main.go`, `internal\appshell\app.go`, `internal\appshell\app_facades.go`
 
 DixieData is a desktop archive manager for Civil War / Confederate research records. The app stores soldiers plus spouse records, supporting notes, records, images, scratch pads, printable reports, portable exports, mergeable shared archives, analytics, duplicate review, and Google integrations.
 
@@ -25,9 +25,11 @@ Recent v1.1 hardening highlights:
 ### App shell
 
 - `main.go` starts Wails and binds a single `App` instance.
-- `app.go` builds an `http.ServeMux` and serves the whole UI through normal HTTP handlers.
+- `internal\appshell\app.go` builds an `http.ServeMux` and serves the whole UI through normal HTTP handlers.
+- `internal\appshell\app_facades.go` defines the Facades that keep the delivery shell thin.
 - Wails embeds `frontend\` assets and routes requests through `App.ServeHTTP`.
 - If the UI requests content before startup finishes, `ServeHTTP` now returns an **auto-refreshing loading placeholder** instead of a dead-end plain text `503`. This prevents the app from getting stuck on “Application is still starting up.”
+- The delivery layer is intentionally a **Grey Box**: `internal\presentation` adapts domain objects into `internal\viewmodel` DTOs/ViewModels before templates render them.
 
 ### Storage model
 
@@ -82,11 +84,11 @@ Identity helpers live in:
 - `internal\db\identity.go`
 - `internal\db\displayid.go`
 - `internal\db\csaid.go`
-- merge logic in `internal\services\backup_service.go`
+- merge logic in `internal\archive\backup_service.go`
 
 ## Major UI surfaces
 
-Routes are registered in `app.go`.
+Routes are registered in `internal\appshell\app.go`.
 
 ### Main pages
 
@@ -111,96 +113,76 @@ Routes are registered in `app.go`.
 - `internal\templates\insights.templ` - analytics dashboard
 - `internal\templates\review_queue.templ` - review queue + duplicate comparison
 
-## Service map
+## Deep Module map
 
-### `internal\services\soldier_service.go`
+### Delivery shell and Grey Box
 
-Primary CRUD and search service.
+- `internal\appshell\app.go`
+- `internal\appshell\app_facades.go`
+- `internal\presentation`
+- `internal\viewmodel`
+- `internal\templates`
 
 Responsibilities:
 
-- create/update/delete soldiers
+- route parsing and HTTP/Wails orchestration
+- Facade wiring
+- Grey Box delivery shaping
+- DTO/ViewModel rendering
+
+Templates should only consume DTOs/ViewModels from `internal\viewmodel`, not raw domain or persistence models.
+
+### Deep Module: Records
+
+- `internal\records`
+
+Responsibilities:
+
+- create/update/delete people records
 - spouse normalization
 - archive counts
 - browse and advanced search
-- image metadata
-- review queue data
-- review resolution
+- review queue data and resolution
 - FTS-backed quick search
+- analytics snapshots
+- camaraderie graphs
+- service timelines
+- research logs and collections
+- duplicate comparison logic
 
-### `internal\services\backup_service.go`
+### Deep Module: Archive
 
-Handles:
-
-- `.ddbak` replacement backups
-- `.ddshare` merge archives
-- merge staging
-- conflict resolution (`keep-local`, `keep-shared`, `keep-both`)
-- human duplicate detection during shared import
-- local namespace ID regeneration when needed
-
-### `internal\services\audit_service.go`
-
-Implements the advanced duplicate engine.
-
-Passes:
-
-1. exact human duplicate
-2. fuzzy first-name matching within grouped buckets using Levenshtein
-3. burial-location / maiden-name heuristics
-
-Persisted findings are stored in `duplicate_audit_findings`, and resolved pairs are suppressed from future re-flagging.
-
-### `internal\services\analytics_service.go`
-
-Builds the Insights dashboard data:
-
-- top cemeteries
-- Confederate Home breakdown
-- pension distribution
-- top units
-- birth/death decades
-- review/duplicate metrics
-
-### `internal\services\export_service.go`
-
-Handles:
-
-- JSON export
-- Excel export
-- iCalendar export
-- static web archive export
-- printable full database PDF
-- soldier PDF
-- month/calendar PDF
-- analytics PDF
-- backup/shared archive generation
-- bug-report bundle export
-
-### `internal\services\image_service.go`
-
-Recent hardening service.
+- `internal\archive`
 
 Responsibilities:
 
-- migrate old image paths into sharded layout
-- discover orphan files
-- move orphan files into `temp_trash`
-- purge expired temp-trash contents
+- `.ddbak` replacement backups
+- `.ddshare` merge archives
+- merge staging and conflict resolution
+- human duplicate detection during shared import
+- local namespace ID regeneration
+- JSON/Excel/iCalendar/static export
+- printable PDFs
+- bug-report bundles
+- image sharding and orphan cleanup
+- diagnostics bundles
 
-### `internal\services\google_service.go`
+### Deep Module: Integrations
 
-Google integration service for:
+- `internal\integrations`
 
-- account connect/disconnect
+Responsibilities:
+
+- Google account connect/disconnect
 - Drive backup upload
 - CSV export to Sheets
 - calendar sync / unsync
 
-### Supporting services
+### Compatibility shim
 
-- `anniversary_service.go`
-- `diagnostics_service.go`
+- `internal\services`
+
+This package is now a compatibility shim only. It is not the architectural center and should not be the default place for new work.
 
 ## Frontend behavior
 
@@ -332,10 +314,10 @@ Known-good commands:
 - `templ generate`
 - `go test ./...`
 - `go build ./...`
-- `.\build-release.ps1`
-- `.\build-debug.ps1`
-- `.\run-debug.ps1`
-- `.\run-stress-tests.ps1`
+- `.\scripts\build-release.ps1`
+- `.\scripts\build-debug.ps1`
+- `.\scripts\run-debug.ps1`
+- `.\scripts\run-stress-tests.ps1`
 
 Build scripts preserve `build\bin\google-oauth-defaults.json`.
 
@@ -370,13 +352,13 @@ Recent major additions already in the repository:
 If another AI needs to continue work, read in this order:
 
 1. `README.md`
-2. `app.go`
+2. `internal\appshell\app.go`
 3. `internal\db\schema.go`
-4. `internal\services\soldier_service.go`
-5. `internal\services\backup_service.go`
-6. `internal\services\audit_service.go`
-7. `internal\services\export_service.go`
-8. `internal\services\image_service.go`
+4. `internal\appshell\app_facades.go`
+5. `internal\presentation\views.go`
+6. `internal\viewmodel\types.go`
+7. `internal\records`
+8. `internal\archive`
 9. `internal\templates\share.templ`
 10. `internal\templates\entry_form.templ`
 11. `internal\templates\review_queue.templ`
