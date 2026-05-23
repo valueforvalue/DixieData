@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/update"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 	_ "modernc.org/sqlite"
 )
 
@@ -67,12 +70,15 @@ func backupBeforeMigrationIfNeeded(d *DB, dbPath string) error {
 	if currentVersion >= CurrentSchemaVersion {
 		return nil
 	}
-	backupDir := filepath.Join(d.dataDir, "backups", "schema-migrations")
-	if err := os.MkdirAll(backupDir, 0o755); err != nil {
-		return err
-	}
-	backupPath := filepath.Join(backupDir, "dixiedata-pre-migration-"+time.Now().UTC().Format("20060102-150405")+".db")
-	return d.SnapshotTo(backupPath)
+	manager := update.NewRetainedBackupManager(d.dataDir)
+	_, err = manager.CreatePreSchemaUpgradeBackup(update.CreateRetainedBackupInput{
+		SourceAppVersion:    versioninfo.AppVersionForSchema(currentVersion),
+		SourceSchemaVersion: currentVersion,
+		TargetAppVersion:    buildinfo.AppVersion,
+		TargetSchemaVersion: CurrentSchemaVersion,
+		BuildIdentity:       buildinfo.BuildIdentity(),
+	}, d.SnapshotTo)
+	return err
 }
 
 func currentSchemaVersion(conn *sql.DB) (int, error) {

@@ -7,12 +7,13 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
-const CurrentSchemaVersion = 21
+const CurrentSchemaVersion = versioninfo.CurrentSchemaVersion
 
 func GetAppVersion() string {
-	return fmt.Sprintf("1.1.%d", CurrentSchemaVersion)
+	return versioninfo.CurrentAppVersion()
 }
 
 const schema = `

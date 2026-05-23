@@ -40,7 +40,8 @@ Common contents:
 - `dixiedata.db` - main SQLite database
 - `images\` - sharded image storage
 - `scratchpads\` - per-record scratch pad text/json files
-- `backups\` - generated backup artifacts and pre-migration DB snapshots
+- `backups\` - generated backup artifacts such as exported `.ddbak` bundles
+- `updates\backups\` - retained pre-upgrade DB snapshots plus their recovery metadata index
 - `merge-review\` - staged merge-review working files
 - `logs\` - merge and troubleshooting logs
 - `temp_trash\` - delayed-delete staging area for orphan cleanup

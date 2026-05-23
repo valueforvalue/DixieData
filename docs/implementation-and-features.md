@@ -393,11 +393,13 @@ The code is intentionally framework-light and centralizes browser behavior in on
 
 ### 8.1 Schema upgrades
 
-Before applying a newer schema version, the DB layer now writes a timestamped backup snapshot into:
+Before applying a newer schema version, the DB layer now writes a retained pre-upgrade snapshot plus metadata into:
 
 ```text
-.dixiedata\backups\schema-migrations\
+.dixiedata\updates\backups\
 ```
+
+`index.json` catalogs retained backups, and successful schema upgrades now keep the most recent pre-upgrade SQLite snapshot instead of deleting it as part of immediate cleanup.
 
 ### 8.2 Image path upgrades
 

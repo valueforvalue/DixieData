@@ -3,7 +3,7 @@ package buildinfo
 import (
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
 const (
@@ -20,8 +20,8 @@ const (
 )
 
 var (
-	AppVersion    = db.GetAppVersion()
-	SchemaVersion = db.CurrentSchemaVersion
+	AppVersion    = versioninfo.CurrentAppVersion()
+	SchemaVersion = versioninfo.CurrentSchemaVersion
 )
 
 var GitCommit = "dev"
