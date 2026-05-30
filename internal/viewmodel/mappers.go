@@ -171,7 +171,7 @@ func ArchiveCountsFromModel(input models.ArchiveCounts) ArchiveCounts {
 	return ArchiveCounts{
 		SoldierCount:      input.TotalSoldiers,
 		SpouseRecordCount: input.TotalWivesWidows,
-		LinkedPersonCount: input.TotalLinkedPeople,
+		PersonRecordCount: input.TotalLinkedPeople,
 	}
 }
 

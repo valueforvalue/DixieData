@@ -1175,7 +1175,7 @@ func insightDrilldownConfig(scope, value string) (string, string, models.Soldier
 			return "Soldier Records", "Records included in the Insights soldier total.", search, false, nil
 		case "linked_person":
 			search.EntryType = "linked_person"
-			return "Generic Linked Person Records", "Records included in the Insights generic-linked-person total.", search, false, nil
+			return "Person Records", "Records included in the Insights person-record total.", search, false, nil
 		case "spouse":
 			return "Spouse Records", "Wife and widow records included in the Insights spouse total.", search, true, nil
 		}

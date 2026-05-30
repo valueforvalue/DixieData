@@ -39,8 +39,8 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Spouse Records</div>
 						</a>
 						<a href={ insightDrilldownHref("entry_type", "linked_person") } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-4 transition hover:border-[rgba(141,116,64,0.55)] hover:bg-[rgba(246,241,228,0.9)]">
-							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.LinkedPersonCount) }</div>
-							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Generic Linked Person Records</div>
+							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount) }</div>
+							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Person Records</div>
 						</a>
 					</div>
 				</section>

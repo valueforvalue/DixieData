@@ -511,7 +511,7 @@ func SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query strin
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Advanced Search Active</p><p class=\"mt-2 text-sm text-[#22303d]\">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p></div><div><label class=\"block text-sm text-slate-500 mb-1\">Display ID</label> <input type=\"text\" name=\"display_id\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Entry Type</label> <select name=\"entry_type\" class=\"field-input\"><option value=\"\">All</option> <option value=\"soldier\">Soldier</option> <option value=\"linked_person\">Generic Linked Person</option> <option value=\"wife\">Wife</option> <option value=\"widow\">Widow</option></select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Source Record Type</label> <input type=\"text\" name=\"record_type\" list=\"advanced-record-type-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Middle Name</label> <input type=\"text\" name=\"middle_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Maiden Name</label> <input type=\"text\" name=\"maiden_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Relationship to Soldier</label> <input type=\"text\" name=\"relationship_label\" list=\"advanced-relationship-label-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank In</label> <input type=\"text\" name=\"rank_in\" list=\"advanced-rank-in-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank Out</label> <input type=\"text\" name=\"rank_out\" list=\"advanced-rank-out-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" list=\"advanced-unit-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Pension State</label> <input type=\"text\" name=\"pension_state\" list=\"advanced-pension-state-suggestions\" class=\"field-input\" placeholder=\"Any state\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Status</label> <select name=\"confederate_home_status\" class=\"field-input\"><option value=\"\">Any status</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Advanced Search Active</p><p class=\"mt-2 text-sm text-[#22303d]\">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p></div><div><label class=\"block text-sm text-slate-500 mb-1\">Display ID</label> <input type=\"text\" name=\"display_id\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Entry Type</label> <select name=\"entry_type\" class=\"field-input\"><option value=\"\">All</option> <option value=\"soldier\">Soldier</option> <option value=\"linked_person\">Person Record</option> <option value=\"wife\">Wife</option> <option value=\"widow\">Widow</option></select></div><div><label class=\"block text-sm text-slate-500 mb-1\">Source Record Type</label> <input type=\"text\" name=\"record_type\" list=\"advanced-record-type-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">First Name</label> <input type=\"text\" name=\"first_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Middle Name</label> <input type=\"text\" name=\"middle_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Last Name</label> <input type=\"text\" name=\"last_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Maiden Name</label> <input type=\"text\" name=\"maiden_name\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Relationship to Soldier</label> <input type=\"text\" name=\"relationship_label\" list=\"advanced-relationship-label-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank In</label> <input type=\"text\" name=\"rank_in\" list=\"advanced-rank-in-suggestions\" class=\"field-input\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Rank Out</label> <input type=\"text\" name=\"rank_out\" list=\"advanced-rank-out-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Unit</label> <input type=\"text\" name=\"unit\" list=\"advanced-unit-suggestions\" class=\"field-input\"></div><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Pension State</label> <input type=\"text\" name=\"pension_state\" list=\"advanced-pension-state-suggestions\" class=\"field-input\" placeholder=\"Any state\"></div><div><label class=\"block text-sm text-slate-500 mb-1\">Confederate Home Status</label> <select name=\"confederate_home_status\" class=\"field-input\"><option value=\"\">Any status</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -963,9 +963,9 @@ func SoldierDetail(s viewmodel.PersonRecord) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var48 string
-					templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(linkedCompareActionLabel(s))
+					templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(personRecordCompareActionLabel(s))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 346, Col: 39}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/soldier_card.templ`, Line: 346, Col: 45}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 					if templ_7745c5c3_Err != nil {
@@ -2179,7 +2179,7 @@ func searchSummary(search viewmodel.PersonRecordSearch) string {
 	if search.EntryType != "" {
 		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
 		case "linked_person":
-			parts = append(parts, "Entry type Generic Linked Person")
+			parts = append(parts, "Entry type Person Record")
 		case "wife":
 			parts = append(parts, "Entry type Wife")
 		case "widow":
@@ -2350,7 +2350,7 @@ func entryBadgeLabel(s viewmodel.PersonRecord) string {
 	case "widow":
 		return "Widow"
 	case "linked_person":
-		return "Generic Linked Person"
+		return "Person Record"
 	default:
 		return "Soldier"
 	}
@@ -2428,9 +2428,9 @@ func linkedSoldierActionLabel(s viewmodel.PersonRecord) string {
 	return "View Husband"
 }
 
-func linkedCompareActionLabel(s viewmodel.PersonRecord) string {
+func personRecordCompareActionLabel(s viewmodel.PersonRecord) string {
 	if s.EntryType == "linked_person" {
-		return "Compare Linked Person Records"
+		return "Compare Person Records"
 	}
 	return "Compare Family Person Records"
 }

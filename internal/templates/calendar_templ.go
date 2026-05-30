@@ -99,7 +99,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", counts.LinkedPersonCount))
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", counts.PersonRecordCount))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 26, Col: 88}
 			}
@@ -107,7 +107,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><div class=\"text-sm uppercase tracking-[0.18em] text-[#6a7a88]\">Generic Linked Person Records</div></div></div><div id=\"calendar-export-status\" class=\"mt-3 text-sm text-[#445260]\"></div></div><div class=\"mt-1 flex flex-wrap items-center gap-3 text-base text-[#445260]\"><label for=\"month-select\">Month</label> <select id=\"month-select\" class=\"field-input w-40\" onchange=\"window.location.href='/calendar/' + this.value\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><div class=\"text-sm uppercase tracking-[0.18em] text-[#6a7a88]\">Person Records</div></div></div><div id=\"calendar-export-status\" class=\"mt-3 text-sm text-[#445260]\"></div></div><div class=\"mt-1 flex flex-wrap items-center gap-3 text-base text-[#445260]\"><label for=\"month-select\">Month</label> <select id=\"month-select\" class=\"field-input w-40\" onchange=\"window.location.href='/calendar/' + this.value\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

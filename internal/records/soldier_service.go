@@ -1799,18 +1799,18 @@ func suggestedResearchTasks(soldier models.Soldier) []ResearchTaskSuggestion {
 		notes := "Family relationship is not connected yet. Identify and link the matching soldier profile."
 		if strings.TrimSpace(soldier.EntryType) == "linked_person" {
 			title = "Link related soldier record"
-			notes = "This linked person record still needs its anchor soldier record. Identify and link the matching soldier profile."
+			notes = "This person record still needs its anchor soldier record. Identify and link the matching soldier profile."
 		}
 		suggestions = append(suggestions, ResearchTaskSuggestion{Title: title, Notes: notes, EvidenceType: "family"})
 	}
-	if isLinkedPersonEntryType(soldier.EntryType) && strings.TrimSpace(soldier.RelationshipLabel) == "" {
+	if isPersonRecordEntryType(soldier.EntryType) && strings.TrimSpace(soldier.RelationshipLabel) == "" {
 		suggestions = append(suggestions, ResearchTaskSuggestion{
 			Title:        "Confirm relationship to soldier",
 			Notes:        "Relationship to the linked soldier is still blank. Add the exact relationship label used in the source material.",
 			EvidenceType: "family",
 		})
 	}
-	if !isSoldierEntryType(soldier.EntryType) && !isLinkedPersonEntryType(soldier.EntryType) && strings.TrimSpace(soldier.MaidenName) == "" {
+	if !isSoldierEntryType(soldier.EntryType) && !isPersonRecordEntryType(soldier.EntryType) && strings.TrimSpace(soldier.MaidenName) == "" {
 		suggestions = append(suggestions, ResearchTaskSuggestion{
 			Title:        "Confirm maiden name",
 			Notes:        "Maiden name is still blank. Search marriage, pension, census, or obituary records for supporting evidence.",
@@ -1834,7 +1834,7 @@ func isSoldierEntryType(value string) bool {
 	return trimmed == "" || trimmed == "soldier"
 }
 
-func isLinkedPersonEntryType(value string) bool {
+func isPersonRecordEntryType(value string) bool {
 	return strings.ToLower(strings.TrimSpace(value)) == "linked_person"
 }
 
@@ -2464,7 +2464,7 @@ func auditEntryType(value string) string {
 	case "widow":
 		return "\"Widow\""
 	case "linked_person":
-		return "\"Linked Person\""
+		return "\"Person Record\""
 	default:
 		return "\"Soldier\""
 	}

@@ -176,7 +176,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<select name="entry_type" class="field-input">
 							<option value="">All</option>
 							<option value="soldier">Soldier</option>
-							<option value="linked_person">Generic Linked Person</option>
+							<option value="linked_person">Person Record</option>
 							<option value="wife">Wife</option>
 							<option value="widow">Widow</option>
 						</select>
@@ -343,7 +343,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 										{ linkedSoldierActionLabel(s) }
 									</a>
 									<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">
-										{ linkedCompareActionLabel(s) }
+										{ personRecordCompareActionLabel(s) }
 									</a>
 								}
 							</div>
@@ -712,7 +712,7 @@ func searchSummary(search viewmodel.PersonRecordSearch) string {
 	if search.EntryType != "" {
 		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
 		case "linked_person":
-			parts = append(parts, "Entry type Generic Linked Person")
+			parts = append(parts, "Entry type Person Record")
 		case "wife":
 			parts = append(parts, "Entry type Wife")
 		case "widow":
@@ -883,7 +883,7 @@ func entryBadgeLabel(s viewmodel.PersonRecord) string {
 	case "widow":
 		return "Widow"
 	case "linked_person":
-		return "Generic Linked Person"
+		return "Person Record"
 	default:
 		return "Soldier"
 	}
@@ -961,9 +961,9 @@ func linkedSoldierActionLabel(s viewmodel.PersonRecord) string {
 	return "View Husband"
 }
 
-func linkedCompareActionLabel(s viewmodel.PersonRecord) string {
+func personRecordCompareActionLabel(s viewmodel.PersonRecord) string {
 	if s.EntryType == "linked_person" {
-		return "Compare Linked Person Records"
+		return "Compare Person Records"
 	}
 	return "Compare Family Person Records"
 }

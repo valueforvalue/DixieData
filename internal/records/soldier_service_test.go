@@ -465,7 +465,7 @@ func TestSoldierService_CreateWifeEntry(t *testing.T) {
 	}
 }
 
-func TestSoldierService_CreateLinkedPersonEntry(t *testing.T) {
+func TestSoldierService_CreatePersonRecordEntry(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 
@@ -482,7 +482,7 @@ func TestSoldierService_CreateLinkedPersonEntry(t *testing.T) {
 		LastName:          "Taylor",
 	})
 	if err != nil {
-		t.Fatalf("Create linked person: %v", err)
+		t.Fatalf("Create person record: %v", err)
 	}
 
 	got, err := svc.GetByID(linked.ID)
@@ -490,13 +490,13 @@ func TestSoldierService_CreateLinkedPersonEntry(t *testing.T) {
 		t.Fatalf("GetByID: %v", err)
 	}
 	if got.EntryType != "linked_person" || got.SpouseSoldierID != soldier.ID || got.RelationshipLabel != "Brother" {
-		t.Fatalf("unexpected linked person record: %#v", got)
+		t.Fatalf("unexpected person record: %#v", got)
 	}
 	if got.SpouseName != "John Taylor" {
 		t.Fatalf("SpouseName = %q", got.SpouseName)
 	}
 	if got.MaidenName != "" || got.Rank != "" || got.Unit != "" {
-		t.Fatalf("unexpected spouse or soldier-only data on linked person record: %#v", got)
+		t.Fatalf("unexpected spouse or soldier-only data on person record: %#v", got)
 	}
 }
 
@@ -1627,7 +1627,7 @@ func TestSoldierService_AdvancedSearchByEntryType(t *testing.T) {
 	}
 	linked, err := svc.Create(models.Soldier{FirstName: "James", LastName: "Avery", EntryType: "linked_person", SpouseSoldierID: soldier.ID, RelationshipLabel: "Brother"})
 	if err != nil {
-		t.Fatalf("Create linked person: %v", err)
+		t.Fatalf("Create person record: %v", err)
 	}
 
 	soldierResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "soldier"}, 1, 10)
@@ -1656,7 +1656,7 @@ func TestSoldierService_AdvancedSearchByEntryType(t *testing.T) {
 
 	linkedResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "linked_person"}, 1, 10)
 	if err != nil {
-		t.Fatalf("AdvancedSearch linked person entry type: %v", err)
+		t.Fatalf("AdvancedSearch person record entry type: %v", err)
 	}
 	if total != 1 || len(linkedResults) != 1 || linkedResults[0].ID != linked.ID || linkedResults[0].RelationshipLabel != "Brother" {
 		t.Fatalf("linked-person entry-type filter returned total=%d len=%d results=%#v", total, len(linkedResults), linkedResults)

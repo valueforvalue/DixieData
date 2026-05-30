@@ -57,8 +57,8 @@ func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	if !strings.Contains(content, `name="entry_type"`) || !strings.Contains(content, `data-entry-type-select`) {
 		t.Fatalf("entry form missing entry type selector")
 	}
-	if !strings.Contains(content, `Generic Linked Person`) {
-		t.Fatalf("entry form missing generic linked person label")
+	if !strings.Contains(content, `Person Record`) {
+		t.Fatalf("entry form missing person record label")
 	}
 	if !strings.Contains(content, `name="spouse_soldier_id"`) || !strings.Contains(content, `name="maiden_name"`) {
 		t.Fatalf("entry form missing spouse-specific fields")

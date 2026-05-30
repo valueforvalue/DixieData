@@ -78,7 +78,7 @@ templ unitCamaraderieSection(title, description string, peers []viewmodel.UnitCa
 				<h3 class="text-lg font-semibold text-slate-900">{ title }</h3>
 				<p class="text-sm text-slate-600">{ description }</p>
 			</div>
-			<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{ fmt.Sprintf("%d generic linked person records", len(peers)) }</p>
+			<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{ fmt.Sprintf("%d person records", len(peers)) }</p>
 		</div>
 		if len(peers) == 0 {
 			<p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-3 text-sm text-slate-500">No person records surfaced for this relationship tier yet.</p>
