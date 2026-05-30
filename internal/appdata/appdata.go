@@ -95,6 +95,14 @@ func ScratchpadPaths(dataDir, displayID string) (string, string) {
 	return filepath.Join(base, safeDisplayID+".txt"), filepath.Join(base, safeDisplayID+".json")
 }
 
+func LogsDir(dataDir string) string {
+	return filepath.Join(dataDir, "logs")
+}
+
+func FeedbackLogPath(dataDir string) string {
+	return filepath.Join(LogsDir(dataDir), "feedback-log.jsonl")
+}
+
 func sanitizePathComponent(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

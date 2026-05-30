@@ -6,6 +6,7 @@ type PersonRecord struct {
 	SyncID                string
 	EntryType             string
 	LinkedSoldierID       int64
+	RelationshipLabel     string
 	SpouseName            string
 	MaidenName            string
 	IsGenerated           bool
@@ -75,6 +76,7 @@ type Image struct {
 type ArchiveCounts struct {
 	SoldierCount      int
 	SpouseRecordCount int
+	LinkedPersonCount int
 }
 
 type Quote struct {
@@ -95,6 +97,7 @@ type PersonRecordSearch struct {
 	MiddleName            string
 	LastName              string
 	MaidenName            string
+	RelationshipLabel     string
 	Rank                  string
 	RankIn                string
 	RankOut               string
@@ -116,15 +119,16 @@ type PersonRecordSearch struct {
 }
 
 type PersonRecordFormSuggestions struct {
-	RankIn           []string
-	RankOut          []string
-	Unit             []string
-	Prefix           []string
-	Suffix           []string
-	PensionState     []string
-	BuriedIn         []string
-	ConfederateHome  []string
-	SourceRecordType []string
+	RankIn            []string
+	RankOut           []string
+	Unit              []string
+	Prefix            []string
+	Suffix            []string
+	PensionState      []string
+	BuriedIn          []string
+	ConfederateHome   []string
+	SourceRecordType  []string
+	RelationshipLabel []string
 }
 
 type ScrapedRelative struct {
@@ -244,13 +248,13 @@ type AnalyticsSnapshot struct {
 }
 
 type UnitCamaraderieGraph struct {
-	CentralSoldier     PersonRecord
-	UnitLabel          string
-	RegimentLabel      string
-	CompanyLabel       string
-	SameUnit           []UnitCamaraderieConnection
-	SameCompanyVariant []UnitCamaraderieConnection
-	SameRegiment       []UnitCamaraderieConnection
+	CentralPersonRecord PersonRecord
+	UnitLabel           string
+	RegimentLabel       string
+	CompanyLabel        string
+	SameUnit            []UnitCamaraderieConnection
+	SameCompanyVariant  []UnitCamaraderieConnection
+	SameRegiment        []UnitCamaraderieConnection
 }
 
 type UnitCamaraderieConnection struct {
@@ -261,7 +265,7 @@ type UnitCamaraderieConnection struct {
 }
 
 type ServiceTimeline struct {
-	SubjectSoldier       PersonRecord
+	SubjectPersonRecord  PersonRecord
 	TimelineEvents       []TimelineEvent
 	UndatedSourceRecords []SourceRecord
 	StartLabel           string

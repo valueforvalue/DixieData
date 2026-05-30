@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 	"github.com/valueforvalue/DixieData/internal/dates"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
@@ -18,13 +18,18 @@ templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 				<div class="min-w-0">
 				<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ s.DisplayID }</span>
 				<p class="mt-1 font-semibold text-slate-900">{ detailHeading(s) }</p>
-				<p class="text-sm text-slate-500">{ detailSubheading(s) }</p>
+				if detailSubheadingIsMaidenName(s) {
+					<p class="text-sm text-slate-500"><em>{ detailSubheading(s) }</em></p>
+				} else {
+					<p class="text-sm text-slate-500">{ detailSubheading(s) }</p>
+				}
 				if s.NeedsReview {
 					<div class="mt-2 flex flex-wrap gap-2 text-xs">
 						<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
 						if strings.TrimSpace(s.ReviewReason) != "" {
 							<span class="rounded-full border border-[rgba(111,44,38,0.2)] bg-[rgba(255,241,239,0.88)] px-2.5 py-1 text-[#6f2c26]">{ s.ReviewReason }</span>
 						}
+
 					</div>
 				}
 				if strings.TrimSpace(s.SearchMatchSnippet) != "" {
@@ -153,7 +158,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					<div class="flex flex-wrap items-center gap-3">
 						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
 					</div>
-					<p class="text-xs text-slate-500">Quick search matches names, units, ranks, pension states, burial locations, and display IDs.</p>
+					<p class="text-xs text-slate-500">Quick search matches names, relationship labels, units, ranks, pension states, burial locations, and display IDs.</p>
 				</div>
 				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
 					hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
@@ -171,6 +176,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<select name="entry_type" class="field-input">
 							<option value="">All</option>
 							<option value="soldier">Soldier</option>
+							<option value="linked_person">Generic Linked Person</option>
 							<option value="wife">Wife</option>
 							<option value="widow">Widow</option>
 						</select>
@@ -194,6 +200,10 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					<div>
 						<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
 						<input type="text" name="maiden_name" class="field-input"/>
+					</div>
+					<div>
+						<label class="block text-sm text-slate-500 mb-1">Relationship to Soldier</label>
+						<input type="text" name="relationship_label" list="advanced-relationship-label-suggestions" class="field-input"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1">Rank In</label>
@@ -273,6 +283,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				@SuggestionDatalist("advanced-pension-state-suggestions", suggestions.PensionState)
 				@SuggestionDatalist("advanced-confederate-home-name-suggestions", suggestions.ConfederateHome)
 				@SuggestionDatalist("advanced-buried-in-suggestions", suggestions.BuriedIn)
+				@SuggestionDatalist("advanced-relationship-label-suggestions", suggestions.RelationshipLabel)
 			</div>
 			<div id="soldier-list" data-ui-id={ uiids.PanelSoldiersResults } class="relative">
 				@SurfaceBadge(uiids.PanelSoldiersResults)
@@ -320,8 +331,8 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							<p class="mt-2 text-sm text-slate-600">Relationship details live here so they do not repeat in the summary area.</p>
 							if !isSoldierEntry(s) {
 								<dl class="mt-4 grid gap-2 text-sm text-slate-700">
-									<dt class="text-slate-500">Married To</dt>
-									<dd>{ emptyDetail(s.SpouseName) }</dd>
+									<dt class="text-slate-500">{ familyRelationshipLabel(s) }</dt>
+									<dd>{ familyRelationshipValue(s) }</dd>
 									<dt class="text-slate-500">Linked Soldier</dt>
 									<dd>{ relationshipLabel(s) }</dd>
 								</dl>
@@ -329,10 +340,10 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							<div class="mt-4 flex flex-wrap gap-3">
 								if s.LinkedSoldierID != 0 {
 									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)) } class="primary-button">
-										View Husband
+										{ linkedSoldierActionLabel(s) }
 									</a>
 									<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">
-										Compare Couple
+										{ linkedCompareActionLabel(s) }
 									</a>
 								}
 							</div>
@@ -353,7 +364,14 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 						<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
 						<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
 					} else {
-						<dt class="text-slate-500">Maiden Name</dt><dd>{ emptyDetail(s.MaidenName) }</dd>
+						<dt class="text-slate-500">Maiden Name</dt>
+						<dd>
+							if strings.TrimSpace(s.MaidenName) != "" {
+								<em>{ s.MaidenName }</em>
+							} else {
+								{ emptyDetail(s.MaidenName) }
+							}
+						</dd>
 						if isWidowEntry(s) {
 							<dt class="text-slate-500">Pension ID</dt><dd>{ emptyDetail(s.PensionID) }</dd>
 							<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
@@ -693,6 +711,8 @@ func searchSummary(search viewmodel.PersonRecordSearch) string {
 	}
 	if search.EntryType != "" {
 		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
+		case "linked_person":
+			parts = append(parts, "Entry type Generic Linked Person")
 		case "wife":
 			parts = append(parts, "Entry type Wife")
 		case "widow":
@@ -709,6 +729,9 @@ func searchSummary(search viewmodel.PersonRecordSearch) string {
 	}
 	if search.LastName != "" {
 		parts = append(parts, "Last name "+search.LastName)
+	}
+	if search.RelationshipLabel != "" {
+		parts = append(parts, "Relationship "+search.RelationshipLabel)
 	}
 	if search.MaidenName != "" {
 		parts = append(parts, "Maiden name "+search.MaidenName)
@@ -859,6 +882,8 @@ func entryBadgeLabel(s viewmodel.PersonRecord) string {
 		return "Wife"
 	case "widow":
 		return "Widow"
+	case "linked_person":
+		return "Generic Linked Person"
 	default:
 		return "Soldier"
 	}
@@ -886,6 +911,9 @@ func detailSubheading(s viewmodel.PersonRecord) string {
 	if isSoldierEntry(s) {
 		return strings.TrimSpace(s.Unit)
 	}
+	if strings.TrimSpace(s.RelationshipLabel) != "" {
+		return strings.TrimSpace(s.RelationshipLabel)
+	}
 	if strings.TrimSpace(s.SpouseName) != "" {
 		return "Married to " + strings.TrimSpace(s.SpouseName)
 	}
@@ -912,6 +940,34 @@ func relationshipLabel(s viewmodel.PersonRecord) string {
 	}
 }
 
+func familyRelationshipLabel(s viewmodel.PersonRecord) string {
+	if s.EntryType == "linked_person" {
+		return "Relationship to Soldier"
+	}
+	return "Married To"
+}
+
+func familyRelationshipValue(s viewmodel.PersonRecord) string {
+	if s.EntryType == "linked_person" {
+		return emptyDetail(s.RelationshipLabel)
+	}
+	return emptyDetail(s.SpouseName)
+}
+
+func linkedSoldierActionLabel(s viewmodel.PersonRecord) string {
+	if s.EntryType == "linked_person" {
+		return "View Linked Soldier"
+	}
+	return "View Husband"
+}
+
+func linkedCompareActionLabel(s viewmodel.PersonRecord) string {
+	if s.EntryType == "linked_person" {
+		return "Compare Linked Person Records"
+	}
+	return "Compare Family Person Records"
+}
+
 func backButtonLabel(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.BackLinkLabel) != "" {
 		return s.BackLinkLabel
@@ -936,13 +992,6 @@ func detailDisplayRank(s viewmodel.PersonRecord) string {
 	return strings.TrimSpace(s.RankIn)
 }
 
-var linkifiedURLPattern = regexp.MustCompile(`https?://[^\s<]+`)
-
-type textSegment struct {
-	Text string
-	Href string
-}
-
 templ LinkedText(text string, className string) {
 	<div class={ className }>
 		for lineIndex, line := range linkifiedLines(text) {
@@ -951,57 +1000,21 @@ templ LinkedText(text string, className string) {
 			}
 			for _, segment := range line {
 				if segment.Href != "" {
-					<a href={ templ.SafeURL(segment.Href) } data-open-external="true" target="_blank" rel="noreferrer noopener" class="text-[#7b1e2b] underline underline-offset-2 break-all">{ segment.Text }</a>
+					<a
+						href={ templ.SafeURL(segment.Href) }
+						if segment.IsExternal {
+							data-open-external="true"
+							target="_blank"
+							rel="noreferrer noopener"
+						}
+						class="text-[#7b1e2b] underline underline-offset-2 break-all"
+					>{ segment.Text }</a>
 				} else {
 					{ segment.Text }
 				}
 			}
 		}
 	</div>
-}
-
-func linkifiedLines(text string) [][]textSegment {
-	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	result := make([][]textSegment, 0, len(lines))
-	for _, line := range lines {
-		result = append(result, linkifiedSegments(line))
-	}
-	return result
-}
-
-func linkifiedSegments(text string) []textSegment {
-	matches := linkifiedURLPattern.FindAllStringIndex(text, -1)
-	if len(matches) == 0 {
-		return []textSegment{{Text: text}}
-	}
-
-	segments := make([]textSegment, 0, len(matches)*2+1)
-	cursor := 0
-	for _, match := range matches {
-		start := match[0]
-		end := match[1]
-		if start > cursor {
-			segments = append(segments, textSegment{Text: text[cursor:start]})
-		}
-
-		urlText, suffix := splitURLSuffix(text[start:end])
-		if urlText != "" {
-			segments = append(segments, textSegment{Text: urlText, Href: urlText})
-		}
-		if suffix != "" {
-			segments = append(segments, textSegment{Text: suffix})
-		}
-		cursor = end
-	}
-	if cursor < len(text) {
-		segments = append(segments, textSegment{Text: text[cursor:]})
-	}
-	return segments
-}
-
-func splitURLSuffix(value string) (string, string) {
-	trimmed := strings.TrimRight(value, ".,;:!?)]}")
-	return trimmed, value[len(trimmed):]
 }
 
 func imageURL(filePath string) templ.SafeURL {

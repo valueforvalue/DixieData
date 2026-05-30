@@ -698,10 +698,23 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 	defer database.Close()
 
 	soldierSvc := NewSoldierService(database)
-	for _, soldier := range soldiers {
+	restoredIDsByLegacyID := make(map[int64]int64, len(soldiers))
+	type legacyImageRestore struct {
+		targetID int64
+		images   []models.Image
+	}
+	pendingImages := make([]legacyImageRestore, 0, len(soldiers))
+	isPrimarySoldier := func(entryType string) bool {
+		normalized := strings.ToLower(strings.TrimSpace(entryType))
+		return normalized == "" || normalized == "soldier"
+	}
+
+	createLegacySoldier := func(soldier models.Soldier, linkedSoldierID int64) (*models.Soldier, error) {
 		created, err := soldierSvc.Create(models.Soldier{
 			DisplayID:             soldier.DisplayID,
 			EntryType:             soldier.EntryType,
+			SpouseSoldierID:       linkedSoldierID,
+			RelationshipLabel:     soldier.RelationshipLabel,
 			MaidenName:            soldier.MaidenName,
 			IsGenerated:           soldier.IsGenerated,
 			SyncID:                soldier.SyncID,
@@ -736,10 +749,53 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			Records:               soldier.Records,
 		})
 		if err != nil {
+			return nil, err
+		}
+		return created, nil
+	}
+
+	for _, soldier := range soldiers {
+		if !isPrimarySoldier(soldier.EntryType) {
+			continue
+		}
+		created, err := createLegacySoldier(soldier, 0)
+		if err != nil {
 			return err
 		}
+		if soldier.ID > 0 {
+			restoredIDsByLegacyID[soldier.ID] = created.ID
+		}
+		pendingImages = append(pendingImages, legacyImageRestore{targetID: created.ID, images: soldier.Images})
+		if _, err := database.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ? WHERE id = ?`,
+			soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, created.ID); err != nil {
+			return err
+		}
+	}
 
-		for _, image := range soldier.Images {
+	for _, soldier := range soldiers {
+		if isPrimarySoldier(soldier.EntryType) {
+			continue
+		}
+		linkedSoldierID := restoredIDsByLegacyID[soldier.SpouseSoldierID]
+		if soldier.SpouseSoldierID > 0 && linkedSoldierID == 0 {
+			return fmt.Errorf("legacy backup linked soldier %d not found for %s", soldier.SpouseSoldierID, strings.TrimSpace(soldier.DisplayID))
+		}
+		created, err := createLegacySoldier(soldier, linkedSoldierID)
+		if err != nil {
+			return err
+		}
+		if soldier.ID > 0 {
+			restoredIDsByLegacyID[soldier.ID] = created.ID
+		}
+		pendingImages = append(pendingImages, legacyImageRestore{targetID: created.ID, images: soldier.Images})
+		if _, err := database.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ? WHERE id = ?`,
+			soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, created.ID); err != nil {
+			return err
+		}
+	}
+
+	for _, imageBatch := range pendingImages {
+		for _, image := range imageBatch.images {
 			sourcePath := filepath.Join(extractedRoot, filepath.FromSlash(normalizeBackupPath(image.FilePath)))
 			destinationPath := filepath.Join(dataDir, filepath.FromSlash(normalizeBackupPath(image.FilePath)))
 			if err := os.MkdirAll(filepath.Dir(destinationPath), 0o755); err != nil {
@@ -748,13 +804,9 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			if err := copyBackupFile(sourcePath, destinationPath); err != nil {
 				return err
 			}
-			if err := soldierSvc.AddImage(created.ID, image.FileName, image.FilePath, image.Caption); err != nil {
+			if err := soldierSvc.AddImage(imageBatch.targetID, image.FileName, image.FilePath, image.Caption); err != nil {
 				return err
 			}
-		}
-		if _, err := database.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ? WHERE id = ?`,
-			soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, created.ID); err != nil {
-			return err
 		}
 	}
 	return nil
@@ -1227,9 +1279,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	err := tx.QueryRow(`SELECT id, display_id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID, &existingDisplayID)
 	if err == nil {
 		_, err = tx.Exec(`UPDATE soldiers
-			SET display_id = ?, entry_type = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, needs_review = ?, review_reason = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
+			SET display_id = ?, entry_type = ?, relationship_label = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, needs_review = ?, review_reason = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
 			WHERE id = ?`,
-			existingDisplayID, soldier.EntryType, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
+			existingDisplayID, soldier.EntryType, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
 		if err != nil {
 			return 0, false, "", err
 		}
@@ -1248,9 +1300,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers
-		(display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		displayID, syncID, soldier.EntryType, nil, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
+		(display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		displayID, syncID, soldier.EntryType, nil, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
 		return 0, false, "", err
 	}
@@ -1770,6 +1822,7 @@ func collectSoldierConflictFields(local, source mergeReviewSnapshot) []string {
 	appendDiff("first name", local.Soldier.FirstName, source.Soldier.FirstName)
 	appendDiff("middle name", local.Soldier.MiddleName, source.Soldier.MiddleName)
 	appendDiff("last name", local.Soldier.LastName, source.Soldier.LastName)
+	appendDiff("relationship to soldier", local.Soldier.RelationshipLabel, source.Soldier.RelationshipLabel)
 	appendDiff("maiden name", local.Soldier.MaidenName, source.Soldier.MaidenName)
 	appendDiff("rank", local.Soldier.Rank, source.Soldier.Rank)
 	appendDiff("rank in", local.Soldier.RankIn, source.Soldier.RankIn)

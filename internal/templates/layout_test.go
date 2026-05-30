@@ -44,6 +44,9 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, `data-scratchpad-open`) || !strings.Contains(content, "Scratch Pad") {
 		t.Fatalf("layout should include floating scratch pad controls")
 	}
+	if !strings.Contains(content, `data-feedback-open`) || !strings.Contains(content, `data-feedback-modal`) {
+		t.Fatalf("layout should include global feedback controls")
+	}
 	if !strings.Contains(content, `top-shell fixed left-1/2 top-4`) || !strings.Contains(content, `class="app-shell"`) {
 		t.Fatalf("layout should render the header as a floating top bar")
 	}

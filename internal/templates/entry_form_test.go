@@ -57,6 +57,9 @@ func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	if !strings.Contains(content, `name="entry_type"`) || !strings.Contains(content, `data-entry-type-select`) {
 		t.Fatalf("entry form missing entry type selector")
 	}
+	if !strings.Contains(content, `Generic Linked Person`) {
+		t.Fatalf("entry form missing generic linked person label")
+	}
 	if !strings.Contains(content, `name="spouse_soldier_id"`) || !strings.Contains(content, `name="maiden_name"`) {
 		t.Fatalf("entry form missing spouse-specific fields")
 	}
@@ -93,6 +96,9 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	}
 	if !strings.Contains(content, "/export/bug-report") || !strings.Contains(content, "Support & Diagnostics") {
 		t.Fatalf("share view missing diagnostics section")
+	}
+	if !strings.Contains(content, "/export/feedback-log") || !strings.Contains(content, "Export Feedback Log") {
+		t.Fatalf("share view missing feedback log export action")
 	}
 	if !strings.Contains(content, ".ddbak") || !strings.Contains(content, ".ddshare") {
 		t.Fatalf("share view missing custom archive extension copy")

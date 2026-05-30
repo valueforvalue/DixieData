@@ -44,3 +44,9 @@ func TestScratchpadPathsUseSanitizedDisplayID(t *testing.T) {
 		t.Fatalf("statePath=%q", statePath)
 	}
 }
+
+func TestFeedbackLogPathUsesLogsDirectory(t *testing.T) {
+	if got := FeedbackLogPath(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata\logs\feedback-log.jsonl` {
+		t.Fatalf("FeedbackLogPath=%q", got)
+	}
+}

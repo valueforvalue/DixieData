@@ -131,6 +131,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/soldiers/search", a.handleSearch)
 	mux.HandleFunc("/soldiers/search/recent", a.handleRecentSearch)
 	mux.HandleFunc("/soldiers/search/advanced", a.handleAdvancedSearch)
+	mux.HandleFunc("/soldiers/display/", a.handleSoldierByDisplayID)
 	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
 	mux.HandleFunc("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
 	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
@@ -159,6 +160,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export/backup", a.handleExportBackup)
 	mux.HandleFunc("/export/shared-archive", a.handleExportSharedArchive)
 	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
+	mux.HandleFunc("/export/feedback-log", a.handleExportFeedbackLog)
 	mux.HandleFunc("/insights/report/pdf", a.handleExportInsightsPDF)
 	mux.HandleFunc("/import/backup", a.handleImportBackup)
 	mux.HandleFunc("/import/shared-archive", a.handleImportSharedArchive)
@@ -172,6 +174,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
 	mux.HandleFunc("/images/rotate", a.handleImageRotate)
 	mux.HandleFunc("/open-link", a.handleOpenLink)
+	mux.HandleFunc("/feedback/submit", a.handleFeedbackSubmit)
 	mux.HandleFunc("/scratchpad/open", a.handleScratchpadOpen)
 	mux.HandleFunc("/media/", a.handleMedia)
 
@@ -483,6 +486,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		MiddleName:            r.URL.Query().Get("middle_name"),
 		LastName:              r.URL.Query().Get("last_name"),
 		MaidenName:            r.URL.Query().Get("maiden_name"),
+		RelationshipLabel:     r.URL.Query().Get("relationship_label"),
 		Rank:                  r.URL.Query().Get("rank"),
 		RankIn:                r.URL.Query().Get("rank_in"),
 		RankOut:               r.URL.Query().Get("rank_out"),
@@ -524,6 +528,7 @@ func hasAdvancedSearchInput(search models.SoldierSearch) bool {
 		strings.TrimSpace(search.MiddleName) != "" ||
 		strings.TrimSpace(search.LastName) != "" ||
 		strings.TrimSpace(search.MaidenName) != "" ||
+		strings.TrimSpace(search.RelationshipLabel) != "" ||
 		strings.TrimSpace(search.Rank) != "" ||
 		strings.TrimSpace(search.RankIn) != "" ||
 		strings.TrimSpace(search.RankOut) != "" ||
@@ -821,7 +826,7 @@ func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int6
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	pack, err := a.soldiers.ResearchPackForSoldier(id, scope)
+	pack, err := a.soldiers.ResearchPackForPersonRecord(id, scope)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -944,7 +949,7 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 			http.Error(w, "invalid soldier id", http.StatusBadRequest)
 			return
 		}
-		if err := a.soldiers.AddSoldierToResearchCollection(collectionID, soldierID); err != nil {
+		if err := a.soldiers.AddPersonRecordToResearchCollection(collectionID, soldierID); err != nil {
 			setToastHeaderWithType(w, "Record could not be added to the collection.", "error")
 			fmt.Fprintf(w, "Record could not be added to the collection: %v", err)
 			return
@@ -990,7 +995,7 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 	for _, soldier := range soldiers {
 		soldierIDs = append(soldierIDs, soldier.ID)
 	}
-	findings, err := a.audit.FindingsForSoldiers(soldierIDs)
+	findings, err := a.audit.FindingsForPersonRecords(soldierIDs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -1025,7 +1030,7 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			if err := a.audit.ResolveFindingsForSoldier(soldierID); err != nil {
+			if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -1033,7 +1038,7 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 		setToastHeader(w, fmt.Sprintf("Resolved %d review queue item(s).", len(selected)))
 	case "delete":
 		for _, soldierID := range selected {
-			if err := a.audit.ResolveFindingsForSoldier(soldierID); err != nil {
+			if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -1103,6 +1108,9 @@ func insightDrilldownConfig(scope, value string) (string, string, models.Soldier
 		case "soldier":
 			search.EntryType = "soldier"
 			return "Soldier Records", "Records included in the Insights soldier total.", search, false, nil
+		case "linked_person":
+			search.EntryType = "linked_person"
+			return "Generic Linked Person Records", "Records included in the Insights generic-linked-person total.", search, false, nil
 		case "spouse":
 			return "Spouse Records", "Wife and widow records included in the Insights spouse total.", search, true, nil
 		}
@@ -1633,7 +1641,7 @@ func (a *App) handleResolveReviewStatus(w http.ResponseWriter, r *http.Request, 
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if err := a.audit.ResolveFindingsForSoldier(id); err != nil {
+	if err := a.audit.ResolveFindingsForPersonRecord(id); err != nil {
 		fmt.Fprintf(w, "Review queue update failed: %v", err)
 		return
 	}
@@ -2304,6 +2312,7 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		DisplayID:             r.FormValue("display_id"),
 		EntryType:             r.FormValue("entry_type"),
 		SpouseSoldierID:       spouseSoldierID,
+		RelationshipLabel:     r.FormValue("relationship_label"),
 		MaidenName:            r.FormValue("maiden_name"),
 		PensionID:             r.FormValue("pension_id"),
 		ApplicationID:         r.FormValue("application_id"),

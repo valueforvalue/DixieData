@@ -53,14 +53,14 @@ function Get-DixieDataAppVersion {
         [string]$Root
     )
 
-    $schemaPath = Join-Path $Root "internal\db\schema.go"
-    $content = Get-Content -Path $schemaPath -Raw
+    $versionInfoPath = Join-Path $Root "internal\versioninfo\versioninfo.go"
+    $content = Get-Content -Path $versionInfoPath -Raw
     $match = [regex]::Match($content, "CurrentSchemaVersion\s*=\s*(\d+)")
     if (-not $match.Success) {
-        throw "Failed to determine CurrentSchemaVersion from $schemaPath"
+        throw "Failed to determine CurrentSchemaVersion from $versionInfoPath"
     }
 
-    return "v1.1.{0}" -f $match.Groups[1].Value
+    return "v1.2.{0}" -f $match.Groups[1].Value
 }
 
 function Get-DixieDataOAuthDefaultsBuildPath {

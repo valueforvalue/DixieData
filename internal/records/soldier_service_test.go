@@ -465,6 +465,41 @@ func TestSoldierService_CreateWifeEntry(t *testing.T) {
 	}
 }
 
+func TestSoldierService_CreateLinkedPersonEntry(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	soldier, err := svc.Create(models.Soldier{FirstName: "John", LastName: "Taylor", RankOut: "Captain"})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	linked, err := svc.Create(models.Soldier{
+		EntryType:         "linked_person",
+		SpouseSoldierID:   soldier.ID,
+		RelationshipLabel: "Brother",
+		FirstName:         "Samuel",
+		LastName:          "Taylor",
+	})
+	if err != nil {
+		t.Fatalf("Create linked person: %v", err)
+	}
+
+	got, err := svc.GetByID(linked.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.EntryType != "linked_person" || got.SpouseSoldierID != soldier.ID || got.RelationshipLabel != "Brother" {
+		t.Fatalf("unexpected linked person record: %#v", got)
+	}
+	if got.SpouseName != "John Taylor" {
+		t.Fatalf("SpouseName = %q", got.SpouseName)
+	}
+	if got.MaidenName != "" || got.Rank != "" || got.Unit != "" {
+		t.Fatalf("unexpected spouse or soldier-only data on linked person record: %#v", got)
+	}
+}
+
 func TestSoldierService_RejectsSpouseLinkedToNonSoldier(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
@@ -1590,6 +1625,10 @@ func TestSoldierService_AdvancedSearchByEntryType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create widow: %v", err)
 	}
+	linked, err := svc.Create(models.Soldier{FirstName: "James", LastName: "Avery", EntryType: "linked_person", SpouseSoldierID: soldier.ID, RelationshipLabel: "Brother"})
+	if err != nil {
+		t.Fatalf("Create linked person: %v", err)
+	}
 
 	soldierResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "soldier"}, 1, 10)
 	if err != nil {
@@ -1613,6 +1652,22 @@ func TestSoldierService_AdvancedSearchByEntryType(t *testing.T) {
 	}
 	if total != 1 || len(widowResults) != 1 || widowResults[0].ID != widow.ID {
 		t.Fatalf("widow entry-type filter returned total=%d len=%d results=%#v", total, len(widowResults), widowResults)
+	}
+
+	linkedResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", EntryType: "linked_person"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch linked person entry type: %v", err)
+	}
+	if total != 1 || len(linkedResults) != 1 || linkedResults[0].ID != linked.ID || linkedResults[0].RelationshipLabel != "Brother" {
+		t.Fatalf("linked-person entry-type filter returned total=%d len=%d results=%#v", total, len(linkedResults), linkedResults)
+	}
+
+	relationshipResults, total, err := svc.AdvancedSearch(models.SoldierSearch{Mode: "advanced", RelationshipLabel: "brother"}, 1, 10)
+	if err != nil {
+		t.Fatalf("AdvancedSearch relationship label: %v", err)
+	}
+	if total != 1 || len(relationshipResults) != 1 || relationshipResults[0].ID != linked.ID {
+		t.Fatalf("relationship-label filter returned total=%d len=%d results=%#v", total, len(relationshipResults), relationshipResults)
 	}
 }
 

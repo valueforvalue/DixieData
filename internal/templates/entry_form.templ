@@ -155,6 +155,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									<option value={ entryType.Value } if entryType.Value == normalizedEntryType(s) { selected }>{ entryType.Label }</option>
 								}
 							</select>
+							<p class="mt-2 text-xs text-slate-500">Use <strong class="text-slate-700">Generic Linked Person</strong> &mdash; non-spouse people such as relatives, executors, witnesses, or caregivers who should stay anchored to a soldier record.</p>
 						</div>
 						<div>
 							<label class="block text-sm text-slate-500 mb-1">Prefix</label>
@@ -185,12 +186,12 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 						<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4" data-entry-type-special>
 							<div class="mb-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Family Link</p>
-								<p class="mt-1 text-sm text-slate-600">Wife and widow person records stay anchored to the linked soldier for navigation and comparisons.</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Generic Person Link</p>
+								<p class="mt-1 text-sm text-slate-600">Generic linked person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p>
 							</div>
 							<div class="responsive-two-col grid gap-4">
 								<div class="responsive-span-2 col-span-2">
-									<label class="block text-sm text-slate-500 mb-1">Married To</label>
+									<label class="block text-sm text-slate-500 mb-1">Linked Soldier</label>
 									<select name="spouse_soldier_id" class="field-input">
 										<option value="">Select a soldier</option>
 										for _, candidate := range spouseCandidates {
@@ -198,7 +199,13 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 										}
 									</select>
 								</div>
-								<div class="responsive-span-2 col-span-2">
+								<div data-linked-person-field class="responsive-span-2 col-span-2">
+									<label class="block text-sm text-slate-500 mb-1">Relationship to Soldier</label>
+									<input type="text" name="relationship_label" value={ s.RelationshipLabel }
+										list="relationship-label-suggestions"
+										class="field-input" placeholder="Brother, Daughter, Executor, Witness"/>
+								</div>
+								<div data-spouse-only-field class="responsive-span-2 col-span-2">
 									<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
 									<input type="text" name="maiden_name" value={ s.MaidenName }
 										class="field-input"/>
@@ -383,6 +390,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			@SuggestionDatalist("buried-in-suggestions", suggestions.BuriedIn)
 			@SuggestionDatalist("confederate-home-name-suggestions", suggestions.ConfederateHome)
 			@SuggestionDatalist("record-type-suggestions", suggestions.SourceRecordType)
+			@SuggestionDatalist("relationship-label-suggestions", suggestions.RelationshipLabel)
 		</form>
 	</div>
 }
@@ -500,6 +508,7 @@ type entryTypeOption struct {
 func entryTypes() []entryTypeOption {
 	return []entryTypeOption{
 		{Value: "soldier", Label: "Soldier"},
+		{Value: "linked_person", Label: "Generic Linked Person"},
 		{Value: "wife", Label: "Wife"},
 		{Value: "widow", Label: "Widow"},
 	}
@@ -507,7 +516,7 @@ func entryTypes() []entryTypeOption {
 
 func normalizedEntryType(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
-	case "wife", "widow":
+	case "wife", "widow", "linked_person":
 		return s.EntryType
 	default:
 		return "soldier"
@@ -804,7 +813,11 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">{ entryBadgeLabel(s) }</p>
 					<h3 class="mt-2 text-xl font-semibold text-[#22303d]">{ detailHeading(s) }</h3>
 					if strings.TrimSpace(detailSubheading(s)) != "" {
-						<p class="mt-1 text-sm text-slate-600">{ detailSubheading(s) }</p>
+						if detailSubheadingIsMaidenName(s) {
+							<p class="mt-1 text-sm text-slate-600"><em>{ detailSubheading(s) }</em></p>
+						} else {
+							<p class="mt-1 text-sm text-slate-600">{ detailSubheading(s) }</p>
+						}
 					}
 				</div>
 				<span class="gold text-sm font-mono">{ s.DisplayID }</span>
@@ -878,15 +891,19 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 						<dt class="text-slate-500">Linked Soldier</dt>
 						<dd class="text-[#22303d]">{ s.SpouseDisplayID }</dd>
 					}
+					if strings.TrimSpace(s.RelationshipLabel) != "" {
+						<dt class="text-slate-500">Relationship to Soldier</dt>
+						<dd class="text-[#22303d]">{ s.RelationshipLabel }</dd>
+					}
 					if strings.TrimSpace(s.MaidenName) != "" {
 						<dt class="text-slate-500">Maiden Name</dt>
-						<dd class="text-[#22303d]">{ s.MaidenName }</dd>
+						<dd class="text-[#22303d]"><em>{ s.MaidenName }</em></dd>
 					}
 					if strings.TrimSpace(s.ConfederateHomeStatus) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "None" {
 						<dt class="text-slate-500">Confederate Home</dt>
 						<dd class="text-[#22303d]">{ previewConfederateHomeLabel(s) }</dd>
 					}
-					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.MaidenName) == "" && strings.TrimSpace(s.ConfederateHomeStatus) == "" {
+					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.RelationshipLabel) == "" && strings.TrimSpace(s.MaidenName) == "" && strings.TrimSpace(s.ConfederateHomeStatus) == "" {
 						<dt class="text-slate-500">Purpose</dt>
 						<dd class="text-[#22303d]">Use the full person record for deeper editing; this quick view is for in-list triage.</dd>
 					}
@@ -912,7 +929,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)) } class="secondary-button">Open Linked Soldier</a>
 			}
 			if s.LinkedSoldierID != 0 {
-				<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">Compare Family Person Records</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">{ previewCompareLabel(s) }</a>
 			}
 		</div>
 	</div>
@@ -936,6 +953,13 @@ func previewConfederateHomeLabel(s viewmodel.PersonRecord) string {
 		return s.ConfederateHomeName
 	}
 	return s.ConfederateHomeStatus
+}
+
+func previewCompareLabel(s viewmodel.PersonRecord) string {
+	if s.EntryType == "linked_person" {
+		return "Compare Linked Person Records"
+	}
+	return "Compare Family Person Records"
 }
 
 func entryFormBackHref(s viewmodel.PersonRecord, isEdit bool) string {
