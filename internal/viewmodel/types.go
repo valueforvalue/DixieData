@@ -175,6 +175,13 @@ type GoogleStatus struct {
 	UsingSharedClient     bool
 }
 
+type ExportRecordOption struct {
+	ID          int64
+	DisplayID   string
+	DisplayName string
+	EntryType   string
+}
+
 type MergeReviewConflict struct {
 	ID                int64
 	SessionID         string

@@ -1870,6 +1870,8 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
+    syncPrintRecordPickerState();
+    applyPrintRecordFilter();
     modal.classList.remove("hidden");
     modal.classList.add("flex");
     modal.setAttribute("aria-hidden", "false");
@@ -1921,12 +1923,20 @@
   }
 
   function readPrintSettings(form) {
+    const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
+    const selectedIDs = exportAll
+      ? []
+      : Array.from(form.querySelectorAll('[data-print-record-checkbox]:checked'))
+          .map((input) => Number.parseInt(input.value || "", 10))
+          .filter((value) => Number.isInteger(value) && value > 0);
     return {
       sortBy: (form.querySelector('input[name="sort_by"]:checked')?.value || "last_name").trim(),
       groupByUnit: form.querySelector('input[name="group_by_unit"]')?.checked === true,
       groupByPensionState: form.querySelector('input[name="group_by_pension_state"]')?.checked === true,
       groupByConfederateHomeStatus: form.querySelector('input[name="group_by_confederate_home_status"]')?.checked === true,
       groupByBuriedIn: form.querySelector('input[name="group_by_buried_in"]')?.checked === true,
+      exportAll,
+      selectedIds: selectedIDs,
     };
   }
 
@@ -1935,29 +1945,76 @@
     return target instanceof HTMLElement ? target : null;
   }
 
+  function syncPrintRecordPickerState() {
+    const form = printConfigForm();
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
+    const picker = form.querySelector("[data-print-record-picker]");
+    const filter = form.querySelector("[data-print-record-filter]");
+    const checkboxes = form.querySelectorAll("[data-print-record-checkbox]");
+    if (picker instanceof HTMLElement) {
+      picker.classList.toggle("opacity-60", exportAll);
+    }
+    if (filter instanceof HTMLInputElement) {
+      filter.disabled = exportAll;
+    }
+    checkboxes.forEach((checkbox) => {
+      if (checkbox instanceof HTMLInputElement) {
+        checkbox.disabled = exportAll;
+      }
+    });
+  }
+
+  function applyPrintRecordFilter() {
+    const form = printConfigForm();
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
+    const query = (form.querySelector("[data-print-record-filter]")?.value || "").trim().toLowerCase();
+    form.querySelectorAll("[data-print-record-option]").forEach((option) => {
+      if (!(option instanceof HTMLElement)) {
+        return;
+      }
+      const search = (option.getAttribute("data-print-record-search") || "").toLowerCase();
+      const visible = exportAll || query === "" || search.includes(query);
+      option.classList.toggle("hidden", !visible);
+    });
+  }
+
   async function submitPrintConfig(form, trigger) {
     const bridge = window.go?.main?.App?.ExportFullDatabasePDF;
+    const status = shareStatusTarget();
+    const settings = readPrintSettings(form);
+    if (!settings.exportAll && settings.selectedIds.length === 0) {
+      if (status) {
+        status.textContent = "Select at least one record or export all records.";
+      }
+      return;
+    }
     if (typeof bridge !== "function") {
+      form.setAttribute("hx-post", "/export/database-pdf");
       closePrintConfigModal();
       request(form);
       return;
     }
 
-    const status = shareStatusTarget();
-    const settings = readPrintSettings(form);
+    const label = "Printable PDF";
     setBusyState(trigger, true);
     if (status) {
-      status.textContent = "Preparing printable PDF...";
+      status.textContent = `Preparing ${label.toLowerCase()}...`;
     }
     try {
       const markup = await bridge(settings);
       closePrintConfigModal();
       if (status) {
-        status.innerHTML = markup || "Printable PDF export finished.";
+        status.innerHTML = markup || `${label} export finished.`;
       }
     } catch (error) {
       if (status) {
-        status.textContent = `Printable PDF export failed: ${error?.message || error || "unknown error"}`;
+        status.textContent = `${label} export failed: ${error?.message || error || "unknown error"}`;
       }
     } finally {
       setBusyState(trigger, false);
@@ -1969,6 +2026,8 @@
     initializeDraftForms();
     initializeEntryTypeForms();
     initializeFloatingNav();
+    syncPrintRecordPickerState();
+    applyPrintRecordFilter();
     restoreRedirectState();
     restorePendingToast();
     applySmartBackLabels();
@@ -2022,6 +2081,11 @@
     if (closePrintConfig) {
       event.preventDefault();
       closePrintConfigModal();
+      return;
+    }
+    if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-export-all]")) {
+      syncPrintRecordPickerState();
+      applyPrintRecordFilter();
       return;
     }
     const closeFeedback = event.target.closest("[data-feedback-close]");
@@ -2208,6 +2272,12 @@
     if (form instanceof HTMLFormElement) {
       persistDraftForForm(form);
       syncRecordPersistenceIndicator(form, true);
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-record-filter]")) {
+      applyPrintRecordFilter();
     }
   });
   document.addEventListener("change", (event) => {

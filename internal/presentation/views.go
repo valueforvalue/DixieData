@@ -54,8 +54,12 @@ func ResearchPackView(pack records.ResearchPack) templ.Component {
 	return templates.ResearchPackView(viewmodel.ResearchPackFromDomain(pack))
 }
 
-func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict) templ.Component {
-	return templates.ShareView(viewmodel.GoogleStatusFromModel(status), viewmodel.MergeReviewConflictsFromModels(conflicts))
+func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict, exportRecords []models.Soldier) templ.Component {
+	return templates.ShareView(
+		viewmodel.GoogleStatusFromModel(status),
+		viewmodel.MergeReviewConflictsFromModels(conflicts),
+		viewmodel.ExportRecordOptionsFromModels(exportRecords),
+	)
 }
 
 func ResearchCollectionsHubView(hub records.ResearchCollectionHub) templ.Component {

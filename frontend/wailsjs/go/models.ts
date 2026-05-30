@@ -1,3 +1,20 @@
+export namespace appshell {
+	
+	export class App {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new App(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+
+}
+
 export namespace archive {
 	
 	export class PrintSettings {
@@ -6,6 +23,8 @@ export namespace archive {
 	    groupByPensionState: boolean;
 	    groupByConfederateHomeStatus: boolean;
 	    groupByBuriedIn: boolean;
+	    exportAll: boolean;
+	    selectedIds: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new PrintSettings(source);
@@ -18,6 +37,8 @@ export namespace archive {
 	        this.groupByPensionState = source["groupByPensionState"];
 	        this.groupByConfederateHomeStatus = source["groupByConfederateHomeStatus"];
 	        this.groupByBuriedIn = source["groupByBuriedIn"];
+	        this.exportAll = source["exportAll"];
+	        this.selectedIds = source["selectedIds"];
 	    }
 	}
 

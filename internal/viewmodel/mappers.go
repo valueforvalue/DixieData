@@ -1,6 +1,8 @@
 package viewmodel
 
 import (
+	"strings"
+
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -85,6 +87,34 @@ func PersonRecordsFromModels(inputs []models.Soldier) []PersonRecord {
 
 func SoldiersFromModels(inputs []models.Soldier) []PersonRecord {
 	return PersonRecordsFromModels(inputs)
+}
+
+func ExportRecordOptionFromModel(input models.Soldier) ExportRecordOption {
+	displayName := strings.TrimSpace(strings.Join([]string{
+		strings.TrimSpace(input.FirstName),
+		strings.TrimSpace(input.MiddleName),
+		strings.TrimSpace(input.LastName),
+	}, " "))
+	if displayName == "" {
+		displayName = strings.TrimSpace(input.SpouseName)
+	}
+	if displayName == "" {
+		displayName = strings.TrimSpace(input.DisplayID)
+	}
+	return ExportRecordOption{
+		ID:          input.ID,
+		DisplayID:   input.DisplayID,
+		DisplayName: displayName,
+		EntryType:   input.EntryType,
+	}
+}
+
+func ExportRecordOptionsFromModels(inputs []models.Soldier) []ExportRecordOption {
+	items := make([]ExportRecordOption, 0, len(inputs))
+	for _, input := range inputs {
+		items = append(items, ExportRecordOptionFromModel(input))
+	}
+	return items
 }
 
 func SourceRecordFromModel(input models.Record) SourceRecord {

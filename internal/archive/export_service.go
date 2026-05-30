@@ -38,11 +38,13 @@ type ExportService struct {
 }
 
 type PrintSettings struct {
-	SortBy                       string `json:"sortBy"`
-	GroupByUnit                  bool   `json:"groupByUnit"`
-	GroupByPensionState          bool   `json:"groupByPensionState"`
-	GroupByConfederateHomeStatus bool   `json:"groupByConfederateHomeStatus"`
-	GroupByBuriedIn              bool   `json:"groupByBuriedIn"`
+	SortBy                       string  `json:"sortBy"`
+	GroupByUnit                  bool    `json:"groupByUnit"`
+	GroupByPensionState          bool    `json:"groupByPensionState"`
+	GroupByConfederateHomeStatus bool    `json:"groupByConfederateHomeStatus"`
+	GroupByBuriedIn              bool    `json:"groupByBuriedIn"`
+	ExportAll                    bool    `json:"exportAll"`
+	SelectedIDs                  []int64 `json:"selectedIds"`
 }
 
 const (
@@ -57,6 +59,10 @@ func (s PrintSettings) Normalize() PrintSettings {
 	case PrintSortBirthYear, PrintSortDeathYear:
 	default:
 		s.SortBy = PrintSortLastName
+	}
+	s.SelectedIDs = normalizeSelectedPrintIDs(s.SelectedIDs)
+	if len(s.SelectedIDs) == 0 {
+		s.ExportAll = true
 	}
 	return s
 }
@@ -1334,7 +1340,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		spouseSheet   = "Linked Relationships"
 	)
 
-	soldiers, err := exportDetailedSoldiers(e.soldier)
+	soldiers, err := exportDetailedSoldiers(e.soldier, nil)
 	if err != nil {
 		return err
 	}
@@ -2101,7 +2107,11 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	pdf.AddPage()
 	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with landscape record pages that continue onto additional pages when needed. Images are intentionally omitted.")
 
-	soldiers, err := exportDetailedSoldiers(e.soldier)
+	var selectedIDs []int64
+	if !settings.ExportAll {
+		selectedIDs = settings.SelectedIDs
+	}
+	soldiers, err := exportDetailedSoldiers(e.soldier, selectedIDs)
 	if err != nil {
 		return err
 	}
@@ -2267,10 +2277,23 @@ func exportSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
 	return all, nil
 }
 
-func exportDetailedSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
+func exportDetailedSoldiers(soldierSvc *SoldierService, selectedIDs []int64) ([]models.Soldier, error) {
 	batch, err := exportSoldiers(soldierSvc)
 	if err != nil {
 		return nil, err
+	}
+	if len(selectedIDs) > 0 {
+		selectedSet := make(map[int64]struct{}, len(selectedIDs))
+		for _, id := range selectedIDs {
+			selectedSet[id] = struct{}{}
+		}
+		filtered := make([]models.Soldier, 0, len(selectedIDs))
+		for _, item := range batch {
+			if _, ok := selectedSet[item.ID]; ok {
+				filtered = append(filtered, item)
+			}
+		}
+		batch = filtered
 	}
 	all := make([]models.Soldier, 0, len(batch))
 	for _, item := range batch {
@@ -2293,11 +2316,21 @@ type printGroupChange struct {
 
 func printablePDFMetadataDetails(settings PrintSettings) map[string]string {
 	settings = settings.Normalize()
-	return map[string]string{
+	metadata := map[string]string{
 		"Includes Images": "false",
 		"Sort By":         printableSortLabel(settings.SortBy),
 		"Group By":        printableGroupSummary(settings),
 	}
+	if settings.ExportAll {
+		metadata["Export Scope"] = "All records"
+	} else {
+		metadata["Export Scope"] = fmt.Sprintf("Selected records (%d)", len(settings.SelectedIDs))
+	}
+	return metadata
+}
+
+func printableJPGPageName(pageNumber int) string {
+	return fmt.Sprintf("dixiedata-printable-archive-page-%03d.jpg", pageNumber)
 }
 
 func printableSortLabel(sortBy string) string {
@@ -2338,6 +2371,28 @@ func selectedPrintGroups(settings PrintSettings) []string {
 		fields = append(fields, "buried_in")
 	}
 	return fields
+}
+
+func normalizeSelectedPrintIDs(values []int64) []int64 {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[int64]struct{}, len(values))
+	normalized := make([]int64, 0, len(values))
+	for _, value := range values {
+		if value < 1 {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		normalized = append(normalized, value)
+	}
+	sort.Slice(normalized, func(i, j int) bool {
+		return normalized[i] < normalized[j]
+	})
+	return normalized
 }
 
 func changedPrintGroups(previous map[string]string, soldier models.Soldier, groupOrder []string, firstRecord bool) []printGroupChange {

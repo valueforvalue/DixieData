@@ -9,3 +9,7 @@ export function ExportFullDatabasePDF(arg1) {
 export function ServeHTTP(arg1, arg2) {
   return window['go']['appshell']['App']['ServeHTTP'](arg1, arg2);
 }
+
+export function WithFrontendAssets(arg1) {
+  return window['go']['appshell']['App']['WithFrontendAssets'](arg1);
+}

@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -118,6 +119,7 @@ func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
 
 func TestParsePrintSettingsRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
+		"export_all":                       {"1"},
 		"sort_by":                          {"birth_year"},
 		"group_by_unit":                    {"1"},
 		"group_by_confederate_home_status": {"1"},
@@ -134,6 +136,28 @@ func TestParsePrintSettingsRequest(t *testing.T) {
 	}
 	if !settings.GroupByUnit || !settings.GroupByConfederateHomeStatus || !settings.GroupByBuriedIn || settings.GroupByPensionState {
 		t.Fatalf("unexpected parsed settings: %#v", settings)
+	}
+	if !settings.ExportAll || len(settings.SelectedIDs) != 0 {
+		t.Fatalf("unexpected export scope: %#v", settings)
+	}
+}
+
+func TestParsePrintSettingsRequestForSelectedRecords(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
+		"sort_by":      {"last_name"},
+		"selected_ids": {"4", "8"},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	settings, err := parsePrintSettingsRequest(req)
+	if err != nil {
+		t.Fatalf("parsePrintSettingsRequest: %v", err)
+	}
+	if settings.ExportAll {
+		t.Fatalf("expected selected-record export, got %#v", settings)
+	}
+	if !reflect.DeepEqual(settings.SelectedIDs, []int64{4, 8}) {
+		t.Fatalf("SelectedIDs = %#v", settings.SelectedIDs)
 	}
 }
 
@@ -440,6 +464,65 @@ func TestSharedArchiveNameIncludesDate(t *testing.T) {
 	name := sharedArchiveName(time.Date(2026, time.April, 28, 12, 0, 0, 0, time.UTC))
 	if name != "dixiedata-shared-2026-04-28.ddshare" {
 		t.Fatalf("shared archive name = %q", name)
+	}
+}
+
+func TestServeHTTPServesFrontendAssets(t *testing.T) {
+	app := NewApp().WithFrontendAssets(os.DirFS(repoFixturePath(t, "frontend")))
+	app.setupRoutes()
+
+	for _, path := range []string{"/app.js", "/app.css"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d body = %q", path, rec.Code, rec.Body.String())
+		}
+		if rec.Body.Len() == 0 {
+			t.Fatalf("%s body should not be empty", path)
+		}
+	}
+	if !strings.Contains(recorderBodyForPath(t, app, "/app.js"), `const timers = new WeakMap();`) {
+		t.Fatalf("/app.js should serve the frontend bootstrap script")
+	}
+}
+
+func TestServeHTTPServesFrontendAssetsFromProjectRootFallback(t *testing.T) {
+	app := NewApp()
+	app.setupRoutes()
+
+	for _, path := range []string{"/app.js", "/app.css"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status = %d body = %q", path, rec.Code, rec.Body.String())
+		}
+		if rec.Body.Len() == 0 {
+			t.Fatalf("%s body should not be empty", path)
+		}
+	}
+}
+
+func recorderBodyForPath(t *testing.T, app *App, path string) string {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+	return rec.Body.String()
+}
+
+func TestUniqueDirectoryPathAddsNumericSuffix(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "dixiedata-printable-archive-jpg-2026-04-28")
+	if err := os.MkdirAll(base, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	got := uniqueDirectoryPath(base)
+	want := base + "-2"
+	if got != want {
+		t.Fatalf("uniqueDirectoryPath = %q want %q", got, want)
 	}
 }
 

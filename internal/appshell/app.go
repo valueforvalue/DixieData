@@ -13,6 +13,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/fs"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -43,24 +44,25 @@ import (
 var embeddedQuotes []byte
 
 type App struct {
-	ctx           context.Context
-	database      *db.DB
-	soldiers      personRecordsFacade
-	anniversary   anniversaryFacade
-	analytics     analyticsFacade
-	audit         reviewFacade
-	images        imageFacade
-	export        exportFacade
-	backup        backupFacade
-	diagnostics   diagnosticsFacade
-	google        integrationFacade
-	updater       updaterFacade
-	quotes        []models.Quote
-	mux           *http.ServeMux
-	startupErr    error
-	setupRequired bool
-	dataDir       string
-	scratchpads   scratchpadOpener
+	ctx            context.Context
+	database       *db.DB
+	soldiers       personRecordsFacade
+	anniversary    anniversaryFacade
+	analytics      analyticsFacade
+	audit          reviewFacade
+	images         imageFacade
+	export         exportFacade
+	backup         backupFacade
+	diagnostics    diagnosticsFacade
+	google         integrationFacade
+	updater        updaterFacade
+	quotes         []models.Quote
+	mux            *http.ServeMux
+	startupErr     error
+	setupRequired  bool
+	dataDir        string
+	scratchpads    scratchpadOpener
+	frontendAssets fs.FS
 }
 
 type scratchpadOpener interface {
@@ -71,6 +73,11 @@ const initializeDataConfirmationWord = "INITIALIZE"
 
 func NewApp() *App {
 	return &App{}
+}
+
+func (a *App) WithFrontendAssets(frontendAssets fs.FS) *App {
+	a.frontendAssets = frontendAssets
+	return a
 }
 
 func (a *App) Startup(ctx context.Context) {
@@ -125,6 +132,8 @@ func (a *App) shutdown(ctx context.Context) {
 func (a *App) setupRoutes() {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/app.js", a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8"))
+	mux.HandleFunc("/app.css", a.handleFrontendAsset("app.css", "text/css; charset=utf-8"))
 	mux.HandleFunc("/", a.handleCalendar)
 	mux.HandleFunc("/calendar", a.handleCalendar)
 	mux.HandleFunc("/calendar/", a.handleCalendarMonth)
@@ -184,6 +193,52 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/media/", a.handleMedia)
 
 	a.mux = mux
+}
+
+func (a *App) handleFrontendAsset(name, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.URL.Path != "/"+name {
+			http.NotFound(w, r)
+			return
+		}
+
+		data, err := a.readFrontendAsset(name)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "no-store")
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		_, _ = w.Write(data)
+	}
+}
+
+func (a *App) readFrontendAsset(name string) ([]byte, error) {
+	if a.frontendAssets != nil {
+		return fs.ReadFile(a.frontendAssets, name)
+	}
+	candidates := []string{filepath.Join("frontend", filepath.FromSlash(name))}
+	if root, err := appdata.ProjectRoot(); err == nil {
+		candidates = append([]string{filepath.Join(root, "frontend", filepath.FromSlash(name))}, candidates...)
+	}
+	var lastErr error
+	for _, candidate := range candidates {
+		data, err := os.ReadFile(candidate)
+		if err == nil {
+			return data, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -893,7 +948,12 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	presentation.ShareView(status, conflicts).Render(r.Context(), w)
+	exportRecords, err := a.listAllSoldiers()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	presentation.ShareView(status, conflicts, exportRecords).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) {
@@ -1413,12 +1473,22 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 	if err := r.ParseForm(); err != nil {
 		return archive.PrintSettings{}, fmt.Errorf("failed to parse print settings")
 	}
+	exportAll := r.FormValue("export_all") != ""
+	selectedIDs, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
+	if err != nil {
+		return archive.PrintSettings{}, err
+	}
+	if !exportAll && len(selectedIDs) == 0 {
+		return archive.PrintSettings{}, fmt.Errorf("select at least one record or export all records")
+	}
 	return archive.PrintSettings{
 		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),
 		GroupByUnit:                  r.FormValue("group_by_unit") != "",
 		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
 		GroupByConfederateHomeStatus: r.FormValue("group_by_confederate_home_status") != "",
 		GroupByBuriedIn:              r.FormValue("group_by_buried_in") != "",
+		ExportAll:                    exportAll,
+		SelectedIDs:                  selectedIDs,
 	}, nil
 }
 
@@ -2535,6 +2605,18 @@ func backupArchiveName(now time.Time) string {
 
 func sharedArchiveName(now time.Time) string {
 	return fmt.Sprintf("dixiedata-shared-%s.ddshare", now.Format("2006-01-02"))
+}
+
+func uniqueDirectoryPath(basePath string) string {
+	if _, err := os.Stat(basePath); errors.Is(err, os.ErrNotExist) {
+		return basePath
+	}
+	for index := 2; ; index++ {
+		candidate := fmt.Sprintf("%s-%d", basePath, index)
+		if _, err := os.Stat(candidate); errors.Is(err, os.ErrNotExist) {
+			return candidate
+		}
+	}
 }
 
 func sanitizedFileStem(value, fallback string) string {
