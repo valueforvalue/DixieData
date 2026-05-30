@@ -32,6 +32,8 @@ type BackupManifest struct {
 	SchemaVersion int    `json:"schema_version,omitempty"`
 	NodePrefix    string `json:"node_prefix,omitempty"`
 	OwnerName     string `json:"owner_name,omitempty"`
+	SourceNodeID  string `json:"source_node_id,omitempty"`
+	SourceLabel   string `json:"source_node_label,omitempty"`
 	CreatedAt     string `json:"created_at"`
 	DataFormat    string `json:"data_format,omitempty"`
 	DataFile      string `json:"data_file,omitempty"`
@@ -40,6 +42,34 @@ type BackupManifest struct {
 	Soldiers      int    `json:"soldiers"`
 	Records       int    `json:"records"`
 	Images        int    `json:"images"`
+}
+
+func loadSharedAliasTargetSnapshot(tx *sql.Tx, sourceNodeID, sourcePersonSyncID string) (*mergeReviewSnapshot, error) {
+	sourceNodeID = strings.TrimSpace(sourceNodeID)
+	sourcePersonSyncID = strings.TrimSpace(sourcePersonSyncID)
+	if sourceNodeID == "" || sourcePersonSyncID == "" {
+		return nil, nil
+	}
+	var (
+		canonicalSoldierID int64
+		canonicalSyncID    string
+	)
+	err := tx.QueryRow(`SELECT canonical_person_id, canonical_person_sync_id
+		FROM shared_merge_aliases
+		WHERE source_node_id = ? AND source_person_sync_id = ?`,
+		sourceNodeID, sourcePersonSyncID,
+	).Scan(&canonicalSoldierID, &canonicalSyncID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := loadSoldierSnapshotByID(tx, canonicalSoldierID)
+	if err == sql.ErrNoRows && strings.TrimSpace(canonicalSyncID) != "" {
+		return loadSoldierSnapshotBySync(tx, canonicalSyncID)
+	}
+	return snapshot, err
 }
 
 type BackupService struct {
@@ -70,8 +100,15 @@ type mergeLogger struct {
 }
 
 type mergeReviewSnapshot struct {
-	Soldier      models.Soldier `json:"soldier"`
-	SpouseSyncID string         `json:"spouse_sync_id,omitempty"`
+	Soldier         models.Soldier `json:"soldier"`
+	SpouseSyncID    string         `json:"spouse_sync_id,omitempty"`
+	SourceNodeID    string         `json:"source_node_id,omitempty"`
+	SourceNodeLabel string         `json:"source_node_label,omitempty"`
+}
+
+type sharedMergeTarget struct {
+	SoldierID   int64
+	SoldierSync string
 }
 
 type SourceConflictLedger struct {
@@ -297,9 +334,11 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 		return SharedImportSummary{}, fmt.Errorf("archive is not a shared archive")
 	}
 	if logger != nil {
-		logger.Printf("manifest format=%s version=%d archive_kind=%s data_format=%s schema_version=%d node_prefix=%s owner_name=%q soldiers=%d records=%d images=%d",
-			contents.Manifest.Format, contents.Manifest.Version, contents.Manifest.ArchiveKind, contents.Manifest.DataFormat, contents.Manifest.SchemaVersion, contents.Manifest.NodePrefix, contents.Manifest.OwnerName, contents.Manifest.Soldiers, contents.Manifest.Records, contents.Manifest.Images)
+		logger.Printf("manifest format=%s version=%d archive_kind=%s data_format=%s schema_version=%d node_prefix=%s owner_name=%q source_node_id=%q source_node_label=%q soldiers=%d records=%d images=%d",
+			contents.Manifest.Format, contents.Manifest.Version, contents.Manifest.ArchiveKind, contents.Manifest.DataFormat, contents.Manifest.SchemaVersion, contents.Manifest.NodePrefix, contents.Manifest.OwnerName, contents.Manifest.SourceNodeID, contents.Manifest.SourceLabel, contents.Manifest.Soldiers, contents.Manifest.Records, contents.Manifest.Images)
 	}
+
+	sourceNodeID, sourceNodeLabel := sharedArchiveSourceIdentity(contents.Manifest)
 
 	sessionID, err := db.NewSyncID()
 	if err != nil {
@@ -322,7 +361,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 
 	switch contents.Manifest.DataFormat {
 	case "", "json":
-		summary, err = b.mergeSharedSoldiers(sessionID, backupPath, contents.Soldiers, sessionRoot, dataDir, logger)
+		summary, err = b.mergeSharedSoldiers(sessionID, backupPath, contents.Soldiers, sessionRoot, dataDir, sourceNodeID, sourceNodeLabel, logger)
 	case "sqlite":
 		sourceDir, err := os.MkdirTemp("", "dixiedata-shared-backup-db-*")
 		if err != nil {
@@ -348,7 +387,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 		if err != nil {
 			return SharedImportSummary{}, fmt.Errorf("read shared backup database: %w", err)
 		}
-		summary, err = b.mergeSharedSoldiers(sessionID, backupPath, soldiers, sessionRoot, dataDir, logger)
+		summary, err = b.mergeSharedSoldiers(sessionID, backupPath, soldiers, sessionRoot, dataDir, sourceNodeID, sourceNodeLabel, logger)
 	default:
 		return SharedImportSummary{}, fmt.Errorf("unsupported backup data format %q", contents.Manifest.DataFormat)
 	}
@@ -386,6 +425,15 @@ func (b *BackupService) loadBackupData(archiveKind string) (BackupManifest, erro
 		return BackupManifest{}, err
 	}
 	manifest.OwnerName = strings.TrimSpace(strings.Join([]string{identity.FirstName, identity.MiddleName, identity.LastName}, " "))
+	manifest.SourceLabel = strings.TrimSpace(manifest.OwnerName)
+	if manifest.SourceLabel == "" {
+		manifest.SourceLabel = strings.TrimSpace(manifest.NodePrefix)
+	}
+	sourceNodeID, err := b.db.SystemConfig("node_id")
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	manifest.SourceNodeID = strings.TrimSpace(sourceNodeID)
 
 	page := 1
 	for {
@@ -1022,7 +1070,7 @@ func collectImagePaths(soldiers []models.Soldier) []string {
 	return paths
 }
 
-func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourceSoldiers []models.Soldier, sourceDataDir, targetDataDir string, logger *mergeLogger) (SharedImportSummary, error) {
+func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourceSoldiers []models.Soldier, sourceDataDir, targetDataDir, sourceNodeID, sourceNodeLabel string, logger *mergeLogger) (SharedImportSummary, error) {
 	tx, err := b.db.Conn().Begin()
 	if err != nil {
 		return SharedImportSummary{}, err
@@ -1030,7 +1078,7 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 	defer tx.Rollback()
 
 	summary := SharedImportSummary{}
-	targetIDsBySync := make(map[string]int64, len(sourceSoldiers))
+	targetsBySourceSync := make(map[string]sharedMergeTarget, len(sourceSoldiers))
 	sourceSyncByID := make(map[int64]string, len(sourceSoldiers))
 	conflictedSyncs := make(map[string]struct{})
 
@@ -1043,9 +1091,67 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 
 	for _, soldier := range sourceSoldiers {
 		snapshot := mergeReviewSnapshot{
-			Soldier:      normalizeSharedSoldierSnapshot(soldier),
-			SpouseSyncID: strings.TrimSpace(sourceSyncByID[soldier.SpouseSoldierID]),
+			Soldier:         normalizeSharedSoldierSnapshot(soldier),
+			SpouseSyncID:    strings.TrimSpace(sourceSyncByID[soldier.SpouseSoldierID]),
+			SourceNodeID:    strings.TrimSpace(sourceNodeID),
+			SourceNodeLabel: strings.TrimSpace(sourceNodeLabel),
 		}
+		localSnapshot, err := loadSoldierSnapshotBySync(tx, snapshot.Soldier.SyncID)
+		if err != nil && err != sql.ErrNoRows {
+			return SharedImportSummary{}, err
+		}
+		if err == nil {
+			if equivalentMergeReviewSnapshots(*localSnapshot, snapshot) {
+				targetsBySourceSync[snapshot.Soldier.SyncID] = sharedMergeTarget{
+					SoldierID:   localSnapshot.Soldier.ID,
+					SoldierSync: localSnapshot.Soldier.SyncID,
+				}
+				if logger != nil {
+					logger.Printf("soldier action=skip-unchanged match=sync sync_id=%s display_id=%s target_id=%d", snapshot.Soldier.SyncID, localSnapshot.Soldier.DisplayID, localSnapshot.Soldier.ID)
+				}
+				continue
+			}
+			reason := describeSoldierConflict(*localSnapshot, snapshot)
+			if err := insertMergeReviewConflict(tx, sessionID, "soldier-update", reason, localSnapshot, snapshot); err != nil {
+				return SharedImportSummary{}, err
+			}
+			conflictedSyncs[snapshot.Soldier.SyncID] = struct{}{}
+			summary.PendingConflicts++
+			if logger != nil {
+				logger.Printf("soldier action=stage-review conflict_type=soldier-update match=sync sync_id=%s source_display_id=%s reason=%q",
+					snapshot.Soldier.SyncID, snapshot.Soldier.DisplayID, reason)
+			}
+			continue
+		}
+
+		aliasSnapshot, err := loadSharedAliasTargetSnapshot(tx, snapshot.SourceNodeID, snapshot.Soldier.SyncID)
+		if err != nil {
+			return SharedImportSummary{}, err
+		}
+		if aliasSnapshot != nil {
+			targetsBySourceSync[snapshot.Soldier.SyncID] = sharedMergeTarget{
+				SoldierID:   aliasSnapshot.Soldier.ID,
+				SoldierSync: aliasSnapshot.Soldier.SyncID,
+			}
+			if equivalentAliasMappedSnapshots(*aliasSnapshot, snapshot) {
+				if logger != nil {
+					logger.Printf("soldier action=skip-unchanged match=alias source_node_id=%q sync_id=%s canonical_sync_id=%s target_id=%d", snapshot.SourceNodeID, snapshot.Soldier.SyncID, aliasSnapshot.Soldier.SyncID, aliasSnapshot.Soldier.ID)
+				}
+				continue
+			}
+			reason := describeAliasMappedConflict(*aliasSnapshot, snapshot)
+			if err := insertMergeReviewConflict(tx, sessionID, "soldier-update", reason, aliasSnapshot, snapshot); err != nil {
+				return SharedImportSummary{}, err
+			}
+			conflictedSyncs[snapshot.Soldier.SyncID] = struct{}{}
+			summary.PendingConflicts++
+			if logger != nil {
+				logger.Printf("soldier action=stage-review conflict_type=soldier-update match=alias source_node_id=%q sync_id=%s canonical_sync_id=%s source_display_id=%s reason=%q",
+					snapshot.SourceNodeID, snapshot.Soldier.SyncID, aliasSnapshot.Soldier.SyncID, snapshot.Soldier.DisplayID, reason)
+			}
+			continue
+		}
+
 		localSnapshot, conflictType, reason, err := detectSharedConflict(tx, snapshot)
 		if err != nil {
 			return SharedImportSummary{}, err
@@ -1067,7 +1173,10 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 		if err != nil {
 			return SharedImportSummary{}, err
 		}
-		targetIDsBySync[snapshot.Soldier.SyncID] = targetID
+		targetsBySourceSync[snapshot.Soldier.SyncID] = sharedMergeTarget{
+			SoldierID:   targetID,
+			SoldierSync: snapshot.Soldier.SyncID,
+		}
 		if existed {
 			summary.SoldiersUpdated++
 			if logger != nil {
@@ -1086,20 +1195,20 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 		if _, conflicted := conflictedSyncs[syncID]; conflicted {
 			continue
 		}
-		targetID := targetIDsBySync[syncID]
-		if targetID < 1 {
+		target := targetsBySourceSync[syncID]
+		if target.SoldierID < 1 {
 			return SharedImportSummary{}, fmt.Errorf("missing merged soldier target for sync_id %s", syncID)
 		}
-		spouseTargetID, err := resolveSharedSpouseTargetID(sourceSyncByID, targetIDsBySync, soldier)
+		spouseTargetID, err := resolveSharedSpouseTargetID(sourceSyncByID, targetsBySourceSync, soldier)
 		if err != nil {
 			return SharedImportSummary{}, err
 		}
-		if _, err := tx.Exec(`UPDATE soldiers SET spouse_soldier_id = ? WHERE id = ?`, nullableInt64(spouseTargetID), targetID); err != nil {
+		if _, err := tx.Exec(`UPDATE soldiers SET spouse_soldier_id = ? WHERE id = ?`, nullableInt64(spouseTargetID), target.SoldierID); err != nil {
 			return SharedImportSummary{}, err
 		}
 
 		for _, record := range soldier.Records {
-			existed, err := upsertSharedRecord(tx, targetID, syncID, record)
+			existed, err := upsertSharedRecord(tx, target.SoldierID, target.SoldierSync, record)
 			if err != nil {
 				return SharedImportSummary{}, err
 			}
@@ -1114,7 +1223,7 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 			if err := copySharedImageFile(sourceDataDir, targetDataDir, image.FilePath); err != nil {
 				return SharedImportSummary{}, err
 			}
-			existed, err := upsertSharedImage(tx, targetID, syncID, image)
+			existed, err := upsertSharedImage(tx, target.SoldierID, target.SoldierSync, image)
 			if err != nil {
 				return SharedImportSummary{}, err
 			}
@@ -1220,7 +1329,7 @@ func (b *BackupService) ConflictLedger(soldierID int64) (*SourceConflictLedger, 
 			return nil, err
 		}
 		entry.SourceSnapshot = sourceSnapshot.Soldier
-		entry.DifferenceFields = collectSoldierConflictFields(localSnapshot, sourceSnapshot)
+		entry.DifferenceFields = collectSoldierConflictFields(localSnapshot, sourceSnapshot, false)
 		ledger.Entries = append(ledger.Entries, entry)
 		if strings.TrimSpace(entry.Resolution) == "" {
 			ledger.OpenCount++
@@ -1478,7 +1587,7 @@ func detectSharedConflict(tx *sql.Tx, source mergeReviewSnapshot) (*mergeReviewS
 		return nil, "", "", err
 	}
 	if err == nil && strings.TrimSpace(localByDisplay.Soldier.SyncID) != strings.TrimSpace(source.Soldier.SyncID) {
-		return localByDisplay, "display-id-collision", fmt.Sprintf("Shared record %s collides with existing local record %s.", source.Soldier.DisplayID, localByDisplay.Soldier.DisplayID), nil
+		return localByDisplay, "display-id-collision", fmt.Sprintf("%s record %s collides with existing local record %s.", sharedConflictSourceNoun(source), source.Soldier.DisplayID, localByDisplay.Soldier.DisplayID), nil
 	}
 
 	localByHuman, err := loadSoldierSnapshotByHumanMatch(tx, source.Soldier)
@@ -1573,6 +1682,11 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 	if err != nil {
 		return err
 	}
+	if conflict.ConflictType == "human-duplicate" && decision != "keep-both" {
+		if err := recordSharedMergeAlias(tx, sourceSnapshot.SourceNodeID, strings.TrimSpace(conflict.SourceSoldier.SyncID), targetID, strings.TrimSpace(sourceSnapshot.Soldier.SyncID), decision, conflict.ID); err != nil {
+			return err
+		}
+	}
 	if decision == "keep-both" && conflict.LocalSoldier != nil {
 		reviewReason := fmt.Sprintf("Potential duplicate preserved during shared merge against %s.", strings.TrimSpace(sourceSnapshot.Soldier.DisplayID))
 		if err := setReviewStatusTx(tx, conflict.LocalSoldierID, true, reviewReason); err != nil {
@@ -1652,7 +1766,7 @@ func loadSoldierSnapshotByHumanMatch(tx *sql.Tx, source models.Soldier) (*mergeR
 
 func describeHumanDuplicateConflict(local mergeReviewSnapshot, source mergeReviewSnapshot) string {
 	birthYear, _ := humanDuplicateBirthYear(source.Soldier)
-	return fmt.Sprintf("Shared record %s matches %s on name, birth year %d, and unit %s.", source.Soldier.DisplayID, local.Soldier.DisplayID, birthYear, strings.TrimSpace(source.Soldier.Unit))
+	return fmt.Sprintf("%s record %s matches %s on name, birth year %d, and unit %s.", sharedConflictSourceNoun(source), source.Soldier.DisplayID, local.Soldier.DisplayID, birthYear, strings.TrimSpace(source.Soldier.Unit))
 }
 
 func humanDuplicateBirthYear(soldier models.Soldier) (int, bool) {
@@ -1701,6 +1815,30 @@ func loadTargetSoldierIDBySync(tx *sql.Tx, syncID string) (int64, error) {
 	var targetID int64
 	err := tx.QueryRow(`SELECT id FROM soldiers WHERE sync_id = ?`, strings.TrimSpace(syncID)).Scan(&targetID)
 	return targetID, err
+}
+
+func recordSharedMergeAlias(tx *sql.Tx, sourceNodeID, sourcePersonSyncID string, canonicalPersonID int64, canonicalPersonSyncID, resolutionKind string, conflictID int64) error {
+	sourceNodeID = strings.TrimSpace(sourceNodeID)
+	sourcePersonSyncID = strings.TrimSpace(sourcePersonSyncID)
+	canonicalPersonSyncID = strings.TrimSpace(canonicalPersonSyncID)
+	resolutionKind = strings.TrimSpace(resolutionKind)
+	if sourceNodeID == "" || sourcePersonSyncID == "" || canonicalPersonID < 1 || canonicalPersonSyncID == "" {
+		return nil
+	}
+	if resolutionKind == "" {
+		resolutionKind = "merge-review"
+	}
+	_, err := tx.Exec(`INSERT INTO shared_merge_aliases
+		(source_node_id, source_person_sync_id, canonical_person_sync_id, canonical_person_id, resolution_kind, created_from_conflict_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(source_node_id, source_person_sync_id) DO UPDATE SET
+			canonical_person_sync_id = excluded.canonical_person_sync_id,
+			canonical_person_id = excluded.canonical_person_id,
+			resolution_kind = excluded.resolution_kind,
+			created_from_conflict_id = excluded.created_from_conflict_id,
+			updated_at = CURRENT_TIMESTAMP`,
+		sourceNodeID, sourcePersonSyncID, canonicalPersonSyncID, canonicalPersonID, resolutionKind, nullableInt64(conflictID))
+	return err
 }
 
 func loadSoldierSnapshotBySync(tx *sql.Tx, syncID string) (*mergeReviewSnapshot, error) {
@@ -1781,7 +1919,7 @@ func loadImagesForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Image, error)
 	return images, rows.Err()
 }
 
-func resolveSharedSpouseTargetID(sourceSyncByID map[int64]string, targetIDsBySync map[string]int64, soldier models.Soldier) (int64, error) {
+func resolveSharedSpouseTargetID(sourceSyncByID map[int64]string, targetsBySourceSync map[string]sharedMergeTarget, soldier models.Soldier) (int64, error) {
 	if soldier.SpouseSoldierID < 1 {
 		return 0, nil
 	}
@@ -1789,7 +1927,7 @@ func resolveSharedSpouseTargetID(sourceSyncByID map[int64]string, targetIDsBySyn
 	if spouseSyncID == "" {
 		return 0, fmt.Errorf("shared database spouse link missing sync id for soldier %s", soldier.DisplayID)
 	}
-	spouseTargetID := targetIDsBySync[spouseSyncID]
+	spouseTargetID := targetsBySourceSync[spouseSyncID].SoldierID
 	if spouseTargetID < 1 {
 		return 0, fmt.Errorf("shared database spouse link missing target for soldier %s", soldier.DisplayID)
 	}
@@ -1800,15 +1938,27 @@ func equivalentMergeReviewSnapshots(local, source mergeReviewSnapshot) bool {
 	return describeSoldierConflict(local, source) == ""
 }
 
+func equivalentAliasMappedSnapshots(local, source mergeReviewSnapshot) bool {
+	return len(collectSoldierConflictFields(local, source, true)) == 0
+}
+
 func describeSoldierConflict(local, source mergeReviewSnapshot) string {
-	differences := collectSoldierConflictFields(local, source)
+	differences := collectSoldierConflictFields(local, source, false)
 	if len(differences) == 0 {
 		return ""
 	}
-	return "Shared archive changed " + strings.Join(differences, ", ") + "."
+	return sharedConflictSourceNoun(source) + " changed " + strings.Join(differences, ", ") + "."
 }
 
-func collectSoldierConflictFields(local, source mergeReviewSnapshot) []string {
+func describeAliasMappedConflict(local, source mergeReviewSnapshot) string {
+	differences := collectSoldierConflictFields(local, source, true)
+	if len(differences) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s record %s is already mapped to local record %s, but changed %s.", sharedConflictSourceLabel(source), source.Soldier.DisplayID, local.Soldier.DisplayID, strings.Join(differences, ", "))
+}
+
+func collectSoldierConflictFields(local, source mergeReviewSnapshot, ignoreDisplayID bool) []string {
 	differences := make([]string, 0, 8)
 	appendDiff := func(label, left, right string) {
 		left = strings.TrimSpace(left)
@@ -1817,7 +1967,9 @@ func collectSoldierConflictFields(local, source mergeReviewSnapshot) []string {
 			differences = append(differences, label)
 		}
 	}
-	appendDiff("display ID", local.Soldier.DisplayID, source.Soldier.DisplayID)
+	if !ignoreDisplayID {
+		appendDiff("display ID", local.Soldier.DisplayID, source.Soldier.DisplayID)
+	}
 	appendDiff("entry type", local.Soldier.EntryType, source.Soldier.EntryType)
 	appendDiff("first name", local.Soldier.FirstName, source.Soldier.FirstName)
 	appendDiff("middle name", local.Soldier.MiddleName, source.Soldier.MiddleName)
@@ -1873,6 +2025,35 @@ func unmarshalMergeReviewSnapshot(raw string) (mergeReviewSnapshot, error) {
 	}
 	snapshot.Soldier = normalizeSharedSoldierSnapshot(snapshot.Soldier)
 	return snapshot, nil
+}
+
+func sharedArchiveSourceIdentity(manifest BackupManifest) (string, string) {
+	sourceNodeID := strings.TrimSpace(manifest.SourceNodeID)
+	sourceNodeLabel := strings.TrimSpace(manifest.SourceLabel)
+	if sourceNodeLabel == "" {
+		sourceNodeLabel = strings.TrimSpace(manifest.OwnerName)
+	}
+	if sourceNodeLabel == "" {
+		sourceNodeLabel = strings.TrimSpace(manifest.NodePrefix)
+	}
+	if sourceNodeLabel == "" {
+		sourceNodeLabel = "shared archive"
+	}
+	return sourceNodeID, sourceNodeLabel
+}
+
+func sharedConflictSourceLabel(snapshot mergeReviewSnapshot) string {
+	if label := strings.TrimSpace(snapshot.SourceNodeLabel); label != "" {
+		return label
+	}
+	return "Shared archive"
+}
+
+func sharedConflictSourceNoun(snapshot mergeReviewSnapshot) string {
+	if label := strings.TrimSpace(snapshot.SourceNodeLabel); label != "" {
+		return label + " archive"
+	}
+	return "Shared archive"
 }
 
 func nullableString(value string) interface{} {

@@ -154,6 +154,40 @@ func TestInitialSetupViewIncludesIdentityFields(t *testing.T) {
 	}
 }
 
+func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{
+		CurrentVersion:     "1.2.23",
+		BuildIdentity:      "DixieData v1.2.23",
+		EffectiveSourceURL: "https://api.github.com/repos/valueforvalue/DixieData/releases/latest",
+		UsingDefaultSource: true,
+		CanApply:           true,
+		LastApply: &viewmodel.UpdateApplyStatus{
+			Status:    "failed",
+			Version:   "1.2.22",
+			Message:   "Download checksum mismatch.",
+			AppliedAt: "2026-05-30T03:00:00Z",
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Software Updates",
+		"/settings/updates/source",
+		"/settings/updates/check",
+		"/settings/updates/apply",
+		"Last update attempt failed",
+		"https://api.github.com/repos/valueforvalue/DixieData/releases/latest",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("settings view missing updater UI: %s", needle)
+		}
+	}
+}
+
 func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "None", ConfederateHomeStatus: "None"}, nil, viewmodel.SoldierFormSuggestions{
@@ -260,6 +294,9 @@ func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 	content := buf.String()
 	if !strings.Contains(content, "Merge Review") || !strings.Contains(content, "/merge-review/42/keep-shared") {
 		t.Fatalf("share view missing merge review actions")
+	}
+	if !strings.Contains(content, "remembers that mapping for future imports from the same source archive") {
+		t.Fatalf("share view missing remembered mapping copy")
 	}
 }
 

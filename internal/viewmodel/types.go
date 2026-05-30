@@ -368,6 +368,39 @@ type OrphanedImage struct {
 	ModifiedAt   string
 }
 
+type UpdateSettings struct {
+	CurrentVersion     string
+	BuildIdentity      string
+	SourceURL          string
+	EffectiveSourceURL string
+	UsingDefaultSource bool
+	CanApply           bool
+	DisabledReason     string
+	LastApply          *UpdateApplyStatus
+	NoticeMessage      string
+	NoticeKind         string
+}
+
+type UpdateApplyStatus struct {
+	Status    string
+	Version   string
+	Message   string
+	AppliedAt string
+}
+
+type UpdateCheckResult struct {
+	CurrentVersion   string
+	AvailableVersion string
+	UpdateAvailable  bool
+	DownloadURL      string
+	NotesURL         string
+	ReleaseNotes     string
+	PublishedAt      string
+	SourceLabel      string
+	CanApply         bool
+	DisabledReason   string
+}
+
 type Soldier = PersonRecord
 type Record = SourceRecord
 type SoldierSearch = PersonRecordSearch

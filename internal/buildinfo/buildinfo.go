@@ -16,7 +16,7 @@ const (
 	MonthlyPDFExportVersion   = 1
 	DatabasePDFExportVersion  = 4
 	AnalyticsPDFExportVersion = 1
-	BackupFormatVersion       = 2
+	BackupFormatVersion       = 3
 )
 
 var (

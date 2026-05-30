@@ -45,6 +45,7 @@ const (
 	PanelReviewQueueCompare     = "panel.review-queue.compare"
 	PageSettings                = "page.settings"
 	PanelSettingsInitialize     = "panel.settings.initialize"
+	PanelSettingsUpdates        = "panel.settings.updates"
 	OverlayImageViewer          = "overlay.image.viewer"
 )
 
@@ -91,6 +92,7 @@ var Registry = []Surface{
 	{ID: PanelReviewQueueCompare, Kind: "panel", Description: "Side-by-side duplicate comparison panel."},
 	{ID: PageSettings, Kind: "page", Description: "Settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
+	{ID: PanelSettingsUpdates, Kind: "panel", Description: "Software Updates panel on the settings page."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
 }
 
