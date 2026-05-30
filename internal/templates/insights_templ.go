@@ -162,7 +162,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.LinkedPersonCount))
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount))
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 42, Col: 123}
 			}
@@ -170,7 +170,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-1 text-xs uppercase tracking-[0.18em] text-slate-500\">Generic Linked Person Records</div></a></div></section><section data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><div class=\"mt-1 text-xs uppercase tracking-[0.18em] text-slate-500\">Person Records</div></a></div></section><section data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -3811,7 +3811,7 @@ func displayEntryType(soldier models.Soldier) string {
 	case "widow":
 		return "Widow"
 	case "linked_person":
-		return "Generic Linked Person"
+		return "Person Record"
 	default:
 		return "Soldier"
 	}

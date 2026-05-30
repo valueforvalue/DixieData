@@ -76,7 +76,7 @@ type Image struct {
 type ArchiveCounts struct {
 	SoldierCount      int
 	SpouseRecordCount int
-	LinkedPersonCount int
+	PersonRecordCount int
 }
 
 type Quote struct {

@@ -482,13 +482,13 @@ func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
 		}
 	}
 	if linked == nil {
-		t.Fatalf("restored linked person missing from search results: %#v", linkedResults)
+		t.Fatalf("restored person record missing from search results: %#v", linkedResults)
 	}
 	if linked.EntryType != "linked_person" || linked.RelationshipLabel != "Brother" {
-		t.Fatalf("restored linked person missing relationship fields: %#v", linked)
+		t.Fatalf("restored person record missing relationship fields: %#v", linked)
 	}
 	if linked.SpouseDisplayID != "PENSION-LEGACY" || linked.SpouseName != "Legacy Soldier" {
-		t.Fatalf("restored linked person missing soldier link: %#v", linked)
+		t.Fatalf("restored person record missing soldier link: %#v", linked)
 	}
 }
 

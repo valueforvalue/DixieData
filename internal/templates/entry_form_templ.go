@@ -708,7 +708,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</select><p class=\"mt-2 text-xs text-slate-500\">Use <strong class=\"text-slate-700\">Generic Linked Person</strong> &mdash; non-spouse people such as relatives, executors, witnesses, or caregivers who should stay anchored to a soldier record.</p></div><div><label class=\"block text-sm text-slate-500 mb-1\">Prefix</label> <input type=\"text\" name=\"prefix\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</select><p class=\"mt-2 text-xs text-slate-500\">Use <strong class=\"text-slate-700\">Person Record</strong> &mdash; non-spouse people such as relatives, executors, witnesses, or caregivers who should stay anchored to a soldier record.</p></div><div><label class=\"block text-sm text-slate-500 mb-1\">Prefix</label> <input type=\"text\" name=\"prefix\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -773,7 +773,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\" list=\"suffix-suggestions\" class=\"field-input\" placeholder=\"Jr.\"></div><div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\" data-entry-type-special><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Generic Person Link</p><p class=\"mt-1 text-sm text-slate-600\">Generic linked person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p></div><div class=\"responsive-two-col grid gap-4\"><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Linked Soldier</label> <select name=\"spouse_soldier_id\" class=\"field-input\"><option value=\"\">Select a soldier</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\" list=\"suffix-suggestions\" class=\"field-input\" placeholder=\"Jr.\"></div><div class=\"responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\" data-entry-type-special><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Person Record Link</p><p class=\"mt-1 text-sm text-slate-600\">Person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p></div><div class=\"responsive-two-col grid gap-4\"><div class=\"responsive-span-2 col-span-2\"><label class=\"block text-sm text-slate-500 mb-1\">Linked Soldier</label> <select name=\"spouse_soldier_id\" class=\"field-input\"><option value=\"\">Select a soldier</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1357,7 +1357,7 @@ type entryTypeOption struct {
 func entryTypes() []entryTypeOption {
 	return []entryTypeOption{
 		{Value: "soldier", Label: "Soldier"},
-		{Value: "linked_person", Label: "Generic Linked Person"},
+		{Value: "linked_person", Label: "Person Record"},
 		{Value: "wife", Label: "Wife"},
 		{Value: "widow", Label: "Widow"},
 	}
@@ -3497,7 +3497,7 @@ func previewConfederateHomeLabel(s viewmodel.PersonRecord) string {
 
 func previewCompareLabel(s viewmodel.PersonRecord) string {
 	if s.EntryType == "linked_person" {
-		return "Compare Linked Person Records"
+		return "Compare Person Records"
 	}
 	return "Compare Family Person Records"
 }
