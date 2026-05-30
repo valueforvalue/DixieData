@@ -12,9 +12,9 @@ const (
 	CSVExportVersion          = 4
 	XLSXExportVersion         = 1
 	ICalendarExportVersion    = 2
-	SoldierPDFExportVersion   = 5
+	SoldierPDFExportVersion   = 6
 	MonthlyPDFExportVersion   = 1
-	DatabasePDFExportVersion  = 3
+	DatabasePDFExportVersion  = 4
 	AnalyticsPDFExportVersion = 1
 	BackupFormatVersion       = 2
 )

@@ -22,6 +22,10 @@ templ Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts view
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.SpouseRecordCount) }</div>
 							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Spouse Records</div>
 						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.72)] px-4 py-3">
+							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.LinkedPersonCount) }</div>
+							<div class="text-sm uppercase tracking-[0.18em] text-[#6a7a88]">Generic Linked Person Records</div>
+						</div>
 					</div>
 					<div id="calendar-export-status" class="mt-3 text-sm text-[#445260]"></div>
 				</div>

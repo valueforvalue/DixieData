@@ -13,6 +13,7 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		SyncID:                input.SyncID,
 		EntryType:             input.EntryType,
 		LinkedSoldierID:       input.SpouseSoldierID,
+		RelationshipLabel:     input.RelationshipLabel,
 		SpouseName:            input.SpouseName,
 		MaidenName:            input.MaidenName,
 		IsGenerated:           input.IsGenerated,
@@ -140,6 +141,7 @@ func ArchiveCountsFromModel(input models.ArchiveCounts) ArchiveCounts {
 	return ArchiveCounts{
 		SoldierCount:      input.TotalSoldiers,
 		SpouseRecordCount: input.TotalWivesWidows,
+		LinkedPersonCount: input.TotalLinkedPeople,
 	}
 }
 
@@ -165,6 +167,7 @@ func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch 
 		MiddleName:            input.MiddleName,
 		LastName:              input.LastName,
 		MaidenName:            input.MaidenName,
+		RelationshipLabel:     input.RelationshipLabel,
 		Rank:                  input.Rank,
 		RankIn:                input.RankIn,
 		RankOut:               input.RankOut,
@@ -192,15 +195,16 @@ func SoldierSearchFromModel(input models.SoldierSearch) PersonRecordSearch {
 
 func PersonRecordFormSuggestionsFromModel(input models.SoldierFormSuggestions) PersonRecordFormSuggestions {
 	return PersonRecordFormSuggestions{
-		RankIn:           append([]string(nil), input.RankIn...),
-		RankOut:          append([]string(nil), input.RankOut...),
-		Unit:             append([]string(nil), input.Unit...),
-		Prefix:           append([]string(nil), input.Prefix...),
-		Suffix:           append([]string(nil), input.Suffix...),
-		PensionState:     append([]string(nil), input.PensionState...),
-		BuriedIn:         append([]string(nil), input.BuriedIn...),
-		ConfederateHome:  append([]string(nil), input.ConfederateHomeName...),
-		SourceRecordType: append([]string(nil), input.RecordType...),
+		RankIn:            append([]string(nil), input.RankIn...),
+		RankOut:           append([]string(nil), input.RankOut...),
+		Unit:              append([]string(nil), input.Unit...),
+		Prefix:            append([]string(nil), input.Prefix...),
+		Suffix:            append([]string(nil), input.Suffix...),
+		PensionState:      append([]string(nil), input.PensionState...),
+		BuriedIn:          append([]string(nil), input.BuriedIn...),
+		ConfederateHome:   append([]string(nil), input.ConfederateHomeName...),
+		SourceRecordType:  append([]string(nil), input.RecordType...),
+		RelationshipLabel: append([]string(nil), input.RelationshipLabel...),
 	}
 }
 
@@ -364,13 +368,13 @@ func UnitCamaraderieGraphFromDomain(input records.UnitCamaraderieGraph) UnitCama
 		return items
 	}
 	return UnitCamaraderieGraph{
-		CentralSoldier:     PersonRecordFromModel(input.Central),
-		UnitLabel:          input.UnitLabel,
-		RegimentLabel:      input.RegimentLabel,
-		CompanyLabel:       input.CompanyLabel,
-		SameUnit:           mapConnections(input.SameUnit),
-		SameCompanyVariant: mapConnections(input.SameCompanyVariant),
-		SameRegiment:       mapConnections(input.SameRegiment),
+		CentralPersonRecord: PersonRecordFromModel(input.Central),
+		UnitLabel:           input.UnitLabel,
+		RegimentLabel:       input.RegimentLabel,
+		CompanyLabel:        input.CompanyLabel,
+		SameUnit:            mapConnections(input.SameUnit),
+		SameCompanyVariant:  mapConnections(input.SameCompanyVariant),
+		SameRegiment:        mapConnections(input.SameRegiment),
 	}
 }
 
@@ -388,7 +392,7 @@ func ServiceTimelineFromDomain(input records.ServiceTimeline) ServiceTimeline {
 		})
 	}
 	return ServiceTimeline{
-		SubjectSoldier:       PersonRecordFromModel(input.Central),
+		SubjectPersonRecord:  PersonRecordFromModel(input.Central),
 		TimelineEvents:       events,
 		UndatedSourceRecords: SourceRecordsFromModels(input.UndatedRecords),
 		StartLabel:           input.StartLabel,

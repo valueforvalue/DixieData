@@ -136,6 +136,37 @@ func TestSoldierCardShowsReviewBadge(t *testing.T) {
 	}
 }
 
+func TestSoldierDetailItalicizesMaidenNameAndLinksInternalReferences(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:         42,
+		DisplayID:  "JCM87-00042",
+		EntryType:  "wife",
+		FirstName:  "Sarah",
+		LastName:   "Cole",
+		MaidenName: "Martin",
+		Notes:      "See [[JCM87-00011]] and https://example.com/report.",
+		SourceRecords: []viewmodel.Record{{
+			SourceRecordType: "Pension",
+			Details:          "Linked to [[JCM87-00011]].",
+		}},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"<em>Martin</em>",
+		`href="/soldiers/display/JCM87-00011"`,
+		`data-open-external="true"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("soldier detail missing %s", needle)
+		}
+	}
+}
+
 func TestSoldierDetailShowsResolveReviewAction(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{

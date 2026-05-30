@@ -23,6 +23,7 @@ type personRecordsFacade interface {
 	AdvancedSearch(search personRecordSearch, page, pageSize int) ([]personRecord, int, error)
 	Create(personRecord personRecord) (*personRecord, error)
 	GetByID(id int64) (*personRecord, error)
+	GetByDisplayID(displayID string) (*personRecord, error)
 	Update(personRecord personRecord) error
 	Delete(id int64) error
 	UnitCamaraderieGraph(personRecordID int64) (*records.UnitCamaraderieGraph, error)
@@ -30,10 +31,10 @@ type personRecordsFacade interface {
 	ResearchLog(personRecordID int64) (*records.ResearchLog, error)
 	AddResearchTask(personRecordID int64, title, notes, evidenceType string) error
 	ResolveResearchTask(personRecordID, taskID int64) error
-	ResearchPackForSoldier(personRecordID int64, scope string) (*records.ResearchPack, error)
+	ResearchPackForPersonRecord(personRecordID int64, scope string) (*records.ResearchPack, error)
 	ResearchCollectionsHub(currentPersonRecordID int64) (*records.ResearchCollectionHub, error)
 	CreateResearchCollection(name, description string) error
-	AddSoldierToResearchCollection(collectionID, personRecordID int64) error
+	AddPersonRecordToResearchCollection(collectionID, personRecordID int64) error
 	ResearchCollectionDetail(collectionID, currentPersonRecordID int64) (*records.ResearchCollectionDetail, error)
 	ReviewQueue(page, pageSize int) ([]personRecord, int, error)
 	MarkReviewResolved(personRecordID int64) error
@@ -57,8 +58,8 @@ type analyticsFacade interface {
 }
 
 type reviewFacade interface {
-	FindingsForSoldiers(soldierIDs []int64) (map[int64][]records.DuplicateAuditFindingSummary, error)
-	ResolveFindingsForSoldier(soldierID int64) error
+	FindingsForPersonRecords(personRecordIDs []int64) (map[int64][]records.DuplicateAuditFindingSummary, error)
+	ResolveFindingsForPersonRecord(personRecordID int64) error
 	RunDuplicateAudit() (records.DuplicateAuditRunResult, error)
 	ResolveFinding(findingID int64) error
 	Comparison(findingID int64) (*records.DuplicateAuditComparison, error)

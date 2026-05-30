@@ -2,11 +2,11 @@
 
 ## 1. Introduction
 
-DixieData is a desktop research archive for managing Civil War records, notes, images, exports, and collaboration files. It is designed for researchers who need a local-first archive with structured records, printable outputs, and merge workflows.
+DixieData is a desktop research archive for managing Civil War person records, source records, notes, images, exports, and collaboration files. It is designed for researchers who need a local-first archive with structured person records, printable outputs, and merge workflows.
 
 This manual explains how to use the application day to day.
 
-The current release line is **v1.1.21**.
+The current release line is **v1.2.22**.
 
 ## 2. First launch
 
@@ -17,7 +17,7 @@ When you open DixieData for the first time, the app asks for your identity detai
 - last name
 - birth year
 
-These values are used to build your local researcher namespace for generated record IDs.
+These values are used to build your local researcher namespace for generated display IDs.
 
 Example generated IDs:
 
@@ -41,19 +41,19 @@ The landing page shows:
 
 Use this page for quick archive awareness and date-based browsing.
 
-### Browse Soldiers
+### Browse Person Records
 
 This is the main archive browsing area. From here you can:
 
-- browse records
+- browse person records
 - run quick searches
-- reopen recently accessed records before typing a search
-- open records
+- reopen recently accessed person records before typing a search
+- open person records
 - access advanced search
 
-### New Record
+### Add Person Record
 
-Use this page to create a new soldier, wife, or widow record.
+Use this page to create a new soldier, wife, or widow person record.
 
 ### Review Queue
 
@@ -87,11 +87,11 @@ Use Settings to:
 
 ## 4. Creating a record
 
-To add a new record:
+To add a new person record:
 
-1. Open **New Record**
+1. Open **Add Person Record**
 2. Enter the core fields
-3. Add notes, records, and images
+3. Add notes, source records, and images
 4. Save
 
 ### Record types
@@ -108,7 +108,7 @@ Spouse records are stored in the same archive and can be linked to a soldier rec
 
 Depending on the record, you may enter:
 
-- record ID
+- display ID
 - prefix / first / middle / last / suffix
 - maiden name
 - rank in / rank out
@@ -128,7 +128,7 @@ You can add multiple source records to one person, such as:
 
 - Pension
 - Application
-- other archive record types
+- other source record types
 
 Use the add/remove controls in the form to manage these rows.
 
@@ -232,7 +232,7 @@ Quick search looks across major record text, including:
 
 The result cards show the field that matched.
 
-The quick-search index uses SQLite **FTS5** plus the record scratch-pad cache, so scratch-pad text participates in the same archive-wide search experience.
+The quick-search index uses SQLite **FTS5** plus the person-record scratch-pad cache, so scratch-pad text participates in the same local-archive-wide search experience.
 
 ## 9.2 Advanced search
 
@@ -282,7 +282,7 @@ If DixieData detects a suspected duplicate pair, you can open a side-by-side com
 
 ## 11. Duplicate audit
 
-From **Insights**, click **Audit Now** to run the archive-wide duplicate scan.
+From **Insights**, click **Audit Now** to run the duplicate scan across the local archive.
 
 The audit checks for:
 
@@ -296,7 +296,7 @@ Resolved pairs stay resolved and are not endlessly re-flagged.
 
 ## 12. Insights dashboard
 
-The **Insights** page gives a high-level archive summary.
+The **Insights** page gives a high-level local archive summary.
 
 Available cards include:
 
@@ -385,7 +385,7 @@ If a shared import finds a conflict, DixieData stages the issue in the merge-rev
 You may see actions such as:
 
 - **Keep Local**
-- **Keep Shared**
+- **Keep Incoming**
 - **Keep Both**
 
 ### What these mean
@@ -394,10 +394,10 @@ You may see actions such as:
 
 - retains the current local record
 
-**Keep Shared**
+**Keep Incoming**
 
 - updates local content using the shared version
-- keeps the local record ID
+- keeps the local display ID
 
 **Keep Both**
 
@@ -510,7 +510,7 @@ The loading screen should now refresh automatically while the app finishes start
 
 | Task | Best page |
 | --- | --- |
-| Add a new person | New Record |
+| Add a new person | Add Person Record |
 | Search archive text | Browse / Quick Search |
 | Structured filtering | Advanced Search |
 | Review flagged records | Review Queue |

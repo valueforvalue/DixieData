@@ -75,42 +75,43 @@ type JSONExportDocument struct {
 }
 
 type StaticArchiveRecord struct {
-	DisplayID        string                     `json:"displayId"`
-	EntryType        string                     `json:"entryType"`
-	DisplayType      string                     `json:"displayType"`
-	Name             string                     `json:"name"`
-	Dates            string                     `json:"dates"`
-	Prefix           string                     `json:"prefix,omitempty"`
-	FirstName        string                     `json:"firstName,omitempty"`
-	MiddleName       string                     `json:"middleName,omitempty"`
-	LastName         string                     `json:"lastName,omitempty"`
-	Suffix           string                     `json:"suffix,omitempty"`
-	Rank             string                     `json:"rank,omitempty"`
-	RankIn           string                     `json:"rankIn,omitempty"`
-	RankOut          string                     `json:"rankOut,omitempty"`
-	Unit             string                     `json:"unit,omitempty"`
-	Location         string                     `json:"location,omitempty"`
-	BirthDate        string                     `json:"birthDate,omitempty"`
-	DeathDate        string                     `json:"deathDate,omitempty"`
-	BirthInfo        string                     `json:"birthInfo,omitempty"`
-	Notes            string                     `json:"notes,omitempty"`
-	MaidenName       string                     `json:"maidenName,omitempty"`
-	SpouseName       string                     `json:"spouseName,omitempty"`
-	SpouseDisplayID  string                     `json:"spouseDisplayId,omitempty"`
-	PensionID        string                     `json:"pensionId,omitempty"`
-	AppID            string                     `json:"appId,omitempty"`
-	PensionState     string                     `json:"pensionState,omitempty"`
-	HomeStatus       string                     `json:"homeStatus,omitempty"`
-	HomeName         string                     `json:"homeName,omitempty"`
-	NeedsReview      bool                       `json:"needsReview,omitempty"`
-	ReviewReason     string                     `json:"reviewReason,omitempty"`
-	AddedBy          string                     `json:"addedBy,omitempty"`
-	LastEditedBy     string                     `json:"lastEditedBy,omitempty"`
-	LastEditedAt     string                     `json:"lastEditedAt,omitempty"`
-	LastEditedFields string                     `json:"lastEditedFields,omitempty"`
-	ImagePath        string                     `json:"imagePath,omitempty"`
-	Images           []StaticArchiveImage       `json:"images,omitempty"`
-	Records          []StaticArchiveRecordEntry `json:"records,omitempty"`
+	DisplayID         string                     `json:"displayId"`
+	EntryType         string                     `json:"entryType"`
+	DisplayType       string                     `json:"displayType"`
+	Name              string                     `json:"name"`
+	Dates             string                     `json:"dates"`
+	Prefix            string                     `json:"prefix,omitempty"`
+	FirstName         string                     `json:"firstName,omitempty"`
+	MiddleName        string                     `json:"middleName,omitempty"`
+	LastName          string                     `json:"lastName,omitempty"`
+	Suffix            string                     `json:"suffix,omitempty"`
+	Rank              string                     `json:"rank,omitempty"`
+	RankIn            string                     `json:"rankIn,omitempty"`
+	RankOut           string                     `json:"rankOut,omitempty"`
+	Unit              string                     `json:"unit,omitempty"`
+	Location          string                     `json:"location,omitempty"`
+	BirthDate         string                     `json:"birthDate,omitempty"`
+	DeathDate         string                     `json:"deathDate,omitempty"`
+	BirthInfo         string                     `json:"birthInfo,omitempty"`
+	Notes             string                     `json:"notes,omitempty"`
+	MaidenName        string                     `json:"maidenName,omitempty"`
+	RelationshipLabel string                     `json:"relationshipLabel,omitempty"`
+	SpouseName        string                     `json:"spouseName,omitempty"`
+	SpouseDisplayID   string                     `json:"spouseDisplayId,omitempty"`
+	PensionID         string                     `json:"pensionId,omitempty"`
+	AppID             string                     `json:"appId,omitempty"`
+	PensionState      string                     `json:"pensionState,omitempty"`
+	HomeStatus        string                     `json:"homeStatus,omitempty"`
+	HomeName          string                     `json:"homeName,omitempty"`
+	NeedsReview       bool                       `json:"needsReview,omitempty"`
+	ReviewReason      string                     `json:"reviewReason,omitempty"`
+	AddedBy           string                     `json:"addedBy,omitempty"`
+	LastEditedBy      string                     `json:"lastEditedBy,omitempty"`
+	LastEditedAt      string                     `json:"lastEditedAt,omitempty"`
+	LastEditedFields  string                     `json:"lastEditedFields,omitempty"`
+	ImagePath         string                     `json:"imagePath,omitempty"`
+	Images            []StaticArchiveImage       `json:"images,omitempty"`
+	Records           []StaticArchiveRecordEntry `json:"records,omitempty"`
 }
 
 type StaticArchiveImage struct {
@@ -817,6 +818,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         record.lastName,
         record.suffix,
         record.maidenName,
+        record.relationshipLabel,
         record.spouseName,
         record.spouseDisplayId,
         record.birthDate,
@@ -848,8 +850,31 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       return text || 'Not recorded';
     }
 
+    function detailMarkup(label, value) {
+      const text = detailValue(value);
+      if (label === 'Maiden Name' && text !== 'Not recorded') {
+        return '<em>' + escapeHtml(text) + '</em>';
+      }
+      return escapeHtml(text);
+    }
+
     function detailLink(displayId) {
       return '#record=' + encodeURIComponent(String(displayId || '').trim());
+    }
+
+    function renderLinkedText(text) {
+      return escapeHtml(String(text || '')).replace(/(https?:\/\/[^\s<]+)|\[\[([^\[\]\r\n]+)\]\]/g, function(match, externalUrl, displayId) {
+        if (externalUrl) {
+          var cleanUrl = externalUrl.replace(/[.,;:!?)\]}]+$/, '');
+          var suffix = externalUrl.slice(cleanUrl.length);
+          return '<a class="record-link" href="' + escapeHtml(cleanUrl) + '" target="_blank" rel="noreferrer noopener">' + escapeHtml(cleanUrl) + '</a>' + escapeHtml(suffix);
+        }
+        var target = String(displayId || '').trim();
+        if (!target) {
+          return escapeHtml(match);
+        }
+        return '<a class="record-link" href="' + detailLink(target) + '">' + escapeHtml(target) + '</a>';
+      }).replace(/\n/g, '<br>');
     }
 
     function relatedFamilyRecords(record, allRecords) {
@@ -888,7 +913,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       const relatedFamily = relatedFamilyRecords(record, allRecords);
       const details = [
         ['Record Type', detailValue(record.displayType)],
-        ['Record ID', detailValue(record.displayId)],
+        ['Display ID', detailValue(record.displayId)],
         ['Prefix', detailValue(record.prefix)],
         ['First Name', detailValue(record.firstName)],
         ['Middle Name', detailValue(record.middleName)],
@@ -908,6 +933,9 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           details.push(['Pension ID', detailValue(record.pensionId)]);
           details.push(['Application ID', detailValue(record.appId)]);
         }
+      } else if (record.entryType === 'linked_person') {
+        details.push(['Relationship to Soldier', detailValue(record.relationshipLabel)]);
+        details.push(['Linked Soldier Record', detailValue(record.spouseDisplayId)]);
       } else {
         details.push(['Rank', detailValue(record.rankOut || record.rank || record.rankIn)]);
         details.push(['Rank In', detailValue(record.rankIn)]);
@@ -938,14 +966,14 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         );
       }
       if (record.notes) {
-        primarySections.push('<section class="detail-section"><h4>Notes</h4><p>' + escapeHtml(record.notes) + '</p></section>');
+        primarySections.push('<section class="detail-section"><h4>Notes</h4><p>' + renderLinkedText(record.notes) + '</p></section>');
       }
       if (record.records && record.records.length) {
         primarySections.push(
           '<section class="detail-section"><h4>Records</h4><ul>' +
             record.records.map(function(item) {
               const app = item.appId ? ' (' + escapeHtml(item.appId) + ')' : '';
-              const detailsText = item.details ? '<br>' + escapeHtml(item.details) : '';
+              const detailsText = item.details ? '<br>' + renderLinkedText(item.details) : '';
               return '<li><strong>' + escapeHtml(item.recordType || 'Record') + '</strong>' + app + detailsText + '</li>';
             }).join('') +
           '</ul></section>'
@@ -992,7 +1020,7 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
           '<div>' +
             '<dl class="detail-grid">' +
               details.map(function(line) {
-                return '<dt>' + escapeHtml(line[0]) + '</dt><dd>' + escapeHtml(line[1]) + '</dd>';
+                return '<dt>' + escapeHtml(line[0]) + '</dt><dd>' + detailMarkup(line[0], line[1]) + '</dd>';
               }).join('') +
             '</dl>' +
             primarySections.join('') +
@@ -1303,7 +1331,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 	const (
 		archiveSheet  = "Archive Export"
 		metadataSheet = "Metadata"
-		spouseSheet   = "Linked Spouses"
+		spouseSheet   = "Linked Relationships"
 	)
 
 	soldiers, err := exportDetailedSoldiers(e.soldier)
@@ -1370,7 +1398,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		"app_version", "schema_version", "export_version", "generated_at",
 		"db_id", "display_id", "entry_type",
 		"linked_spouse_db_id", "linked_spouse_display_id", "linked_spouse_name",
-		"maiden_name", "is_generated", "pension_id", "application_id",
+		"relationship_label", "maiden_name", "is_generated", "pension_id", "application_id",
 		"prefix", "first_name", "middle_name", "last_name", "suffix",
 		"rank", "rank_in", "rank_out", "unit", "pension_state",
 		"confederate_home_status", "confederate_home_name",
@@ -1409,6 +1437,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 			}(),
 			linkedSpouseDisplayID,
 			linkedSpouseName,
+			soldier.RelationshipLabel,
 			soldier.MaidenName,
 			fmt.Sprintf("%t", soldier.IsGenerated),
 			soldier.PensionID,
@@ -1458,7 +1487,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 				}
 				updateExcelColumnWidth(archiveWidths, columnIndex, displayValue)
 				continue
-			case "display_id", "linked_spouse_display_id", "app_version", "generated_at", "entry_type", "linked_spouse_name", "maiden_name", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at":
+			case "display_id", "linked_spouse_display_id", "app_version", "generated_at", "entry_type", "linked_spouse_name", "relationship_label", "maiden_name", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at":
 				if err := workbook.SetCellValue(archiveSheet, cell, value); err != nil {
 					return err
 				}
@@ -1489,7 +1518,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 	spouseHeaders := []string{
 		"record_display_id", "record_name", "record_entry_type",
 		"linked_spouse_db_id", "linked_spouse_display_id", "linked_spouse_name", "linked_spouse_entry_type",
-		"maiden_name",
+		"relationship_label", "maiden_name",
 	}
 	spouseWidths, err := writeExcelHeaderRow(workbook, spouseSheet, spouseHeaders, headerStyle)
 	if err != nil {
@@ -1497,7 +1526,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 	}
 	spouseRow := 2
 	for _, soldier := range soldiers {
-		if soldier.SpouseSoldierID <= 0 && strings.TrimSpace(soldier.SpouseName) == "" && strings.TrimSpace(soldier.MaidenName) == "" {
+		if soldier.SpouseSoldierID <= 0 && strings.TrimSpace(soldier.SpouseName) == "" && strings.TrimSpace(soldier.RelationshipLabel) == "" && strings.TrimSpace(soldier.MaidenName) == "" {
 			continue
 		}
 		spouse, spouseLinked := spouseIndex[soldier.SpouseSoldierID]
@@ -1532,6 +1561,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 				}
 				return ""
 			}(),
+			soldier.RelationshipLabel,
 			soldier.MaidenName,
 		}
 		for columnIndex, value := range rowValues {
@@ -1669,7 +1699,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	defer w.Flush()
 
 	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "relationship_label", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1694,6 +1724,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				s.DisplayID,
 				s.EntryType,
 				fmt.Sprintf("%d", s.SpouseSoldierID),
+				s.RelationshipLabel,
 				s.MaidenName,
 				fmt.Sprintf("%v", s.IsGenerated),
 				s.PensionID,
@@ -2068,7 +2099,7 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 		return err
 	}
 	pdf.AddPage()
-	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with one landscape record page per entry. Images are intentionally omitted.")
+	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with landscape record pages that continue onto additional pages when needed. Images are intentionally omitted.")
 
 	soldiers, err := exportDetailedSoldiers(e.soldier)
 	if err != nil {
@@ -2116,6 +2147,7 @@ func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot An
 	writePDFSection(pdf, "Record Types")
 	writePDFBullet(pdf, fmt.Sprintf("Soldiers: %d", snapshot.RecordTypes.TotalSoldiers))
 	writePDFBullet(pdf, fmt.Sprintf("Spouses (Wives & Widows): %d", snapshot.RecordTypes.TotalWivesWidows))
+	writePDFBullet(pdf, fmt.Sprintf("Linked People: %d", snapshot.RecordTypes.TotalLinkedPeople))
 
 	writePDFSection(pdf, "Top Cemeteries")
 	writePDFAnalyticsRows(pdf, snapshot.CemeteryDensity, "No burial locations are recorded yet.")
@@ -2557,40 +2589,41 @@ func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 
 func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Soldier) StaticArchiveRecord {
 	record := StaticArchiveRecord{
-		DisplayID:        strings.TrimSpace(soldier.DisplayID),
-		EntryType:        strings.TrimSpace(soldier.EntryType),
-		DisplayType:      displayEntryType(soldier),
-		Name:             soldierDisplayName(soldier),
-		Dates:            staticArchiveDateSummary(soldier),
-		Prefix:           strings.TrimSpace(soldier.Prefix),
-		FirstName:        strings.TrimSpace(soldier.FirstName),
-		MiddleName:       strings.TrimSpace(soldier.MiddleName),
-		LastName:         strings.TrimSpace(soldier.LastName),
-		Suffix:           strings.TrimSpace(soldier.Suffix),
-		Rank:             strings.TrimSpace(soldier.Rank),
-		RankIn:           strings.TrimSpace(soldier.RankIn),
-		RankOut:          strings.TrimSpace(soldier.RankOut),
-		Unit:             strings.TrimSpace(soldier.Unit),
-		Location:         strings.TrimSpace(soldier.BuriedIn),
-		BirthDate:        strings.TrimSpace(dates.Display(soldier.BirthDate)),
-		DeathDate:        strings.TrimSpace(dates.Display(soldier.DeathDate)),
-		BirthInfo:        strings.TrimSpace(soldier.BirthInfo),
-		Notes:            strings.TrimSpace(soldier.Notes),
-		MaidenName:       strings.TrimSpace(soldier.MaidenName),
-		SpouseName:       strings.TrimSpace(soldier.SpouseName),
-		PensionID:        strings.TrimSpace(soldier.PensionID),
-		AppID:            strings.TrimSpace(soldier.ApplicationID),
-		PensionState:     strings.TrimSpace(soldier.PensionState),
-		HomeStatus:       strings.TrimSpace(soldier.ConfederateHomeStatus),
-		HomeName:         strings.TrimSpace(soldier.ConfederateHomeName),
-		NeedsReview:      soldier.NeedsReview,
-		ReviewReason:     strings.TrimSpace(soldier.ReviewReason),
-		AddedBy:          strings.TrimSpace(soldier.AddedBy),
-		LastEditedBy:     strings.TrimSpace(soldier.LastEditedBy),
-		LastEditedAt:     strings.TrimSpace(soldier.LastEditedAt),
-		LastEditedFields: strings.TrimSpace(soldier.LastEditedFields),
-		Images:           make([]StaticArchiveImage, 0, len(soldier.Images)),
-		Records:          make([]StaticArchiveRecordEntry, 0, len(soldier.Records)),
+		DisplayID:         strings.TrimSpace(soldier.DisplayID),
+		EntryType:         strings.TrimSpace(soldier.EntryType),
+		DisplayType:       displayEntryType(soldier),
+		Name:              soldierDisplayName(soldier),
+		Dates:             staticArchiveDateSummary(soldier),
+		Prefix:            strings.TrimSpace(soldier.Prefix),
+		FirstName:         strings.TrimSpace(soldier.FirstName),
+		MiddleName:        strings.TrimSpace(soldier.MiddleName),
+		LastName:          strings.TrimSpace(soldier.LastName),
+		Suffix:            strings.TrimSpace(soldier.Suffix),
+		Rank:              strings.TrimSpace(soldier.Rank),
+		RankIn:            strings.TrimSpace(soldier.RankIn),
+		RankOut:           strings.TrimSpace(soldier.RankOut),
+		Unit:              strings.TrimSpace(soldier.Unit),
+		Location:          strings.TrimSpace(soldier.BuriedIn),
+		BirthDate:         strings.TrimSpace(dates.Display(soldier.BirthDate)),
+		DeathDate:         strings.TrimSpace(dates.Display(soldier.DeathDate)),
+		BirthInfo:         strings.TrimSpace(soldier.BirthInfo),
+		Notes:             strings.TrimSpace(soldier.Notes),
+		MaidenName:        strings.TrimSpace(soldier.MaidenName),
+		RelationshipLabel: strings.TrimSpace(soldier.RelationshipLabel),
+		SpouseName:        strings.TrimSpace(soldier.SpouseName),
+		PensionID:         strings.TrimSpace(soldier.PensionID),
+		AppID:             strings.TrimSpace(soldier.ApplicationID),
+		PensionState:      strings.TrimSpace(soldier.PensionState),
+		HomeStatus:        strings.TrimSpace(soldier.ConfederateHomeStatus),
+		HomeName:          strings.TrimSpace(soldier.ConfederateHomeName),
+		NeedsReview:       soldier.NeedsReview,
+		ReviewReason:      strings.TrimSpace(soldier.ReviewReason),
+		AddedBy:           strings.TrimSpace(soldier.AddedBy),
+		LastEditedBy:      strings.TrimSpace(soldier.LastEditedBy),
+		LastEditedAt:      strings.TrimSpace(soldier.LastEditedAt),
+		LastEditedFields:  strings.TrimSpace(soldier.LastEditedFields),
+		Images:            make([]StaticArchiveImage, 0, len(soldier.Images)),
+		Records:           make([]StaticArchiveRecordEntry, 0, len(soldier.Records)),
 	}
 	if record.HomeStatus == "None" {
 		record.HomeStatus = ""
@@ -2847,6 +2880,8 @@ type pdfRecordCardLayout struct {
 	BulletIndent         float64
 }
 
+const minReadablePDFRecordCardScale = 0.76
+
 func defaultPDFRecordCardLayout() pdfRecordCardLayout {
 	return pdfRecordCardLayout{
 		LeftWidthRatio:       0.52,
@@ -2887,7 +2922,7 @@ func (layout pdfRecordCardLayout) scaled(scale float64) pdfRecordCardLayout {
 	}
 }
 
-func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY float64, includeImages bool) pdfRecordCardLayout {
+func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY float64, includeImages bool) (pdfRecordCardLayout, bool) {
 	_, pageHeight := pdf.GetPageSize()
 	_, _, _, bottomMargin := pdf.GetMargins()
 	availableHeight := pageHeight - bottomMargin - startY - 18
@@ -2895,13 +2930,13 @@ func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY fl
 	if !includeImages {
 		base.LeftWidthRatio = 0.43
 	}
-	for _, scale := range []float64{1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.64, 0.58, 0.52, 0.48, 0.44, 0.4} {
+	for _, scale := range []float64{1, 0.94, 0.88, 0.82, minReadablePDFRecordCardScale} {
 		layout := base.scaled(scale)
 		if estimatePDFRecordCardHeight(pdf, soldier, includeImages, layout) <= availableHeight {
-			return layout
+			return layout, true
 		}
 	}
-	return base.scaled(0.4)
+	return base.scaled(minReadablePDFRecordCardScale), false
 }
 
 func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bool, layout pdfRecordCardLayout) float64 {
@@ -3028,7 +3063,11 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bo
 	leftMargin, _, rightMargin, _ := pdf.GetMargins()
 	_, _, _, bottomMargin := pdf.GetMargins()
 	contentWidth := pageWidth - leftMargin - rightMargin
-	layout := choosePDFRecordCardLayout(pdf, soldier, startY, includeImages)
+	layout, fitsSinglePage := choosePDFRecordCardLayout(pdf, soldier, startY, includeImages)
+	if !fitsSinglePage {
+		writePDFRecordCardMultiPage(pdf, soldier, includeImages, layout)
+		return
+	}
 	leftWidth := contentWidth * layout.LeftWidthRatio
 	gapWidth := layout.ColumnGap
 	rightWidth := contentWidth - leftWidth - gapWidth
@@ -3068,6 +3107,75 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bo
 	pdf.SetY(maxPDFY(leftY, rightY) + 2)
 }
 
+func writePDFRecordCardMultiPage(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bool, layout pdfRecordCardLayout) {
+	startY := pdf.GetY()
+	pageWidth, _ := pdf.GetPageSize()
+	leftMargin, _, rightMargin, bottomMargin := pdf.GetMargins()
+	contentWidth := pageWidth - leftMargin - rightMargin
+	defer pdf.SetAutoPageBreak(true, bottomMargin)
+	pdf.SetAutoPageBreak(true, bottomMargin)
+
+	currentY := startY
+	wroteSection := false
+
+	identityFields := recordIdentityFields(soldier)
+	if hasVisiblePDFField(identityFields) {
+		currentY = writePDFCompactFieldSection(pdf, leftMargin, currentY, contentWidth, "Identity & Vital Details", identityFields, layout)
+		wroteSection = true
+	}
+
+	serviceFields := recordServiceFields(soldier)
+	if hasVisiblePDFField(serviceFields) {
+		currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.FieldLineHeight)
+		currentY = writePDFCompactFieldSection(pdf, leftMargin, currentY, contentWidth, "Service & Archive Details", serviceFields, layout)
+		wroteSection = true
+	}
+
+	householdFields := recordHouseholdFields(soldier)
+	if hasVisiblePDFField(householdFields) {
+		currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.FieldLineHeight)
+		currentY = writePDFCompactFieldSection(pdf, leftMargin, currentY, contentWidth, "Household & Context", householdFields, layout)
+		wroteSection = true
+	}
+
+	if includeImages {
+		if imagePath, imageLabel := firstRecordCardImage(soldier); imagePath != "" {
+			currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.ImagePanelHeight+2)
+			currentY = writePDFImagePanel(pdf, leftMargin, currentY, contentWidth, imagePath, imageLabel, layout)
+			wroteSection = true
+		}
+	}
+
+	if strings.TrimSpace(soldier.Notes) != "" {
+		currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.BodyLineHeight)
+		currentY = writePDFRichTextColumnSection(pdf, leftMargin, currentY, contentWidth, "Scratch Pad / Notes", soldier.Notes, layout)
+		wroteSection = true
+	}
+
+	if len(soldier.Records) > 0 {
+		currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.BodyLineHeight)
+		currentY = writePDFRecordsColumnSection(pdf, leftMargin, currentY, contentWidth, soldier.Records, layout)
+		wroteSection = true
+	}
+
+	if wroteSection {
+		pdf.SetY(currentY + 2)
+	}
+}
+
+func preparePDFRecordCardSection(pdf *fpdf.Fpdf, currentY float64, wroteSection bool, gap, minHeight float64) float64 {
+	if wroteSection {
+		currentY += gap
+	}
+	_, pageHeight := pdf.GetPageSize()
+	_, _, _, bottomMargin := pdf.GetMargins()
+	if currentY+minHeight > pageHeight-bottomMargin {
+		pdf.AddPage()
+		return pdf.GetY()
+	}
+	return currentY
+}
+
 func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title string, fields [][2]string, layout pdfRecordCardLayout) float64 {
 	if !hasVisiblePDFField(fields) {
 		return y
@@ -3096,7 +3204,11 @@ func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title stri
 		pdf.MultiCell(labelWidth, layout.FieldLineHeight, sanitizePDFText(field[0]), "", "L", false)
 		labelBottom := pdf.GetY()
 		pdf.SetXY(x+labelWidth+3, rowTop)
-		pdf.SetFont("Helvetica", "", layout.FieldValueFontSize)
+		if strings.TrimSpace(field[0]) == "Maiden Name" {
+			pdf.SetFont("Helvetica", "I", layout.FieldValueFontSize)
+		} else {
+			pdf.SetFont("Helvetica", "", layout.FieldValueFontSize)
+		}
 		pdf.SetTextColor(34, 48, 61)
 		pdf.MultiCell(valueWidth, layout.FieldLineHeight, emptyPDFValue(field[1]), "", "L", false)
 		valueBottom := pdf.GetY()
@@ -3200,10 +3312,6 @@ func recordServiceFields(soldier models.Soldier) [][2]string {
 		{"Application ID", soldier.ApplicationID},
 		{"Confederate Home Status", soldier.ConfederateHomeStatus},
 		{"Confederate Home Name", soldier.ConfederateHomeName},
-		{"Added By", soldier.AddedBy},
-		{"Last Edited By", soldier.LastEditedBy},
-		{"Last Edited At", soldier.LastEditedAt},
-		{"Last Edited Fields", soldier.LastEditedFields},
 	}
 	return fields
 }
@@ -3293,7 +3401,11 @@ func writePDFInlineField(pdf *fpdf.Fpdf, label, value string, width float64) {
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(34, 48, 61)
 	pdf.CellFormat(34, 6, label, "", 0, "", false, 0, "")
-	pdf.SetFont("Helvetica", "", 10)
+	if strings.TrimSpace(label) == "Maiden Name" {
+		pdf.SetFont("Helvetica", "I", 10)
+	} else {
+		pdf.SetFont("Helvetica", "", 10)
+	}
 	pdf.SetTextColor(68, 82, 96)
 	pdf.SetXY(x+34, y)
 	pdf.MultiCell(width-34, 6, emptyPDFValue(value), "", "L", false)
@@ -3367,7 +3479,7 @@ func analyticsPDFMetadataDetails(snapshot AnalyticsSnapshot) map[string]string {
 		"Top units":      fmt.Sprintf("%d", len(snapshot.UnitRepresentation)),
 		"Birth decades":  fmt.Sprintf("%d", len(snapshot.BirthDecadeDistribution)),
 		"Death decades":  fmt.Sprintf("%d", len(snapshot.DeathDecadeDistribution)),
-		"Record types":   fmt.Sprintf("%d soldiers / %d spouses", snapshot.RecordTypes.TotalSoldiers, snapshot.RecordTypes.TotalWivesWidows),
+		"Record types":   fmt.Sprintf("%d soldiers / %d spouses / %d linked people", snapshot.RecordTypes.TotalSoldiers, snapshot.RecordTypes.TotalWivesWidows, snapshot.RecordTypes.TotalLinkedPeople),
 	}
 }
 
@@ -3546,7 +3658,12 @@ func registryEntryLines(soldier models.Soldier) [][2]string {
 		{"Buried In", soldier.BuriedIn},
 	}
 	if strings.TrimSpace(soldier.SpouseName) != "" || strings.TrimSpace(soldier.MaidenName) != "" {
-		lines = append(lines, [2]string{"Spouse", strings.TrimSpace(strings.Join(compactPDFValues(soldier.SpouseName, soldier.MaidenName), " | "))})
+		if spouseName := strings.TrimSpace(soldier.SpouseName); spouseName != "" {
+			lines = append(lines, [2]string{"Spouse", spouseName})
+		}
+		if maidenName := strings.TrimSpace(soldier.MaidenName); maidenName != "" {
+			lines = append(lines, [2]string{"Maiden Name", maidenName})
+		}
 	}
 	if strings.TrimSpace(soldier.Notes) != "" {
 		lines = append(lines, [2]string{"Notes", soldier.Notes})
@@ -3638,6 +3755,8 @@ func displayEntryType(soldier models.Soldier) string {
 		return "Wife"
 	case "widow":
 		return "Widow"
+	case "linked_person":
+		return "Generic Linked Person"
 	default:
 		return "Soldier"
 	}

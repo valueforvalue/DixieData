@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-DixieData is a Wails-based desktop archive for managing Civil War research records. It combines a Go backend, SQLite database, and Templ-rendered UI into a single desktop application focused on:
+DixieData is a Wails-based desktop archive for managing Civil War person records and source records. It combines a Go backend, SQLite database, and Templ-rendered UI into a single desktop application focused on:
 
 - soldier and spouse record management
 - long-form research notes
@@ -12,7 +12,7 @@ DixieData is a Wails-based desktop archive for managing Civil War research recor
 - import/export and merge workflows
 - review queue and duplicate auditing
 
-The current release line is **v1.1.21**.
+The current release line is **v1.2.22**.
 
 ## 2. Technical stack
 
@@ -191,7 +191,7 @@ Implemented features:
 
 ## 6.3 Scratch Pad
 
-The floating Scratch Pad button launches a per-record scratch pad using the current record ID on supported pages. Scratch pad text is indexed for search.
+The floating Scratch Pad button launches a per-person-record scratch pad from supported pages. Scratch pad text is indexed for search.
 
 ## 6.4 Search
 
@@ -303,10 +303,10 @@ Shared imports can detect:
 ### Resolution actions
 
 - **Keep Local**
-- **Keep Shared**
+- **Keep Incoming**
 - **Keep Both**
 
-`Keep Shared` updates the local record content while preserving the local ID for relational stability.
+`Keep Incoming` updates the local record content while preserving the local display ID for relational stability.
 
 `Keep Both` assigns a new clean local ID rather than wrapping the imported ID.
 
@@ -325,7 +325,7 @@ Capabilities:
 
 ## 6.11 Duplicate audit
 
-The Insights page can run an archive-wide duplicate audit.
+The Insights page can run a duplicate audit across the local archive.
 
 The engine performs:
 

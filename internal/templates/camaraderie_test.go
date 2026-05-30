@@ -12,7 +12,7 @@ import (
 func TestUnitCamaraderieViewRendersConnections(t *testing.T) {
 	var buf bytes.Buffer
 	err := UnitCamaraderieView(viewmodel.UnitCamaraderieGraph{
-		CentralSoldier: viewmodel.Soldier{
+		CentralPersonRecord: viewmodel.Soldier{
 			ID:        9,
 			DisplayID: "CAM-0009",
 			FirstName: "Andrew",

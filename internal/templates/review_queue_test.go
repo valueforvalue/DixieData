@@ -17,6 +17,8 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 			DisplayID:    "JCM87-00012",
 			FirstName:    "Andrew",
 			LastName:     "Morris",
+			EntryType:    "wife",
+			MaidenName:   "Carter",
 			NeedsReview:  true,
 			ReviewReason: "Potential duplicate from JCM87 import",
 		},
@@ -37,6 +39,7 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 		"/soldiers/12",
 		"/soldiers/12/review/resolve?context=queue",
 		"/review-queue/compare/9",
+		"<em>Carter</em>",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("review queue missing %s", needle)

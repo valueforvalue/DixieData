@@ -289,6 +289,10 @@ func (s *AuditService) ResolveFindingsForSoldier(soldierID int64) error {
 	return tx.Commit()
 }
 
+func (s *AuditService) ResolveFindingsForPersonRecord(personRecordID int64) error {
+	return s.ResolveFindingsForSoldier(personRecordID)
+}
+
 func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]DuplicateAuditFindingSummary, error) {
 	if len(soldierIDs) == 0 {
 		return map[int64][]DuplicateAuditFindingSummary{}, nil
@@ -356,6 +360,10 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 		results[row.RightID] = append(results[row.RightID], rightSummary)
 	}
 	return results, nil
+}
+
+func (s *AuditService) FindingsForPersonRecords(personRecordIDs []int64) (map[int64][]DuplicateAuditFindingSummary, error) {
+	return s.FindingsForSoldiers(personRecordIDs)
 }
 
 func (s *AuditService) Comparison(findingID int64) (*DuplicateAuditComparison, error) {

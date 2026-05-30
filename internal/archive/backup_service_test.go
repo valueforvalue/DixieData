@@ -358,20 +358,32 @@ func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
 		CreatedAt: "2026-01-01T00:00:00Z",
 		DataFile:  "data/soldiers.json",
 		ImageRoot: "images/",
-		Soldiers:  1,
+		Soldiers:  2,
 		Records:   1,
 		Images:    1,
 	}
 	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
-	soldiers := []models.Soldier{{
-		DisplayID: "PENSION-LEGACY",
-		FirstName: "Legacy",
-		LastName:  "Soldier",
-		Records:   []models.Record{{RecordType: "Roster", AppID: "APP-1", Details: "Legacy details"}},
-		Images:    []models.Image{{FileName: "portrait.png", FilePath: "images/pension-legacy/portrait.png", Caption: "Portrait"}},
-	}}
+	soldiers := []models.Soldier{
+		{
+			ID:        11,
+			DisplayID: "PENSION-LEGACY",
+			FirstName: "Legacy",
+			LastName:  "Soldier",
+			Records:   []models.Record{{RecordType: "Roster", AppID: "APP-1", Details: "Legacy details"}},
+			Images:    []models.Image{{FileName: "portrait.png", FilePath: "images/pension-legacy/portrait.png", Caption: "Portrait"}},
+		},
+		{
+			ID:                12,
+			DisplayID:         "PENSION-LEGACY-LINK",
+			EntryType:         "linked_person",
+			SpouseSoldierID:   11,
+			RelationshipLabel: "Brother",
+			FirstName:         "Linked",
+			LastName:          "Person",
+		},
+	}
 	if err := writeBackupJSON(zipWriter, "data/soldiers.json", soldiers); err != nil {
 		t.Fatalf("write soldiers: %v", err)
 	}
@@ -406,12 +418,45 @@ func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
 	}
 	defer reopened.Close()
 	reopenedSvc := NewSoldierService(reopened)
-	results, total, err := reopenedSvc.SearchPage("PENSION-LEGACY", 1, 10)
+	results, _, err := reopenedSvc.SearchPage("PENSION-LEGACY", 1, 10)
 	if err != nil {
 		t.Fatalf("SearchPage: %v", err)
 	}
-	if total != 1 || len(results) != 1 {
-		t.Fatalf("restored search total=%d len=%d", total, len(results))
+	var restoredSoldier *models.Soldier
+	for _, result := range results {
+		if result.DisplayID == "PENSION-LEGACY" {
+			restoredSoldier, err = reopenedSvc.GetByID(result.ID)
+			if err != nil {
+				t.Fatalf("GetByID restored soldier: %v", err)
+			}
+			break
+		}
+	}
+	if restoredSoldier == nil {
+		t.Fatalf("restored soldier missing from search results: %#v", results)
+	}
+	linkedResults, _, err := reopenedSvc.SearchPage("PENSION-LEGACY-LINK", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage linked: %v", err)
+	}
+	var linked *models.Soldier
+	for _, result := range linkedResults {
+		if result.DisplayID == "PENSION-LEGACY-LINK" {
+			linked, err = reopenedSvc.GetByID(result.ID)
+			if err != nil {
+				t.Fatalf("GetByID linked: %v", err)
+			}
+			break
+		}
+	}
+	if linked == nil {
+		t.Fatalf("restored linked person missing from search results: %#v", linkedResults)
+	}
+	if linked.EntryType != "linked_person" || linked.RelationshipLabel != "Brother" {
+		t.Fatalf("restored linked person missing relationship fields: %#v", linked)
+	}
+	if linked.SpouseDisplayID != "PENSION-LEGACY" || linked.SpouseName != "Legacy Soldier" {
+		t.Fatalf("restored linked person missing soldier link: %#v", linked)
 	}
 }
 

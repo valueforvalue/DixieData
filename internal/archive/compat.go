@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
 	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
@@ -67,6 +67,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		syncID                sql.NullString
 		entryType             sql.NullString
 		maidenName            sql.NullString
+		relationshipLabel     sql.NullString
 		spouseSoldierID       sql.NullInt64
 		pensionID             sql.NullString
 		applicationID         sql.NullString
@@ -105,6 +106,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.SyncID, &syncID),
 		nullStringDest(&s.EntryType, &entryType),
 		nullInt64Dest(&s.SpouseSoldierID, &spouseSoldierID),
+		nullStringDest(&s.RelationshipLabel, &relationshipLabel),
 		nullStringDest(&s.MaidenName, &maidenName),
 		&s.IsGenerated,
 		nullStringDest(&s.PensionID, &pensionID),

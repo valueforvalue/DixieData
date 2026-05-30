@@ -1398,10 +1398,18 @@
     if (!(select instanceof HTMLSelectElement)) {
       return;
     }
-    const specialEntry = select.value === "wife" || select.value === "widow";
+    const specialEntry = select.value === "wife" || select.value === "widow" || select.value === "linked_person";
     const widowEntry = select.value === "widow";
+    const spouseEntry = select.value === "wife" || select.value === "widow";
+    const linkedPersonEntry = select.value === "linked_person";
     form.querySelectorAll("[data-entry-type-special]").forEach((section) => {
       setSectionEnabled(section, specialEntry);
+    });
+    form.querySelectorAll("[data-spouse-only-field]").forEach((section) => {
+      setSectionEnabled(section, spouseEntry);
+    });
+    form.querySelectorAll("[data-linked-person-field]").forEach((section) => {
+      setSectionEnabled(section, linkedPersonEntry);
     });
     form.querySelectorAll("[data-soldier-only-field]").forEach((section) => {
       setSectionEnabled(section, isSoldierEntryType(select.value));
@@ -1413,7 +1421,7 @@
   }
 
   function isSoldierEntryType(value) {
-    return value !== "wife" && value !== "widow";
+    return value !== "wife" && value !== "widow" && value !== "linked_person";
   }
 
   function initializeEntryTypeForms() {
@@ -1768,6 +1776,7 @@
       const redirectTo = response.headers.get("X-DixieData-Redirect");
       const toastMessage = response.headers.get("X-DixieData-Toast");
       const toastKind = response.headers.get("X-DixieData-Toast-Type") || "success";
+      const closeFeedback = response.headers.get("X-DixieData-Close-Feedback");
       if (redirectTo) {
         if (form instanceof HTMLFormElement && response.ok) {
           clearDraftForForm(form);
@@ -1783,6 +1792,9 @@
         clearDraftForForm(form);
       }
       applyResponse(el, html, requestState);
+      if (response.ok && closeFeedback === "true") {
+        closeFeedbackModal();
+      }
       if (response.ok && el instanceof HTMLElement) {
         const primaryImageId = el.getAttribute("data-primary-image-id");
         if (primaryImageId) {
@@ -1843,6 +1855,16 @@
     return form instanceof HTMLFormElement ? form : null;
   }
 
+  function feedbackModal() {
+    const modal = document.querySelector("[data-feedback-modal]");
+    return modal instanceof HTMLElement ? modal : null;
+  }
+
+  function feedbackForm() {
+    const form = document.getElementById("feedback-form");
+    return form instanceof HTMLFormElement ? form : null;
+  }
+
   function openPrintConfigModal() {
     const modal = printConfigModal();
     if (!(modal instanceof HTMLElement)) {
@@ -1861,6 +1883,41 @@
     modal.classList.add("hidden");
     modal.classList.remove("flex");
     modal.setAttribute("aria-hidden", "true");
+  }
+
+  function openFeedbackModal() {
+    const modal = feedbackModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const form = feedbackForm();
+    if (form instanceof HTMLFormElement) {
+      const pathField = form.querySelector("[data-feedback-page-path]");
+      if (pathField instanceof HTMLInputElement) {
+        pathField.value = `${window.location.pathname || ""}${window.location.search || ""}`;
+      }
+    }
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeFeedbackModal() {
+    const modal = feedbackModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    modal.setAttribute("aria-hidden", "true");
+    const form = feedbackForm();
+    if (form instanceof HTMLFormElement) {
+      form.reset();
+      const status = document.getElementById("feedback-form-status");
+      if (status instanceof HTMLElement) {
+        status.textContent = "";
+      }
+    }
   }
 
   function readPrintSettings(form) {
@@ -1955,10 +2012,22 @@
       openPrintConfigModal();
       return;
     }
+    const openFeedback = event.target.closest("[data-feedback-open]");
+    if (openFeedback) {
+      event.preventDefault();
+      openFeedbackModal();
+      return;
+    }
     const closePrintConfig = event.target.closest("[data-print-config-close]");
     if (closePrintConfig) {
       event.preventDefault();
       closePrintConfigModal();
+      return;
+    }
+    const closeFeedback = event.target.closest("[data-feedback-close]");
+    if (closeFeedback) {
+      event.preventDefault();
+      closeFeedbackModal();
       return;
     }
     const imageTrigger = event.target.closest("[data-image-preview]");
@@ -2184,6 +2253,7 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closePrintConfigModal();
+      closeFeedbackModal();
       closeTextContextMenu();
       closeImageViewer();
       closePreviewDrawer();
@@ -2213,6 +2283,11 @@
     const modal = printConfigModal();
     if (modal && event.target === modal) {
       closePrintConfigModal();
+      return;
+    }
+    const feedback = feedbackModal();
+    if (feedback && event.target === feedback) {
+      closeFeedbackModal();
       return;
     }
     const stage = event.target.closest("[data-image-stage]");

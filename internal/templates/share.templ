@@ -91,9 +91,13 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Support & Diagnostics</p>
 						<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
-						<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, and diagnostics for bug reports.</p>
+						<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
 					</div>
 					<div class="flex flex-wrap gap-3">
+						<button hx-post="/export/feedback-log" hx-target="#share-status" class="secondary-button justify-start text-left">
+							<div class="font-bold">Export Feedback Log</div>
+							<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
+						</button>
 						<button hx-post="/export/bug-report" hx-target="#share-status" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export Bug Report Bundle</div>
 							<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>

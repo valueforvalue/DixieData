@@ -53,9 +53,9 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", graph.CentralSoldier.ID))
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", graph.CentralPersonRecord.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 17, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 17, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -66,9 +66,9 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 templ.SafeURL
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", graph.CentralSoldier.ID)))
+			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", graph.CentralPersonRecord.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 21, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 21, Col: 86}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -79,9 +79,9 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(graph.CentralSoldier))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(graph.CentralPersonRecord))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 26, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 26, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -92,9 +92,9 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(graph.CentralSoldier.DisplayID)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(graph.CentralPersonRecord.DisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 27, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 27, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -198,15 +198,15 @@ func UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.CentralSoldier.ID, "border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)]").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.CentralPersonRecord.ID, "border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)]").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = unitCamaraderieSection("Company Variants", "Likely close matches where the regiment is shared and the company marker aligns even if the unit text varies.", graph.SameCompanyVariant, graph.CentralSoldier.ID, "border-blue-200 bg-blue-50/70").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = unitCamaraderieSection("Company Variants", "Likely close matches where the regiment is shared and the company marker aligns even if the unit text varies.", graph.SameCompanyVariant, graph.CentralPersonRecord.ID, "border-blue-200 bg-blue-50/70").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = unitCamaraderieSection("Same Regiment", "Broader context for soldiers who likely served in the same regiment family.", graph.SameRegiment, graph.CentralSoldier.ID, "border-slate-200 bg-white/80").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = unitCamaraderieSection("Same Regiment", "Broader context for soldiers who likely served in the same regiment family.", graph.SameRegiment, graph.CentralPersonRecord.ID, "border-slate-200 bg-white/80").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -294,9 +294,9 @@ func unitCamaraderieSection(title, description string, peers []viewmodel.UnitCam
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d linked person records", len(peers)))
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d generic linked person records", len(peers)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 81, Col: 131}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/camaraderie.templ`, Line: 81, Col: 139}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {

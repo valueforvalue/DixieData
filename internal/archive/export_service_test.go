@@ -138,13 +138,13 @@ func TestExportService_ExportExcel(t *testing.T) {
 	if value, err := workbook.GetCellValue("Archive Export", "I2"); err != nil || value != "" {
 		t.Fatalf("linked spouse display should be empty for the soldier row before spouse backfill check: %q err=%v", value, err)
 	}
-	if value, err := workbook.GetCellValue("Archive Export", "AA2"); err != nil || value != "1831-11-09T00:00:00Z" {
+	if value, err := workbook.GetCellValue("Archive Export", "AB2"); err != nil || value != "1831-11-09T00:00:00Z" {
 		t.Fatalf("birth date cell = %q err=%v", value, err)
 	}
-	if value, err := workbook.GetCellValue("Linked Spouses", "A2"); err != nil || value != "STC38-00002" {
+	if value, err := workbook.GetCellValue("Linked Relationships", "A2"); err != nil || value != "STC38-00002" {
 		t.Fatalf("linked spouse sheet missing widow row: %q err=%v", value, err)
 	}
-	if value, err := workbook.GetCellValue("Linked Spouses", "F2"); err != nil || value != "Capt. John Hood" {
+	if value, err := workbook.GetCellValue("Linked Relationships", "F2"); err != nil || value != "Capt. John Hood" {
 		t.Fatalf("linked spouse sheet missing linked soldier name: %q err=%v", value, err)
 	}
 }
@@ -194,7 +194,7 @@ func TestExportService_ExportCSV(t *testing.T) {
 	expected := map[string]bool{
 		"app_version": true, "schema_version": true, "export_version": true, "generated_at": true,
 		"id": true, "display_id": true, "first_name": true,
-		"entry_type": true, "spouse_soldier_id": true, "maiden_name": true,
+		"entry_type": true, "spouse_soldier_id": true, "relationship_label": true, "maiden_name": true,
 		"pension_id": true, "application_id": true, "prefix": true, "middle_name": true,
 		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "confederate_home_status": true, "confederate_home_name": true, "birth_date": true, "death_date": true, "birth_info": true, "buried_in": true,
 		"suffix": true, "added_by": true, "last_edited_by": true, "last_edited_fields": true, "last_edited_at": true, "updated_at": true,
@@ -440,15 +440,19 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 
 	outPath := filepath.Join(t.TempDir(), "soldier.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
-		DisplayID: "PENSION-42",
-		FirstName: "Robert",
-		LastName:  "Lee",
-		Rank:      "General",
-		Unit:      "Army of Northern Virginia",
-		BuriedIn:  "Hollywood Cemetery",
-		Notes:     "Reference https://example.com/notes",
-		Records:   []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
-		Images:    []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
+		DisplayID:        "PENSION-42",
+		FirstName:        "Robert",
+		LastName:         "Lee",
+		Rank:             "General",
+		Unit:             "Army of Northern Virginia",
+		BuriedIn:         "Hollywood Cemetery",
+		AddedBy:          "J. Morris",
+		LastEditedBy:     "J. Morris",
+		LastEditedAt:     "2026-05-30T02:38:13Z",
+		LastEditedFields: "entry_type,last_edited_fields",
+		Notes:            "Reference https://example.com/notes",
+		Records:          []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
+		Images:           []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
 	})
 	if err != nil {
 		t.Fatalf("ExportSoldierPDF: %v", err)
@@ -473,6 +477,11 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	}
 	if !strings.Contains(text, "/URI (https://example.com/notes)") || !strings.Contains(text, "/URI (https://example.com/record)") {
 		t.Fatalf("pdf missing expected clickable link annotations")
+	}
+	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("pdf should omit audit metadata %q", forbidden)
+		}
 	}
 }
 
@@ -646,13 +655,13 @@ func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
 	}
 }
 
-func TestExportService_ExportFullDatabasePDFFitsSingleRecordPage(t *testing.T) {
+func TestExportService_ExportFullDatabasePDFUsesMultiPageFallbackForLongRecords(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	exportSvc := NewExportService(d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	longNote := strings.Repeat("This is a long note intended to pressure the right column layout without forcing a second page when the printable export shrinks typography appropriately. ", 18)
+	longNote := strings.Repeat("This is a long note intended to pressure the printable export so the renderer must add continuation pages instead of shrinking to unreadable text. ", 80)
 	_, err := soldierSvc.Create(models.Soldier{
 		Prefix:                "Capt.",
 		FirstName:             "Thomas",
@@ -666,10 +675,16 @@ func TestExportService_ExportFullDatabasePDFFitsSingleRecordPage(t *testing.T) {
 		ApplicationID:         "WA-900",
 		ConfederateHomeStatus: "Staffer",
 		ConfederateHomeName:   "Virginia Soldiers Home",
+		AddedBy:               "J. Morris",
+		LastEditedBy:          "J. Morris",
+		LastEditedAt:          "2026-05-30T02:38:13Z",
+		LastEditedFields:      "notes,records",
 		Notes:                 longNote,
 		Records: []models.Record{
 			{RecordType: "Pension", AppID: "900", Details: longNote},
 			{RecordType: "Correspondence", AppID: "901", Details: longNote},
+			{RecordType: "Unit History", AppID: "902", Details: longNote},
+			{RecordType: "Muster Roll", AppID: "903", Details: longNote},
 		},
 	})
 	if err != nil {
@@ -686,8 +701,14 @@ func TestExportService_ExportFullDatabasePDFFitsSingleRecordPage(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 	pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(data, -1))
-	if pageCount != 3 {
-		t.Fatalf("pageCount = %d, want 3 pages (title, record, metadata)", pageCount)
+	if pageCount < 4 {
+		t.Fatalf("pageCount = %d, want at least 4 pages (title, multi-page record, metadata)", pageCount)
+	}
+	text := string(data)
+	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "notes,records"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("registry PDF should omit audit metadata %q", forbidden)
+		}
 	}
 }
 

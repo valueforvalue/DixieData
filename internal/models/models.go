@@ -6,6 +6,7 @@ type Soldier struct {
 	SyncID                string   `json:"sync_id"`
 	EntryType             string   `json:"entry_type"`
 	SpouseSoldierID       int64    `json:"spouse_soldier_id"`
+	RelationshipLabel     string   `json:"relationship_label"`
 	SpouseName            string   `json:"spouse_name"`
 	MaidenName            string   `json:"maiden_name"`
 	IsGenerated           bool     `json:"is_generated"`
@@ -51,12 +52,13 @@ type Soldier struct {
 }
 
 type ArchiveCounts struct {
-	TotalSoldiers    int `json:"total_soldiers"`
-	TotalWivesWidows int `json:"total_wives_widows"`
+	TotalSoldiers     int `json:"total_soldiers"`
+	TotalWivesWidows  int `json:"total_wives_widows"`
+	TotalLinkedPeople int `json:"total_linked_people"`
 }
 
 func (c ArchiveCounts) TotalRecords() int {
-	return c.TotalSoldiers + c.TotalWivesWidows
+	return c.TotalSoldiers + c.TotalWivesWidows + c.TotalLinkedPeople
 }
 
 type SoldierSearch struct {
@@ -70,6 +72,7 @@ type SoldierSearch struct {
 	MiddleName            string
 	LastName              string
 	MaidenName            string
+	RelationshipLabel     string
 	Rank                  string
 	RankIn                string
 	RankOut               string
@@ -100,6 +103,7 @@ type SoldierFormSuggestions struct {
 	BuriedIn            []string
 	ConfederateHomeName []string
 	RecordType          []string
+	RelationshipLabel   []string
 }
 
 type ScrapedRelative struct {

@@ -14,26 +14,26 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 				<button
 					type="button"
 					data-history-back
-					data-fallback-href={ fmt.Sprintf("/soldiers/%d", timeline.SubjectSoldier.ID) }
+					data-fallback-href={ fmt.Sprintf("/soldiers/%d", timeline.SubjectPersonRecord.ID) }
 					data-fallback-label="Back to Person Record"
 					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
 				>← Back to Person Record</button>
-				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", timeline.SubjectSoldier.ID)) } class="pill-link">Open Person Record</a>
+				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", timeline.SubjectPersonRecord.ID)) } class="pill-link">Open Person Record</a>
 			</div>
 			<div class="grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
 				<aside class="card rounded-3xl p-6">
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Auto-Built Service Timeline</p>
-					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(timeline.SubjectSoldier) }</h2>
-					<p class="mt-2 text-sm text-slate-600">{ timeline.SubjectSoldier.DisplayID }</p>
+					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(timeline.SubjectPersonRecord) }</h2>
+					<p class="mt-2 text-sm text-slate-600">{ timeline.SubjectPersonRecord.DisplayID }</p>
 					<div class="mt-5 space-y-3 text-sm text-slate-700">
 						<div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Service Profile</p>
-							<p class="mt-2 font-medium text-slate-900">{ emptyDetail(timeline.SubjectSoldier.Unit) }</p>
-							if strings.TrimSpace(detailDisplayRank(timeline.SubjectSoldier)) != "" {
-								<p class="mt-1 text-slate-600">Rank out: { detailDisplayRank(timeline.SubjectSoldier) }</p>
+							<p class="mt-2 font-medium text-slate-900">{ emptyDetail(timeline.SubjectPersonRecord.Unit) }</p>
+							if strings.TrimSpace(detailDisplayRank(timeline.SubjectPersonRecord)) != "" {
+								<p class="mt-1 text-slate-600">Rank out: { detailDisplayRank(timeline.SubjectPersonRecord) }</p>
 							}
-							if strings.TrimSpace(timeline.SubjectSoldier.RankIn) != "" {
-								<p class="mt-1 text-slate-600">Rank in: { timeline.SubjectSoldier.RankIn }</p>
+							if strings.TrimSpace(timeline.SubjectPersonRecord.RankIn) != "" {
+								<p class="mt-1 text-slate-600">Rank in: { timeline.SubjectPersonRecord.RankIn }</p>
 							}
 						</div>
 						<div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
@@ -58,7 +58,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 						}
 						if len(timeline.UndatedSourceRecords) > 0 {
 							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Undated Sources</p>
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Undated Source Records</p>
 								<p class="mt-2 font-medium text-slate-900">{ fmt.Sprintf("%d source records", len(timeline.UndatedSourceRecords)) }</p>
 							</div>
 						}
@@ -88,7 +88,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 										</div>
 									</div>
 									if strings.TrimSpace(event.Description) != "" {
-										<p class="mt-4 text-sm leading-6 text-slate-700">{ event.Description }</p>
+										@LinkedText(event.Description, "mt-4 text-sm leading-6 text-slate-700")
 									}
 								</div>
 							}
@@ -111,7 +111,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 											<p class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ record.AppID }</p>
 										}
 										if strings.TrimSpace(record.Details) != "" {
-											<p class="mt-3 text-sm leading-6 text-slate-700">{ record.Details }</p>
+											@LinkedText(record.Details, "mt-3 text-sm leading-6 text-slate-700")
 										}
 									</div>
 								}
