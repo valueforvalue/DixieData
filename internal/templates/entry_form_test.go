@@ -70,7 +70,12 @@ func TestEntryFormIncludesSpouseFields(t *testing.T) {
 
 func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil).Render(context.Background(), &buf)
+	err := ShareView(viewmodel.GoogleStatus{}, nil, []viewmodel.ExportRecordOption{{
+		ID:          1,
+		DisplayID:   "ABC-00001",
+		DisplayName: "John Carter",
+		EntryType:   "soldier",
+	}}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -88,8 +93,11 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	if !strings.Contains(content, "/export/static-archive") || !strings.Contains(content, "Export Static Web Archive") {
 		t.Fatalf("share view missing static web archive export action")
 	}
-	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF") {
-		t.Fatalf("share view missing full database PDF export action")
+	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF Export") {
+		t.Fatalf("share view missing full database printable export action")
+	}
+	if !strings.Contains(content, `name="export_all"`) || !strings.Contains(content, `name="selected_ids"`) || !strings.Contains(content, "John Carter") {
+		t.Fatalf("share view missing printable export selection controls")
 	}
 	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive (.ddshare)") {
 		t.Fatalf("share view missing shared archive import action")
@@ -115,7 +123,7 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 			Reason:            "Shared record changed notes.",
 			IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
 		},
-	}).Render(context.Background(), &buf)
+	}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -286,7 +294,7 @@ func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 			FirstName: "Shared",
 			LastName:  "Version",
 		},
-	}}).Render(context.Background(), &buf)
+	}}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -404,7 +412,7 @@ func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 			FirstName: "Andrew",
 			LastName:  "Morris",
 		},
-	}}).Render(context.Background(), &buf)
+	}}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

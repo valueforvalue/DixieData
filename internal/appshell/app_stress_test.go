@@ -29,6 +29,7 @@ func newStressApp(t *testing.T) *App {
 	t.Cleanup(func() { database.Close() })
 
 	app := NewApp()
+	app.WithFrontendAssets(os.DirFS(repoFixturePath(t, "frontend")))
 	app.dataDir = dataDir
 	app.database = database
 	if err := app.reloadServices(); err != nil {

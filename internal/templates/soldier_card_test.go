@@ -83,6 +83,29 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	}
 }
 
+func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:        42,
+		DisplayID: "STC38-00001",
+		FirstName: "John",
+		LastName:  "Taylor",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"/soldiers/42/pdf",
+		"Export PDF",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("detail view missing export action %s", needle)
+		}
+	}
+}
+
 func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{

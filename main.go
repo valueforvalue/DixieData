@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/valueforvalue/DixieData/internal/appshell"
@@ -19,9 +20,14 @@ var assets embed.FS
 func main() {
 	uiids.EnableFromArgs(os.Args[1:])
 
-	app := appshell.NewApp()
+	frontendAssets, err := fs.Sub(assets, "frontend")
+	if err != nil {
+		panic(err)
+	}
 
-	err := wails.Run(&options.App{
+	app := appshell.NewApp().WithFrontendAssets(frontendAssets)
+
+	err = wails.Run(&options.App{
 		Title:  fmt.Sprintf("DixieData v%s", db.GetAppVersion()),
 		Width:  1280,
 		Height: 800,

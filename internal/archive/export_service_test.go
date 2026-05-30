@@ -722,6 +722,43 @@ func TestImagePathForPDFSkipsEmptyFile(t *testing.T) {
 	}
 }
 
+func TestExportService_ExportFullDatabasePDFCanLimitToSelectedRecords(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	first, err := soldierSvc.Create(models.Soldier{FirstName: "John", LastName: "Bell"})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := soldierSvc.Create(models.Soldier{FirstName: "Mary", LastName: "Carter"})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "selected-registry.pdf")
+	settings := PrintSettings{ExportAll: false, SelectedIDs: []int64{second.ID}}
+	if err := exportSvc.ExportFullDatabasePDF(outPath, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	if strings.Contains(text, "John Bell") {
+		t.Fatalf("selected export should omit unselected record")
+	}
+	if !strings.Contains(text, "Mary Carter") {
+		t.Fatalf("selected export missing selected record content")
+	}
+	if first.ID == second.ID {
+		t.Fatalf("test setup failed: duplicate IDs")
+	}
+}
+
 func TestExportService_ExportFullDatabasePDFAppliesSortAndGrouping(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
