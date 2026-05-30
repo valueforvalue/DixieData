@@ -64,11 +64,11 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					<div class="space-y-4">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Collaborative Merge</p>
-							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review instead of replacing your local archive.</p>
+							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p>
 							<div class="mt-4">
 								<button hx-post="/import/shared-archive" hx-target="#share-status" class="primary-button justify-start text-left">
 									<div class="font-bold">Import Shared Archive (.ddshare)</div>
-									<div class="text-xs text-slate-300">Merge a shared archive into the current local archive using the bundled manifest, snapshot, and images</div>
+									<div class="text-xs text-slate-300">Merge a shared archive into the current local archive using the bundled manifest, source identity, snapshot, and images</div>
 								</button>
 							</div>
 						</div>
@@ -165,7 +165,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 								<h3 class="text-xl gold font-bold">Merge Review</h3>
-								<p class="mt-2 text-sm text-slate-500">These person records were staged because the shared archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
+								<p class="mt-2 text-sm text-slate-500">These person records were staged because the incoming source archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
 						<div id="merge-review-loaded-status" data-merge-review-loaded-status class="mt-3 inline-flex rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]" aria-live="polite">Data Loaded: { fmt.Sprintf("%d", len(conflicts)) } Conflicts Found</div>
 					</div>
 					for _, conflict := range conflicts {
@@ -224,6 +224,8 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							</div>
 							if conflict.ConflictType == "display-id-collision" {
 								<p class="text-xs text-slate-500">Keep Both preserves the local record and imports the incoming record under a new unique display ID.</p>
+							} else {
+								<p class="text-xs text-slate-500">When you keep the incoming version for a matched duplicate, DixieData remembers that mapping for future imports from the same source archive.</p>
 							}
 						</div>
 					}

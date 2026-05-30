@@ -109,6 +109,19 @@ CREATE TABLE IF NOT EXISTS merge_review_conflicts (
     resolved_at      DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS shared_merge_aliases (
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_node_id           TEXT NOT NULL,
+    source_person_sync_id    TEXT NOT NULL,
+    canonical_person_sync_id TEXT NOT NULL,
+    canonical_person_id      INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    resolution_kind          TEXT NOT NULL DEFAULT 'merge-review',
+    created_from_conflict_id INTEGER REFERENCES merge_review_conflicts(id) ON DELETE SET NULL,
+    created_at               DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at               DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (source_node_id, source_person_sync_id)
+);
+
 CREATE TABLE IF NOT EXISTS duplicate_audit_findings (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     pair_key         TEXT UNIQUE NOT NULL,
@@ -153,6 +166,7 @@ CREATE TABLE IF NOT EXISTS research_collection_items (
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
+CREATE INDEX IF NOT EXISTS idx_shared_merge_aliases_canonical ON shared_merge_aliases(canonical_person_id);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_status ON duplicate_audit_findings(status);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_soldier_id);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_soldier_id);

@@ -6,6 +6,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/templates"
+	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -77,8 +78,24 @@ func InsightsDrilldownView(title, description string, soldiers []models.Soldier,
 	return templates.InsightsDrilldownView(title, description, viewmodel.PersonRecordsFromModels(soldiers), viewmodel.PersonRecordSearchFromModel(search), page, total, pageSize, scope, value)
 }
 
-func SettingsView(confirmationWord string) templ.Component {
-	return templates.SettingsView(confirmationWord)
+func SettingsView(confirmationWord string, updater update.SettingsState) templ.Component {
+	return templates.SettingsView(confirmationWord, viewmodel.UpdateSettingsFromDomain(updater))
+}
+
+func SettingsUpdatePanel(updater update.SettingsState) templ.Component {
+	return templates.SettingsUpdatePanel(viewmodel.UpdateSettingsFromDomain(updater))
+}
+
+func SettingsUpdateStatus(result update.CheckResult) templ.Component {
+	return templates.SettingsUpdateStatus(viewmodel.UpdateCheckResultFromDomain(result))
+}
+
+func SettingsUpdateStatusMessage(kind, message string) templ.Component {
+	return templates.SettingsUpdateStatusMessage(kind, message)
+}
+
+func SettingsUpdateApplyStarted(version string) templ.Component {
+	return templates.SettingsUpdateApplyStarted(version)
 }
 
 func SettingsOrphanedImages(orphans []archive.OrphanedImage) templ.Component {

@@ -40,6 +40,27 @@ func ProjectRoot() (string, error) {
 	return "", errors.New("project root not found")
 }
 
+func ProjectRootFromPath(start string) (string, bool) {
+	return projectRootFrom(start)
+}
+
+func IsDevelopmentBuild(executablePath string) bool {
+	executablePath = strings.TrimSpace(executablePath)
+	if executablePath == "" {
+		return false
+	}
+	root, ok := projectRootFrom(filepath.Dir(executablePath))
+	if !ok {
+		return false
+	}
+	relative, err := filepath.Rel(root, filepath.Dir(executablePath))
+	if err != nil {
+		return false
+	}
+	relative = filepath.Clean(relative)
+	return strings.EqualFold(relative, filepath.Join("build", "bin"))
+}
+
 func candidateRoots() []string {
 	candidates := []string{}
 	if wd, err := os.Getwd(); err == nil {
@@ -101,6 +122,18 @@ func LogsDir(dataDir string) string {
 
 func FeedbackLogPath(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "feedback-log.jsonl")
+}
+
+func UpdatesDir(dataDir string) string {
+	return filepath.Join(dataDir, "updates")
+}
+
+func UpdateDownloadsDir(dataDir string) string {
+	return filepath.Join(UpdatesDir(dataDir), "downloads")
+}
+
+func UpdateApplyResultPath(dataDir string) string {
+	return filepath.Join(UpdatesDir(dataDir), "apply-result.json")
 }
 
 func sanitizePathComponent(value string) string {

@@ -35,6 +35,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
+	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -53,6 +54,7 @@ type App struct {
 	backup        backupFacade
 	diagnostics   diagnosticsFacade
 	google        integrationFacade
+	updater       updaterFacade
 	quotes        []models.Quote
 	mux           *http.ServeMux
 	startupErr    error
@@ -150,6 +152,9 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
 	mux.HandleFunc("/settings", a.handleSettings)
 	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
+	mux.HandleFunc("/settings/updates/source", a.handleUpdateSource)
+	mux.HandleFunc("/settings/updates/check", a.handleCheckForUpdates)
+	mux.HandleFunc("/settings/updates/apply", a.handleApplyLatestUpdate)
 	mux.HandleFunc("/settings/images/orphans/scan", a.handleScanImageOrphans)
 	mux.HandleFunc("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
@@ -1185,7 +1190,12 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	presentation.SettingsView(initializeDataConfirmationWord).Render(r.Context(), w)
+	settings, err := a.updater.Settings()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	presentation.SettingsView(initializeDataConfirmationWord, settings).Render(r.Context(), w)
 }
 
 func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
@@ -2775,6 +2785,7 @@ func (a *App) reloadServices() error {
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
+	a.updater = update.NewService(a.database, a.dataDir)
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {

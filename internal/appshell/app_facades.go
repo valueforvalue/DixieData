@@ -8,6 +8,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/integrations"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/update"
 )
 
 type personRecord = models.Soldier
@@ -110,4 +111,11 @@ type integrationFacade interface {
 	LoadEffectiveSettings() (models.GoogleSettings, bool, bool, string, error)
 	SyncCalendar(ctx context.Context, settings models.GoogleSettings, soldiers []models.Soldier) (integrations.GoogleCalendarSyncResult, error)
 	UnsyncCalendar(ctx context.Context) (integrations.GoogleCalendarUnsyncResult, error)
+}
+
+type updaterFacade interface {
+	Settings() (update.SettingsState, error)
+	SaveSource(rawURL string) (update.SettingsState, error)
+	Check() (update.CheckResult, error)
+	PrepareLatest() (update.PreparedUpdate, error)
 }

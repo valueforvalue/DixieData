@@ -44,5 +44,6 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launching the app to show surface badges i
 | `panel.export.actions` | panel | Export/import actions panel |
 | `panel.export.google` | panel | Google integration panel |
 | `page.settings` | page | Settings page |
+| `panel.settings.updates` | panel | Software Updates panel |
 | `panel.settings.initialize` | panel | Initialize Data panel |
 | `overlay.image.viewer` | overlay | Full-screen image viewer |

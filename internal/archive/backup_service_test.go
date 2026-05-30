@@ -104,6 +104,12 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
 	backupSvc := NewBackupService(d, soldierSvc)
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	if err := d.SetSystemConfig("node_id", "source-node-1"); err != nil {
+		t.Fatalf("SetSystemConfig node_id: %v", err)
+	}
 
 	outPath := filepath.Join(t.TempDir(), "shared.ddshare")
 	manifest, err := backupSvc.ExportShared(outPath, t.TempDir())
@@ -115,6 +121,9 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 	}
 	if manifest.DataFormat != "json" || manifest.DataFile != "data/soldiers.json" || manifest.DatabaseFile != "" {
 		t.Fatalf("shared manifest should use json payloads: %#v", manifest)
+	}
+	if manifest.SourceNodeID != "source-node-1" || manifest.SourceLabel != "Samuel Thomas Carter" {
+		t.Fatalf("shared manifest should include source identity: %#v", manifest)
 	}
 
 	reader, err := zip.OpenReader(outPath)
@@ -135,6 +144,29 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 	}
 	if strings.Contains(joined, "data/dixiedata.db") {
 		t.Fatalf("shared archive should not include an sqlite snapshot: %s", joined)
+	}
+
+	var manifestFile *zip.File
+	for _, file := range reader.File {
+		if file.Name == "manifest.json" {
+			manifestFile = file
+			break
+		}
+	}
+	if manifestFile == nil {
+		t.Fatal("manifest.json missing")
+	}
+	rc, err := manifestFile.Open()
+	if err != nil {
+		t.Fatalf("Open manifest: %v", err)
+	}
+	defer rc.Close()
+	var storedManifest BackupManifest
+	if err := json.NewDecoder(rc).Decode(&storedManifest); err != nil {
+		t.Fatalf("Decode manifest: %v", err)
+	}
+	if storedManifest.SourceNodeID != "source-node-1" || storedManifest.SourceLabel != "Samuel Thomas Carter" {
+		t.Fatalf("stored shared manifest missing source identity: %#v", storedManifest)
 	}
 }
 
@@ -678,7 +710,7 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ImportSharedBackup: %v", err)
 	}
-	if summary.SoldiersInserted != 1 || summary.SoldiersUpdated != 1 {
+	if summary.SoldiersInserted != 1 || summary.SoldiersUpdated != 0 {
 		t.Fatalf("unexpected merge summary: %#v", summary)
 	}
 	if summary.PendingConflicts != 0 {
@@ -1147,6 +1179,295 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 	}
 	if merged.AddedBy != local.AddedBy {
 		t.Fatalf("human duplicate should preserve local created-by attribution, got %#v", merged)
+	}
+}
+
+func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t *testing.T) {
+	targetDir := t.TempDir()
+	targetDB, err := db.Open(targetDir)
+	if err != nil {
+		t.Fatalf("db.Open target: %v", err)
+	}
+	defer targetDB.Close()
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+		t.Fatalf("ConfigureUserIdentity target: %v", err)
+	}
+	targetSvc := NewSoldierService(targetDB)
+	backupSvc := NewBackupService(targetDB, targetSvc)
+
+	local, err := targetSvc.Create(models.Soldier{
+		DisplayID: "JCM87-00001",
+		FirstName: "Andrew",
+		LastName:  "Morris",
+		BirthDate: "01/13/1842",
+		Unit:      "4th Alabama Infantry",
+		Notes:     "local",
+	})
+	if err != nil {
+		t.Fatalf("Create local soldier: %v", err)
+	}
+
+	sourceDir := t.TempDir()
+	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
+		t.Fatalf("SnapshotTo source: %v", err)
+	}
+	sourceDB, err := db.Open(sourceDir)
+	if err != nil {
+		t.Fatalf("db.Open source: %v", err)
+	}
+	defer sourceDB.Close()
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	if err := sourceDB.SetSystemConfig("node_id", "satellite-a"); err != nil {
+		t.Fatalf("SetSystemConfig source node_id: %v", err)
+	}
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+
+	if err := sourceSvc.Delete(local.ID); err != nil {
+		t.Fatalf("Delete source local: %v", err)
+	}
+	imported, err := sourceSvc.Create(models.Soldier{
+		DisplayID: "STC38-00044",
+		FirstName: "Andrew",
+		LastName:  "Morris",
+		BirthDate: "01/13/1842",
+		Unit:      "4th Alabama Infantry",
+		Notes:     "shared",
+	})
+	if err != nil {
+		t.Fatalf("Create imported soldier: %v", err)
+	}
+
+	sharedPath := filepath.Join(t.TempDir(), "human-duplicate-alias.ddshare")
+	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+
+	summary, err := backupSvc.ImportSharedBackup(sharedPath, targetDir)
+	if err != nil {
+		t.Fatalf("ImportSharedBackup: %v", err)
+	}
+	if summary.PendingConflicts != 1 {
+		t.Fatalf("unexpected summary: %#v", summary)
+	}
+	conflicts, err := backupSvc.PendingMergeConflicts()
+	if err != nil {
+		t.Fatalf("PendingMergeConflicts: %v", err)
+	}
+	if len(conflicts) != 1 || conflicts[0].ConflictType != "human-duplicate" {
+		t.Fatalf("unexpected conflicts: %#v", conflicts)
+	}
+	if err := backupSvc.ResolveMergeConflict(conflicts[0].ID, "use-shared", targetDir); err != nil {
+		t.Fatalf("ResolveMergeConflict use-shared: %v", err)
+	}
+
+	var aliasCount int
+	if err := targetDB.Conn().QueryRow(`SELECT COUNT(*) FROM shared_merge_aliases WHERE source_node_id = ? AND source_person_sync_id = ? AND canonical_person_id = ?`,
+		"satellite-a", imported.SyncID, local.ID,
+	).Scan(&aliasCount); err != nil {
+		t.Fatalf("query alias ledger: %v", err)
+	}
+	if aliasCount != 1 {
+		t.Fatalf("expected one alias ledger row, got %d", aliasCount)
+	}
+
+	sharedPath2 := filepath.Join(t.TempDir(), "human-duplicate-alias-repeat.ddshare")
+	if _, err := sourceBackupSvc.ExportShared(sharedPath2, sourceDir); err != nil {
+		t.Fatalf("ExportShared repeat: %v", err)
+	}
+	summary, err = backupSvc.ImportSharedBackup(sharedPath2, targetDir)
+	if err != nil {
+		t.Fatalf("ImportSharedBackup repeat: %v", err)
+	}
+	if summary.PendingConflicts != 0 {
+		t.Fatalf("repeat import should not restage duplicate conflict: %#v", summary)
+	}
+	results, total, err := targetSvc.SearchPage("Andrew Morris", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("repeat import should keep one canonical record, total=%d len=%d", total, len(results))
+	}
+}
+
+func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T) {
+	targetDir := t.TempDir()
+	targetDB, err := db.Open(targetDir)
+	if err != nil {
+		t.Fatalf("db.Open target: %v", err)
+	}
+	defer targetDB.Close()
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+		t.Fatalf("ConfigureUserIdentity target: %v", err)
+	}
+	targetSvc := NewSoldierService(targetDB)
+	backupSvc := NewBackupService(targetDB, targetSvc)
+
+	local, err := targetSvc.Create(models.Soldier{
+		DisplayID: "JCM87-00001",
+		FirstName: "Andrew",
+		LastName:  "Morris",
+		BirthDate: "01/13/1842",
+		Unit:      "4th Alabama Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create local soldier: %v", err)
+	}
+
+	makeSharedArchive := func(tempName, nodeID string, forcedSyncID string) string {
+		sourceDir := t.TempDir()
+		if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
+			t.Fatalf("SnapshotTo %s: %v", nodeID, err)
+		}
+		sourceDB, err := db.Open(sourceDir)
+		if err != nil {
+			t.Fatalf("db.Open %s: %v", nodeID, err)
+		}
+		defer sourceDB.Close()
+		if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+			t.Fatalf("ConfigureUserIdentity %s: %v", nodeID, err)
+		}
+		if err := sourceDB.SetSystemConfig("node_id", nodeID); err != nil {
+			t.Fatalf("SetSystemConfig %s: %v", nodeID, err)
+		}
+		sourceSvc := NewSoldierService(sourceDB)
+		sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+		if err := sourceSvc.Delete(local.ID); err != nil {
+			t.Fatalf("Delete source local %s: %v", nodeID, err)
+		}
+		imported, err := sourceSvc.Create(models.Soldier{
+			DisplayID: "STC38-00044",
+			FirstName: "Andrew",
+			LastName:  "Morris",
+			BirthDate: "01/13/1842",
+			Unit:      "4th Alabama Infantry",
+			Notes:     nodeID,
+		})
+		if err != nil {
+			t.Fatalf("Create imported soldier %s: %v", nodeID, err)
+		}
+		if forcedSyncID != "" {
+			if _, err := sourceDB.Conn().Exec(`UPDATE soldiers SET sync_id = ? WHERE id = ?`, forcedSyncID, imported.ID); err != nil {
+				t.Fatalf("force sync_id %s: %v", nodeID, err)
+			}
+		} else {
+			forcedSyncID = imported.SyncID
+		}
+		sharedPath := filepath.Join(t.TempDir(), tempName)
+		if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
+			t.Fatalf("ExportShared %s: %v", nodeID, err)
+		}
+		return sharedPath
+	}
+
+	firstPath := makeSharedArchive("source-a.ddshare", "satellite-a", "")
+	summary, err := backupSvc.ImportSharedBackup(firstPath, targetDir)
+	if err != nil {
+		t.Fatalf("ImportSharedBackup source A: %v", err)
+	}
+	if summary.PendingConflicts != 1 {
+		t.Fatalf("source A should stage one human duplicate conflict: %#v", summary)
+	}
+	conflicts, err := backupSvc.PendingMergeConflicts()
+	if err != nil {
+		t.Fatalf("PendingMergeConflicts source A: %v", err)
+	}
+	if len(conflicts) != 1 {
+		t.Fatalf("expected one source A conflict, got %#v", conflicts)
+	}
+	sourceASync := conflicts[0].SourceSoldier.SyncID
+	if err := backupSvc.ResolveMergeConflict(conflicts[0].ID, "use-shared", targetDir); err != nil {
+		t.Fatalf("ResolveMergeConflict source A: %v", err)
+	}
+
+	secondPath := makeSharedArchive("source-b.ddshare", "satellite-b", sourceASync)
+	summary, err = backupSvc.ImportSharedBackup(secondPath, targetDir)
+	if err != nil {
+		t.Fatalf("ImportSharedBackup source B: %v", err)
+	}
+	if summary.PendingConflicts != 1 {
+		t.Fatalf("source B should not reuse source A alias blindly: %#v", summary)
+	}
+	conflicts, err = backupSvc.PendingMergeConflicts()
+	if err != nil {
+		t.Fatalf("PendingMergeConflicts source B: %v", err)
+	}
+	if len(conflicts) != 1 || conflicts[0].ConflictType != "human-duplicate" {
+		t.Fatalf("source B should stage a human duplicate, got %#v", conflicts)
+	}
+}
+
+func TestBackupService_ImportSharedBackupIgnoresMetadataOnlyDifferences(t *testing.T) {
+	targetDir := t.TempDir()
+	targetDB, err := db.Open(targetDir)
+	if err != nil {
+		t.Fatalf("db.Open target: %v", err)
+	}
+	defer targetDB.Close()
+	if _, err := targetDB.ConfigureUserIdentity("John", "Charles", "Morgan", 1887); err != nil {
+		t.Fatalf("ConfigureUserIdentity target: %v", err)
+	}
+	targetSvc := NewSoldierService(targetDB)
+	backupSvc := NewBackupService(targetDB, targetSvc)
+
+	local, err := targetSvc.Create(models.Soldier{
+		DisplayID: "JCM87-00001",
+		FirstName: "Andrew",
+		LastName:  "Morris",
+		BirthDate: "01/13/1842",
+		Unit:      "4th Alabama Infantry",
+		Notes:     "local",
+	})
+	if err != nil {
+		t.Fatalf("Create local soldier: %v", err)
+	}
+	if _, err := targetDB.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_at = ?, last_edited_fields = ? WHERE id = ?`,
+		"Local User", "Local User", "2026-05-30T00:00:00Z", "notes", local.ID,
+	); err != nil {
+		t.Fatalf("seed local metadata: %v", err)
+	}
+
+	sourceDir := t.TempDir()
+	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
+		t.Fatalf("SnapshotTo source: %v", err)
+	}
+	sourceDB, err := db.Open(sourceDir)
+	if err != nil {
+		t.Fatalf("db.Open source: %v", err)
+	}
+	defer sourceDB.Close()
+	if _, err := sourceDB.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+	if _, err := sourceDB.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_at = ?, last_edited_fields = ? WHERE id = ?`,
+		"Shared User", "Shared User", "2026-05-31T00:00:00Z", "last_edited_by,last_edited_at", local.ID,
+	); err != nil {
+		t.Fatalf("seed shared metadata: %v", err)
+	}
+
+	sharedPath := filepath.Join(t.TempDir(), "metadata-only.ddshare")
+	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+
+	summary, err := backupSvc.ImportSharedBackup(sharedPath, targetDir)
+	if err != nil {
+		t.Fatalf("ImportSharedBackup: %v", err)
+	}
+	if summary.PendingConflicts != 0 {
+		t.Fatalf("metadata-only import should not stage conflict: %#v", summary)
+	}
+	merged, err := targetSvc.GetByID(local.ID)
+	if err != nil {
+		t.Fatalf("GetByID merged: %v", err)
+	}
+	if merged.AddedBy != "Local User" || merged.LastEditedBy != "Local User" || merged.LastEditedAt != "2026-05-30T00:00:00Z" {
+		t.Fatalf("metadata-only import should not overwrite local audit metadata: %#v", merged)
 	}
 }
 
