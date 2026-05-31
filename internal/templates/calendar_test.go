@@ -94,3 +94,18 @@ func TestCalendarHighlightsCurrentDay(t *testing.T) {
 		}
 	}
 }
+
+func TestCalendarCompactsExportControlsIntoFoldout(t *testing.T) {
+	var buf bytes.Buffer
+	err := Calendar(5, map[int]viewmodel.CalendarDaySummary{}, viewmodel.ArchiveCounts{}, viewmodel.Quote{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{"Export Month", "PDF / Print", "Monthly Calendar Export", "Printer-friendly"} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("calendar missing compact export control fragment %s", needle)
+		}
+	}
+}

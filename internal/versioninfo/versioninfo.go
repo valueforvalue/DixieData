@@ -2,7 +2,7 @@ package versioninfo
 
 import "fmt"
 
-const CurrentSchemaVersion = 31
+const CurrentSchemaVersion = 32
 
 func AppVersionForSchema(schemaVersion int) string {
 	if schemaVersion < 0 {
