@@ -474,6 +474,12 @@ The loading screen should now refresh automatically while the app finishes start
 - verify the local `.dixiedata` folder is accessible
 - check for very large migration work or storage issues
 
+### An update failed before the app finished opening
+
+- use the recovery screen to restore the previous build and Local Archive state
+- keep the app open until DixieData relaunches itself after the rollback
+- if the recovery screen does not appear, restart the app once to re-check the retained restore point
+
 ### Search is not finding expected scratch pad text
 
 - confirm the record’s scratch pad window was closed after editing so the latest text saved back to the archive

@@ -132,6 +132,14 @@ func UpdateDownloadsDir(dataDir string) string {
 	return filepath.Join(UpdatesDir(dataDir), "downloads")
 }
 
+func UpdateRestorePointsDir(dataDir string) string {
+	return filepath.Join(UpdatesDir(dataDir), "restore-points")
+}
+
+func UpdateRestorePointStatePath(dataDir string) string {
+	return filepath.Join(UpdatesDir(dataDir), "restore-point-state.json")
+}
+
 func UpdateApplyResultPath(dataDir string) string {
 	return filepath.Join(UpdatesDir(dataDir), "apply-result.json")
 }

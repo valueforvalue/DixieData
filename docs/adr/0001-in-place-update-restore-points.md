@@ -1,0 +1,3 @@
+# Use restore points for in-place updates
+
+In-place updates create a retained **Restore Point** before the new build is applied. A Restore Point stores canonical Local Archive recovery state in Backup Archive form, keeps a local copy of the previously installed build for offline rollback, lives under `.dixiedata\updates\restore-points`, blocks the update if it cannot be created, and is pruned to the two most recent automatic restore points with startup housekeeping as a backstop. We chose this over the current schema-only database snapshot flow because release safety must cover same-schema bad builds, support prompted recovery before the main app shell is trusted, and avoid depending on the network during rollback.

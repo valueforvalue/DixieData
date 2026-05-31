@@ -401,11 +401,27 @@ Before applying a newer schema version, the DB layer now writes a retained pre-u
 
 `index.json` catalogs retained backups, and successful schema upgrades now keep the most recent pre-upgrade SQLite snapshot instead of deleting it as part of immediate cleanup.
 
-### 8.2 Image path upgrades
+### 8.2 In-place update restore points
+
+Before DixieData applies an in-place update, the updater now creates an automatic Restore Point under:
+
+```text
+.dixiedata\updates\restore-points\
+```
+
+Each Restore Point keeps:
+
+- a canonical `.ddbak` snapshot of the Local Archive
+- a snapshot of the previously installed build for offline rollback
+- metadata in `index.json` and per-restore-point `metadata.json`
+
+The updater blocks the update if the Restore Point cannot be created. The first launch of the updated build must reach archive open, migrations, and main shell readiness. If that first launch fails, DixieData shows a minimal recovery screen before the normal app shell and offers rollback to the retained build plus the retained Local Archive state. Automatic Restore Points are pruned to the two most recent entries, with startup housekeeping acting as a backstop.
+
+### 8.3 Image path upgrades
 
 At startup, existing image rows are scanned and migrated to the sharded filesystem layout if needed.
 
-### 8.3 Orphan cleanup
+### 8.4 Orphan cleanup
 
 The orphan cleanup flow is deliberately non-destructive:
 

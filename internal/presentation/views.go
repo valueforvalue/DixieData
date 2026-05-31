@@ -117,6 +117,10 @@ func SettingsUpdateApplyStarted(version string) templ.Component {
 	return templates.SettingsUpdateApplyStarted(version)
 }
 
+func UpdateRecoveryPage(record update.RestorePointRecord, failureMessage string, rollbackStarted bool) templ.Component {
+	return templates.UpdateRecoveryPage(record.CreatedAt, record.SourceAppVersion, record.TargetAppVersion, failureMessage, rollbackStarted)
+}
+
 func SettingsOrphanedImages(orphans []archive.OrphanedImage) templ.Component {
 	return templates.SettingsOrphanedImages(viewmodel.OrphanedImagesFromDomain(orphans))
 }

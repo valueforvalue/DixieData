@@ -1,0 +1,45 @@
+package templates
+
+templ UpdateRecoveryPage(createdAt string, sourceVersion string, targetVersion string, failureMessage string, rollbackStarted bool) {
+	<!doctype html>
+	<html lang="en">
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<title>DixieData recovery</title>
+		<link rel="stylesheet" href="/app.css"/>
+	</head>
+	<body class="min-h-screen bg-[#d7d2c9] text-[#1b2630]">
+		<div class="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-12">
+			<div class="w-full rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.94)] p-8 text-[#f2ede1] shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
+				<p class="text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Update recovery</p>
+				<h1 class="mt-3 text-3xl font-semibold">The last update did not finish a healthy first launch.</h1>
+				<p class="mt-4 text-sm leading-6 text-[#d8cfbc]">
+					DixieData saved a restore point before applying the update. You can roll back to the previously safe build and Local Archive state from here.
+				</p>
+				<div class="mt-6 rounded-2xl border border-[#8d7440] bg-[rgba(18,26,34,0.78)] p-4 text-sm text-[#e7decc]">
+					<p><span class="font-semibold text-[#f3d186]">Restore point created:</span> { createdAt }</p>
+					<p class="mt-2"><span class="font-semibold text-[#f3d186]">Previous build:</span> v{ sourceVersion }</p>
+					<p class="mt-2"><span class="font-semibold text-[#f3d186]">Failed update:</span> v{ targetVersion }</p>
+				</div>
+				if failureMessage != "" {
+					<div class="mt-6 rounded-2xl border border-[#d2a15b] bg-[rgba(109,53,20,0.28)] p-4 text-sm text-[#f7e6c7]">
+						{ failureMessage }
+					</div>
+				}
+				if rollbackStarted {
+					<div class="mt-6 rounded-2xl border border-[#78a373] bg-[rgba(37,78,49,0.28)] p-4 text-sm text-[#ddf4df]">
+						Restoring the previous build now. DixieData will relaunch automatically.
+					</div>
+				} else {
+					<form method="post" action="/recovery" class="mt-8">
+						<button type="submit" class="inline-flex items-center rounded-full border border-[#cfb77a] bg-[#cfb77a] px-5 py-3 text-sm font-semibold text-[#24303d] shadow-sm transition hover:bg-[#dcc790]">
+							Restore previous build and Local Archive
+						</button>
+					</form>
+				}
+			</div>
+		</div>
+	</body>
+	</html>
+}
