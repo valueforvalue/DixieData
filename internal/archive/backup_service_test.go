@@ -3,6 +3,7 @@ package archive
 import (
 	"archive/zip"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -651,6 +652,107 @@ func TestBackupService_ImportLegacySQLiteKeepsHistoricalRecordsButUsesLocalIdent
 	}
 	if secondCreated.DisplayID != "LJW04-00003" {
 		t.Fatalf("second created display ID = %q", secondCreated.DisplayID)
+	}
+}
+
+func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
+	sourceDB := newTestDB(t)
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+	if _, err := sourceDB.ConfigureUserIdentity("Terry", "Dale", "Morris", 1965); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	created, err := sourceSvc.Create(models.Soldier{
+		DisplayID: "TDM65-00001",
+		FirstName: "Andrew",
+		LastName:  "Morris",
+		Unit:      "4th Oklahoma Infantry",
+	})
+	if err != nil {
+		t.Fatalf("Create source soldier: %v", err)
+	}
+
+	sourceDataDir := t.TempDir()
+	currentBackupPath := filepath.Join(t.TempDir(), "current.ddbak")
+	manifest, err := sourceBackupSvc.Export(currentBackupPath, sourceDataDir)
+	if err != nil {
+		t.Fatalf("Export current backup: %v", err)
+	}
+
+	legacyV2Path := filepath.Join(t.TempDir(), "legacy-v2.ddbak")
+	file, err := os.Create(legacyV2Path)
+	if err != nil {
+		t.Fatalf("Create v2 backup: %v", err)
+	}
+	defer file.Close()
+	zipWriter := zip.NewWriter(file)
+	manifest.Version = 2
+	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+		t.Fatalf("write v2 manifest: %v", err)
+	}
+	reader, err := zip.OpenReader(currentBackupPath)
+	if err != nil {
+		t.Fatalf("open exported backup: %v", err)
+	}
+	defer reader.Close()
+	for _, entry := range reader.File {
+		if entry.Name == "manifest.json" {
+			continue
+		}
+		header := entry.FileHeader
+		writer, err := zipWriter.CreateHeader(&header)
+		if err != nil {
+			t.Fatalf("CreateHeader %s: %v", entry.Name, err)
+		}
+		source, err := entry.Open()
+		if err != nil {
+			t.Fatalf("Open %s: %v", entry.Name, err)
+		}
+		if _, err := io.Copy(writer, source); err != nil {
+			source.Close()
+			t.Fatalf("Copy %s: %v", entry.Name, err)
+		}
+		if err := source.Close(); err != nil {
+			t.Fatalf("Close %s: %v", entry.Name, err)
+		}
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("close v2 zip: %v", err)
+	}
+
+	localDB := newTestDB(t)
+	localSvc := NewSoldierService(localDB)
+	localBackupSvc := NewBackupService(localDB, localSvc)
+	if _, err := localDB.ConfigureUserIdentity("Laura", "Jane", "Wilson", 1904); err != nil {
+		t.Fatalf("ConfigureUserIdentity local: %v", err)
+	}
+
+	restoreDir := t.TempDir()
+	if _, err := localBackupSvc.Import(legacyV2Path, restoreDir); err != nil {
+		t.Fatalf("Import v2 backup: %v", err)
+	}
+
+	reopened, err := openExistingTestDB(restoreDir)
+	if err != nil {
+		t.Fatalf("openExistingTestDB: %v", err)
+	}
+	defer reopened.Close()
+
+	identity, err := reopened.UserIdentity()
+	if err != nil {
+		t.Fatalf("UserIdentity: %v", err)
+	}
+	if identity.NodePrefix != "LJW04" {
+		t.Fatalf("expected local identity to persist, got %#v", identity)
+	}
+
+	restoreSvc := NewSoldierService(reopened)
+	results, total, err := restoreSvc.SearchPage(created.DisplayID, 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage imported record: %v", err)
+	}
+	if total != 1 || len(results) != 1 {
+		t.Fatalf("expected imported record, total=%d len=%d", total, len(results))
 	}
 }
 

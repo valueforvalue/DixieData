@@ -36,7 +36,17 @@ templ Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts view
 							<option value={ fmt.Sprintf("%d", m) } if m == month { selected }>{ monthName(m) }</option>
 						}
 					</select>
-					<button hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" class="ghost-link px-4 py-2">Export Month PDF</button>
+					<form hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" data-pdf-pref-scope="calendar" class="flex flex-wrap items-center gap-2">
+						<select name="orientation" data-pdf-pref-key="orientation" class="field-input w-36">
+							<option value="P" selected>Portrait</option>
+							<option value="L">Landscape</option>
+						</select>
+						<label class="inline-flex items-center gap-2 text-sm text-slate-700">
+							<input type="checkbox" name="printer_friendly" value="1" data-pdf-pref-key="printerFriendly" class="h-4 w-4 accent-[#8d7440]"/>
+							<span>Printer-friendly</span>
+						</label>
+						<button class="ghost-link px-4 py-2">Export Month PDF</button>
+					</form>
 				</div>
 			</div>
 			<div data-ui-id={ uiids.PanelCalendarQuote } class="relative mb-6 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_16px_34px_rgba(21,29,38,0.18)]">

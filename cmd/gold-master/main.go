@@ -17,6 +17,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -129,14 +130,14 @@ func runOutputAudit(reportDir string) (report, error) {
 	staticZipPath := filepath.Join(artifactsDir, "static-archive.zip")
 	staticDir := filepath.Join(artifactsDir, "static-archive")
 
-	if err := exportSvc.ExportSoldierPDF(soldierPDF, *fixture.Spouse); err != nil {
+	if err := exportSvc.ExportSoldierPDF(soldierPDF, *fixture.Spouse, archive.PDFOptions{}); err != nil {
 		return report{}, err
 	}
 	snapshot, err := analyticsSvc.Snapshot()
 	if err != nil {
 		return report{}, err
 	}
-	if err := exportSvc.ExportAnalyticsSummaryPDF(analyticsPDF, snapshot); err != nil {
+	if err := exportSvc.ExportAnalyticsSummaryPDF(analyticsPDF, snapshot, archive.PDFOptions{}); err != nil {
 		return report{}, err
 	}
 	if err := exportSvc.ExportFullDatabasePDF(registryPDF, services.PrintSettings{}); err != nil {

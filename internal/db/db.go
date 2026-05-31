@@ -111,6 +111,24 @@ func (d *DB) SyncScratchpadSearchIndex() error {
 	d.scratchpadIndexMu.Lock()
 	defer d.scratchpadIndexMu.Unlock()
 
+	scratchpadDir := filepath.Join(d.dataDir, "scratchpads")
+	entries, err := os.ReadDir(scratchpadDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if len(d.scratchpadIndexState) == 0 {
+				d.scratchpadIndexReady = true
+				return nil
+			}
+			if _, clearErr := d.conn.Exec(`DELETE FROM scratchpad_cache`); clearErr != nil {
+				return clearErr
+			}
+			d.scratchpadIndexState = map[string]scratchpadFileState{}
+			d.scratchpadIndexReady = true
+			return nil
+		}
+		return err
+	}
+
 	soldierRows, err := d.conn.Query(`SELECT id, display_id FROM soldiers`)
 	if err != nil {
 		return err
@@ -132,24 +150,6 @@ func (d *DB) SyncScratchpadSearchIndex() error {
 		}
 	}
 	if err := soldierRows.Err(); err != nil {
-		return err
-	}
-
-	scratchpadDir := filepath.Join(d.dataDir, "scratchpads")
-	entries, err := os.ReadDir(scratchpadDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if len(d.scratchpadIndexState) == 0 {
-				d.scratchpadIndexReady = true
-				return nil
-			}
-			if _, clearErr := d.conn.Exec(`DELETE FROM scratchpad_cache`); clearErr != nil {
-				return clearErr
-			}
-			d.scratchpadIndexState = map[string]scratchpadFileState{}
-			d.scratchpadIndexReady = true
-			return nil
-		}
 		return err
 	}
 

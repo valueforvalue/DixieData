@@ -13,9 +13,11 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
 const backupFormatName = "dixiedata-backup"
@@ -591,6 +593,19 @@ func readBackupContents(reader *zip.Reader) (backupContents, error) {
 		if manifest.DataFile == "" {
 			manifest.DataFile = "data/soldiers.json"
 		}
+	case 2:
+		if strings.TrimSpace(manifest.ArchiveKind) == "" {
+			manifest.ArchiveKind = archiveKindBackup
+		}
+		if manifest.ArchiveKind != archiveKindBackup {
+			return backupContents{}, fmt.Errorf("unsupported archive kind %q", manifest.ArchiveKind)
+		}
+		if strings.TrimSpace(manifest.DataFormat) == "" {
+			manifest.DataFormat = "sqlite"
+		}
+		if manifest.SchemaVersion > buildinfo.SchemaVersion {
+			return backupContents{}, fmt.Errorf("backup schema version %d is newer than this app supports", manifest.SchemaVersion)
+		}
 	case buildinfo.BackupFormatVersion:
 		if strings.TrimSpace(manifest.ArchiveKind) == "" {
 			manifest.ArchiveKind = archiveKindBackup
@@ -769,6 +784,7 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			PensionID:             soldier.PensionID,
 			ApplicationID:         soldier.ApplicationID,
 			Prefix:                soldier.Prefix,
+			ShowPrefixBeforeName:  soldier.ShowPrefixBeforeName,
 			FirstName:             soldier.FirstName,
 			MiddleName:            soldier.MiddleName,
 			LastName:              soldier.LastName,
@@ -777,8 +793,8 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			RankIn:                soldier.RankIn,
 			RankOut:               soldier.RankOut,
 			Unit:                  soldier.Unit,
-			PensionState:          soldier.PensionState,
-			ConfederateHomeStatus: soldier.ConfederateHomeStatus,
+			PensionState:          pensionstate.Normalize(soldier.PensionState),
+			ConfederateHomeStatus: confederatehomestatus.Normalize(soldier.ConfederateHomeStatus),
 			ConfederateHomeName:   soldier.ConfederateHomeName,
 			BirthDate:             soldier.BirthDate,
 			DeathDate:             soldier.DeathDate,
@@ -1088,6 +1104,9 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 	if err := ensureMergeReviewSession(tx, sessionID, archivePath, sourceDataDir); err != nil {
 		return SharedImportSummary{}, err
 	}
+	if err := ensureImportBatch(tx, sessionID, archivePath); err != nil {
+		return SharedImportSummary{}, err
+	}
 
 	for _, soldier := range sourceSoldiers {
 		snapshot := mergeReviewSnapshot{
@@ -1169,7 +1188,7 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 			continue
 		}
 
-		targetID, existed, resolvedDisplayID, err := upsertSharedSoldier(tx, snapshot.Soldier)
+		targetID, existed, resolvedDisplayID, err := upsertSharedSoldier(tx, snapshot.Soldier, sessionID)
 		if err != nil {
 			return SharedImportSummary{}, err
 		}
@@ -1377,7 +1396,7 @@ func (b *BackupService) ResolveMergeConflict(conflictID int64, decision, dataDir
 	return tx.Commit()
 }
 
-func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, string, error) {
+func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier, importBatchID string) (int64, bool, string, error) {
 	syncID := strings.TrimSpace(soldier.SyncID)
 	if syncID == "" {
 		return 0, false, "", fmt.Errorf("shared database soldier missing sync_id")
@@ -1388,9 +1407,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	err := tx.QueryRow(`SELECT id, display_id FROM soldiers WHERE sync_id = ?`, syncID).Scan(&existingID, &existingDisplayID)
 	if err == nil {
 		_, err = tx.Exec(`UPDATE soldiers
-			SET display_id = ?, entry_type = ?, relationship_label = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, needs_review = ?, review_reason = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
+			SET display_id = ?, entry_type = ?, relationship_label = ?, maiden_name = ?, is_generated = ?, pension_id = ?, application_id = ?, prefix = ?, show_prefix_before_name = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, rank = ?, rank_in = ?, rank_out = ?, unit = ?, pension_state = ?, confederate_home_status = ?, confederate_home_name = ?, death_year = ?, death_month = ?, death_day = ?, birth_date = ?, death_date = ?, birth_info = ?, buried_in = ?, notes = ?, needs_review = ?, review_reason = ?, added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ?
 			WHERE id = ?`,
-			existingDisplayID, soldier.EntryType, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
+			existingDisplayID, soldier.EntryType, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, pensionstate.Normalize(soldier.PensionState), confederatehomestatus.Normalize(soldier.ConfederateHomeStatus), soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, existingID)
 		if err != nil {
 			return 0, false, "", err
 		}
@@ -1409,9 +1428,9 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers
-		(display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		displayID, syncID, soldier.EntryType, nil, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
+		(display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, import_batch_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		displayID, syncID, soldier.EntryType, nil, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, pensionstate.Normalize(soldier.PensionState), confederatehomestatus.Normalize(soldier.ConfederateHomeStatus), soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, strings.TrimSpace(importBatchID))
 	if err != nil {
 		return 0, false, "", err
 	}
@@ -1427,6 +1446,14 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier) (int64, bool, strin
 
 func refreshSoldierFTS(tx *sql.Tx, soldierID int64, soldier models.Soldier) error {
 	return nil
+}
+
+func ensureImportBatch(tx *sql.Tx, batchID, archivePath string) error {
+	if strings.TrimSpace(batchID) == "" {
+		return fmt.Errorf("import batch id is required")
+	}
+	_, err := tx.Exec(`INSERT OR IGNORE INTO import_batches (id, archive_path) VALUES (?, ?)`, strings.TrimSpace(batchID), strings.TrimSpace(archivePath))
+	return err
 }
 
 func insertSoldierFTS(tx *sql.Tx, soldierID int64, soldier models.Soldier) error {
@@ -1678,7 +1705,7 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 		sourceSnapshot.Soldier.AddedBy = conflict.LocalSoldier.AddedBy
 		sourceSnapshot.Soldier.CreatedAt = conflict.LocalSoldier.CreatedAt
 	}
-	targetID, _, _, err := upsertSharedSoldier(tx, sourceSnapshot.Soldier)
+	targetID, _, _, err := upsertSharedSoldier(tx, sourceSnapshot.Soldier, conflict.SessionID)
 	if err != nil {
 		return err
 	}

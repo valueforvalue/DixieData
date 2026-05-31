@@ -12,13 +12,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
 const (
-	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.soldier_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.soldier_id = soldiers.id)`
 	recordSelectColumns      = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
 	imageSelectColumns       = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
@@ -176,8 +178,8 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	}
 	stampCreateAuditFields(s.currentAuditActor(), &soldier)
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
 		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
 	if err != nil {
@@ -334,8 +336,8 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	}
 	stampUpdateAuditFields(s.currentAuditActor(), before, &soldier)
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, relationship_label=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
-		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
+	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, relationship_label=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, show_prefix_before_name=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
+		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
 		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.ID)
 	if err != nil {
 		return err
@@ -717,7 +719,11 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	search.Unit = strings.TrimSpace(search.Unit)
 	search.RecordType = strings.TrimSpace(search.RecordType)
 	search.PensionState = strings.TrimSpace(search.PensionState)
-	search.ConfederateHomeStatus = strings.TrimSpace(search.ConfederateHomeStatus)
+	if strings.TrimSpace(search.ConfederateHomeStatus) == "" {
+		search.ConfederateHomeStatus = ""
+	} else {
+		search.ConfederateHomeStatus = confederatehomestatus.Normalize(search.ConfederateHomeStatus)
+	}
 	search.ConfederateHomeName = strings.TrimSpace(search.ConfederateHomeName)
 	search.BuriedIn = strings.TrimSpace(search.BuriedIn)
 	search.ReviewStatus = strings.TrimSpace(search.ReviewStatus)
@@ -1409,6 +1415,7 @@ func scanSoldier(row *sql.Row) (*models.Soldier, error) {
 		return nil, err
 	}
 	hydrateLegacyDeathParts(&s)
+	s.PensionState = pensionstate.Normalize(s.PensionState)
 	normalizeConfederateHomeFields(&s)
 	return &s, nil
 }
@@ -1421,6 +1428,7 @@ func scanSoldiers(rows *sql.Rows) ([]models.Soldier, error) {
 			return nil, err
 		}
 		hydrateLegacyDeathParts(&s)
+		s.PensionState = pensionstate.Normalize(s.PensionState)
 		normalizeConfederateHomeFields(&s)
 		soldiers = append(soldiers, s)
 	}
@@ -1438,6 +1446,7 @@ func scanListSoldiers(rows *sql.Rows) ([]models.Soldier, error) {
 			return nil, err
 		}
 		hydrateLegacyDeathParts(&s)
+		s.PensionState = pensionstate.Normalize(s.PensionState)
 		normalizeConfederateHomeFields(&s)
 		soldiers = append(soldiers, s)
 	}
@@ -1979,6 +1988,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		pensionID             sql.NullString
 		applicationID         sql.NullString
 		prefix                sql.NullString
+		showPrefixBeforeName  sql.NullBool
 		firstName             sql.NullString
 		middleName            sql.NullString
 		lastName              sql.NullString
@@ -2019,6 +2029,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.PensionID, &pensionID),
 		nullStringDest(&s.ApplicationID, &applicationID),
 		nullStringDest(&s.Prefix, &prefix),
+		nullBoolDest(&s.ShowPrefixBeforeName, &showPrefixBeforeName),
 		nullStringDest(&s.FirstName, &firstName),
 		nullStringDest(&s.MiddleName, &middleName),
 		nullStringDest(&s.LastName, &lastName),
@@ -2058,6 +2069,8 @@ func soldierListScanDest(s *models.Soldier) []interface{} {
 func normalizeSoldierEntry(tx *sql.Tx, soldier *models.Soldier) error {
 	soldier.EntryType = normalizeEntryType(soldier.EntryType)
 	soldier.Prefix = strings.TrimSpace(soldier.Prefix)
+	soldier.PensionState = pensionstate.Normalize(soldier.PensionState)
+	soldier.ConfederateHomeStatus = confederatehomestatus.Normalize(soldier.ConfederateHomeStatus)
 	soldier.FirstName = strings.TrimSpace(soldier.FirstName)
 	soldier.MiddleName = strings.TrimSpace(soldier.MiddleName)
 	soldier.LastName = strings.TrimSpace(soldier.LastName)
@@ -2106,23 +2119,10 @@ func normalizeEntryType(entryType string) string {
 }
 
 func normalizeConfederateHomeFields(soldier *models.Soldier) {
-	soldier.ConfederateHomeStatus = normalizeConfederateHomeStatus(soldier.ConfederateHomeStatus)
+	soldier.ConfederateHomeStatus = confederatehomestatus.Normalize(soldier.ConfederateHomeStatus)
 	soldier.ConfederateHomeName = strings.TrimSpace(soldier.ConfederateHomeName)
-	if soldier.ConfederateHomeStatus == "None" {
+	if soldier.ConfederateHomeStatus == confederatehomestatus.NotApplicable {
 		soldier.ConfederateHomeName = ""
-	}
-}
-
-func normalizeConfederateHomeStatus(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "inmate":
-		return "Inmate"
-	case "staffer":
-		return "Staffer"
-	case "trustee":
-		return "Trustee"
-	default:
-		return "None"
 	}
 }
 
@@ -2420,6 +2420,7 @@ func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
 		{"Pension ID", auditTextValue(before.PensionID), auditTextValue(after.PensionID)},
 		{"Application ID", auditTextValue(before.ApplicationID), auditTextValue(after.ApplicationID)},
 		{"Prefix", auditTextValue(before.Prefix), auditTextValue(after.Prefix)},
+		{"Show Prefix Before Name", auditBoolValue(before.ShowPrefixBeforeName), auditBoolValue(after.ShowPrefixBeforeName)},
 		{"First Name", auditTextValue(before.FirstName), auditTextValue(after.FirstName)},
 		{"Middle Name", auditTextValue(before.MiddleName), auditTextValue(after.MiddleName)},
 		{"Last Name", auditTextValue(before.LastName), auditTextValue(after.LastName)},
@@ -2646,6 +2647,20 @@ func nullIntDest(target *int, holder *sql.NullInt64) interface{ Scan(any) error 
 			*target = int(holder.Int64)
 		} else {
 			*target = 0
+		}
+		return nil
+	})
+}
+
+func nullBoolDest(target *bool, holder *sql.NullBool) interface{ Scan(any) error } {
+	return scannerFunc(func(value any) error {
+		if err := holder.Scan(value); err != nil {
+			return err
+		}
+		if holder.Valid {
+			*target = holder.Bool
+		} else {
+			*target = false
 		}
 		return nil
 	})

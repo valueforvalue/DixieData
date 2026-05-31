@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS soldiers (
     pension_id   TEXT,
     application_id TEXT,
     prefix       TEXT,
+    show_prefix_before_name BOOLEAN DEFAULT 0,
     first_name   TEXT,
     middle_name  TEXT,
     last_name    TEXT,
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS soldiers (
     rank_out     TEXT,
     unit         TEXT,
     pension_state TEXT,
-    confederate_home_status TEXT DEFAULT 'None',
+    confederate_home_status TEXT DEFAULT 'NA',
     confederate_home_name TEXT,
     death_year   INTEGER,
     death_month  INTEGER,
@@ -91,6 +92,12 @@ CREATE TABLE IF NOT EXISTS merge_review_sessions (
     status       TEXT NOT NULL DEFAULT 'open',
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at   DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS import_batches (
+    id           TEXT PRIMARY KEY,
+    archive_path TEXT NOT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS merge_review_conflicts (
@@ -166,6 +173,7 @@ CREATE TABLE IF NOT EXISTS research_collection_items (
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
+CREATE INDEX IF NOT EXISTS idx_import_batches_created_at ON import_batches(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_shared_merge_aliases_canonical ON shared_merge_aliases(canonical_person_id);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_status ON duplicate_audit_findings(status);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_soldier_id);
@@ -258,6 +266,14 @@ WHERE birth_date = '00/00/0000';
 `
 
 func applySchema(db *DB) error {
+	version, err := currentSchemaVersion(db.conn)
+	if err != nil {
+		return err
+	}
+	if version >= CurrentSchemaVersion {
+		return nil
+	}
+
 	tx, err := db.conn.Begin()
 	if err != nil {
 		return err
@@ -276,12 +292,13 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "pension_id", sql: `ALTER TABLE soldiers ADD COLUMN pension_id TEXT`},
 		{table: "soldiers", column: "application_id", sql: `ALTER TABLE soldiers ADD COLUMN application_id TEXT`},
 		{table: "soldiers", column: "prefix", sql: `ALTER TABLE soldiers ADD COLUMN prefix TEXT`},
+		{table: "soldiers", column: "show_prefix_before_name", sql: `ALTER TABLE soldiers ADD COLUMN show_prefix_before_name BOOLEAN DEFAULT 0`},
 		{table: "soldiers", column: "middle_name", sql: `ALTER TABLE soldiers ADD COLUMN middle_name TEXT`},
 		{table: "soldiers", column: "suffix", sql: `ALTER TABLE soldiers ADD COLUMN suffix TEXT`},
 		{table: "soldiers", column: "rank_in", sql: `ALTER TABLE soldiers ADD COLUMN rank_in TEXT`},
 		{table: "soldiers", column: "rank_out", sql: `ALTER TABLE soldiers ADD COLUMN rank_out TEXT`},
 		{table: "soldiers", column: "pension_state", sql: `ALTER TABLE soldiers ADD COLUMN pension_state TEXT`},
-		{table: "soldiers", column: "confederate_home_status", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_status TEXT DEFAULT 'None'`},
+		{table: "soldiers", column: "confederate_home_status", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_status TEXT DEFAULT 'NA'`},
 		{table: "soldiers", column: "confederate_home_name", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_name TEXT`},
 		{table: "soldiers", column: "sync_id", sql: `ALTER TABLE soldiers ADD COLUMN sync_id TEXT`},
 		{table: "soldiers", column: "entry_type", sql: `ALTER TABLE soldiers ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'soldier'`},
@@ -297,6 +314,7 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "last_edited_fields", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_fields TEXT`},
 		{table: "soldiers", column: "last_edited_at", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_at DATETIME`},
 		{table: "soldiers", column: "updated_at", sql: `ALTER TABLE soldiers ADD COLUMN updated_at DATETIME`},
+		{table: "soldiers", column: "import_batch_id", sql: `ALTER TABLE soldiers ADD COLUMN import_batch_id TEXT REFERENCES import_batches(id) ON DELETE SET NULL`},
 		{table: "records", column: "sync_id", sql: `ALTER TABLE records ADD COLUMN sync_id TEXT`},
 		{table: "records", column: "soldier_sync_id", sql: `ALTER TABLE records ADD COLUMN soldier_sync_id TEXT`},
 		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
@@ -323,7 +341,10 @@ func applySchema(db *DB) error {
 	if _, err := tx.Exec(phase2CanonicalDatesMigration); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'None' WHERE confederate_home_status IS NULL OR TRIM(confederate_home_status) = ''`); err != nil {
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'NA' WHERE LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a')`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE soldiers SET pension_state = 'NA' WHERE LOWER(TRIM(COALESCE(pension_state, ''))) IN ('none', 'na', 'n/a')`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`UPDATE soldiers SET needs_review = 0 WHERE needs_review IS NULL`); err != nil {
@@ -332,10 +353,13 @@ func applySchema(db *DB) error {
 	if _, err := tx.Exec(`UPDATE soldiers SET review_reason = '' WHERE review_reason IS NULL`); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`UPDATE soldiers SET show_prefix_before_name = 0 WHERE show_prefix_before_name IS NULL`); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_name IS NULL`); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_status = 'None'`); err != nil {
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_status = 'NA'`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`); err != nil {
@@ -353,6 +377,9 @@ func applySchema(db *DB) error {
 		return err
 	}
 	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_import_batch ON soldiers(import_batch_id, created_at DESC)`); err != nil {
 		return err
 	}
 	if err := migrateNodePrefixConfiguration(tx); err != nil {
@@ -392,6 +419,8 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		query = `PRAGMA table_info(merge_review_sessions)`
 	case "merge_review_conflicts":
 		query = `PRAGMA table_info(merge_review_conflicts)`
+	case "import_batches":
+		query = `PRAGMA table_info(import_batches)`
 	case "duplicate_audit_findings":
 		query = `PRAGMA table_info(duplicate_audit_findings)`
 	default:

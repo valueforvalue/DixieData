@@ -68,6 +68,48 @@ func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	}
 }
 
+func TestEntryFormShowsPrefixVisibilityToggle(t *testing.T) {
+	var buf bytes.Buffer
+	err := EntryForm(viewmodel.Soldier{
+		Prefix:               "Capt.",
+		ShowPrefixBeforeName: true,
+	}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`name="show_prefix_before_name"`,
+		`value="1"`,
+		"Show prefix before name",
+		`checked`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("entry form missing prefix visibility control %s", needle)
+		}
+	}
+}
+
+func TestEntryFormShowsNotesLinkQuickReference(t *testing.T) {
+	var buf bytes.Buffer
+	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Quick reference:",
+		"[[DISPLAY-ID]]",
+		"[[STC38-00007]]",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("entry form missing notes link reference %s", needle)
+		}
+	}
+}
+
 func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(viewmodel.GoogleStatus{}, nil, []viewmodel.ExportRecordOption{{
@@ -140,6 +182,53 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 	}
 }
 
+func TestShareViewMergeReviewUsesSharedSummaryFormatting(t *testing.T) {
+	var buf bytes.Buffer
+	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{
+		{
+			ID:                7,
+			ConflictType:      "soldier-update",
+			IncomingDisplayID: "STC38-00007",
+			Reason:            "Shared record changed notes.",
+			LocalRecord: &viewmodel.PersonRecord{
+				DisplayID:            "STC38-00007",
+				Prefix:               "Dr.",
+				ShowPrefixBeforeName: false,
+				FirstName:            "John",
+				LastName:             "Taylor",
+				EntryType:            "soldier",
+				RankOut:              "Captain",
+				Unit:                 "Co. B, 1st Texas",
+			},
+			IncomingRecord: viewmodel.Soldier{
+				DisplayID:            "STC38-00007",
+				Prefix:               "Mrs.",
+				ShowPrefixBeforeName: true,
+				FirstName:            "Jane",
+				LastName:             "Taylor",
+				EntryType:            "wife",
+			},
+		},
+	}, nil).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"John Taylor",
+		"Captain - Co. B, 1st Texas",
+		"Mrs. Jane Taylor",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing %s", needle)
+		}
+	}
+	if strings.Contains(content, "Captain John Taylor") || strings.Contains(content, ">Unit: Co. B, 1st Texas<") {
+		t.Fatalf("share merge review should use shared summary formatting: %s", content)
+	}
+}
+
 func TestInitialSetupViewIncludesIdentityFields(t *testing.T) {
 	var buf bytes.Buffer
 	err := InitialSetupView(viewmodel.InitialSetupForm{
@@ -198,13 +287,13 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 
 func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "None", ConfederateHomeStatus: "None"}, nil, viewmodel.SoldierFormSuggestions{
+	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "NA", ConfederateHomeStatus: "NA"}, nil, viewmodel.SoldierFormSuggestions{
 		RankIn:           []string{"Private", "Sergeant"},
 		RankOut:          []string{"Corporal", "Sergeant"},
 		Unit:             []string{"Co. A, 1st Texas Infantry"},
 		Prefix:           []string{"Capt."},
 		Suffix:           []string{"Jr."},
-		PensionState:     []string{"None", "Texas"},
+		PensionState:     []string{"NA", "Texas"},
 		BuriedIn:         []string{"Oakwood Cemetery"},
 		ConfederateHome:  []string{},
 		SourceRecordType: []string{"Pension"},
@@ -223,8 +312,11 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	if !strings.Contains(content, `name="confederate_home_status"`) || !strings.Contains(content, `name="confederate_home_name"`) {
 		t.Fatalf("new entry form missing confederate home fields")
 	}
-	if !strings.Contains(content, `name="pension_state" value="None"`) {
-		t.Fatalf("new entry form should default pension state to None")
+	if !strings.Contains(content, `name="pension_state" value="NA"`) {
+		t.Fatalf("new entry form should default pension state to NA")
+	}
+	if !strings.Contains(content, `<option value="NA" selected>NA</option>`) {
+		t.Fatalf("new entry form should default confederate home status to NA")
 	}
 	if !strings.Contains(content, `list="rank-in-suggestions"`) || !strings.Contains(content, `list="record-type-suggestions"`) {
 		t.Fatalf("new entry form missing datalist attributes")

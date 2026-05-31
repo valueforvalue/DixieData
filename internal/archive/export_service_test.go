@@ -360,7 +360,7 @@ func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
 		MaidenName:    "Cole",
 		PensionID:     "WP-42",
 		ApplicationID: "WA-42",
-	})
+	}, PDFOptions{IncludeImages: true})
 	if err != nil {
 		t.Fatalf("ExportSoldierPDF: %v", err)
 	}
@@ -453,7 +453,7 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 		Notes:            "Reference https://example.com/notes",
 		Records:          []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
 		Images:           []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
-	})
+	}, PDFOptions{IncludeImages: true})
 	if err != nil {
 		t.Fatalf("ExportSoldierPDF: %v", err)
 	}
@@ -495,7 +495,6 @@ func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-
 	outPath := filepath.Join(t.TempDir(), "soldier-no-images.pdf")
 	err := exportSvc.ExportSoldierPDFWithoutImages(outPath, models.Soldier{
 		DisplayID: "PENSION-42",
@@ -517,6 +516,51 @@ func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 	}
 }
 
+func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "soldier-printer-friendly.pdf")
+	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
+		DisplayID:       "PENSION-42",
+		FirstName:       "Robert",
+		LastName:        "Lee",
+		PensionState:    "NA",
+		SpouseSoldierID: 5,
+		SpouseName:      "Mary Lee",
+		Notes:           "Reference https://example.com/notes and [[PENSION-42]].",
+		Records:         []models.Record{{RecordType: "Pension", Details: "Filed in 1880. https://example.com/record."}},
+		Images:          []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath}},
+	}, PDFOptions{Orientation: "P", PrinterFriendly: true, IncludeImages: true})
+	if err != nil {
+		t.Fatalf("ExportSoldierPDF printer friendly: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	for _, forbidden := range []string{"https://example.com/notes", "https://example.com/record", "/URI (https://example.com/notes)", "/URI (https://example.com/record)", "portrait.png", "Report Metadata", "Made with DixieData"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("printer friendly PDF should omit %q", forbidden)
+		}
+	}
+	if strings.Contains(text, "Pension State") || strings.Contains(text, "Linked Spouse Record") {
+		t.Fatalf("printer friendly PDF should omit placeholder and link-only fields")
+	}
+	if !strings.Contains(text, "PENSION-42") {
+		t.Fatalf("printer friendly PDF should keep display id in title block")
+	}
+}
+
 func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
@@ -529,7 +573,7 @@ func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 			{DisplayID: "DD-1", FirstName: "John", LastName: "Smith"},
 			{DisplayID: "DD-2", FirstName: "James", LastName: "Brown"},
 		},
-	})
+	}, PDFOptions{})
 	if err != nil {
 		t.Fatalf("ExportMonthlyAnniversaryPDF: %v", err)
 	}
@@ -607,6 +651,12 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	if !strings.Contains(text, "Linked Spouse Record") || !strings.Contains(text, "John Bell Hood") || !strings.Contains(text, "Maiden Name") || !strings.Contains(text, "Jones") {
 		t.Fatalf("registry PDF missing spouse linkage fields")
 	}
+	if strings.Contains(text, "Report Metadata") {
+		t.Fatalf("registry PDF should not render report metadata as a standalone section")
+	}
+	if !strings.Contains(text, "database-pdf v") {
+		t.Fatalf("registry PDF should carry concise metadata in the footer")
+	}
 }
 
 func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
@@ -628,7 +678,7 @@ func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
 		UnitRepresentation:      []AnalyticsCount{{Label: "1st Texas Infantry", Count: 4}},
 		BirthDecadeDistribution: []AnalyticsCount{{Label: "1830s", Count: 6}},
 		DeathDecadeDistribution: []AnalyticsCount{{Label: "1900s", Count: 2}},
-	})
+	}, PDFOptions{})
 	if err != nil {
 		t.Fatalf("ExportAnalyticsSummaryPDF: %v", err)
 	}
@@ -652,6 +702,12 @@ func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
 		if !strings.Contains(text, needle) {
 			t.Fatalf("analytics PDF missing %s", needle)
 		}
+	}
+	if strings.Contains(text, "Report Metadata") {
+		t.Fatalf("analytics PDF should not render report metadata as a standalone section")
+	}
+	if !strings.Contains(text, "analytics-pdf v") {
+		t.Fatalf("analytics PDF should carry concise metadata in the footer")
 	}
 }
 
@@ -796,8 +852,8 @@ func TestExportService_ExportFullDatabasePDFAppliesSortAndGrouping(t *testing.T)
 	if !strings.Contains(text, "Grouped by Pension State") || !strings.Contains(text, "Texas") || !strings.Contains(text, "Alabama") {
 		t.Fatalf("grouped PDF missing pension-state divider pages")
 	}
-	if !strings.Contains(text, "Chronological by Birth Year") || !strings.Contains(text, "Unit, Pension State") {
-		t.Fatalf("grouped PDF missing print-settings metadata")
+	if strings.Contains(text, "Report Metadata") || !strings.Contains(text, "database-pdf v") {
+		t.Fatalf("grouped PDF should use footer-only metadata")
 	}
 	if strings.Index(text, "Samuel Carter") > strings.Index(text, "James Adams") {
 		t.Fatalf("records were not ordered by birth year within the grouped section")
@@ -837,8 +893,8 @@ func TestExportService_ExportFullDatabasePDFGroupsByBurialLocation(t *testing.T)
 	if !strings.Contains(text, "Cemetery: Location Unknown") {
 		t.Fatalf("grouped PDF missing unknown burial-location section")
 	}
-	if !strings.Contains(text, "Alphabetical by Last Name") || !strings.Contains(text, "Burial Location") {
-		t.Fatalf("grouped PDF missing burial-location print-settings metadata")
+	if strings.Contains(text, "Report Metadata") || !strings.Contains(text, "database-pdf v") {
+		t.Fatalf("grouped PDF should use footer-only metadata")
 	}
 	if strings.Index(text, "James Adams") > strings.Index(text, "Samuel Carter") {
 		t.Fatalf("records were not ordered alphabetically within the burial-location group")
@@ -891,7 +947,7 @@ func TestFirstRecordCardImagePrefersPrimaryImage(t *testing.T) {
 			{FileName: "secondary.png", Caption: "Secondary", ResolvedPath: secondaryPath},
 			{FileName: "primary.png", Caption: "Primary Portrait", ResolvedPath: primaryPath, IsPrimary: true},
 		},
-	})
+	}, false)
 	if path != primaryPath || label != "Primary Portrait" {
 		t.Fatalf("firstRecordCardImage = (%q, %q)", path, label)
 	}
@@ -1002,6 +1058,61 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	if strings.Contains(text, "CSA-2") {
 		t.Fatalf("ics should skip soldiers without full month/day")
 	}
+}
+
+func TestSoldierDisplayNameUsesVisibleNameFormatting(t *testing.T) {
+	soldier := models.Soldier{
+		EntryType:            "soldier",
+		Prefix:               "Capt.",
+		ShowPrefixBeforeName: false,
+		FirstName:            "John",
+		LastName:             "Smith",
+		RankOut:              "Captain",
+		Unit:                 "1st Virginia",
+	}
+
+	if got := soldierDisplayName(soldier); got != "John Smith" {
+		t.Fatalf("soldierDisplayName() = %q, want %q", got, "John Smith")
+	}
+}
+
+func TestRegistryEntryLinesUseServiceSummaryFormatting(t *testing.T) {
+	lines := registryEntryLines(models.Soldier{
+		EntryType: "soldier",
+		RankOut:   "Captain",
+		Unit:      "1st Virginia",
+	})
+
+	found := false
+	for _, line := range lines {
+		if line[0] == "Service Summary" {
+			found = true
+			if line[1] != "Captain - 1st Virginia" {
+				t.Fatalf("service summary = %q, want %q", line[1], "Captain - 1st Virginia")
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("registry entry lines missing service summary")
+	}
+}
+
+func TestRegistryEntryLinesNormalizePensionStateNA(t *testing.T) {
+	lines := registryEntryLines(models.Soldier{
+		EntryType:    "soldier",
+		PensionState: "None",
+		PensionID:    "P-123",
+	})
+
+	for _, line := range lines {
+		if line[0] == "Pension / Application" {
+			if line[1] != "NA | P-123" {
+				t.Fatalf("pension summary = %q, want %q", line[1], "NA | P-123")
+			}
+			return
+		}
+	}
+	t.Fatalf("registry entry lines missing pension summary")
 }
 
 func pngFixture() []byte {

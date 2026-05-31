@@ -48,6 +48,10 @@ _Avoid_: Research log, journal
 A structured record of research activity, findings, or open questions that should remain intelligible over time.
 _Avoid_: Scratch pad, notes blob
 
+**Confederate Home Status**:
+The archive field that records a person's relationship to a Confederate Home. The canonical no-status value is `NA`.
+_Avoid_: None, blank status
+
 **Service Timeline**:
 An evidence-backed chronological view of a Soldier's known life or service events.
 _Avoid_: Notes, narrative

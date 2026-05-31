@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
 	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
@@ -72,6 +73,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		pensionID             sql.NullString
 		applicationID         sql.NullString
 		prefix                sql.NullString
+		showPrefixBeforeName  sql.NullBool
 		firstName             sql.NullString
 		middleName            sql.NullString
 		lastName              sql.NullString
@@ -112,6 +114,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.PensionID, &pensionID),
 		nullStringDest(&s.ApplicationID, &applicationID),
 		nullStringDest(&s.Prefix, &prefix),
+		nullBoolDest(&s.ShowPrefixBeforeName, &showPrefixBeforeName),
 		nullStringDest(&s.FirstName, &firstName),
 		nullStringDest(&s.MiddleName, &middleName),
 		nullStringDest(&s.LastName, &lastName),
@@ -143,23 +146,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 }
 
 func normalizeConfederateHomeFields(soldier *models.Soldier) {
-	soldier.ConfederateHomeStatus = normalizeConfederateHomeStatus(soldier.ConfederateHomeStatus)
+	soldier.ConfederateHomeStatus = confederatehomestatus.Normalize(soldier.ConfederateHomeStatus)
 	soldier.ConfederateHomeName = strings.TrimSpace(soldier.ConfederateHomeName)
-	if soldier.ConfederateHomeStatus == "None" {
+	if soldier.ConfederateHomeStatus == confederatehomestatus.NotApplicable {
 		soldier.ConfederateHomeName = ""
-	}
-}
-
-func normalizeConfederateHomeStatus(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "inmate":
-		return "Inmate"
-	case "staffer":
-		return "Staffer"
-	case "trustee":
-		return "Trustee"
-	default:
-		return "None"
 	}
 }
 
@@ -186,6 +176,20 @@ func nullIntDest(target *int, holder *sql.NullInt64) interface{ Scan(any) error 
 			*target = int(holder.Int64)
 		} else {
 			*target = 0
+		}
+		return nil
+	})
+}
+
+func nullBoolDest(target *bool, holder *sql.NullBool) interface{ Scan(any) error } {
+	return scannerFunc(func(value any) error {
+		if err := holder.Scan(value); err != nil {
+			return err
+		}
+		if holder.Valid {
+			*target = holder.Bool
+		} else {
+			*target = false
 		}
 		return nil
 	})

@@ -19,6 +19,7 @@ type personRecordsFacade interface {
 	ArchiveCounts() (models.ArchiveCounts, error)
 	FormSuggestions() (personRecordSuggestions, error)
 	List(page, pageSize int) ([]personRecord, int, error)
+	BrowsePage(request records.BrowseRequest) ([]personRecord, int, records.BrowseRequest, error)
 	SearchPage(query string, page, pageSize int) ([]personRecord, int, error)
 	RecentByIDs(ids []int64, limit int) ([]personRecord, error)
 	AdvancedSearch(search personRecordSearch, page, pageSize int) ([]personRecord, int, error)
@@ -75,16 +76,16 @@ type imageFacade interface {
 
 type exportFacade interface {
 	ExportJSON(outputPath string) error
-	ExportAnalyticsSummaryPDF(outputPath string, snapshot records.AnalyticsSnapshot) error
+	ExportAnalyticsSummaryPDF(outputPath string, snapshot records.AnalyticsSnapshot, options archive.PDFOptions) error
 	ExportExcel(outputPath string) error
 	ExportICalendar(outputPath string) error
 	StaticArchiveFileName(now time.Time) (string, error)
 	ExportStaticArchive(outputPath, dataDir string) error
 	ExportFullDatabasePDF(outputPath string, settings archive.PrintSettings) error
 	ExportCSV(outputPath string) error
-	ExportSoldierPDF(outputPath string, soldier models.Soldier) error
+	ExportSoldierPDF(outputPath string, soldier models.Soldier, options archive.PDFOptions) error
 	ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error
-	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier) error
+	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options archive.PDFOptions) error
 	ExportImages(outputPath string, images []models.Image) error
 }
 

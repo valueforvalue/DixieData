@@ -71,14 +71,14 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">Local Archive Insights</h2><p class=\"mt-2 max-w-3xl text-sm text-slate-600\">High-level analytics for the current local archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p></div><div class=\"flex flex-col items-start gap-3 lg:items-end\"><button hx-post=\"/insights/report/pdf\" hx-target=\"#insights-export-status\" class=\"primary-button\">Export Analytics Report</button><div id=\"insights-export-status\" class=\"text-sm text-slate-600\"></div></div></div><div class=\"responsive-two-col grid gap-6\"><section data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">Local Archive Insights</h2><p class=\"mt-2 max-w-3xl text-sm text-slate-600\">High-level analytics for the current local archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p></div><div class=\"flex flex-col items-start gap-3 lg:items-end\"><form hx-post=\"/insights/report/pdf\" hx-target=\"#insights-export-status\" data-pdf-pref-scope=\"insights\" class=\"flex flex-wrap items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2\"><select name=\"orientation\" data-pdf-pref-key=\"orientation\" class=\"rounded-lg border border-[rgba(141,116,64,0.35)] bg-white px-2 py-1 text-sm text-slate-700\"><option value=\"P\" selected>Portrait</option> <option value=\"L\">Landscape</option></select> <label class=\"inline-flex items-center gap-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"printer_friendly\" value=\"1\" data-pdf-pref-key=\"printerFriendly\" class=\"h-4 w-4 accent-[#8d7440]\"> <span>Printer-friendly</span></label> <button class=\"primary-button\">Export Analytics Report</button></form><div id=\"insights-export-status\" class=\"text-sm text-slate-600\"></div></div></div><div class=\"responsive-two-col grid gap-6\"><section data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsOverview)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 28, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 38, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -99,7 +99,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var5 templ.SafeURL
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownHref("entry_type", "soldier"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 33, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 43, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -112,7 +112,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.SoldierCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 34, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 44, Col: 118}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -125,7 +125,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var7 templ.SafeURL
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownHref("entry_type", "spouse"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 37, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 47, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -138,7 +138,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.SpouseRecordCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 38, Col: 123}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 48, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -151,7 +151,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var9 templ.SafeURL
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownHref("entry_type", "linked_person"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 41, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 51, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -164,7 +164,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 42, Col: 123}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 52, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -177,7 +177,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsCemeteries)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 48, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 58, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -206,7 +206,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsHomes)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 55, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 65, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -243,7 +243,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsPensions)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 68, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 78, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -272,7 +272,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsUnits)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 75, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 85, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -301,7 +301,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsDuplicateAudit)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 82, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 92, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -322,7 +322,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.DuplicateAudit.SimilarityThreshold))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 86, Col: 183}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 96, Col: 183}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -335,7 +335,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var17 templ.SafeURL
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownHref("review_status", "review"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 88, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 98, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -348,7 +348,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.DuplicateAudit.OpenFindings))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 89, Col: 115}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 99, Col: 115}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -361,7 +361,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", snapshot.DuplicateAudit.ResolvedFindings))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 93, Col: 119}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 103, Col: 119}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -379,7 +379,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(snapshot.DuplicateAudit.LastRunAt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 100, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 110, Col: 54}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -398,7 +398,7 @@ func InsightsView(snapshot viewmodel.AnalyticsSnapshot) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelInsightsChronology)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 109, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 119, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -471,7 +471,7 @@ func InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage str
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(emptyMessage)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 131, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 141, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
@@ -494,7 +494,7 @@ func InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage str
 				var templ_7745c5c3_Var24 templ.SafeURL
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownHref(scope, item.Label))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 135, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 145, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -507,7 +507,7 @@ func InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage str
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(item.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 136, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 146, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -520,7 +520,7 @@ func InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage str
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", item.Count))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 137, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 147, Col: 86}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -580,7 +580,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 149, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 159, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -593,7 +593,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 150, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 160, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -606,7 +606,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", total))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 155, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 165, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -634,7 +634,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 					var templ_7745c5c3_Var32 string
 					templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", personRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 172, Col: 74}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 182, Col: 74}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 					if templ_7745c5c3_Err != nil {
@@ -647,7 +647,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 					var templ_7745c5c3_Var33 string
 					templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(personRecord.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 172, Col: 178}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 182, Col: 178}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 					if templ_7745c5c3_Err != nil {
@@ -660,7 +660,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 					var templ_7745c5c3_Var34 string
 					templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("insight-preview-%d", personRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 175, Col: 120}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 185, Col: 120}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 					if templ_7745c5c3_Err != nil {
@@ -681,7 +681,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 					var templ_7745c5c3_Var35 string
 					templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("insight-preview-%d", personRecord.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 180, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 190, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 					if templ_7745c5c3_Err != nil {
@@ -712,7 +712,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 					var templ_7745c5c3_Var36 string
 					templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", page))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 188, Col: 36}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 198, Col: 36}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 					if templ_7745c5c3_Err != nil {
@@ -725,7 +725,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 					var templ_7745c5c3_Var37 string
 					templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", (total+pageSize-1)/pageSize))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 188, Col: 90}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 198, Col: 90}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 					if templ_7745c5c3_Err != nil {
@@ -743,7 +743,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 						var templ_7745c5c3_Var38 templ.SafeURL
 						templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownPageHref(scope, value, page-1))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 190, Col: 63}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 200, Col: 63}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 						if templ_7745c5c3_Err != nil {
@@ -762,7 +762,7 @@ func InsightsDrilldownView(title, description string, personRecords []viewmodel.
 						var templ_7745c5c3_Var39 templ.SafeURL
 						templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(insightDrilldownPageHref(scope, value, page+1))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 193, Col: 63}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/insights.templ`, Line: 203, Col: 63}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 						if templ_7745c5c3_Err != nil {

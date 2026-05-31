@@ -147,6 +147,7 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 		PensionID:             "P12345",
 		ApplicationID:         "A12345",
 		Prefix:                "Capt.",
+		ShowPrefixBeforeName:  true,
 		FirstName:             "John",
 		MiddleName:            "Bell",
 		LastName:              "Hood",
@@ -165,7 +166,7 @@ func TestSoldierService_PersistsNewIdentityFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Prefix != "Capt." || got.MiddleName != "Bell" || got.Suffix != "Jr." || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" || got.ConfederateHomeStatus != "Staffer" || got.ConfederateHomeName != "Texas Confederate Home" {
+	if got.Prefix != "Capt." || !got.ShowPrefixBeforeName || got.MiddleName != "Bell" || got.Suffix != "Jr." || got.RankIn != "Colonel" || got.RankOut != "Lieutenant General" || got.PensionState != "Texas" || got.PensionID != "P12345" || got.ApplicationID != "A12345" || got.ConfederateHomeStatus != "Staffer" || got.ConfederateHomeName != "Texas Confederate Home" {
 		t.Fatalf("unexpected new fields: %#v", got)
 	}
 	if got.Rank != "Lieutenant General" {
@@ -195,7 +196,7 @@ func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Prefix != "" || got.MiddleName != "" || got.Suffix != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "None" || got.ConfederateHomeName != "" {
+	if got.Prefix != "" || got.ShowPrefixBeforeName || got.MiddleName != "" || got.Suffix != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "NA" || got.ConfederateHomeName != "" {
 		t.Fatalf("expected empty strings for NULL fields, got %#v", got)
 	}
 }
@@ -214,8 +215,26 @@ func TestSoldierService_NormalizesConfederateHomeFields(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if created.ConfederateHomeStatus != "None" || created.ConfederateHomeName != "" {
+	if created.ConfederateHomeStatus != "NA" || created.ConfederateHomeName != "" {
 		t.Fatalf("created = %#v", created)
+	}
+}
+
+func TestSoldierService_NormalizesPensionStateNA(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName:    "James",
+		LastName:     "Buckner",
+		PensionState: "None",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if created.PensionState != "NA" {
+		t.Fatalf("created pension state = %q, want %q", created.PensionState, "NA")
 	}
 }
 

@@ -3,6 +3,8 @@ package templates
 import (
 	"fmt"
 	"strings"
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
@@ -162,6 +164,10 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							<input type="text" name="prefix" value={ s.Prefix }
 								list="prefix-suggestions"
 								class="field-input" placeholder="Capt."/>
+							<label class="mt-3 inline-flex items-center gap-2 text-sm text-slate-600">
+								<input type="checkbox" name="show_prefix_before_name" value="1" if s.ShowPrefixBeforeName { checked } class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
+								<span>Show prefix before name</span>
+							</label>
 						</div>
 						<div>
 							<label class="block text-sm text-slate-500 mb-1">First Name</label>
@@ -331,6 +337,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					<label class="block text-sm text-slate-500 mb-1">Notes</label>
 					<textarea name="notes" rows="4"
 						class="field-input min-h-32">{ s.Notes }</textarea>
+					<p class="mt-2 text-xs text-slate-500">Quick reference: type <code>[[DISPLAY-ID]]</code> to link another record in notes, for example <code>[[STC38-00007]]</code>.</p>
 				</section>
 				<section data-ui-id={ uiids.PanelSoldierFormImages } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
@@ -461,7 +468,7 @@ func recordPersistenceMessage(isEdit bool) string {
 
 func pensionStates() []string {
 	return []string{
-		"None",
+		"NA",
 		"Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
 		"Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
 		"Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
@@ -474,22 +481,22 @@ func pensionStates() []string {
 }
 
 func confederateHomeStatuses() []string {
-	return []string{"None", "Inmate", "Staffer", "Trustee"}
+	return []string{confederatehomestatus.NotApplicable, confederatehomestatus.Inmate, confederatehomestatus.Staffer, confederatehomestatus.Trustee}
 }
 
 func selectedPensionState(s viewmodel.PersonRecord) string {
 	if strings.TrimSpace(s.PensionState) == "" {
-		return "None"
+		return pensionstate.NotApplicable
 	}
-	return s.PensionState
+	return pensionstate.Normalize(s.PensionState)
 }
 
 func selectedConfederateHomeStatus(s viewmodel.PersonRecord) string {
-	switch strings.TrimSpace(s.ConfederateHomeStatus) {
-	case "Inmate", "Staffer", "Trustee":
-		return s.ConfederateHomeStatus
+	switch confederatehomestatus.Normalize(s.ConfederateHomeStatus) {
+	case confederatehomestatus.Inmate, confederatehomestatus.Staffer, confederatehomestatus.Trustee:
+		return confederatehomestatus.Normalize(s.ConfederateHomeStatus)
 	default:
-		return "None"
+		return confederatehomestatus.NotApplicable
 	}
 }
 
@@ -1028,11 +1035,11 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 						<dt class="text-slate-500">Maiden Name</dt>
 						<dd class="text-[#22303d]"><em>{ s.MaidenName }</em></dd>
 					}
-					if strings.TrimSpace(s.ConfederateHomeStatus) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "None" {
+					if normalizedConfederateHomeStatus(s.ConfederateHomeStatus) != confederatehomestatus.NotApplicable {
 						<dt class="text-slate-500">Confederate Home</dt>
 						<dd class="text-[#22303d]">{ previewConfederateHomeLabel(s) }</dd>
 					}
-					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.RelationshipLabel) == "" && strings.TrimSpace(s.MaidenName) == "" && strings.TrimSpace(s.ConfederateHomeStatus) == "" {
+					if strings.TrimSpace(s.Unit) == "" && strings.TrimSpace(s.SpouseDisplayID) == "" && strings.TrimSpace(s.RelationshipLabel) == "" && strings.TrimSpace(s.MaidenName) == "" && normalizedConfederateHomeStatus(s.ConfederateHomeStatus) == confederatehomestatus.NotApplicable {
 						<dt class="text-slate-500">Purpose</dt>
 						<dd class="text-[#22303d]">Use the full person record for deeper editing; this quick view is for in-list triage.</dd>
 					}
@@ -1075,13 +1082,18 @@ func previewUpdatedByline(s viewmodel.PersonRecord) string {
 }
 
 func previewConfederateHomeLabel(s viewmodel.PersonRecord) string {
-	if strings.TrimSpace(s.ConfederateHomeName) != "" && strings.TrimSpace(s.ConfederateHomeStatus) != "" {
-		return s.ConfederateHomeStatus + " • " + s.ConfederateHomeName
+	status := normalizedConfederateHomeStatus(s.ConfederateHomeStatus)
+	if strings.TrimSpace(s.ConfederateHomeName) != "" && status != confederatehomestatus.NotApplicable {
+		return status + " • " + s.ConfederateHomeName
 	}
 	if strings.TrimSpace(s.ConfederateHomeName) != "" {
 		return s.ConfederateHomeName
 	}
-	return s.ConfederateHomeStatus
+	return status
+}
+
+func normalizedConfederateHomeStatus(value string) string {
+	return confederatehomestatus.Normalize(value)
 }
 
 func previewCompareLabel(s viewmodel.PersonRecord) string {
