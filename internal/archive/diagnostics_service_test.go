@@ -38,6 +38,9 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 	if err := soldierSvc.AddImage(created.ID, "portrait.png", `images\pension-77\portrait.png`, "Portrait"); err != nil {
 		t.Fatalf("AddImage: %v", err)
 	}
+	if err := d.SaveScratchpad(created.DisplayID, "Canonical scratch pad notes"); err != nil {
+		t.Fatalf("SaveScratchpad: %v", err)
+	}
 
 	scratchpadPath := filepath.Join(dataDir, "scratchpads", "PENSION-77.txt")
 	if err := os.MkdirAll(filepath.Dir(scratchpadPath), 0o755); err != nil {
@@ -59,7 +62,7 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}
-	if manifest.Soldiers != 1 || manifest.Records != 1 || manifest.Images != 1 || manifest.ScratchpadFiles != 1 || manifest.LogFiles != 1 {
+	if manifest.Soldiers != 1 || manifest.Records != 1 || manifest.Images != 1 || manifest.Scratchpads != 1 || manifest.ScratchpadBridgeFiles != 1 || manifest.LogFiles != 1 {
 		t.Fatalf("manifest = %#v", manifest)
 	}
 
@@ -99,7 +102,7 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 	if err := json.NewDecoder(rc).Decode(&storedManifest); err != nil {
 		t.Fatalf("Decode manifest: %v", err)
 	}
-	if storedManifest.AppVersion != buildinfo.AppVersion || storedManifest.SchemaVersion != buildinfo.SchemaVersion {
+	if storedManifest.AppVersion != buildinfo.AppVersion || storedManifest.SchemaVersion != buildinfo.SchemaVersion || storedManifest.Version != diagnosticsBundleVersion {
 		t.Fatalf("unexpected stored manifest: %#v", storedManifest)
 	}
 }

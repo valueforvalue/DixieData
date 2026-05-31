@@ -59,6 +59,16 @@ func (d *DB) SaveScratchpad(displayID, content string) error {
 	return err
 }
 
+func (d *DB) ScratchpadCount() (int, error) {
+	var count int
+	err := d.conn.QueryRow(`
+		SELECT COUNT(*)
+		FROM scratchpad_cache
+		WHERE TRIM(COALESCE(scratch_pad, '')) <> ''`,
+	).Scan(&count)
+	return count, err
+}
+
 func (d *DB) ImportLegacyScratchpadFiles() error {
 	configValue, err := d.SystemConfig(scratchpadLegacyImportConfigKey)
 	if err != nil {

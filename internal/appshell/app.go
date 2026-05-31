@@ -1713,7 +1713,7 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Bug report export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Bug report bundle ready (%d soldiers, %d images, %d scratchpad files):", manifest.Soldiers, manifest.Images, manifest.ScratchpadFiles), path))
+	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Bug report bundle ready (%d soldiers, %d images, %d scratch pads):", manifest.Soldiers, manifest.Images, manifest.Scratchpads), path))
 }
 
 func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
@@ -2779,18 +2779,6 @@ func backupArchiveName(now time.Time) string {
 
 func sharedArchiveName(now time.Time) string {
 	return fmt.Sprintf("dixiedata-shared-%s.ddshare", now.Format("2006-01-02"))
-}
-
-func uniqueDirectoryPath(basePath string) string {
-	if _, err := os.Stat(basePath); errors.Is(err, os.ErrNotExist) {
-		return basePath
-	}
-	for index := 2; ; index++ {
-		candidate := fmt.Sprintf("%s-%d", basePath, index)
-		if _, err := os.Stat(candidate); errors.Is(err, os.ErrNotExist) {
-			return candidate
-		}
-	}
 }
 
 func sanitizedFileStem(value, fallback string) string {

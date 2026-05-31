@@ -21,7 +21,7 @@
 - `internal\services` is now a compatibility shim over those deeper packages, not the architectural center.
 - Startup resolves the working data directory through `internal\appdata\appdata.go`, opens SQLite through `internal\db\db.go`, applies schema/migrations from `internal\db\schema.go`, then reloads facades before routes are usable.
 - Persistent app data lives under `.dixiedata` by default (or `DIXIEDATA_DATA_DIR`). The database, scratchpads, image files, backups, merge-review artifacts, and logs all live there instead of under the repo tree.
-- Search is not plain SQL `LIKE`. The app maintains an FTS5 index plus `scratchpad_cache`, so on-disk scratch pad content is part of normal search results.
+- Search is not plain SQL `LIKE`. The app maintains an FTS5 index plus canonical scratch pad content in `scratchpad_cache`, so scratch pads participate in normal search results.
 
 ## Key conventions
 
@@ -33,7 +33,7 @@
 - The `soldiers` table is the main people table for both actual soldiers and spouse entries. Use `entry_type` and `spouse_soldier_id` rather than assuming every row is a soldier.
 - Display IDs are normalized to a canonical `NAMESPACE-00000` shape. Use the helpers in `internal\db\displayid.go` and identity helpers in `internal\db\identity.go` instead of hand-rolling parsing or generation.
 - The release/app version is schema-driven. `internal\db\schema.go` defines `CurrentSchemaVersion`, `db.GetAppVersion()` derives the app version from it, and the PowerShell build scripts package releases from that value.
-- Record images are stored on disk in a sharded path under `.dixiedata\images\<A>\<B>\<sanitized-display-id>\...`. Scratch pads are also file-backed under `.dixiedata\scratchpads\...`; both path shapes come from `internal\appdata`.
+- Record images are stored on disk in a sharded path under `.dixiedata\images\<A>\<B>\<sanitized-display-id>\...`. Scratch pad bridge/window-state files may appear under `.dixiedata\scratchpads\...`, but canonical scratch pad content lives in SQLite.
 - UI surface IDs are a real project convention, not just test-only metadata. The canonical registry is `internal\uiids\uiids.go`, the human reference is `docs\ui-ids.md`, and debug builds expose them with `DIXIEDATA_DEBUG_UI_IDS=1` / `--debug-ui-ids`.
 - Template changes are two-part changes: edit the `.templ` file and regenerate the checked-in `*_templ.go` output.
 - Public delivery boundaries and facade contracts should stay covered by fast automated tests. Before closing out code changes, run `go test ./...` and rely on module-seam tests to catch leaks across the facade boundary.
