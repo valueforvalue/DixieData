@@ -363,9 +363,6 @@ func (s *SoldierService) Delete(id int64) error {
 }
 
 func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption string) error {
-	if caption == "" {
-		caption = fileName
-	}
 	soldierSyncID, err := s.soldierSyncIDByID(soldierID)
 	if err != nil {
 		return err

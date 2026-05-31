@@ -468,6 +468,13 @@ func TestSoldierPDFNameUsesDisplayID(t *testing.T) {
 	}
 }
 
+func TestSoldierJPGNameIncludesPDFOptionSuffix(t *testing.T) {
+	name := soldierJPGName(models.Soldier{DisplayID: "DD 100"}, archive.PDFOptions{Orientation: "L", PrinterFriendly: true, IncludeImages: false})
+	if name != "DD-100-printer-friendly-landscape-no-images.jpg" {
+		t.Fatalf("soldier jpg name = %q", name)
+	}
+}
+
 func TestSoldierPDFNameNoImagesUsesDisplayID(t *testing.T) {
 	name := soldierPDFNameNoImages(models.Soldier{DisplayID: "DD 100"})
 	if name != "DD-100-landscape-no-images.pdf" {
@@ -900,6 +907,9 @@ func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
 	if soldier.Images[0].FileName != "CSA-HEADER-img-001.jpeg" {
 		t.Fatalf("stored image name = %q", soldier.Images[0].FileName)
 	}
+	if soldier.Images[0].Caption != "" {
+		t.Fatalf("stored image caption = %q, want empty", soldier.Images[0].Caption)
+	}
 }
 
 func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
@@ -949,6 +959,11 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	}
 	if soldier.Images[0].FileName != "CSA-NATIVE-img-001.jpeg" || soldier.Images[1].FileName != "CSA-NATIVE-img-002.png" {
 		t.Fatalf("unexpected imported image names: %#v", soldier.Images)
+	}
+	for _, image := range soldier.Images {
+		if image.Caption != "" {
+			t.Fatalf("image caption = %q, want empty", image.Caption)
+		}
 	}
 	for _, image := range soldier.Images {
 		fullPath := filepath.Join(dataDir, filepath.FromSlash(image.FilePath))

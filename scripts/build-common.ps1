@@ -72,6 +72,80 @@ function Get-DixieDataOAuthDefaultsBuildPath {
     return Join-Path (Get-DixieDataBuildBinDir -Root $Root) "google-oauth-defaults.json"
 }
 
+function Get-DixieDataPdfiumVersion {
+    return "chromium/7857"
+}
+
+function Get-DixieDataPdfiumAssetName {
+    return "pdfium-win-x64.tgz"
+}
+
+function Get-DixieDataPdfiumBuildPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    return Join-Path (Get-DixieDataBuildBinDir -Root $Root) "pdfium.dll"
+}
+
+function Get-DixieDataPdfiumMarkerPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    return Join-Path (Get-DixieDataBuildBinDir -Root $Root) "pdfium.version"
+}
+
+function Restore-DixieDataPdfiumBinary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    $binDir = Get-DixieDataBuildBinDir -Root $Root
+    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+
+    $expectedVersion = Get-DixieDataPdfiumVersion
+    $dllPath = Get-DixieDataPdfiumBuildPath -Root $Root
+    $markerPath = Get-DixieDataPdfiumMarkerPath -Root $Root
+    $currentVersion = if (Test-Path $markerPath) { (Get-Content -Path $markerPath -Raw).Trim() } else { "" }
+    if ((Test-Path $dllPath) -and $currentVersion -eq $expectedVersion) {
+        return
+    }
+
+    $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("DixieData-pdfium-" + [guid]::NewGuid().ToString())
+    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+    try {
+        $assetName = Get-DixieDataPdfiumAssetName
+        $archivePath = Join-Path $tempDir $assetName
+        $escapedTag = [System.Uri]::EscapeDataString($expectedVersion)
+        $downloadUrl = "https://github.com/bblanchon/pdfium-binaries/releases/download/$escapedTag/$assetName"
+
+        Write-Host "Downloading PDFium runtime $expectedVersion..."
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+
+        tar -xzf $archivePath -C $tempDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to extract $assetName"
+        }
+
+        $extractedDll = Join-Path $tempDir "bin\pdfium.dll"
+        if (-not (Test-Path $extractedDll)) {
+            throw "Extracted archive did not contain bin\pdfium.dll"
+        }
+
+        Copy-Item $extractedDll $dllPath -Force
+        Set-Content -Path $markerPath -Value $expectedVersion -Encoding ASCII
+    } finally {
+        if (Test-Path $tempDir) {
+            Remove-Item $tempDir -Recurse -Force
+        }
+    }
+}
+
 function Save-DixieDataOAuthDefaults {
     param(
         [Parameter(Mandatory = $true)]
@@ -258,6 +332,8 @@ function Invoke-DixieDataBuild {
         } else {
             Write-Warning "No google-oauth-defaults.json source was found. The build output will not include shared Google OAuth defaults."
         }
+
+        Restore-DixieDataPdfiumBinary -Root $Root
     } finally {
         Remove-DixieDataPreservedOAuthDefaults -PreservedPath $preservedOAuth
     }

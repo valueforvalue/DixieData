@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"image"
@@ -36,8 +37,13 @@ const exportBatchSize = 500
 var pdfURLPattern = regexp.MustCompile(`https?://[^\s<]+`)
 
 type ExportService struct {
-	db      *db.DB
-	soldier *SoldierService
+	db         *db.DB
+	soldier    *SoldierService
+	rasterizer pdfToJPEGRasterizer
+}
+
+type pdfToJPEGRasterizer interface {
+	Rasterize(pdfPath, outputDir string) ([]string, error)
 }
 
 type PrintSettings struct {
@@ -1317,7 +1323,11 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
 `
 
 func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
-	return &ExportService{db: database, soldier: soldier}
+	return &ExportService{
+		db:         database,
+		soldier:    soldier,
+		rasterizer: newPDFJPEGRasterizer(),
+	}
 }
 
 // ExportJSON writes a full hierarchical export document with metadata and
@@ -2072,6 +2082,50 @@ func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier
 	return e.exportSoldierPDF(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: false})
 }
 
+func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldier, options PDFOptions) ([]string, error) {
+	options = options.Normalize("L", true)
+	outputPath = ensureJPGOutputPath(outputPath)
+
+	tempDir, err := os.MkdirTemp(filepath.Dir(outputPath), ".dixiedata-soldier-jpg-*")
+	if err != nil {
+		return nil, fmt.Errorf("create temporary JPG export directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pdfPath := filepath.Join(tempDir, "record.pdf")
+	if err := e.exportSoldierPDF(pdfPath, soldier, options); err != nil {
+		return nil, err
+	}
+
+	renderedDir := filepath.Join(tempDir, "pages")
+	if err := os.MkdirAll(renderedDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create temporary JPG page directory: %w", err)
+	}
+
+	renderedPaths, err := e.rasterizer.Rasterize(pdfPath, renderedDir)
+	if err != nil {
+		return nil, err
+	}
+	if len(renderedPaths) == 0 {
+		return nil, errors.New("PDF rasterizer did not produce any JPG pages")
+	}
+
+	finalPaths := make([]string, len(renderedPaths))
+	for i := range renderedPaths {
+		finalPaths[i] = jpgPagePath(outputPath, i+1)
+	}
+
+	if err := removeExistingJPGArtifacts(outputPath); err != nil {
+		return nil, err
+	}
+	for i, renderedPath := range renderedPaths {
+		if err := os.Rename(renderedPath, finalPaths[i]); err != nil {
+			return nil, fmt.Errorf("save JPG page %d: %w", i+1, err)
+		}
+	}
+	return finalPaths, nil
+}
+
 func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldier, options PDFOptions) error {
 	options = options.Normalize("L", true)
 	pdf, err := e.brandedPDFDocument(options.Orientation, "Record Card", "soldier-pdf", buildinfo.SoldierPDFExportVersion, "", options.PrinterFriendly)
@@ -2084,6 +2138,43 @@ func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldi
 	writePDFRecordCard(pdf, soldier, options)
 
 	return pdf.OutputFileAndClose(outputPath)
+}
+
+func ensureJPGOutputPath(outputPath string) string {
+	if strings.EqualFold(filepath.Ext(outputPath), ".jpg") {
+		return outputPath
+	}
+	return outputPath + ".jpg"
+}
+
+func jpgPagePath(outputPath string, pageNumber int) string {
+	outputPath = ensureJPGOutputPath(outputPath)
+	if pageNumber <= 1 {
+		return outputPath
+	}
+	ext := filepath.Ext(outputPath)
+	stem := strings.TrimSuffix(outputPath, ext)
+	return fmt.Sprintf("%s-page-%03d%s", stem, pageNumber, ext)
+}
+
+func removeExistingJPGArtifacts(outputPath string) error {
+	primaryPath := ensureJPGOutputPath(outputPath)
+	if err := os.Remove(primaryPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove existing JPG export: %w", err)
+	}
+
+	ext := filepath.Ext(primaryPath)
+	stem := strings.TrimSuffix(primaryPath, ext)
+	matches, err := filepath.Glob(stem + "-page-*" + ext)
+	if err != nil {
+		return fmt.Errorf("list existing JPG page exports: %w", err)
+	}
+	for _, match := range matches {
+		if err := os.Remove(match); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove existing JPG page export %s: %w", match, err)
+		}
+	}
+	return nil
 }
 
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
@@ -3428,27 +3519,47 @@ func firstRecordCardImage(soldier models.Soldier, printerFriendly bool) (string,
 			continue
 		}
 		if imagePath := imagePathForPDF(image); imagePath != "" {
-			label := image.FileName
-			if strings.TrimSpace(image.Caption) != "" {
-				label = image.Caption
-			} else if printerFriendly {
-				label = ""
-			}
-			return imagePath, label
+			return imagePath, pdfImageCaption(image)
 		}
 	}
 	for _, image := range soldier.Images {
 		if imagePath := imagePathForPDF(image); imagePath != "" {
-			label := image.FileName
-			if strings.TrimSpace(image.Caption) != "" {
-				label = image.Caption
-			} else if printerFriendly {
-				label = ""
-			}
-			return imagePath, label
+			return imagePath, pdfImageCaption(image)
 		}
 	}
 	return "", ""
+}
+
+func pdfImageCaption(image models.Image) string {
+	caption := strings.TrimSpace(image.Caption)
+	if caption == "" {
+		return ""
+	}
+	if strings.EqualFold(caption, strings.TrimSpace(image.FileName)) {
+		return ""
+	}
+	if filePath := strings.TrimSpace(image.FilePath); filePath != "" && strings.EqualFold(caption, filepath.Base(filePath)) {
+		return ""
+	}
+	if looksLikePDFImageFileName(caption) {
+		return ""
+	}
+	return caption
+}
+
+func looksLikePDFImageFileName(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return false
+	}
+	base := filepath.Base(trimmed)
+	ext := strings.ToLower(filepath.Ext(base))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tif", ".tiff":
+		return strings.TrimSuffix(base, ext) != ""
+	default:
+		return false
+	}
 }
 
 func recordPDFTitle(soldier models.Soldier) string {
@@ -3685,16 +3796,12 @@ func writePDFImageRow(pdf *fpdf.Fpdf, image models.Image) {
 	}
 
 	pdf.SetXY(x+thumbnailWidth+4, y)
-	title := image.FileName
-	if strings.TrimSpace(image.Caption) != "" {
-		title = fmt.Sprintf("%s - %s", image.FileName, image.Caption)
+	title := pdfImageCaption(image)
+	if title == "" {
+		title = "Image"
 	}
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.MultiCell(0, 6, emptyPDFValue(title), "", "", false)
-	pdf.SetXY(x+thumbnailWidth+4, y+10)
-	pdf.MultiCell(0, 6, "DB Path: "+emptyPDFValue(image.FilePath), "", "", false)
-	pdf.SetXY(x+thumbnailWidth+4, y+18)
-	pdf.MultiCell(0, 6, "Full Path: "+emptyPDFValue(strings.TrimSpace(image.ResolvedPath)), "", "", false)
 
 	if pdf.GetY() < y+rowHeight {
 		pdf.SetY(y + rowHeight)

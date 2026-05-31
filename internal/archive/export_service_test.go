@@ -2,10 +2,13 @@ package archive
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"os"
@@ -20,6 +23,12 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/xuri/excelize/v2"
 )
+
+type rasterizerFunc func(pdfPath, outputDir string) ([]string, error)
+
+func (f rasterizerFunc) Rasterize(pdfPath, outputDir string) ([]string, error) {
+	return f(pdfPath, outputDir)
+}
 
 func configureExportIdentity(t *testing.T, database *db.DB) {
 	t.Helper()
@@ -469,6 +478,9 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "Hollywood Cemetery") {
 		t.Fatalf("pdf missing buried-in text")
 	}
+	if !strings.Contains(text, "Portrait") {
+		t.Fatalf("pdf missing image caption")
+	}
 	if !strings.Contains(text, "S. Carter's Civil War Research Archive") {
 		t.Fatalf("pdf missing standardized branding")
 	}
@@ -478,7 +490,7 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "/URI (https://example.com/notes)") || !strings.Contains(text, "/URI (https://example.com/record)") {
 		t.Fatalf("pdf missing expected clickable link annotations")
 	}
-	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields"} {
+	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields", "portrait.png"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("pdf should omit audit metadata %q", forbidden)
 		}
@@ -558,6 +570,56 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 	}
 	if !strings.Contains(text, "PENSION-42") {
 		t.Fatalf("printer friendly PDF should keep display id in title block")
+	}
+}
+
+func TestExportService_ExportSoldierPDFOmitsPrimaryImageJPEGFileNameStoredAsCaption(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	imageName := "11558933_9fdc5984-1f88-40d7-be17-146e1caaaaf1.jpeg"
+	imagePath := filepath.Join(t.TempDir(), imageName)
+	if err := os.WriteFile(imagePath, jpegFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "soldier-primary-image-no-filename.pdf")
+	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
+		DisplayID:     "DXD-00054",
+		FirstName:     "James",
+		MiddleName:    "A.",
+		LastName:      "Myers",
+		BirthDate:     "1843",
+		DeathDate:     "1934-07-31",
+		BirthInfo:     "1843, Alabama, USA",
+		BuriedIn:      "Letitia Cemetery, Lawton, Comanche County, Oklahoma, USA",
+		EntryType:     "soldier",
+		RankIn:        "Private",
+		RankOut:       "Pvt.",
+		Unit:          "Co. C, 19th AL Infantry Regiment, C.S.A.",
+		PensionState:  "Oklahoma",
+		PensionID:     "P4187",
+		ApplicationID: "A5046",
+		Images: []models.Image{{
+			FileName:     imageName,
+			FilePath:     `images\dxd-00054\11558933_9fdc5984-1f88-40d7-be17-146e1caaaaf1.jpeg`,
+			ResolvedPath: imagePath,
+			Caption:      imageName,
+			IsPrimary:    true,
+		}},
+	}, PDFOptions{Orientation: "P", IncludeImages: true})
+	if err != nil {
+		t.Fatalf("ExportSoldierPDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if strings.Contains(string(data), imageName) {
+		t.Fatalf("pdf should not contain primary image file name %q", imageName)
 	}
 }
 
@@ -746,7 +808,6 @@ func TestExportService_ExportFullDatabasePDFUsesMultiPageFallbackForLongRecords(
 	if err != nil {
 		t.Fatalf("Create soldier: %v", err)
 	}
-
 	outPath := filepath.Join(t.TempDir(), "single-page.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(outPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
@@ -765,6 +826,116 @@ func TestExportService_ExportFullDatabasePDFUsesMultiPageFallbackForLongRecords(
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("registry PDF should omit audit metadata %q", forbidden)
 		}
+	}
+}
+
+func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	exportSvc.rasterizer = rasterizerFunc(func(pdfPath, outputDir string) ([]string, error) {
+		if _, err := os.Stat(pdfPath); err != nil {
+			t.Fatalf("generated PDF missing: %v", err)
+		}
+		first := filepath.Join(outputDir, "page-001.jpg")
+		second := filepath.Join(outputDir, "page-002.jpg")
+		if err := os.WriteFile(first, []byte("page-1"), 0o644); err != nil {
+			t.Fatalf("WriteFile first: %v", err)
+		}
+		if err := os.WriteFile(second, []byte("page-2"), 0o644); err != nil {
+			t.Fatalf("WriteFile second: %v", err)
+		}
+		return []string{first, second}, nil
+	})
+
+	soldier := models.Soldier{DisplayID: "STC38-00001", FirstName: "John", LastName: "Taylor"}
+	outputPath := filepath.Join(t.TempDir(), "record.jpg")
+	paths, err := exportSvc.ExportSoldierJPG(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: true})
+	if err != nil {
+		t.Fatalf("ExportSoldierJPG: %v", err)
+	}
+
+	expected := []string{
+		outputPath,
+		filepath.Join(filepath.Dir(outputPath), "record-page-002.jpg"),
+	}
+	if len(paths) != len(expected) {
+		t.Fatalf("paths = %v, want %v", paths, expected)
+	}
+	for i := range expected {
+		if paths[i] != expected[i] {
+			t.Fatalf("path %d = %q, want %q", i, paths[i], expected[i])
+		}
+		data, err := os.ReadFile(paths[i])
+		if err != nil {
+			t.Fatalf("ReadFile %q: %v", paths[i], err)
+		}
+		if len(data) == 0 {
+			t.Fatalf("rendered JPG %q was empty", paths[i])
+		}
+	}
+}
+
+func TestExportService_ExportSoldierJPGRemovesStaleSiblingPages(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	exportSvc.rasterizer = rasterizerFunc(func(pdfPath, outputDir string) ([]string, error) {
+		first := filepath.Join(outputDir, "page-001.jpg")
+		if err := os.WriteFile(first, []byte("fresh-page"), 0o644); err != nil {
+			t.Fatalf("WriteFile first: %v", err)
+		}
+		return []string{first}, nil
+	})
+
+	outputPath := filepath.Join(t.TempDir(), "record.jpg")
+	stalePage := filepath.Join(filepath.Dir(outputPath), "record-page-002.jpg")
+	if err := os.WriteFile(outputPath, []byte("old-page-1"), 0o644); err != nil {
+		t.Fatalf("WriteFile outputPath: %v", err)
+	}
+	if err := os.WriteFile(stalePage, []byte("old-page-2"), 0o644); err != nil {
+		t.Fatalf("WriteFile stalePage: %v", err)
+	}
+
+	if _, err := exportSvc.ExportSoldierJPG(outputPath, models.Soldier{DisplayID: "STC38-00001"}, PDFOptions{Orientation: "L", IncludeImages: true}); err != nil {
+		t.Fatalf("ExportSoldierJPG: %v", err)
+	}
+	if _, err := os.Stat(stalePage); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("stale sibling page should be removed, stat err = %v", err)
+	}
+}
+
+func TestExportService_ExportSoldierJPGLeavesNoPartialOutputsOnRasterFailure(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	exportSvc.rasterizer = rasterizerFunc(func(pdfPath, outputDir string) ([]string, error) {
+		first := filepath.Join(outputDir, "page-001.jpg")
+		if err := os.WriteFile(first, []byte("partial"), 0o644); err != nil {
+			t.Fatalf("WriteFile first: %v", err)
+		}
+		return nil, errors.New("render failed")
+	})
+
+	outputDir := t.TempDir()
+	outputPath := filepath.Join(outputDir, "record.jpg")
+	_, err := exportSvc.ExportSoldierJPG(outputPath, models.Soldier{DisplayID: "STC38-00001"}, PDFOptions{Orientation: "L", IncludeImages: true})
+	if err == nil || !strings.Contains(err.Error(), "render failed") {
+		t.Fatalf("ExportSoldierJPG err = %v, want render failed", err)
+	}
+
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("unexpected output files after failure: %v", entries)
 	}
 }
 
@@ -953,6 +1124,20 @@ func TestFirstRecordCardImagePrefersPrimaryImage(t *testing.T) {
 	}
 }
 
+func TestFirstRecordCardImageDoesNotFallBackToFileName(t *testing.T) {
+	imagePath := filepath.Join(t.TempDir(), "primary.png")
+	writeSizedPNGFixture(t, imagePath, 200, 100)
+
+	path, label := firstRecordCardImage(models.Soldier{
+		Images: []models.Image{
+			{FileName: "primary.png", ResolvedPath: imagePath, IsPrimary: true},
+		},
+	}, false)
+	if path != imagePath || label != "" {
+		t.Fatalf("firstRecordCardImage = (%q, %q)", path, label)
+	}
+}
+
 func TestImagePathForPDFSkipsUnsupportedFormat(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "portrait.webp")
 	if err := os.WriteFile(path, []byte("not-a-pdf-image"), 0o644); err != nil {
@@ -1125,6 +1310,20 @@ func pngFixture() []byte {
 		0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60,
 		0x82,
 	}
+}
+
+func jpegFixture() []byte {
+	imageRect := image.NewRGBA(image.Rect(0, 0, 40, 40))
+	for y := 0; y < 40; y++ {
+		for x := 0; x < 40; x++ {
+			imageRect.Set(x, y, color.RGBA{R: 180, G: 120, B: 70, A: 255})
+		}
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, imageRect, &jpeg.Options{Quality: 90}); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
 }
 
 func writeSizedPNGFixture(t *testing.T, path string, width, height int) {

@@ -84,6 +84,7 @@ type exportFacade interface {
 	ExportFullDatabasePDF(outputPath string, settings archive.PrintSettings) error
 	ExportCSV(outputPath string) error
 	ExportSoldierPDF(outputPath string, soldier models.Soldier, options archive.PDFOptions) error
+	ExportSoldierJPG(outputPath string, soldier models.Soldier, options archive.PDFOptions) ([]string, error)
 	ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error
 	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options archive.PDFOptions) error
 	ExportImages(outputPath string, images []models.Image) error
