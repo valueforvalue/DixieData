@@ -24,6 +24,10 @@ _Avoid_: Archive, backup
 A full replacement archive snapshot used for restore and safekeeping.
 _Avoid_: Archive, export
 
+**Restore Point**:
+An automatic pre-update recovery bundle that preserves a recoverable Local Archive state and the previously safe app build for rollback.
+_Avoid_: Temp backup, update backup
+
 **Static Archive**:
 A read-only browser-viewable archive export.
 _Avoid_: Archive, website
@@ -131,6 +135,7 @@ _Avoid_: Spouse
 - A **Research Pack** packages archive material for a defined scope
 - A **Unit Membership** may contribute evidence to a **Unit Camaraderie Graph**
 - A **Local Archive** may be exported as a **Shared Archive**, **Backup Archive**, or **Static Archive**
+- A **Restore Point** preserves a pre-update recovery state for a **Local Archive**
 - A **Duplicate Audit** may place a **Person Record** into the **Review Queue**
 - A **Merge Review** resolves conflicts created by importing a **Shared Archive** into a **Local Archive**
 - A **Merge Review** compares a **Local Record** and an **Incoming Record**

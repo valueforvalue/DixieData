@@ -46,25 +46,28 @@ import (
 var embeddedQuotes []byte
 
 type App struct {
-	ctx            context.Context
-	database       *db.DB
-	soldiers       personRecordsFacade
-	anniversary    anniversaryFacade
-	analytics      analyticsFacade
-	audit          reviewFacade
-	images         imageFacade
-	export         exportFacade
-	backup         backupFacade
-	diagnostics    diagnosticsFacade
-	google         integrationFacade
-	updater        updaterFacade
-	quotes         []models.Quote
-	mux            *http.ServeMux
-	startupErr     error
-	setupRequired  bool
-	dataDir        string
-	scratchpads    scratchpadOpener
-	frontendAssets fs.FS
+	ctx             context.Context
+	database        *db.DB
+	soldiers        personRecordsFacade
+	anniversary     anniversaryFacade
+	analytics       analyticsFacade
+	audit           reviewFacade
+	images          imageFacade
+	export          exportFacade
+	backup          backupFacade
+	diagnostics     diagnosticsFacade
+	google          integrationFacade
+	updater         updaterFacade
+	restorePoints   *update.RestorePointManager
+	quotes          []models.Quote
+	mux             *http.ServeMux
+	startupErr      error
+	setupRequired   bool
+	pendingRecovery *update.RestorePointRecord
+	recoveryFailure string
+	dataDir         string
+	scratchpads     scratchpadOpener
+	frontendAssets  fs.FS
 }
 
 type scratchpadOpener interface {
@@ -98,6 +101,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.ctx = ctx
 	a.dataDir = appdata.DefaultDir()
+	a.restorePoints = update.NewRestorePointManager(a.dataDir)
 	var err error
 	a.quotes, err = loadQuotes(embeddedQuotes)
 	if err != nil {
@@ -107,8 +111,58 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
+	if err := a.restorePoints.Housekeeping(); err != nil {
+		a.startupErr = fmt.Errorf("failed to prepare restore point storage: %w", err)
+		fmt.Println(a.startupErr)
+		a.setupRoutes()
+		return
+	}
+
+	postUpdateLaunchState, err := a.restorePoints.LoadLaunchState()
+	if err != nil {
+		a.startupErr = fmt.Errorf("failed to read restore point state: %w", err)
+		fmt.Println(a.startupErr)
+		a.setupRoutes()
+		return
+	}
+	if postUpdateLaunchState != nil {
+		switch {
+		case !postUpdateLaunchState.MatchesCurrentBuild(buildinfo.AppVersion, buildinfo.BuildIdentity()):
+			if err := a.restorePoints.ClearLaunchState(); err != nil {
+				a.startupErr = fmt.Errorf("failed to clear stale restore point state: %w", err)
+				fmt.Println(a.startupErr)
+				a.setupRoutes()
+				return
+			}
+			postUpdateLaunchState = nil
+		case postUpdateLaunchState.Status == update.RestorePointLaunchStarting:
+			if err := a.activatePendingRecovery(postUpdateLaunchState.RestorePointID, errors.New("DixieData did not reach a healthy first launch after the update.")); err != nil {
+				a.startupErr = err
+				fmt.Println(a.startupErr)
+			}
+			a.setupRoutes()
+			return
+		case postUpdateLaunchState.Status == update.RestorePointLaunchPrepared:
+			postUpdateLaunchState, err = a.restorePoints.MarkLaunchStarting()
+			if err != nil {
+				a.startupErr = fmt.Errorf("failed to mark restore point launch state: %w", err)
+				fmt.Println(a.startupErr)
+				a.setupRoutes()
+				return
+			}
+		}
+	}
+
 	a.database, err = db.Open(a.dataDir)
 	if err != nil {
+		if postUpdateLaunchState != nil {
+			if recoveryErr := a.activatePendingRecovery(postUpdateLaunchState.RestorePointID, fmt.Errorf("failed to open database: %w", err)); recoveryErr != nil {
+				a.startupErr = recoveryErr
+				fmt.Println(a.startupErr)
+			}
+			a.setupRoutes()
+			return
+		}
 		a.startupErr = fmt.Errorf("failed to open database: %w", err)
 		fmt.Println(a.startupErr)
 		a.setupRoutes()
@@ -116,10 +170,31 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	if err := a.reloadServices(); err != nil {
+		if a.database != nil {
+			a.database.Close()
+			a.database = nil
+		}
+		if postUpdateLaunchState != nil {
+			if recoveryErr := a.activatePendingRecovery(postUpdateLaunchState.RestorePointID, err); recoveryErr != nil {
+				a.startupErr = recoveryErr
+				fmt.Println(a.startupErr)
+			}
+			a.setupRoutes()
+			return
+		}
 		a.startupErr = err
 		fmt.Println(a.startupErr)
 		a.setupRoutes()
 		return
+	}
+
+	if postUpdateLaunchState != nil {
+		if err := a.restorePoints.ClearLaunchState(); err != nil {
+			a.startupErr = fmt.Errorf("failed to clear restore point launch state: %w", err)
+			fmt.Println(a.startupErr)
+			a.setupRoutes()
+			return
+		}
 	}
 
 	a.setupRoutes()
@@ -136,6 +211,7 @@ func (a *App) setupRoutes() {
 
 	mux.HandleFunc("/app.js", a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("/app.css", a.handleFrontendAsset("app.css", "text/css; charset=utf-8"))
+	mux.HandleFunc("/recovery", a.handleRecovery)
 	mux.HandleFunc("/", a.handleCalendar)
 	mux.HandleFunc("/calendar", a.handleCalendar)
 	mux.HandleFunc("/calendar/", a.handleCalendarMonth)
@@ -250,6 +326,10 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		renderStartupPlaceholder(w, r)
 		return
 	}
+	if a.pendingRecovery != nil && !recoveryRequestAllowed(r.URL.Path) {
+		http.Redirect(w, r, "/recovery", http.StatusSeeOther)
+		return
+	}
 	if a.startupErr != nil {
 		http.Error(w, a.startupErr.Error(), http.StatusInternalServerError)
 		return
@@ -330,6 +410,19 @@ func setupRequestAllowed(path string) bool {
 	case path == "/app.js":
 		return true
 	case strings.HasPrefix(path, "/wailsjs/"):
+		return true
+	default:
+		return false
+	}
+}
+
+func recoveryRequestAllowed(path string) bool {
+	switch {
+	case path == "/recovery":
+		return true
+	case path == "/version":
+		return true
+	case path == "/app.css":
 		return true
 	default:
 		return false
@@ -3094,7 +3187,10 @@ func (a *App) reloadServices() error {
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
-	a.updater = update.NewService(a.database, a.dataDir)
+	a.updater = update.NewService(a.database, a.dataDir, func(outputPath string) error {
+		_, err := a.backup.Export(outputPath, a.dataDir)
+		return err
+	})
 	a.scratchpads = scratchpad.NewLauncher(a.dataDir, a.database)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {
@@ -3119,6 +3215,22 @@ func (a *App) reloadServices() error {
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (a *App) activatePendingRecovery(restorePointID string, cause error) error {
+	if a.database != nil {
+		a.database.Close()
+		a.database = nil
+	}
+	record, err := a.restorePoints.Get(restorePointID)
+	if err != nil {
+		return fmt.Errorf("load restore point %q: %w", restorePointID, err)
+	}
+	a.pendingRecovery = &record
+	if cause != nil {
+		a.recoveryFailure = cause.Error()
 	}
 	return nil
 }

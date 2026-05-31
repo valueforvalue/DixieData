@@ -24,6 +24,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/update"
 )
 
 type scratchpadStub struct {
@@ -82,6 +83,57 @@ func TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux(t *testing.T) {
 	}
 	if !strings.Contains(body, `window.location.replace("/calendar?_dd_boot=1\u0026scope=recent")`) {
 		t.Fatalf("expected inline auto-refresh script, got %q", body)
+	}
+}
+
+func TestAppServeHTTPRedirectsToRecoveryWhenPending(t *testing.T) {
+	app := NewApp()
+	app.pendingRecovery = &update.RestorePointRecord{ID: "restore-point-1"}
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusSeeOther)
+	}
+	if location := rec.Header().Get("Location"); location != "/recovery" {
+		t.Fatalf("location=%q want %q", location, "/recovery")
+	}
+}
+
+func TestHandleRecoveryRendersRestorePointPrompt(t *testing.T) {
+	app := NewApp()
+	app.pendingRecovery = &update.RestorePointRecord{
+		ID:               "restore-point-1",
+		CreatedAt:        "2026-05-31T08:15:04Z",
+		SourceAppVersion: "1.2.27",
+		TargetAppVersion: "1.2.28",
+	}
+	app.recoveryFailure = "failed to open database"
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/recovery", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, needle := range []string{
+		"Update recovery",
+		"Restore previous build and Local Archive",
+		"failed to open database",
+		"v1.2.27",
+		"v1.2.28",
+	} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("recovery page missing %q: %q", needle, body)
+		}
 	}
 }
 

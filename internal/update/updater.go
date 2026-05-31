@@ -38,6 +38,8 @@ type configStore interface {
 type Service struct {
 	config         configStore
 	dataDir        string
+	restorePoints  *RestorePointManager
+	archiveWriter  RestorePointArchiveWriter
 	client         *http.Client
 	executablePath func() (string, error)
 	now            func() time.Time
@@ -120,16 +122,22 @@ type updateManifest struct {
 	PublishedAt  string `json:"published_at"`
 }
 
-func NewService(config configStore, dataDir string) *Service {
-	return &Service{
-		config:  config,
-		dataDir: dataDir,
+func NewService(config configStore, dataDir string, archiveWriter RestorePointArchiveWriter) *Service {
+	service := &Service{
+		config:        config,
+		dataDir:       dataDir,
+		restorePoints: NewRestorePointManager(dataDir),
+		archiveWriter: archiveWriter,
 		client: &http.Client{
 			Timeout: 45 * time.Second,
 		},
 		executablePath: os.Executable,
 		now:            time.Now,
 	}
+	service.restorePoints.now = func() time.Time {
+		return service.now()
+	}
+	return service
 }
 
 func (s *Service) Settings() (SettingsState, error) {
@@ -258,18 +266,34 @@ func (s *Service) PrepareLatest() (PreparedUpdate, error) {
 		return PreparedUpdate{}, fmt.Errorf("staged update is missing %s", executableName)
 	}
 
+	restorePoint, err := s.restorePoints.Create(CreateRestorePointInput{
+		SourceAppVersion:    settings.CurrentVersion,
+		TargetAppVersion:    release.version,
+		SourceBuildIdentity: settings.BuildIdentity,
+		TargetBuildIdentity: "",
+	}, s.archiveWriter, func(outputDir string) error {
+		return snapshotInstalledBuild(installDir, s.dataDir, outputDir)
+	})
+	if err != nil {
+		return PreparedUpdate{}, fmt.Errorf("create restore point: %w", err)
+	}
+	if err := s.restorePoints.SaveLaunchState(restorePoint); err != nil {
+		return PreparedUpdate{}, fmt.Errorf("write restore point launch state: %w", err)
+	}
+
 	resultPath := appdata.UpdateApplyResultPath(s.dataDir)
 	if err := os.MkdirAll(filepath.Dir(resultPath), 0o755); err != nil {
 		return PreparedUpdate{}, err
 	}
 	scriptPath := filepath.Join(workRoot, "apply-update.ps1")
 	if err := writeApplyScript(scriptPath, applyScriptOptions{
-		ProcessID:      os.Getpid(),
-		StageDir:       stageRoot,
-		InstallDir:     installDir,
-		ExecutableName: executableName,
-		ResultPath:     resultPath,
-		TargetVersion:  release.version,
+		ProcessID:       os.Getpid(),
+		StageDir:        stageRoot,
+		InstallDir:      installDir,
+		ExecutableName:  executableName,
+		ResultPath:      resultPath,
+		LaunchStatePath: appdata.UpdateRestorePointStatePath(s.dataDir),
+		TargetVersion:   release.version,
 	}); err != nil {
 		return PreparedUpdate{}, err
 	}
@@ -733,12 +757,22 @@ func (s *Service) loadApplyStatus() *ApplyStatus {
 }
 
 type applyScriptOptions struct {
-	ProcessID      int
-	StageDir       string
-	InstallDir     string
-	ExecutableName string
-	ResultPath     string
-	TargetVersion  string
+	ProcessID       int
+	StageDir        string
+	InstallDir      string
+	ExecutableName  string
+	ResultPath      string
+	LaunchStatePath string
+	TargetVersion   string
+}
+
+type RollbackScriptOptions struct {
+	ProcessID         int
+	InstallDir        string
+	InstalledBuildDir string
+	DataDir           string
+	ExecutableName    string
+	LaunchStatePath   string
 }
 
 func writeApplyScript(scriptPath string, options applyScriptOptions) error {
@@ -747,6 +781,7 @@ $processId = %d
 $stageDir = %s
 $installDir = %s
 $resultPath = %s
+$launchStatePath = %s
 $executableName = %s
 $targetVersion = %s
 $targetExe = Join-Path $installDir $executableName
@@ -804,11 +839,97 @@ try {
     if ((-not (Test-Path $targetExe)) -and (Test-Path $backupExe)) {
         Move-Item -LiteralPath $backupExe -Destination $targetExe -Force
     }
+    if (Test-Path $launchStatePath) {
+        Remove-Item -LiteralPath $launchStatePath -Force -ErrorAction SilentlyContinue
+    }
     Write-Result -status 'failed' -message $_.Exception.Message
     exit 1
 }
-`, options.ProcessID, psLiteral(options.StageDir), psLiteral(options.InstallDir), psLiteral(options.ResultPath), psLiteral(options.ExecutableName), psLiteral(options.TargetVersion))
+`, options.ProcessID, psLiteral(options.StageDir), psLiteral(options.InstallDir), psLiteral(options.ResultPath), psLiteral(options.LaunchStatePath), psLiteral(options.ExecutableName), psLiteral(options.TargetVersion))
 	return os.WriteFile(scriptPath, []byte(content), 0o644)
+}
+
+func WriteRollbackScript(scriptPath string, options RollbackScriptOptions) error {
+	content := fmt.Sprintf(`$ErrorActionPreference = 'Stop'
+$processId = %d
+$installDir = %s
+$installedBuildDir = %s
+$dataDir = %s
+$launchStatePath = %s
+$executableName = %s
+$targetExe = Join-Path $installDir $executableName
+
+try {
+    if ($processId -gt 0) {
+        try {
+            Wait-Process -Id $processId -Timeout 45 -ErrorAction Stop
+        } catch {
+            Start-Sleep -Seconds 2
+        }
+    }
+    Start-Sleep -Milliseconds 750
+
+    Get-ChildItem -LiteralPath $installDir -Force | Where-Object { $_.FullName -ne $dataDir } | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
+    Get-ChildItem -LiteralPath $installedBuildDir -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $installDir -Recurse -Force
+    }
+
+    if (-not (Test-Path $targetExe)) {
+        throw 'Restored executable was not copied into place.'
+    }
+    if (Test-Path $launchStatePath) {
+        Remove-Item -LiteralPath $launchStatePath -Force -ErrorAction SilentlyContinue
+    }
+    Start-Process -FilePath $targetExe | Out-Null
+} catch {
+    exit 1
+}
+`, options.ProcessID, psLiteral(options.InstallDir), psLiteral(options.InstalledBuildDir), psLiteral(options.DataDir), psLiteral(options.LaunchStatePath), psLiteral(options.ExecutableName))
+	return os.WriteFile(scriptPath, []byte(content), 0o644)
+}
+
+func snapshotInstalledBuild(installDir, dataDir, outputDir string) error {
+	installDir = filepath.Clean(strings.TrimSpace(installDir))
+	dataDir = filepath.Clean(strings.TrimSpace(dataDir))
+	outputDir = filepath.Clean(strings.TrimSpace(outputDir))
+	if installDir == "" || outputDir == "" {
+		return fmt.Errorf("install and output directories are required")
+	}
+	if err := os.RemoveAll(outputDir); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return err
+	}
+	return filepath.Walk(installDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		cleanPath := filepath.Clean(path)
+		if cleanPath == dataDir {
+			return filepath.SkipDir
+		}
+		relativePath, err := filepath.Rel(installDir, cleanPath)
+		if err != nil {
+			return err
+		}
+		if relativePath == "." {
+			return nil
+		}
+		targetPath := filepath.Join(outputDir, relativePath)
+		if info.IsDir() {
+			return os.MkdirAll(targetPath, info.Mode())
+		}
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+			return err
+		}
+		if err := copyFile(cleanPath, targetPath); err != nil {
+			return err
+		}
+		return os.Chmod(targetPath, info.Mode())
+	})
 }
 
 func psLiteral(value string) string {

@@ -147,7 +147,7 @@ func TestSettingsDisablesApplyForDevelopmentBuild(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	service := NewService(store, t.TempDir())
+	service := NewService(store, t.TempDir(), nil)
 	service.executablePath = func() (string, error) {
 		return filepath.Join(buildBin, "DixieData.exe"), nil
 	}
@@ -161,5 +161,91 @@ func TestSettingsDisablesApplyForDevelopmentBuild(t *testing.T) {
 	}
 	if !strings.Contains(settings.DisabledReason, "build\\bin") {
 		t.Fatalf("DisabledReason=%q", settings.DisabledReason)
+	}
+}
+
+func TestWriteApplyScriptClearsLaunchStateOnFailure(t *testing.T) {
+	scriptPath := filepath.Join(t.TempDir(), "apply-update.ps1")
+	err := writeApplyScript(scriptPath, applyScriptOptions{
+		ProcessID:       123,
+		StageDir:        `C:\updates\stage`,
+		InstallDir:      `C:\Program Files\DixieData`,
+		ExecutableName:  "DixieData.exe",
+		ResultPath:      `C:\data\.dixiedata\updates\apply-result.json`,
+		LaunchStatePath: `C:\data\.dixiedata\updates\restore-point-state.json`,
+		TargetVersion:   "1.2.24",
+	})
+	if err != nil {
+		t.Fatalf("writeApplyScript: %v", err)
+	}
+	content, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "$launchStatePath = 'C:\\data\\.dixiedata\\updates\\restore-point-state.json'") {
+		t.Fatalf("script missing launch state path: %s", text)
+	}
+	if !strings.Contains(text, "Remove-Item -LiteralPath $launchStatePath -Force -ErrorAction SilentlyContinue") {
+		t.Fatalf("script missing launch-state cleanup: %s", text)
+	}
+}
+
+func TestWriteRollbackScriptRestoresInstalledBuildAndClearsLaunchState(t *testing.T) {
+	scriptPath := filepath.Join(t.TempDir(), "rollback.ps1")
+	err := WriteRollbackScript(scriptPath, RollbackScriptOptions{
+		ProcessID:         456,
+		InstallDir:        `C:\Program Files\DixieData`,
+		InstalledBuildDir: `C:\data\.dixiedata\updates\restore-points\restore-point-1\installed-build`,
+		DataDir:           `C:\Program Files\DixieData\.dixiedata`,
+		ExecutableName:    "DixieData.exe",
+		LaunchStatePath:   `C:\data\.dixiedata\updates\restore-point-state.json`,
+	})
+	if err != nil {
+		t.Fatalf("WriteRollbackScript: %v", err)
+	}
+	content, err := os.ReadFile(scriptPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(content)
+	for _, needle := range []string{
+		"Get-ChildItem -LiteralPath $installDir -Force | Where-Object { $_.FullName -ne $dataDir }",
+		"Get-ChildItem -LiteralPath $installedBuildDir -Force | ForEach-Object",
+		"Remove-Item -LiteralPath $launchStatePath -Force -ErrorAction SilentlyContinue",
+	} {
+		if !strings.Contains(text, needle) {
+			t.Fatalf("script missing %q", needle)
+		}
+	}
+}
+
+func TestSnapshotInstalledBuildSkipsDataDir(t *testing.T) {
+	installDir := t.TempDir()
+	dataDir := filepath.Join(installDir, ".dixiedata")
+	if err := os.MkdirAll(filepath.Join(dataDir, "updates"), 0o755); err != nil {
+		t.Fatalf("MkdirAll(dataDir): %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(installDir, "DixieData.exe"), []byte("exe"), 0o644); err != nil {
+		t.Fatalf("WriteFile(exe): %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(installDir, "pdfium.dll"), []byte("dll"), 0o644); err != nil {
+		t.Fatalf("WriteFile(pdfium): %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "updates", "should-not-copy.txt"), []byte("data"), 0o644); err != nil {
+		t.Fatalf("WriteFile(data): %v", err)
+	}
+	outputDir := filepath.Join(t.TempDir(), "installed-build")
+	if err := snapshotInstalledBuild(installDir, dataDir, outputDir); err != nil {
+		t.Fatalf("snapshotInstalledBuild: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outputDir, "DixieData.exe")); err != nil {
+		t.Fatalf("snapshot missing exe: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outputDir, "pdfium.dll")); err != nil {
+		t.Fatalf("snapshot missing support file: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outputDir, ".dixiedata")); !os.IsNotExist(err) {
+		t.Fatalf("data dir should be excluded, err = %v", err)
 	}
 }

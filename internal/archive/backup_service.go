@@ -209,6 +209,46 @@ func (b *BackupService) Import(backupPath, dataDir string) (BackupManifest, erro
 	return b.ImportWithLocalIdentity(backupPath, dataDir, localIdentity, preserveLocalIdentity)
 }
 
+func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
+	reader, err := zip.OpenReader(backupPath)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	defer reader.Close()
+
+	contents, err := readBackupContents(&reader.Reader)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	if contents.Manifest.ArchiveKind != archiveKindBackup {
+		return BackupManifest{}, fmt.Errorf("archive is not a backup archive")
+	}
+	if contents.Manifest.DataFormat != "sqlite" {
+		return BackupManifest{}, fmt.Errorf("restore point archive must contain sqlite data")
+	}
+
+	stagingDir, err := os.MkdirTemp(filepath.Dir(dataDir), filepath.Base(dataDir)+"-restore-*")
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	stagingActive := true
+	defer func() {
+		if stagingActive {
+			_ = os.RemoveAll(stagingDir)
+		}
+	}()
+
+	if err := restoreSnapshotArchive(stagingDir, &reader.Reader, contents); err != nil {
+		return BackupManifest{}, err
+	}
+	if err := replaceDataDir(dataDir, stagingDir); err != nil {
+		return BackupManifest{}, err
+	}
+
+	stagingActive = false
+	return contents.Manifest, nil
+}
+
 func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, localIdentity models.UserIdentity, preserveLocalIdentity bool) (BackupManifest, error) {
 	reader, err := zip.OpenReader(backupPath)
 	if err != nil {
@@ -901,6 +941,23 @@ func restoreSnapshotBackup(dataDir, extractedRoot string, contents backupContent
 		return err
 	}
 	return database.Close()
+}
+
+func restoreSnapshotArchive(dataDir string, reader *zip.Reader, contents backupContents) error {
+	databaseFile := contents.FileMap[contents.Manifest.DatabaseFile]
+	if databaseFile == nil {
+		return fmt.Errorf("backup is missing %s", contents.Manifest.DatabaseFile)
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return err
+	}
+	if err := extractBackupFile(databaseFile, db.Path(dataDir)); err != nil {
+		return err
+	}
+	if err := extractBackupImages(reader, dataDir, contents.Manifest.ImageRoot); err != nil {
+		return err
+	}
+	return nil
 }
 
 func validateStagedBackup(dataDir string, manifest BackupManifest) error {
