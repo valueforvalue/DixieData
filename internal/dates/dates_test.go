@@ -25,3 +25,12 @@ func TestParseBirthInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestDisplayUnknownUsesUnknownForMissingDates(t *testing.T) {
+	if got := DisplayUnknown(""); got != "Unknown" {
+		t.Fatalf("DisplayUnknown(empty) = %q, want Unknown", got)
+	}
+	if got := DisplayUnknown("05/12/1838"); got != "May 12, 1838" {
+		t.Fatalf("DisplayUnknown(date) = %q", got)
+	}
+}

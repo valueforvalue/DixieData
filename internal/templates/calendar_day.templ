@@ -1,0 +1,172 @@
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ CalendarDayDetail(day viewmodel.CalendarDayDetail) {
+	<div class="space-y-6">
+		<div>
+			<h3 class="gold text-4xl leading-none">{ calendarDayHeading(day.Month, day.Day) }</h3>
+			<p class="mt-2 text-sm leading-relaxed text-[#445260]">Add custom events or holidays for this day, then review matching anniversaries below.</p>
+		</div>
+		if strings.TrimSpace(day.StatusMessage) != "" {
+			<div class={ calendarDayStatusClass(day.StatusKind) }>{ day.StatusMessage }</div>
+		}
+		if day.AllowCustomItems {
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.32)] bg-[rgba(255,255,255,0.78)] px-5 py-5">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<h4 class="text-lg font-semibold text-[#22303d]">
+							if day.Form.EditingID > 0 {
+								Edit Calendar Item
+							} else {
+								Add Calendar Item
+							}
+						</h4>
+						<p class="mt-1 text-sm text-[#5a6a78]">Titles are required. Notes are optional. Duplicate titles are allowed.</p>
+					</div>
+					if day.Form.EditingID > 0 {
+						<button
+							hx-get={ fmt.Sprintf("/anniversary/%d/%d", day.Month, day.Day) }
+							hx-target="#details-pane"
+							hx-swap="innerHTML"
+							class="ghost-link px-4 py-2"
+						>
+							Cancel Edit
+						</button>
+					}
+				</div>
+				if strings.TrimSpace(day.Form.ErrorMessage) != "" {
+					<p class="mt-4 rounded-xl border border-[rgba(111,44,38,0.28)] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">{ day.Form.ErrorMessage }</p>
+				}
+				if day.Form.EditingID > 0 {
+					<form
+						class="mt-4 grid gap-4"
+						hx-put={ fmt.Sprintf("/anniversary/%d/%d/items/%d", day.Month, day.Day, day.Form.EditingID) }
+						hx-target="#details-pane"
+						hx-swap="innerHTML"
+					>
+						@CalendarItemFormFields(day.Form)
+						<div class="flex flex-wrap items-center gap-3">
+							<button class="primary-button px-5 py-2">Save Changes</button>
+							<span class="text-xs uppercase tracking-[0.18em] text-[#5a6a78]">Editing in place</span>
+						</div>
+					</form>
+				} else {
+					<form
+						class="mt-4 grid gap-4"
+						hx-post={ fmt.Sprintf("/anniversary/%d/%d/items", day.Month, day.Day) }
+						hx-target="#details-pane"
+						hx-swap="innerHTML"
+					>
+						@CalendarItemFormFields(day.Form)
+						<div class="flex flex-wrap items-center gap-3">
+							<button class="primary-button px-5 py-2">Add Item</button>
+							<span class="text-xs uppercase tracking-[0.18em] text-[#5a6a78]">Appears on this date every year</span>
+						</div>
+					</form>
+				}
+			</div>
+			<div class="space-y-3">
+				<h4 class="text-lg font-semibold text-[#22303d]">Events &amp; Holidays</h4>
+				if len(day.Items) == 0 {
+					<p class="rounded-2xl border border-dashed border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No custom calendar items yet for this date.</p>
+				} else {
+					for _, item := range day.Items {
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(255,255,255,0.78)] px-4 py-4">
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<span class={ calendarItemBadgeClass(item.ItemType) }>{ calendarItemTypeLabel(item.ItemType) }</span>
+									<h5 class="mt-2 text-lg font-semibold text-[#22303d]">{ item.Title }</h5>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<button
+										hx-get={ fmt.Sprintf("/anniversary/%d/%d?edit=%d", day.Month, day.Day, item.ID) }
+										hx-target="#details-pane"
+										hx-swap="innerHTML"
+										class="ghost-link px-3 py-2"
+									>
+										Edit
+									</button>
+									<button
+										hx-delete={ fmt.Sprintf("/anniversary/%d/%d/items/%d", day.Month, day.Day, item.ID) }
+										hx-confirm={ fmt.Sprintf("Delete %s?", item.Title) }
+										hx-target="#details-pane"
+										hx-swap="innerHTML"
+										class="danger-button px-3 py-2"
+									>
+										Delete
+									</button>
+								</div>
+							</div>
+							if strings.TrimSpace(item.Notes) != "" {
+								<p class="mt-3 text-sm leading-6 text-[#445260]">{ item.Notes }</p>
+							}
+						</div>
+					}
+				}
+			</div>
+		}
+		<div class="space-y-3">
+			<h4 class="text-lg font-semibold text-[#22303d]">Anniversaries</h4>
+			if len(day.Anniversaries) == 0 {
+				<p class="rounded-2xl border border-dashed border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No person records for this date.</p>
+			} else {
+				for _, soldier := range day.Anniversaries {
+					@SoldierCard(soldier, false)
+				}
+			}
+		</div>
+	</div>
+}
+
+templ CalendarItemFormFields(form viewmodel.CalendarItemForm) {
+	<div class="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)]">
+		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]" for="calendar-item-type">Type</label>
+		<select id="calendar-item-type" name="item_type" class="field-input max-w-xs">
+			<option value="event" if form.ItemType == "event" { selected }>Event</option>
+			<option value="holiday" if form.ItemType == "holiday" { selected }>Holiday</option>
+		</select>
+		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]" for="calendar-item-title">Title</label>
+		<input id="calendar-item-title" name="title" value={ form.Title } class="field-input" maxlength="120" placeholder="Memorial service"/>
+		<label class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]" for="calendar-item-notes">Notes</label>
+		<textarea id="calendar-item-notes" name="notes" rows="3" class="field-input resize-y" placeholder="Optional context or reminder">{ form.Notes }</textarea>
+	</div>
+}
+
+func calendarDayHeading(month, day int) string {
+	if day <= 0 {
+		return monthName(month) + " (unknown day)"
+	}
+	return fmt.Sprintf("%s %d", monthName(month), day)
+}
+
+func calendarItemTypeLabel(itemType string) string {
+	switch itemType {
+	case "holiday":
+		return "Holiday"
+	default:
+		return "Event"
+	}
+}
+
+func calendarItemBadgeClass(itemType string) string {
+	switch itemType {
+	case "holiday":
+		return "inline-flex rounded-full border border-[#7d2a2a] bg-[#d98989] px-2 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#401717]"
+	default:
+		return "inline-flex rounded-full border border-[#265c8a] bg-[#7cb3e2] px-2 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#18324a]"
+	}
+}
+
+func calendarDayStatusClass(kind string) string {
+	base := "rounded-2xl border px-4 py-3 text-sm"
+	if kind == "success" {
+		return base + " border-[rgba(38,101,66,0.28)] bg-[rgba(38,101,66,0.09)] text-[#1f5b3b]"
+	}
+	return base + " border-[rgba(111,44,38,0.28)] bg-[rgba(111,44,38,0.08)] text-[#6f2c26]"
+}

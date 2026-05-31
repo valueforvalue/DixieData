@@ -2447,7 +2447,7 @@ func diffSoldierFields(before *models.Soldier, after *models.Soldier) []string {
 
 func auditDisplayID(value string) string {
 	if strings.TrimSpace(value) == "" {
-		return "\"Not recorded\""
+		return "\"N/A\""
 	}
 	return fmt.Sprintf("%q", strings.TrimSpace(value))
 }
@@ -2467,7 +2467,7 @@ func auditEntryType(value string) string {
 
 func auditSpouseID(value int64) string {
 	if value <= 0 {
-		return "\"Not recorded\""
+		return "\"N/A\""
 	}
 	return fmt.Sprintf("%q", fmt.Sprintf("DB ID %d", value))
 }
@@ -2475,7 +2475,7 @@ func auditSpouseID(value int64) string {
 func auditTextValue(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return "\"Not recorded\""
+		return "\"N/A\""
 	}
 	return fmt.Sprintf("%q", trimmed)
 }
@@ -2483,7 +2483,7 @@ func auditTextValue(value string) string {
 func auditLongTextValue(value string) string {
 	normalized := strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
 	if normalized == "" {
-		return "\"Not recorded\""
+		return "\"N/A\""
 	}
 	if len(normalized) > 72 {
 		normalized = normalized[:69] + "..."
@@ -2493,8 +2493,8 @@ func auditLongTextValue(value string) string {
 
 func auditDateValue(value string) string {
 	display := strings.TrimSpace(dates.Display(strings.TrimSpace(value)))
-	if display == "" || display == "Not recorded" {
-		return "\"Not recorded\""
+	if display == "" || display == "N/A" {
+		return "\"N/A\""
 	}
 	return fmt.Sprintf("%q", display)
 }

@@ -131,7 +131,7 @@ func TestSoldierDetailShowsNameOnlyHeadingAndServiceLine(t *testing.T) {
 	}
 	for _, needle := range []string{
 		">John Taylor<",
-		"Captain - Co. A, 1st Texas Infantry",
+		"Captain Co. A, 1st Texas Infantry",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("detail view missing %s", needle)
@@ -179,6 +179,43 @@ func TestSoldierDetailServiceLineFallsBackToSingleValue(t *testing.T) {
 	}
 	if strings.Contains(content, " - Co. A, 1st Texas Infantry") {
 		t.Fatalf("detail view should not render a dangling service-line separator: %s", content)
+	}
+}
+
+func TestSoldierDetailUsesFieldSpecificEmptyStates(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:                    42,
+		DisplayID:             "STC38-00001",
+		FirstName:             "John",
+		LastName:              "Taylor",
+		PensionState:          "N/A",
+		ConfederateHomeStatus: "N/A",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Birth Date</dt><dd>Unknown</dd>",
+		"Death</dt><dd>Unknown</dd>",
+		"Confederate Home Status</dt><dd>N/A</dd>",
+		"Confederate Home Name</dt><dd>N/A</dd>",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("detail view missing %s", needle)
+		}
+	}
+	for _, needle := range []string{
+		"Middle Name</dt><dd>N/A</dd>",
+		"Rank In</dt><dd>N/A</dd>",
+		"Rank Out</dt><dd>N/A</dd>",
+		"Unit</dt><dd>N/A</dd>",
+	} {
+		if strings.Contains(content, needle) {
+			t.Fatalf("detail view should leave %s blank: %s", needle, content)
+		}
 	}
 }
 

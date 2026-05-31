@@ -50,12 +50,20 @@ func TestAnalyticsService_Snapshot(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Create widow: %v", err)
 	}
+	if _, err := svc.Create(models.Soldier{
+		FirstName:             "Blank",
+		LastName:              "Status",
+		ConfederateHomeStatus: "Not Recorded",
+		PensionState:          "NA",
+	}); err != nil {
+		t.Fatalf("Create normalized status soldier: %v", err)
+	}
 
 	snapshot, err := analytics.Snapshot()
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
-	if snapshot.RecordTypes.TotalSoldiers != 2 || snapshot.RecordTypes.TotalWivesWidows != 1 {
+	if snapshot.RecordTypes.TotalSoldiers != 3 || snapshot.RecordTypes.TotalWivesWidows != 1 {
 		t.Fatalf("unexpected record type counts: %#v", snapshot.RecordTypes)
 	}
 	if len(snapshot.CemeteryDensity) == 0 || snapshot.CemeteryDensity[0].Label != "Oak Hill Cemetery" || snapshot.CemeteryDensity[0].Count != 2 {
@@ -64,11 +72,17 @@ func TestAnalyticsService_Snapshot(t *testing.T) {
 	if len(snapshot.ConfederateHomeStatus) == 0 || snapshot.ConfederateHomeStatus[0].Count < 1 {
 		t.Fatalf("unexpected Confederate Home status counts: %#v", snapshot.ConfederateHomeStatus)
 	}
+	if !containsAnalyticsCount(snapshot.ConfederateHomeStatus, "N/A", 2) {
+		t.Fatalf("expected Confederate Home status N/A bucket, got %#v", snapshot.ConfederateHomeStatus)
+	}
 	if len(snapshot.ConfederateHomeNames) == 0 || snapshot.ConfederateHomeNames[0].Label != "Texas Confederate Home" {
 		t.Fatalf("unexpected Confederate Home names: %#v", snapshot.ConfederateHomeNames)
 	}
 	if len(snapshot.PensionDistribution) == 0 || snapshot.PensionDistribution[0].Label != "Texas" {
 		t.Fatalf("unexpected pension distribution: %#v", snapshot.PensionDistribution)
+	}
+	if !containsAnalyticsCount(snapshot.PensionDistribution, "N/A", 1) {
+		t.Fatalf("expected pension distribution N/A bucket, got %#v", snapshot.PensionDistribution)
 	}
 	if len(snapshot.UnitRepresentation) == 0 || snapshot.UnitRepresentation[0].Label != "1st Texas Infantry" {
 		t.Fatalf("unexpected unit representation: %#v", snapshot.UnitRepresentation)
@@ -79,4 +93,13 @@ func TestAnalyticsService_Snapshot(t *testing.T) {
 	if len(snapshot.DeathDecadeDistribution) == 0 || snapshot.DeathDecadeDistribution[0].Label != "1860s" {
 		t.Fatalf("unexpected death decades: %#v", snapshot.DeathDecadeDistribution)
 	}
+}
+
+func containsAnalyticsCount(items []AnalyticsCount, label string, count int) bool {
+	for _, item := range items {
+		if item.Label == label && item.Count == count {
+			return true
+		}
+	}
+	return false
 }

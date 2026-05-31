@@ -2,17 +2,20 @@ package templates
 
 import (
 	"fmt"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
+	"time"
+
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) {
+templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) {
 	@Layout("Calendar") {
 		<div data-ui-id={ uiids.PageCalendar } class="relative">
 			@SurfaceBadge(uiids.PageCalendar)
 			<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
-					<h2 class="gold text-5xl leading-none">Anniversaries</h2>
+					<h2 class="gold text-5xl leading-none">Calendar</h2>
+					<p class="mt-2 max-w-2xl text-base leading-relaxed text-[#445260]">Track soldier anniversaries alongside custom holidays and events for each day.</p>
 					<div class="mt-3 flex flex-wrap gap-3 text-[#445260]">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.72)] px-4 py-3">
 							<div class="text-3xl font-semibold">{ fmt.Sprintf("%d", counts.SoldierCount) }</div>
@@ -60,37 +63,82 @@ templ Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts view
 				}
 			</div>
 			<div class="calendar-layout grid gap-8 items-start">
-				<div data-ui-id={ uiids.PanelCalendarGrid } class="relative card overflow-hidden rounded-2xl">
-					@SurfaceBadge(uiids.PanelCalendarGrid)
-					<div class="flex items-center justify-between border-b border-[#8d7440] bg-[rgba(36,48,61,0.08)] px-5 py-4">
-						<h3 class="gold text-4xl leading-none">{ monthName(month) }</h3>
-						<span class="text-xs uppercase tracking-[0.28em] text-[#51606e]">31-Day Grid</span>
-					</div>
-					<div class="grid grid-cols-7">
-						for _, day := range days31() {
-							<div
-								class="relative min-h-[115px] cursor-pointer border-r border-b border-[rgba(141,116,64,0.55)] bg-[rgba(238,241,245,0.84)] p-2 hover:bg-[rgba(247,249,251,0.96)]"
-								hx-get={ fmt.Sprintf("/anniversary/%d/%d", month, day) }
-								hx-target="#details-pane"
-								hx-swap="innerHTML"
-							>
-								<div class="text-lg text-[#22303d]">{ fmt.Sprintf("%d", day) }</div>
-								if soldiers, ok := calendar[day]; ok {
-									<div class="absolute bottom-3 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-[#8d7440] bg-[#c5ab68] text-xs font-semibold text-[#1f2b38]">{ fmt.Sprintf("%d", len(soldiers)) }</div>
-								}
-							</div>
-						}
-						<div class="col-span-4 min-h-[115px] bg-[rgba(36,48,61,0.12)]"></div>
-					</div>
-				</div>
+				@CalendarGrid(month, calendar)
 				<div id="details-pane" data-ui-id={ uiids.PanelCalendarDetails } class="relative card min-h-[300px] rounded-2xl p-6">
 					@SurfaceBadge(uiids.PanelCalendarDetails)
 					<h3 class="gold text-4xl leading-none">Select a day</h3>
-					<p class="mt-6 max-w-sm text-xl leading-relaxed text-[#445260]">Click any day on the calendar to view soldiers whose anniversary falls on that date.</p>
+					<p class="mt-6 max-w-sm text-xl leading-relaxed text-[#445260]">Click any day to add holidays or events and review matching anniversaries.</p>
 				</div>
 			</div>
 		</div>
 	}
+}
+
+templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
+	<div id="calendar-grid-panel" data-ui-id={ uiids.PanelCalendarGrid } class="relative card overflow-hidden rounded-2xl">
+		@SurfaceBadge(uiids.PanelCalendarGrid)
+		<div class="flex items-center justify-between border-b border-[#8d7440] bg-[rgba(36,48,61,0.08)] px-5 py-4">
+			<div>
+				<h3 class="gold text-4xl leading-none">{ monthName(month) }</h3>
+				<div class="mt-3 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em] text-[#51606e]">
+					@CalendarLegendItem("Anniversaries", "bg-[#c5ab68]")
+					@CalendarLegendItem("Events", "bg-[#7cb3e2]")
+					@CalendarLegendItem("Holidays", "bg-[#d98989]")
+				</div>
+			</div>
+			<span class="text-xs uppercase tracking-[0.28em] text-[#51606e]">31-Day Grid</span>
+		</div>
+		<div class="grid grid-cols-7 border-b border-[rgba(141,116,64,0.55)] bg-[rgba(36,48,61,0.08)]">
+			for _, weekday := range weekdayNames() {
+				<div class="px-2 py-3 text-center text-xs font-semibold uppercase tracking-[0.22em] text-[#51606e]">{ weekday }</div>
+			}
+		</div>
+		<div class="grid grid-cols-7">
+			for _, day := range days31() {
+				<div
+					class={ calendarDayClass(month, day) }
+					hx-get={ fmt.Sprintf("/anniversary/%d/%d", month, day) }
+					hx-target="#details-pane"
+					hx-swap="innerHTML"
+				>
+					<div class="flex items-start justify-between gap-2">
+						<div class={ calendarDayNumberClass(month, day) }>{ fmt.Sprintf("%d", day) }</div>
+						if isCurrentCalendarDay(month, day) {
+							<span class="inline-flex rounded-full border border-[#1f5b3b] bg-[rgba(31,91,59,0.12)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1f5b3b]">Today</span>
+						}
+					</div>
+					if summary, ok := calendar[day]; ok && hasCalendarMarkers(summary) {
+						<div class="absolute bottom-2 left-2 right-2 flex flex-wrap justify-end gap-2">
+							if summary.HolidayCount > 0 {
+								@CalendarCountMarker(summary.HolidayCount, "Holidays", "bg-[#d98989]")
+							}
+							if summary.EventCount > 0 {
+								@CalendarCountMarker(summary.EventCount, "Events", "bg-[#7cb3e2]")
+							}
+							if summary.AnniversaryCount > 0 {
+								@CalendarCountMarker(summary.AnniversaryCount, "Anniversaries", "bg-[#c5ab68]")
+							}
+						</div>
+					}
+				</div>
+			}
+			<div class="col-span-4 min-h-[115px] bg-[rgba(36,48,61,0.12)]"></div>
+		</div>
+	</div>
+}
+
+templ CalendarLegendItem(label, dotClass string) {
+	<div class="inline-flex items-center gap-2 font-semibold">
+		<span class={ "h-3 w-3 rounded-full border border-[rgba(34,48,61,0.28)] " + dotClass }></span>
+		<span>{ label }</span>
+	</div>
+}
+
+templ CalendarCountMarker(count int, label, dotClass string) {
+	<span class="inline-flex items-center gap-1.5 rounded-full bg-[rgba(255,255,255,0.78)] px-2 py-1 text-xs font-semibold text-[#22303d]" title={ label }>
+		<span class={ "h-2.5 w-2.5 rounded-full border border-[rgba(34,48,61,0.2)] " + dotClass }></span>
+		<span>{ fmt.Sprintf("%d", count) }</span>
+	</span>
 }
 
 func monthName(m int) string {
@@ -116,4 +164,34 @@ func days31() []int {
 		n[i] = i + 1
 	}
 	return n
+}
+
+func weekdayNames() []string {
+	return []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
+}
+
+func hasCalendarMarkers(summary viewmodel.CalendarDaySummary) bool {
+	return summary.AnniversaryCount > 0 || summary.EventCount > 0 || summary.HolidayCount > 0
+}
+
+var calendarNow = time.Now
+
+func isCurrentCalendarDay(month, day int) bool {
+	now := calendarNow()
+	return int(now.Month()) == month && now.Day() == day
+}
+
+func calendarDayClass(month, day int) string {
+	base := "relative min-h-[115px] cursor-pointer border-r border-b border-[rgba(141,116,64,0.55)] p-2"
+	if isCurrentCalendarDay(month, day) {
+		return base + " bg-[rgba(225,238,231,0.96)] ring-2 ring-inset ring-[#1f5b3b] shadow-[inset_0_0_0_1px_rgba(31,91,59,0.12)] hover:bg-[rgba(232,242,236,1)]"
+	}
+	return base + " bg-[rgba(238,241,245,0.84)] hover:bg-[rgba(247,249,251,0.96)]"
+}
+
+func calendarDayNumberClass(month, day int) string {
+	if isCurrentCalendarDay(month, day) {
+		return "text-lg font-semibold text-[#1f5b3b]"
+	}
+	return "text-lg text-[#22303d]"
 }

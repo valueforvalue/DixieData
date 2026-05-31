@@ -50,6 +50,7 @@ type App struct {
 	database        *db.DB
 	soldiers        personRecordsFacade
 	anniversary     anniversaryFacade
+	calendar        calendarFacade
 	analytics       analyticsFacade
 	audit           reviewFacade
 	images          imageFacade
@@ -475,7 +476,7 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	month := int(time.Now().Month())
-	calendar, err := a.anniversary.GetMonthCalendar(month)
+	summary, err := a.calendar.GetMonthSummary(month)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -485,7 +486,7 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	presentation.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
 }
 
 func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
@@ -538,6 +539,14 @@ func (a *App) handleVersion(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/calendar/"), "/")
+	if len(parts) > 1 && parts[1] == "grid" {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.handleCalendarGrid(w, r, parts[0])
+		return
+	}
 	if len(parts) > 2 && parts[1] == "report" && parts[2] == "pdf" {
 		a.handleCalendarPDF(w, r, parts[0])
 		return
@@ -551,7 +560,7 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	calendar, err := a.anniversary.GetMonthCalendar(month)
+	summary, err := a.calendar.GetMonthSummary(month)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -561,14 +570,24 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	presentation.Calendar(month, calendar, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+}
+
+func (a *App) handleCalendarGrid(w http.ResponseWriter, r *http.Request, monthValue string) {
+	month, err := parseBoundedInt(monthValue, "month", 1, 12)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	summary, err := a.calendar.GetMonthSummary(month)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	presentation.CalendarGrid(month, summary).Render(r.Context(), w)
 }
 
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/anniversary/"), "/")
 	if len(parts) < 2 {
 		http.Error(w, "bad request", 400)
@@ -584,12 +603,35 @@ func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	soldiers, err := a.anniversary.GetByMonthDay(month, day)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
+	if len(parts) == 2 && r.Method == http.MethodGet {
+		editID, err := parseOptionalInt64(r.URL.Query().Get("edit"), "edit")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		a.renderCalendarDayDetail(w, r, month, day, editID, "", "", "", "", "", "", http.StatusOK)
 		return
 	}
-	presentation.AnniversaryPartial(soldiers, month, day).Render(r.Context(), w)
+	if len(parts) == 3 && parts[2] == "items" && r.Method == http.MethodPost {
+		a.handleCreateCalendarItem(w, r, month, day)
+		return
+	}
+	if len(parts) == 4 && parts[2] == "items" {
+		itemID, err := parseOptionalInt64(parts[3], "item_id")
+		if err != nil || itemID <= 0 {
+			http.Error(w, "invalid item_id", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodPut:
+			a.handleUpdateCalendarItem(w, r, month, day, itemID)
+			return
+		case http.MethodDelete:
+			a.handleDeleteCalendarItem(w, r, month, day, itemID)
+			return
+		}
+	}
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
 func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
@@ -2746,6 +2788,124 @@ func parseOptionalInt64(value, field string) (int64, error) {
 	return parsed, nil
 }
 
+func (a *App) handleCreateCalendarItem(w http.ResponseWriter, r *http.Request, month, day int) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	input := records.CalendarItemInput{
+		ItemType: r.FormValue("item_type"),
+		Title:    r.FormValue("title"),
+		Notes:    r.FormValue("notes"),
+	}
+	item, err := a.calendar.CreateCalendarItem(month, day, input)
+	if err != nil {
+		if calendarValidationError(err) {
+			a.renderCalendarDayDetail(w, r, month, day, 0, input.ItemType, input.Title, input.Notes, err.Error(), "", "", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("X-DixieData-Refresh-Calendar-Month", strconv.Itoa(month))
+	a.renderCalendarDayDetail(w, r, month, day, 0, "", "", "", "", "success", fmt.Sprintf("%s saved.", calendarItemTypeLabel(item.ItemType)), http.StatusOK)
+}
+
+func (a *App) handleUpdateCalendarItem(w http.ResponseWriter, r *http.Request, month, day int, itemID int64) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	input := records.CalendarItemInput{
+		ItemType: r.FormValue("item_type"),
+		Title:    r.FormValue("title"),
+		Notes:    r.FormValue("notes"),
+	}
+	item, err := a.calendar.UpdateCalendarItem(itemID, input)
+	if err != nil {
+		switch {
+		case errors.Is(err, records.ErrCalendarItemNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		case calendarValidationError(err):
+			a.renderCalendarDayDetail(w, r, month, day, itemID, input.ItemType, input.Title, input.Notes, err.Error(), "", "", http.StatusBadRequest)
+			return
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	w.Header().Set("X-DixieData-Refresh-Calendar-Month", strconv.Itoa(month))
+	a.renderCalendarDayDetail(w, r, month, day, 0, "", "", "", "", "success", fmt.Sprintf("%s updated.", calendarItemTypeLabel(item.ItemType)), http.StatusOK)
+}
+
+func (a *App) handleDeleteCalendarItem(w http.ResponseWriter, r *http.Request, month, day int, itemID int64) {
+	if err := a.calendar.DeleteCalendarItem(itemID); err != nil {
+		switch {
+		case errors.Is(err, records.ErrCalendarItemNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		case calendarValidationError(err):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		default:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	w.Header().Set("X-DixieData-Refresh-Calendar-Month", strconv.Itoa(month))
+	a.renderCalendarDayDetail(w, r, month, day, 0, "", "", "", "", "success", "Calendar item deleted.", http.StatusOK)
+}
+
+func (a *App) renderCalendarDayDetail(w http.ResponseWriter, r *http.Request, month, day int, editingID int64, itemType, title, notes, errorMessage, statusKind, statusMessage string, statusCode int) {
+	detail, err := a.calendar.GetDay(month, day)
+	if err != nil {
+		if calendarValidationError(err) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if editingID > 0 && strings.TrimSpace(itemType) == "" && strings.TrimSpace(title) == "" && strings.TrimSpace(notes) == "" {
+		item, ok := findCalendarItem(detail.Items, editingID)
+		if !ok {
+			http.Error(w, records.ErrCalendarItemNotFound.Error(), http.StatusNotFound)
+			return
+		}
+		itemType = item.ItemType
+		title = item.Title
+		notes = item.Notes
+	}
+	if statusCode != http.StatusOK {
+		w.WriteHeader(statusCode)
+	}
+	presentation.CalendarDayDetail(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)
+}
+
+func findCalendarItem(items []models.CalendarItem, itemID int64) (models.CalendarItem, bool) {
+	for _, item := range items {
+		if item.ID == itemID {
+			return item, true
+		}
+	}
+	return models.CalendarItem{}, false
+}
+
+func calendarValidationError(err error) bool {
+	var validationErr *records.CalendarValidationError
+	return errors.As(err, &validationErr)
+}
+
+func calendarItemTypeLabel(itemType string) string {
+	switch itemType {
+	case models.CalendarItemTypeHoliday:
+		return "Holiday"
+	default:
+		return "Event"
+	}
+}
+
 func parseOptionalBoundedInt(value, field string, min, max int) (int, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -3180,6 +3340,7 @@ func (a *App) reloadServices() error {
 	soldierSvc := records.NewSoldierService(a.database)
 	a.soldiers = soldierSvc
 	a.anniversary = records.NewAnniversaryService(a.database)
+	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)
 	a.audit = records.NewAuditService(a.database)
 	a.images = archive.NewImageService(a.database)

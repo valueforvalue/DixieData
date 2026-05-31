@@ -183,6 +183,55 @@ func ArchiveCountsFromModel(input models.ArchiveCounts) ArchiveCounts {
 
 func QuoteFromModel(input models.Quote) Quote { return Quote(input) }
 
+func CalendarDaySummaryFromDomain(input records.CalendarDaySummary) CalendarDaySummary {
+	return CalendarDaySummary{
+		AnniversaryCount: input.AnniversaryCount,
+		EventCount:       input.EventCount,
+		HolidayCount:     input.HolidayCount,
+	}
+}
+
+func CalendarDaySummariesFromDomain(inputs map[int]records.CalendarDaySummary) map[int]CalendarDaySummary {
+	items := make(map[int]CalendarDaySummary, len(inputs))
+	for day, input := range inputs {
+		items[day] = CalendarDaySummaryFromDomain(input)
+	}
+	return items
+}
+
+func CalendarItemFromModel(input models.CalendarItem) CalendarItem {
+	return CalendarItem{
+		ID:       input.ID,
+		ItemType: input.ItemType,
+		Title:    input.Title,
+		Notes:    input.Notes,
+	}
+}
+
+func CalendarItemsFromModels(inputs []models.CalendarItem) []CalendarItem {
+	items := make([]CalendarItem, 0, len(inputs))
+	for _, input := range inputs {
+		items = append(items, CalendarItemFromModel(input))
+	}
+	return items
+}
+
+func CalendarDayDetailFromDomain(input records.CalendarDay, form CalendarItemForm, statusKind, statusMessage string) CalendarDayDetail {
+	if strings.TrimSpace(form.ItemType) == "" {
+		form.ItemType = models.CalendarItemTypeEvent
+	}
+	return CalendarDayDetail{
+		Month:            input.Month,
+		Day:              input.Day,
+		AllowCustomItems: input.Day >= 1,
+		StatusKind:       statusKind,
+		StatusMessage:    statusMessage,
+		Form:             form,
+		Items:            CalendarItemsFromModels(input.Items),
+		Anniversaries:    PersonRecordsFromModels(input.Anniversaries),
+	}
+}
+
 func QuotesFromModels(inputs []models.Quote) []Quote {
 	items := make([]Quote, 0, len(inputs))
 	for _, input := range inputs {

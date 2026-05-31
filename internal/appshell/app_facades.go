@@ -55,6 +55,14 @@ type anniversaryFacade interface {
 	GetMonthCalendar(month int) (map[int][]models.Soldier, error)
 }
 
+type calendarFacade interface {
+	GetMonthSummary(month int) (map[int]records.CalendarDaySummary, error)
+	GetDay(month, day int) (records.CalendarDay, error)
+	CreateCalendarItem(month, day int, input records.CalendarItemInput) (models.CalendarItem, error)
+	UpdateCalendarItem(itemID int64, input records.CalendarItemInput) (models.CalendarItem, error)
+	DeleteCalendarItem(itemID int64) error
+}
+
 type analyticsFacade interface {
 	Snapshot() (records.AnalyticsSnapshot, error)
 }

@@ -87,6 +87,38 @@ type Quote struct {
 	Tags    []string
 }
 
+type CalendarDaySummary struct {
+	AnniversaryCount int
+	EventCount       int
+	HolidayCount     int
+}
+
+type CalendarItem struct {
+	ID       int64
+	ItemType string
+	Title    string
+	Notes    string
+}
+
+type CalendarItemForm struct {
+	EditingID    int64
+	ItemType     string
+	Title        string
+	Notes        string
+	ErrorMessage string
+}
+
+type CalendarDayDetail struct {
+	Month            int
+	Day              int
+	AllowCustomItems bool
+	StatusKind       string
+	StatusMessage    string
+	Form             CalendarItemForm
+	Items            []CalendarItem
+	Anniversaries    []PersonRecord
+}
+
 type PersonRecordSearch struct {
 	Mode                  string
 	Query                 string

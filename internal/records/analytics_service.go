@@ -7,6 +7,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
 type AnalyticsService struct {
@@ -51,7 +52,7 @@ func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 	}
 	homeStatuses, err := s.queryCounts(`
 		SELECT CASE
-			WHEN LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a') THEN 'NA'
+			WHEN LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a', 'not recorded') THEN 'N/A'
 			ELSE TRIM(confederate_home_status)
 		END AS label, COUNT(*)
 		FROM soldiers
@@ -74,13 +75,18 @@ func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 		return AnalyticsSnapshot{}, err
 	}
 	pensionStates, err := s.queryCounts(`
-		SELECT TRIM(pension_state) AS label, COUNT(*)
+		SELECT CASE
+			WHEN LOWER(TRIM(COALESCE(pension_state, ''))) IN ('', 'none', 'na', 'n/a', 'not recorded') THEN 'N/A'
+			ELSE TRIM(pension_state)
+		END AS label, COUNT(*)
 		FROM soldiers
-		WHERE TRIM(COALESCE(pension_state, '')) <> ''
-		GROUP BY TRIM(pension_state)
-		ORDER BY COUNT(*) DESC, LOWER(TRIM(pension_state)) ASC`)
+		GROUP BY label
+		ORDER BY COUNT(*) DESC, LOWER(label) ASC`)
 	if err != nil {
 		return AnalyticsSnapshot{}, err
+	}
+	for i := range pensionStates {
+		pensionStates[i].Label = pensionstate.Normalize(pensionStates[i].Label)
 	}
 	units, err := s.queryCounts(`
 		SELECT TRIM(unit) AS label, COUNT(*)
@@ -144,7 +150,7 @@ func (s *AnalyticsService) queryCounts(query string, args ...any) ([]AnalyticsCo
 		}
 		label = strings.TrimSpace(label)
 		if label == "" {
-			label = "Not Recorded"
+			label = "N/A"
 		}
 		results = append(results, AnalyticsCount{Label: label, Count: count})
 	}

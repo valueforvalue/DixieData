@@ -61,7 +61,7 @@ var Registry = []Surface{
 	{ID: PageCalendar, Kind: "page", Description: "Calendar landing page."},
 	{ID: PanelCalendarQuote, Kind: "panel", Description: "Quote of the Day panel on the calendar page."},
 	{ID: PanelCalendarGrid, Kind: "panel", Description: "Month grid panel on the calendar page."},
-	{ID: PanelCalendarDetails, Kind: "panel", Description: "Calendar day detail panel that shows anniversary results."},
+	{ID: PanelCalendarDetails, Kind: "panel", Description: "Calendar day detail panel that shows custom items and anniversary results."},
 	{ID: PageSoldiersList, Kind: "page", Description: "Main soldier list and search page."},
 	{ID: PageBrowse, Kind: "page", Description: "Dedicated local archive browse page."},
 	{ID: TabSoldiersSearchBasic, Kind: "tab", Description: "Quick Search tab trigger on the soldier list page."},

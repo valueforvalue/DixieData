@@ -53,7 +53,7 @@ A structured record of research activity, findings, or open questions that shoul
 _Avoid_: Scratch pad, notes blob
 
 **Confederate Home Status**:
-The archive field that records a person's relationship to a Confederate Home. The canonical no-status value is `NA`.
+The archive field that records a person's relationship to a Confederate Home. The canonical no-status value is `N/A`.
 _Avoid_: None, blank status
 
 **Service Timeline**:

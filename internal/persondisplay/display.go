@@ -35,7 +35,7 @@ func SoldierServiceLine(rankOut, rank, rankIn, unit string) string {
 	trimmedUnit := strings.TrimSpace(unit)
 	switch {
 	case primaryRank != "" && trimmedUnit != "":
-		return primaryRank + " - " + trimmedUnit
+		return primaryRank + " " + trimmedUnit
 	case primaryRank != "":
 		return primaryRank
 	default:
