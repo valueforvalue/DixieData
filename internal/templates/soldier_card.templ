@@ -7,7 +7,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/persondisplay"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -294,7 +296,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 }
 
 templ SoldierDetail(s viewmodel.PersonRecord) {
-	@Layout(soldierFullName(s)) {
+	@Layout(detailHeading(s)) {
 			<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				@SurfaceBadge(uiids.PageSoldierDetail)
 				<div class="mb-4 flex flex-wrap gap-3">
@@ -318,7 +320,24 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					<div class="flex flex-wrap items-center gap-2">
 						<span class="gold rounded-full border border-[rgba(141,116,64,0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
 						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link">Edit Person Record</a>
-						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" class="primary-button">Export PDF</button>
+						<form hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="#soldier-export-status" data-pdf-pref-scope="soldier" class="flex flex-wrap items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2">
+							<label class="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">
+								Format
+								<select name="orientation" data-pdf-pref-key="orientation" class="ml-2 rounded-lg border border-[rgba(141,116,64,0.35)] bg-white px-2 py-1 text-sm text-slate-700">
+									<option value="L" selected>Landscape</option>
+									<option value="P">Portrait</option>
+								</select>
+							</label>
+							<label class="inline-flex items-center gap-2 text-sm text-slate-700">
+								<input type="checkbox" name="printer_friendly" value="1" data-pdf-pref-key="printerFriendly" class="h-4 w-4 accent-[#8d7440]"/>
+								<span>Printer-friendly</span>
+							</label>
+							<label class="inline-flex items-center gap-2 text-sm text-slate-700">
+								<input type="checkbox" name="include_images" value="1" checked data-pdf-pref-key="includeImages" class="h-4 w-4 accent-[#8d7440]"/>
+								<span>Include images</span>
+							</label>
+							<button class="primary-button">Export PDF</button>
+						</form>
 						if s.LinkedSoldierID != 0 {
 							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">Compare Family Person Records</a>
 						}
@@ -511,7 +530,6 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 				</details>
 				<div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.75)] p-4">
 					<div class="flex flex-wrap gap-3">
-						<button hx-post={ fmt.Sprintf("/soldiers/%d/pdf/no-images", s.ID) } hx-target="#soldier-export-status" class="secondary-button px-5 py-3 text-base">Export PDF Report (No Images)</button>
 						<button
 							type="button"
 							data-history-back
@@ -520,7 +538,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							class="ghost-link px-5 py-3 text-base font-semibold"
 						>← { backButtonLabel(s) }</button>
 					</div>
-					<p class="text-sm text-slate-500">Primary work stays at the top of the page. Secondary export and return actions stay here.</p>
+					<p class="text-sm text-slate-500">Primary work stays at the top of the page. Return actions stay here.</p>
 				</div>
 				<div class="mt-5 rounded-2xl border border-[rgba(111,44,38,0.42)] bg-[rgba(111,44,38,0.08)] p-4">
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
@@ -892,14 +910,10 @@ func entryBadgeLabel(s viewmodel.PersonRecord) string {
 func detailHeading(s viewmodel.PersonRecord) string {
 	name := strings.TrimSpace(soldierFullName(s))
 	if isSoldierEntry(s) {
-		rank := strings.TrimSpace(detailDisplayRank(s))
-		if rank == "" {
+		if name != "" {
 			return name
 		}
-		if name == "" {
-			return rank
-		}
-		return rank + " " + name
+		return entryBadgeLabel(s)
 	}
 	if name != "" {
 		return name
@@ -909,7 +923,7 @@ func detailHeading(s viewmodel.PersonRecord) string {
 
 func detailSubheading(s viewmodel.PersonRecord) string {
 	if isSoldierEntry(s) {
-		return strings.TrimSpace(s.Unit)
+		return soldierServiceLine(s)
 	}
 	if strings.TrimSpace(s.RelationshipLabel) != "" {
 		return strings.TrimSpace(s.RelationshipLabel)
@@ -918,6 +932,10 @@ func detailSubheading(s viewmodel.PersonRecord) string {
 		return "Married to " + strings.TrimSpace(s.SpouseName)
 	}
 	return strings.TrimSpace(s.MaidenName)
+}
+
+func soldierServiceLine(s viewmodel.PersonRecord) string {
+	return persondisplay.SoldierServiceLine(s.RankOut, s.Rank, s.RankIn, s.Unit)
 }
 
 func relationshipLabel(s viewmodel.PersonRecord) string {

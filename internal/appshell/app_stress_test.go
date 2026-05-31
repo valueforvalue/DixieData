@@ -100,7 +100,7 @@ func TestStressBridgeConcurrentSearchAndSave(t *testing.T) {
 			"first_name":              {fmt.Sprintf("Stress-%d", i)},
 			"last_name":               {"Hammer"},
 			"unit":                    {"Stress Regiment"},
-			"pension_state":           {"None"},
+			"pension_state":           {"NA"},
 			"confederate_home_status": {"None"},
 		}
 		resp, err := client.PostForm(server.URL+"/soldiers", form)
@@ -144,7 +144,7 @@ func TestStressFilesystemChaosGracefulFailure(t *testing.T) {
 		"entry_type":              {"soldier"},
 		"first_name":              {created.FirstName},
 		"last_name":               {created.LastName},
-		"pension_state":           {"None"},
+		"pension_state":           {"NA"},
 		"confederate_home_status": {"None"},
 	}
 	saveReq := httptest.NewRequest(http.MethodPost, "/soldiers", strings.NewReader(form.Encode()))
@@ -194,7 +194,7 @@ func stressMultipartBody(t *testing.T) (*bytes.Buffer, string) {
 		"entry_type":              "soldier",
 		"first_name":              "Logger",
 		"last_name":               "Probe",
-		"pension_state":           "None",
+		"pension_state":           "NA",
 		"confederate_home_status": "None",
 	}
 	for key, value := range fields {

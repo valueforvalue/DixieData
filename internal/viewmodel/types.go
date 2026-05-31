@@ -13,6 +13,7 @@ type PersonRecord struct {
 	PensionID             string
 	ApplicationID         string
 	Prefix                string
+	ShowPrefixBeforeName  bool
 	FirstName             string
 	MiddleName            string
 	LastName              string
@@ -116,6 +117,19 @@ type PersonRecordSearch struct {
 	DeathYearTo           string
 	DeathMonth            string
 	DeathDay              string
+}
+
+type BrowseState struct {
+	Page                  int
+	PageSize              int
+	Total                 int
+	Scope                 string
+	Sort                  string
+	EntryType             string
+	Unit                  string
+	PensionState          string
+	ReviewStatus          string
+	ConfederateHomeStatus string
 }
 
 type PersonRecordFormSuggestions struct {

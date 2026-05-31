@@ -5,6 +5,8 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/persondisplay"
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
@@ -22,6 +24,7 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		PensionID:             input.PensionID,
 		ApplicationID:         input.ApplicationID,
 		Prefix:                input.Prefix,
+		ShowPrefixBeforeName:  input.ShowPrefixBeforeName,
 		FirstName:             input.FirstName,
 		MiddleName:            input.MiddleName,
 		LastName:              input.LastName,
@@ -30,7 +33,7 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		RankIn:                input.RankIn,
 		RankOut:               input.RankOut,
 		Unit:                  input.Unit,
-		PensionState:          input.PensionState,
+		PensionState:          pensionstate.Normalize(input.PensionState),
 		ConfederateHomeStatus: input.ConfederateHomeStatus,
 		ConfederateHomeName:   input.ConfederateHomeName,
 		DeathYear:             input.DeathYear,
@@ -90,11 +93,14 @@ func SoldiersFromModels(inputs []models.Soldier) []PersonRecord {
 }
 
 func ExportRecordOptionFromModel(input models.Soldier) ExportRecordOption {
-	displayName := strings.TrimSpace(strings.Join([]string{
-		strings.TrimSpace(input.FirstName),
-		strings.TrimSpace(input.MiddleName),
-		strings.TrimSpace(input.LastName),
-	}, " "))
+	displayName := strings.TrimSpace(persondisplay.FullName(persondisplay.NameParts{
+		Prefix:               input.Prefix,
+		ShowPrefixBeforeName: input.ShowPrefixBeforeName,
+		FirstName:            input.FirstName,
+		MiddleName:           input.MiddleName,
+		LastName:             input.LastName,
+		Suffix:               input.Suffix,
+	}))
 	if displayName == "" {
 		displayName = strings.TrimSpace(input.SpouseName)
 	}
@@ -203,7 +209,7 @@ func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch 
 		RankOut:               input.RankOut,
 		Unit:                  input.Unit,
 		SourceRecordType:      input.RecordType,
-		PensionState:          input.PensionState,
+		PensionState:          pensionstate.Normalize(input.PensionState),
 		ConfederateHomeStatus: input.ConfederateHomeStatus,
 		ConfederateHomeName:   input.ConfederateHomeName,
 		BuriedIn:              input.BuriedIn,
@@ -216,6 +222,21 @@ func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch 
 		DeathYearTo:           input.DeathYearTo,
 		DeathMonth:            input.DeathMonth,
 		DeathDay:              input.DeathDay,
+	}
+}
+
+func BrowseStateFromDomain(input records.BrowseRequest, total int) BrowseState {
+	return BrowseState{
+		Page:                  input.Page,
+		PageSize:              input.PageSize,
+		Total:                 total,
+		Scope:                 input.Scope,
+		Sort:                  input.Sort,
+		EntryType:             input.EntryType,
+		Unit:                  input.Unit,
+		PensionState:          pensionstate.Normalize(input.PensionState),
+		ReviewStatus:          input.ReviewStatus,
+		ConfederateHomeStatus: input.ConfederateHomeStatus,
 	}
 }
 

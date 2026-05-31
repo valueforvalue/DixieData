@@ -26,6 +26,21 @@ func SoldierList(soldiers []models.Soldier, page, total int, query string, sugge
 	return templates.SoldierList(viewmodel.PersonRecordsFromModels(soldiers), page, total, query, viewmodel.PersonRecordFormSuggestionsFromModel(suggestions))
 }
 
+func BrowseView(soldiers []models.Soldier, state records.BrowseRequest, total int, suggestions models.SoldierFormSuggestions) templ.Component {
+	return templates.BrowseView(
+		viewmodel.PersonRecordsFromModels(soldiers),
+		viewmodel.BrowseStateFromDomain(state, total),
+		viewmodel.PersonRecordFormSuggestionsFromModel(suggestions),
+	)
+}
+
+func BrowseResults(soldiers []models.Soldier, state records.BrowseRequest, total int) templ.Component {
+	return templates.BrowseResults(
+		viewmodel.PersonRecordsFromModels(soldiers),
+		viewmodel.BrowseStateFromDomain(state, total),
+	)
+}
+
 func SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int) templ.Component {
 	return templates.SearchResults(viewmodel.PersonRecordsFromModels(soldiers), viewmodel.PersonRecordSearchFromModel(search), page, total, pageSize)
 }

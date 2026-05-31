@@ -56,6 +56,35 @@ func TestAppServeHTTPStartupError(t *testing.T) {
 	}
 }
 
+func TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux(t *testing.T) {
+	app := NewApp()
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar?scope=recent", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusAccepted)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Loading DixieData...") {
+		t.Fatalf("expected loading placeholder, got %q", body)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store, no-cache, must-revalidate" {
+		t.Fatalf("cache-control=%q", got)
+	}
+	if got := rec.Header().Get("Refresh"); got != "1; url=/calendar?_dd_boot=1&scope=recent" {
+		t.Fatalf("refresh header=%q", got)
+	}
+	if !strings.Contains(body, `<meta http-equiv="refresh" content="1;url=/calendar?_dd_boot=1&amp;scope=recent">`) {
+		t.Fatalf("expected meta refresh, got %q", body)
+	}
+	if !strings.Contains(body, `window.location.replace("/calendar?_dd_boot=1\u0026scope=recent")`) {
+		t.Fatalf("expected inline auto-refresh script, got %q", body)
+	}
+}
+
 func TestAppServeHTTPMethodOverride(t *testing.T) {
 	app := NewApp()
 	app.mux = http.NewServeMux()
@@ -433,23 +462,37 @@ func TestImageScreenshotNameUsesImageFileName(t *testing.T) {
 }
 
 func TestSoldierPDFNameUsesDisplayID(t *testing.T) {
-	name := soldierPDFName(models.Soldier{DisplayID: "DD 100"})
-	if name != "DD-100.pdf" {
+	name := soldierPDFName(models.Soldier{DisplayID: "DD 100"}, archive.PDFOptions{Orientation: "L", IncludeImages: true})
+	if name != "DD-100-landscape.pdf" {
 		t.Fatalf("soldier pdf name = %q", name)
 	}
 }
 
 func TestSoldierPDFNameNoImagesUsesDisplayID(t *testing.T) {
 	name := soldierPDFNameNoImages(models.Soldier{DisplayID: "DD 100"})
-	if name != "DD-100-no-images.pdf" {
+	if name != "DD-100-landscape-no-images.pdf" {
 		t.Fatalf("soldier pdf name = %q", name)
 	}
 }
 
 func TestMonthPDFNameUsesMonthName(t *testing.T) {
-	name := monthPDFName(4)
-	if name != "April-report.pdf" {
+	name := monthPDFName(4, archive.PDFOptions{Orientation: "P"})
+	if name != "April-report-portrait.pdf" {
 		t.Fatalf("month pdf name = %q", name)
+	}
+}
+
+func TestPDFOptionFilenameSuffixIncludesPrinterFriendlyLandscape(t *testing.T) {
+	suffix := pdfOptionFilenameSuffix(archive.PDFOptions{Orientation: "L", PrinterFriendly: true, IncludeImages: true}, false)
+	if suffix != "printer-friendly-landscape" {
+		t.Fatalf("suffix = %q", suffix)
+	}
+}
+
+func TestPrintableArchivePDFNameIncludesPrinterFriendlyLandscape(t *testing.T) {
+	name := printableArchivePDFName(archive.PrintSettings{Orientation: "L", PrinterFriendly: true})
+	if name != "dixiedata-printable-archive-printer-friendly-landscape.pdf" {
+		t.Fatalf("printable archive pdf name = %q", name)
 	}
 }
 

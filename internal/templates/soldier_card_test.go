@@ -106,6 +106,79 @@ func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
 	}
 }
 
+func TestSoldierDetailShowsNameOnlyHeadingAndServiceLine(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:                   42,
+		DisplayID:            "STC38-00001",
+		Prefix:               "Capt.",
+		ShowPrefixBeforeName: false,
+		FirstName:            "John",
+		LastName:             "Taylor",
+		RankOut:              "Captain",
+		Unit:                 "Co. A, 1st Texas Infantry",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if strings.Contains(content, "Captain John Taylor") {
+		t.Fatalf("detail view should not prepend rank to the heading: %s", content)
+	}
+	for _, needle := range []string{
+		">John Taylor<",
+		"Captain - Co. A, 1st Texas Infantry",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("detail view missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailShowsPrefixWhenEnabled(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:                   42,
+		DisplayID:            "STC38-00001",
+		Prefix:               "Capt.",
+		ShowPrefixBeforeName: true,
+		FirstName:            "John",
+		LastName:             "Taylor",
+		RankOut:              "Captain",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if !strings.Contains(content, "Capt. John Taylor") {
+		t.Fatalf("detail view should respect prefix visibility: %s", content)
+	}
+}
+
+func TestSoldierDetailServiceLineFallsBackToSingleValue(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:        42,
+		DisplayID: "STC38-00001",
+		FirstName: "John",
+		LastName:  "Taylor",
+		Unit:      "Co. A, 1st Texas Infantry",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if !strings.Contains(content, "Co. A, 1st Texas Infantry") {
+		t.Fatalf("detail view should show a unit-only service line: %s", content)
+	}
+	if strings.Contains(content, " - Co. A, 1st Texas Infantry") {
+		t.Fatalf("detail view should not render a dangling service-line separator: %s", content)
+	}
+}
+
 func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{

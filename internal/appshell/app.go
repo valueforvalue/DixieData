@@ -28,11 +28,13 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/findagrave"
 	"github.com/valueforvalue/DixieData/internal/integrations"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
@@ -139,6 +141,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/calendar/", a.handleCalendarMonth)
 	mux.HandleFunc("/anniversary/", a.handleAnniversary)
 	mux.HandleFunc("/soldiers", a.handleSoldiers)
+	mux.HandleFunc("/browse", a.handleBrowse)
+	mux.HandleFunc("/browse/results", a.handleBrowseResults)
 	mux.HandleFunc("/soldiers/search", a.handleSearch)
 	mux.HandleFunc("/soldiers/search/recent", a.handleRecentSearch)
 	mux.HandleFunc("/soldiers/search/advanced", a.handleAdvancedSearch)
@@ -268,9 +272,28 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
 			target = requestPath
 		}
 	}
+	retryTarget := startupPlaceholderRetryTarget(target)
+	targetJS, err := json.Marshal(retryTarget)
+	if err != nil {
+		targetJS = []byte(`"/calendar?_dd_boot=1"`)
+	}
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+	w.Header().Set("Refresh", fmt.Sprintf("1; url=%s", retryTarget))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusServiceUnavailable)
-	fmt.Fprintf(w, `<body hx-get="%s" hx-trigger="load delay:700ms" hx-target="body" hx-swap="outerHTML" class="min-h-screen" style="background: linear-gradient(180deg, #d7d2c9 0%%, #c9c2b5 42%%, #b9b1a3 100%%);">
+	w.WriteHeader(http.StatusAccepted)
+	fmt.Fprintf(w, `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="1;url=%s">
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="0">
+<title>Loading DixieData...</title>
+</head>
+<body hx-get="%s" hx-trigger="load delay:700ms" hx-target="body" hx-swap="outerHTML" class="min-h-screen" style="background: linear-gradient(180deg, #d7d2c9 0%%, #c9c2b5 42%%, #b9b1a3 100%%);">
 <div class="flex min-h-screen items-center justify-center px-6">
   <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
     <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Local Archive</p>
@@ -278,7 +301,24 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
     <p class="mt-2 text-sm text-[#d8cfbc]">The local archive is still starting up. This screen will refresh automatically.</p>
   </div>
 </div>
-</body>`, html.EscapeString(target))
+<script>
+window.setTimeout(function() {
+  window.location.replace(%s);
+}, 700);
+</script>
+</body>
+</html>`, html.EscapeString(retryTarget), html.EscapeString(retryTarget), string(targetJS))
+}
+
+func startupPlaceholderRetryTarget(target string) string {
+	parsed, err := url.Parse(target)
+	if err != nil {
+		return "/calendar?_dd_boot=1"
+	}
+	query := parsed.Query()
+	query.Set("_dd_boot", "1")
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 func setupRequestAllowed(path string) bool {
@@ -512,6 +552,63 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+}
+
+func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	request := parseBrowseRequest(r.URL.Query())
+	suggestions, err := a.soldiers.FormSuggestions()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	soldiers, total, normalized, err := a.soldiers.BrowsePage(request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	presentation.BrowseView(soldiers, normalized, total, suggestions).Render(r.Context(), w)
+}
+
+func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	soldiers, total, normalized, err := a.soldiers.BrowsePage(parseBrowseRequest(r.URL.Query()))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	presentation.BrowseResults(soldiers, normalized, total).Render(r.Context(), w)
+}
+
+func parseBrowseRequest(values url.Values) records.BrowseRequest {
+	return records.BrowseRequest{
+		Page:                  parsePage(values.Get("page")),
+		PageSize:              parsePageSize(values.Get("page_size"), 100),
+		Scope:                 values.Get("scope"),
+		Sort:                  values.Get("sort"),
+		EntryType:             values.Get("entry_type"),
+		Unit:                  values.Get("unit"),
+		PensionState:          values.Get("pension_state"),
+		ReviewStatus:          values.Get("review_status"),
+		ConfederateHomeStatus: values.Get("confederate_home_status"),
+	}
+}
+
+func parsePageSize(raw string, fallback int) int {
+	if fallback < 1 {
+		fallback = 100
+	}
+	size, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || size < 1 {
+		return fallback
+	}
+	return size
 }
 
 func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
@@ -1342,13 +1439,18 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
 	snapshot, err := a.analytics.Snapshot()
 	if err != nil {
 		fmt.Fprintf(w, "Analytics export failed: %v", err)
 		return
 	}
+	options := parsePDFOptionsRequest(r, "P", false)
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "dixiedata-archive-insights.pdf",
+		DefaultFilename: pdfReportName("dixiedata-archive-insights", options, false),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF", Pattern: "*.pdf"},
 		},
@@ -1357,7 +1459,7 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Analytics export cancelled.")
 		return
 	}
-	if err := a.export.ExportAnalyticsSummaryPDF(path, snapshot); err != nil {
+	if err := a.export.ExportAnalyticsSummaryPDF(path, snapshot, options); err != nil {
 		fmt.Fprintf(w, "Analytics export failed: %v", err)
 		return
 	}
@@ -1454,8 +1556,9 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
+	settings = settings.Normalize()
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "dixiedata-printable-archive.pdf",
+		DefaultFilename: printableArchivePDFName(settings),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
 		},
@@ -1482,6 +1585,8 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 		return archive.PrintSettings{}, fmt.Errorf("select at least one record or export all records")
 	}
 	return archive.PrintSettings{
+		Orientation:                  strings.TrimSpace(r.FormValue("orientation")),
+		PrinterFriendly:              r.FormValue("printer_friendly") != "",
 		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),
 		GroupByUnit:                  r.FormValue("group_by_unit") != "",
 		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
@@ -1489,7 +1594,32 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 		GroupByBuriedIn:              r.FormValue("group_by_buried_in") != "",
 		ExportAll:                    exportAll,
 		SelectedIDs:                  selectedIDs,
-	}, nil
+	}.Normalize(), nil
+}
+
+func parsePDFOptionsRequest(r *http.Request, defaultOrientation string, defaultIncludeImages bool) archive.PDFOptions {
+	options := archive.PDFOptions{
+		Orientation:     strings.TrimSpace(r.FormValue("orientation")),
+		PrinterFriendly: r.FormValue("printer_friendly") != "",
+		IncludeImages:   parseBoolFormValueDefault(r.Form, "include_images", defaultIncludeImages),
+	}
+	return options.Normalize(defaultOrientation, defaultIncludeImages)
+}
+
+func parseBoolFormValueDefault(values url.Values, key string, fallback bool) bool {
+	raw, ok := values[key]
+	if !ok {
+		return fallback
+	}
+	for _, value := range raw {
+		switch strings.TrimSpace(strings.ToLower(value)) {
+		case "1", "true", "on", "yes":
+			return true
+		case "0", "false", "off", "no", "":
+			return false
+		}
+	}
+	return fallback
 }
 
 func setToastHeader(w http.ResponseWriter, message string) {
@@ -1955,6 +2085,10 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
@@ -1964,9 +2098,10 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	for i := range soldier.Images {
 		soldier.Images[i].ResolvedPath = filepath.Join(a.dataDir, filepath.FromSlash(soldier.Images[i].FilePath))
 	}
+	options := parsePDFOptionsRequest(r, "L", true)
 
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: soldierPDFName(*soldier),
+		DefaultFilename: soldierPDFName(*soldier, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
 		},
@@ -1975,7 +2110,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		fmt.Fprint(w, "PDF export cancelled.")
 		return
 	}
-	if err := a.export.ExportSoldierPDF(path, *soldier); err != nil {
+	if err := a.export.ExportSoldierPDF(path, *soldier, options); err != nil {
 		fmt.Fprintf(w, "PDF export failed: %v", err)
 		return
 	}
@@ -2016,6 +2151,10 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
 
 	month, err := parseBoundedInt(monthValue, "month", 1, 12)
 	if err != nil {
@@ -2027,9 +2166,10 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	options := parsePDFOptionsRequest(r, "P", false)
 
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: monthPDFName(month),
+		DefaultFilename: monthPDFName(month, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
 		},
@@ -2038,7 +2178,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		fmt.Fprint(w, "Monthly PDF export cancelled.")
 		return
 	}
-	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar); err != nil {
+	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options); err != nil {
 		fmt.Fprintf(w, "Monthly PDF export failed: %v", err)
 		return
 	}
@@ -2397,6 +2537,7 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		PensionID:             r.FormValue("pension_id"),
 		ApplicationID:         r.FormValue("application_id"),
 		Prefix:                r.FormValue("prefix"),
+		ShowPrefixBeforeName:  r.FormValue("show_prefix_before_name") == "1",
 		FirstName:             r.FormValue("first_name"),
 		MiddleName:            r.FormValue("middle_name"),
 		LastName:              r.FormValue("last_name"),
@@ -2437,7 +2578,7 @@ func (a *App) newSoldierDefaults() (models.Soldier, error) {
 	if err != nil {
 		return models.Soldier{}, err
 	}
-	return models.Soldier{DisplayID: displayID, PensionState: "None", ConfederateHomeStatus: "None"}, nil
+	return models.Soldier{DisplayID: displayID, PensionState: pensionstate.NotApplicable, ConfederateHomeStatus: confederatehomestatus.NotApplicable, ShowPrefixBeforeName: false}, nil
 }
 
 func parseOptionalInt(value, field string) (int, error) {
@@ -2579,12 +2720,12 @@ func imageScreenshotName(fileName string) string {
 	return sanitizedFileStem(base, "archive-image") + "-screenshot.png"
 }
 
-func soldierPDFName(soldier models.Soldier) string {
+func soldierPDFName(soldier models.Soldier, options archive.PDFOptions) string {
 	base := strings.TrimSpace(soldier.DisplayID)
 	if base == "" {
 		base = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
 	}
-	return sanitizedFileStem(base, "soldier-record") + ".pdf"
+	return pdfReportName(base, options, !options.IncludeImages)
 }
 
 func soldierPDFNameNoImages(soldier models.Soldier) string {
@@ -2592,11 +2733,44 @@ func soldierPDFNameNoImages(soldier models.Soldier) string {
 	if base == "" {
 		base = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
 	}
-	return sanitizedFileStem(base, "soldier-record") + "-no-images.pdf"
+	return pdfReportName(base, archive.PDFOptions{Orientation: "L", IncludeImages: false}, true)
 }
 
-func monthPDFName(month int) string {
-	return sanitizedFileStem(fmt.Sprintf("%s report", monthNameValue(month)), "monthly-report") + ".pdf"
+func monthPDFName(month int, options archive.PDFOptions) string {
+	return pdfReportName(fmt.Sprintf("%s report", monthNameValue(month)), options, false)
+}
+
+func printableArchivePDFName(settings archive.PrintSettings) string {
+	return pdfReportName("dixiedata-printable-archive", archive.PDFOptions{
+		Orientation:     settings.Orientation,
+		PrinterFriendly: settings.PrinterFriendly,
+	}, false)
+}
+
+func pdfReportName(base string, options archive.PDFOptions, noImages bool) string {
+	stem := sanitizedFileStem(base, "pdf-report")
+	suffix := pdfOptionFilenameSuffix(options, noImages)
+	if suffix != "" {
+		stem += "-" + suffix
+	}
+	return stem + ".pdf"
+}
+
+func pdfOptionFilenameSuffix(options archive.PDFOptions, noImages bool) string {
+	options = options.Normalize("P", true)
+	parts := make([]string, 0, 3)
+	if options.PrinterFriendly {
+		parts = append(parts, "printer-friendly")
+	}
+	if options.Orientation == "L" {
+		parts = append(parts, "landscape")
+	} else {
+		parts = append(parts, "portrait")
+	}
+	if noImages {
+		parts = append(parts, "no-images")
+	}
+	return strings.Join(parts, "-")
 }
 
 func backupArchiveName(now time.Time) string {
@@ -2882,8 +3056,14 @@ func (a *App) reloadServices() error {
 		}
 		a.setupRequired = required
 		if !required {
-			if err := a.database.BackfillEntryAuditIdentity(); err != nil {
+			needsBackfill, err := a.database.EntryAuditIdentityBackfillNeeded()
+			if err != nil {
 				return err
+			}
+			if needsBackfill {
+				if err := a.database.BackfillEntryAuditIdentity(); err != nil {
+					return err
+				}
 			}
 		}
 	}

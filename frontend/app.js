@@ -4,6 +4,11 @@
   const toastStateStorageKey = "dixiedata.toastState";
   const backStackStorageKey = "dixiedata.backStack";
   const recentRecordsStorageKey = "dixiedata.recentRecords";
+  const browseStateStorageKey = "dixiedata.browse.state";
+  const browseColumnsStorageKey = "dixiedata.browse.columns";
+  const browseSelectionStorageKey = "dixiedata.browse.selection";
+  const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
+  const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   const imageViewerState = {
     baseScale: 1,
@@ -65,6 +70,123 @@
     } catch (error) {
       // Ignore storage failures.
     }
+  }
+
+  function loadJSONStorage(key, fallback) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) {
+        return fallback;
+      }
+      const parsed = JSON.parse(raw);
+      return parsed ?? fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function saveJSONStorage(key, value) {
+    try {
+      if (value == null) {
+        window.localStorage.removeItem(key);
+        return;
+      }
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      // Ignore storage failures.
+    }
+  }
+
+  function loadBrowseState() {
+    const value = loadJSONStorage(browseStateStorageKey, {});
+    return value && typeof value === "object" ? value : {};
+  }
+
+  function saveBrowseState(state) {
+    saveJSONStorage(browseStateStorageKey, state);
+  }
+
+  function loadBrowseColumns() {
+    const value = loadJSONStorage(browseColumnsStorageKey, defaultBrowseColumns);
+    return Array.isArray(value) && value.length > 0 ? value : defaultBrowseColumns.slice();
+  }
+
+  function saveBrowseColumns(columns) {
+    const normalized = Array.from(new Set((Array.isArray(columns) ? columns : []).filter((value) => typeof value === "string" && value !== "")));
+    saveJSONStorage(browseColumnsStorageKey, normalized.length > 0 ? normalized : defaultBrowseColumns);
+  }
+
+  function loadBrowseSelection() {
+    const value = loadJSONStorage(browseSelectionStorageKey, []);
+    return Array.isArray(value) ? value.filter((entry) => Number.isInteger(entry) && entry > 0) : [];
+  }
+
+  function saveBrowseSelection(ids) {
+    const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0)));
+    saveJSONStorage(browseSelectionStorageKey, normalized);
+  }
+
+  function loadPDFPreferences(scope) {
+    if (!scope) {
+      return {};
+    }
+    const value = loadJSONStorage(`${pdfPreferencesStoragePrefix}${scope}`, {});
+    return value && typeof value === "object" ? value : {};
+  }
+
+  function savePDFPreferences(scope, values) {
+    if (!scope) {
+      return;
+    }
+    saveJSONStorage(`${pdfPreferencesStoragePrefix}${scope}`, values);
+  }
+
+  function pdfPreferenceValue(input) {
+    if (input instanceof HTMLInputElement && input.type === "checkbox") {
+      return input.checked;
+    }
+    return input.value;
+  }
+
+  function applyPDFPreferences(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const scope = form.getAttribute("data-pdf-pref-scope");
+    const prefs = loadPDFPreferences(scope);
+    form.querySelectorAll("[data-pdf-pref-key]").forEach((input) => {
+      if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) {
+        return;
+      }
+      const key = input.getAttribute("data-pdf-pref-key") || "";
+      if (!(key in prefs)) {
+        return;
+      }
+      if (input instanceof HTMLInputElement && input.type === "checkbox") {
+        input.checked = Boolean(prefs[key]);
+        return;
+      }
+      input.value = String(prefs[key]);
+    });
+  }
+
+  function persistPDFPreferences(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const scope = form.getAttribute("data-pdf-pref-scope");
+    const next = {};
+    form.querySelectorAll("[data-pdf-pref-key]").forEach((input) => {
+      if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) {
+        return;
+      }
+      const key = input.getAttribute("data-pdf-pref-key");
+      if (!key) {
+        return;
+      }
+      next[key] = pdfPreferenceValue(input);
+    });
+    savePDFPreferences(scope, next);
   }
 
   function rememberRecentRecordFromPage() {
@@ -1678,6 +1800,105 @@
     applySmartBackLabels();
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
+    initializeBrowseView();
+    document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
+  }
+
+  function currentBrowseStateFromForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return {};
+    }
+    const data = new FormData(form);
+    return {
+      page: data.get("page") || "1",
+      page_size: data.get("page_size") || "100",
+      scope: data.get("scope") || "all",
+      sort: data.get("sort") || "display_id_asc",
+      entry_type: data.get("entry_type") || "",
+      unit: data.get("unit") || "",
+      pension_state: data.get("pension_state") || "",
+      review_status: data.get("review_status") || "",
+      confederate_home_status: data.get("confederate_home_status") || "",
+    };
+  }
+
+  function applyBrowseStateToForm(form, state) {
+    if (!(form instanceof HTMLFormElement) || !state || typeof state !== "object") {
+      return;
+    }
+    ["page", "page_size", "scope", "sort", "entry_type", "unit", "pension_state", "review_status", "confederate_home_status"].forEach((name) => {
+      const field = form.elements.namedItem(name);
+      if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        if (typeof state[name] === "string") {
+          field.value = state[name];
+        }
+      }
+    });
+  }
+
+  function browseStateDiffers(current, saved) {
+    return ["page", "page_size", "scope", "sort", "entry_type", "unit", "pension_state", "review_status", "confederate_home_status"]
+      .some((key) => String(current[key] || "") !== String(saved[key] || ""));
+  }
+
+  function applyBrowseColumns(root) {
+    const enabled = new Set(loadBrowseColumns());
+    root.querySelectorAll("[data-browse-column-toggle]").forEach((toggle) => {
+      if (toggle instanceof HTMLInputElement) {
+        toggle.checked = enabled.has(toggle.value);
+      }
+    });
+    root.querySelectorAll("[data-browse-column]").forEach((cell) => {
+      if (cell instanceof HTMLElement) {
+        const key = cell.getAttribute("data-browse-column") || "";
+        cell.classList.toggle("hidden", !enabled.has(key));
+      }
+    });
+  }
+
+  function updateBrowseSelectionStatus(root = document) {
+    const selected = loadBrowseSelection();
+    root.querySelectorAll("[data-browse-selection-status]").forEach((node) => {
+      if (node instanceof HTMLElement) {
+        node.textContent = selected.length > 0
+          ? `${selected.length} record(s) selected across Browse pages and filters.`
+          : "Select records across pages to keep a working set while you browse.";
+      }
+    });
+  }
+
+  function applyBrowseSelection(root) {
+    const selected = new Set(loadBrowseSelection());
+    root.querySelectorAll("[data-browse-select]").forEach((input) => {
+      if (input instanceof HTMLInputElement) {
+        const id = Number.parseInt(input.value || "", 10);
+        input.checked = Number.isInteger(id) && selected.has(id);
+      }
+    });
+    updateBrowseSelectionStatus(root);
+  }
+
+  function initializeBrowseView() {
+    const page = document.querySelector("[data-browse-page]");
+    if (!(page instanceof HTMLElement)) {
+      return;
+    }
+    const form = document.getElementById("browse-filters");
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    applyBrowseColumns(document);
+    applyBrowseSelection(document);
+    const current = currentBrowseStateFromForm(form);
+    const saved = loadBrowseState();
+    if (!page.hasAttribute("data-browse-restored") && browseStateDiffers(current, saved)) {
+      page.setAttribute("data-browse-restored", "true");
+      applyBrowseStateToForm(form, saved);
+      request(form);
+      return;
+    }
+    page.setAttribute("data-browse-restored", "true");
+    saveBrowseState(currentBrowseStateFromForm(form));
   }
 
   function showProgress(el) {
@@ -1870,6 +2091,7 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
+    seedPrintRecordSelectionFromBrowse();
     syncPrintRecordPickerState();
     applyPrintRecordFilter();
     modal.classList.remove("hidden");
@@ -1949,6 +2171,27 @@
     const form = printConfigForm();
     if (!(form instanceof HTMLFormElement)) {
       return;
+    }
+
+    function seedPrintRecordSelectionFromBrowse() {
+      const form = printConfigForm();
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+      const selected = new Set(loadBrowseSelection());
+      if (selected.size === 0) {
+        return;
+      }
+      const checkboxes = Array.from(form.querySelectorAll("[data-print-record-checkbox]")).filter((checkbox) => checkbox instanceof HTMLInputElement);
+      if (checkboxes.every((checkbox) => !checkbox.checked)) {
+        checkboxes.forEach((checkbox) => {
+          checkbox.checked = selected.has(Number.parseInt(checkbox.value || "", 10));
+        });
+        const exportAll = form.querySelector('[data-print-export-all]');
+        if (exportAll instanceof HTMLInputElement) {
+          exportAll.checked = false;
+        }
+      }
     }
     const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
     const picker = form.querySelector("[data-print-record-picker]");
@@ -2033,6 +2276,7 @@
     applySmartBackLabels();
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
+    initializeBrowseView();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -2071,6 +2315,13 @@
       openPrintConfigModal();
       return;
     }
+    const clearBrowseSelection = event.target.closest("[data-browse-clear-selection]");
+    if (clearBrowseSelection instanceof HTMLButtonElement) {
+      event.preventDefault();
+      saveBrowseSelection([]);
+      applyBrowseSelection(document);
+      return;
+    }
     const openFeedback = event.target.closest("[data-feedback-open]");
     if (openFeedback) {
       event.preventDefault();
@@ -2104,6 +2355,16 @@
         imageTrigger.getAttribute("data-image-id"),
       );
       return;
+    }
+    const browseRow = event.target.closest("[data-browse-row-href]");
+    if (browseRow instanceof HTMLElement && !event.target.closest("a, button, input, label, select, textarea")) {
+      const href = browseRow.getAttribute("data-browse-row-href");
+      if (href) {
+        event.preventDefault();
+        pushBackSnapshot();
+        window.location.assign(href);
+        return;
+      }
     }
     const previewTrigger = event.target.closest("[data-preview-open]");
     if (previewTrigger instanceof HTMLElement) {
@@ -2288,6 +2549,15 @@
     }
   });
   document.addEventListener("change", (event) => {
+    const pdfInput = event.target.closest("[data-pdf-pref-key]");
+    if (pdfInput instanceof HTMLElement) {
+      const form = pdfInput.closest("form[data-pdf-pref-scope]");
+      if (form instanceof HTMLFormElement) {
+        persistPDFPreferences(form);
+      }
+    }
+  });
+  document.addEventListener("change", (event) => {
     const entryTypeSelect = event.target.closest("[data-entry-type-select]");
     if (entryTypeSelect) {
       const form = entryTypeSelect.closest("form");
@@ -2305,12 +2575,56 @@
       }
     }
   });
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (form instanceof HTMLFormElement && form.matches("form[data-pdf-pref-scope]")) {
+      persistPDFPreferences(form);
+    }
+  });
   document.addEventListener("change", (event) => {
     const selectAll = event.target.closest("[data-select-all]");
     if (!(selectAll instanceof HTMLInputElement)) {
       return;
     }
     toggleCheckboxGroup(selectAll.getAttribute("data-select-all"), selectAll.checked);
+  });
+  document.addEventListener("change", (event) => {
+    const browseFilter = event.target.closest("[data-browse-filter-input]");
+    if (browseFilter instanceof HTMLElement) {
+      const form = browseFilter.closest("form");
+      const pageField = form?.querySelector("[data-browse-page-input]");
+      if (pageField instanceof HTMLInputElement) {
+        pageField.value = "1";
+      }
+      if (form instanceof HTMLFormElement) {
+        saveBrowseState(currentBrowseStateFromForm(form));
+        request(form);
+      }
+      return;
+    }
+    const browseColumnToggle = event.target.closest("[data-browse-column-toggle]");
+    if (browseColumnToggle instanceof HTMLInputElement) {
+      const enabled = Array.from(document.querySelectorAll("[data-browse-column-toggle]"))
+        .filter((input) => input instanceof HTMLInputElement && input.checked)
+        .map((input) => input.value);
+      saveBrowseColumns(enabled);
+      applyBrowseColumns(document);
+      return;
+    }
+    const browseSelect = event.target.closest("[data-browse-select]");
+    if (browseSelect instanceof HTMLInputElement) {
+      const id = Number.parseInt(browseSelect.value || "", 10);
+      const selected = new Set(loadBrowseSelection());
+      if (Number.isInteger(id) && id > 0) {
+        if (browseSelect.checked) {
+          selected.add(id);
+        } else {
+          selected.delete(id);
+        }
+      }
+      saveBrowseSelection(Array.from(selected));
+      updateBrowseSelectionStatus(document);
+    }
   });
   document.addEventListener("change", (event) => {
     const compareSelect = event.target.closest("[data-compare-select]");

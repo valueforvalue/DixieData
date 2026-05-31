@@ -13,6 +13,7 @@ type Soldier struct {
 	PensionID             string   `json:"pension_id"`
 	ApplicationID         string   `json:"application_id"`
 	Prefix                string   `json:"prefix"`
+	ShowPrefixBeforeName  bool     `json:"show_prefix_before_name"`
 	FirstName             string   `json:"first_name"`
 	MiddleName            string   `json:"middle_name"`
 	LastName              string   `json:"last_name"`

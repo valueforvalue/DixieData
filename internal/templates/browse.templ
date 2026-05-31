@@ -1,0 +1,354 @@
+package templates
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions) {
+	@Layout("Browse") {
+		<div data-ui-id={ uiids.PageBrowse } data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
+			@SurfaceBadge(uiids.PageBrowse)
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<div>
+					<h2 class="text-2xl gold font-bold">Browse Local Archive</h2>
+					<p class="mt-2 max-w-3xl text-sm text-slate-600">Browse-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600">
+					Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.
+				</div>
+			</div>
+			<form id="browse-filters" hx-get="/browse/results" hx-target="#browse-results" class="grid gap-4 rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)] p-5 lg:grid-cols-6">
+				<input type="hidden" name="page" value={ fmt.Sprintf("%d", state.Page) } data-browse-page-input/>
+				<div>
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Scope</label>
+					<select name="scope" data-browse-filter-input class="field-input mt-2">
+						<option value="all" if state.Scope == "all" { selected }>All Records</option>
+						<option value="recently_added" if state.Scope == "recently_added" { selected }>Recently Added</option>
+						<option value="last_import" if state.Scope == "last_import" { selected }>Last Import</option>
+					</select>
+				</div>
+				<div>
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Sort</label>
+					<select name="sort" data-browse-filter-input class="field-input mt-2">
+						<option value="display_id_asc" if state.Sort == "display_id_asc" { selected }>Display ID Ascending</option>
+						<option value="display_id_desc" if state.Sort == "display_id_desc" { selected }>Display ID Descending</option>
+						<option value="name_asc" if state.Sort == "name_asc" { selected }>Name</option>
+						<option value="last_edited_desc" if state.Sort == "last_edited_desc" { selected }>Last Edited</option>
+						<option value="created_desc" if state.Sort == "created_desc" { selected }>Created</option>
+					</select>
+				</div>
+				<div>
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Page Size</label>
+					<select name="page_size" data-browse-filter-input class="field-input mt-2">
+						for _, option := range []int{50, 100, 150, 200, 250} {
+							<option value={ fmt.Sprintf("%d", option) } if option == state.PageSize { selected }>{ fmt.Sprintf("%d", option) }</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Entry Type</label>
+					<select name="entry_type" data-browse-filter-input class="field-input mt-2">
+						<option value="" if state.EntryType == "" { selected }>All</option>
+						<option value="soldier" if state.EntryType == "soldier" { selected }>Soldier</option>
+						<option value="linked_person" if state.EntryType == "linked_person" { selected }>Person Record</option>
+						<option value="wife" if state.EntryType == "wife" { selected }>Wife</option>
+						<option value="widow" if state.EntryType == "widow" { selected }>Widow</option>
+					</select>
+				</div>
+				<div>
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Pension State</label>
+					<input type="text" name="pension_state" value={ state.PensionState } list="browse-pension-state-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any"/>
+				</div>
+				<div>
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Review Status</label>
+					<select name="review_status" data-browse-filter-input class="field-input mt-2">
+						<option value="" if state.ReviewStatus == "" { selected }>All</option>
+						<option value="clean" if state.ReviewStatus == "clean" { selected }>Clean Only</option>
+						<option value="review" if state.ReviewStatus == "review" { selected }>Needs Review</option>
+					</select>
+				</div>
+				<div class="lg:col-span-2">
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Unit</label>
+					<input type="text" name="unit" value={ state.Unit } list="browse-unit-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any unit"/>
+				</div>
+				<div class="lg:col-span-2">
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Confederate Home Status</label>
+					<select name="confederate_home_status" data-browse-filter-input class="field-input mt-2">
+						<option value="" if state.ConfederateHomeStatus == "" { selected }>All</option>
+						for _, status := range confederateHomeStatuses() {
+							<option value={ status } if state.ConfederateHomeStatus == status { selected }>{ status }</option>
+						}
+					</select>
+				</div>
+				<div class="lg:col-span-2 flex flex-wrap items-end gap-3">
+					<button type="submit" class="primary-button">Apply Filters</button>
+					<a href="/browse" class="ghost-link px-4 py-2 font-semibold">Reset Browse</a>
+					<p class="text-xs text-slate-500">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p>
+				</div>
+				<div class="lg:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4">
+					<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Columns</div>
+					<div class="mt-3 flex flex-wrap gap-3 text-sm text-slate-700">
+						for _, column := range browseColumnOptions() {
+							<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.24)] bg-white px-3 py-2">
+								<input type="checkbox" value={ column.Key } data-browse-column-toggle checked class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+								<span>{ column.Label }</span>
+							</label>
+						}
+					</div>
+					<div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+						<p data-browse-selection-status>Select records across pages to keep a working set while you browse.</p>
+						<button type="button" data-browse-clear-selection class="secondary-button">Clear Selection</button>
+					</div>
+				</div>
+				@SuggestionDatalist("browse-unit-suggestions", suggestions.Unit)
+				@SuggestionDatalist("browse-pension-state-suggestions", suggestions.PensionState)
+			</form>
+			<div id="browse-results" data-ui-id={ uiids.PanelBrowseResults } class="relative">
+				@SurfaceBadge(uiids.PanelBrowseResults)
+				@BrowseResults(records, state)
+			</div>
+		</div>
+	}
+}
+
+templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState) {
+	<div data-browse-results data-browse-total={ fmt.Sprintf("%d", state.Total) }>
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600">
+			<div class="space-y-1">
+				<div>{ browseSummary(state) }</div>
+				if activeFilters := browseActiveFilters(state); len(activeFilters) > 0 {
+					<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+						<span class="font-semibold uppercase tracking-[0.16em] text-[#8d7440]">Active Filters</span>
+						for _, filter := range activeFilters {
+							<span class="rounded-full border border-[rgba(141,116,64,0.22)] bg-white/80 px-2 py-1">{ filter }</span>
+						}
+					</div>
+				}
+			</div>
+			if state.Total > 0 {
+				<div>{ fmt.Sprintf("%d", state.Total) } record(s)</div>
+			}
+		</div>
+		@BrowsePager(state)
+		if len(records) == 0 {
+			<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-4 text-sm text-slate-500">No person records matched the current browse scope and filters.</p>
+		} else {
+			<div class="overflow-hidden rounded-3xl border border-[rgba(141,116,64,0.35)] bg-white/80 shadow-[0_16px_32px_rgba(23,33,43,0.08)]">
+				<div class="overflow-x-auto">
+					<table class="min-w-full border-collapse text-sm">
+						<thead class="bg-[rgba(36,48,61,0.92)] text-left text-[#f2ede1]">
+							<tr>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs">Select</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="display_id">Display ID</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="name">Name</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="entry_type">Entry Type</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="rank_out">Rank Out</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="unit">Unit</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="pension_state">Pension State</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="review_status">Review Status</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" data-browse-column="last_edited">Last Edited</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, record := range records {
+								<tr data-browse-row-href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="border-t border-[rgba(141,116,64,0.16)] transition hover:bg-[rgba(246,241,228,0.46)]">
+									<td class="px-4 py-3 align-top">
+										<input type="checkbox" value={ fmt.Sprintf("%d", record.ID) } data-browse-select data-browse-label={ record.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+									</td>
+									<td class="px-4 py-3 align-top font-mono text-[#6f2c26]" data-browse-column="display_id">{ record.DisplayID }</td>
+									<td class="px-4 py-3 align-top" data-browse-column="name">
+										<a href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(record) }</a>
+									</td>
+									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="entry_type">{ entryBadgeLabel(record) }</td>
+									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="rank_out">{ browseCellValue(detailDisplayRank(record)) }</td>
+									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="unit">{ browseCellValue(record.Unit) }</td>
+									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="pension_state">{ browseCellValue(record.PensionState) }</td>
+									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="review_status">{ browseReviewStatus(record) }</td>
+									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="last_edited">{ browseTimestamp(record.LastEditedAt, record.UpdatedAt, record.CreatedAt) }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+		@BrowsePager(state)
+	</div>
+}
+
+templ BrowsePager(state viewmodel.BrowseState) {
+	if state.Total > 0 {
+		<div class="my-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/72 px-4 py-3 text-sm text-slate-600">
+			<div>Page { fmt.Sprintf("%d", state.Page) } of { fmt.Sprintf("%d", browsePageCount(state)) }</div>
+			<div class="flex flex-wrap gap-2">
+				if state.Page > 1 {
+					<a href={ browsePageHref(state, state.Page-1) } hx-get={ browsePageHref(state, state.Page-1) } hx-target="#browse-results" data-browse-page-link class="pill-link">← Prev</a>
+				}
+				if state.Page < browsePageCount(state) {
+					<a href={ browsePageHref(state, state.Page+1) } hx-get={ browsePageHref(state, state.Page+1) } hx-target="#browse-results" data-browse-page-link class="pill-link">Next →</a>
+				}
+			</div>
+		</div>
+	}
+}
+
+type browseColumnOption struct {
+	Key   string
+	Label string
+}
+
+func browseColumnOptions() []browseColumnOption {
+	return []browseColumnOption{
+		{Key: "display_id", Label: "Display ID"},
+		{Key: "name", Label: "Name"},
+		{Key: "entry_type", Label: "Entry Type"},
+		{Key: "rank_out", Label: "Rank Out"},
+		{Key: "unit", Label: "Unit"},
+		{Key: "pension_state", Label: "Pension State"},
+		{Key: "review_status", Label: "Review Status"},
+		{Key: "last_edited", Label: "Last Edited"},
+	}
+}
+
+func browsePageCount(state viewmodel.BrowseState) int {
+	if state.PageSize < 1 || state.Total < 1 {
+		return 1
+	}
+	count := state.Total / state.PageSize
+	if state.Total%state.PageSize != 0 {
+		count++
+	}
+	if count < 1 {
+		return 1
+	}
+	return count
+}
+
+func browsePageHref(state viewmodel.BrowseState, page int) string {
+	values := url.Values{}
+	values.Set("page", fmt.Sprintf("%d", page))
+	values.Set("page_size", fmt.Sprintf("%d", state.PageSize))
+	if strings.TrimSpace(state.Scope) != "" {
+		values.Set("scope", state.Scope)
+	}
+	if strings.TrimSpace(state.Sort) != "" {
+		values.Set("sort", state.Sort)
+	}
+	if strings.TrimSpace(state.EntryType) != "" {
+		values.Set("entry_type", state.EntryType)
+	}
+	if strings.TrimSpace(state.Unit) != "" {
+		values.Set("unit", state.Unit)
+	}
+	if strings.TrimSpace(state.PensionState) != "" {
+		values.Set("pension_state", state.PensionState)
+	}
+	if strings.TrimSpace(state.ReviewStatus) != "" {
+		values.Set("review_status", state.ReviewStatus)
+	}
+	if strings.TrimSpace(state.ConfederateHomeStatus) != "" {
+		values.Set("confederate_home_status", state.ConfederateHomeStatus)
+	}
+	return "/browse/results?" + values.Encode()
+}
+
+func browseSummary(state viewmodel.BrowseState) string {
+	scope := "All records"
+	switch state.Scope {
+	case "recently_added":
+		scope = "Recently added"
+	case "last_import":
+		scope = "Last import"
+	}
+	return fmt.Sprintf("%s | %s", scope, browseSortLabel(state.Sort))
+}
+
+func browseActiveFilters(state viewmodel.BrowseState) []string {
+	filters := make([]string, 0, 5)
+	if entryType := strings.TrimSpace(state.EntryType); entryType != "" {
+		filters = append(filters, "Entry Type: "+browseEntryTypeLabel(entryType))
+	}
+	if pensionState := strings.TrimSpace(state.PensionState); pensionState != "" {
+		filters = append(filters, "Pension State: "+pensionState)
+	}
+	if unit := strings.TrimSpace(state.Unit); unit != "" {
+		filters = append(filters, "Unit: "+unit)
+	}
+	if reviewStatus := strings.TrimSpace(state.ReviewStatus); reviewStatus != "" {
+		filters = append(filters, "Review Status: "+browseReviewStatusLabel(reviewStatus))
+	}
+	if confederateHomeStatus := strings.TrimSpace(state.ConfederateHomeStatus); confederateHomeStatus != "" {
+		filters = append(filters, "Confederate Home Status: "+confederateHomeStatus)
+	}
+	return filters
+}
+
+func browseEntryTypeLabel(entryType string) string {
+	switch strings.TrimSpace(strings.ToLower(entryType)) {
+	case "soldier":
+		return "Soldier"
+	case "linked_person":
+		return "Person Record"
+	case "wife":
+		return "Wife"
+	case "widow":
+		return "Widow"
+	default:
+		return entryType
+	}
+}
+
+func browseReviewStatusLabel(reviewStatus string) string {
+	switch strings.TrimSpace(strings.ToLower(reviewStatus)) {
+	case "clean":
+		return "Clean Only"
+	case "review":
+		return "Needs Review"
+	default:
+		return reviewStatus
+	}
+}
+
+func browseSortLabel(sort string) string {
+	switch strings.TrimSpace(sort) {
+	case "display_id_desc":
+		return "Display ID descending"
+	case "name_asc":
+		return "Name"
+	case "last_edited_desc":
+		return "Last edited"
+	case "created_desc":
+		return "Created"
+	default:
+		return "Display ID ascending"
+	}
+}
+
+func browseCellValue(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "—"
+	}
+	return trimmed
+}
+
+func browseReviewStatus(record viewmodel.PersonRecord) string {
+	if record.NeedsReview {
+		return "Needs Review"
+	}
+	return "Clean"
+}
+
+func browseTimestamp(values ...string) string {
+	for _, value := range values {
+		if formatted := formatAuditTimestamp(value); formatted != "" {
+			return formatted
+		}
+	}
+	return "—"
+}

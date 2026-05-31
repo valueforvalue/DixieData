@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -50,7 +51,7 @@ func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 	}
 	homeStatuses, err := s.queryCounts(`
 		SELECT CASE
-			WHEN TRIM(COALESCE(confederate_home_status, '')) = '' THEN 'None'
+			WHEN LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a') THEN 'NA'
 			ELSE TRIM(confederate_home_status)
 		END AS label, COUNT(*)
 		FROM soldiers
@@ -58,6 +59,9 @@ func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 		ORDER BY COUNT(*) DESC, LOWER(label) ASC`)
 	if err != nil {
 		return AnalyticsSnapshot{}, err
+	}
+	for i := range homeStatuses {
+		homeStatuses[i].Label = confederatehomestatus.Normalize(homeStatuses[i].Label)
 	}
 	homeNames, err := s.queryCounts(`
 		SELECT TRIM(confederate_home_name) AS label, COUNT(*)

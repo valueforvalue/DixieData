@@ -175,6 +175,22 @@ func (d *DB) BackfillEntryAuditIdentity() error {
 	return tx.Commit()
 }
 
+func (d *DB) EntryAuditIdentityBackfillNeeded() (bool, error) {
+	var needed int
+	if err := d.conn.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1
+			FROM soldiers
+			WHERE added_by IS NULL OR TRIM(added_by) = ''
+				OR last_edited_by IS NULL OR TRIM(last_edited_by) = ''
+				OR last_edited_at IS NULL OR TRIM(last_edited_at) = ''
+			LIMIT 1
+		)`).Scan(&needed); err != nil {
+		return false, err
+	}
+	return needed == 1, nil
+}
+
 func firstPrefixInitial(value string) string {
 	for _, r := range strings.ToUpper(strings.TrimSpace(value)) {
 		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {

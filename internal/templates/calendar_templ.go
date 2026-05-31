@@ -153,27 +153,27 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</select> <button hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</select><form hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/calendar/%d/report/pdf", month))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 39, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 39, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" hx-target=\"#calendar-export-status\" class=\"ghost-link px-4 py-2\">Export Month PDF</button></div></div><div data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" hx-target=\"#calendar-export-status\" data-pdf-pref-scope=\"calendar\" class=\"flex flex-wrap items-center gap-2\"><select name=\"orientation\" data-pdf-pref-key=\"orientation\" class=\"field-input w-36\"><option value=\"P\" selected>Portrait</option> <option value=\"L\">Landscape</option></select> <label class=\"inline-flex items-center gap-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"printer_friendly\" value=\"1\" data-pdf-pref-key=\"printerFriendly\" class=\"h-4 w-4 accent-[#8d7440]\"> <span>Printer-friendly</span></label> <button class=\"ghost-link px-4 py-2\">Export Month PDF</button></form></div></div><div data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelCalendarQuote)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 42, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 52, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -194,7 +194,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(quote.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 45, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 55, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -207,7 +207,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(quote.Author)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 46, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 56, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -225,7 +225,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(quote.Context)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 49, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 59, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -243,7 +243,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 			var templ_7745c5c3_Var14 string
 			templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelCalendarGrid)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 53, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 63, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 			if templ_7745c5c3_Err != nil {
@@ -264,7 +264,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(monthName(month))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 56, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 66, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
@@ -282,7 +282,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/anniversary/%d/%d", month, day))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 63, Col: 62}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 73, Col: 62}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", day))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 67, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 77, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -313,7 +313,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 					var templ_7745c5c3_Var18 string
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(soldiers)))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 69, Col: 210}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 79, Col: 210}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
@@ -336,7 +336,7 @@ func Calendar(month int, calendar map[int][]viewmodel.PersonRecord, counts viewm
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelCalendarDetails)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 76, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/calendar.templ`, Line: 86, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/agnivade/levenshtein"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/persondisplay"
 )
 
 const (
@@ -346,15 +347,29 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 			ID:             row.ID,
 			OtherSoldierID: row.RightID,
 			OtherDisplayID: strings.TrimSpace(right.DisplayID),
-			OtherName:      strings.TrimSpace(right.GetFullName()),
-			Reason:         row.Reason,
+			OtherName: strings.TrimSpace(persondisplay.FullName(persondisplay.NameParts{
+				Prefix:               right.Prefix,
+				ShowPrefixBeforeName: right.ShowPrefixBeforeName,
+				FirstName:            right.FirstName,
+				MiddleName:           right.MiddleName,
+				LastName:             right.LastName,
+				Suffix:               right.Suffix,
+			})),
+			Reason: row.Reason,
 		}
 		rightSummary := DuplicateAuditFindingSummary{
 			ID:             row.ID,
 			OtherSoldierID: row.LeftID,
 			OtherDisplayID: strings.TrimSpace(left.DisplayID),
-			OtherName:      strings.TrimSpace(left.GetFullName()),
-			Reason:         row.Reason,
+			OtherName: strings.TrimSpace(persondisplay.FullName(persondisplay.NameParts{
+				Prefix:               left.Prefix,
+				ShowPrefixBeforeName: left.ShowPrefixBeforeName,
+				FirstName:            left.FirstName,
+				MiddleName:           left.MiddleName,
+				LastName:             left.LastName,
+				Suffix:               left.Suffix,
+			})),
+			Reason: row.Reason,
 		}
 		results[row.LeftID] = append(results[row.LeftID], leftSummary)
 		results[row.RightID] = append(results[row.RightID], rightSummary)

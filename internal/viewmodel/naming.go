@@ -1,27 +1,16 @@
 package viewmodel
 
-import "strings"
+import (
+	"github.com/valueforvalue/DixieData/internal/persondisplay"
+)
 
 func (s PersonRecord) GetFullName() string {
-	nameParts := compactNameParts(s.Prefix, s.FirstName, s.MiddleName, s.LastName)
-	name := strings.Join(nameParts, " ")
-	suffix := strings.TrimSpace(s.Suffix)
-	if suffix == "" {
-		return name
-	}
-	if name == "" {
-		return suffix
-	}
-	return name + ", " + suffix
-}
-
-func compactNameParts(parts ...string) []string {
-	values := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			values = append(values, trimmed)
-		}
-	}
-	return values
+	return persondisplay.FullName(persondisplay.NameParts{
+		Prefix:               s.Prefix,
+		ShowPrefixBeforeName: s.ShowPrefixBeforeName,
+		FirstName:            s.FirstName,
+		MiddleName:           s.MiddleName,
+		LastName:             s.LastName,
+		Suffix:               s.Suffix,
+	})
 }

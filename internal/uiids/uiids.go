@@ -14,11 +14,13 @@ const (
 	PanelCalendarGrid           = "panel.calendar.grid"
 	PanelCalendarDetails        = "panel.calendar.details"
 	PageSoldiersList            = "page.soldiers.list"
+	PageBrowse                  = "page.browse"
 	TabSoldiersSearchBasic      = "tab.soldiers.search.basic"
 	PanelSoldiersSearchBasic    = "panel.soldiers.search.basic"
 	TabSoldiersSearchAdvanced   = "tab.soldiers.search.advanced"
 	PanelSoldiersSearchAdvanced = "panel.soldiers.search.advanced"
 	PanelSoldiersResults        = "panel.soldiers.results"
+	PanelBrowseResults          = "panel.browse.results"
 	PageSoldierDetail           = "page.soldier.detail"
 	PanelSoldierDetailSummary   = "panel.soldier.detail.summary"
 	PanelSoldierDetailRecords   = "panel.soldier.detail.records"
@@ -61,11 +63,13 @@ var Registry = []Surface{
 	{ID: PanelCalendarGrid, Kind: "panel", Description: "Month grid panel on the calendar page."},
 	{ID: PanelCalendarDetails, Kind: "panel", Description: "Calendar day detail panel that shows anniversary results."},
 	{ID: PageSoldiersList, Kind: "page", Description: "Main soldier list and search page."},
+	{ID: PageBrowse, Kind: "page", Description: "Dedicated local archive browse page."},
 	{ID: TabSoldiersSearchBasic, Kind: "tab", Description: "Quick Search tab trigger on the soldier list page."},
 	{ID: PanelSoldiersSearchBasic, Kind: "panel", Description: "Quick Search tab panel on the soldier list page."},
 	{ID: TabSoldiersSearchAdvanced, Kind: "tab", Description: "Advanced Search tab trigger on the soldier list page."},
 	{ID: PanelSoldiersSearchAdvanced, Kind: "panel", Description: "Advanced Search tab panel on the soldier list page."},
 	{ID: PanelSoldiersResults, Kind: "panel", Description: "Search results panel on the soldier list page."},
+	{ID: PanelBrowseResults, Kind: "panel", Description: "Browse results table on the browse page."},
 	{ID: PageSoldierDetail, Kind: "page", Description: "Soldier detail page."},
 	{ID: PanelSoldierDetailSummary, Kind: "panel", Description: "Summary and actions panel on the soldier detail page."},
 	{ID: PanelSoldierDetailRecords, Kind: "panel", Description: "Records section on the soldier detail page."},
