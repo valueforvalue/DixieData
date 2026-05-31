@@ -424,7 +424,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</select></div><div class=\"lg:col-span-2 flex flex-wrap items-end gap-3\"><button type=\"submit\" class=\"primary-button\">Apply Filters</button> <a href=\"/browse\" class=\"ghost-link px-4 py-2 font-semibold\">Reset Browse</a><p class=\"text-xs text-slate-500\">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p></div><div class=\"lg:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4\"><div class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Columns</div><div class=\"mt-3 flex flex-wrap gap-3 text-sm text-slate-700\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</select></div><div class=\"lg:col-span-2 flex flex-wrap items-end gap-3\"><button type=\"submit\" class=\"primary-button\">Apply Filters</button> <button type=\"button\" data-browse-reset data-browse-reset-path=\"/browse\" class=\"ghost-link px-4 py-2 font-semibold\">Reset Browse</button><p class=\"text-xs text-slate-500\">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p></div><div class=\"lg:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4\"><div class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Columns</div><div class=\"mt-3 flex flex-wrap gap-3 text-sm text-slate-700\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -460,7 +460,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</div><div class=\"mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600\"><p data-browse-selection-status>Select records across pages to keep a working set while you browse.</p><button type=\"button\" data-browse-clear-selection class=\"secondary-button\">Clear Selection</button></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</div><div class=\"mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between\"><div class=\"space-y-1 text-sm text-slate-600\"><p class=\"font-semibold text-[#22303d]\">Use the Select checkboxes to build a working set across pages, then open the printable export picker with that selection already loaded.</p><p class=\"text-xs text-slate-500\">Selections stay on this machine until you clear them, even while changing pages or filters.</p><p data-browse-selection-status>Select records across pages to keep a working set while you browse.</p></div><div class=\"flex flex-wrap items-center gap-2\"><a href=\"/share?openPrintConfig=1\" class=\"primary-button\">Print/Export Selected</a> <button type=\"button\" data-browse-clear-selection class=\"secondary-button\">Clear Selection</button></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -479,7 +479,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelBrowseResults)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 111, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 118, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -539,7 +539,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", state.Total))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 120, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 127, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -552,7 +552,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(browseSummary(state))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 123, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 130, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -575,7 +575,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(filter)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 128, Col: 102}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 135, Col: 102}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -603,7 +603,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", state.Total))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 134, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 141, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -640,7 +640,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d", record.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 159, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 166, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -653,7 +653,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", record.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 161, Col: 69}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 168, Col: 69}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -666,7 +666,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(record.DisplayID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 161, Col: 127}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 168, Col: 127}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -679,7 +679,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(record.DisplayID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 163, Col: 116}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 170, Col: 116}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -692,7 +692,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var27 templ.SafeURL
 				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinURLErrs(fmt.Sprintf("/soldiers/%d", record.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 165, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 172, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 				if templ_7745c5c3_Err != nil {
@@ -705,7 +705,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var28 string
 				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(record))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 165, Col: 142}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 172, Col: 142}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 				if templ_7745c5c3_Err != nil {
@@ -718,7 +718,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(entryBadgeLabel(record))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 167, Col: 113}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 174, Col: 113}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -731,7 +731,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(browseCellValue(detailDisplayRank(record)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 168, Col: 130}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 175, Col: 130}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
@@ -744,7 +744,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var31 string
 				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(browseCellValue(record.Unit))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 169, Col: 112}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 176, Col: 112}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 				if templ_7745c5c3_Err != nil {
@@ -757,7 +757,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var32 string
 				templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(browseCellValue(record.PensionState))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 170, Col: 129}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 177, Col: 129}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 				if templ_7745c5c3_Err != nil {
@@ -770,7 +770,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(browseReviewStatus(record))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 171, Col: 119}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 178, Col: 119}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 				if templ_7745c5c3_Err != nil {
@@ -783,7 +783,7 @@ func BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState
 				var templ_7745c5c3_Var34 string
 				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(browseTimestamp(record.LastEditedAt, record.UpdatedAt, record.CreatedAt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 172, Col: 163}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 179, Col: 163}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
@@ -840,7 +840,7 @@ func BrowsePager(state viewmodel.BrowseState) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", state.Page))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 187, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 194, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
@@ -853,7 +853,7 @@ func BrowsePager(state viewmodel.BrowseState) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", browsePageCount(state)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 187, Col: 93}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 194, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -871,7 +871,7 @@ func BrowsePager(state viewmodel.BrowseState) templ.Component {
 				var templ_7745c5c3_Var38 templ.SafeURL
 				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinURLErrs(browsePageHref(state, state.Page-1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 190, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 197, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 				if templ_7745c5c3_Err != nil {
@@ -884,7 +884,7 @@ func BrowsePager(state viewmodel.BrowseState) templ.Component {
 				var templ_7745c5c3_Var39 string
 				templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(browsePageHref(state, state.Page-1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 190, Col: 97}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 197, Col: 97}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 				if templ_7745c5c3_Err != nil {
@@ -903,7 +903,7 @@ func BrowsePager(state viewmodel.BrowseState) templ.Component {
 				var templ_7745c5c3_Var40 templ.SafeURL
 				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinURLErrs(browsePageHref(state, state.Page+1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 193, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 200, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 				if templ_7745c5c3_Err != nil {
@@ -916,7 +916,7 @@ func BrowsePager(state viewmodel.BrowseState) templ.Component {
 				var templ_7745c5c3_Var41 string
 				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(browsePageHref(state, state.Page+1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 193, Col: 97}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/browse.templ`, Line: 200, Col: 97}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {

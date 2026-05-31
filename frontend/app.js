@@ -7,6 +7,7 @@
   const browseStateStorageKey = "dixiedata.browse.state";
   const browseColumnsStorageKey = "dixiedata.browse.columns";
   const browseSelectionStorageKey = "dixiedata.browse.selection";
+  const calendarAnniversaryDensityStorageKey = "dixiedata.calendar.anniversaryDensity";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
@@ -119,6 +120,15 @@
   function loadBrowseSelection() {
     const value = loadJSONStorage(browseSelectionStorageKey, []);
     return Array.isArray(value) ? value.filter((entry) => Number.isInteger(entry) && entry > 0) : [];
+  }
+
+  function loadCalendarAnniversaryDensity() {
+    const value = loadJSONStorage(calendarAnniversaryDensityStorageKey, "expanded");
+    return value === "compact" ? "compact" : "expanded";
+  }
+
+  function saveCalendarAnniversaryDensity(mode) {
+    saveJSONStorage(calendarAnniversaryDensityStorageKey, mode === "compact" ? "compact" : "expanded");
   }
 
   function saveBrowseSelection(ids) {
@@ -1826,6 +1836,8 @@
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
     initializeBrowseView();
+    applyCalendarAnniversaryDensity();
+    openPrintConfigFromQuery();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
   }
 
@@ -1901,6 +1913,37 @@
       }
     });
     updateBrowseSelectionStatus(root);
+  }
+
+  function applyCalendarAnniversaryDensity(root = document) {
+    const mode = loadCalendarAnniversaryDensity();
+    const activeClasses = ["border-[#22303d]", "bg-[rgba(36,48,61,0.92)]", "text-[#f2ede1]"];
+    const inactiveClasses = ["border-[rgba(141,116,64,0.24)]", "bg-white/70", "text-[#51606e]"];
+    root.querySelectorAll("[data-calendar-anniversary-density]").forEach((container) => {
+      if (!(container instanceof HTMLElement)) {
+        return;
+      }
+      container.setAttribute("data-calendar-anniversary-density", mode);
+      container.querySelectorAll("[data-calendar-anniversary-expanded]").forEach((row) => {
+        if (row instanceof HTMLElement) {
+          row.classList.toggle("hidden", mode !== "expanded");
+        }
+      });
+      container.querySelectorAll("[data-calendar-anniversary-compact]").forEach((row) => {
+        if (row instanceof HTMLElement) {
+          row.classList.toggle("hidden", mode !== "compact");
+        }
+      });
+    });
+    root.querySelectorAll("[data-calendar-anniversary-density-toggle]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const isActive = button.getAttribute("data-calendar-anniversary-density-toggle") === mode;
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      activeClasses.forEach((className) => button.classList.toggle(className, isActive));
+      inactiveClasses.forEach((className) => button.classList.toggle(className, !isActive));
+    });
   }
 
   function initializeBrowseView() {
@@ -2196,31 +2239,43 @@
     return target instanceof HTMLElement ? target : null;
   }
 
-  function syncPrintRecordPickerState() {
+  function seedPrintRecordSelectionFromBrowse() {
     const form = printConfigForm();
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
+    const selected = new Set(loadBrowseSelection());
+    if (selected.size === 0) {
+      return;
+    }
+    const checkboxes = Array.from(form.querySelectorAll("[data-print-record-checkbox]")).filter((checkbox) => checkbox instanceof HTMLInputElement);
+    if (checkboxes.every((checkbox) => !checkbox.checked)) {
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = selected.has(Number.parseInt(checkbox.value || "", 10));
+      });
+      const exportAll = form.querySelector("[data-print-export-all]");
+      if (exportAll instanceof HTMLInputElement) {
+        exportAll.checked = false;
+      }
+    }
+  }
 
-    function seedPrintRecordSelectionFromBrowse() {
-      const form = printConfigForm();
-      if (!(form instanceof HTMLFormElement)) {
-        return;
-      }
-      const selected = new Set(loadBrowseSelection());
-      if (selected.size === 0) {
-        return;
-      }
-      const checkboxes = Array.from(form.querySelectorAll("[data-print-record-checkbox]")).filter((checkbox) => checkbox instanceof HTMLInputElement);
-      if (checkboxes.every((checkbox) => !checkbox.checked)) {
-        checkboxes.forEach((checkbox) => {
-          checkbox.checked = selected.has(Number.parseInt(checkbox.value || "", 10));
-        });
-        const exportAll = form.querySelector('[data-print-export-all]');
-        if (exportAll instanceof HTMLInputElement) {
-          exportAll.checked = false;
-        }
-      }
+  function openPrintConfigFromQuery() {
+    const params = new URLSearchParams(window.location.search || "");
+    if (params.get("openPrintConfig") !== "1") {
+      return;
+    }
+    openPrintConfigModal();
+    params.delete("openPrintConfig");
+    const query = params.toString();
+    const nextURL = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash || ""}`;
+    window.history.replaceState(window.history.state, "", nextURL);
+  }
+
+  function syncPrintRecordPickerState() {
+    const form = printConfigForm();
+    if (!(form instanceof HTMLFormElement)) {
+      return;
     }
     const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
     const picker = form.querySelector("[data-print-record-picker]");
@@ -2298,6 +2353,7 @@
     initializeDraftForms();
     initializeEntryTypeForms();
     initializeFloatingNav();
+    applyCalendarAnniversaryDensity();
     syncPrintRecordPickerState();
     applyPrintRecordFilter();
     restoreRedirectState();
@@ -2306,6 +2362,7 @@
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
     initializeBrowseView();
+    openPrintConfigFromQuery();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
@@ -2349,6 +2406,21 @@
       event.preventDefault();
       saveBrowseSelection([]);
       applyBrowseSelection(document);
+      return;
+    }
+    const resetBrowse = event.target.closest("[data-browse-reset]");
+    if (resetBrowse instanceof HTMLButtonElement) {
+      event.preventDefault();
+      saveBrowseState(null);
+      const resetPath = resetBrowse.getAttribute("data-browse-reset-path") || "/browse";
+      window.location.assign(resetPath);
+      return;
+    }
+    const anniversaryDensityToggle = event.target.closest("[data-calendar-anniversary-density-toggle]");
+    if (anniversaryDensityToggle instanceof HTMLButtonElement) {
+      event.preventDefault();
+      saveCalendarAnniversaryDensity(anniversaryDensityToggle.getAttribute("data-calendar-anniversary-density-toggle") || "expanded");
+      applyCalendarAnniversaryDensity(document);
       return;
     }
     const openFeedback = event.target.closest("[data-feedback-open]");

@@ -9,7 +9,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func TestCalendarDayDetailShowsCustomItemsBeforeAnniversaries(t *testing.T) {
+func TestCalendarDayDetailShowsAnniversariesBeforeCustomItemsAndCompactControls(t *testing.T) {
 	var buf bytes.Buffer
 	err := CalendarDayDetail(viewmodel.CalendarDayDetail{
 		Month: 5,
@@ -30,14 +30,38 @@ func TestCalendarDayDetailShowsCustomItemsBeforeAnniversaries(t *testing.T) {
 	}
 
 	content := buf.String()
-	eventsIndex := strings.Index(content, "Events &amp; Holidays")
 	anniversaryIndex := strings.Index(content, "Anniversaries")
-	if eventsIndex == -1 || anniversaryIndex == -1 || eventsIndex > anniversaryIndex {
-		t.Fatalf("custom items section should render before anniversaries")
+	eventsIndex := strings.Index(content, "Events &amp; Holidays")
+	if anniversaryIndex == -1 || eventsIndex == -1 || anniversaryIndex > eventsIndex {
+		t.Fatalf("anniversaries should render before custom items")
 	}
-	for _, needle := range []string{"Decoration Day", "Town observance", "Edit", "Delete", "Add Calendar Item"} {
+	for _, needle := range []string{"Decoration Day", "Town observance", "Edit", "Delete", "Add Event or Holiday", "Expanded", "Compact", "data-calendar-anniversary-density"} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("calendar day detail missing %s", needle)
+		}
+	}
+}
+
+func TestCalendarDayDetailOpensActionMenuWhileEditing(t *testing.T) {
+	var buf bytes.Buffer
+	err := CalendarDayDetail(viewmodel.CalendarDayDetail{
+		Month: 5,
+		Day:   12,
+		Form: viewmodel.CalendarItemForm{
+			EditingID: 7,
+			ItemType:  "event",
+			Title:     "Camp reunion",
+		},
+		AllowCustomItems: true,
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{"<details class=\"relative\" open>", "Edit Calendar Item", "Cancel Edit", "Save Changes"} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("calendar day edit popout missing %s", needle)
 		}
 	}
 }
