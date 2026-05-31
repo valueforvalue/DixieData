@@ -555,20 +555,6 @@ func recorderBodyForPath(t *testing.T, app *App, path string) string {
 	return rec.Body.String()
 }
 
-func TestUniqueDirectoryPathAddsNumericSuffix(t *testing.T) {
-	root := t.TempDir()
-	base := filepath.Join(root, "dixiedata-printable-archive-jpg-2026-04-28")
-	if err := os.MkdirAll(base, 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-
-	got := uniqueDirectoryPath(base)
-	want := base + "-2"
-	if got != want {
-		t.Fatalf("uniqueDirectoryPath = %q want %q", got, want)
-	}
-}
-
 func TestExportLinkMarkupIncludesFileURL(t *testing.T) {
 	markup := exportLinkMarkup("PDF ready:", `C:\Development\DixieData\build\bin\DixieData.pdf`)
 	if !strings.Contains(markup, `file:///C:/Development/DixieData/build/bin/DixieData.pdf`) {

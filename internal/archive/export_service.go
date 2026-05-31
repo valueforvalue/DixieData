@@ -2364,10 +2364,6 @@ func printablePDFMetadataDetails(settings PrintSettings) map[string]string {
 	return metadata
 }
 
-func printableJPGPageName(pageNumber int) string {
-	return fmt.Sprintf("dixiedata-printable-archive-page-%03d.jpg", pageNumber)
-}
-
 func printableSortLabel(sortBy string) string {
 	switch strings.TrimSpace(sortBy) {
 	case PrintSortBirthYear:

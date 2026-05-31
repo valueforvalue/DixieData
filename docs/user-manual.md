@@ -337,7 +337,7 @@ Creates a standalone browser-viewable archive export.
 
 ### Full Database Printable PDF
 
-Creates a branded full-database printable PDF.
+Creates a branded printable PDF for the full archive or for the currently selected record set.
 
 Available sort options:
 

@@ -83,7 +83,7 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	}
 }
 
-func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
+func TestSoldierDetailShowsPDFExportAction(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
 		ID:        42,

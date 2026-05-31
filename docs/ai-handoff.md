@@ -39,7 +39,7 @@ Common contents:
 
 - `dixiedata.db` - main SQLite database
 - `images\` - sharded image storage
-- `scratchpads\` - per-record scratch pad text/json files
+- `scratchpads\` - optional bridge `.txt`/`.json` files for the external scratch pad window; canonical scratch pad content now lives in SQLite
 - `backups\` - generated backup artifacts such as exported `.ddbak` bundles
 - `updates\backups\` - retained pre-upgrade DB snapshots plus their recovery metadata index
 - `merge-review\` - staged merge-review working files

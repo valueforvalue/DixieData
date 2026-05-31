@@ -13,28 +13,29 @@ import (
 )
 
 const diagnosticsFormatName = "dixiedata-diagnostic-bundle"
-const diagnosticsBundleVersion = 1
+const diagnosticsBundleVersion = 2
 
 type DiagnosticsManifest struct {
-	Format          string            `json:"format"`
-	Version         int               `json:"version"`
-	AppVersion      string            `json:"app_version"`
-	SchemaVersion   int               `json:"schema_version"`
-	CreatedAt       string            `json:"created_at"`
-	DatabaseFile    string            `json:"database_file"`
-	ImageRoot       string            `json:"image_root"`
-	ScratchpadRoot  string            `json:"scratchpad_root"`
-	LogRoot         string            `json:"log_root"`
-	Soldiers        int               `json:"soldiers"`
-	Records         int               `json:"records"`
-	Images          int               `json:"images"`
-	ScratchpadFiles int               `json:"scratchpad_files"`
-	LogFiles        int               `json:"log_files"`
-	GOOS            string            `json:"goos"`
-	GOARCH          string            `json:"goarch"`
-	Executable      string            `json:"executable"`
-	DataDir         string            `json:"data_dir"`
-	Environment     map[string]string `json:"environment"`
+	Format                string            `json:"format"`
+	Version               int               `json:"version"`
+	AppVersion            string            `json:"app_version"`
+	SchemaVersion         int               `json:"schema_version"`
+	CreatedAt             string            `json:"created_at"`
+	DatabaseFile          string            `json:"database_file"`
+	ImageRoot             string            `json:"image_root"`
+	ScratchpadBridgeRoot  string            `json:"scratchpad_bridge_root"`
+	LogRoot               string            `json:"log_root"`
+	Soldiers              int               `json:"soldiers"`
+	Records               int               `json:"records"`
+	Images                int               `json:"images"`
+	Scratchpads           int               `json:"scratchpads"`
+	ScratchpadBridgeFiles int               `json:"scratchpad_bridge_files"`
+	LogFiles              int               `json:"log_files"`
+	GOOS                  string            `json:"goos"`
+	GOARCH                string            `json:"goarch"`
+	Executable            string            `json:"executable"`
+	DataDir               string            `json:"data_dir"`
+	Environment           map[string]string `json:"environment"`
 }
 
 type DiagnosticsService struct {
@@ -89,7 +90,11 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 	if err != nil {
 		return DiagnosticsManifest{}, err
 	}
-	scratchpadFiles, err := countFilesUnder(filepath.Join(dataDir, "scratchpads"))
+	scratchpads, err := d.db.ScratchpadCount()
+	if err != nil {
+		return DiagnosticsManifest{}, err
+	}
+	scratchpadBridgeFiles, err := countFilesUnder(filepath.Join(dataDir, "scratchpads"))
 	if err != nil {
 		return DiagnosticsManifest{}, err
 	}
@@ -102,24 +107,25 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 		executable = ""
 	}
 	return DiagnosticsManifest{
-		Format:          diagnosticsFormatName,
-		Version:         diagnosticsBundleVersion,
-		AppVersion:      buildinfo.AppVersion,
-		SchemaVersion:   buildinfo.SchemaVersion,
-		CreatedAt:       time.Now().Format(time.RFC3339),
-		DatabaseFile:    filepath.ToSlash(filepath.Join("data", db.FileName)),
-		ImageRoot:       "images/",
-		ScratchpadRoot:  "scratchpads/",
-		LogRoot:         "logs/",
-		Soldiers:        soldiers,
-		Records:         records,
-		Images:          images,
-		ScratchpadFiles: scratchpadFiles,
-		LogFiles:        logFiles,
-		GOOS:            runtime.GOOS,
-		GOARCH:          runtime.GOARCH,
-		Executable:      executable,
-		DataDir:         dataDir,
+		Format:                diagnosticsFormatName,
+		Version:               diagnosticsBundleVersion,
+		AppVersion:            buildinfo.AppVersion,
+		SchemaVersion:         buildinfo.SchemaVersion,
+		CreatedAt:             time.Now().Format(time.RFC3339),
+		DatabaseFile:          filepath.ToSlash(filepath.Join("data", db.FileName)),
+		ImageRoot:             "images/",
+		ScratchpadBridgeRoot:  "scratchpads/",
+		LogRoot:               "logs/",
+		Soldiers:              soldiers,
+		Records:               records,
+		Images:                images,
+		Scratchpads:           scratchpads,
+		ScratchpadBridgeFiles: scratchpadBridgeFiles,
+		LogFiles:              logFiles,
+		GOOS:                  runtime.GOOS,
+		GOARCH:                runtime.GOARCH,
+		Executable:            executable,
+		DataDir:               dataDir,
 		Environment: map[string]string{
 			"DIXIEDATA_DATA_DIR":     os.Getenv("DIXIEDATA_DATA_DIR"),
 			"DIXIEDATA_DEBUG_UI_IDS": os.Getenv("DIXIEDATA_DEBUG_UI_IDS"),
