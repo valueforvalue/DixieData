@@ -232,7 +232,7 @@ Quick search looks across major record text, including:
 
 The result cards show the field that matched.
 
-The quick-search index uses SQLite **FTS5** plus the person-record scratch-pad cache, so scratch-pad text participates in the same local-archive-wide search experience.
+The quick-search index uses SQLite **FTS5** plus the person-record scratch-pad store, so scratch-pad text participates in the same local-archive-wide search experience.
 
 ## 9.2 Advanced search
 
@@ -476,8 +476,8 @@ The loading screen should now refresh automatically while the app finishes start
 
 ### Search is not finding expected scratch pad text
 
-- open the record’s scratch pad once and confirm the content is saved
-- retry the search after the record is indexed
+- confirm the record’s scratch pad window was closed after editing so the latest text saved back to the archive
+- retry the search after the updated text is indexed
 
 ### A record is wrongly flagged as a duplicate
 

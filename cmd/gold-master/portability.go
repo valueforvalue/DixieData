@@ -196,15 +196,14 @@ func buildFieldAudit(liveDBPath, backupDBPath string, backupEntries map[string][
 	}
 	result["new_record_metadata"] = check("new_record_metadata", metadataPresent, "Entry type and review metadata are present in the embedded backup database.")
 
-	scratchpadBundled := hasPathPrefix(backupEntries, "scratchpads/")
 	scratchpadCacheCount, err := tableCount(backupDBPath, "scratchpad_cache")
 	if err != nil {
 		return nil, err
 	}
 	result["scratchpads_and_search_cache"] = check(
 		"scratchpads_and_search_cache",
-		scratchpadBundled && scratchpadCacheCount > 0,
-		"Checks for raw scratchpad files plus scratchpad_cache rows in the archive.",
+		scratchpadCacheCount > 0,
+		"Checks that scratch pad content survives inside the embedded archive database.",
 	)
 
 	duplicateAuditCount, err := tableCount(backupDBPath, "duplicate_audit_findings")

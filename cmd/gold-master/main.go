@@ -443,14 +443,7 @@ func seedFixture(dataDir string, database *db.DB, soldierSvc *services.SoldierSe
 		return sampleFixture{}, err
 	}
 
-	textPath, _ := appdata.ScratchpadPaths(dataDir, soldier.DisplayID)
-	if err := os.MkdirAll(filepath.Dir(textPath), 0o755); err != nil {
-		return sampleFixture{}, err
-	}
-	if err := os.WriteFile(textPath, []byte("Gold master scratch pad note for FTS coverage."), 0o644); err != nil {
-		return sampleFixture{}, err
-	}
-	if err := database.SyncScratchpadSearchIndex(); err != nil {
+	if err := database.SaveScratchpad(soldier.DisplayID, "Gold master scratch pad note for FTS coverage."); err != nil {
 		return sampleFixture{}, err
 	}
 	if _, err := database.Conn().Exec(`INSERT INTO duplicate_audit_findings (pair_key, left_soldier_id, right_soldier_id, finding_type, reason, highlight_fields, status, last_detected_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,

@@ -534,9 +534,6 @@ func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.
 }
 
 func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]models.Soldier, int, error) {
-	if err := s.db.SyncScratchpadSearchIndex(); err != nil {
-		return nil, 0, err
-	}
 	conn := s.db.Conn()
 	matchQuery := ftsSearchExpression(query)
 	if matchQuery == "" {

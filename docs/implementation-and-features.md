@@ -101,12 +101,12 @@ This prevents an oversized single directory at scale.
 
 ### 4.2 Scratch pads
 
-Each record may have:
+Each record may have canonical scratch pad content stored in SQLite plus optional bridge files under `scratchpads\` when the external editor window is opened:
 
-- a `.txt` scratch pad
-- a `.json` scratch pad state file
+- a bridge `.txt` file for the Windows scratch pad window
+- a `.json` scratch pad state file for that window
 
-Scratch pad contents are synced into `scratchpad_cache` for FTS indexing.
+Scratch pad search indexing reads the canonical `scratchpad_cache` table directly.
 
 ## 5. Database design
 
@@ -191,7 +191,7 @@ Implemented features:
 
 ## 6.3 Scratch Pad
 
-The floating Scratch Pad button launches a per-person-record scratch pad from supported pages. Scratch pad text is indexed for search.
+The floating Scratch Pad button launches a per-person-record scratch pad from supported pages. Scratch pad text is saved in the local archive database and indexed for search.
 
 ## 6.4 Search
 

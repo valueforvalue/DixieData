@@ -3042,7 +3042,7 @@ func (a *App) reloadServices() error {
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
 	a.updater = update.NewService(a.database, a.dataDir)
-	a.scratchpads = scratchpad.NewLauncher(a.dataDir)
+	a.scratchpads = scratchpad.NewLauncher(a.dataDir, a.database)
 	if a.database != nil {
 		if err := a.images.EnsureShardedStorage(a.dataDir); err != nil {
 			return err

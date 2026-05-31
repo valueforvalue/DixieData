@@ -2,12 +2,9 @@ package records
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -1324,12 +1321,8 @@ func TestSoldierService_SearchPageMatchesNotesAndScratchPad(t *testing.T) {
 		t.Fatalf("unexpected notes match metadata: %#v", noteResults[0])
 	}
 
-	textPath, _ := appdata.ScratchpadPaths(d.DataDir(), soldier.DisplayID)
-	if err := os.MkdirAll(filepath.Dir(textPath), 0o755); err != nil {
-		t.Fatalf("MkdirAll scratchpad: %v", err)
-	}
-	if err := os.WriteFile(textPath, []byte("Private memo about the Roswell depot."), 0o644); err != nil {
-		t.Fatalf("WriteFile scratchpad: %v", err)
+	if err := d.SaveScratchpad(soldier.DisplayID, "Private memo about the Roswell depot."); err != nil {
+		t.Fatalf("SaveScratchpad: %v", err)
 	}
 
 	scratchResults, total, err := svc.SearchPage("Roswell", 1, 10)
