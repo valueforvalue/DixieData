@@ -817,6 +817,10 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleSoldierPDFNoImages(w, r, id)
 		return
 	}
+	if len(parts) > 1 && parts[1] == "jpg" {
+		a.handleSoldierJPG(w, r, id)
+		return
+	}
 	if len(parts) > 1 && parts[1] == "pdf" {
 		a.handleSoldierPDF(w, r, id)
 		return
@@ -2146,6 +2150,50 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 	fmt.Fprint(w, exportLinkMarkup("PDF without images ready:", path))
 }
 
+func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	soldier, err := a.soldiers.GetByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	for i := range soldier.Images {
+		soldier.Images[i].ResolvedPath = filepath.Join(a.dataDir, filepath.FromSlash(soldier.Images[i].FilePath))
+	}
+	options := parsePDFOptionsRequest(r, "L", true)
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: soldierJPGName(*soldier, options),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JPEG image", Pattern: "*.jpg"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "JPG export cancelled.")
+		return
+	}
+
+	paths, err := a.export.ExportSoldierJPG(path, *soldier, options)
+	if err != nil {
+		fmt.Fprintf(w, "JPG export failed: %v", err)
+		return
+	}
+
+	label := "JPG ready:"
+	if len(paths) > 1 {
+		label = fmt.Sprintf("JPG ready (%d pages; first page shown):", len(paths))
+	}
+	fmt.Fprint(w, exportLinkMarkup(label, paths[0]))
+}
+
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -2728,6 +2776,14 @@ func soldierPDFName(soldier models.Soldier, options archive.PDFOptions) string {
 	return pdfReportName(base, options, !options.IncludeImages)
 }
 
+func soldierJPGName(soldier models.Soldier, options archive.PDFOptions) string {
+	base := strings.TrimSpace(soldier.DisplayID)
+	if base == "" {
+		base = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
+	}
+	return jpgReportName(base, options, !options.IncludeImages)
+}
+
 func soldierPDFNameNoImages(soldier models.Soldier) string {
 	base := strings.TrimSpace(soldier.DisplayID)
 	if base == "" {
@@ -2754,6 +2810,15 @@ func pdfReportName(base string, options archive.PDFOptions, noImages bool) strin
 		stem += "-" + suffix
 	}
 	return stem + ".pdf"
+}
+
+func jpgReportName(base string, options archive.PDFOptions, noImages bool) string {
+	stem := sanitizedFileStem(base, "jpg-report")
+	suffix := pdfOptionFilenameSuffix(options, noImages)
+	if suffix != "" {
+		stem += "-" + suffix
+	}
+	return stem + ".jpg"
 }
 
 func pdfOptionFilenameSuffix(options archive.PDFOptions, noImages bool) string {
@@ -3280,7 +3345,7 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 			issues = append(issues, err.Error())
 			continue
 		}
-		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, fileHeader.Filename); err != nil {
+		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, ""); err != nil {
 			_ = os.Remove(absolutePath)
 			issues = append(issues, err.Error())
 			continue
@@ -3335,7 +3400,7 @@ func (a *App) importImagePaths(soldier models.Soldier, paths []string) (int, err
 			issues = append(issues, err.Error())
 			continue
 		}
-		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, fileName); err != nil {
+		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, ""); err != nil {
 			_ = os.Remove(absolutePath)
 			issues = append(issues, err.Error())
 			continue

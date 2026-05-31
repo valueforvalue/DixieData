@@ -734,8 +734,37 @@ func TestSoldierService_GetImageByID(t *testing.T) {
 	if image.FileName != "portrait.png" {
 		t.Fatalf("FileName = %q", image.FileName)
 	}
+	if image.Caption != "Portrait" {
+		t.Fatalf("Caption = %q", image.Caption)
+	}
 	if !image.IsPrimary {
 		t.Fatalf("expected image to be primary: %#v", image)
+	}
+}
+
+func TestSoldierService_AddImagePreservesEmptyCaption(t *testing.T) {
+	d := newTestDB(t)
+	configureExportIdentity(t, d)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{FirstName: "Thomas", LastName: "Silence"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.AddImage(created.ID, "portrait.png", `images\silence\portrait.png`, ""); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	soldier, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	image, err := svc.GetImageByID(soldier.Images[0].ID)
+	if err != nil {
+		t.Fatalf("GetImageByID: %v", err)
+	}
+	if image.Caption != "" {
+		t.Fatalf("Caption = %q, want empty", image.Caption)
 	}
 }
 

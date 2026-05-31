@@ -83,7 +83,7 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	}
 }
 
-func TestSoldierDetailShowsPDFExportAction(t *testing.T) {
+func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
 		ID:        42,
@@ -98,7 +98,10 @@ func TestSoldierDetailShowsPDFExportAction(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"/soldiers/42/pdf",
+		"/soldiers/42/jpg",
+		"Export Record",
 		"Export PDF",
+		"Export JPG",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("detail view missing export action %s", needle)
