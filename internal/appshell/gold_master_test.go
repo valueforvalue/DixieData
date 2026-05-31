@@ -118,12 +118,8 @@ func TestGoldMasterSearchIndexesScratchpadViaHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create soldier: %v", err)
 	}
-	textPath, _ := appdata.ScratchpadPaths(app.dataDir, soldier.DisplayID)
-	if err := os.MkdirAll(filepath.Dir(textPath), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	if err := os.WriteFile(textPath, []byte("Ghosted rail depot notes for gold master FTS coverage."), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	if err := app.database.SaveScratchpad(soldier.DisplayID, "Ghosted rail depot notes for gold master FTS coverage."); err != nil {
+		t.Fatalf("SaveScratchpad: %v", err)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/soldiers/search?q=rail+depot", nil)

@@ -4,11 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
-	"time"
 
-	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
@@ -16,11 +12,8 @@ import (
 )
 
 type DB struct {
-	conn                 *sql.DB
-	dataDir              string
-	scratchpadIndexMu    sync.Mutex
-	scratchpadIndexState map[string]scratchpadFileState
-	scratchpadIndexReady bool
+	conn    *sql.DB
+	dataDir string
 }
 
 func Open(dataDir string) (*DB, error) {
@@ -32,11 +25,7 @@ func Open(dataDir string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	d := &DB{
-		conn:                 conn,
-		dataDir:              dataDir,
-		scratchpadIndexState: map[string]scratchpadFileState{},
-	}
+	d := &DB{conn: conn, dataDir: dataDir}
 	if err := backupBeforeMigrationIfNeeded(d, dbPath); err != nil {
 		conn.Close()
 		return nil, err
@@ -45,7 +34,7 @@ func Open(dataDir string) (*DB, error) {
 		conn.Close()
 		return nil, err
 	}
-	if err := d.SyncScratchpadSearchIndex(); err != nil {
+	if err := d.ImportLegacyScratchpadFiles(); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -99,121 +88,4 @@ func (d *DB) Conn() *sql.DB {
 
 func (d *DB) DataDir() string {
 	return d.dataDir
-}
-
-type scratchpadFileState struct {
-	ModTime   time.Time
-	Size      int64
-	SoldierID int64
-}
-
-func (d *DB) SyncScratchpadSearchIndex() error {
-	d.scratchpadIndexMu.Lock()
-	defer d.scratchpadIndexMu.Unlock()
-
-	scratchpadDir := filepath.Join(d.dataDir, "scratchpads")
-	entries, err := os.ReadDir(scratchpadDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if len(d.scratchpadIndexState) == 0 {
-				d.scratchpadIndexReady = true
-				return nil
-			}
-			if _, clearErr := d.conn.Exec(`DELETE FROM scratchpad_cache`); clearErr != nil {
-				return clearErr
-			}
-			d.scratchpadIndexState = map[string]scratchpadFileState{}
-			d.scratchpadIndexReady = true
-			return nil
-		}
-		return err
-	}
-
-	soldierRows, err := d.conn.Query(`SELECT id, display_id FROM soldiers`)
-	if err != nil {
-		return err
-	}
-	defer soldierRows.Close()
-
-	soldierByStem := map[string]int64{}
-	for soldierRows.Next() {
-		var (
-			soldierID int64
-			displayID string
-		)
-		if err := soldierRows.Scan(&soldierID, &displayID); err != nil {
-			return err
-		}
-		stem := scratchpadStemForDisplayID(displayID)
-		if stem != "" {
-			soldierByStem[stem] = soldierID
-		}
-	}
-	if err := soldierRows.Err(); err != nil {
-		return err
-	}
-
-	current := map[string]scratchpadFileState{}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".txt") {
-			continue
-		}
-		soldierID, ok := soldierByStem[strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))]
-		if !ok {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		current[entry.Name()] = scratchpadFileState{
-			ModTime:   info.ModTime().UTC(),
-			Size:      info.Size(),
-			SoldierID: soldierID,
-		}
-		previous, seen := d.scratchpadIndexState[entry.Name()]
-		if seen && previous.ModTime.Equal(current[entry.Name()].ModTime) && previous.Size == current[entry.Name()].Size && previous.SoldierID == soldierID {
-			continue
-		}
-		content, err := os.ReadFile(filepath.Join(scratchpadDir, entry.Name()))
-		if err != nil {
-			return err
-		}
-		if _, err := d.conn.Exec(`
-			INSERT INTO scratchpad_cache (soldier_id, scratch_pad, updated_at)
-			VALUES (?, ?, CURRENT_TIMESTAMP)
-			ON CONFLICT(soldier_id) DO UPDATE SET scratch_pad = excluded.scratch_pad, updated_at = CURRENT_TIMESTAMP`,
-			soldierID, string(content)); err != nil {
-			return err
-		}
-	}
-
-	if err := d.clearRemovedScratchpadCache(current); err != nil {
-		return err
-	}
-	d.scratchpadIndexState = current
-	d.scratchpadIndexReady = true
-	return nil
-}
-
-func (d *DB) clearRemovedScratchpadCache(current map[string]scratchpadFileState) error {
-	for name, previous := range d.scratchpadIndexState {
-		if current != nil {
-			if replacement, ok := current[name]; ok && replacement.SoldierID == previous.SoldierID {
-				continue
-			}
-		}
-		if _, err := d.conn.Exec(`DELETE FROM scratchpad_cache WHERE soldier_id = ?`, previous.SoldierID); err != nil {
-			return err
-		}
-	}
-	if current == nil {
-		d.scratchpadIndexState = map[string]scratchpadFileState{}
-	}
-	return nil
-}
-
-func scratchpadStemForDisplayID(displayID string) string {
-	textPath, _ := appdata.ScratchpadPaths("", displayID)
-	return strings.TrimSuffix(filepath.Base(textPath), filepath.Ext(textPath))
 }

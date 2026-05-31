@@ -6,7 +6,7 @@ DixieData is a Windows-first Wails desktop archive for Civil War research record
 
 - manages soldier, wife, and widow records in one archive
 - supports search, review queues, analytics, and research workflows
-- stores scratch pads and images alongside the local archive data
+- stores scratch pads in the local archive database and images alongside the local archive data
 - exports printable reports, JSON/Excel/iCalendar output, `.ddbak` backups, and `.ddshare` merge archives
 - includes optional Google Drive, Sheets, and Calendar integrations
 

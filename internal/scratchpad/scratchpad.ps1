@@ -240,7 +240,7 @@ try {
     $footer.Height = 30
     $footer.Padding = New-Object System.Windows.Forms.Padding(14, 6, 14, 0)
     $footer.ForeColor = [System.Drawing.Color]::FromArgb(90, 102, 114)
-    $footer.Text = 'Local only. Stored per Record ID outside the database. Font size and wrap preference are remembered.'
+    $footer.Text = 'Saved with the local archive database. Font size and wrap preference are remembered.'
 
     $form.Controls.Add($textbox)
     $form.Controls.Add($footer)
