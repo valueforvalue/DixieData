@@ -89,7 +89,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 	@Layout(comparisonTitle(comparison)) {
 		<div data-ui-id={ uiids.PageReviewQueueCompare } class="relative mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageReviewQueueCompare)
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">{ comparisonTitle(comparison) }</h2>
 					<p class="mt-2 text-sm text-slate-600">{ comparison.Reason }</p>

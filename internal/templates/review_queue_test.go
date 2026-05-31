@@ -112,6 +112,7 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 		"John",
 		"Jon",
 		"/review-queue/compare/4/resolve",
+		"xl:flex-row xl:items-start xl:justify-between",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("comparison view missing %s", needle)

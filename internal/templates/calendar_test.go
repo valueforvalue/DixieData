@@ -103,7 +103,7 @@ func TestCalendarCompactsExportControlsIntoFoldout(t *testing.T) {
 	}
 
 	content := buf.String()
-	for _, needle := range []string{"Export Month", "PDF / Print", "Monthly Calendar Export", "Printer-friendly"} {
+	for _, needle := range []string{"Export Month", "PDF / Print", "Monthly Calendar Export", "Printer-friendly", "xl:flex-row", "xl:justify-end", "absolute left-0", "xl:left-auto xl:right-0"} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("calendar missing compact export control fragment %s", needle)
 		}

@@ -48,6 +48,8 @@ func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 		"Birth and Death Decades",
 		"Advanced Duplicate Discovery",
 		"Audit Now",
+		"xl:flex-row xl:items-start xl:justify-between",
+		"xl:items-end",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("insights view missing %s", needle)
