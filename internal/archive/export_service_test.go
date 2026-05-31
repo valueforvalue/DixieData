@@ -349,6 +349,53 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if !strings.Contains(entries["index.html"], "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
 		t.Fatalf("index.html missing version/build footer")
 	}
+	if !strings.Contains(entries["viewer.html"], "return text || 'Unknown';") {
+		t.Fatalf("viewer.html should show Unknown for blank dates: %s", entries["viewer.html"])
+	}
+	if !strings.Contains(entries["viewer.html"], "['Prefix', blankDetailValue(record.prefix)]") ||
+		!strings.Contains(entries["viewer.html"], "['Unit', blankDetailValue(record.unit)]") {
+		t.Fatalf("viewer.html should keep blank name/service fields blank: %s", entries["viewer.html"])
+	}
+}
+
+func TestRecordPDFFieldsUseDisplaySpecificEmptyStates(t *testing.T) {
+	soldier := models.Soldier{
+		EntryType:             "soldier",
+		ConfederateHomeStatus: "N/A",
+		ConfederateHomeName:   "",
+		PensionState:          "N/A",
+	}
+
+	identity := recordIdentityFields(soldier)
+	service := recordServiceFields(soldier, false)
+
+	assertPDFField := func(fields []pdfField, label, want string, wantVisible bool) {
+		t.Helper()
+		for _, field := range fields {
+			if field.Label != label {
+				continue
+			}
+			if field.visible() != wantVisible {
+				t.Fatalf("%s visible = %v, want %v", label, field.visible(), wantVisible)
+			}
+			if field.renderedValue() != want {
+				t.Fatalf("%s renderedValue = %q, want %q", label, field.renderedValue(), want)
+			}
+			return
+		}
+		t.Fatalf("missing field %s", label)
+	}
+
+	assertPDFField(identity, "Prefix", "", true)
+	assertPDFField(identity, "First Name", "", true)
+	assertPDFField(identity, "Birth Date", "Unknown", true)
+	assertPDFField(identity, "Death Date", "Unknown", true)
+	assertPDFField(service, "Rank In", "", true)
+	assertPDFField(service, "Rank Out", "", true)
+	assertPDFField(service, "Unit", "", true)
+	assertPDFField(service, "Pension State", "N/A", true)
+	assertPDFField(service, "Confederate Home Status", "N/A", true)
+	assertPDFField(service, "Confederate Home Name", "N/A", true)
 }
 
 func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
@@ -544,7 +591,7 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 		DisplayID:       "PENSION-42",
 		FirstName:       "Robert",
 		LastName:        "Lee",
-		PensionState:    "NA",
+		PensionState:    "N/A",
 		SpouseSoldierID: 5,
 		SpouseName:      "Mary Lee",
 		Notes:           "Reference https://example.com/notes and [[PENSION-42]].",
@@ -1270,10 +1317,10 @@ func TestRegistryEntryLinesUseServiceSummaryFormatting(t *testing.T) {
 
 	found := false
 	for _, line := range lines {
-		if line[0] == "Service Summary" {
+		if line.Label == "Service Summary" {
 			found = true
-			if line[1] != "Captain - 1st Virginia" {
-				t.Fatalf("service summary = %q, want %q", line[1], "Captain - 1st Virginia")
+			if line.Value != "Captain 1st Virginia" {
+				t.Fatalf("service summary = %q, want %q", line.Value, "Captain 1st Virginia")
 			}
 		}
 	}
@@ -1290,9 +1337,9 @@ func TestRegistryEntryLinesNormalizePensionStateNA(t *testing.T) {
 	})
 
 	for _, line := range lines {
-		if line[0] == "Pension / Application" {
-			if line[1] != "NA | P-123" {
-				t.Fatalf("pension summary = %q, want %q", line[1], "NA | P-123")
+		if line.Label == "Pension / Application" {
+			if line.Value != "N/A | P-123" {
+				t.Fatalf("pension summary = %q, want %q", line.Value, "N/A | P-123")
 			}
 			return
 		}

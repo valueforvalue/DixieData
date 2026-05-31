@@ -77,14 +77,18 @@ func hasActiveSearch(search viewmodel.PersonRecordSearch) bool {
 }
 
 func deathDate(s viewmodel.PersonRecord) string {
-	return dates.Display(s.DeathDate)
+	return dates.DisplayUnknown(s.DeathDate)
 }
 
 func emptyDetail(value string) string {
 	if strings.TrimSpace(value) == "" {
-		return "Not recorded"
+		return "N/A"
 	}
 	return value
+}
+
+func blankDetail(value string) string {
+	return strings.TrimSpace(value)
 }
 
 func formatAuditTimestamp(value string) string {
@@ -386,11 +390,11 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 				<dl class="responsive-two-col grid gap-2 text-sm">
 					<dt class="text-slate-500">Person Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Display ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
-					<dt class="text-slate-500">Middle Name</dt><dd>{ emptyDetail(s.MiddleName) }</dd>
+					<dt class="text-slate-500">Middle Name</dt><dd>{ blankDetail(s.MiddleName) }</dd>
 					if isSoldierEntry(s) {
-						<dt class="text-slate-500">Rank In</dt><dd>{ emptyDetail(s.RankIn) }</dd>
-						<dt class="text-slate-500">Rank Out</dt><dd>{ emptyDetail(detailDisplayRank(s)) }</dd>
-						<dt class="text-slate-500">Unit</dt><dd>{ emptyDetail(s.Unit) }</dd>
+						<dt class="text-slate-500">Rank In</dt><dd>{ blankDetail(s.RankIn) }</dd>
+						<dt class="text-slate-500">Rank Out</dt><dd>{ blankDetail(detailDisplayRank(s)) }</dd>
+						<dt class="text-slate-500">Unit</dt><dd>{ blankDetail(s.Unit) }</dd>
 						<dt class="text-slate-500">Pension State</dt><dd>{ emptyDetail(s.PensionState) }</dd>
 						<dt class="text-slate-500">Confederate Home Status</dt><dd>{ emptyDetail(s.ConfederateHomeStatus) }</dd>
 						<dt class="text-slate-500">Confederate Home Name</dt><dd>{ emptyDetail(s.ConfederateHomeName) }</dd>
@@ -410,7 +414,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							<dt class="text-slate-500">Application ID</dt><dd>{ emptyDetail(s.ApplicationID) }</dd>
 						}
 					}
-					<dt class="text-slate-500">Birth Date</dt><dd>{ emptyDetail(dates.Display(s.BirthDate)) }</dd>
+					<dt class="text-slate-500">Birth Date</dt><dd>{ dates.DisplayUnknown(s.BirthDate) }</dd>
 					<dt class="text-slate-500">Death</dt><dd>{ deathDate(s) }</dd>
 					<dt class="text-slate-500">Birth Info</dt><dd>{ emptyDetail(s.BirthInfo) }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
@@ -968,7 +972,7 @@ func relationshipLabel(s viewmodel.PersonRecord) string {
 	case s.LinkedSoldierID > 0:
 		return fmt.Sprintf("DB ID %d", s.LinkedSoldierID)
 	default:
-		return "Not recorded"
+		return "N/A"
 	}
 }
 

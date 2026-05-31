@@ -713,14 +713,14 @@ func buildDuplicateAuditComparisonFields(left, right models.Soldier, highlights 
 
 func auditComparisonValue(value string) string {
 	if strings.TrimSpace(value) == "" {
-		return "Not recorded"
+		return "N/A"
 	}
 	return strings.TrimSpace(value)
 }
 
 func auditComparisonIntValue(value int) string {
 	if value < 1000 {
-		return "Not recorded"
+		return "N/A"
 	}
 	return strconv.Itoa(value)
 }

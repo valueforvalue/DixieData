@@ -10,16 +10,26 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-func Calendar(month int, calendar map[int][]models.Soldier, counts models.ArchiveCounts, quote models.Quote) templ.Component {
-	return templates.Calendar(month, viewmodel.CalendarFromModels(calendar), viewmodel.ArchiveCountsFromModel(counts), viewmodel.QuoteFromModel(quote))
+func Calendar(month int, summary map[int]records.CalendarDaySummary, counts models.ArchiveCounts, quote models.Quote) templ.Component {
+	return templates.Calendar(month, viewmodel.CalendarDaySummariesFromDomain(summary), viewmodel.ArchiveCountsFromModel(counts), viewmodel.QuoteFromModel(quote))
+}
+
+func CalendarGrid(month int, summary map[int]records.CalendarDaySummary) templ.Component {
+	return templates.CalendarGrid(month, viewmodel.CalendarDaySummariesFromDomain(summary))
 }
 
 func InitialSetupView(form models.InitialSetupForm) templ.Component {
 	return templates.InitialSetupView(viewmodel.InitialSetupFormFromModel(form))
 }
 
-func AnniversaryPartial(soldiers []models.Soldier, month, day int) templ.Component {
-	return templates.AnniversaryPartial(viewmodel.PersonRecordsFromModels(soldiers), month, day)
+func CalendarDayDetail(day records.CalendarDay, editingID int64, itemType, title, notes, errorMessage, statusKind, statusMessage string) templ.Component {
+	return templates.CalendarDayDetail(viewmodel.CalendarDayDetailFromDomain(day, viewmodel.CalendarItemForm{
+		EditingID:    editingID,
+		ItemType:     itemType,
+		Title:        title,
+		Notes:        notes,
+		ErrorMessage: errorMessage,
+	}, statusKind, statusMessage))
 }
 
 func SoldierList(soldiers []models.Soldier, page, total int, query string, suggestions models.SoldierFormSuggestions) templ.Component {

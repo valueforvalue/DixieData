@@ -2,12 +2,12 @@ package pensionstate
 
 import "strings"
 
-const NotApplicable = "NA"
+const NotApplicable = "N/A"
 
 func Normalize(value string) string {
 	trimmed := strings.TrimSpace(value)
 	switch strings.ToLower(trimmed) {
-	case "none", "na", "n/a":
+	case "", "none", "na", "n/a", "not recorded":
 		return NotApplicable
 	default:
 		return trimmed

@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS soldiers (
     rank_out     TEXT,
     unit         TEXT,
     pension_state TEXT,
-    confederate_home_status TEXT DEFAULT 'NA',
+    confederate_home_status TEXT DEFAULT 'N/A',
     confederate_home_name TEXT,
     death_year   INTEGER,
     death_month  INTEGER,
@@ -170,6 +170,17 @@ CREATE TABLE IF NOT EXISTS research_collection_items (
     PRIMARY KEY (collection_id, soldier_id)
 );
 
+CREATE TABLE IF NOT EXISTS calendar_items (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_type    TEXT NOT NULL CHECK (item_type IN ('event', 'holiday')),
+    month        INTEGER NOT NULL CHECK (month >= 1 AND month <= 12),
+    day          INTEGER NOT NULL CHECK (day >= 1 AND day <= 31),
+    title        TEXT NOT NULL,
+    notes        TEXT NOT NULL DEFAULT '',
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
@@ -180,6 +191,7 @@ CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_soldier_id);
 CREATE INDEX IF NOT EXISTS idx_research_tasks_soldier ON research_tasks(soldier_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_research_collection_items_soldier ON research_collection_items(soldier_id, collection_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_items_day ON calendar_items(month, day, item_type, title);
 `
 
 const phase1DistributedMergeMigration = `
@@ -298,7 +310,7 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "rank_in", sql: `ALTER TABLE soldiers ADD COLUMN rank_in TEXT`},
 		{table: "soldiers", column: "rank_out", sql: `ALTER TABLE soldiers ADD COLUMN rank_out TEXT`},
 		{table: "soldiers", column: "pension_state", sql: `ALTER TABLE soldiers ADD COLUMN pension_state TEXT`},
-		{table: "soldiers", column: "confederate_home_status", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_status TEXT DEFAULT 'NA'`},
+		{table: "soldiers", column: "confederate_home_status", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_status TEXT DEFAULT 'N/A'`},
 		{table: "soldiers", column: "confederate_home_name", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_name TEXT`},
 		{table: "soldiers", column: "sync_id", sql: `ALTER TABLE soldiers ADD COLUMN sync_id TEXT`},
 		{table: "soldiers", column: "entry_type", sql: `ALTER TABLE soldiers ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'soldier'`},
@@ -341,10 +353,10 @@ func applySchema(db *DB) error {
 	if _, err := tx.Exec(phase2CanonicalDatesMigration); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'NA' WHERE LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a')`); err != nil {
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'N/A' WHERE LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a', 'not recorded')`); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE soldiers SET pension_state = 'NA' WHERE LOWER(TRIM(COALESCE(pension_state, ''))) IN ('none', 'na', 'n/a')`); err != nil {
+	if _, err := tx.Exec(`UPDATE soldiers SET pension_state = 'N/A' WHERE LOWER(TRIM(COALESCE(pension_state, ''))) IN ('', 'none', 'na', 'n/a', 'not recorded')`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`UPDATE soldiers SET needs_review = 0 WHERE needs_review IS NULL`); err != nil {
@@ -359,7 +371,7 @@ func applySchema(db *DB) error {
 	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_name IS NULL`); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_status = 'NA'`); err != nil {
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_status = 'N/A'`); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`); err != nil {

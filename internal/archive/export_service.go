@@ -169,6 +169,49 @@ type StaticArchiveRecordEntry struct {
 	Details    string `json:"details,omitempty"`
 }
 
+type pdfField struct {
+	Label         string
+	Value         string
+	EmptyValue    string
+	ShowWhenEmpty bool
+}
+
+func defaultPDFField(label, value string) pdfField {
+	return pdfField{Label: label, Value: value, EmptyValue: "N/A"}
+}
+
+func blankPDFField(label, value string) pdfField {
+	return pdfField{Label: label, Value: value, ShowWhenEmpty: true}
+}
+
+func unknownDatePDFField(label, value string) pdfField {
+	return pdfField{Label: label, Value: value, EmptyValue: "Unknown", ShowWhenEmpty: true}
+}
+
+func naPDFField(label, value string) pdfField {
+	return pdfField{Label: label, Value: value, EmptyValue: "N/A", ShowWhenEmpty: true}
+}
+
+func (field pdfField) renderedValue() string {
+	trimmed := strings.TrimSpace(field.Value)
+	switch strings.ToUpper(trimmed) {
+	case "", "NONE", "NA", "N/A", "NOT RECORDED":
+		return sanitizePDFText(field.EmptyValue)
+	default:
+		return sanitizePDFText(trimmed)
+	}
+}
+
+func (field pdfField) visible() bool {
+	trimmed := strings.TrimSpace(field.Value)
+	switch strings.ToUpper(trimmed) {
+	case "", "NONE", "NA", "N/A", "NOT RECORDED":
+		return field.ShowWhenEmpty
+	default:
+		return true
+	}
+}
+
 type staticArchiveOwner struct {
 	DisplayName string
 	FileStem    string
@@ -890,12 +933,21 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
 
     function detailValue(value) {
       const text = String(value || '').trim();
-      return text || 'Not recorded';
+      return text || 'N/A';
+    }
+
+    function blankDetailValue(value) {
+      return String(value || '').trim();
+    }
+
+    function dateDetailValue(value) {
+      const text = String(value || '').trim();
+      return text || 'Unknown';
     }
 
     function detailMarkup(label, value) {
       const text = detailValue(value);
-      if (label === 'Maiden Name' && text !== 'Not recorded') {
+      if (label === 'Maiden Name' && text !== 'N/A') {
         return '<em>' + escapeHtml(text) + '</em>';
       }
       return escapeHtml(text);
@@ -939,9 +991,9 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
             '</div>' +
             '<h3 class="row-title">' + escapeHtml(record.name) + '</h3>' +
             '<div class="row-summary">' +
-              '<span><strong>Dates:</strong> ' + escapeHtml(record.dates || 'Not recorded') + '</span>' +
-              '<span><strong>Unit:</strong> ' + escapeHtml(record.unit || 'Not recorded') + '</span>' +
-              '<span><strong>Location:</strong> ' + escapeHtml(record.location || 'Not recorded') + '</span>' +
+              '<span><strong>Dates:</strong> ' + escapeHtml(record.dates || 'N/A') + '</span>' +
+              '<span><strong>Unit:</strong> ' + escapeHtml(record.unit || '') + '</span>' +
+              '<span><strong>Location:</strong> ' + escapeHtml(record.location || 'N/A') + '</span>' +
             '</div>' +
             (record.notes ? '<div class="row-excerpt">' + escapeHtml(excerpt(record.notes, 150)) + '</div>' : '') +
           '</div>' +
@@ -957,14 +1009,14 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
       const details = [
         ['Record Type', detailValue(record.displayType)],
         ['Display ID', detailValue(record.displayId)],
-        ['Prefix', detailValue(record.prefix)],
-        ['First Name', detailValue(record.firstName)],
-        ['Middle Name', detailValue(record.middleName)],
-        ['Last Name', detailValue(record.lastName)],
+        ['Prefix', blankDetailValue(record.prefix)],
+        ['First Name', blankDetailValue(record.firstName)],
+        ['Middle Name', blankDetailValue(record.middleName)],
+        ['Last Name', blankDetailValue(record.lastName)],
         ['Suffix', detailValue(record.suffix)],
-        ['Dates', record.dates || 'Not recorded'],
-        ['Birth Date', detailValue(record.birthDate)],
-        ['Death Date', detailValue(record.deathDate)],
+        ['Dates', record.dates || 'N/A'],
+        ['Birth Date', dateDetailValue(record.birthDate)],
+        ['Death Date', dateDetailValue(record.deathDate)],
         ['Birth Info', detailValue(record.birthInfo)],
         ['Buried In', detailValue(record.location)]
       ];
@@ -980,10 +1032,10 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
         details.push(['Relationship to Soldier', detailValue(record.relationshipLabel)]);
         details.push(['Linked Soldier Record', detailValue(record.spouseDisplayId)]);
       } else {
-        details.push(['Rank', detailValue(record.rankOut || record.rank || record.rankIn)]);
-        details.push(['Rank In', detailValue(record.rankIn)]);
-        details.push(['Rank Out', detailValue(record.rankOut || record.rank)]);
-        details.push(['Unit', detailValue(record.unit)]);
+        details.push(['Rank', blankDetailValue(record.rankOut || record.rank || record.rankIn)]);
+        details.push(['Rank In', blankDetailValue(record.rankIn)]);
+        details.push(['Rank Out', blankDetailValue(record.rankOut || record.rank)]);
+        details.push(['Unit', blankDetailValue(record.unit)]);
         details.push(['Pension State', detailValue(record.pensionState)]);
         details.push(['Confederate Home Status', detailValue(record.homeStatus)]);
         details.push(['Confederate Home Name', detailValue(record.homeName)]);
@@ -2702,7 +2754,7 @@ func printGroupValue(soldier models.Soldier, field string) string {
 		}
 		return value
 	default:
-		return "Not recorded"
+		return "N/A"
 	}
 }
 
@@ -2804,10 +2856,10 @@ func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Sol
 	if record.PensionState == pensionstate.NotApplicable {
 		record.PensionState = ""
 	}
-	if strings.EqualFold(record.BirthDate, "Not recorded") {
+	if strings.EqualFold(record.BirthDate, "N/A") {
 		record.BirthDate = ""
 	}
-	if strings.EqualFold(record.DeathDate, "Not recorded") {
+	if strings.EqualFold(record.DeathDate, "N/A") {
 		record.DeathDate = ""
 	}
 	if soldier.SpouseSoldierID > 0 {
@@ -2840,8 +2892,8 @@ func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Sol
 }
 
 func staticArchiveDateSummary(soldier models.Soldier) string {
-	birth := strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))
-	death := strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.DeathDate), "Not recorded", ""))
+	birth := strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "N/A", ""))
+	death := strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.DeathDate), "N/A", ""))
 	switch {
 	case birth != "" && death != "":
 		return "b. " + birth + " • d. " + death
@@ -3121,7 +3173,7 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, include
 
 	leftHeight := estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordIdentityFields(soldier), layout)
 	leftHeight += layout.SectionGap
-	leftHeight += estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordServiceFields(soldier), layout)
+	leftHeight += estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordServiceFields(soldier, false), layout)
 
 	rightHeight := 0.0
 	if includeImages {
@@ -3152,7 +3204,7 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, include
 	return maxFloat(leftHeight, rightHeight)
 }
 
-func estimatePDFCompactFieldSectionHeight(pdf *fpdf.Fpdf, width float64, fields [][2]string, layout pdfRecordCardLayout) float64 {
+func estimatePDFCompactFieldSectionHeight(pdf *fpdf.Fpdf, width float64, fields []pdfField, layout pdfRecordCardLayout) float64 {
 	if !hasVisiblePDFField(fields) {
 		return 0
 	}
@@ -3166,11 +3218,11 @@ func estimatePDFCompactFieldSectionHeight(pdf *fpdf.Fpdf, width float64, fields 
 	valueWidth := width - labelWidth - 3
 	height := layout.SectionTitleLine
 	for _, field := range fields {
-		if omitPDFValue(field[1]) {
+		if !field.visible() {
 			continue
 		}
-		labelLines := wrappedPDFLineCount(pdf, sanitizePDFText(field[0]), labelWidth, "Helvetica", "B", layout.FieldLabelFontSize)
-		valueLines := wrappedPDFLineCount(pdf, emptyPDFValue(field[1]), valueWidth, "Helvetica", "", layout.FieldValueFontSize)
+		labelLines := wrappedPDFLineCount(pdf, sanitizePDFText(field.Label), labelWidth, "Helvetica", "B", layout.FieldLabelFontSize)
+		valueLines := wrappedPDFLineCount(pdf, field.renderedValue(), valueWidth, "Helvetica", "", layout.FieldValueFontSize)
 		height += float64(maxInt(labelLines, valueLines))*layout.FieldLineHeight + layout.FieldRowGap
 	}
 	return height
@@ -3250,7 +3302,7 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 	pdf.SetAutoPageBreak(false, bottomMargin)
 
 	leftY := writePDFCompactFieldSection(pdf, leftMargin, startY, leftWidth, "Identity & Vital Details", recordIdentityFields(soldier), layout)
-	leftY = writePDFCompactFieldSection(pdf, leftMargin, leftY+layout.SectionGap, leftWidth, "Service & Archive Details", recordServiceFields(soldier), layout)
+	leftY = writePDFCompactFieldSection(pdf, leftMargin, leftY+layout.SectionGap, leftWidth, "Service & Archive Details", recordServiceFields(soldier, options.PrinterFriendly), layout)
 
 	rightY := startY
 	if options.IncludeImages {
@@ -3300,7 +3352,7 @@ func writePDFRecordCardMultiPage(pdf *fpdf.Fpdf, soldier models.Soldier, options
 		wroteSection = true
 	}
 
-	serviceFields := recordServiceFields(soldier)
+	serviceFields := recordServiceFields(soldier, options.PrinterFriendly)
 	if hasVisiblePDFField(serviceFields) {
 		currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.FieldLineHeight)
 		currentY = writePDFCompactFieldSection(pdf, leftMargin, currentY, contentWidth, "Service & Archive Details", serviceFields, layout)
@@ -3353,7 +3405,7 @@ func preparePDFRecordCardSection(pdf *fpdf.Fpdf, currentY float64, wroteSection 
 	return currentY
 }
 
-func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title string, fields [][2]string, layout pdfRecordCardLayout) float64 {
+func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title string, fields []pdfField, layout pdfRecordCardLayout) float64 {
 	if !hasVisiblePDFField(fields) {
 		return y
 	}
@@ -3371,23 +3423,23 @@ func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title stri
 	}
 	valueWidth := width - labelWidth - 3
 	for _, field := range fields {
-		if omitPDFValue(field[1]) {
+		if !field.visible() {
 			continue
 		}
 		rowTop := currentY
 		pdf.SetXY(x, rowTop)
 		pdf.SetFont("Helvetica", "B", layout.FieldLabelFontSize)
 		pdf.SetTextColor(68, 82, 96)
-		pdf.MultiCell(labelWidth, layout.FieldLineHeight, sanitizePDFText(field[0]), "", "L", false)
+		pdf.MultiCell(labelWidth, layout.FieldLineHeight, sanitizePDFText(field.Label), "", "L", false)
 		labelBottom := pdf.GetY()
 		pdf.SetXY(x+labelWidth+3, rowTop)
-		if strings.TrimSpace(field[0]) == "Maiden Name" {
+		if strings.TrimSpace(field.Label) == "Maiden Name" {
 			pdf.SetFont("Helvetica", "I", layout.FieldValueFontSize)
 		} else {
 			pdf.SetFont("Helvetica", "", layout.FieldValueFontSize)
 		}
 		pdf.SetTextColor(34, 48, 61)
-		pdf.MultiCell(valueWidth, layout.FieldLineHeight, emptyPDFValue(field[1]), "", "L", false)
+		pdf.MultiCell(valueWidth, layout.FieldLineHeight, field.renderedValue(), "", "L", false)
 		valueBottom := pdf.GetY()
 		currentY = maxPDFY(labelBottom, valueBottom) + layout.FieldRowGap
 	}
@@ -3463,40 +3515,48 @@ func writePDFRecordsColumnSection(pdf *fpdf.Fpdf, x, y, width float64, records [
 	return pdf.GetY()
 }
 
-func recordIdentityFields(soldier models.Soldier) [][2]string {
-	fields := [][2]string{
-		{"Prefix", soldier.Prefix},
-		{"First Name", soldier.FirstName},
-		{"Middle Name", soldier.MiddleName},
-		{"Last Name", soldier.LastName},
-		{"Suffix", soldier.Suffix},
-		{"Birth Date", strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))},
-		{"Death Date", soldierDeathLine(soldier)},
-		{"Birth Info", soldier.BirthInfo},
-		{"Buried In", soldier.BuriedIn},
+func recordIdentityFields(soldier models.Soldier) []pdfField {
+	fields := []pdfField{
+		blankPDFField("Prefix", soldier.Prefix),
+		blankPDFField("First Name", soldier.FirstName),
+		blankPDFField("Middle Name", soldier.MiddleName),
+		blankPDFField("Last Name", soldier.LastName),
+		defaultPDFField("Suffix", soldier.Suffix),
+		unknownDatePDFField("Birth Date", dates.DisplayUnknown(soldier.BirthDate)),
+		unknownDatePDFField("Death Date", soldierDeathLine(soldier)),
+		defaultPDFField("Birth Info", soldier.BirthInfo),
+		defaultPDFField("Buried In", soldier.BuriedIn),
 	}
 	return fields
 }
 
-func recordServiceFields(soldier models.Soldier) [][2]string {
-	fields := [][2]string{
-		{"Record Type", displayEntryType(soldier)},
-		{"Rank In", soldier.RankIn},
-		{"Rank Out", displaySoldierRank(soldier)},
-		{"Unit", soldier.Unit},
-		{"Pension State", pensionstate.Normalize(soldier.PensionState)},
-		{"Pension ID", soldier.PensionID},
-		{"Application ID", soldier.ApplicationID},
-		{"Confederate Home Status", confederatehomestatus.Normalize(soldier.ConfederateHomeStatus)},
-		{"Confederate Home Name", soldier.ConfederateHomeName},
+func recordServiceFields(soldier models.Soldier, printerFriendly bool) []pdfField {
+	pensionStateField := naPDFField("Pension State", pensionstate.Normalize(soldier.PensionState))
+	homeStatusField := naPDFField("Confederate Home Status", confederatehomestatus.Normalize(soldier.ConfederateHomeStatus))
+	homeNameField := confederateHomeNamePDFField(soldier)
+	if printerFriendly {
+		pensionStateField = defaultPDFField("Pension State", pensionstate.Normalize(soldier.PensionState))
+		homeStatusField = defaultPDFField("Confederate Home Status", confederatehomestatus.Normalize(soldier.ConfederateHomeStatus))
+		homeNameField = defaultPDFField("Confederate Home Name", pdfConfederateHomeName(soldier))
+	}
+	fields := []pdfField{
+		defaultPDFField("Record Type", displayEntryType(soldier)),
+		blankPDFField("Rank In", soldier.RankIn),
+		blankPDFField("Rank Out", displaySoldierRank(soldier)),
+		blankPDFField("Unit", soldier.Unit),
+		pensionStateField,
+		defaultPDFField("Pension ID", soldier.PensionID),
+		defaultPDFField("Application ID", soldier.ApplicationID),
+		homeStatusField,
+		homeNameField,
 	}
 	return fields
 }
 
-func recordHouseholdFields(soldier models.Soldier, printerFriendly bool) [][2]string {
-	fields := [][2]string{
-		{"Spouse", soldier.SpouseName},
-		{"Linked Spouse Record", func() string {
+func recordHouseholdFields(soldier models.Soldier, printerFriendly bool) []pdfField {
+	fields := []pdfField{
+		defaultPDFField("Spouse", soldier.SpouseName),
+		defaultPDFField("Linked Spouse Record", func() string {
 			if printerFriendly {
 				return ""
 			}
@@ -3507,8 +3567,8 @@ func recordHouseholdFields(soldier models.Soldier, printerFriendly bool) [][2]st
 				return fmt.Sprintf("DB ID %d", soldier.SpouseSoldierID)
 			}
 			return ""
-		}()},
-		{"Maiden Name", soldier.MaidenName},
+		}()),
+		defaultPDFField("Maiden Name", soldier.MaidenName),
 	}
 	return fields
 }
@@ -3576,9 +3636,9 @@ func maxPDFY(left, right float64) float64 {
 	return right
 }
 
-func hasVisiblePDFField(fields [][2]string) bool {
+func hasVisiblePDFField(fields []pdfField) bool {
 	for _, field := range fields {
-		if !omitPDFValue(field[1]) {
+		if field.visible() {
 			return true
 		}
 	}
@@ -3630,20 +3690,20 @@ func maxInt(left, right int) int {
 	return right
 }
 
-func writePDFInlineField(pdf *fpdf.Fpdf, label, value string, width float64) {
+func writePDFInlineField(pdf *fpdf.Fpdf, field pdfField, width float64) {
 	x := pdf.GetX()
 	y := pdf.GetY()
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetTextColor(34, 48, 61)
-	pdf.CellFormat(34, 6, label, "", 0, "", false, 0, "")
-	if strings.TrimSpace(label) == "Maiden Name" {
+	pdf.CellFormat(34, 6, field.Label, "", 0, "", false, 0, "")
+	if strings.TrimSpace(field.Label) == "Maiden Name" {
 		pdf.SetFont("Helvetica", "I", 10)
 	} else {
 		pdf.SetFont("Helvetica", "", 10)
 	}
 	pdf.SetTextColor(68, 82, 96)
 	pdf.SetXY(x+34, y)
-	pdf.MultiCell(width-34, 6, emptyPDFValue(value), "", "L", false)
+	pdf.MultiCell(width-34, 6, field.renderedValue(), "", "L", false)
 	if pdf.GetY() < y+6 {
 		pdf.SetY(y + 6)
 	}
@@ -3822,76 +3882,79 @@ func writePDFRegistryEntry(pdf *fpdf.Fpdf, soldier models.Soldier) {
 	pdf.SetTextColor(68, 82, 96)
 	pdf.CellFormat(0, 5, fmt.Sprintf("%s - %s", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)), "", 1, "", false, 0, "")
 	for _, line := range registryEntryLines(soldier) {
-		writePDFInlineField(pdf, line[0], line[1], 178)
+		if !line.visible() {
+			continue
+		}
+		writePDFInlineField(pdf, line, 178)
 	}
 	pdf.Ln(2)
 }
 
-func recordCardFields(soldier models.Soldier) [][2]string {
-	fields := [][2]string{
-		{"Record Type", displayEntryType(soldier)},
-		{"Full Name", soldierFullName(soldier)},
-		{"Display ID", soldier.DisplayID},
-		{"Birth", strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))},
-		{"Death", soldierDeathLine(soldier)},
+func recordCardFields(soldier models.Soldier) []pdfField {
+	fields := []pdfField{
+		defaultPDFField("Record Type", displayEntryType(soldier)),
+		defaultPDFField("Full Name", soldierFullName(soldier)),
+		defaultPDFField("Display ID", soldier.DisplayID),
+		unknownDatePDFField("Birth", dates.DisplayUnknown(soldier.BirthDate)),
+		unknownDatePDFField("Death", soldierDeathLine(soldier)),
 	}
 	if strings.TrimSpace(soldier.Prefix) != "" {
-		fields = append(fields, [2]string{"Prefix", soldier.Prefix})
+		fields = append(fields, blankPDFField("Prefix", soldier.Prefix))
 	}
 	if strings.TrimSpace(soldier.Suffix) != "" {
-		fields = append(fields, [2]string{"Suffix", soldier.Suffix})
+		fields = append(fields, defaultPDFField("Suffix", soldier.Suffix))
 	}
 	if isSoldierEntry(soldier) {
 		fields = append(fields,
-			[2]string{"Rank In", soldier.RankIn},
-			[2]string{"Rank Out", displaySoldierRank(soldier)},
-			[2]string{"Unit", soldier.Unit},
-			[2]string{"Pension State", pensionstate.Normalize(soldier.PensionState)},
-			[2]string{"Confederate Home Status", confederatehomestatus.Normalize(soldier.ConfederateHomeStatus)},
-			[2]string{"Confederate Home Name", soldier.ConfederateHomeName},
+			blankPDFField("Rank In", soldier.RankIn),
+			blankPDFField("Rank Out", displaySoldierRank(soldier)),
+			blankPDFField("Unit", soldier.Unit),
+			naPDFField("Pension State", pensionstate.Normalize(soldier.PensionState)),
+			naPDFField("Confederate Home Status", confederatehomestatus.Normalize(soldier.ConfederateHomeStatus)),
+			confederateHomeNamePDFField(soldier),
 		)
 	} else {
 		fields = append(fields,
-			[2]string{"Married To", soldier.SpouseName},
-			[2]string{"Maiden Name", soldier.MaidenName},
+			defaultPDFField("Married To", soldier.SpouseName),
+			defaultPDFField("Maiden Name", soldier.MaidenName),
 		)
 	}
 	fields = append(fields,
-		[2]string{"Pension ID", soldier.PensionID},
-		[2]string{"Application ID", soldier.ApplicationID},
-		[2]string{"Birth Info", soldier.BirthInfo},
-		[2]string{"Buried In", soldier.BuriedIn},
+		defaultPDFField("Pension ID", soldier.PensionID),
+		defaultPDFField("Application ID", soldier.ApplicationID),
+		defaultPDFField("Birth Info", soldier.BirthInfo),
+		defaultPDFField("Buried In", soldier.BuriedIn),
 	)
 	return fields
 }
 
-func registryEntryLines(soldier models.Soldier) [][2]string {
-	lines := [][2]string{
-		{"Birth Date", strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.BirthDate), "Not recorded", ""))},
-		{"Death Date", soldierDeathLine(soldier)},
-		{"Birth Info", soldier.BirthInfo},
-		{"Service Summary", soldierServiceLine(soldier)},
-		{"Pension / Application", strings.TrimSpace(strings.Join(compactPDFValues(pensionstate.Normalize(soldier.PensionState), soldier.PensionID, soldier.ApplicationID), " | "))},
-		{"Confederate Home", strings.TrimSpace(strings.Join(compactPDFValuesExcludingNA(confederatehomestatus.Normalize(soldier.ConfederateHomeStatus), soldier.ConfederateHomeName), " | "))},
-		{"Buried In", soldier.BuriedIn},
+func registryEntryLines(soldier models.Soldier) []pdfField {
+	lines := []pdfField{
+		unknownDatePDFField("Birth Date", dates.DisplayUnknown(soldier.BirthDate)),
+		unknownDatePDFField("Death Date", soldierDeathLine(soldier)),
+		defaultPDFField("Birth Info", soldier.BirthInfo),
+		defaultPDFField("Service Summary", soldierServiceLine(soldier)),
+		defaultPDFField("Pension / Application", strings.TrimSpace(strings.Join(compactPDFValues(pensionstate.Normalize(soldier.PensionState), soldier.PensionID, soldier.ApplicationID), " | "))),
+		defaultPDFField("Confederate Home", strings.TrimSpace(strings.Join(compactPDFValuesExcludingNA(confederatehomestatus.Normalize(soldier.ConfederateHomeStatus), soldier.ConfederateHomeName), " | "))),
+		defaultPDFField("Buried In", soldier.BuriedIn),
 	}
 	if strings.TrimSpace(soldier.SpouseName) != "" || strings.TrimSpace(soldier.MaidenName) != "" {
 		if spouseName := strings.TrimSpace(soldier.SpouseName); spouseName != "" {
-			lines = append(lines, [2]string{"Spouse", spouseName})
+			lines = append(lines, defaultPDFField("Spouse", spouseName))
 		}
 		if maidenName := strings.TrimSpace(soldier.MaidenName); maidenName != "" {
-			lines = append(lines, [2]string{"Maiden Name", maidenName})
+			lines = append(lines, defaultPDFField("Maiden Name", maidenName))
 		}
 	}
 	if strings.TrimSpace(soldier.Notes) != "" {
-		lines = append(lines, [2]string{"Notes", soldier.Notes})
+		lines = append(lines, defaultPDFField("Notes", soldier.Notes))
 	}
 	if len(soldier.Records) > 0 {
 		recordLines := make([]string, 0, len(soldier.Records))
 		for _, record := range soldier.Records {
 			recordLines = append(recordLines, strings.TrimSpace(strings.Join(compactPDFValues(record.RecordType, record.AppID, record.Details), " | ")))
 		}
-		lines = append(lines, [2]string{"Records", strings.Join(recordLines, "\n")})
+		lines = append(lines, defaultPDFField("Records", strings.Join(recordLines, "\n")))
 	}
 	return lines
 }
@@ -3921,7 +3984,7 @@ func compactPDFValuesExcludingNA(values ...string) []string {
 func emptyPDFValue(value string) string {
 	sanitized := sanitizePDFText(strings.TrimSpace(value))
 	if sanitized == "" {
-		return "Not recorded"
+		return "N/A"
 	}
 	return sanitized
 }
@@ -4000,7 +4063,21 @@ func displayEntryType(soldier models.Soldier) string {
 }
 
 func soldierDeathLine(soldier models.Soldier) string {
-	return strings.TrimSpace(strings.ReplaceAll(dates.Display(soldier.DeathDate), "Not recorded", ""))
+	return dates.DisplayUnknown(soldier.DeathDate)
+}
+
+func pdfConfederateHomeName(soldier models.Soldier) string {
+	if confederatehomestatus.Normalize(soldier.ConfederateHomeStatus) == confederatehomestatus.NotApplicable {
+		return confederatehomestatus.NotApplicable
+	}
+	return strings.TrimSpace(soldier.ConfederateHomeName)
+}
+
+func confederateHomeNamePDFField(soldier models.Soldier) pdfField {
+	if confederatehomestatus.Normalize(soldier.ConfederateHomeStatus) == confederatehomestatus.NotApplicable {
+		return naPDFField("Confederate Home Name", confederatehomestatus.NotApplicable)
+	}
+	return defaultPDFField("Confederate Home Name", strings.TrimSpace(soldier.ConfederateHomeName))
 }
 
 func monthLabel(month int) string {

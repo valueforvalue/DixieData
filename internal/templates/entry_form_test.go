@@ -217,7 +217,7 @@ func TestShareViewMergeReviewUsesSharedSummaryFormatting(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"John Taylor",
-		"Captain - Co. B, 1st Texas",
+		"Captain Co. B, 1st Texas",
 		"Mrs. Jane Taylor",
 	} {
 		if !strings.Contains(content, needle) {
@@ -287,13 +287,13 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 
 func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "NA", ConfederateHomeStatus: "NA"}, nil, viewmodel.SoldierFormSuggestions{
+	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "N/A", ConfederateHomeStatus: "N/A"}, nil, viewmodel.SoldierFormSuggestions{
 		RankIn:           []string{"Private", "Sergeant"},
 		RankOut:          []string{"Corporal", "Sergeant"},
 		Unit:             []string{"Co. A, 1st Texas Infantry"},
 		Prefix:           []string{"Capt."},
 		Suffix:           []string{"Jr."},
-		PensionState:     []string{"NA", "Texas"},
+		PensionState:     []string{"N/A", "Texas"},
 		BuriedIn:         []string{"Oakwood Cemetery"},
 		ConfederateHome:  []string{},
 		SourceRecordType: []string{"Pension"},
@@ -312,11 +312,11 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	if !strings.Contains(content, `name="confederate_home_status"`) || !strings.Contains(content, `name="confederate_home_name"`) {
 		t.Fatalf("new entry form missing confederate home fields")
 	}
-	if !strings.Contains(content, `name="pension_state" value="NA"`) {
-		t.Fatalf("new entry form should default pension state to NA")
+	if !strings.Contains(content, `name="pension_state" value="N/A"`) {
+		t.Fatalf("new entry form should default pension state to N/A")
 	}
-	if !strings.Contains(content, `<option value="NA" selected>NA</option>`) {
-		t.Fatalf("new entry form should default confederate home status to NA")
+	if !strings.Contains(content, `<option value="N/A" selected>N/A</option>`) {
+		t.Fatalf("new entry form should default confederate home status to N/A")
 	}
 	if !strings.Contains(content, `list="rank-in-suggestions"`) || !strings.Contains(content, `list="record-type-suggestions"`) {
 		t.Fatalf("new entry form missing datalist attributes")
@@ -460,6 +460,24 @@ func TestSearchPreviewContentShowsResearchOnlyDetails(t *testing.T) {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("search preview missing %s", needle)
 		}
+	}
+}
+
+func TestSearchPreviewContentShowsUnknownForBlankDates(t *testing.T) {
+	var buf bytes.Buffer
+	err := SearchPreviewContent(viewmodel.Soldier{
+		ID:        8,
+		DisplayID: "PENSION-4244",
+		FirstName: "Blank",
+		LastName:  "Dates",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if strings.Count(content, ">Unknown<") < 2 {
+		t.Fatalf("search preview should show Unknown for blank birth and death dates: %s", content)
 	}
 }
 

@@ -71,7 +71,7 @@ func TestReviewQueueViewUsesSharedSummaryFormatting(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"Andrew Morris",
-		"Captain - 4th OK Inf.",
+		"Captain 4th OK Inf.",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("review queue missing %s", needle)
@@ -153,7 +153,7 @@ func TestReviewQueueCompareViewUsesSharedSummaryFormatting(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		"John Kerns",
-		"Captain - 4th OK Inf.",
+		"Captain 4th OK Inf.",
 		"Mrs. Jon Kerns",
 	} {
 		if !strings.Contains(content, needle) {

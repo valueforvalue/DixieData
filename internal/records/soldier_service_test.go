@@ -193,7 +193,7 @@ func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Prefix != "" || got.ShowPrefixBeforeName || got.MiddleName != "" || got.Suffix != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "NA" || got.ConfederateHomeName != "" {
+	if got.Prefix != "" || got.ShowPrefixBeforeName || got.MiddleName != "" || got.Suffix != "" || got.RankIn != "" || got.RankOut != "" || got.PensionState != "N/A" || got.PensionID != "" || got.ApplicationID != "" || got.ConfederateHomeStatus != "N/A" || got.ConfederateHomeName != "" {
 		t.Fatalf("expected empty strings for NULL fields, got %#v", got)
 	}
 }
@@ -212,7 +212,7 @@ func TestSoldierService_NormalizesConfederateHomeFields(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if created.ConfederateHomeStatus != "NA" || created.ConfederateHomeName != "" {
+	if created.ConfederateHomeStatus != "N/A" || created.ConfederateHomeName != "" {
 		t.Fatalf("created = %#v", created)
 	}
 }
@@ -230,8 +230,8 @@ func TestSoldierService_NormalizesPensionStateNA(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if created.PensionState != "NA" {
-		t.Fatalf("created pension state = %q, want %q", created.PensionState, "NA")
+	if created.PensionState != "N/A" {
+		t.Fatalf("created pension state = %q, want %q", created.PensionState, "N/A")
 	}
 }
 
@@ -432,13 +432,13 @@ func TestSoldierService_Update(t *testing.T) {
 		t.Fatal("expected LastEditedAt after update")
 	}
 	for _, field := range []string{
-		`Prefix changed from "Not recorded" to "Gen.".`,
-		`Middle Name changed from "Not recorded" to "A.".`,
-		`Suffix changed from "Not recorded" to "Sr.".`,
-		`Rank In changed from "Not recorded" to "Private".`,
-		`Rank Out changed from "Not recorded" to "Major".`,
-		`Pension State changed from "Not recorded" to "Georgia".`,
-		`Notes changed from "Not recorded" to "Updated note".`,
+		`Prefix changed from "N/A" to "Gen.".`,
+		`Middle Name changed from "N/A" to "A.".`,
+		`Suffix changed from "N/A" to "Sr.".`,
+		`Rank In changed from "N/A" to "Private".`,
+		`Rank Out changed from "N/A" to "Major".`,
+		`Pension State changed from "N/A" to "Georgia".`,
+		`Notes changed from "N/A" to "Updated note".`,
 	} {
 		if !strings.Contains(got.LastEditedFields, field) {
 			t.Fatalf("LastEditedFields = %q, missing %s", got.LastEditedFields, field)

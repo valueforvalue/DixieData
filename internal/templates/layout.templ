@@ -203,7 +203,13 @@ templ Layout(title string) {
 				max-width: 78rem;
 				margin: 0 auto;
 				padding: 1.25rem clamp(1rem, 2.2vw, 2rem) 7.5rem;
-				padding-top: 6.6rem;
+			}
+			.top-shell {
+				position: sticky;
+				top: 1rem;
+				z-index: 40;
+				width: min(96vw, 72rem);
+				margin: 0 auto 1.5rem;
 			}
 			.top-brand-title {
 				font-size: clamp(2rem, 2vw, 2.4rem);
@@ -227,7 +233,6 @@ templ Layout(title string) {
 			}
 			@media (max-width: 900px) {
 				.app-shell {
-					padding-top: 5.75rem;
 					padding-bottom: 8.75rem;
 				}
 				.responsive-two-col {
@@ -240,7 +245,7 @@ templ Layout(title string) {
 			@media (max-width: 780px) {
 				.top-shell {
 					top: 0.75rem;
-					width: min(96vw, 72rem);
+					margin-bottom: 1.25rem;
 					padding: 0.9rem 1rem;
 					border-radius: 1.35rem;
 				}
@@ -271,7 +276,7 @@ templ Layout(title string) {
 		<body class="min-h-screen" data-debug-ui-ids={ uiDebugValue() }>
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			<div class="app-shell">
-				<header class="top-shell fixed left-1/2 top-4 z-40 flex w-[min(96vw,72rem)] -translate-x-1/2 flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
+				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
 				<div>
 					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Local Archive</p>
 					<p class="top-brand-title gold mt-1 leading-none">DixieData</p>

@@ -114,7 +114,7 @@ CREATE TABLE images (
 	if err := database.Conn().QueryRow(`SELECT pension_state FROM soldiers WHERE display_id = 'DXD-00002'`).Scan(&pensionState); err != nil {
 		t.Fatalf("read pension_state: %v", err)
 	}
-	if pensionState != "NA" {
-		t.Fatalf("expected migrated pension state to be NA, got %q", pensionState)
+	if pensionState != "N/A" {
+		t.Fatalf("expected migrated pension state to be N/A, got %q", pensionState)
 	}
 }

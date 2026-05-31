@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
+	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ EntryForm(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) {
@@ -468,7 +469,7 @@ func recordPersistenceMessage(isEdit bool) string {
 
 func pensionStates() []string {
 	return []string{
-		"NA",
+		pensionstate.NotApplicable,
 		"Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
 		"Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
 		"Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
@@ -930,17 +931,6 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 	}
 }
 
-templ AnniversaryPartial(soldiers []viewmodel.PersonRecord, month, day int) {
-	<h4 class="gold text-4xl leading-none mb-4">{ monthName(month) } { fmt.Sprintf("%d", day) }</h4>
-	if len(soldiers) == 0 {
-		<p class="text-lg leading-relaxed text-[#6e4f22]">No person records for this date.</p>
-	} else {
-		for _, s := range soldiers {
-			@SoldierCard(s, false)
-		}
-	}
-}
-
 templ SearchPreviewContent(s viewmodel.PersonRecord) {
 	<div class="space-y-5">
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(255,255,255,0.7)] px-4 py-4">
@@ -961,11 +951,11 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 			<div class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
 				<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">
 					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Birth</div>
-					<div class="mt-1 text-[#22303d]">{ emptyDetail(s.BirthDate) }</div>
+					<div class="mt-1 text-[#22303d]">{ dates.DisplayUnknown(s.BirthDate) }</div>
 				</div>
 				<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">
 					<div class="text-xs uppercase tracking-[0.18em] text-slate-500">Death</div>
-					<div class="mt-1 text-[#22303d]">{ emptyDetail(s.DeathDate) }</div>
+					<div class="mt-1 text-[#22303d]">{ dates.DisplayUnknown(s.DeathDate) }</div>
 				</div>
 				if strings.TrimSpace(s.Unit) != "" {
 					<div class="rounded-xl border border-[rgba(141,116,64,0.22)] bg-white/70 px-3 py-3">

@@ -3,7 +3,7 @@ package confederatehomestatus
 import "strings"
 
 const (
-	NotApplicable = "NA"
+	NotApplicable = "N/A"
 	Inmate        = "Inmate"
 	Staffer       = "Staffer"
 	Trustee       = "Trustee"
@@ -17,7 +17,7 @@ func Normalize(value string) string {
 		return Staffer
 	case "trustee":
 		return Trustee
-	case "", "none", "na", "n/a":
+	case "", "none", "na", "n/a", "not recorded":
 		return NotApplicable
 	default:
 		return NotApplicable

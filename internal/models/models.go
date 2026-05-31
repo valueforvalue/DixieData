@@ -153,6 +153,22 @@ type Quote struct {
 	Tags    []string `json:"tags,omitempty"`
 }
 
+const (
+	CalendarItemTypeEvent   = "event"
+	CalendarItemTypeHoliday = "holiday"
+)
+
+type CalendarItem struct {
+	ID        int64  `json:"id"`
+	ItemType  string `json:"item_type"`
+	Month     int    `json:"month"`
+	Day       int    `json:"day"`
+	Title     string `json:"title"`
+	Notes     string `json:"notes"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 type GoogleSettings struct {
 	ClientID      string `json:"client_id"`
 	ClientSecret  string `json:"client_secret"`

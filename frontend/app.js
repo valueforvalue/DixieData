@@ -1792,6 +1792,31 @@
     initializeDynamicContent();
   }
 
+  async function refreshCalendarGrid(monthValue) {
+    const month = Number.parseInt(String(monthValue || ""), 10);
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return;
+    }
+    const target = document.getElementById("calendar-grid-panel");
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/calendar/${month}/grid`, {
+        headers: {
+          "X-Requested-With": "DixieData"
+        }
+      });
+      if (!response.ok) {
+        return;
+      }
+      target.outerHTML = await response.text();
+      initializeDynamicContent();
+    } catch (error) {
+      // Leave the current grid in place if refresh fails.
+    }
+  }
+
   function initializeDynamicContent() {
     initializeTabs();
     initializeEntryTypeForms();
@@ -1998,6 +2023,7 @@
       const toastMessage = response.headers.get("X-DixieData-Toast");
       const toastKind = response.headers.get("X-DixieData-Toast-Type") || "success";
       const closeFeedback = response.headers.get("X-DixieData-Close-Feedback");
+      const refreshCalendarMonth = response.headers.get("X-DixieData-Refresh-Calendar-Month");
       if (redirectTo) {
         if (form instanceof HTMLFormElement && response.ok) {
           clearDraftForForm(form);
@@ -2013,6 +2039,9 @@
         clearDraftForForm(form);
       }
       applyResponse(el, html, requestState);
+      if (response.ok && refreshCalendarMonth) {
+        await refreshCalendarGrid(refreshCalendarMonth);
+      }
       if (response.ok && closeFeedback === "true") {
         closeFeedbackModal();
       }

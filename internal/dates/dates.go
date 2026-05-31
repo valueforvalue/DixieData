@@ -92,11 +92,11 @@ func Display(value string) string {
 		return strings.TrimSpace(value)
 	}
 	if !partial.HasAny() {
-		return "Not recorded"
+		return "N/A"
 	}
 	if partial.Year == 0 {
 		if partial.Month == 0 {
-			return "Not recorded"
+			return "N/A"
 		}
 		if partial.Day == 0 {
 			return monthLabel(partial.Month)
@@ -110,6 +110,14 @@ func Display(value string) string {
 		return fmt.Sprintf("%s %d", monthLabel(partial.Month), partial.Year)
 	}
 	return fmt.Sprintf("%s %d, %d", monthLabel(partial.Month), partial.Day, partial.Year)
+}
+
+func DisplayUnknown(value string) string {
+	display := Display(value)
+	if display == "N/A" {
+		return "Unknown"
+	}
+	return display
 }
 
 func ParseBirthInfo(value string) string {
