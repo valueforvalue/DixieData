@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
 const (
@@ -60,23 +58,14 @@ func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {
 	}
 	request.EntryType = strings.TrimSpace(strings.ToLower(request.EntryType))
 	request.Unit = strings.TrimSpace(request.Unit)
-	request.PensionState = pensionstate.Normalize(request.PensionState)
-	if strings.EqualFold(strings.TrimSpace(request.PensionState), pensionstate.NotApplicable) {
-		request.PensionState = pensionstate.NotApplicable
-	} else {
-		request.PensionState = strings.TrimSpace(request.PensionState)
-	}
+	request.PensionState = normalizeOptionalPensionState(request.PensionState)
 	request.ReviewStatus = strings.TrimSpace(strings.ToLower(request.ReviewStatus))
 	switch request.ReviewStatus {
 	case "", "clean", "review":
 	default:
 		request.ReviewStatus = ""
 	}
-	if strings.TrimSpace(request.ConfederateHomeStatus) == "" {
-		request.ConfederateHomeStatus = ""
-	} else {
-		request.ConfederateHomeStatus = confederatehomestatus.Normalize(request.ConfederateHomeStatus)
-	}
+	request.ConfederateHomeStatus = normalizeOptionalConfederateHomeStatus(request.ConfederateHomeStatus)
 	return request
 }
 
@@ -102,7 +91,7 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 		args = append(args, request.Unit)
 	}
 	if request.PensionState != "" {
-		whereParts = append(whereParts, `TRIM(COALESCE(pension_state, '')) = ?`)
+		whereParts = append(whereParts, normalizedPensionStateExpr+` = ?`)
 		args = append(args, request.PensionState)
 	}
 	switch request.ReviewStatus {
@@ -112,7 +101,7 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 		whereParts = append(whereParts, `needs_review = 1`)
 	}
 	if request.ConfederateHomeStatus != "" {
-		whereParts = append(whereParts, `TRIM(COALESCE(confederate_home_status, '')) = ?`)
+		whereParts = append(whereParts, normalizedConfederateHomeStatusExpr+` = ?`)
 		args = append(args, request.ConfederateHomeStatus)
 	}
 

@@ -712,12 +712,8 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	search.RankOut = strings.TrimSpace(search.RankOut)
 	search.Unit = strings.TrimSpace(search.Unit)
 	search.RecordType = strings.TrimSpace(search.RecordType)
-	search.PensionState = strings.TrimSpace(search.PensionState)
-	if strings.TrimSpace(search.ConfederateHomeStatus) == "" {
-		search.ConfederateHomeStatus = ""
-	} else {
-		search.ConfederateHomeStatus = confederatehomestatus.Normalize(search.ConfederateHomeStatus)
-	}
+	search.PensionState = normalizeOptionalPensionState(search.PensionState)
+	search.ConfederateHomeStatus = normalizeOptionalConfederateHomeStatus(search.ConfederateHomeStatus)
 	search.ConfederateHomeName = strings.TrimSpace(search.ConfederateHomeName)
 	search.BuriedIn = strings.TrimSpace(search.BuriedIn)
 	search.ReviewStatus = strings.TrimSpace(search.ReviewStatus)
@@ -827,11 +823,11 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 		args = append(args, "%"+search.RecordType+"%")
 	}
 	if search.PensionState != "" {
-		whereParts = append(whereParts, "pension_state = ?")
+		whereParts = append(whereParts, normalizedPensionStateExpr+" = ?")
 		args = append(args, search.PensionState)
 	}
 	if search.ConfederateHomeStatus != "" {
-		whereParts = append(whereParts, "confederate_home_status = ?")
+		whereParts = append(whereParts, normalizedConfederateHomeStatusExpr+" = ?")
 		args = append(args, search.ConfederateHomeStatus)
 	}
 	if search.ConfederateHomeName != "" {
@@ -2145,7 +2141,7 @@ func (s *SoldierService) loadFormSuggestions() (models.SoldierFormSuggestions, e
 	if err != nil {
 		return models.SoldierFormSuggestions{}, err
 	}
-	pensionState, err := distinctTextValues(s.db.Conn(), `SELECT DISTINCT TRIM(pension_state) FROM soldiers WHERE pension_state IS NOT NULL AND TRIM(pension_state) <> '' ORDER BY TRIM(pension_state)`)
+	pensionState, err := distinctNormalizedTextValues(s.db.Conn(), `SELECT `+normalizedPensionStateExpr+` AS value FROM soldiers GROUP BY value ORDER BY value`, normalizeOptionalPensionState)
 	if err != nil {
 		return models.SoldierFormSuggestions{}, err
 	}
