@@ -12,7 +12,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 	@Layout("Calendar") {
 		<div data-ui-id={ uiids.PageCalendar } class="relative">
 			@SurfaceBadge(uiids.PageCalendar)
-			<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+			<div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="gold text-5xl leading-none">Calendar</h2>
 					<p class="mt-2 max-w-2xl text-base leading-relaxed text-[#445260]">Track soldier anniversaries alongside custom holidays and events for each day.</p>
@@ -32,8 +32,8 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 					</div>
 					<div id="calendar-export-status" class="mt-3 text-sm text-[#445260]"></div>
 				</div>
-				<div class="mt-1 flex flex-wrap items-start justify-end gap-3 text-base text-[#445260]">
-					<div class="flex flex-wrap items-center gap-3 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,255,255,0.76)] px-4 py-3">
+				<div class="mt-1 flex w-full flex-wrap items-start gap-3 text-base text-[#445260] xl:w-auto xl:justify-end">
+					<div class="flex w-full flex-wrap items-center gap-3 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,255,255,0.76)] px-4 py-3 sm:w-auto">
 						<label for="month-select" class="text-sm font-semibold uppercase tracking-[0.18em] text-[#51606e]">Month</label>
 						<select id="month-select" class="field-input w-40" onchange="window.location.href='/calendar/' + this.value">
 							for _, m := range monthNumbers() {
@@ -46,7 +46,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 							<span>Export Month</span>
 							<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / Print</span>
 						</summary>
-						<form hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" data-pdf-pref-scope="calendar" class="absolute right-0 z-20 mt-3 w-80 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96">
+						<form hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" data-pdf-pref-scope="calendar" class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Monthly Calendar Export</p>
 							<p class="mt-2 text-sm text-slate-600">Generate a printable PDF for the selected month.</p>
 							<div class="mt-4 grid gap-3 sm:grid-cols-2">

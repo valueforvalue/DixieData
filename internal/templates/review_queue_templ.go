@@ -441,7 +441,7 @@ func ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) templ
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

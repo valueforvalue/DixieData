@@ -27,4 +27,7 @@ func TestBrowseViewShowsSelectionHelperAndPrintAction(t *testing.T) {
 			t.Fatalf("browse view missing %s", needle)
 		}
 	}
+	if !strings.Contains(content, "xl:flex-row xl:items-start xl:justify-between") {
+		t.Fatalf("browse view should keep top summary stacked until xl widths")
+	}
 }

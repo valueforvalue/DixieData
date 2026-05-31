@@ -102,6 +102,9 @@ func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
 		"Export Record",
 		"Export PDF",
 		"Export JPG",
+		"xl:flex-row xl:items-start xl:justify-between",
+		"absolute left-0",
+		"xl:left-auto xl:right-0",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("detail view missing export action %s", needle)

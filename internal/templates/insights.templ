@@ -13,12 +13,12 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
 	@Layout("Insights") {
 		<div data-ui-id={ uiids.PageInsights } class="mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageInsights)
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Local Archive Insights</h2>
 					<p class="mt-2 max-w-3xl text-sm text-slate-600">High-level analytics for the current local archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p>
 				</div>
-				<div class="flex flex-col items-start gap-3 lg:items-end">
+				<div class="flex flex-col items-start gap-3 xl:items-end">
 					<form hx-post="/insights/report/pdf" hx-target="#insights-export-status" data-pdf-pref-scope="insights" class="flex flex-wrap items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2">
 						<select name="orientation" data-pdf-pref-key="orientation" class="rounded-lg border border-[rgba(141,116,64,0.35)] bg-white px-2 py-1 text-sm text-slate-700">
 							<option value="P" selected>Portrait</option>

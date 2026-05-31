@@ -13,7 +13,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 	@Layout("Browse") {
 		<div data-ui-id={ uiids.PageBrowse } data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
 			@SurfaceBadge(uiids.PageBrowse)
-			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Browse Local Archive</h2>
 					<p class="mt-2 max-w-3xl text-sm text-slate-600">Browse-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p>
