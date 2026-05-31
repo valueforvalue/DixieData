@@ -141,6 +141,11 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	if !strings.Contains(content, `name="export_all"`) || !strings.Contains(content, `name="selected_ids"`) || !strings.Contains(content, "John Carter") {
 		t.Fatalf("share view missing printable export selection controls")
 	}
+	for _, needle := range []string{"data-print-config-modal", "overflow-y-auto", "max-h-[calc(100vh-2rem)]", "sm:max-h-[calc(100vh-4rem)]"} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing responsive printable export modal fragment %s", needle)
+		}
+	}
 	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive (.ddshare)") {
 		t.Fatalf("share view missing shared archive import action")
 	}
