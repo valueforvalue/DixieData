@@ -105,7 +105,7 @@ templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
 					@CalendarLegendItem("Holidays", "bg-[#d98989]")
 				</div>
 			</div>
-			<span class="text-xs uppercase tracking-[0.28em] text-[#51606e]">31-Day Grid</span>
+			<span class="text-xs uppercase tracking-[0.28em] text-[#51606e]">{ fmt.Sprintf("%d-Day Grid", calendarDaysInMonth(month)) }</span>
 		</div>
 		<div class="grid grid-cols-7 border-b border-[rgba(141,116,64,0.55)] bg-[rgba(36,48,61,0.08)]">
 			for _, weekday := range weekdayNames() {
@@ -113,35 +113,38 @@ templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
 			}
 		</div>
 		<div class="grid grid-cols-7">
-			for _, day := range days31() {
-				<div
-					class={ calendarDayClass(month, day) }
-					hx-get={ fmt.Sprintf("/anniversary/%d/%d", month, day) }
-					hx-target="#details-pane"
-					hx-swap="innerHTML"
-				>
-					<div class="flex items-start justify-between gap-2">
-						<div class={ calendarDayNumberClass(month, day) }>{ fmt.Sprintf("%d", day) }</div>
-						if isCurrentCalendarDay(month, day) {
-							<span class="inline-flex rounded-full border border-[#1f5b3b] bg-[rgba(31,91,59,0.12)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1f5b3b]">Today</span>
-						}
-					</div>
-					if summary, ok := calendar[day]; ok && hasCalendarMarkers(summary) {
-						<div class="absolute bottom-2 left-2 right-2 flex flex-wrap justify-end gap-2">
-							if summary.HolidayCount > 0 {
-								@CalendarCountMarker(summary.HolidayCount, "Holidays", "bg-[#d98989]")
-							}
-							if summary.EventCount > 0 {
-								@CalendarCountMarker(summary.EventCount, "Events", "bg-[#7cb3e2]")
-							}
-							if summary.AnniversaryCount > 0 {
-								@CalendarCountMarker(summary.AnniversaryCount, "Anniversaries", "bg-[#c5ab68]")
+			for _, day := range calendarGridDays(month) {
+				if day == 0 {
+					<div class="min-h-[115px] border-r border-b border-[rgba(141,116,64,0.3)] bg-[rgba(36,48,61,0.08)]"></div>
+				} else {
+					<div
+						class={ calendarDayClass(month, day) }
+						hx-get={ fmt.Sprintf("/anniversary/%d/%d", month, day) }
+						hx-target="#details-pane"
+						hx-swap="innerHTML"
+					>
+						<div class="flex items-start justify-between gap-2">
+							<div class={ calendarDayNumberClass(month, day) }>{ fmt.Sprintf("%d", day) }</div>
+							if isCurrentCalendarDay(month, day) {
+								<span class="inline-flex rounded-full border border-[#1f5b3b] bg-[rgba(31,91,59,0.12)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1f5b3b]">Today</span>
 							}
 						</div>
-					}
-				</div>
+						if summary, ok := calendar[day]; ok && hasCalendarMarkers(summary) {
+							<div class="absolute bottom-2 left-2 right-2 flex flex-wrap justify-end gap-2">
+								if summary.HolidayCount > 0 {
+									@CalendarCountMarker(summary.HolidayCount, "Holidays", "bg-[#d98989]")
+								}
+								if summary.EventCount > 0 {
+									@CalendarCountMarker(summary.EventCount, "Events", "bg-[#7cb3e2]")
+								}
+								if summary.AnniversaryCount > 0 {
+									@CalendarCountMarker(summary.AnniversaryCount, "Anniversaries", "bg-[#c5ab68]")
+								}
+							</div>
+						}
+					</div>
+				}
 			}
-			<div class="col-span-4 min-h-[115px] bg-[rgba(36,48,61,0.12)]"></div>
 		</div>
 	</div>
 }
@@ -177,14 +180,6 @@ func monthNumbers() []int {
 	return n
 }
 
-func days31() []int {
-	n := make([]int, 31)
-	for i := range n {
-		n[i] = i + 1
-	}
-	return n
-}
-
 func weekdayNames() []string {
 	return []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 }
@@ -194,6 +189,35 @@ func hasCalendarMarkers(summary viewmodel.CalendarDaySummary) bool {
 }
 
 var calendarNow = time.Now
+
+func calendarLayoutTime(month, day int) time.Time {
+	now := calendarNow()
+	return time.Date(now.Year(), time.Month(month), day, 0, 0, 0, 0, now.Location())
+}
+
+func calendarDaysInMonth(month int) int {
+	return calendarLayoutTime(month+1, 0).Day()
+}
+
+func calendarGridDays(month int) []int {
+	offset := int(calendarLayoutTime(month, 1).Weekday())
+	totalDays := calendarDaysInMonth(month)
+	totalCells := offset + totalDays
+	if remainder := totalCells % 7; remainder != 0 {
+		totalCells += 7 - remainder
+	}
+	cells := make([]int, 0, totalCells)
+	for i := 0; i < offset; i++ {
+		cells = append(cells, 0)
+	}
+	for day := 1; day <= totalDays; day++ {
+		cells = append(cells, day)
+	}
+	for len(cells) < totalCells {
+		cells = append(cells, 0)
+	}
+	return cells
+}
 
 func isCurrentCalendarDay(month, day int) bool {
 	now := calendarNow()
