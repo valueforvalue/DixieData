@@ -109,3 +109,42 @@ func TestCalendarCompactsExportControlsIntoFoldout(t *testing.T) {
 		}
 	}
 }
+
+func TestCalendarGridDaysAlignWithCurrentYearWeekday(t *testing.T) {
+	originalNow := calendarNow
+	calendarNow = func() time.Time {
+		return time.Date(2026, time.June, 1, 12, 0, 0, 0, time.UTC)
+	}
+	defer func() {
+		calendarNow = originalNow
+	}()
+
+	days := calendarGridDays(6)
+	if len(days) != 35 {
+		t.Fatalf("len(days) = %d, want 35", len(days))
+	}
+	if days[0] != 0 || days[1] != 1 {
+		t.Fatalf("first week = %v, want Sunday padding before Monday the 1st", days[:7])
+	}
+}
+
+func TestCalendarGridDaysUseActualMonthLength(t *testing.T) {
+	originalNow := calendarNow
+	calendarNow = func() time.Time {
+		return time.Date(2026, time.April, 1, 12, 0, 0, 0, time.UTC)
+	}
+	defer func() {
+		calendarNow = originalNow
+	}()
+
+	if got := calendarDaysInMonth(4); got != 30 {
+		t.Fatalf("calendarDaysInMonth(4) = %d, want 30", got)
+	}
+
+	days := calendarGridDays(4)
+	for _, day := range days {
+		if day == 31 {
+			t.Fatalf("calendarGridDays(4) unexpectedly included day 31: %v", days)
+		}
+	}
+}
