@@ -729,6 +729,7 @@ func parseBrowseRequest(values url.Values) records.BrowseRequest {
 		Sort:                  values.Get("sort"),
 		EntryType:             values.Get("entry_type"),
 		Unit:                  values.Get("unit"),
+		BuriedIn:              values.Get("buried_in"),
 		PensionState:          values.Get("pension_state"),
 		ReviewStatus:          values.Get("review_status"),
 		ConfederateHomeStatus: values.Get("confederate_home_status"),

@@ -29,6 +29,7 @@ type BrowseRequest struct {
 	Sort                  string
 	EntryType             string
 	Unit                  string
+	BuriedIn              string
 	PensionState          string
 	ReviewStatus          string
 	ConfederateHomeStatus string
@@ -58,6 +59,7 @@ func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {
 	}
 	request.EntryType = strings.TrimSpace(strings.ToLower(request.EntryType))
 	request.Unit = strings.TrimSpace(request.Unit)
+	request.BuriedIn = strings.TrimSpace(request.BuriedIn)
 	request.PensionState = normalizeOptionalPensionState(request.PensionState)
 	request.ReviewStatus = strings.TrimSpace(strings.ToLower(request.ReviewStatus))
 	switch request.ReviewStatus {
@@ -89,6 +91,10 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 	if request.Unit != "" {
 		whereParts = append(whereParts, `TRIM(unit) = ?`)
 		args = append(args, request.Unit)
+	}
+	if request.BuriedIn != "" {
+		whereParts = append(whereParts, `TRIM(buried_in) = ?`)
+		args = append(args, request.BuriedIn)
 	}
 	if request.PensionState != "" {
 		whereParts = append(whereParts, normalizedPensionStateExpr+` = ?`)

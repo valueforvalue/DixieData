@@ -5,7 +5,6 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
 	"github.com/valueforvalue/DixieData/internal/records"
 )
@@ -283,10 +282,15 @@ func BrowseStateFromDomain(input records.BrowseRequest, total int) BrowseState {
 		Sort:                  input.Sort,
 		EntryType:             input.EntryType,
 		Unit:                  input.Unit,
-		PensionState:          pensionstate.Normalize(input.PensionState),
+		BuriedIn:              input.BuriedIn,
+		PensionState:          normalizeOptionalText(input.PensionState),
 		ReviewStatus:          input.ReviewStatus,
 		ConfederateHomeStatus: input.ConfederateHomeStatus,
 	}
+}
+
+func normalizeOptionalText(value string) string {
+	return strings.TrimSpace(value)
 }
 
 func SoldierSearchFromModel(input models.SoldierSearch) PersonRecordSearch {

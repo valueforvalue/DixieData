@@ -77,6 +77,10 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					<input type="text" name="unit" value={ state.Unit } list="browse-unit-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any unit"/>
 				</div>
 				<div class="lg:col-span-2">
+					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Buried In</label>
+					<input type="text" name="buried_in" value={ state.BuriedIn } list="browse-buried-in-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any cemetery"/>
+				</div>
+				<div class="lg:col-span-2">
 					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Confederate Home Status</label>
 					<select name="confederate_home_status" data-browse-filter-input class="field-input mt-2">
 						<option value="" if state.ConfederateHomeStatus == "" { selected }>All</option>
@@ -113,6 +117,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					</div>
 				</div>
 				@SuggestionDatalist("browse-unit-suggestions", suggestions.Unit)
+				@SuggestionDatalist("browse-buried-in-suggestions", suggestions.BuriedIn)
 				@SuggestionDatalist("browse-pension-state-suggestions", suggestions.PensionState)
 			</form>
 			<div id="browse-results" data-ui-id={ uiids.PanelBrowseResults } class="relative">
@@ -252,6 +257,9 @@ func browsePageHref(state viewmodel.BrowseState, page int) string {
 	if strings.TrimSpace(state.Unit) != "" {
 		values.Set("unit", state.Unit)
 	}
+	if strings.TrimSpace(state.BuriedIn) != "" {
+		values.Set("buried_in", state.BuriedIn)
+	}
 	if strings.TrimSpace(state.PensionState) != "" {
 		values.Set("pension_state", state.PensionState)
 	}
@@ -276,9 +284,12 @@ func browseSummary(state viewmodel.BrowseState) string {
 }
 
 func browseActiveFilters(state viewmodel.BrowseState) []string {
-	filters := make([]string, 0, 5)
+	filters := make([]string, 0, 6)
 	if entryType := strings.TrimSpace(state.EntryType); entryType != "" {
 		filters = append(filters, "Entry Type: "+browseEntryTypeLabel(entryType))
+	}
+	if buriedIn := strings.TrimSpace(state.BuriedIn); buriedIn != "" {
+		filters = append(filters, "Buried In: "+buriedIn)
 	}
 	if pensionState := strings.TrimSpace(state.PensionState); pensionState != "" {
 		filters = append(filters, "Pension State: "+pensionState)
