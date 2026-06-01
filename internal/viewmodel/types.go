@@ -159,6 +159,7 @@ type BrowseState struct {
 	Sort                  string
 	EntryType             string
 	Unit                  string
+	BuriedIn              string
 	PensionState          string
 	ReviewStatus          string
 	ConfederateHomeStatus string

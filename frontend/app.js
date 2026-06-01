@@ -1853,6 +1853,7 @@
       sort: data.get("sort") || "display_id_asc",
       entry_type: data.get("entry_type") || "",
       unit: data.get("unit") || "",
+      buried_in: data.get("buried_in") || "",
       pension_state: data.get("pension_state") || "",
       review_status: data.get("review_status") || "",
       confederate_home_status: data.get("confederate_home_status") || "",
@@ -1863,7 +1864,7 @@
     if (!(form instanceof HTMLFormElement) || !state || typeof state !== "object") {
       return;
     }
-    ["page", "page_size", "scope", "sort", "entry_type", "unit", "pension_state", "review_status", "confederate_home_status"].forEach((name) => {
+    ["page", "page_size", "scope", "sort", "entry_type", "unit", "buried_in", "pension_state", "review_status", "confederate_home_status"].forEach((name) => {
       const field = form.elements.namedItem(name);
       if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
         if (typeof state[name] === "string") {
@@ -1874,7 +1875,7 @@
   }
 
   function browseStateDiffers(current, saved) {
-    return ["page", "page_size", "scope", "sort", "entry_type", "unit", "pension_state", "review_status", "confederate_home_status"]
+    return ["page", "page_size", "scope", "sort", "entry_type", "unit", "buried_in", "pension_state", "review_status", "confederate_home_status"]
       .some((key) => String(current[key] || "") !== String(saved[key] || ""));
   }
 
@@ -1962,7 +1963,11 @@
     if (!page.hasAttribute("data-browse-restored") && browseStateDiffers(current, saved)) {
       page.setAttribute("data-browse-restored", "true");
       applyBrowseStateToForm(form, saved);
-      request(form);
+      const pageField = form.querySelector("[data-browse-page-input]");
+      if (pageField instanceof HTMLInputElement || pageField instanceof HTMLSelectElement) {
+        pageField.value = "1";
+      }
+      saveBrowseState(currentBrowseStateFromForm(form));
       return;
     }
     page.setAttribute("data-browse-restored", "true");
@@ -2699,7 +2704,6 @@
       }
       if (form instanceof HTMLFormElement) {
         saveBrowseState(currentBrowseStateFromForm(form));
-        request(form);
       }
       return;
     }

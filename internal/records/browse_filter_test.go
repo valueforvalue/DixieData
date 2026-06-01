@@ -74,6 +74,32 @@ func TestSoldierService_BrowsePageMatchesLegacyNormalizedStatusValues(t *testing
 	}
 }
 
+func TestSoldierService_BrowsePageFiltersByBuriedIn(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	if _, err := svc.Create(models.Soldier{FirstName: "Albert", LastName: "One", BuriedIn: "Oak Hill Cemetery"}); err != nil {
+		t.Fatalf("create first: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{FirstName: "Benjamin", LastName: "Two", BuriedIn: "Maple Grove Cemetery"}); err != nil {
+		t.Fatalf("create second: %v", err)
+	}
+	if _, err := svc.Create(models.Soldier{FirstName: "Charles", LastName: "Three", BuriedIn: "Oak Hill Cemetery"}); err != nil {
+		t.Fatalf("create third: %v", err)
+	}
+
+	soldiers, total, normalized, err := svc.BrowsePage(BrowseRequest{BuriedIn: "Oak Hill Cemetery"})
+	if err != nil {
+		t.Fatalf("BrowsePage buried_in=Oak Hill Cemetery: %v", err)
+	}
+	if normalized.BuriedIn != "Oak Hill Cemetery" {
+		t.Fatalf("normalized buried_in = %q", normalized.BuriedIn)
+	}
+	if total != 2 || len(soldiers) != 2 {
+		t.Fatalf("expected 2 buried-in matches, total=%d len=%d", total, len(soldiers))
+	}
+}
+
 func TestSoldierService_AdvancedSearchMatchesLegacyNormalizedStatusValues(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
