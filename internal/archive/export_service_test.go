@@ -506,11 +506,12 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 		Rank:             "General",
 		Unit:             "Army of Northern Virginia",
 		BuriedIn:         "Hollywood Cemetery",
+		Biography:        "Landscape biography should appear in single-record export. https://example.com/bio",
 		AddedBy:          "J. Morris",
 		LastEditedBy:     "J. Morris",
 		LastEditedAt:     "2026-05-30T02:38:13Z",
 		LastEditedFields: "entry_type,last_edited_fields",
-		Notes:            "Reference https://example.com/notes",
+		Notes:            "Scratch note should stay out of single-record export.",
 		Records:          []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
 		Images:           []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
 	}, PDFOptions{IncludeImages: true})
@@ -535,13 +536,16 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "S. Carter's Civil War Research Archive") {
 		t.Fatalf("pdf missing standardized branding")
 	}
-	if !strings.Contains(text, "https://example.com/notes") || !strings.Contains(text, "https://example.com/record") {
+	if !strings.Contains(text, "https://example.com/bio") || !strings.Contains(text, "https://example.com/record") {
 		t.Fatalf("pdf missing expected URL text")
 	}
-	if !strings.Contains(text, "/URI (https://example.com/notes)") || !strings.Contains(text, "/URI (https://example.com/record)") {
+	if !strings.Contains(text, "/URI (https://example.com/bio)") || !strings.Contains(text, "/URI (https://example.com/record)") {
 		t.Fatalf("pdf missing expected clickable link annotations")
 	}
-	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields", "portrait.png"} {
+	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Landscape biography should appear in single-record export.") {
+		t.Fatalf("landscape pdf should use biography content")
+	}
+	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields", "portrait.png", "Primary Image", "Scratch note should stay out of single-record export.", "https://example.com/notes"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("pdf should omit audit metadata %q", forbidden)
 		}
@@ -979,6 +983,21 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		if _, err := os.Stat(pdfPath); err != nil {
 			t.Fatalf("generated PDF missing: %v", err)
 		}
+		pdfData, err := os.ReadFile(pdfPath)
+		if err != nil {
+			t.Fatalf("ReadFile pdfPath: %v", err)
+		}
+		pdfText := string(pdfData)
+		for _, needle := range []string{"JPG biography should match PDF renderer.", "JPG portrait"} {
+			if !strings.Contains(pdfText, needle) {
+				t.Fatalf("JPG source PDF missing %q", needle)
+			}
+		}
+		for _, forbidden := range []string{"Primary Image", "JPG scratch note should stay out."} {
+			if strings.Contains(pdfText, forbidden) {
+				t.Fatalf("JPG source PDF should omit %q", forbidden)
+			}
+		}
 		first := filepath.Join(outputDir, "page-001.jpg")
 		second := filepath.Join(outputDir, "page-002.jpg")
 		if err := os.WriteFile(first, []byte("page-1"), 0o644); err != nil {
@@ -990,7 +1009,18 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		return []string{first, second}, nil
 	})
 
-	soldier := models.Soldier{DisplayID: "STC38-00001", FirstName: "John", LastName: "Taylor"}
+	imagePath := filepath.Join(t.TempDir(), "jpg-portrait.png")
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	soldier := models.Soldier{
+		DisplayID: "STC38-00001",
+		FirstName: "John",
+		LastName:  "Taylor",
+		Biography: "JPG biography should match PDF renderer.",
+		Notes:     "JPG scratch note should stay out.",
+		Images:    []models.Image{{FileName: "jpg-portrait.png", FilePath: `images\stc38-00001\jpg-portrait.png`, ResolvedPath: imagePath, Caption: "JPG portrait"}},
+	}
 	outputPath := filepath.Join(t.TempDir(), "record.jpg")
 	paths, err := exportSvc.ExportSoldierJPG(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: true})
 	if err != nil {
@@ -1214,6 +1244,85 @@ func TestExportService_ExportFullDatabasePDFGroupsByBurialLocation(t *testing.T)
 		// expected order
 	} else {
 		t.Fatalf("unknown burial-location section did not sort last")
+	}
+}
+
+func TestExportService_ExportFullDatabasePDFFiltersByStructuredScope(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	for _, soldier := range []models.Soldier{
+		{FirstName: "John", LastName: "Able", EntryType: "soldier", BuriedIn: "Oak Hill Cemetery", Unit: "A Company", PensionState: "Texas", ConfederateHomeStatus: "Trustee"},
+		{FirstName: "Mary", LastName: "Baker", EntryType: "soldier", BuriedIn: "Oak Hill Cemetery", Unit: "C Company", PensionState: "Texas", ConfederateHomeStatus: "Trustee"},
+		{FirstName: "Samuel", LastName: "Carter", EntryType: "soldier", BuriedIn: "Rose Hill Cemetery", Unit: "B Company", PensionState: "Texas", ConfederateHomeStatus: "Trustee"},
+		{FirstName: "Mark", LastName: "Dunn", EntryType: "soldier", BuriedIn: "", Unit: "D Company", PensionState: "Texas", ConfederateHomeStatus: "Trustee"},
+	} {
+		if _, err := soldierSvc.Create(soldier); err != nil {
+			t.Fatalf("Create soldier: %v", err)
+		}
+	}
+
+	outPath := filepath.Join(t.TempDir(), "filtered-registry.pdf")
+	settings := PrintSettings{
+		Scope:                       PrintScopeFiltered,
+		FilterBuriedIn:              []string{"Oak Hill Cemetery", printFilterUnknownValue},
+		FilterEntryTypes:            []string{"soldier"},
+		FilterUnits:                 []string{"A Company", "D Company"},
+		FilterPensionStates:         []string{"Texas"},
+		FilterConfederateHomeStatus: []string{"Trustee"},
+	}
+	if err := exportSvc.ExportFullDatabasePDF(outPath, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	for _, needle := range []string{"John Able", "Mark Dunn"} {
+		if !strings.Contains(text, needle) {
+			t.Fatalf("filtered PDF missing %q", needle)
+		}
+	}
+	for _, forbidden := range []string{"Mary Baker", "Samuel Carter"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("filtered PDF should omit %q", forbidden)
+		}
+	}
+}
+
+func TestExportService_ExportFullDatabasePDFFilteredScopeWithoutFiltersFallsBackToAll(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	for _, soldier := range []models.Soldier{
+		{FirstName: "John", LastName: "Able"},
+		{FirstName: "Mary", LastName: "Baker"},
+	} {
+		if _, err := soldierSvc.Create(soldier); err != nil {
+			t.Fatalf("Create soldier: %v", err)
+		}
+	}
+
+	outPath := filepath.Join(t.TempDir(), "filtered-fallback-all.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(outPath, PrintSettings{Scope: PrintScopeFiltered}); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	text := string(data)
+	for _, needle := range []string{"John Able", "Mary Baker"} {
+		if !strings.Contains(text, needle) {
+			t.Fatalf("filtered scope without filters should still include %q", needle)
+		}
 	}
 }
 

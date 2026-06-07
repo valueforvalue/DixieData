@@ -225,10 +225,14 @@ type GoogleStatus struct {
 }
 
 type ExportRecordOption struct {
-	ID          int64
-	DisplayID   string
-	DisplayName string
-	EntryType   string
+	ID                     int64
+	DisplayID              string
+	DisplayName            string
+	EntryType              string
+	Unit                   string
+	PensionState           string
+	ConfederateHomeStatus  string
+	BuriedIn               string
 }
 
 type MergeReviewConflict struct {

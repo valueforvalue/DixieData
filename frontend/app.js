@@ -2315,8 +2315,9 @@
       return;
     }
     seedPrintRecordSelectionFromBrowse();
-    syncPrintRecordPickerState();
+    syncPrintScopeState();
     applyPrintRecordFilter();
+    applyPrintBuriedFilter();
     modal.classList.remove("hidden");
     modal.classList.add("flex");
     modal.setAttribute("aria-hidden", "false");
@@ -2368,19 +2369,28 @@
   }
 
   function readPrintSettings(form) {
-    const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
-    const selectedIDs = exportAll
+    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
+    const selectedIDs = scope !== "selected"
       ? []
       : Array.from(form.querySelectorAll('[data-print-record-checkbox]:checked'))
           .map((input) => Number.parseInt(input.value || "", 10))
           .filter((value) => Number.isInteger(value) && value > 0);
+    const selectedFilterValues = (family) => Array.from(form.querySelectorAll(`[data-print-filter-checkbox][data-print-filter-family="${family}"]:checked`))
+      .map((input) => (input instanceof HTMLInputElement ? input.value.trim() : ""))
+      .filter((value) => value !== "");
     return {
+      scope,
       sortBy: (form.querySelector('input[name="sort_by"]:checked')?.value || "last_name").trim(),
       groupByUnit: form.querySelector('input[name="group_by_unit"]')?.checked === true,
       groupByPensionState: form.querySelector('input[name="group_by_pension_state"]')?.checked === true,
       groupByConfederateHomeStatus: form.querySelector('input[name="group_by_confederate_home_status"]')?.checked === true,
       groupByBuriedIn: form.querySelector('input[name="group_by_buried_in"]')?.checked === true,
-      exportAll,
+      filterBuriedIn: selectedFilterValues("buried-in"),
+      filterEntryTypes: selectedFilterValues("entry-type"),
+      filterUnits: selectedFilterValues("unit"),
+      filterPensionStates: selectedFilterValues("pension-state"),
+      filterConfederateHomeStatuses: selectedFilterValues("confederate-home-status"),
+      exportAll: scope === "all",
       selectedIds: selectedIDs,
     };
   }
@@ -2404,9 +2414,9 @@
       checkboxes.forEach((checkbox) => {
         checkbox.checked = selected.has(Number.parseInt(checkbox.value || "", 10));
       });
-      const exportAll = form.querySelector("[data-print-export-all]");
-      if (exportAll instanceof HTMLInputElement) {
-        exportAll.checked = false;
+      const selectedScope = form.querySelector('[data-print-scope-value][value="selected"]');
+      if (selectedScope instanceof HTMLInputElement) {
+        selectedScope.checked = true;
       }
     }
   }
@@ -2423,24 +2433,34 @@
     window.history.replaceState(window.history.state, "", nextURL);
   }
 
-  function syncPrintRecordPickerState() {
+  function syncPrintScopeState() {
     const form = printConfigForm();
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
+    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
     const picker = form.querySelector("[data-print-record-picker]");
-    const filter = form.querySelector("[data-print-record-filter]");
-    const checkboxes = form.querySelectorAll("[data-print-record-checkbox]");
+    const recordFilter = form.querySelector("[data-print-record-filter]");
+    const recordCheckboxes = form.querySelectorAll("[data-print-record-checkbox]");
+    const filterPanel = form.querySelector("[data-print-filter-panel]");
+    const structuredFilterInputs = form.querySelectorAll("[data-print-filter-checkbox], [data-print-buried-filter]");
     if (picker instanceof HTMLElement) {
-      picker.classList.toggle("opacity-60", exportAll);
+      picker.classList.toggle("opacity-60", scope !== "selected");
     }
-    if (filter instanceof HTMLInputElement) {
-      filter.disabled = exportAll;
+    if (recordFilter instanceof HTMLInputElement) {
+      recordFilter.disabled = scope !== "selected";
     }
-    checkboxes.forEach((checkbox) => {
+    recordCheckboxes.forEach((checkbox) => {
       if (checkbox instanceof HTMLInputElement) {
-        checkbox.disabled = exportAll;
+        checkbox.disabled = scope !== "selected";
+      }
+    });
+    if (filterPanel instanceof HTMLElement) {
+      filterPanel.classList.toggle("opacity-60", scope !== "filtered");
+    }
+    structuredFilterInputs.forEach((input) => {
+      if (input instanceof HTMLInputElement) {
+        input.disabled = scope !== "filtered";
       }
     });
   }
@@ -2450,14 +2470,31 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    const exportAll = form.querySelector('[data-print-export-all]')?.checked === true;
+    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
     const query = (form.querySelector("[data-print-record-filter]")?.value || "").trim().toLowerCase();
     form.querySelectorAll("[data-print-record-option]").forEach((option) => {
       if (!(option instanceof HTMLElement)) {
         return;
       }
       const search = (option.getAttribute("data-print-record-search") || "").toLowerCase();
-      const visible = exportAll || query === "" || search.includes(query);
+      const visible = scope !== "selected" || query === "" || search.includes(query);
+      option.classList.toggle("hidden", !visible);
+    });
+  }
+
+  function applyPrintBuriedFilter() {
+    const form = printConfigForm();
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const scope = (form.querySelector('input[name="scope"]:checked')?.value || "all").trim();
+    const query = (form.querySelector("[data-print-buried-filter]")?.value || "").trim().toLowerCase();
+    form.querySelectorAll("[data-print-buried-option]").forEach((option) => {
+      if (!(option instanceof HTMLElement)) {
+        return;
+      }
+      const search = (option.getAttribute("data-print-buried-search") || "").toLowerCase();
+      const visible = scope !== "filtered" || query === "" || search.includes(query);
       option.classList.toggle("hidden", !visible);
     });
   }
@@ -2466,9 +2503,9 @@
     const bridge = window.go?.main?.App?.ExportFullDatabasePDF;
     const status = shareStatusTarget();
     const settings = readPrintSettings(form);
-    if (!settings.exportAll && settings.selectedIds.length === 0) {
+    if (settings.scope === "selected" && settings.selectedIds.length === 0) {
       if (status) {
-        status.textContent = "Select at least one record or export all records.";
+        status.textContent = "Select at least one record or choose a different export scope.";
       }
       return;
     }
@@ -2508,8 +2545,9 @@
     initializeLiveCounts(document);
     initializeFloatingNav();
     applyCalendarAnniversaryDensity();
-    syncPrintRecordPickerState();
+    syncPrintScopeState();
     applyPrintRecordFilter();
+    applyPrintBuriedFilter();
     restoreRedirectState();
     restorePendingToast();
     applySmartBackLabels();
@@ -2596,9 +2634,10 @@
       closePrintConfigModal();
       return;
     }
-    if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-export-all]")) {
-      syncPrintRecordPickerState();
+    if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-scope-value]")) {
+      syncPrintScopeState();
       applyPrintRecordFilter();
+      applyPrintBuriedFilter();
       return;
     }
     const closeFeedback = event.target.closest("[data-feedback-close]");
@@ -2801,6 +2840,11 @@
   document.addEventListener("input", (event) => {
     if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-record-filter]")) {
       applyPrintRecordFilter();
+    }
+  });
+  document.addEventListener("input", (event) => {
+    if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-buried-filter]")) {
+      applyPrintBuriedFilter();
     }
   });
   document.addEventListener("change", (event) => {

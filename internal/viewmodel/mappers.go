@@ -3,6 +3,7 @@ package viewmodel
 import (
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
@@ -110,10 +111,14 @@ func ExportRecordOptionFromModel(input models.Soldier) ExportRecordOption {
 		displayName = strings.TrimSpace(input.DisplayID)
 	}
 	return ExportRecordOption{
-		ID:          input.ID,
-		DisplayID:   input.DisplayID,
-		DisplayName: displayName,
-		EntryType:   input.EntryType,
+		ID:                    input.ID,
+		DisplayID:             input.DisplayID,
+		DisplayName:           displayName,
+		EntryType:             strings.TrimSpace(strings.ToLower(input.EntryType)),
+		Unit:                  strings.TrimSpace(input.Unit),
+		PensionState:          pensionstate.Normalize(input.PensionState),
+		ConfederateHomeStatus: confederatehomestatus.Normalize(input.ConfederateHomeStatus),
+		BuriedIn:              strings.TrimSpace(input.BuriedIn),
 	}
 }
 

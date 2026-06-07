@@ -47,6 +47,7 @@ type pdfToJPEGRasterizer interface {
 }
 
 type PrintSettings struct {
+	Scope                        string  `json:"scope"`
 	Orientation                  string  `json:"orientation"`
 	PrinterFriendly              bool    `json:"printerFriendly"`
 	FullBiographyPage            bool    `json:"fullBiographyPage"`
@@ -55,6 +56,11 @@ type PrintSettings struct {
 	GroupByPensionState          bool    `json:"groupByPensionState"`
 	GroupByConfederateHomeStatus bool    `json:"groupByConfederateHomeStatus"`
 	GroupByBuriedIn              bool    `json:"groupByBuriedIn"`
+	FilterBuriedIn               []string `json:"filterBuriedIn"`
+	FilterEntryTypes             []string `json:"filterEntryTypes"`
+	FilterUnits                  []string `json:"filterUnits"`
+	FilterPensionStates          []string `json:"filterPensionStates"`
+	FilterConfederateHomeStatus  []string `json:"filterConfederateHomeStatuses"`
 	ExportAll                    bool    `json:"exportAll"`
 	SelectedIDs                  []int64 `json:"selectedIds"`
 }
@@ -70,6 +76,12 @@ const (
 	PrintSortLastName  = "last_name"
 	PrintSortBirthYear = "birth_year"
 	PrintSortDeathYear = "death_year"
+
+	PrintScopeAll      = "all"
+	PrintScopeFiltered = "filtered"
+	PrintScopeSelected = "selected"
+
+	printFilterUnknownValue = "__unknown__"
 )
 
 func (s PrintSettings) Normalize() PrintSettings {
@@ -86,11 +98,65 @@ func (s PrintSettings) Normalize() PrintSettings {
 	default:
 		s.SortBy = PrintSortLastName
 	}
+	s.Scope = normalizePrintScope(s.Scope, s.ExportAll, s.SelectedIDs)
 	s.SelectedIDs = normalizeSelectedPrintIDs(s.SelectedIDs)
-	if len(s.SelectedIDs) == 0 {
-		s.ExportAll = true
+	s.FilterBuriedIn = normalizePrintFilterValues(s.FilterBuriedIn)
+	s.FilterEntryTypes = normalizePrintFilterValues(s.FilterEntryTypes)
+	s.FilterUnits = normalizePrintFilterValues(s.FilterUnits)
+	s.FilterPensionStates = normalizePrintFilterValues(s.FilterPensionStates)
+	s.FilterConfederateHomeStatus = normalizePrintFilterValues(s.FilterConfederateHomeStatus)
+	if s.Scope == PrintScopeFiltered && !s.HasFilters() {
+		s.Scope = PrintScopeAll
 	}
+	s.ExportAll = s.Scope == PrintScopeAll
 	return s
+}
+
+func (s PrintSettings) HasFilters() bool {
+	return len(s.FilterBuriedIn) > 0 ||
+		len(s.FilterEntryTypes) > 0 ||
+		len(s.FilterUnits) > 0 ||
+		len(s.FilterPensionStates) > 0 ||
+		len(s.FilterConfederateHomeStatus) > 0
+}
+
+func normalizePrintScope(scope string, exportAll bool, selectedIDs []int64) string {
+	switch strings.TrimSpace(strings.ToLower(scope)) {
+	case PrintScopeFiltered:
+		return PrintScopeFiltered
+	case PrintScopeSelected:
+		return PrintScopeSelected
+	case PrintScopeAll:
+		return PrintScopeAll
+	}
+	if !exportAll || len(selectedIDs) > 0 {
+		return PrintScopeSelected
+	}
+	return PrintScopeAll
+}
+
+func normalizePrintFilterValues(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(values))
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		key := strings.ToLower(trimmed)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+	sort.Slice(normalized, func(i, j int) bool {
+		return strings.ToLower(normalized[i]) < strings.ToLower(normalized[j])
+	})
+	return normalized
 }
 
 func (o PDFOptions) Normalize(defaultOrientation string, _ bool) PDFOptions {
@@ -2286,12 +2352,15 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with concise record pages, captioned primary images, and bounded biography excerpts that continue onto additional pages when needed.")
 
 	var selectedIDs []int64
-	if !settings.ExportAll {
+	if settings.Scope == PrintScopeSelected {
 		selectedIDs = settings.SelectedIDs
 	}
 	soldiers, err := exportDetailedSoldiers(e.soldier, selectedIDs)
 	if err != nil {
 		return err
+	}
+	if settings.Scope == PrintScopeFiltered {
+		soldiers = filterPrintableSoldiers(soldiers, settings)
 	}
 	if len(soldiers) == 0 {
 		writePDFBody(pdf, "No records are currently stored in this archive.")
@@ -2506,14 +2575,42 @@ func printablePDFMetadataDetails(settings PrintSettings) map[string]string {
 		"Sort By":             printableSortLabel(settings.SortBy),
 		"Group By":            printableGroupSummary(settings),
 	}
-	if settings.ExportAll {
-		metadata["Export Scope"] = "All records"
-	} else {
+	switch settings.Scope {
+	case PrintScopeSelected:
 		metadata["Export Scope"] = fmt.Sprintf("Selected records (%d)", len(settings.SelectedIDs))
+	case PrintScopeFiltered:
+		metadata["Export Scope"] = printableFilterScopeSummary(settings)
+	default:
+		metadata["Export Scope"] = "All records"
 	}
 	metadata["Printer Friendly"] = fmt.Sprintf("%t", settings.PrinterFriendly)
 	metadata["Orientation"] = pdfOrientationLabel(settings.Orientation)
 	return metadata
+}
+
+func printableFilterScopeSummary(settings PrintSettings) string {
+	settings = settings.Normalize()
+	if !settings.HasFilters() {
+		return "All records"
+	}
+	return fmt.Sprintf("Filtered records (%d active filter family)", activePrintableFilterFamilyCount(settings))
+}
+
+func activePrintableFilterFamilyCount(settings PrintSettings) int {
+	settings = settings.Normalize()
+	count := 0
+	for _, values := range [][]string{
+		settings.FilterBuriedIn,
+		settings.FilterEntryTypes,
+		settings.FilterUnits,
+		settings.FilterPensionStates,
+		settings.FilterConfederateHomeStatus,
+	} {
+		if len(values) > 0 {
+			count++
+		}
+	}
+	return count
 }
 
 func printableSortLabel(sortBy string) string {
@@ -2576,6 +2673,81 @@ func normalizeSelectedPrintIDs(values []int64) []int64 {
 		return normalized[i] < normalized[j]
 	})
 	return normalized
+}
+
+func filterPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) []models.Soldier {
+	settings = settings.Normalize()
+	if settings.Scope != PrintScopeFiltered || !settings.HasFilters() {
+		return soldiers
+	}
+	filtered := make([]models.Soldier, 0, len(soldiers))
+	for _, soldier := range soldiers {
+		if matchesPrintableFilters(soldier, settings) {
+			filtered = append(filtered, soldier)
+		}
+	}
+	return filtered
+}
+
+func matchesPrintableFilters(soldier models.Soldier, settings PrintSettings) bool {
+	settings = settings.Normalize()
+	return matchesPrintableFilterFamily(settings.FilterBuriedIn, printableBuriedInFilterValue(soldier)) &&
+		matchesPrintableFilterFamily(settings.FilterEntryTypes, printableEntryTypeFilterValue(soldier)) &&
+		matchesPrintableFilterFamily(settings.FilterUnits, printableUnitFilterValue(soldier)) &&
+		matchesPrintableFilterFamily(settings.FilterPensionStates, printablePensionStateFilterValue(soldier)) &&
+		matchesPrintableFilterFamily(settings.FilterConfederateHomeStatus, printableConfederateHomeStatusFilterValue(soldier))
+}
+
+func matchesPrintableFilterFamily(selected []string, actual string) bool {
+	if len(selected) == 0 {
+		return true
+	}
+	for _, candidate := range selected {
+		if strings.EqualFold(strings.TrimSpace(candidate), strings.TrimSpace(actual)) {
+			return true
+		}
+	}
+	return false
+}
+
+func printableBuriedInFilterValue(soldier models.Soldier) string {
+	value := strings.TrimSpace(soldier.BuriedIn)
+	if value == "" {
+		return printFilterUnknownValue
+	}
+	return value
+}
+
+func printableEntryTypeFilterValue(soldier models.Soldier) string {
+	value := strings.TrimSpace(strings.ToLower(soldier.EntryType))
+	if value == "" {
+		return printFilterUnknownValue
+	}
+	return value
+}
+
+func printableUnitFilterValue(soldier models.Soldier) string {
+	value := strings.TrimSpace(soldier.Unit)
+	if value == "" {
+		return printFilterUnknownValue
+	}
+	return value
+}
+
+func printablePensionStateFilterValue(soldier models.Soldier) string {
+	value := strings.TrimSpace(pensionstate.Normalize(soldier.PensionState))
+	if omitPDFValue(value) {
+		return printFilterUnknownValue
+	}
+	return value
+}
+
+func printableConfederateHomeStatusFilterValue(soldier models.Soldier) string {
+	value := strings.TrimSpace(confederatehomestatus.Normalize(soldier.ConfederateHomeStatus))
+	if omitPDFValue(value) {
+		return printFilterUnknownValue
+	}
+	return value
 }
 
 func changedPrintGroups(previous map[string]string, soldier models.Soldier, groupOrder []string, firstRecord bool) []printGroupChange {
@@ -3613,24 +3785,18 @@ func firstRecordCardImage(soldier models.Soldier, printerFriendly bool) (string,
 }
 
 func recordPDFImageSectionTitle(options PDFOptions) string {
-	if usesPortraitRecordPDFLayout(options) || options.PrintableArchive {
-		return ""
-	}
-	return "Primary Image"
+	return ""
 }
 
 func recordPDFNarrativeSection(soldier models.Soldier, options PDFOptions) (string, string) {
-	if usesPortraitRecordPDFLayout(options) {
-		text := strings.TrimSpace(soldier.PDFExcerptOverride)
-		if text == "" {
-			text = soldier.Biography
-		}
-		return "Biography", pdfFreeTextValue(text, options.PrinterFriendly)
-	}
 	if options.PrintableArchive {
 		return "Biography", printableArchiveBiographyText(soldier, options.PrinterFriendly)
 	}
-	return "Scratch Pad / Notes", pdfFreeTextValue(soldier.Notes, options.PrinterFriendly)
+	text := strings.TrimSpace(soldier.PDFExcerptOverride)
+	if text == "" {
+		text = soldier.Biography
+	}
+	return "Biography", pdfFreeTextValue(text, options.PrinterFriendly)
 }
 
 func usesPortraitRecordPDFLayout(options PDFOptions) bool {
