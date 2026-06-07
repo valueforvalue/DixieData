@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS soldiers (
     death_date   TEXT,
     birth_info   TEXT,
     buried_in    TEXT,
+    biography    TEXT,
+    pdf_excerpt_override TEXT,
     notes        TEXT,
     needs_review BOOLEAN DEFAULT 0,
     review_reason TEXT,
@@ -319,6 +321,8 @@ func applySchema(db *DB) error {
 		{table: "soldiers", column: "maiden_name", sql: `ALTER TABLE soldiers ADD COLUMN maiden_name TEXT`},
 		{table: "soldiers", column: "birth_date", sql: `ALTER TABLE soldiers ADD COLUMN birth_date TEXT`},
 		{table: "soldiers", column: "death_date", sql: `ALTER TABLE soldiers ADD COLUMN death_date TEXT`},
+		{table: "soldiers", column: "biography", sql: `ALTER TABLE soldiers ADD COLUMN biography TEXT`},
+		{table: "soldiers", column: "pdf_excerpt_override", sql: `ALTER TABLE soldiers ADD COLUMN pdf_excerpt_override TEXT`},
 		{table: "soldiers", column: "needs_review", sql: `ALTER TABLE soldiers ADD COLUMN needs_review BOOLEAN DEFAULT 0`},
 		{table: "soldiers", column: "review_reason", sql: `ALTER TABLE soldiers ADD COLUMN review_reason TEXT`},
 		{table: "soldiers", column: "added_by", sql: `ALTER TABLE soldiers ADD COLUMN added_by TEXT`},
@@ -497,6 +501,7 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			buried_in,
 			maiden_name,
 			relationship_label,
+			biography,
 			notes,
 			scratch_pad
 		)`,
@@ -504,12 +509,12 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			INSERT INTO soldiers_fts (
 				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-				notes, scratch_pad
+				biography, notes, scratch_pad
 			) VALUES (
 				new.id, new.id, COALESCE(new.display_id, ''), COALESCE(new.pension_id, ''), COALESCE(new.application_id, ''), COALESCE(new.prefix, ''), COALESCE(new.first_name, ''),
 				COALESCE(new.middle_name, ''), COALESCE(new.last_name, ''), COALESCE(new.suffix, ''), COALESCE(new.unit, ''), COALESCE(new.rank, ''), COALESCE(new.rank_in, ''),
 				COALESCE(new.rank_out, ''), COALESCE(new.pension_state, ''), COALESCE(new.confederate_home_status, ''), COALESCE(new.confederate_home_name, ''), COALESCE(new.buried_in, ''),
-				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
+				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.biography, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
 			);
 		END`,
 		`CREATE TRIGGER soldiers_fts_au AFTER UPDATE ON soldiers BEGIN
@@ -517,12 +522,12 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			INSERT INTO soldiers_fts (
 				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-				notes, scratch_pad
+				biography, notes, scratch_pad
 			) VALUES (
 				new.id, new.id, COALESCE(new.display_id, ''), COALESCE(new.pension_id, ''), COALESCE(new.application_id, ''), COALESCE(new.prefix, ''), COALESCE(new.first_name, ''),
 				COALESCE(new.middle_name, ''), COALESCE(new.last_name, ''), COALESCE(new.suffix, ''), COALESCE(new.unit, ''), COALESCE(new.rank, ''), COALESCE(new.rank_in, ''),
 				COALESCE(new.rank_out, ''), COALESCE(new.pension_state, ''), COALESCE(new.confederate_home_status, ''), COALESCE(new.confederate_home_name, ''), COALESCE(new.buried_in, ''),
-				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
+				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.biography, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
 			);
 		END`,
 		`CREATE TRIGGER soldiers_fts_ad AFTER DELETE ON soldiers BEGIN
@@ -534,13 +539,13 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			INSERT INTO soldiers_fts (
 				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-				notes, scratch_pad
+				biography, notes, scratch_pad
 			)
 			SELECT
 				s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
 				COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
 				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
-				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
+				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
 			FROM soldiers s
 			WHERE s.id = new.soldier_id;
 		END`,
@@ -549,13 +554,13 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			INSERT INTO soldiers_fts (
 				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-				notes, scratch_pad
+				biography, notes, scratch_pad
 			)
 			SELECT
 				s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
 				COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
 				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
-				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
+				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
 			FROM soldiers s
 			WHERE s.id = new.soldier_id;
 		END`,
@@ -564,26 +569,26 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			INSERT INTO soldiers_fts (
 				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-				notes, scratch_pad
+				biography, notes, scratch_pad
 			)
 			SELECT
 				s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
 				COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
 				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
-				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.notes, ''), ''
+				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), ''
 			FROM soldiers s
 			WHERE s.id = old.soldier_id;
 		END`,
 		`INSERT INTO soldiers_fts (
 			rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 			unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
-			notes, scratch_pad
+			biography, notes, scratch_pad
 		)
 		SELECT
 			s.id, s.id, COALESCE(s.display_id, ''), COALESCE(s.pension_id, ''), COALESCE(s.application_id, ''), COALESCE(s.prefix, ''), COALESCE(s.first_name, ''),
 			COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COALESCE(s.suffix, ''), COALESCE(s.unit, ''), COALESCE(s.rank, ''), COALESCE(s.rank_in, ''),
 			COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
-			COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
+			COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
 		FROM soldiers s
 		LEFT JOIN scratchpad_cache c ON c.soldier_id = s.id`,
 	}

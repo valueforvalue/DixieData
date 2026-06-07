@@ -287,13 +287,16 @@ func (s *Service) PrepareLatest() (PreparedUpdate, error) {
 	}
 	scriptPath := filepath.Join(workRoot, "apply-update.ps1")
 	if err := writeApplyScript(scriptPath, applyScriptOptions{
-		ProcessID:       os.Getpid(),
-		StageDir:        stageRoot,
-		InstallDir:      installDir,
-		ExecutableName:  executableName,
-		ResultPath:      resultPath,
-		LaunchStatePath: appdata.UpdateRestorePointStatePath(s.dataDir),
-		TargetVersion:   release.version,
+		ProcessID:          os.Getpid(),
+		StageDir:           stageRoot,
+		InstallDir:         installDir,
+		ExecutableName:     executableName,
+		ResultPath:         resultPath,
+		LaunchStatePath:    appdata.UpdateRestorePointStatePath(s.dataDir),
+		TargetVersion:      release.version,
+		SourceVersion:      settings.CurrentVersion,
+		FeedbackLogPath:    appdata.FeedbackLogPath(s.dataDir),
+		FeedbackArchiveDir: appdata.FeedbackLogArchiveDir(s.dataDir),
 	}); err != nil {
 		return PreparedUpdate{}, err
 	}
@@ -757,13 +760,16 @@ func (s *Service) loadApplyStatus() *ApplyStatus {
 }
 
 type applyScriptOptions struct {
-	ProcessID       int
-	StageDir        string
-	InstallDir      string
-	ExecutableName  string
-	ResultPath      string
-	LaunchStatePath string
-	TargetVersion   string
+	ProcessID          int
+	StageDir           string
+	InstallDir         string
+	ExecutableName     string
+	ResultPath         string
+	LaunchStatePath    string
+	TargetVersion      string
+	SourceVersion      string
+	FeedbackLogPath    string
+	FeedbackArchiveDir string
 }
 
 type RollbackScriptOptions struct {
@@ -784,11 +790,15 @@ $resultPath = %s
 $launchStatePath = %s
 $executableName = %s
 $targetVersion = %s
+$sourceVersion = %s
+$feedbackLogPath = %s
+$feedbackArchiveDir = %s
 $targetExe = Join-Path $installDir $executableName
 $backupExe = Join-Path $installDir ($executableName + '.bak')
 $oauthName = 'google-oauth-defaults.json'
 $oauthSource = Join-Path $stageDir $oauthName
 $oauthTarget = Join-Path $installDir $oauthName
+$archivedFeedbackPath = $null
 
 function Write-Result([string]$status, [string]$message) {
     $payload = @{
@@ -800,6 +810,32 @@ function Write-Result([string]$status, [string]$message) {
     $resultDir = Split-Path -Parent $resultPath
     New-Item -ItemType Directory -Path $resultDir -Force | Out-Null
     Set-Content -LiteralPath $resultPath -Value $payload -Encoding UTF8
+}
+
+function Archive-FeedbackLog() {
+    if (-not (Test-Path $feedbackLogPath)) {
+        return
+    }
+    $safeVersion = [Regex]::Replace($sourceVersion, '[^A-Za-z0-9._-]', '-')
+    if ([string]::IsNullOrWhiteSpace($safeVersion)) {
+        $safeVersion = 'unknown-version'
+    }
+    $archiveDir = Join-Path $feedbackArchiveDir $safeVersion
+    New-Item -ItemType Directory -Path $archiveDir -Force | Out-Null
+    $archivePath = Join-Path $archiveDir ('feedback-log-' + (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss') + '.jsonl')
+    Move-Item -LiteralPath $feedbackLogPath -Destination $archivePath -Force
+    $script:archivedFeedbackPath = $archivePath
+}
+
+function Restore-FeedbackLog() {
+    if ([string]::IsNullOrWhiteSpace($script:archivedFeedbackPath)) {
+        return
+    }
+    if ((Test-Path $script:archivedFeedbackPath) -and (-not (Test-Path $feedbackLogPath))) {
+        $feedbackDir = Split-Path -Parent $feedbackLogPath
+        New-Item -ItemType Directory -Path $feedbackDir -Force | Out-Null
+        Move-Item -LiteralPath $script:archivedFeedbackPath -Destination $feedbackLogPath -Force
+    }
 }
 
 try {
@@ -833,9 +869,11 @@ try {
         Remove-Item -LiteralPath $backupExe -Force -ErrorAction SilentlyContinue
     }
 
+    Archive-FeedbackLog
     Write-Result -status 'success' -message ('Applied update to v' + $targetVersion + '.')
     Start-Process -FilePath $targetExe | Out-Null
 } catch {
+    Restore-FeedbackLog
     if ((-not (Test-Path $targetExe)) -and (Test-Path $backupExe)) {
         Move-Item -LiteralPath $backupExe -Destination $targetExe -Force
     }
@@ -845,7 +883,7 @@ try {
     Write-Result -status 'failed' -message $_.Exception.Message
     exit 1
 }
-`, options.ProcessID, psLiteral(options.StageDir), psLiteral(options.InstallDir), psLiteral(options.ResultPath), psLiteral(options.LaunchStatePath), psLiteral(options.ExecutableName), psLiteral(options.TargetVersion))
+`, options.ProcessID, psLiteral(options.StageDir), psLiteral(options.InstallDir), psLiteral(options.ResultPath), psLiteral(options.LaunchStatePath), psLiteral(options.ExecutableName), psLiteral(options.TargetVersion), psLiteral(options.SourceVersion), psLiteral(options.FeedbackLogPath), psLiteral(options.FeedbackArchiveDir))
 	return os.WriteFile(scriptPath, []byte(content), 0o644)
 }
 

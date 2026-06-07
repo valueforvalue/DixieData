@@ -32,6 +32,8 @@ type Soldier struct {
 	DeathDate             string   `json:"death_date"`
 	BirthInfo             string   `json:"birth_info"`
 	BuriedIn              string   `json:"buried_in"`
+	Biography             string   `json:"biography"`
+	PDFExcerptOverride    string   `json:"pdf_excerpt_override"`
 	Notes                 string   `json:"notes"`
 	NeedsReview           bool     `json:"needs_review"`
 	ReviewReason          string   `json:"review_reason"`

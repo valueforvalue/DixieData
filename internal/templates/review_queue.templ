@@ -22,14 +22,14 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSiz
 					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
 				} else {
 					<form hx-post="/review-queue/bulk" hx-target="body" class="space-y-4">
-						<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-[rgba(246,241,228,0.72)] px-4 py-3">
+						<div class="flex flex-col gap-3 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-[rgba(246,241,228,0.72)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 							<label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
 								<input type="checkbox" data-select-all="review-queue" class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 								<span>Select all on this page</span>
 							</label>
-							<div class="flex flex-wrap gap-2">
-								<button type="submit" name="bulk_action" value="ignore" class="secondary-button">Ignore Selected</button>
-								<button type="submit" name="bulk_action" value="delete" class="danger-button">Delete Selected</button>
+							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+								<button type="submit" name="bulk_action" value="ignore" class="secondary-button w-full sm:w-auto">Ignore Selected</button>
+								<button type="submit" name="bulk_action" value="delete" class="danger-button w-full sm:w-auto">Delete Selected</button>
 							</div>
 						</div>
 						for _, entry := range entries {
@@ -58,9 +58,9 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSiz
 											}
 										</div>
 									</div>
-									<div class="flex flex-wrap gap-2">
-										<a href={ fmt.Sprintf("/soldiers/%d", entry.PersonRecord.ID) } class="pill-link">View Person Record</a>
-										<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID) } hx-target={ fmt.Sprintf("#review-queue-item-%d", entry.PersonRecord.ID) } hx-swap="outerHTML" class="primary-button">Mark as Resolved</button>
+									<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+										<a href={ fmt.Sprintf("/soldiers/%d", entry.PersonRecord.ID) } class="pill-link w-full sm:w-auto">View Person Record</a>
+										<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID) } hx-target={ fmt.Sprintf("#review-queue-item-%d", entry.PersonRecord.ID) } hx-swap="outerHTML" class="primary-button w-full sm:w-auto">Mark as Resolved</button>
 									</div>
 								</div>
 							</div>
@@ -98,22 +98,22 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 						<span class="rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-1 font-semibold uppercase tracking-[0.18em] text-slate-600">{ fmt.Sprintf("%d matching field(s)", comparisonMatchingCount(comparison)) }</span>
 					</div>
 				</div>
-				<div class="flex flex-wrap gap-2">
+				<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 					<button
 						type="button"
 						data-history-back
 						data-fallback-href={ comparisonBackHref(comparison) }
 						data-fallback-label={ comparisonBackLabel(comparison) }
-						class="pill-link"
+						class="pill-link w-full sm:w-auto"
 					>← { comparisonBackLabel(comparison) }</button>
 					if comparison.FindingID > 0 && comparison.Status != "resolved" {
-						<button hx-post={ fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID) } class="primary-button">Mark Match Resolved</button>
+						<button hx-post={ fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID) } class="primary-button w-full sm:w-auto">Mark Match Resolved</button>
 					}
 				</div>
 			</div>
 			<section data-ui-id={ uiids.PanelReviewQueueCompare } class="relative card rounded-3xl p-5 sm:p-8">
 				@SurfaceBadge(uiids.PanelReviewQueueCompare)
-				<div class="grid gap-6 lg:grid-cols-2">
+				<div class="grid gap-6 xl:grid-cols-2">
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
 						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.LeftPersonRecord.DisplayID }</div>
 						<div class="mt-2 text-lg font-semibold text-[#22303d]">{ detailHeading(comparison.LeftPersonRecord) }</div>
@@ -164,26 +164,30 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 					</div>
 				}
 				<div class="mt-6 overflow-hidden rounded-3xl border border-[rgba(141,116,64,0.35)] bg-white/72">
-					<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[rgba(141,116,64,0.2)] bg-[rgba(246,241,228,0.88)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-						<div>Field</div>
-						<div>{ comparison.LeftPersonRecord.DisplayID }</div>
-						<div>{ comparison.RightPersonRecord.DisplayID }</div>
+					<div class="overflow-x-auto">
+						<div class="min-w-[38rem]">
+							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[rgba(141,116,64,0.2)] bg-[rgba(246,241,228,0.88)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+								<div>Field</div>
+								<div>{ comparison.LeftPersonRecord.DisplayID }</div>
+								<div>{ comparison.RightPersonRecord.DisplayID }</div>
+							</div>
+							for _, field := range comparison.Fields {
+								if field.Highlighted {
+									<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgba(141,116,64,0.16)] bg-[rgba(141,116,64,0.12)] px-4 py-3 text-sm text-[#22303d]">
+										<div class="font-semibold">{ field.Label }</div>
+										<div>{ field.LeftValue }</div>
+										<div>{ field.RightValue }</div>
+									</div>
+								} else {
+									<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgba(141,116,64,0.16)] px-4 py-3 text-sm text-[#22303d]">
+										<div class="font-semibold">{ field.Label }</div>
+										<div>{ field.LeftValue }</div>
+										<div>{ field.RightValue }</div>
+									</div>
+								}
+							}
+						</div>
 					</div>
-					for _, field := range comparison.Fields {
-						if field.Highlighted {
-							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgba(141,116,64,0.16)] bg-[rgba(141,116,64,0.12)] px-4 py-3 text-sm text-[#22303d]">
-								<div class="font-semibold">{ field.Label }</div>
-								<div>{ field.LeftValue }</div>
-								<div>{ field.RightValue }</div>
-							</div>
-						} else {
-							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b border-[rgba(141,116,64,0.16)] px-4 py-3 text-sm text-[#22303d]">
-								<div class="font-semibold">{ field.Label }</div>
-								<div>{ field.LeftValue }</div>
-								<div>{ field.RightValue }</div>
-							</div>
-						}
-					}
 				</div>
 			</section>
 		</div>

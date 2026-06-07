@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 templ Layout(title string) {
@@ -13,6 +14,30 @@ templ Layout(title string) {
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<title>{ title } - DixieData</title>
+		<script>
+			(() => {
+				const root = document.documentElement;
+				const storageKey = "dixiedata.layout.mode";
+				const breakpoint = 1000;
+				let preference = "auto";
+				try {
+					const raw = window.localStorage.getItem(storageKey);
+					if (raw) {
+						const parsed = JSON.parse(raw);
+						if (parsed === "relaxed" || parsed === "split-screen") {
+							preference = parsed;
+						}
+					}
+				} catch (error) {
+					preference = "auto";
+				}
+				const mode = preference === "auto"
+					? (window.innerWidth <= breakpoint ? "split-screen" : "relaxed")
+					: preference;
+				root.setAttribute("data-layout-mode", mode);
+				root.setAttribute("data-layout-mode-preference", preference);
+			})();
+		</script>
 		<link rel="stylesheet" href="/app.css"/>
 		<script defer src="/app.js"></script>
 		<style>
@@ -194,6 +219,25 @@ templ Layout(title string) {
 				text-transform: uppercase;
 				vertical-align: middle;
 			}
+			.layout-mode-option {
+				width: 100%;
+				justify-content: space-between;
+				text-align: left;
+			}
+			.layout-mode-option[data-layout-mode-active="true"] {
+				background: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
+				color: #1f2b38;
+				border-color: #8d7440;
+			}
+			.layout-mode-summary {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				align-items: center;
+			}
+			.layout-mode-summary strong {
+				color: #22303d;
+			}
 			@keyframes google-progress-indeterminate {
 				0% { transform: translateX(-120%); }
 				50% { transform: translateX(85%); }
@@ -226,10 +270,76 @@ templ Layout(title string) {
 			.floating-dock {
 				max-width: calc(100vw - 2rem);
 			}
+			@media (max-width: 1040px) {
+				.app-shell {
+					padding-bottom: 9rem;
+				}
+				.top-shell {
+					top: 0.8rem;
+					width: min(97vw, 72rem);
+					margin-bottom: 1.15rem;
+					padding: 1rem 1.1rem;
+					border-radius: 1.45rem;
+				}
+				.top-shell nav {
+					gap: 0.55rem;
+				}
+				.floating-dock {
+					right: 1rem;
+					bottom: 1rem;
+				}
+			}
 			@media (max-width: 1100px) {
 				.calendar-layout {
 					grid-template-columns: minmax(0, 1fr);
 				}
+			}
+			html[data-layout-mode="split-screen"] .app-shell {
+				max-width: 74rem;
+				padding: 1rem clamp(0.85rem, 2vw, 1.5rem) 9.5rem;
+			}
+			html[data-layout-mode="split-screen"] .top-shell {
+				top: 0.55rem;
+				width: min(98vw, 70rem);
+				margin-bottom: 1rem;
+				padding: 0.9rem 1rem;
+				border-radius: 1.35rem;
+			}
+			html[data-layout-mode="split-screen"] .top-brand-title {
+				font-size: clamp(1.7rem, 1.8vw, 2rem);
+			}
+			html[data-layout-mode="split-screen"] .top-shell nav {
+				gap: 0.45rem;
+			}
+			html[data-layout-mode="split-screen"] .primary-button,
+			html[data-layout-mode="split-screen"] .secondary-button,
+			html[data-layout-mode="split-screen"] .danger-button,
+			html[data-layout-mode="split-screen"] .pill-link {
+				padding: 0.45rem 0.8rem;
+				font-size: 0.76rem;
+			}
+			html[data-layout-mode="split-screen"] .card {
+				box-shadow: 0 12px 24px rgba(23, 33, 43, 0.14);
+			}
+			html[data-layout-mode="split-screen"] .floating-dock {
+				left: 1rem;
+				right: 1rem;
+				bottom: 1rem;
+				max-width: none;
+			}
+			html[data-layout-mode="split-screen"] .floating-dock-inner {
+				width: 100%;
+				flex-wrap: wrap;
+				justify-content: flex-end;
+				gap: 0.65rem;
+			}
+			html[data-layout-mode="split-screen"] .floating-dock-inner > button,
+			html[data-layout-mode="split-screen"] .floating-dock-inner > a {
+				flex: 1 1 11rem;
+			}
+			html[data-layout-mode="split-screen"] .floating-nav-panel {
+				width: 100%;
+				min-width: 0;
 			}
 			@media (max-width: 900px) {
 				.app-shell {
@@ -273,7 +383,7 @@ templ Layout(title string) {
 			}
 		</style>
 	</head>
-		<body class="min-h-screen" data-debug-ui-ids={ uiDebugValue() }>
+		<body class="min-h-screen" data-debug-ui-ids={ uiDebugValue() } data-layout-mode="relaxed" data-layout-mode-preference="auto">
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			<div class="app-shell">
 				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
@@ -302,7 +412,8 @@ templ Layout(title string) {
 					<button type="button" data-floating-nav-toggle class="primary-button px-5 py-3 shadow-[0_18px_32px_rgba(23,33,43,0.25)]">Menu</button>
 				</div>
 				<p data-floating-scratchpad-status class="mt-2 max-w-xs text-right text-xs text-slate-600" aria-live="polite"></p>
-				<div data-floating-nav-panel class="floating-nav-panel mt-3 hidden min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)]">
+				<div data-floating-nav-panel data-ui-id={ uiids.OverlayFloatingMenu } class="floating-nav-panel relative mt-3 hidden w-full max-w-[min(100vw-2rem,24rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)]">
+					@SurfaceBadge(uiids.OverlayFloatingMenu)
 					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Quick Navigation</p>
 					<nav class="mt-3 flex flex-col gap-2">
 						<a href="/calendar" class="pill-link justify-start">Calendar</a>
@@ -314,19 +425,42 @@ templ Layout(title string) {
 						<a href="/settings" class="pill-link justify-start">Settings</a>
 						<a href="/soldiers/new" class="primary-button justify-start">Add Person Record</a>
 					</nav>
+					<div class="mt-4 rounded-[1.2rem] border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.08)] p-3">
+						<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#cfb77a]">Layout Mode</p>
+						<p class="layout-mode-summary mt-2 text-sm text-slate-200">
+							Current: <strong data-layout-mode-status>Relaxed</strong>
+							<span class="text-xs uppercase tracking-[0.18em] text-slate-400" data-layout-mode-preference-label>Auto</span>
+						</p>
+						<p class="mt-2 text-xs leading-5 text-slate-300">Auto switches to split-screen around <span data-layout-mode-breakpoint>1000px</span>.</p>
+						<div class="mt-3 flex flex-col gap-2">
+							<button type="button" data-layout-mode-option="auto" data-layout-mode-active="true" class="layout-mode-option secondary-button">
+								<span>Auto</span>
+								<span class="text-[0.65rem] uppercase tracking-[0.18em]">Adaptive</span>
+							</button>
+							<button type="button" data-layout-mode-option="relaxed" data-layout-mode-active="false" class="layout-mode-option secondary-button">
+								<span>Relaxed</span>
+								<span class="text-[0.65rem] uppercase tracking-[0.18em]">Roomier</span>
+							</button>
+							<button type="button" data-layout-mode-option="split-screen" data-layout-mode-active="false" class="layout-mode-option secondary-button">
+								<span>Split-screen</span>
+								<span class="text-[0.65rem] uppercase tracking-[0.18em]">Compact</span>
+							</button>
+						</div>
+					</div>
 				</div>
 			</div>
-			<div id="feedback-modal" data-feedback-modal class="fixed inset-0 z-[90] hidden items-center justify-center bg-[rgba(15,23,42,0.58)] px-4 py-8">
-				<div class="w-full max-w-2xl rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:p-8">
+			<div id="feedback-modal" data-feedback-modal data-ui-id={ uiids.OverlayFeedbackModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+					@SurfaceBadge(uiids.OverlayFeedbackModal)
 					<form id="feedback-form" hx-post="/feedback/submit" hx-target="#feedback-form-status" class="space-y-6">
 						<input type="hidden" name="page_path" value="" data-feedback-page-path/>
-						<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Feedback</p>
 								<h3 class="mt-2 text-xl gold font-bold">Send app feedback</h3>
 								<p class="mt-2 text-sm text-slate-600">Save bugs, workflow pain points, or feature ideas to the local feedback log without leaving your current screen.</p>
 							</div>
-							<button type="button" data-feedback-close class="secondary-button px-4">Close</button>
+							<button type="button" data-feedback-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
 						</div>
 						<div class="grid gap-4 sm:grid-cols-2">
 							<label class="block text-sm text-slate-700">
@@ -353,9 +487,9 @@ templ Layout(title string) {
 						</label>
 						<p class="text-xs leading-6 text-slate-500">Use Share → Support &amp; Diagnostics to export the feedback log for email attachments.</p>
 						<div id="feedback-form-status" class="text-sm text-slate-600" aria-live="polite"></div>
-						<div class="flex flex-wrap justify-end gap-3">
-							<button type="button" data-feedback-close class="secondary-button">Cancel</button>
-							<button type="submit" class="primary-button">Save Feedback</button>
+						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+							<button type="button" data-feedback-close class="secondary-button w-full sm:w-auto">Cancel</button>
+							<button type="submit" class="primary-button w-full sm:w-auto">Save Feedback</button>
 						</div>
 					</form>
 				</div>

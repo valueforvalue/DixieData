@@ -318,7 +318,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
 							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
 						</div>
-						<button type="button" data-record-add class="ghost-link px-4 py-2">+ Add Source Record</button>
+						<button type="button" data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto">+ Add Source Record</button>
 					</div>
 					<div data-record-list class="space-y-3">
 						for _, record := range formRecords(s.SourceRecords) {
@@ -332,13 +332,53 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					<div class="mb-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Notes & Research Context</p>
-						<p class="mt-2 text-sm text-slate-600">Use notes for biography, research leads, and anything that does not fit a structured field.</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Biography & Internal Notes</p>
+						<p class="mt-2 text-sm text-slate-600">Biography is the public-facing narrative for this person record. Internal notes stay available for research context and workflow details.</p>
 					</div>
-					<label class="block text-sm text-slate-500 mb-1">Notes</label>
-					<textarea name="notes" rows="4"
-						class="field-input min-h-32">{ s.Notes }</textarea>
-					<p class="mt-2 text-xs text-slate-500">Quick reference: type <code>[[DISPLAY-ID]]</code> to link another record in notes, for example <code>[[STC38-00007]]</code>.</p>
+					<div class="space-y-4">
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Biography</label>
+							<textarea name="biography" rows="5"
+								class="field-input min-h-36"
+								data-live-count-input
+								data-live-count-target="biography">{ s.Biography }</textarea>
+							<div class="mt-2 flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+								<p>Use biography for narrative attached to person record itself.</p>
+								<p data-live-count-display="biography" class="font-medium text-slate-600">0 chars</p>
+							</div>
+						</div>
+						<details class="overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)]">
+							<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
+								<div>
+									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Advanced PDF Excerpt Override</p>
+									<p class="mt-1 text-sm text-slate-600">Optional. Override default export excerpt when biography needs tighter PDF copy.</p>
+								</div>
+								<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
+							</summary>
+							<div class="border-t border-[rgba(141,116,64,0.18)] px-4 py-4">
+								<label class="block text-sm text-slate-500 mb-1">PDF Excerpt Override</label>
+								<textarea
+									name="pdf_excerpt_override"
+									rows="4"
+									class="field-input min-h-32"
+									data-live-count-input
+									data-live-count-target="pdf-excerpt"
+									data-live-count-budget={ fmt.Sprintf("%d", pdfExcerptBudget()) }
+								>{ s.PDFExcerptOverride }</textarea>
+								<div class="mt-2 flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+									<p class="text-slate-500">Target { fmt.Sprintf("%d", pdfExcerptBudget()) } chars for default record-page fit. Leave blank -> export uses biography automatically.</p>
+									<p data-live-count-display="pdf-excerpt" class="font-medium text-slate-600">0 / { fmt.Sprintf("%d", pdfExcerptBudget()) }</p>
+								</div>
+								<p data-live-count-status="pdf-excerpt" class="mt-2 text-xs text-slate-500">Within export-fit target.</p>
+							</div>
+						</details>
+						<div>
+							<label class="block text-sm text-slate-500 mb-1">Internal Notes</label>
+							<textarea name="notes" rows="4"
+								class="field-input min-h-32">{ s.Notes }</textarea>
+							<p class="mt-2 text-xs text-slate-500">Quick reference: type <code>[[DISPLAY-ID]]</code> to link another record in internal notes, for example <code>[[STC38-00007]]</code>.</p>
+						</div>
+					</div>
 				</section>
 				<section data-ui-id={ uiids.PanelSoldierFormImages } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
@@ -349,19 +389,19 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
 					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
 						if isEdit {
-							<div class="flex flex-wrap items-center justify-between gap-3">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
 									<p>Desktop image uploads use the native file picker.</p>
 									<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
 								</div>
-								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID) } hx-target="#form-image-import-status" class="primary-button">Add Images From Computer</button>
+								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID) } hx-target="#form-image-import-status" class="primary-button w-full sm:w-auto">Add Images From Computer</button>
 							</div>
 						} else {
-							<div class="flex flex-wrap items-center justify-between gap-3">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
 									<p>Create the person record first, then use <strong>Add Images From Computer</strong> on the detail page to import one or more images.</p>
 								</div>
-								<button type="button" class="primary-button opacity-60 cursor-not-allowed" disabled>Add Images From Computer</button>
+								<button type="button" class="primary-button w-full cursor-not-allowed opacity-60 sm:w-auto" disabled>Add Images From Computer</button>
 							</div>
 						}
 					</div>
@@ -373,8 +413,8 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					}
 				</section>
 			</div>
-			<div class="flex gap-2 pt-2">
-				<button type="submit" class="primary-button">
+			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
+				<button type="submit" class="primary-button w-full sm:w-auto">
 					if isEdit {
 						Save Changes
 					} else {
@@ -386,7 +426,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					data-history-back
 					data-fallback-href={ entryFormBackHref(s, isEdit) }
 					data-fallback-label="Cancel"
-					class="ghost-link px-4 py-2"
+					class="ghost-link w-full px-4 py-2 sm:w-auto"
 				>Cancel</button>
 			</div>
 			@SuggestionDatalist("rank-in-suggestions", suggestions.RankIn)
@@ -508,6 +548,10 @@ func rankOutValue(s viewmodel.PersonRecord) string {
 	return s.Rank
 }
 
+func pdfExcerptBudget() int {
+	return 900
+}
+
 type entryTypeOption struct {
 	Value string
 	Label string
@@ -553,9 +597,9 @@ func spouseCandidateLabel(s viewmodel.PersonRecord) string {
 
 templ RecordInputRow(record viewmodel.SourceRecord) {
 	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
-		<div class="mb-3 flex items-center justify-between gap-3">
+		<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Source Record Entry</span>
-			<button type="button" data-record-remove class="pill-link">Remove</button>
+			<button type="button" data-record-remove class="pill-link w-full justify-center sm:w-auto">Remove</button>
 		</div>
 		<div class="responsive-two-col grid gap-4">
 			<div>
@@ -591,7 +635,8 @@ func formRecords(records []viewmodel.SourceRecord) []viewmodel.SourceRecord {
 
 templ InitialSetupView(form viewmodel.InitialSetupForm) {
 	@Layout("First Launch Setup") {
-		<div class="mx-auto max-w-3xl space-y-6">
+		<div data-ui-id={ uiids.PageInitialSetup } class="relative mx-auto max-w-3xl space-y-6">
+			@SurfaceBadge(uiids.PageInitialSetup)
 			<h2 class="text-2xl gold font-bold">First Launch Setup</h2>
 			<div class="card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
@@ -654,6 +699,35 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			@SurfaceBadge(uiids.PageSettings)
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
 			@SettingsUpdatePanel(updateState)
+			<div data-ui-id={ uiids.PanelSettingsLayout } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				@SurfaceBadge(uiids.PanelSettingsLayout)
+				<div>
+					<h3 class="text-xl gold font-bold">Responsive Layout Mode</h3>
+					<p class="mt-2 text-sm text-slate-600">Switch between the relaxed and split-screen layouts, or leave the app on Auto so it changes around <span data-layout-mode-breakpoint>1000px</span> as the window narrows.</p>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+					<div class="layout-mode-summary">
+						<span>Current mode:</span>
+						<strong data-layout-mode-status>Relaxed</strong>
+						<span class="rounded-full border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" data-layout-mode-preference-label>Auto</span>
+					</div>
+					<p class="mt-2 text-xs text-slate-500">The same preference also appears in the global Menu so you can change it from anywhere.</p>
+				</div>
+				<div class="grid gap-3 sm:grid-cols-3">
+					<button type="button" data-layout-mode-option="auto" data-layout-mode-active="true" class="layout-mode-option secondary-button">
+						<span>Auto</span>
+						<span class="text-[0.65rem] uppercase tracking-[0.18em]">Adaptive</span>
+					</button>
+					<button type="button" data-layout-mode-option="relaxed" data-layout-mode-active="false" class="layout-mode-option secondary-button">
+						<span>Relaxed</span>
+						<span class="text-[0.65rem] uppercase tracking-[0.18em]">Roomier</span>
+					</button>
+					<button type="button" data-layout-mode-option="split-screen" data-layout-mode-active="false" class="layout-mode-option secondary-button">
+						<span>Split-screen</span>
+						<span class="text-[0.65rem] uppercase tracking-[0.18em]">Compact</span>
+					</button>
+				</div>
+			</div>
 			<div data-ui-id={ uiids.PanelSettingsInitialize } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				@SurfaceBadge(uiids.PanelSettingsInitialize)
 				<div>
@@ -666,9 +740,9 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 						<label class="mb-1 block text-sm text-slate-500">Type { confirmationWord } to confirm</label>
 						<input type="text" name="confirmation_word" class="field-input" autocomplete="off" spellcheck="false"/>
 					</div>
-					<div class="flex flex-wrap gap-3">
-						<button type="submit" class="danger-button">Initialize Data</button>
-						<button type="button" data-history-back data-fallback-href="/calendar" data-fallback-label="Back" class="ghost-link px-4 py-2">Back</button>
+					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+						<button type="submit" class="danger-button w-full sm:w-auto">Initialize Data</button>
+						<button type="button" data-history-back data-fallback-href="/calendar" data-fallback-label="Back" class="ghost-link w-full px-4 py-2 sm:w-auto">Back</button>
 					</div>
 				</form>
 				<div id="settings-status" class="text-sm text-slate-600"></div>
@@ -679,7 +753,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
 				</div>
 				<form hx-post="/settings/images/orphans/scan" hx-target="#settings-orphan-results" class="space-y-4">
-					<button type="submit" class="secondary-button">Scan for Orphaned Images</button>
+					<button type="submit" class="secondary-button w-full sm:w-auto">Scan for Orphaned Images</button>
 				</form>
 				<div id="settings-orphan-results" class="space-y-3"></div>
 			</div>
@@ -722,13 +796,13 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				<label class="mb-1 block text-sm text-slate-500">Update source URL</label>
 				<input type="url" name="source_url" value={ state.SourceURL } placeholder="Leave blank to use the default GitHub latest release feed" class="field-input" autocomplete="off" spellcheck="false"/>
 			</div>
-			<div class="flex flex-wrap gap-3">
-				<button type="submit" class="secondary-button">Save Update Source</button>
+			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+				<button type="submit" class="secondary-button w-full sm:w-auto">Save Update Source</button>
 			</div>
 		</form>
 		<form hx-post="/settings/updates/source" hx-target="#settings-update-panel" hx-swap="outerHTML">
 			<input type="hidden" name="source_url" value=""/>
-			<button type="submit" class="ghost-link px-4 py-2">Use Default GitHub Feed</button>
+			<button type="submit" class="ghost-link w-full px-4 py-2 text-left sm:w-auto">Use Default GitHub Feed</button>
 		</form>
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.22)] bg-[rgba(246,241,228,0.72)] px-4 py-3 text-sm text-slate-600">
 			if state.UsingDefaultSource {
@@ -741,13 +815,13 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 		if !state.CanApply && strings.TrimSpace(state.DisabledReason) != "" {
 			@SettingsUpdateStatusMessage("error", state.DisabledReason)
 		}
-		<div class="flex flex-wrap gap-3">
-			<form hx-post="/settings/updates/check" hx-target="#settings-update-status">
-				<button type="submit" class="secondary-button">Check for Updates</button>
+		<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+			<form hx-post="/settings/updates/check" hx-target="#settings-update-status" class="w-full sm:w-auto">
+				<button type="submit" class="secondary-button w-full sm:w-auto">Check for Updates</button>
 			</form>
 			if state.CanApply {
-				<form hx-post="/settings/updates/apply" hx-target="#settings-update-status">
-					<button type="submit" class="primary-button">Download and Apply Latest Update</button>
+				<form hx-post="/settings/updates/apply" hx-target="#settings-update-status" class="w-full sm:w-auto">
+					<button type="submit" class="primary-button w-full sm:w-auto">Download and Apply Latest Update</button>
 				</form>
 			}
 		</div>

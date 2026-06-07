@@ -49,6 +49,7 @@ type pdfToJPEGRasterizer interface {
 type PrintSettings struct {
 	Orientation                  string  `json:"orientation"`
 	PrinterFriendly              bool    `json:"printerFriendly"`
+	FullBiographyPage            bool    `json:"fullBiographyPage"`
 	SortBy                       string  `json:"sortBy"`
 	GroupByUnit                  bool    `json:"groupByUnit"`
 	GroupByPensionState          bool    `json:"groupByPensionState"`
@@ -59,9 +60,10 @@ type PrintSettings struct {
 }
 
 type PDFOptions struct {
-	Orientation     string `json:"orientation"`
-	PrinterFriendly bool   `json:"printerFriendly"`
-	IncludeImages   bool   `json:"includeImages"`
+	Orientation      string `json:"orientation"`
+	PrinterFriendly  bool   `json:"printerFriendly"`
+	IncludeImages    bool   `json:"includeImages"`
+	PrintableArchive bool   `json:"printableArchive"`
 }
 
 const (
@@ -136,6 +138,7 @@ type StaticArchiveRecord struct {
 	BirthDate         string                     `json:"birthDate,omitempty"`
 	DeathDate         string                     `json:"deathDate,omitempty"`
 	BirthInfo         string                     `json:"birthInfo,omitempty"`
+	Biography         string                     `json:"biography,omitempty"`
 	Notes             string                     `json:"notes,omitempty"`
 	MaidenName        string                     `json:"maidenName,omitempty"`
 	RelationshipLabel string                     `json:"relationshipLabel,omitempty"`
@@ -1501,7 +1504,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		"prefix", "first_name", "middle_name", "last_name", "suffix",
 		"rank", "rank_in", "rank_out", "unit", "pension_state",
 		"confederate_home_status", "confederate_home_name",
-		"birth_date", "death_date", "birth_info", "buried_in", "notes",
+		"birth_date", "death_date", "birth_info", "buried_in", "biography", "notes",
 		"added_by", "last_edited_by", "last_edited_fields", "last_edited_at",
 		"created_at", "updated_at", "records_count", "images_count",
 	}
@@ -1557,6 +1560,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 			soldier.DeathDate,
 			soldier.BirthInfo,
 			soldier.BuriedIn,
+			soldier.Biography,
 			soldier.Notes,
 			soldier.AddedBy,
 			soldier.LastEditedBy,
@@ -1586,14 +1590,14 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 				}
 				updateExcelColumnWidth(archiveWidths, columnIndex, displayValue)
 				continue
-			case "display_id", "linked_spouse_display_id", "app_version", "generated_at", "entry_type", "linked_spouse_name", "relationship_label", "maiden_name", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at":
+			case "display_id", "linked_spouse_display_id", "app_version", "generated_at", "entry_type", "linked_spouse_name", "relationship_label", "maiden_name", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_info", "buried_in", "biography", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at":
 				if err := workbook.SetCellValue(archiveSheet, cell, value); err != nil {
 					return err
 				}
 				if err := workbook.SetCellStyle(archiveSheet, cell, cell, textStyle); err != nil {
 					return err
 				}
-				if archiveHeaders[columnIndex] == "birth_info" || archiveHeaders[columnIndex] == "notes" || archiveHeaders[columnIndex] == "last_edited_fields" {
+				if archiveHeaders[columnIndex] == "birth_info" || archiveHeaders[columnIndex] == "biography" || archiveHeaders[columnIndex] == "notes" || archiveHeaders[columnIndex] == "last_edited_fields" {
 					if err := workbook.SetCellStyle(archiveSheet, cell, cell, wrapStyle); err != nil {
 						return err
 					}
@@ -1798,7 +1802,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	defer w.Flush()
 
 	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "relationship_label", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
+	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "relationship_label", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "biography", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1844,6 +1848,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				s.DeathDate,
 				s.BirthInfo,
 				s.BuriedIn,
+				s.Biography,
 				s.Notes,
 				s.AddedBy,
 				s.LastEditedBy,
@@ -2278,7 +2283,7 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 		return err
 	}
 	pdf.AddPage()
-	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with landscape record pages that continue onto additional pages when needed. Images are intentionally omitted.")
+	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with concise record pages, captioned primary images, and bounded biography excerpts that continue onto additional pages when needed.")
 
 	var selectedIDs []int64
 	if !settings.ExportAll {
@@ -2308,9 +2313,12 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 		writePDFTitleBlock(
 			pdf,
 			recordPDFTitle(soldier),
-			fmt.Sprintf("%s | %s | Images omitted in printable export", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)),
+			fmt.Sprintf("%s | %s | Captioned primary image + concise biography excerpt", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)),
 		)
-		writePDFRecordCard(pdf, soldier, PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: false})
+		writePDFRecordCard(pdf, soldier, PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true})
+		if settings.FullBiographyPage {
+			writePrintableBiographyAppendixPage(pdf, soldier, settings.PrinterFriendly)
+		}
 	}
 
 	return pdf.OutputFileAndClose(outputPath)
@@ -2493,9 +2501,10 @@ type printGroupChange struct {
 func printablePDFMetadataDetails(settings PrintSettings) map[string]string {
 	settings = settings.Normalize()
 	metadata := map[string]string{
-		"Includes Images": "false",
-		"Sort By":         printableSortLabel(settings.SortBy),
-		"Group By":        printableGroupSummary(settings),
+		"Includes Images":     "true",
+		"Full Biography Page": fmt.Sprintf("%t", settings.FullBiographyPage),
+		"Sort By":             printableSortLabel(settings.SortBy),
+		"Group By":            printableGroupSummary(settings),
 	}
 	if settings.ExportAll {
 		metadata["Export Scope"] = "All records"
@@ -2832,6 +2841,7 @@ func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Sol
 		BirthDate:         strings.TrimSpace(dates.Display(soldier.BirthDate)),
 		DeathDate:         strings.TrimSpace(dates.Display(soldier.DeathDate)),
 		BirthInfo:         strings.TrimSpace(soldier.BirthInfo),
+		Biography:         strings.TrimSpace(soldier.Biography),
 		Notes:             strings.TrimSpace(soldier.Notes),
 		MaidenName:        strings.TrimSpace(soldier.MaidenName),
 		RelationshipLabel: strings.TrimSpace(soldier.RelationshipLabel),
@@ -3147,24 +3157,24 @@ func (layout pdfRecordCardLayout) scaled(scale float64) pdfRecordCardLayout {
 	}
 }
 
-func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY float64, includeImages bool) (pdfRecordCardLayout, bool) {
+func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY float64, options PDFOptions) (pdfRecordCardLayout, bool) {
 	_, pageHeight := pdf.GetPageSize()
 	_, _, _, bottomMargin := pdf.GetMargins()
 	availableHeight := pageHeight - bottomMargin - startY - 18
 	base := defaultPDFRecordCardLayout()
-	if !includeImages {
+	if !options.IncludeImages {
 		base.LeftWidthRatio = 0.43
 	}
 	for _, scale := range []float64{1, 0.94, 0.88, 0.82, minReadablePDFRecordCardScale} {
 		layout := base.scaled(scale)
-		if estimatePDFRecordCardHeight(pdf, soldier, includeImages, layout) <= availableHeight {
+		if estimatePDFRecordCardHeight(pdf, soldier, options, layout) <= availableHeight {
 			return layout, true
 		}
 	}
 	return base.scaled(minReadablePDFRecordCardScale), false
 }
 
-func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, includeImages bool, layout pdfRecordCardLayout) float64 {
+func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptions, layout pdfRecordCardLayout) float64 {
 	pageWidth, _ := pdf.GetPageSize()
 	leftMargin, _, rightMargin, _ := pdf.GetMargins()
 	contentWidth := pageWidth - leftMargin - rightMargin
@@ -3176,9 +3186,9 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, include
 	leftHeight += estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordServiceFields(soldier, false), layout)
 
 	rightHeight := 0.0
-	if includeImages {
+	if options.IncludeImages {
 		if imagePath, _ := firstRecordCardImage(soldier, false); imagePath != "" {
-			rightHeight += layout.SectionTitleLine + layout.ImagePanelHeight + 2
+			rightHeight += estimatePDFImagePanelHeight(layout, recordPDFImageSectionTitle(options) != "")
 		}
 	}
 	householdHeight := estimatePDFCompactFieldSectionHeight(pdf, rightWidth, recordHouseholdFields(soldier, false), layout)
@@ -3188,11 +3198,12 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, include
 		}
 		rightHeight += householdHeight
 	}
-	if strings.TrimSpace(soldier.Notes) != "" {
+	_, narrativeText := recordPDFNarrativeSection(soldier, options)
+	if strings.TrimSpace(narrativeText) != "" {
 		if rightHeight > 0 {
 			rightHeight += layout.SectionGap
 		}
-		rightHeight += estimatePDFRichTextSectionHeight(pdf, rightWidth, soldier.Notes, layout)
+		rightHeight += estimatePDFRichTextSectionHeight(pdf, rightWidth, narrativeText, layout)
 	}
 	if len(soldier.Records) > 0 {
 		if rightHeight > 0 {
@@ -3289,7 +3300,7 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 	leftMargin, _, rightMargin, _ := pdf.GetMargins()
 	_, _, _, bottomMargin := pdf.GetMargins()
 	contentWidth := pageWidth - leftMargin - rightMargin
-	layout, fitsSinglePage := choosePDFRecordCardLayout(pdf, soldier, startY, options.IncludeImages)
+	layout, fitsSinglePage := choosePDFRecordCardLayout(pdf, soldier, startY, options)
 	if !fitsSinglePage {
 		writePDFRecordCardMultiPage(pdf, soldier, options, layout)
 		return
@@ -3307,7 +3318,7 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 	rightY := startY
 	if options.IncludeImages {
 		if imagePath, imageLabel := firstRecordCardImage(soldier, options.PrinterFriendly); imagePath != "" {
-			rightY = writePDFImagePanel(pdf, rightX, rightY, rightWidth, imagePath, imageLabel, layout)
+			rightY = writePDFImagePanel(pdf, rightX, rightY, rightWidth, recordPDFImageSectionTitle(options), imagePath, imageLabel, layout)
 		}
 	}
 	householdFields := recordHouseholdFields(soldier, options.PrinterFriendly)
@@ -3317,12 +3328,12 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 		}
 		rightY = writePDFCompactFieldSection(pdf, rightX, rightY, rightWidth, "Household & Context", householdFields, layout)
 	}
-	notesText := pdfFreeTextValue(soldier.Notes, options.PrinterFriendly)
-	if strings.TrimSpace(notesText) != "" {
+	narrativeTitle, narrativeText := recordPDFNarrativeSection(soldier, options)
+	if strings.TrimSpace(narrativeText) != "" {
 		if rightY > startY {
 			rightY += layout.SectionGap
 		}
-		rightY = writePDFRichTextColumnSection(pdf, rightX, rightY, rightWidth, "Scratch Pad / Notes", notesText, layout)
+		rightY = writePDFRichTextColumnSection(pdf, rightX, rightY, rightWidth, narrativeTitle, narrativeText, layout)
 	}
 	if len(soldier.Records) > 0 {
 		if rightY > startY {
@@ -3368,16 +3379,16 @@ func writePDFRecordCardMultiPage(pdf *fpdf.Fpdf, soldier models.Soldier, options
 
 	if options.IncludeImages {
 		if imagePath, imageLabel := firstRecordCardImage(soldier, options.PrinterFriendly); imagePath != "" {
-			currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.ImagePanelHeight+2)
-			currentY = writePDFImagePanel(pdf, leftMargin, currentY, contentWidth, imagePath, imageLabel, layout)
+			currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, estimatePDFImagePanelHeight(layout, recordPDFImageSectionTitle(options) != ""))
+			currentY = writePDFImagePanel(pdf, leftMargin, currentY, contentWidth, recordPDFImageSectionTitle(options), imagePath, imageLabel, layout)
 			wroteSection = true
 		}
 	}
 
-	notesText := pdfFreeTextValue(soldier.Notes, options.PrinterFriendly)
-	if strings.TrimSpace(notesText) != "" {
+	narrativeTitle, narrativeText := recordPDFNarrativeSection(soldier, options)
+	if strings.TrimSpace(narrativeText) != "" {
 		currentY = preparePDFRecordCardSection(pdf, currentY, wroteSection, layout.SectionGap, layout.SectionTitleLine+layout.BodyLineHeight)
-		currentY = writePDFRichTextColumnSection(pdf, leftMargin, currentY, contentWidth, "Scratch Pad / Notes", notesText, layout)
+		currentY = writePDFRichTextColumnSection(pdf, leftMargin, currentY, contentWidth, narrativeTitle, narrativeText, layout)
 		wroteSection = true
 	}
 
@@ -3446,12 +3457,15 @@ func writePDFCompactFieldSection(pdf *fpdf.Fpdf, x, y, width float64, title stri
 	return currentY
 }
 
-func writePDFImagePanel(pdf *fpdf.Fpdf, x, y, width float64, imagePath, label string, layout pdfRecordCardLayout) float64 {
-	pdf.SetXY(x, y)
-	pdf.SetFont("Helvetica", "B", layout.SectionTitleFontSize)
-	pdf.SetTextColor(141, 116, 64)
-	pdf.CellFormat(width, layout.SectionTitleLine, "Primary Image", "", 1, "L", false, 0, "")
-	panelY := pdf.GetY()
+func writePDFImagePanel(pdf *fpdf.Fpdf, x, y, width float64, title, imagePath, label string, layout pdfRecordCardLayout) float64 {
+	panelY := y
+	if strings.TrimSpace(title) != "" {
+		pdf.SetXY(x, y)
+		pdf.SetFont("Helvetica", "B", layout.SectionTitleFontSize)
+		pdf.SetTextColor(141, 116, 64)
+		pdf.CellFormat(width, layout.SectionTitleLine, title, "", 1, "L", false, 0, "")
+		panelY = pdf.GetY()
+	}
 	panelHeight := layout.ImagePanelHeight
 	imageX, imageY, imageWidth, imageHeight, ok := fitPDFImageToBounds(imagePath, x+2, panelY+2, width-4, panelHeight-14)
 	if ok {
@@ -3466,6 +3480,14 @@ func writePDFImagePanel(pdf *fpdf.Fpdf, x, y, width float64, imagePath, label st
 		pdf.MultiCell(width-4, layout.ImageLabelLine, emptyPDFValue(label), "", "L", false)
 	}
 	return panelY + panelHeight + 2
+}
+
+func estimatePDFImagePanelHeight(layout pdfRecordCardLayout, includeTitle bool) float64 {
+	height := layout.ImagePanelHeight + 2
+	if includeTitle {
+		height += layout.SectionTitleLine
+	}
+	return height
 }
 
 func writePDFRichTextColumnSection(pdf *fpdf.Fpdf, x, y, width float64, title, text string, layout pdfRecordCardLayout) float64 {
@@ -3588,6 +3610,66 @@ func firstRecordCardImage(soldier models.Soldier, printerFriendly bool) (string,
 		}
 	}
 	return "", ""
+}
+
+func recordPDFImageSectionTitle(options PDFOptions) string {
+	if usesPortraitRecordPDFLayout(options) || options.PrintableArchive {
+		return ""
+	}
+	return "Primary Image"
+}
+
+func recordPDFNarrativeSection(soldier models.Soldier, options PDFOptions) (string, string) {
+	if usesPortraitRecordPDFLayout(options) {
+		text := strings.TrimSpace(soldier.PDFExcerptOverride)
+		if text == "" {
+			text = soldier.Biography
+		}
+		return "Biography", pdfFreeTextValue(text, options.PrinterFriendly)
+	}
+	if options.PrintableArchive {
+		return "Biography", printableArchiveBiographyText(soldier, options.PrinterFriendly)
+	}
+	return "Scratch Pad / Notes", pdfFreeTextValue(soldier.Notes, options.PrinterFriendly)
+}
+
+func usesPortraitRecordPDFLayout(options PDFOptions) bool {
+	return strings.TrimSpace(strings.ToUpper(options.Normalize("L", true).Orientation)) != "L"
+}
+
+func printableArchiveBiographyText(soldier models.Soldier, printerFriendly bool) string {
+	text := strings.TrimSpace(soldier.PDFExcerptOverride)
+	if text == "" {
+		text = soldier.Biography
+	}
+	return truncatePDFText(pdfFreeTextValue(text, printerFriendly), 480)
+}
+
+func truncatePDFText(value string, maxRunes int) string {
+	trimmed := strings.TrimSpace(value)
+	if maxRunes <= 0 || trimmed == "" {
+		return trimmed
+	}
+	runes := []rune(trimmed)
+	if len(runes) <= maxRunes {
+		return trimmed
+	}
+	return strings.TrimSpace(string(runes[:maxRunes])) + "..."
+}
+
+func writePrintableBiographyAppendixPage(pdf *fpdf.Fpdf, soldier models.Soldier, printerFriendly bool) {
+	biography := pdfFreeTextValue(soldier.Biography, printerFriendly)
+	if strings.TrimSpace(biography) == "" {
+		return
+	}
+	pdf.AddPage()
+	writePDFTitleBlock(
+		pdf,
+		recordPDFTitle(soldier),
+		fmt.Sprintf("%s | %s | Full Biography Appendix", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)),
+	)
+	writePDFSection(pdf, "Biography")
+	writePDFRichTextSized(pdf, emptyPDFValue(biography), 6, 11)
 }
 
 func pdfImageCaption(image models.Image) string {

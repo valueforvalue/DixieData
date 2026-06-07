@@ -341,6 +341,36 @@ func TestSoldierService_PersistsBuriedInAndRecords(t *testing.T) {
 	}
 }
 
+func TestSoldierService_PersistsBiography(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName:          "James",
+		LastName:           "Archer",
+		Biography:          " Served with distinction and later returned to Virginia. ",
+		PDFExcerptOverride: " Tight export excerpt. ",
+		Notes:              "Internal research trail.",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Biography != "Served with distinction and later returned to Virginia." {
+		t.Fatalf("Biography = %q", got.Biography)
+	}
+	if got.PDFExcerptOverride != "Tight export excerpt." {
+		t.Fatalf("PDFExcerptOverride = %q", got.PDFExcerptOverride)
+	}
+	if got.Notes != "Internal research trail." {
+		t.Fatalf("Notes = %q", got.Notes)
+	}
+}
+
 func TestSoldierService_AddImagePersistsIdentityFields(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
@@ -1324,7 +1354,7 @@ func TestSoldierService_SearchPagePaginates(t *testing.T) {
 	}
 }
 
-func TestSoldierService_SearchPageMatchesNotesAndScratchPad(t *testing.T) {
+func TestSoldierService_SearchPageMatchesBiographyNotesAndScratchPad(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 
@@ -1332,11 +1362,23 @@ func TestSoldierService_SearchPageMatchesNotesAndScratchPad(t *testing.T) {
 		DisplayID: "PENSION-7777",
 		FirstName: "Thomas",
 		LastName:  "Green",
+		Biography: "Veteran served through Atlanta campaign and returned home in 1865.",
 		Notes:     "Camp ledger mentions a silver pocket watch.",
 		BirthDate: "01/01/1840",
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+
+	biographyResults, total, err := svc.SearchPage("Atlanta campaign", 1, 10)
+	if err != nil {
+		t.Fatalf("SearchPage biography: %v", err)
+	}
+	if total != 1 || len(biographyResults) != 1 {
+		t.Fatalf("biography search got total=%d len=%d", total, len(biographyResults))
+	}
+	if biographyResults[0].SearchMatchField != "Biography" || !strings.Contains(biographyResults[0].SearchMatchSnippet, "Atlanta campaign") {
+		t.Fatalf("unexpected biography match metadata: %#v", biographyResults[0])
 	}
 
 	noteResults, total, err := svc.SearchPage("pocket watch", 1, 10)

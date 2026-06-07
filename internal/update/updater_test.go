@@ -109,12 +109,15 @@ func TestNormalizeStageRootFindsSingleExecutable(t *testing.T) {
 func TestWriteApplyScriptPreservesOAuthDefaults(t *testing.T) {
 	scriptPath := filepath.Join(t.TempDir(), "apply-update.ps1")
 	err := writeApplyScript(scriptPath, applyScriptOptions{
-		ProcessID:      123,
-		StageDir:       `C:\updates\stage`,
-		InstallDir:     `C:\Program Files\DixieData`,
-		ExecutableName: "DixieData.exe",
-		ResultPath:     `C:\data\.dixiedata\updates\apply-result.json`,
-		TargetVersion:  "1.2.24",
+		ProcessID:          123,
+		StageDir:           `C:\updates\stage`,
+		InstallDir:         `C:\Program Files\DixieData`,
+		ExecutableName:     "DixieData.exe",
+		ResultPath:         `C:\data\.dixiedata\updates\apply-result.json`,
+		TargetVersion:      "1.2.24",
+		SourceVersion:      "1.2.23",
+		FeedbackLogPath:    `C:\data\.dixiedata\logs\feedback-log.jsonl`,
+		FeedbackArchiveDir: `C:\data\.dixiedata\logs\feedback-history`,
 	})
 	if err != nil {
 		t.Fatalf("writeApplyScript: %v", err)
@@ -128,6 +131,10 @@ func TestWriteApplyScriptPreservesOAuthDefaults(t *testing.T) {
 		"google-oauth-defaults.json",
 		"if (-not (Test-Path $oauthTarget) -and (Test-Path $oauthSource))",
 		"Move-Item -LiteralPath $targetExe -Destination $backupExe -Force",
+		"Archive-FeedbackLog",
+		"Restore-FeedbackLog",
+		"$feedbackLogPath = 'C:\\data\\.dixiedata\\logs\\feedback-log.jsonl'",
+		"$feedbackArchiveDir = 'C:\\data\\.dixiedata\\logs\\feedback-history'",
 		"Write-Result -status 'failed'",
 	} {
 		if !strings.Contains(text, needle) {
@@ -167,13 +174,16 @@ func TestSettingsDisablesApplyForDevelopmentBuild(t *testing.T) {
 func TestWriteApplyScriptClearsLaunchStateOnFailure(t *testing.T) {
 	scriptPath := filepath.Join(t.TempDir(), "apply-update.ps1")
 	err := writeApplyScript(scriptPath, applyScriptOptions{
-		ProcessID:       123,
-		StageDir:        `C:\updates\stage`,
-		InstallDir:      `C:\Program Files\DixieData`,
-		ExecutableName:  "DixieData.exe",
-		ResultPath:      `C:\data\.dixiedata\updates\apply-result.json`,
-		LaunchStatePath: `C:\data\.dixiedata\updates\restore-point-state.json`,
-		TargetVersion:   "1.2.24",
+		ProcessID:          123,
+		StageDir:           `C:\updates\stage`,
+		InstallDir:         `C:\Program Files\DixieData`,
+		ExecutableName:     "DixieData.exe",
+		ResultPath:         `C:\data\.dixiedata\updates\apply-result.json`,
+		LaunchStatePath:    `C:\data\.dixiedata\updates\restore-point-state.json`,
+		TargetVersion:      "1.2.24",
+		SourceVersion:      "1.2.23",
+		FeedbackLogPath:    `C:\data\.dixiedata\logs\feedback-log.jsonl`,
+		FeedbackArchiveDir: `C:\data\.dixiedata\logs\feedback-history`,
 	})
 	if err != nil {
 		t.Fatalf("writeApplyScript: %v", err)
@@ -188,6 +198,9 @@ func TestWriteApplyScriptClearsLaunchStateOnFailure(t *testing.T) {
 	}
 	if !strings.Contains(text, "Remove-Item -LiteralPath $launchStatePath -Force -ErrorAction SilentlyContinue") {
 		t.Fatalf("script missing launch-state cleanup: %s", text)
+	}
+	if !strings.Contains(text, "Move-Item -LiteralPath $feedbackLogPath -Destination $archivePath -Force") {
+		t.Fatalf("script missing feedback-log archive move: %s", text)
 	}
 }
 

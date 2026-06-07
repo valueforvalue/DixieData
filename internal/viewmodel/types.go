@@ -32,6 +32,8 @@ type PersonRecord struct {
 	DeathDate             string
 	BirthInfo             string
 	BuriedIn              string
+	Biography             string
+	PDFExcerptOverride    string
 	Notes                 string
 	NeedsReview           bool
 	ReviewReason          string

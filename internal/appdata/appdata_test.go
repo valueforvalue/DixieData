@@ -66,6 +66,12 @@ func TestFeedbackLogPathUsesLogsDirectory(t *testing.T) {
 	if got := FeedbackLogPath(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata\logs\feedback-log.jsonl` {
 		t.Fatalf("FeedbackLogPath=%q", got)
 	}
+	if got := FeedbackLogArchiveDir(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata\logs\feedback-history` {
+		t.Fatalf("FeedbackLogArchiveDir=%q", got)
+	}
+	if got := FeedbackLogArchiveVersionDir(`C:\repo\.dixiedata`, `v1.2.37 / prior`); got != `C:\repo\.dixiedata\logs\feedback-history\v1-2-37-prior` {
+		t.Fatalf("FeedbackLogArchiveVersionDir=%q", got)
+	}
 }
 
 func TestUpdatePathsUseUpdatesDirectory(t *testing.T) {
