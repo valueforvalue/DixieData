@@ -507,6 +507,7 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 		Unit:             "Army of Northern Virginia",
 		BuriedIn:         "Hollywood Cemetery",
 		Biography:        "Landscape biography should appear in single-record export. https://example.com/bio",
+		PDFExcerptOverride: "Landscape override should be ignored.",
 		AddedBy:          "J. Morris",
 		LastEditedBy:     "J. Morris",
 		LastEditedAt:     "2026-05-30T02:38:13Z",
@@ -545,7 +546,14 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Landscape biography should appear in single-record export.") {
 		t.Fatalf("landscape pdf should use biography content")
 	}
-	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields", "portrait.png", "Primary Image", "Scratch note should stay out of single-record export.", "https://example.com/notes"} {
+	if !strings.Contains(text, "Full Biography") {
+		t.Fatalf("landscape pdf should append a full biography page")
+	}
+	pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(data, -1))
+	if pageCount < 2 {
+		t.Fatalf("pageCount = %d, want at least 2 pages for landscape biography export", pageCount)
+	}
+	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "entry_type,last_edited_fields", "portrait.png", "Primary Image", "Scratch note should stay out of single-record export.", "https://example.com/notes", "Landscape override should be ignored."} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("pdf should omit audit metadata %q", forbidden)
 		}
@@ -580,6 +588,10 @@ func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 	text := string(data)
 	if strings.Contains(text, "Primary Image") || strings.Contains(text, "portrait.png") {
 		t.Fatalf("no-images PDF should not render image panel content")
+	}
+	pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(data, -1))
+	if pageCount != 1 {
+		t.Fatalf("pageCount = %d, want 1 when landscape biography is blank", pageCount)
 	}
 }
 
@@ -988,12 +1000,16 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 			t.Fatalf("ReadFile pdfPath: %v", err)
 		}
 		pdfText := string(pdfData)
-		for _, needle := range []string{"JPG biography should match PDF renderer.", "JPG portrait"} {
+		for _, needle := range []string{"JPG biography should match PDF renderer.", "JPG portrait", "Full Biography"} {
 			if !strings.Contains(pdfText, needle) {
 				t.Fatalf("JPG source PDF missing %q", needle)
 			}
 		}
-		for _, forbidden := range []string{"Primary Image", "JPG scratch note should stay out."} {
+		pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(pdfData, -1))
+		if pageCount < 2 {
+			t.Fatalf("JPG source PDF pageCount = %d, want at least 2", pageCount)
+		}
+		for _, forbidden := range []string{"Primary Image", "JPG scratch note should stay out.", "JPG override should be ignored."} {
 			if strings.Contains(pdfText, forbidden) {
 				t.Fatalf("JPG source PDF should omit %q", forbidden)
 			}
@@ -1018,6 +1034,7 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		FirstName: "John",
 		LastName:  "Taylor",
 		Biography: "JPG biography should match PDF renderer.",
+		PDFExcerptOverride: "JPG override should be ignored.",
 		Notes:     "JPG scratch note should stay out.",
 		Images:    []models.Image{{FileName: "jpg-portrait.png", FilePath: `images\stc38-00001\jpg-portrait.png`, ResolvedPath: imagePath, Caption: "JPG portrait"}},
 	}

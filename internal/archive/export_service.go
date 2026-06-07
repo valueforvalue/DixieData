@@ -2259,6 +2259,9 @@ func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldi
 
 	writePDFTitleBlock(pdf, recordPDFTitle(soldier), fmt.Sprintf("%s - %s", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)))
 	writePDFRecordCard(pdf, soldier, options)
+	if shouldAppendSingleRecordBiographyPage(soldier, options) {
+		writeSingleRecordBiographyPage(pdf, soldier, options.PrinterFriendly)
+	}
 
 	return pdf.OutputFileAndClose(outputPath)
 }
@@ -3792,6 +3795,9 @@ func recordPDFNarrativeSection(soldier models.Soldier, options PDFOptions) (stri
 	if options.PrintableArchive {
 		return "Biography", printableArchiveBiographyText(soldier, options.PrinterFriendly)
 	}
+	if shouldAppendSingleRecordBiographyPage(soldier, options) {
+		return "", ""
+	}
 	text := strings.TrimSpace(soldier.PDFExcerptOverride)
 	if text == "" {
 		text = soldier.Biography
@@ -3801,6 +3807,14 @@ func recordPDFNarrativeSection(soldier models.Soldier, options PDFOptions) (stri
 
 func usesPortraitRecordPDFLayout(options PDFOptions) bool {
 	return strings.TrimSpace(strings.ToUpper(options.Normalize("L", true).Orientation)) != "L"
+}
+
+func shouldAppendSingleRecordBiographyPage(soldier models.Soldier, options PDFOptions) bool {
+	options = options.Normalize("L", true)
+	if options.PrintableArchive || usesPortraitRecordPDFLayout(options) {
+		return false
+	}
+	return strings.TrimSpace(pdfFreeTextValue(soldier.Biography, options.PrinterFriendly)) != ""
 }
 
 func printableArchiveBiographyText(soldier models.Soldier, printerFriendly bool) string {
@@ -3824,6 +3838,14 @@ func truncatePDFText(value string, maxRunes int) string {
 }
 
 func writePrintableBiographyAppendixPage(pdf *fpdf.Fpdf, soldier models.Soldier, printerFriendly bool) {
+	writeFullBiographyPage(pdf, soldier, printerFriendly, "Full Biography Appendix")
+}
+
+func writeSingleRecordBiographyPage(pdf *fpdf.Fpdf, soldier models.Soldier, printerFriendly bool) {
+	writeFullBiographyPage(pdf, soldier, printerFriendly, "Full Biography")
+}
+
+func writeFullBiographyPage(pdf *fpdf.Fpdf, soldier models.Soldier, printerFriendly bool, label string) {
 	biography := pdfFreeTextValue(soldier.Biography, printerFriendly)
 	if strings.TrimSpace(biography) == "" {
 		return
@@ -3832,7 +3854,7 @@ func writePrintableBiographyAppendixPage(pdf *fpdf.Fpdf, soldier models.Soldier,
 	writePDFTitleBlock(
 		pdf,
 		recordPDFTitle(soldier),
-		fmt.Sprintf("%s | %s | Full Biography Appendix", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)),
+		fmt.Sprintf("%s | %s | %s", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier), label),
 	)
 	writePDFSection(pdf, "Biography")
 	writePDFRichTextSized(pdf, emptyPDFValue(biography), 6, 11)
