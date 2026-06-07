@@ -44,6 +44,31 @@ func TestEntryFormKeepsDisplayIDReadonlyOnEdit(t *testing.T) {
 	}
 }
 
+func TestEntryFormEditIncludesDraftVersionAndStaleDraftControls(t *testing.T) {
+	var buf bytes.Buffer
+	err := EntryForm(viewmodel.Soldier{
+		ID:        42,
+		DisplayID: "DXD-00042",
+		UpdatedAt: "2026-06-07T18:00:00Z",
+	}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, true).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`data-draft-record-version="2026-06-07T18:00:00Z|42"`,
+		`data-record-persistence-preview`,
+		`data-record-persistence-preview-list`,
+		`data-reapply-stale-draft`,
+		"Saved local draft review",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("entry form missing stale draft affordance %s", needle)
+		}
+	}
+}
+
 func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{EntryType: "wife", LinkedSoldierID: 7}, []viewmodel.Soldier{

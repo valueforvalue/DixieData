@@ -12,6 +12,8 @@
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
   const splitScreenBreakpointPx = 1000;
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
+  const draftBaselines = new WeakMap();
+  const staleDrafts = new WeakMap();
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   let layoutModeMediaQuery = null;
   const imageViewerState = {
@@ -1417,6 +1419,25 @@
     return form.getAttribute("data-draft-key") || "";
   }
 
+  function draftStorageKeyForForm(form) {
+    const key = draftKeyForForm(form);
+    return key ? `dixiedata:${key}` : "";
+  }
+
+  function draftKindForForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return "new";
+    }
+    return form.getAttribute("data-record-persistence-kind") || "new";
+  }
+
+  function draftRecordVersionForForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return "";
+    }
+    return form.getAttribute("data-draft-record-version") || "";
+  }
+
   function isDraftableField(field) {
     if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
       return false;
@@ -1424,31 +1445,10 @@
     if (!field.name || field.disabled) {
       return false;
     }
-    if (field instanceof HTMLInputElement && (field.type === "file" || field.readOnly)) {
+    if (field instanceof HTMLInputElement && (field.type === "file" || field.type === "hidden" || field.readOnly)) {
       return false;
     }
     return true;
-  }
-
-  function persistDraftForForm(form) {
-    const key = draftKeyForForm(form);
-    if (!key) {
-      return;
-    }
-    const payload = {};
-    form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
-      if (!isDraftableField(field)) {
-        return;
-      }
-      if (!Object.prototype.hasOwnProperty.call(payload, field.name)) {
-        payload[field.name] = [];
-      }
-      payload[field.name].push(field.value ?? "");
-    });
-    try {
-      window.localStorage.setItem(`dixiedata:${key}`, JSON.stringify(payload));
-    } catch (error) {
-    }
   }
 
   function recordPersistenceTarget(form) {
@@ -1459,7 +1459,311 @@
     return target instanceof HTMLElement ? target : null;
   }
 
-  function syncRecordPersistenceIndicator(form, hasDraft, restored = false) {
+  function formRecordRowCount(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return 1;
+    }
+    const count = form.querySelectorAll("[data-record-row]").length;
+    return count > 0 ? count : 1;
+  }
+
+  function setRecordRowCount(form, targetCount) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const desired = Math.max(1, targetCount || 1);
+    let rows = Array.from(form.querySelectorAll("[data-record-row]"));
+    while (rows.length < desired) {
+      const addButton = form.querySelector("[data-record-add]");
+      if (!(addButton instanceof HTMLElement)) {
+        break;
+      }
+      addRecordRow(addButton);
+      rows = Array.from(form.querySelectorAll("[data-record-row]"));
+    }
+    while (rows.length > desired) {
+      const row = rows.pop();
+      if (!(row instanceof HTMLElement)) {
+        break;
+      }
+      row.remove();
+    }
+  }
+
+  function draftFieldValue(field) {
+    if (field instanceof HTMLInputElement) {
+      if (field.type === "checkbox") {
+        return field.checked ? String(field.value || "1") : "";
+      }
+      if (field.type === "radio") {
+        return field.checked ? String(field.value || "on") : "";
+      }
+    }
+    return String(field.value ?? "");
+  }
+
+  function serializeDraftFields(form) {
+    const payload = {};
+    form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
+      if (!isDraftableField(field)) {
+        return;
+      }
+      if (!Object.prototype.hasOwnProperty.call(payload, field.name)) {
+        payload[field.name] = [];
+      }
+      payload[field.name].push(draftFieldValue(field));
+    });
+    return payload;
+  }
+
+  function cloneDraftSnapshot(snapshot) {
+    const clone = {};
+    Object.entries(snapshot || {}).forEach(([name, values]) => {
+      clone[name] = Array.isArray(values) ? values.map((value) => String(value ?? "")) : [];
+    });
+    return clone;
+  }
+
+  function snapshotsEqual(left, right) {
+    const names = new Set([].concat(Object.keys(left || {}), Object.keys(right || {})));
+    for (const name of names) {
+      const leftValues = Array.isArray(left?.[name]) ? left[name] : [];
+      const rightValues = Array.isArray(right?.[name]) ? right[name] : [];
+      if (leftValues.length !== rightValues.length) {
+        return false;
+      }
+      for (let index = 0; index < leftValues.length; index += 1) {
+        if (String(leftValues[index] ?? "") !== String(rightValues[index] ?? "")) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  function mergeDraftSnapshot(base, overrides) {
+    const merged = cloneDraftSnapshot(base || {});
+    Object.entries(overrides || {}).forEach(([name, values]) => {
+      merged[name] = Array.isArray(values) ? values.map((value) => String(value ?? "")) : [];
+    });
+    return merged;
+  }
+
+  function baselineStateForForm(form) {
+    let state = draftBaselines.get(form);
+    if (state) {
+      return state;
+    }
+    state = {
+      fields: serializeDraftFields(form),
+      rowCount: formRecordRowCount(form),
+      version: draftRecordVersionForForm(form),
+    };
+    draftBaselines.set(form, state);
+    return state;
+  }
+
+  function normalizeDraftSnapshot(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return {};
+    }
+    const normalized = {};
+    Object.entries(raw).forEach(([name, values]) => {
+      if (!Array.isArray(values)) {
+        return;
+      }
+      normalized[name] = values.map((value) => String(value ?? ""));
+    });
+    return normalized;
+  }
+
+  function calculateDraftRowCount(snapshot) {
+    return Math.max(
+      1,
+      Array.isArray(snapshot?.record_type) ? snapshot.record_type.length : 0,
+      Array.isArray(snapshot?.record_app_id) ? snapshot.record_app_id.length : 0,
+      Array.isArray(snapshot?.record_details) ? snapshot.record_details.length : 0,
+    );
+  }
+
+  function buildDraftPayload(form) {
+    const kind = draftKindForForm(form);
+    const currentFields = serializeDraftFields(form);
+    if (kind === "edit") {
+      const baseline = baselineStateForForm(form);
+      const delta = {};
+      let changed = false;
+      const names = new Set([].concat(Object.keys(baseline.fields || {}), Object.keys(currentFields || {})));
+      names.forEach((name) => {
+        const baselineValues = Array.isArray(baseline.fields?.[name]) ? baseline.fields[name] : [];
+        const currentValues = Array.isArray(currentFields?.[name]) ? currentFields[name] : [];
+        if (baselineValues.length !== currentValues.length || currentValues.some((value, index) => String(value ?? "") !== String(baselineValues[index] ?? ""))) {
+          delta[name] = currentValues.map((value) => String(value ?? ""));
+          changed = true;
+        }
+      });
+      if (!changed) {
+        return null;
+      }
+      return {
+        schema: 2,
+        kind: "edit",
+        version: baseline.version,
+        rowCount: formRecordRowCount(form),
+        fields: delta,
+      };
+    }
+    return {
+      schema: 2,
+      kind: "new",
+      rowCount: formRecordRowCount(form),
+      fields: currentFields,
+    };
+  }
+
+  function persistDraftForForm(form) {
+    const storageKey = draftStorageKeyForForm(form);
+    if (!storageKey) {
+      return { hasDraft: false };
+    }
+    staleDrafts.delete(form);
+    const payload = buildDraftPayload(form);
+    try {
+      if (!payload) {
+        window.localStorage.removeItem(storageKey);
+        return { hasDraft: false };
+      }
+      window.localStorage.setItem(storageKey, JSON.stringify(payload));
+      return { hasDraft: true };
+    } catch (error) {
+      return { hasDraft: false };
+    }
+  }
+
+  function previewValueDisplay(field, rawValue) {
+    const normalized = String(rawValue ?? "");
+    if (field instanceof HTMLInputElement && field.type === "checkbox") {
+      return normalized === "" ? "No" : "Yes";
+    }
+    if (field instanceof HTMLSelectElement) {
+      const option = Array.from(field.options).find((candidate) => candidate.value === normalized);
+      if (option) {
+        return option.textContent?.trim() || normalized || "(blank)";
+      }
+    }
+    return normalized.trim() === "" ? "(blank)" : normalized;
+  }
+
+  function draftFieldLabel(name, occurrence) {
+    const labels = {
+      display_id: "Display ID",
+      entry_type: "Entry Type",
+      spouse_soldier_id: "Linked Soldier",
+      relationship_label: "Relationship Label",
+      maiden_name: "Maiden Name",
+      pension_id: "Pension ID",
+      application_id: "Application ID",
+      prefix: "Prefix",
+      show_prefix_before_name: "Show prefix before name",
+      first_name: "First Name",
+      middle_name: "Middle Name",
+      last_name: "Last Name",
+      suffix: "Suffix",
+      rank: "Rank",
+      rank_in: "Rank In",
+      rank_out: "Rank Out",
+      unit: "Unit",
+      pension_state: "Pension State",
+      confederate_home_status: "Confederate Home Status",
+      confederate_home_name: "Confederate Home Name",
+      death_year: "Death Year",
+      death_month: "Death Month",
+      death_day: "Death Day",
+      birth_date: "Birth Date",
+      death_date: "Death Date",
+      birth_info: "Birth Info",
+      buried_in: "Buried In",
+      biography: "Biography",
+      pdf_excerpt_override: "Advanced PDF Excerpt Override",
+      notes: "Internal Notes",
+      record_type: "Source Record Type",
+      record_app_id: "Source Record Number",
+      record_details: "Source Record Details",
+    };
+    const base = labels[name] || name.replace(/_/g, " ").replace(/\b\w/g, (value) => value.toUpperCase());
+    if (name === "record_type" || name === "record_app_id" || name === "record_details") {
+      return `Source Record ${occurrence + 1} - ${base}`;
+    }
+    return base;
+  }
+
+  function buildDraftDiffEntries(form, baselineFields, draftSnapshot) {
+    const entries = [];
+    const names = Array.from(new Set([].concat(Object.keys(baselineFields || {}), Object.keys(draftSnapshot || {})))).sort();
+    names.forEach((name) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      const baselineValues = Array.isArray(baselineFields?.[name]) ? baselineFields[name] : [];
+      const draftValues = Array.isArray(draftSnapshot?.[name]) ? draftSnapshot[name] : [];
+      const count = Math.max(baselineValues.length, draftValues.length, 1);
+      for (let index = 0; index < count; index += 1) {
+        const currentValue = String(baselineValues[index] ?? "");
+        const localValue = String(draftValues[index] ?? "");
+        if (currentValue === localValue) {
+          continue;
+        }
+        entries.push({
+          label: draftFieldLabel(name, index),
+          currentValue: previewValueDisplay(field, currentValue),
+          localValue: previewValueDisplay(field, localValue),
+        });
+      }
+    });
+    return entries;
+  }
+
+  function renderRecordPersistencePreview(form, entries, showReapply) {
+    const target = recordPersistenceTarget(form);
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const preview = target.querySelector("[data-record-persistence-preview]");
+    const previewMessage = target.querySelector("[data-record-persistence-preview-message]");
+    const previewList = target.querySelector("[data-record-persistence-preview-list]");
+    const reapply = target.querySelector("[data-reapply-stale-draft]");
+    if (!(preview instanceof HTMLElement) || !(previewMessage instanceof HTMLElement) || !(previewList instanceof HTMLElement) || !(reapply instanceof HTMLElement)) {
+      return;
+    }
+    if (!Array.isArray(entries) || entries.length === 0) {
+      preview.classList.add("hidden");
+      previewMessage.textContent = "";
+      previewList.innerHTML = "";
+      reapply.classList.add("hidden");
+      return;
+    }
+    preview.classList.remove("hidden");
+    previewMessage.textContent = "Current form values are coming from the database. Reapplying will replace only the fields listed below with the saved local draft values.";
+    previewList.innerHTML = "";
+    entries.forEach((entry) => {
+      const item = document.createElement("li");
+      item.className = "rounded-xl border border-amber-700/20 bg-amber-50/50 px-3 py-2";
+      const label = document.createElement("p");
+      label.className = "font-semibold text-amber-950";
+      label.textContent = entry.label;
+      const dbValue = document.createElement("p");
+      dbValue.className = "mt-1 text-xs text-amber-900";
+      dbValue.textContent = `Database value: ${entry.currentValue}`;
+      const localValue = document.createElement("p");
+      localValue.className = "mt-1 text-xs text-amber-900";
+      localValue.textContent = `Saved local draft value: ${entry.localValue}`;
+      item.appendChild(label);
+      item.appendChild(dbValue);
+      item.appendChild(localValue);
+      previewList.appendChild(item);
+    });
+    reapply.classList.toggle("hidden", !showReapply);
+  }
+
+  function setRecordPersistenceState(form, state, options = {}) {
     const target = recordPersistenceTarget(form);
     if (!(target instanceof HTMLElement)) {
       return;
@@ -1473,17 +1777,25 @@
     target.classList.remove("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900", "border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     let heading = "";
     let message = "";
-    if (kind === "edit" && !hasDraft) {
+    renderRecordPersistencePreview(form, [], false);
+    if (kind === "edit" && state === "clean") {
       heading = "Committed to database.";
-      message = "This record currently matches the primary database.";
+      message = "This person record currently matches the primary database until you make new local edits.";
       target.classList.add("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900");
-    } else if (kind === "edit") {
-      heading = restored ? "Local draft restored." : "Unsaved local edits.";
+    } else if (kind === "edit" && state === "restored") {
+      heading = "Local draft restored.";
       message = "Your current changes are cached in localStorage and have not been committed to the database yet.";
       target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
+    } else if (kind === "edit" && state === "stale") {
+      heading = "Saved local draft not applied.";
+      message = "This form is showing the current database values because the saved local draft is older than the database record.";
+      target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
+      renderRecordPersistencePreview(form, options.entries || [], true);
     } else {
-      heading = restored ? "Local draft restored." : "Local draft only.";
-      message = "This new record exists only in localStorage until you create it in the database.";
+      heading = kind === "edit" ? "Unsaved local edits." : (state === "restored" ? "Local draft restored." : "Local draft only.");
+      message = kind === "edit"
+        ? "Your current changes are cached in localStorage and have not been committed to the database yet."
+        : "This new person record is cached in localStorage until you create it in the database.";
       target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     }
     headingNode.textContent = heading;
@@ -1491,15 +1803,16 @@
   }
 
   function clearDraftForForm(form) {
-    const key = draftKeyForForm(form);
-    if (!key) {
+    const storageKey = draftStorageKeyForForm(form);
+    if (!storageKey) {
       return;
     }
     try {
-      window.localStorage.removeItem(`dixiedata:${key}`);
+      window.localStorage.removeItem(storageKey);
     } catch (error) {
     }
-    syncRecordPersistenceIndicator(form, false);
+    staleDrafts.delete(form);
+    setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty");
   }
 
   function discardDraftFromControl(control) {
@@ -1514,73 +1827,126 @@
     }
   }
 
-  function ensureRecordRowCount(form, targetCount) {
-    if (!(form instanceof HTMLFormElement) || targetCount < 1) {
+  function applyDraftSnapshot(form, snapshot, rowCount) {
+    if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    let rows = form.querySelectorAll("[data-record-row]");
-    while (rows.length < targetCount) {
-      const addButton = form.querySelector("[data-record-add]");
-      if (!(addButton instanceof HTMLElement)) {
-        break;
-      }
-      addRecordRow(addButton);
-      rows = form.querySelectorAll("[data-record-row]");
-    }
-  }
-
-  function restoreDraftForForm(form) {
-    const key = draftKeyForForm(form);
-    if (!key) {
-      return;
-    }
-    let saved;
-    try {
-      saved = window.localStorage.getItem(`dixiedata:${key}`);
-    } catch (error) {
-      syncRecordPersistenceIndicator(form, false);
-      return;
-    }
-    if (!saved) {
-      syncRecordPersistenceIndicator(form, false);
-      return;
-    }
-    let payload;
-    try {
-      payload = JSON.parse(saved);
-    } catch (error) {
-      syncRecordPersistenceIndicator(form, false);
-      return;
-    }
-    const recordCount = Math.max(
-      1,
-      Array.isArray(payload.record_type) ? payload.record_type.length : 0,
-      Array.isArray(payload.record_app_id) ? payload.record_app_id.length : 0,
-      Array.isArray(payload.record_details) ? payload.record_details.length : 0,
-    );
-    ensureRecordRowCount(form, recordCount);
+    setRecordRowCount(form, rowCount || calculateDraftRowCount(snapshot));
     const cursors = {};
     form.querySelectorAll("input[name], textarea[name], select[name]").forEach((field) => {
       if (!isDraftableField(field)) {
         return;
       }
-      const values = payload[field.name];
-      if (!Array.isArray(values) || values.length === 0) {
-        return;
-      }
+      const values = Array.isArray(snapshot?.[field.name]) ? snapshot[field.name] : [];
       const index = cursors[field.name] || 0;
-      if (index >= values.length) {
-        return;
+      const rawValue = index < values.length ? String(values[index] ?? "") : "";
+      if (field instanceof HTMLInputElement && field.type === "checkbox") {
+        field.checked = rawValue !== "";
+      } else if (field instanceof HTMLInputElement && field.type === "radio") {
+        field.checked = rawValue !== "" && field.value === rawValue;
+      } else {
+        field.value = rawValue;
       }
-      field.value = values[index] ?? "";
       cursors[field.name] = index + 1;
     });
-    syncRecordPersistenceIndicator(form, true, true);
+    syncEntryTypeFields(form);
+    syncConfederateHomeFields(form);
+    form.querySelectorAll("[data-live-count-target]").forEach((field) => {
+      if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+        updateLiveCount(field);
+      }
+    });
+  }
+
+  function readStoredDraft(form) {
+    const storageKey = draftStorageKeyForForm(form);
+    if (!storageKey) {
+      return null;
+    }
+    let saved;
+    try {
+      saved = window.localStorage.getItem(storageKey);
+    } catch (error) {
+      return null;
+    }
+    if (!saved) {
+      return null;
+    }
+    let payload;
+    try {
+      payload = JSON.parse(saved);
+    } catch (error) {
+      return null;
+    }
+    if (payload && payload.schema === 2 && payload.fields && typeof payload.fields === "object") {
+      return {
+        schema: 2,
+        kind: payload.kind === "edit" ? "edit" : "new",
+        version: String(payload.version || ""),
+        rowCount: Number.parseInt(String(payload.rowCount || ""), 10) || calculateDraftRowCount(payload.fields),
+        fields: normalizeDraftSnapshot(payload.fields),
+        legacy: false,
+      };
+    }
+    return {
+      schema: 1,
+      kind: draftKindForForm(form),
+      version: "",
+      rowCount: calculateDraftRowCount(payload),
+      fields: normalizeDraftSnapshot(payload),
+      legacy: true,
+    };
+  }
+
+  function restoreDraftForForm(form) {
+    const baseline = baselineStateForForm(form);
+    const stored = readStoredDraft(form);
+    if (!stored) {
+      setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty");
+      return;
+    }
+    const effectiveSnapshot = stored.kind === "edit" ? mergeDraftSnapshot(baseline.fields, stored.fields) : cloneDraftSnapshot(stored.fields);
+    if (stored.kind === "edit" && snapshotsEqual(baseline.fields, effectiveSnapshot)) {
+      clearDraftForForm(form);
+      return;
+    }
+    if (stored.kind === "edit" && (stored.legacy || stored.version !== baseline.version)) {
+      const entries = buildDraftDiffEntries(form, baseline.fields, effectiveSnapshot);
+      staleDrafts.set(form, {
+        snapshot: effectiveSnapshot,
+        rowCount: stored.rowCount || baseline.rowCount,
+        entries,
+      });
+      setRecordPersistenceState(form, "stale", { entries });
+      return;
+    }
+    applyDraftSnapshot(form, effectiveSnapshot, stored.rowCount);
+    setRecordPersistenceState(form, "restored");
+  }
+
+  function reapplyStaleDraftFromControl(control) {
+    const form = ownerForm(control);
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const stale = staleDrafts.get(form);
+    if (!stale) {
+      return;
+    }
+    applyDraftSnapshot(form, stale.snapshot, stale.rowCount);
+    staleDrafts.delete(form);
+    const result = persistDraftForForm(form);
+    setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
   }
 
   function initializeDraftForms() {
     document.querySelectorAll("form[data-draft-key]").forEach((form) => {
       if (form instanceof HTMLFormElement) {
+        draftBaselines.set(form, {
+          fields: serializeDraftFields(form),
+          rowCount: formRecordRowCount(form),
+          version: draftRecordVersionForForm(form),
+        });
         restoreDraftForForm(form);
       }
     });
@@ -2720,8 +3086,8 @@
       addRecordRow(recordAdd);
       const form = recordAdd.closest("form");
       if (form instanceof HTMLFormElement) {
-        persistDraftForForm(form);
-        syncRecordPersistenceIndicator(form, true);
+        const result = persistDraftForForm(form);
+        setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
       }
       return;
     }
@@ -2731,8 +3097,8 @@
       removeRecordRow(recordRemove);
       const form = recordRemove.closest("form");
       if (form instanceof HTMLFormElement) {
-        persistDraftForForm(form);
-        syncRecordPersistenceIndicator(form, true);
+        const result = persistDraftForForm(form);
+        setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
       }
       return;
     }
@@ -2740,6 +3106,12 @@
     if (clearDraft instanceof HTMLElement) {
       event.preventDefault();
       discardDraftFromControl(clearDraft);
+      return;
+    }
+    const reapplyStaleDraft = event.target.closest("[data-reapply-stale-draft]");
+    if (reapplyStaleDraft instanceof HTMLElement) {
+      event.preventDefault();
+      reapplyStaleDraftFromControl(reapplyStaleDraft);
       return;
     }
     const imageClose = event.target.closest("[data-image-close]");
@@ -2832,8 +3204,8 @@
   document.addEventListener("input", (event) => {
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
-      persistDraftForForm(form);
-      syncRecordPersistenceIndicator(form, true);
+      const result = persistDraftForForm(form);
+      setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
     }
   });
 
@@ -2850,8 +3222,8 @@
   document.addEventListener("change", (event) => {
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
-      persistDraftForForm(form);
-      syncRecordPersistenceIndicator(form, true);
+      const result = persistDraftForForm(form);
+      setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
     }
   });
   document.addEventListener("change", (event) => {

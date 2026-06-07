@@ -107,6 +107,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			if isEdit {
 				hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
 				data-draft-key={ draftKey(s, isEdit) }
+				data-draft-record-version={ draftRecordVersion(s, isEdit) }
 			} else {
 				hx-post="/soldiers"
 				data-draft-key={ draftKey(s, isEdit) }
@@ -136,6 +137,14 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					>
 						Discard local draft
 					</button>
+				</div>
+				<div data-record-persistence-preview class="mt-4 hidden rounded-2xl border border-amber-700/30 bg-white/70 p-4">
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-900" data-record-persistence-preview-title>Saved local draft review</p>
+					<p class="mt-2 text-sm text-amber-950" data-record-persistence-preview-message></p>
+					<ul class="mt-3 space-y-2 text-sm text-amber-950" data-record-persistence-preview-list></ul>
+					<div class="mt-4">
+						<button type="button" class="secondary-button hidden" data-reapply-stale-draft>Reapply saved local changes</button>
+					</div>
 				</div>
 			</div>
 			<div class="space-y-5">
@@ -477,6 +486,20 @@ func draftMode(isEdit bool) string {
 		return "edit"
 	}
 	return "new"
+}
+
+func draftRecordVersion(s viewmodel.PersonRecord, isEdit bool) string {
+	if !isEdit {
+		return ""
+	}
+	parts := []string{}
+	for _, candidate := range []string{strings.TrimSpace(s.UpdatedAt), strings.TrimSpace(s.LastEditedAt), strings.TrimSpace(s.CreatedAt)} {
+		if candidate != "" {
+			parts = append(parts, candidate)
+		}
+	}
+	parts = append(parts, fmt.Sprintf("%d", s.ID))
+	return strings.Join(parts, "|")
 }
 
 func draftResetPath(s viewmodel.PersonRecord, isEdit bool) string {
