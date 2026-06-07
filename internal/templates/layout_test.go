@@ -51,6 +51,11 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 		`overflow-y-auto`,
 		`max-h-[calc(100vh-2rem)]`,
 		`sm:max-h-[calc(100vh-4rem)]`,
+		`class="pill-link top-nav-link"`,
+		`class="primary-button top-nav-primary"`,
+		`class="secondary-button floating-dock-button"`,
+		`class="primary-button floating-dock-button"`,
+		`html[data-layout-mode="split-screen"] .floating-dock-button`,
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("layout should include responsive foundation control %s", needle)
