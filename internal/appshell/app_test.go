@@ -418,6 +418,60 @@ func TestParseSoldierFormIncludesSpouseFields(t *testing.T) {
 	}
 }
 
+func TestHandleEditSoldierPreselectsLinkedSpouse(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	spouse, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "DXD-00064",
+		FirstName: "George",
+		LastName:  "Barnett",
+	})
+	if err != nil {
+		t.Fatalf("Create spouse: %v", err)
+	}
+	widow, err := app.soldiers.Create(models.Soldier{
+		DisplayID:       "DXD-00063",
+		EntryType:       "widow",
+		SpouseSoldierID: spouse.ID,
+		FirstName:       "Missouri",
+		LastName:        "Barnett",
+	})
+	if err != nil {
+		t.Fatalf("Create widow: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/edit", widow.ID), nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="spouse_soldier_id"`) {
+		t.Fatalf("expected spouse selector in edit form, got %q", body)
+	}
+	expectedOption := fmt.Sprintf(`<option value="%d" selected>George Barnett (DXD-00064)</option>`, spouse.ID)
+	if !strings.Contains(body, expectedOption) {
+		t.Fatalf("expected linked spouse option %q in edit form, got %q", expectedOption, body)
+	}
+}
+
 func TestHandleScrapeFindAGravePopulatesNewSoldierForm(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)
