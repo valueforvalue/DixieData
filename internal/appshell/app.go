@@ -1716,15 +1716,12 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 	if err := r.ParseForm(); err != nil {
 		return archive.PrintSettings{}, fmt.Errorf("failed to parse print settings")
 	}
-	exportAll := r.FormValue("export_all") != ""
 	selectedIDs, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
 	if err != nil {
 		return archive.PrintSettings{}, err
 	}
-	if !exportAll && len(selectedIDs) == 0 {
-		return archive.PrintSettings{}, fmt.Errorf("select at least one record or export all records")
-	}
-	return archive.PrintSettings{
+	settings := archive.PrintSettings{
+		Scope:                        strings.TrimSpace(r.FormValue("scope")),
 		Orientation:                  strings.TrimSpace(r.FormValue("orientation")),
 		PrinterFriendly:              r.FormValue("printer_friendly") != "",
 		FullBiographyPage:            r.FormValue("full_biography_page") != "",
@@ -1733,9 +1730,18 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
 		GroupByConfederateHomeStatus: r.FormValue("group_by_confederate_home_status") != "",
 		GroupByBuriedIn:              r.FormValue("group_by_buried_in") != "",
-		ExportAll:                    exportAll,
+		FilterBuriedIn:               append([]string(nil), r.Form["filter_buried_in"]...),
+		FilterEntryTypes:             append([]string(nil), r.Form["filter_entry_type"]...),
+		FilterUnits:                  append([]string(nil), r.Form["filter_unit"]...),
+		FilterPensionStates:          append([]string(nil), r.Form["filter_pension_state"]...),
+		FilterConfederateHomeStatus:  append([]string(nil), r.Form["filter_confederate_home_status"]...),
+		ExportAll:                    r.FormValue("export_all") != "",
 		SelectedIDs:                  selectedIDs,
-	}.Normalize(), nil
+	}.Normalize()
+	if settings.Scope == archive.PrintScopeSelected && len(settings.SelectedIDs) == 0 {
+		return archive.PrintSettings{}, fmt.Errorf("select at least one record or choose a different export scope")
+	}
+	return settings, nil
 }
 
 func parsePDFOptionsRequest(r *http.Request, defaultOrientation string, defaultIncludeImages bool) archive.PDFOptions {

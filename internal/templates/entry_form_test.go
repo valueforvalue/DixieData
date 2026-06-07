@@ -167,8 +167,23 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF Export") {
 		t.Fatalf("share view missing full database printable export action")
 	}
-	if !strings.Contains(content, `name="export_all"`) || !strings.Contains(content, `name="selected_ids"`) || !strings.Contains(content, "John Carter") {
-		t.Fatalf("share view missing printable export selection controls")
+	for _, needle := range []string{
+		`name="scope" value="all"`,
+		`name="scope" value="filtered"`,
+		`name="scope" value="selected"`,
+		`name="selected_ids"`,
+		`name="filter_buried_in"`,
+		`name="filter_entry_type"`,
+		`name="filter_unit"`,
+		`name="filter_pension_state"`,
+		`name="filter_confederate_home_status"`,
+		`data-print-filter-panel`,
+		`data-print-buried-filter`,
+		"John Carter",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing printable export control %s", needle)
+		}
 	}
 	for _, needle := range []string{"data-print-config-modal", "overflow-y-auto", "max-h-[calc(100vh-2rem)]", "sm:max-h-[calc(100vh-4rem)]"} {
 		if needle == "data-print-config-modal" && !strings.Contains(content, `data-ui-id="overlay.print-config.modal"`) {

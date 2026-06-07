@@ -159,6 +159,7 @@ func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
 		"Export Record",
 		"Export PDF",
 		"Export JPG",
+		"Internal notes and scratch pad content stay out of these exports.",
 		"xl:flex-row xl:items-start xl:justify-between",
 		"absolute left-0",
 		"xl:left-auto xl:right-0",

@@ -10,11 +10,14 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
+
+const exportFilterUnknownValue = "__unknown__"
 
 func exportRecordOptionLabel(record viewmodel.ExportRecordOption) string {
 	name := strings.TrimSpace(record.DisplayName)
@@ -40,7 +43,54 @@ func exportRecordOptionEntryTypeLabel(value string) string {
 }
 
 func exportRecordOptionSearchText(record viewmodel.ExportRecordOption) string {
-	return strings.ToLower(strings.TrimSpace(record.DisplayID + " " + record.DisplayName + " " + strings.ReplaceAll(record.EntryType, "_", " ")))
+	return strings.ToLower(strings.TrimSpace(strings.Join([]string{
+		record.DisplayID,
+		record.DisplayName,
+		strings.ReplaceAll(record.EntryType, "_", " "),
+		record.Unit,
+		record.PensionState,
+		record.ConfederateHomeStatus,
+		record.BuriedIn,
+	}, " ")))
+}
+
+func isExportMissingValue(value string) bool {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "", "N/A", "NA", "NOT RECORDED", "NONE":
+		return true
+	default:
+		return false
+	}
+}
+
+func exportUniqueFilterValues(records []viewmodel.ExportRecordOption, valueFor func(viewmodel.ExportRecordOption) string) []string {
+	seen := map[string]bool{}
+	values := make([]string, 0, len(records))
+	for _, record := range records {
+		value := strings.TrimSpace(valueFor(record))
+		if isExportMissingValue(value) {
+			continue
+		}
+		key := strings.ToLower(value)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		values = append(values, value)
+	}
+	sort.Slice(values, func(i, j int) bool {
+		return strings.ToLower(values[i]) < strings.ToLower(values[j])
+	})
+	return values
+}
+
+func exportHasUnknownValue(records []viewmodel.ExportRecordOption, valueFor func(viewmodel.ExportRecordOption) string) bool {
+	for _, record := range records {
+		if isExportMissingValue(valueFor(record)) {
+			return true
+		}
+	}
+	return false
 }
 
 func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption) templ.Component {
@@ -83,7 +133,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PageExport)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 40, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 90, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -104,7 +154,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelExportActions)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 46, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 96, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -118,14 +168,14 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section class=\"card rounded-3xl p-5 sm:p-8 space-y-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Export & Backup</p><h3 class=\"mt-2 text-xl gold font-bold\">Create files to share or preserve</h3><p class=\"mt-2 text-sm text-slate-500\">Generate portable exports, replacement backups, and merge-ready shared archives.</p></div><div class=\"flex flex-col gap-3\"><button hx-post=\"/export/json\" hx-target=\"#share-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Export JSON</div><div class=\"text-xs text-slate-300\">Full hierarchical export with version metadata</div></button> <button hx-post=\"/export/csv\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export Excel (.xlsx)</div><div class=\"text-xs text-slate-500\">Formatted workbook with typed dates, linked spouse data, and spreadsheet-friendly sheets</div></button> <button hx-post=\"/export/ical\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export iCalendar</div><div class=\"text-xs text-slate-500\">ICS anniversary export with embedded app and schema versions</div></button> <button hx-post=\"/export/static-archive\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export Static Web Archive</div><div class=\"text-xs text-slate-500\">Standalone static archive with images, live search, and expandable person record cards</div></button> <button type=\"button\" data-print-config-open class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Full Database Printable PDF Export</div><div class=\"text-xs text-slate-500\">Landscape printable PDF export with one branded record page per entry, configurable sorting/grouping, and optional record selection</div></button> <button hx-post=\"/export/backup\" hx-target=\"#share-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Export Backup (.ddbak)</div><div class=\"text-xs text-slate-300\">Replacement backup archive with manifest, DB snapshot, and all images</div></button> <button hx-post=\"/export/shared-archive\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export Shared Archive (.ddshare)</div><div class=\"text-xs text-slate-500\">Shared archive for sharing person records into another DixieData local archive</div></button></div></section><section class=\"card rounded-3xl p-5 sm:p-8 space-y-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Import & Restore</p><h3 class=\"mt-2 text-xl gold font-bold\">Bring data back into this local archive</h3><p class=\"mt-2 text-sm text-slate-500\">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p></div><div class=\"space-y-4\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Collaborative Merge</p><p class=\"mt-2 text-sm text-slate-600\">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p><div class=\"mt-4\"><button hx-post=\"/import/shared-archive\" hx-target=\"#share-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Import Shared Archive (.ddshare)</div><div class=\"text-xs text-slate-300\">Merge a shared archive into the current local archive using the bundled manifest, source identity, snapshot, and images</div></button></div></div><div class=\"rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]\">Replace Local Archive</p><p class=\"mt-2 text-sm text-[#6f2c26]\">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p><div class=\"mt-4\"><button hx-post=\"/import/backup\" hx-target=\"#share-status\" hx-confirm=\"Load a backup archive and replace the current local archive?\" class=\"danger-button justify-start text-left\"><div class=\"font-bold\">Load Backup (.ddbak)</div><div class=\"text-xs text-[#f6ddd6]\">Restore a backup archive and replace the current local archive (legacy .zip backups still supported)</div></button></div></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\"><strong class=\"text-[#22303d]\">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.</div></section><section class=\"responsive-span-2 card rounded-3xl p-5 sm:p-8 space-y-4 md:col-span-2\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Support & Diagnostics</p><h3 class=\"mt-2 text-xl gold font-bold\">Troubleshooting bundle</h3><p class=\"mt-2 text-sm text-slate-500\">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p></div><div class=\"flex flex-col gap-3 sm:flex-row sm:flex-wrap\"><button hx-post=\"/export/feedback-log\" hx-target=\"#share-status\" class=\"secondary-button w-full justify-start text-left sm:w-auto\"><div class=\"font-bold\">Export Feedback Log</div><div class=\"text-xs text-slate-500\">Save the append-only feedback log for attaching to an email</div></button> <button hx-post=\"/export/bug-report\" hx-target=\"#share-status\" class=\"secondary-button w-full justify-start text-left sm:w-auto\"><div class=\"font-bold\">Export Bug Report Bundle</div><div class=\"text-xs text-slate-500\">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div></button></div></section><div id=\"share-status\" class=\"responsive-span-2 md:col-span-2 text-sm text-slate-500\"></div></div><div id=\"share-print-config-modal\" data-print-config-modal data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section class=\"card rounded-3xl p-5 sm:p-8 space-y-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Export & Backup</p><h3 class=\"mt-2 text-xl gold font-bold\">Create files to share or preserve</h3><p class=\"mt-2 text-sm text-slate-500\">Generate portable exports, replacement backups, and merge-ready shared archives.</p></div><div class=\"flex flex-col gap-3\"><button hx-post=\"/export/json\" hx-target=\"#share-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Export JSON</div><div class=\"text-xs text-slate-300\">Full hierarchical export with version metadata</div></button> <button hx-post=\"/export/csv\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export Excel (.xlsx)</div><div class=\"text-xs text-slate-500\">Formatted workbook with typed dates, linked spouse data, and spreadsheet-friendly sheets</div></button> <button hx-post=\"/export/ical\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export iCalendar</div><div class=\"text-xs text-slate-500\">ICS anniversary export with embedded app and schema versions</div></button> <button hx-post=\"/export/static-archive\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export Static Web Archive</div><div class=\"text-xs text-slate-500\">Standalone static archive with images, live search, and expandable person record cards</div></button> <button type=\"button\" data-print-config-open class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Full Database Printable PDF Export</div><div class=\"text-xs text-slate-500\">Landscape printable PDF export with one branded record page per entry, configurable scope, filtering, sorting, grouping, and optional manual record selection</div></button> <button hx-post=\"/export/backup\" hx-target=\"#share-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Export Backup (.ddbak)</div><div class=\"text-xs text-slate-300\">Replacement backup archive with manifest, DB snapshot, and all images</div></button> <button hx-post=\"/export/shared-archive\" hx-target=\"#share-status\" class=\"secondary-button justify-start text-left\"><div class=\"font-bold\">Export Shared Archive (.ddshare)</div><div class=\"text-xs text-slate-500\">Shared archive for sharing person records into another DixieData local archive</div></button></div></section><section class=\"card rounded-3xl p-5 sm:p-8 space-y-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Import & Restore</p><h3 class=\"mt-2 text-xl gold font-bold\">Bring data back into this local archive</h3><p class=\"mt-2 text-sm text-slate-500\">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p></div><div class=\"space-y-4\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Collaborative Merge</p><p class=\"mt-2 text-sm text-slate-600\">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p><div class=\"mt-4\"><button hx-post=\"/import/shared-archive\" hx-target=\"#share-status\" class=\"primary-button justify-start text-left\"><div class=\"font-bold\">Import Shared Archive (.ddshare)</div><div class=\"text-xs text-slate-300\">Merge a shared archive into the current local archive using the bundled manifest, source identity, snapshot, and images</div></button></div></div><div class=\"rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]\">Replace Local Archive</p><p class=\"mt-2 text-sm text-[#6f2c26]\">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p><div class=\"mt-4\"><button hx-post=\"/import/backup\" hx-target=\"#share-status\" hx-confirm=\"Load a backup archive and replace the current local archive?\" class=\"danger-button justify-start text-left\"><div class=\"font-bold\">Load Backup (.ddbak)</div><div class=\"text-xs text-[#f6ddd6]\">Restore a backup archive and replace the current local archive (legacy .zip backups still supported)</div></button></div></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\"><strong class=\"text-[#22303d]\">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.</div></section><section class=\"responsive-span-2 card rounded-3xl p-5 sm:p-8 space-y-4 md:col-span-2\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Support & Diagnostics</p><h3 class=\"mt-2 text-xl gold font-bold\">Troubleshooting bundle</h3><p class=\"mt-2 text-sm text-slate-500\">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p></div><div class=\"flex flex-col gap-3 sm:flex-row sm:flex-wrap\"><button hx-post=\"/export/feedback-log\" hx-target=\"#share-status\" class=\"secondary-button w-full justify-start text-left sm:w-auto\"><div class=\"font-bold\">Export Feedback Log</div><div class=\"text-xs text-slate-500\">Save the append-only feedback log for attaching to an email</div></button> <button hx-post=\"/export/bug-report\" hx-target=\"#share-status\" class=\"secondary-button w-full justify-start text-left sm:w-auto\"><div class=\"font-bold\">Export Bug Report Bundle</div><div class=\"text-xs text-slate-500\">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div></button></div></section><div id=\"share-status\" class=\"responsive-span-2 md:col-span-2 text-sm text-slate-500\"></div></div><div id=\"share-print-config-modal\" data-print-config-modal data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.OverlayPrintConfigModal)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 136, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 186, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -139,464 +189,722 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"share-print-config-form\" hx-post=\"/export/database-pdf\" hx-target=\"#share-status\" data-pdf-pref-scope=\"archive\" class=\"space-y-6\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Printable Export Settings</p><h3 class=\"mt-2 text-xl gold font-bold\">Configure the archive layout</h3><p class=\"mt-2 text-sm text-slate-600\">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p></div><button type=\"button\" data-print-config-close class=\"secondary-button w-full px-4 sm:w-auto\">Close</button></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Export Scope</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"export_all\" value=\"1\" checked data-print-export-all class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Export all records</strong><br><span class=\"text-slate-500\">Default behavior exports the full archive. Uncheck this to choose specific person records instead.</span></span></label><div data-print-record-picker class=\"space-y-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Filter records <input type=\"search\" placeholder=\"Type a display ID or name\" data-print-record-filter class=\"mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"></label><div class=\"text-xs text-slate-500\">Choose which person records to include when exporting a selected subset.</div><div data-print-record-options class=\"max-h-52 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3 sm:max-h-64\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"share-print-config-form\" hx-post=\"/export/database-pdf\" hx-target=\"#share-status\" data-pdf-pref-scope=\"archive\" class=\"space-y-6\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Printable Export Settings</p><h3 class=\"mt-2 text-xl gold font-bold\">Configure the archive layout</h3><p class=\"mt-2 text-sm text-slate-600\">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p></div><button type=\"button\" data-print-config-close class=\"secondary-button w-full px-4 sm:w-auto\">Close</button></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Export Scope</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"all\" checked data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">All records</strong><br><span class=\"text-slate-500\">Export the full archive without applying structured filters.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"filtered\" data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Filtered records</strong><br><span class=\"text-slate-500\">Filter by burial location, entry type, unit, pension state, and Confederate Home status. If no filters are selected, export falls back to all records.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"selected\" data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Manually selected records</strong><br><span class=\"text-slate-500\">Choose an explicit subset by display ID or person name.</span></span></label><div data-print-filter-panel class=\"space-y-4 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Burial Location</p><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440] mt-3\">Search burial locations <input type=\"search\" placeholder=\"Type a cemetery or location\" data-print-buried-filter class=\"mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"></label><div class=\"mt-3 max-h-44 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><label data-print-buried-option data-print-buried-search=\"location unknown\" class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_buried_in\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, record := range exportRecords {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<label data-print-record-option data-print-record-search=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionSearchText(record))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 162, Col: 105}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"selected_ids\" value=\"")
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 221, Col: 90}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-print-filter-checkbox data-print-filter-family=\"buried-in\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>Location Unknown</span></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.BuriedIn }) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<label data-print-buried-option data-print-buried-search=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", record.ID))
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(strings.ToLower(value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 163, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 225, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" data-print-record-checkbox class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_buried_in\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionLabel(record))
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 164, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 226, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span></label>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Page Setup</div><div class=\"flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-center\"><label class=\"text-sm text-slate-700\"><span class=\"mr-2 font-semibold text-[#22303d]\">Orientation</span> <select name=\"orientation\" data-pdf-pref-key=\"orientation\" class=\"rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"><option value=\"L\" selected>Landscape</option> <option value=\"P\">Portrait</option></select></label> <label class=\"inline-flex items-center gap-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"printer_friendly\" value=\"1\" data-pdf-pref-key=\"printerFriendly\" class=\"h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Printer-friendly</strong> removes links, export metadata, and empty placeholder fields.</span></label></div><label class=\"flex items-start gap-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"full_biography_page\" value=\"1\" data-pdf-pref-key=\"fullBiographyPage\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Append full biography page</strong><br><span class=\"text-slate-500\">Keep concise first page, then add text-friendly full biography appendix when a record has biography content.</span></span></label></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Sort Options</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"sort_by\" value=\"last_name\" checked class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Alphabetical by Last Name</strong><br><span class=\"text-slate-500\">Standard registry ordering for browsing by surname.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"sort_by\" value=\"birth_year\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Chronological by Birth Year</strong><br><span class=\"text-slate-500\">Oldest to youngest, using stored birth years when available.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"sort_by\" value=\"death_year\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Chronological by Death Year</strong><br><span class=\"text-slate-500\">Earliest to latest death year for timeline-style printing.</span></span></label></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Group By</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_unit\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Unit</strong><br><span class=\"text-slate-500\">Create printable sections by military unit.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_pension_state\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Pension State</strong><br><span class=\"text-slate-500\">Create printable sections by pension-state filing location.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_confederate_home_status\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Confederate Home Status</strong><br><span class=\"text-slate-500\">Create printable sections by home status such as Inmate, Staffer, Trustee, or N/A.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_buried_in\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Group by Burial Location (Buried In)</strong><br><span class=\"text-slate-500\">Create printable sections by cemetery or burial location, with unknown locations gathered at the end.</span></span></label></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\">The printable layout keeps one concise first page per record by default. Group selections add divider pages, primary images stay captioned on record pages, and the optional full biography appendix only appears when you opt in.</div><div class=\"flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end\"><button type=\"button\" data-print-config-close class=\"secondary-button w-full sm:w-auto\">Cancel</button> <button type=\"submit\" data-print-config-submit class=\"primary-button w-full sm:w-auto\">Generate Printable PDF</button></div></form></div></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if len(conflicts) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div id=\"merge-review-section\" data-merge-review-container tabindex=\"-1\" class=\"card rounded-3xl p-5 sm:p-8 space-y-4\"><div><h3 class=\"text-xl gold font-bold\">Merge Review</h3><p class=\"mt-2 text-sm text-slate-500\">These person records were staged because the incoming source archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p><div id=\"merge-review-loaded-status\" data-merge-review-loaded-status class=\"mt-3 inline-flex rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]\" aria-live=\"polite\">Data Loaded: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\" data-print-filter-checkbox data-print-filter-family=\"buried-in\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
-				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(conflicts)))
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 239, Col: 321}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 227, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " Conflicts Found</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div><div class=\"grid gap-4 sm:grid-cols-2\"><div class=\"space-y-3 rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Entry Type</p><label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_entry_type\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var10 string
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 236, Col: 91}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" data-print-filter-checkbox data-print-filter-family=\"entry-type\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>Entry Type Unknown</span></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.EntryType }) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_entry_type\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var11 string
+				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 241, Col: 73}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-print-filter-checkbox data-print-filter-family=\"entry-type\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var12 string
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionEntryTypeLabel(value))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 242, Col: 59}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</span></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div><div class=\"space-y-3 rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Unit</p><label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_unit\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var13 string
+			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 249, Col: 85}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" data-print-filter-checkbox data-print-filter-family=\"unit\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>Unit Unknown</span></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.Unit }) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_unit\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var14 string
+				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 254, Col: 67}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" data-print-filter-checkbox data-print-filter-family=\"unit\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var15 string
+				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 255, Col: 25}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</span></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div><div class=\"space-y-3 rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Pension State</p><label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_pension_state\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 262, Col: 94}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" data-print-filter-checkbox data-print-filter-family=\"pension-state\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>N/A</span></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.PensionState }) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_pension_state\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var17 string
+				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 267, Col: 76}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" data-print-filter-checkbox data-print-filter-family=\"pension-state\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var18 string
+				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 268, Col: 25}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</span></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div><div class=\"space-y-3 rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Confederate Home Status</p><label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_confederate_home_status\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var19 string
+			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 275, Col: 104}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" data-print-filter-checkbox data-print-filter-family=\"confederate-home-status\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>N/A</span></label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.ConfederateHomeStatus }) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<label class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_confederate_home_status\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var20 string
+				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 280, Col: 86}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" data-print-filter-checkbox data-print-filter-family=\"confederate-home-status\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var21 string
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 281, Col: 25}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div></div></div><div data-print-record-picker class=\"space-y-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Find records <input type=\"search\" placeholder=\"Type a display ID or name\" data-print-record-filter class=\"mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"></label><div class=\"text-xs text-slate-500\">Choose which person records to include when exporting a manually selected subset.</div><div data-print-record-options class=\"max-h-52 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3 sm:max-h-64\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, record := range exportRecords {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<label data-print-record-option data-print-record-search=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var22 string
+				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionSearchText(record))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 295, Col: 105}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"selected_ids\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var23 string
+				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", record.ID))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 296, Col: 90}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\" data-print-record-checkbox class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var24 string
+				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionLabel(record))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 297, Col: 50}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</span></label>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Page Setup</div><div class=\"flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-center\"><label class=\"text-sm text-slate-700\"><span class=\"mr-2 font-semibold text-[#22303d]\">Orientation</span> <select name=\"orientation\" data-pdf-pref-key=\"orientation\" class=\"rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"><option value=\"L\" selected>Landscape</option> <option value=\"P\">Portrait</option></select></label> <label class=\"inline-flex items-center gap-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"printer_friendly\" value=\"1\" data-pdf-pref-key=\"printerFriendly\" class=\"h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Printer-friendly</strong> removes links, export metadata, and empty placeholder fields.</span></label></div><label class=\"flex items-start gap-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"full_biography_page\" value=\"1\" data-pdf-pref-key=\"fullBiographyPage\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Append full biography page</strong><br><span class=\"text-slate-500\">Keep concise first page, then add text-friendly full biography appendix when a record has biography content.</span></span></label></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Sort Options</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"sort_by\" value=\"last_name\" checked class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Alphabetical by Last Name</strong><br><span class=\"text-slate-500\">Standard registry ordering for browsing by surname.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"sort_by\" value=\"birth_year\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Chronological by Birth Year</strong><br><span class=\"text-slate-500\">Oldest to youngest, using stored birth years when available.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"sort_by\" value=\"death_year\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Chronological by Death Year</strong><br><span class=\"text-slate-500\">Earliest to latest death year for timeline-style printing.</span></span></label></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Group By</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_unit\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Unit</strong><br><span class=\"text-slate-500\">Create printable sections by military unit.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_pension_state\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Pension State</strong><br><span class=\"text-slate-500\">Create printable sections by pension-state filing location.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_confederate_home_status\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Confederate Home Status</strong><br><span class=\"text-slate-500\">Create printable sections by home status such as Inmate, Staffer, Trustee, or N/A.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"checkbox\" name=\"group_by_buried_in\" value=\"1\" class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Group by Burial Location (Buried In)</strong><br><span class=\"text-slate-500\">Create printable sections by cemetery or burial location, with unknown locations gathered at the end.</span></span></label></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\">The printable layout keeps one concise first page per record by default. Group selections add divider pages, primary images stay captioned on record pages, and the optional full biography appendix only appears when you opt in.</div><div class=\"flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end\"><button type=\"button\" data-print-config-close class=\"secondary-button w-full sm:w-auto\">Cancel</button> <button type=\"submit\" data-print-config-submit class=\"primary-button w-full sm:w-auto\">Generate Printable PDF</button></div></form></div></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if len(conflicts) > 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div id=\"merge-review-section\" data-merge-review-container tabindex=\"-1\" class=\"card rounded-3xl p-5 sm:p-8 space-y-4\"><div><h3 class=\"text-xl gold font-bold\">Merge Review</h3><p class=\"mt-2 text-sm text-slate-500\">These person records were staged because the incoming source archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p><div id=\"merge-review-loaded-status\" data-merge-review-loaded-status class=\"mt-3 inline-flex rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]\" aria-live=\"polite\">Data Loaded: ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var25 string
+				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(conflicts)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 372, Col: 321}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " Conflicts Found</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				for _, conflict := range conflicts {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div data-merge-review-item class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] p-4 space-y-4\"><div><div class=\"text-xs uppercase tracking-[0.18em] text-[#8d7440]\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var10 string
-					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.ConflictType)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 244, Col: 95}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div><h4 class=\"mt-1 font-bold text-[#22303d]\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var11 string
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingDisplayID)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 245, Col: 78}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</h4><p class=\"mt-1 text-sm text-slate-600\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var12 string
-					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.Reason)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 246, Col: 64}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</p></div><div class=\"responsive-two-col grid gap-4\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600\"><div class=\"text-xs uppercase tracking-[0.18em] text-[#8d7440]\">Local Record</div>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if conflict.LocalRecord != nil {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"mt-2 space-y-1\"><div class=\"font-bold text-[#22303d]\">")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var13 string
-						templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.DisplayID)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 253, Col: 81}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " - ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var14 string
-						templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(*conflict.LocalRecord))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 253, Col: 124}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						if strings.TrimSpace(detailSubheading(*conflict.LocalRecord)) != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"text-xs text-slate-500\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var15 string
-							templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(*conflict.LocalRecord))
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 255, Col: 89}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</div>")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div><div class=\"mt-2 space-y-1\"><div>Type: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var16 string
-						templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.EntryType)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 259, Col: 54}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div><div>Pension: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var17 string
-						templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.PensionID)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 260, Col: 57}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div><div>Application: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var18 string
-						templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.ApplicationID)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 261, Col: 65}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div><div>Death: ")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var19 string
-						templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.DeathDate)
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 262, Col: 55}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</div></div>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						if strings.TrimSpace(conflict.LocalRecord.Notes) != "" {
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<p class=\"mt-2 text-xs text-slate-500\">")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							var templ_7745c5c3_Var20 string
-							templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.Notes)
-							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 265, Col: 78}
-							}
-							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</p>")
-							if templ_7745c5c3_Err != nil {
-								return templ_7745c5c3_Err
-							}
-						}
-					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"mt-2 text-slate-500\">No local person record data.</div>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600\"><div class=\"text-xs uppercase tracking-[0.18em] text-[#8d7440]\">Incoming Record</div><div class=\"mt-2 space-y-1\"><div class=\"font-bold text-[#22303d]\">")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var21 string
-					templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.DisplayID)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 274, Col: 83}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, " - ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var22 string
-					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(conflict.IncomingRecord))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 274, Col: 128}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if strings.TrimSpace(detailSubheading(conflict.IncomingRecord)) != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"text-xs text-slate-500\">")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var23 string
-						templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(conflict.IncomingRecord))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 276, Col: 90}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div><div class=\"mt-2 space-y-1\"><div>Type: ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var24 string
-					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.EntryType)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 280, Col: 56}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div><div>Pension: ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var25 string
-					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.PensionID)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 281, Col: 59}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</div><div>Application: ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<div data-merge-review-item class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] p-4 space-y-4\"><div><div class=\"text-xs uppercase tracking-[0.18em] text-[#8d7440]\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var26 string
-					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.ApplicationID)
+					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.ConflictType)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 282, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 377, Col: 95}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div><div>Death: ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</div><h4 class=\"mt-1 font-bold text-[#22303d]\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var27 string
-					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.DeathDate)
+					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingDisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 283, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 378, Col: 78}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</h4><p class=\"mt-1 text-sm text-slate-600\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var28 string
+					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.Reason)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 379, Col: 64}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</p></div><div class=\"responsive-two-col grid gap-4\"><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600\"><div class=\"text-xs uppercase tracking-[0.18em] text-[#8d7440]\">Local Record</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if conflict.LocalRecord != nil {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<div class=\"mt-2 space-y-1\"><div class=\"font-bold text-[#22303d]\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var29 string
+						templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.DisplayID)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 386, Col: 81}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, " - ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var30 string
+						templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(*conflict.LocalRecord))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 386, Col: 124}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</div>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						if strings.TrimSpace(detailSubheading(*conflict.LocalRecord)) != "" {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<div class=\"text-xs text-slate-500\">")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							var templ_7745c5c3_Var31 string
+							templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(*conflict.LocalRecord))
+							if templ_7745c5c3_Err != nil {
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 388, Col: 89}
+							}
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</div>")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</div><div class=\"mt-2 space-y-1\"><div>Type: ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var32 string
+						templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.EntryType)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 392, Col: 54}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</div><div>Pension: ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var33 string
+						templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.PensionID)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 393, Col: 57}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</div><div>Application: ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var34 string
+						templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.ApplicationID)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 394, Col: 65}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</div><div>Death: ")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var35 string
+						templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.DeathDate)
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 395, Col: 55}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</div></div>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						if strings.TrimSpace(conflict.LocalRecord.Notes) != "" {
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<p class=\"mt-2 text-xs text-slate-500\">")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							var templ_7745c5c3_Var36 string
+							templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.Notes)
+							if templ_7745c5c3_Err != nil {
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 398, Col: 78}
+							}
+							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</p>")
+							if templ_7745c5c3_Err != nil {
+								return templ_7745c5c3_Err
+							}
+						}
+					} else {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"mt-2 text-slate-500\">No local person record data.</div>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/60 p-4 text-sm text-slate-600\"><div class=\"text-xs uppercase tracking-[0.18em] text-[#8d7440]\">Incoming Record</div><div class=\"mt-2 space-y-1\"><div class=\"font-bold text-[#22303d]\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var37 string
+					templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.DisplayID)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 407, Col: 83}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " - ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var38 string
+					templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(conflict.IncomingRecord))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 407, Col: 128}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if strings.TrimSpace(detailSubheading(conflict.IncomingRecord)) != "" {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<div class=\"text-xs text-slate-500\">")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var39 string
+						templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(conflict.IncomingRecord))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 409, Col: 90}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</div>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</div><div class=\"mt-2 space-y-1\"><div>Type: ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var40 string
+					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.EntryType)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 413, Col: 56}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div><div>Pension: ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var41 string
+					templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.PensionID)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 414, Col: 59}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</div><div>Application: ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var42 string
+					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.ApplicationID)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 415, Col: 67}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</div><div>Death: ")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var43 string
+					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.DeathDate)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 416, Col: 57}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</div></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if strings.TrimSpace(conflict.IncomingRecord.Notes) != "" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"mt-2 text-xs text-slate-500\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<p class=\"mt-2 text-xs text-slate-500\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						var templ_7745c5c3_Var28 string
-						templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.Notes)
+						var templ_7745c5c3_Var44 string
+						templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.Notes)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 286, Col: 80}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 419, Col: 80}
 						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div></div><div class=\"flex flex-wrap gap-3\"><button data-merge-review-action hx-post=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "</div></div><div class=\"flex flex-wrap gap-3\"><button data-merge-review-action hx-post=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var29 string
-					templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID))
+					var templ_7745c5c3_Var45 string
+					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 291, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 424, Col: 106}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-target=\"#share-status\" class=\"secondary-button\">Keep Local</button> <button data-merge-review-action hx-post=\"")
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var30 string
-					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID))
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 294, Col: 107}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\" hx-target=\"#share-status\" class=\"secondary-button\">Keep Local</button> <button data-merge-review-action hx-post=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" hx-target=\"#share-status\" class=\"primary-button\">Keep Incoming</button> ")
+					var templ_7745c5c3_Var46 string
+					templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 427, Col: 107}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if conflict.ConflictType == "display-id-collision" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<button data-merge-review-action hx-post=\"")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						var templ_7745c5c3_Var31 string
-						templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID))
-						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 298, Col: 106}
-						}
-						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" hx-target=\"#share-status\" class=\"secondary-button\">Keep Both</button>")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\" hx-target=\"#share-status\" class=\"primary-button\">Keep Incoming</button> ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					if conflict.ConflictType == "display-id-collision" {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"text-xs text-slate-500\">Keep Both preserves the local record and imports the incoming record under a new unique display ID.</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<button data-merge-review-action hx-post=\"")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						var templ_7745c5c3_Var47 string
+						templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID))
+						if templ_7745c5c3_Err != nil {
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 431, Col: 106}
+						}
+						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "\" hx-target=\"#share-status\" class=\"secondary-button\">Keep Both</button>")
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</div>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					if conflict.ConflictType == "display-id-collision" {
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<p class=\"text-xs text-slate-500\">Keep Both preserves the local record and imports the incoming record under a new unique display ID.</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					} else {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<p class=\"text-xs text-slate-500\">When you keep the incoming version for a matched duplicate, DixieData remembers that mapping for future imports from the same source archive.</p>")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "<p class=\"text-xs text-slate-500\">When you keep the incoming version for a matched duplicate, DixieData remembers that mapping for future imports from the same source archive.</p>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "</div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<div data-ui-id=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div data-ui-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var32 string
-			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelExportGoogle)
+			var templ_7745c5c3_Var48 string
+			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelExportGoogle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 312, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 445, Col: 44}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" class=\"relative card rounded-3xl p-5 sm:p-8 space-y-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "\" class=\"relative card rounded-3xl p-5 sm:p-8 space-y-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -604,61 +912,61 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div><h3 class=\"text-xl gold font-bold\">Google Integration</h3><p class=\"mt-2 text-sm text-slate-500\">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<div><h3 class=\"text-xl gold font-bold\">Google Integration</h3><p class=\"mt-2 text-sm text-slate-500\">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if status.SharedClientAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<p class=\"mt-1 text-xs text-slate-500\">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p><p class=\"mt-1 text-xs text-slate-500\">Loaded from: <code>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<p class=\"mt-1 text-xs text-slate-500\">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p><p class=\"mt-1 text-xs text-slate-500\">Loaded from: <code>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var33 string
-				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(status.SharedClientSource)
+				var templ_7745c5c3_Var49 string
+				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(status.SharedClientSource)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 319, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 452, Col: 91}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</code></p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "</code></p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<p class=\"mt-1 text-xs text-slate-500\">Save settings first, then connect the account in your browser.</p><p class=\"mt-1 text-xs text-slate-500\">If you want shared settings, place <code>google-oauth-defaults.json</code> next to <code>DixieData.exe</code>.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<p class=\"mt-1 text-xs text-slate-500\">Save settings first, then connect the account in your browser.</p><p class=\"mt-1 text-xs text-slate-500\">If you want shared settings, place <code>google-oauth-defaults.json</code> next to <code>DixieData.exe</code>.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "</div><div class=\"responsive-two-col grid gap-4\"><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/connect\" hx-target=\"#google-status\" class=\"primary-button\">Connect Google Account</button> <button type=\"button\" hx-post=\"/integrations/google/disconnect\" hx-target=\"#google-status\" class=\"secondary-button\">Disconnect</button></div><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/backup\" hx-target=\"#google-status\" class=\"primary-button\">Upload Backup to Google Drive</button> <button type=\"button\" hx-post=\"/integrations/google/sheets/export\" hx-target=\"#google-status\" class=\"secondary-button\">Export CSV to Google Sheets</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync\" hx-target=\"#google-status\" data-progress-label=\"Syncing Google Calendar...\" class=\"secondary-button\">Sync Google Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync\" hx-target=\"#google-status\" hx-confirm=\"Remove all Google Calendar events previously created by DixieData?\" data-progress-label=\"Unsyncing Google Calendar...\" class=\"secondary-button\">Unsync Google Calendar</button></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600\">Status: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</div><div class=\"responsive-two-col grid gap-4\"><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/connect\" hx-target=\"#google-status\" class=\"primary-button\">Connect Google Account</button> <button type=\"button\" hx-post=\"/integrations/google/disconnect\" hx-target=\"#google-status\" class=\"secondary-button\">Disconnect</button></div><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/backup\" hx-target=\"#google-status\" class=\"primary-button\">Upload Backup to Google Drive</button> <button type=\"button\" hx-post=\"/integrations/google/sheets/export\" hx-target=\"#google-status\" class=\"secondary-button\">Export CSV to Google Sheets</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync\" hx-target=\"#google-status\" data-progress-label=\"Syncing Google Calendar...\" class=\"secondary-button\">Sync Google Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync\" hx-target=\"#google-status\" hx-confirm=\"Remove all Google Calendar events previously created by DixieData?\" data-progress-label=\"Unsyncing Google Calendar...\" class=\"secondary-button\">Unsync Google Calendar</button></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600\">Status: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if status.Connected {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<strong class=\"ml-1 text-[#22303d]\">Connected</strong> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<strong class=\"ml-1 text-[#22303d]\">Connected</strong> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "<strong class=\"ml-1 text-[#6f2c26]\">Not connected</strong> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<strong class=\"ml-1 text-[#6f2c26]\">Not connected</strong> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			if status.UsingSharedClient {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<span class=\"ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]\">using shared OAuth app</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<span class=\"ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]\">using shared OAuth app</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else if status.SharedClientAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<span class=\"ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]\">shared OAuth app available</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<span class=\"ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]\">shared OAuth app available</span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\">Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.</div><div id=\"google-status\" class=\"text-sm text-slate-500\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 91, "</div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500\">Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.</div><div id=\"google-status\" class=\"text-sm text-slate-500\"></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

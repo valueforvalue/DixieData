@@ -200,7 +200,7 @@ func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
 
 func TestParsePrintSettingsRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
-		"export_all":                       {"1"},
+		"scope":                            {"all"},
 		"full_biography_page":              {"1"},
 		"sort_by":                          {"birth_year"},
 		"group_by_unit":                    {"1"},
@@ -222,13 +222,14 @@ func TestParsePrintSettingsRequest(t *testing.T) {
 	if !settings.FullBiographyPage {
 		t.Fatalf("expected full biography page flag, got %#v", settings)
 	}
-	if !settings.ExportAll || len(settings.SelectedIDs) != 0 {
+	if settings.Scope != archive.PrintScopeAll || !settings.ExportAll || len(settings.SelectedIDs) != 0 {
 		t.Fatalf("unexpected export scope: %#v", settings)
 	}
 }
 
 func TestParsePrintSettingsRequestForSelectedRecords(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
+		"scope":        {archive.PrintScopeSelected},
 		"sort_by":      {"last_name"},
 		"selected_ids": {"4", "8"},
 	}.Encode()))
@@ -238,11 +239,42 @@ func TestParsePrintSettingsRequestForSelectedRecords(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsePrintSettingsRequest: %v", err)
 	}
-	if settings.ExportAll {
+	if settings.Scope != archive.PrintScopeSelected || settings.ExportAll {
 		t.Fatalf("expected selected-record export, got %#v", settings)
 	}
 	if !reflect.DeepEqual(settings.SelectedIDs, []int64{4, 8}) {
 		t.Fatalf("SelectedIDs = %#v", settings.SelectedIDs)
+	}
+}
+
+func TestParsePrintSettingsRequestForFilteredScope(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
+		"scope":                          {archive.PrintScopeFiltered},
+		"filter_buried_in":               {"Oak Hill Cemetery", "__unknown__"},
+		"filter_entry_type":              {"soldier"},
+		"filter_pension_state":           {"Texas"},
+		"filter_confederate_home_status": {"Trustee"},
+	}.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	settings, err := parsePrintSettingsRequest(req)
+	if err != nil {
+		t.Fatalf("parsePrintSettingsRequest: %v", err)
+	}
+	if settings.Scope != archive.PrintScopeFiltered || settings.ExportAll {
+		t.Fatalf("expected filtered export scope, got %#v", settings)
+	}
+	if !reflect.DeepEqual(settings.FilterBuriedIn, []string{"__unknown__", "Oak Hill Cemetery"}) {
+		t.Fatalf("FilterBuriedIn = %#v", settings.FilterBuriedIn)
+	}
+	if !reflect.DeepEqual(settings.FilterEntryTypes, []string{"soldier"}) {
+		t.Fatalf("FilterEntryTypes = %#v", settings.FilterEntryTypes)
+	}
+	if !reflect.DeepEqual(settings.FilterPensionStates, []string{"Texas"}) {
+		t.Fatalf("FilterPensionStates = %#v", settings.FilterPensionStates)
+	}
+	if !reflect.DeepEqual(settings.FilterConfederateHomeStatus, []string{"Trustee"}) {
+		t.Fatalf("FilterConfederateHomeStatus = %#v", settings.FilterConfederateHomeStatus)
 	}
 }
 

@@ -18,6 +18,7 @@ export namespace appshell {
 export namespace archive {
 	
 	export class PrintSettings {
+	    scope: string;
 	    orientation: string;
 	    printerFriendly: boolean;
 	    fullBiographyPage: boolean;
@@ -26,6 +27,11 @@ export namespace archive {
 	    groupByPensionState: boolean;
 	    groupByConfederateHomeStatus: boolean;
 	    groupByBuriedIn: boolean;
+	    filterBuriedIn: string[];
+	    filterEntryTypes: string[];
+	    filterUnits: string[];
+	    filterPensionStates: string[];
+	    filterConfederateHomeStatuses: string[];
 	    exportAll: boolean;
 	    selectedIds: number[];
 	
@@ -35,6 +41,7 @@ export namespace archive {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scope = source["scope"];
 	        this.orientation = source["orientation"];
 	        this.printerFriendly = source["printerFriendly"];
 	        this.fullBiographyPage = source["fullBiographyPage"];
@@ -43,6 +50,11 @@ export namespace archive {
 	        this.groupByPensionState = source["groupByPensionState"];
 	        this.groupByConfederateHomeStatus = source["groupByConfederateHomeStatus"];
 	        this.groupByBuriedIn = source["groupByBuriedIn"];
+	        this.filterBuriedIn = source["filterBuriedIn"];
+	        this.filterEntryTypes = source["filterEntryTypes"];
+	        this.filterUnits = source["filterUnits"];
+	        this.filterPensionStates = source["filterPensionStates"];
+	        this.filterConfederateHomeStatuses = source["filterConfederateHomeStatuses"];
 	        this.exportAll = source["exportAll"];
 	        this.selectedIds = source["selectedIds"];
 	    }
