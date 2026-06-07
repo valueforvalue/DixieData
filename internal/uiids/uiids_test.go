@@ -1,6 +1,11 @@
 package uiids
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestRegistryIDsAreUnique(t *testing.T) {
 	seen := map[string]Surface{}
@@ -44,5 +49,77 @@ func TestEnableFromArgsIgnoresUnknownArgs(t *testing.T) {
 	}
 	if DebugEnabled() {
 		t.Fatal("unknown flags should not enable debug UI IDs")
+	}
+}
+
+func TestRegistryIncludesResponsiveFoundationSurfaces(t *testing.T) {
+	required := []string{
+		PageBrowse,
+		PageSoldierDetail,
+		PageSoldierNew,
+		PageSoldierEdit,
+		PanelSoldierDetailSummary,
+		PanelSoldierDetailRecords,
+		PanelSoldierDetailImages,
+		PanelSoldierFormRecords,
+		PanelSoldierFormImages,
+		PageExport,
+		PanelExportActions,
+		PageInitialSetup,
+		PageInsights,
+		PageReviewQueue,
+		PageReviewQueueCompare,
+		PageResearchCollectionsHub,
+		PageResearchCollection,
+		PageResearchLog,
+		PageResearchPack,
+		PageServiceTimeline,
+		PageUnitCamaraderie,
+		PageMergeReviewLedger,
+		PageInsightsDrilldown,
+		PanelSettingsLayout,
+		PanelSettingsInitialize,
+		PanelSettingsUpdates,
+		OverlayFloatingMenu,
+		OverlayFeedbackModal,
+		OverlayPrintConfigModal,
+		OverlayImageViewer,
+	}
+
+	seen := map[string]bool{}
+	for _, surface := range Registry {
+		seen[surface.ID] = true
+	}
+
+	for _, id := range required {
+		if !seen[id] {
+			t.Fatalf("registry missing responsive foundation surface %q", id)
+		}
+	}
+}
+
+func TestUIDocsCoverRegistryAndAuditFlow(t *testing.T) {
+	docPath := filepath.Join("..", "..", "docs", "ui-ids.md")
+	contentBytes, err := os.ReadFile(docPath)
+	if err != nil {
+		t.Fatalf("ReadFile %s: %v", docPath, err)
+	}
+	content := string(contentBytes)
+
+	for _, surface := range Registry {
+		if !strings.Contains(content, "`"+surface.ID+"`") {
+			t.Fatalf("ui id docs missing registry id %q", surface.ID)
+		}
+	}
+
+	for _, needle := range []string{
+		`.\scripts\build-debug.ps1`,
+		`.\scripts\run-debug.ps1`,
+		`DIXIEDATA_DEBUG_UI_IDS=1`,
+		`Responsive audit gate`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("ui id docs missing audit instruction %q", needle)
+		}
 	}
 }

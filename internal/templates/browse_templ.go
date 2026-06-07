@@ -123,7 +123,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">Browse Local Archive</h2><p class=\"mt-2 max-w-3xl text-sm text-slate-600\">Browse-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600\">Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.</div></div><form id=\"browse-filters\" hx-get=\"/browse/results\" hx-target=\"#browse-results\" class=\"grid gap-4 rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)] p-5 lg:grid-cols-6\"><input type=\"hidden\" name=\"page\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between\"><div><h2 class=\"text-2xl gold font-bold\">Browse Local Archive</h2><p class=\"mt-2 max-w-3xl text-sm text-slate-600\">Browse-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600\">Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.</div></div><form id=\"browse-filters\" hx-get=\"/browse/results\" hx-target=\"#browse-results\" class=\"grid gap-4 rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)] p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-6\"><input type=\"hidden\" name=\"page\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -355,7 +355,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, ">Needs Review</option></select></div><div class=\"lg:col-span-2\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Unit</label> <input type=\"text\" name=\"unit\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, ">Needs Review</option></select></div><div class=\"md:col-span-2 xl:col-span-2\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Unit</label> <input type=\"text\" name=\"unit\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -368,7 +368,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" list=\"browse-unit-suggestions\" data-browse-filter-input class=\"field-input mt-2\" placeholder=\"Any unit\"></div><div class=\"lg:col-span-2\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Buried In</label> <input type=\"text\" name=\"buried_in\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" list=\"browse-unit-suggestions\" data-browse-filter-input class=\"field-input mt-2\" placeholder=\"Any unit\"></div><div class=\"md:col-span-2 xl:col-span-2\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Buried In</label> <input type=\"text\" name=\"buried_in\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -381,7 +381,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" list=\"browse-buried-in-suggestions\" data-browse-filter-input class=\"field-input mt-2\" placeholder=\"Any cemetery\"></div><div class=\"lg:col-span-2\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Confederate Home Status</label> <select name=\"confederate_home_status\" data-browse-filter-input class=\"field-input mt-2\"><option value=\"\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" list=\"browse-buried-in-suggestions\" data-browse-filter-input class=\"field-input mt-2\" placeholder=\"Any cemetery\"></div><div class=\"md:col-span-2 xl:col-span-2\"><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Confederate Home Status</label> <select name=\"confederate_home_status\" data-browse-filter-input class=\"field-input mt-2\"><option value=\"\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -437,7 +437,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</select></div><div class=\"lg:col-span-2 flex flex-wrap items-end gap-3\"><button type=\"submit\" class=\"primary-button\">Apply Filters</button> <button type=\"button\" data-browse-reset data-browse-reset-path=\"/browse\" class=\"ghost-link px-4 py-2 font-semibold\">Reset Browse</button><p class=\"text-xs text-slate-500\">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p></div><div class=\"lg:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4\"><div class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Columns</div><div class=\"mt-3 flex flex-wrap gap-3 text-sm text-slate-700\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</select></div><div class=\"md:col-span-2 xl:col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end\"><button type=\"submit\" class=\"primary-button w-full sm:w-auto\">Apply Filters</button> <button type=\"button\" data-browse-reset data-browse-reset-path=\"/browse\" class=\"ghost-link w-full px-4 py-2 font-semibold sm:w-auto\">Reset Browse</button><p class=\"text-xs text-slate-500\">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p></div><div class=\"md:col-span-2 xl:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4\"><div class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Columns</div><div class=\"mt-3 flex flex-wrap gap-3 text-sm text-slate-700\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -473,7 +473,7 @@ func BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, s
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</div><div class=\"mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between\"><div class=\"space-y-1 text-sm text-slate-600\"><p class=\"font-semibold text-[#22303d]\">Use the Select checkboxes to build a working set across pages, then open the printable export picker with that selection already loaded.</p><p class=\"text-xs text-slate-500\">Selections stay on this machine until you clear them, even while changing pages or filters.</p><p data-browse-selection-status>Select records across pages to keep a working set while you browse.</p></div><div class=\"flex flex-wrap items-center gap-2\"><a href=\"/share?openPrintConfig=1\" class=\"primary-button\">Print/Export Selected</a> <button type=\"button\" data-browse-clear-selection class=\"secondary-button\">Clear Selection</button></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "</div><div class=\"mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between\"><div class=\"space-y-1 text-sm text-slate-600\"><p class=\"font-semibold text-[#22303d]\">Use the Select checkboxes to build a working set across pages, then open the printable export picker with that selection already loaded.</p><p class=\"text-xs text-slate-500\">Selections stay on this machine until you clear them, even while changing pages or filters.</p><p data-browse-selection-status>Select records across pages to keep a working set while you browse.</p></div><div class=\"flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center\"><a href=\"/share?openPrintConfig=1\" class=\"primary-button w-full sm:w-auto\">Print/Export Selected</a> <button type=\"button\" data-browse-clear-selection class=\"secondary-button w-full sm:w-auto\">Clear Selection</button></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

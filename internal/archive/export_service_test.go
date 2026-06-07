@@ -205,7 +205,7 @@ func TestExportService_ExportCSV(t *testing.T) {
 		"id": true, "display_id": true, "first_name": true,
 		"entry_type": true, "spouse_soldier_id": true, "relationship_label": true, "maiden_name": true,
 		"pension_id": true, "application_id": true, "prefix": true, "middle_name": true,
-		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "confederate_home_status": true, "confederate_home_name": true, "birth_date": true, "death_date": true, "birth_info": true, "buried_in": true,
+		"last_name": true, "rank_in": true, "rank_out": true, "pension_state": true, "confederate_home_status": true, "confederate_home_name": true, "birth_date": true, "death_date": true, "birth_info": true, "buried_in": true, "biography": true,
 		"suffix": true, "added_by": true, "last_edited_by": true, "last_edited_fields": true, "last_edited_at": true, "updated_at": true,
 	}
 	for _, col := range header {
@@ -250,6 +250,7 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 		DeathDate:        "10/12/1870",
 		BirthInfo:        "Stratford Hall, Virginia",
 		BuriedIn:         "Hollywood Cemetery",
+		Biography:        "Confederate general whose record biography should travel with archive exports.",
 		Notes:            "Detailed archive note.",
 		NeedsReview:      true,
 		ReviewReason:     "Potential duplicate from archive merge.",
@@ -334,6 +335,9 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	}
 	if !strings.Contains(entries["archive_data.js"], widow.DisplayID) || !strings.Contains(entries["archive_data.js"], `"reviewReason": "Potential duplicate from archive merge."`) || !strings.Contains(entries["archive_data.js"], `"addedBy": "STC38"`) {
 		t.Fatalf("archive_data.js missing full-detail fields: %s", entries["archive_data.js"])
+	}
+	if !strings.Contains(entries["archive_data.js"], `"biography": "Confederate general whose record biography should travel with archive exports."`) {
+		t.Fatalf("archive_data.js missing biography field: %s", entries["archive_data.js"])
 	}
 	if !strings.Contains(entries["index.html"], "S. Carter&#39;s Civil War Research Archive") {
 		t.Fatalf("index.html missing owner title: %s", entries["index.html"])
@@ -588,15 +592,17 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 
 	outPath := filepath.Join(t.TempDir(), "soldier-printer-friendly.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
-		DisplayID:       "PENSION-42",
-		FirstName:       "Robert",
-		LastName:        "Lee",
-		PensionState:    "N/A",
-		SpouseSoldierID: 5,
-		SpouseName:      "Mary Lee",
-		Notes:           "Reference https://example.com/notes and [[PENSION-42]].",
-		Records:         []models.Record{{RecordType: "Pension", Details: "Filed in 1880. https://example.com/record."}},
-		Images:          []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath}},
+		DisplayID:          "PENSION-42",
+		FirstName:          "Robert",
+		LastName:           "Lee",
+		PensionState:       "N/A",
+		SpouseSoldierID:    5,
+		SpouseName:         "Mary Lee",
+		Biography:          "Full biography should stay out when excerpt override exists.",
+		PDFExcerptOverride: "Portrait biography excerpt with [[PENSION-42]] and https://example.com/bio.",
+		Notes:              "Scratch note should never appear in portrait PDF.",
+		Records:            []models.Record{{RecordType: "Pension", Details: "Filed in 1880. https://example.com/record."}},
+		Images:             []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait caption"}},
 	}, PDFOptions{Orientation: "P", PrinterFriendly: true, IncludeImages: true})
 	if err != nil {
 		t.Fatalf("ExportSoldierPDF printer friendly: %v", err)
@@ -607,7 +613,18 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 	text := string(data)
-	for _, forbidden := range []string{"https://example.com/notes", "https://example.com/record", "/URI (https://example.com/notes)", "/URI (https://example.com/record)", "portrait.png", "Report Metadata", "Made with DixieData"} {
+	for _, forbidden := range []string{
+		"https://example.com/bio",
+		"https://example.com/record",
+		"/URI (https://example.com/bio)",
+		"/URI (https://example.com/record)",
+		"portrait.png",
+		"Report Metadata",
+		"Made with DixieData",
+		"Primary Image",
+		"Scratch note should never appear in portrait PDF.",
+		"Full biography should stay out when excerpt override exists.",
+	} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("printer friendly PDF should omit %q", forbidden)
 		}
@@ -617,6 +634,12 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 	}
 	if !strings.Contains(text, "PENSION-42") {
 		t.Fatalf("printer friendly PDF should keep display id in title block")
+	}
+	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Portrait biography excerpt with PENSION-42 and") {
+		t.Fatalf("printer friendly portrait PDF should use biography excerpt")
+	}
+	if !strings.Contains(text, "Portrait caption") {
+		t.Fatalf("printer friendly portrait PDF should preserve image caption")
 	}
 }
 
@@ -668,6 +691,9 @@ func TestExportService_ExportSoldierPDFOmitsPrimaryImageJPEGFileNameStoredAsCapt
 	if strings.Contains(string(data), imageName) {
 		t.Fatalf("pdf should not contain primary image file name %q", imageName)
 	}
+	if strings.Contains(string(data), "Primary Image") {
+		t.Fatalf("portrait pdf should omit primary image heading")
+	}
 }
 
 func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
@@ -702,6 +728,11 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	exportSvc := NewExportService(d, soldierSvc)
 	configureExportIdentity(t, d)
 
+	imagePath := filepath.Join(t.TempDir(), "registry-portrait.png")
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
 	first, err := soldierSvc.Create(models.Soldier{
 		Prefix:                "Capt.",
 		FirstName:             "John",
@@ -716,10 +747,14 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 		ApplicationID:         "A-42",
 		ConfederateHomeStatus: "Trustee",
 		ConfederateHomeName:   "Texas Confederate Home",
-		Notes:                 "Registry note.",
+		Biography:             "Registry biography should appear in printable export.",
+		Notes:                 "Registry scratch note should stay out of printable export.",
 	})
 	if err != nil {
 		t.Fatalf("Create first: %v", err)
+	}
+	if err := soldierSvc.AddImage(first.ID, "registry-portrait.png", imagePath, "Registry portrait"); err != nil {
+		t.Fatalf("AddImage first: %v", err)
 	}
 	second, err := soldierSvc.Create(models.Soldier{
 		EntryType:       "widow",
@@ -751,20 +786,78 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	if !strings.Contains(text, "Printable Archive Registry") || !strings.Contains(text, "S. Carter's Civil War Research Archive") {
 		t.Fatalf("registry PDF missing expected branding")
 	}
-	if !strings.Contains(text, "Capt. John Bell Hood, Jr.") || !strings.Contains(text, "Registry note.") {
+	if !strings.Contains(text, "Capt. John Bell Hood, Jr.") || !strings.Contains(text, "Registry biography should appear in printable export.") {
 		t.Fatalf("registry PDF missing expected record content")
 	}
 	if !strings.Contains(text, "Pension State") || !strings.Contains(text, "Texas") || !strings.Contains(text, "Trustee") || !strings.Contains(text, "Texas Confederate Home") {
 		t.Fatalf("registry PDF missing expanded status fields")
 	}
+	if !strings.Contains(text, "Registry portrait") {
+		t.Fatalf("registry PDF missing captioned primary image")
+	}
 	if !strings.Contains(text, "Linked Spouse Record") || !strings.Contains(text, "John Bell Hood") || !strings.Contains(text, "Maiden Name") || !strings.Contains(text, "Jones") {
 		t.Fatalf("registry PDF missing spouse linkage fields")
+	}
+	for _, forbidden := range []string{"Registry scratch note should stay out of printable export.", "Primary Image"} {
+		if strings.Contains(text, forbidden) {
+			t.Fatalf("registry PDF should omit %q", forbidden)
+		}
 	}
 	if strings.Contains(text, "Report Metadata") {
 		t.Fatalf("registry PDF should not render report metadata as a standalone section")
 	}
 	if !strings.Contains(text, "database-pdf v") {
 		t.Fatalf("registry PDF should carry concise metadata in the footer")
+	}
+}
+
+func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	biography := strings.Repeat("Full biography sentence. ", 80) + "FINAL BIOGRAPHY LINE"
+	_, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Elias",
+		LastName:  "Turner",
+		Biography: biography,
+		Notes:     "Internal scratch note should stay out.",
+	})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+
+	withoutAppendixPath := filepath.Join(t.TempDir(), "registry-default.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(withoutAppendixPath, PrintSettings{}); err != nil {
+		t.Fatalf("ExportFullDatabasePDF default: %v", err)
+	}
+	withoutAppendixData, err := os.ReadFile(withoutAppendixPath)
+	if err != nil {
+		t.Fatalf("ReadFile default: %v", err)
+	}
+	if strings.Contains(string(withoutAppendixData), "FINAL BIOGRAPHY LINE") {
+		t.Fatalf("default printable export should keep full biography appendix off")
+	}
+
+	withAppendixPath := filepath.Join(t.TempDir(), "registry-full-biography.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(withAppendixPath, PrintSettings{FullBiographyPage: true}); err != nil {
+		t.Fatalf("ExportFullDatabasePDF full biography: %v", err)
+	}
+	withAppendixData, err := os.ReadFile(withAppendixPath)
+	if err != nil {
+		t.Fatalf("ReadFile full biography: %v", err)
+	}
+	text := string(withAppendixData)
+	if !strings.Contains(text, "Full Biography Appendix") || !strings.Contains(text, "FINAL BIOGRAPHY LINE") {
+		t.Fatalf("full biography appendix missing expected full text")
+	}
+	if strings.Contains(text, "Internal scratch note should stay out.") {
+		t.Fatalf("full biography appendix should not leak internal notes")
+	}
+	pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(withAppendixData, -1))
+	if pageCount < 3 {
+		t.Fatalf("pageCount = %d, want at least 3 pages (title, record, biography appendix)", pageCount)
 	}
 }
 

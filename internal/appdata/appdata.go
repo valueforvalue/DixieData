@@ -124,6 +124,14 @@ func FeedbackLogPath(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "feedback-log.jsonl")
 }
 
+func FeedbackLogArchiveDir(dataDir string) string {
+	return filepath.Join(LogsDir(dataDir), "feedback-history")
+}
+
+func FeedbackLogArchiveVersionDir(dataDir, version string) string {
+	return filepath.Join(FeedbackLogArchiveDir(dataDir), sanitizePathComponent(version))
+}
+
 func UpdatesDir(dataDir string) string {
 	return filepath.Join(dataDir, "updates")
 }

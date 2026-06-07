@@ -10,6 +10,7 @@ const DebugArg = "--debug-ui-ids"
 
 const (
 	PageCalendar                = "page.calendar"
+	PageInitialSetup            = "page.setup"
 	PanelCalendarQuote          = "panel.calendar.quote"
 	PanelCalendarGrid           = "panel.calendar.grid"
 	PanelCalendarDetails        = "panel.calendar.details"
@@ -45,9 +46,21 @@ const (
 	PanelReviewQueueList        = "panel.review-queue.list"
 	PageReviewQueueCompare      = "page.review-queue.compare"
 	PanelReviewQueueCompare     = "panel.review-queue.compare"
+	PageResearchCollectionsHub  = "page.research-collections.hub"
+	PageResearchCollection      = "page.research-collections.detail"
+	PageResearchLog             = "page.research-log"
+	PageResearchPack            = "page.research-pack"
+	PageServiceTimeline         = "page.service-timeline"
+	PageUnitCamaraderie         = "page.unit-camaraderie"
+	PageMergeReviewLedger       = "page.merge-review-ledger"
+	PageInsightsDrilldown       = "page.insights.drilldown"
 	PageSettings                = "page.settings"
+	PanelSettingsLayout         = "panel.settings.layout"
 	PanelSettingsInitialize     = "panel.settings.initialize"
 	PanelSettingsUpdates        = "panel.settings.updates"
+	OverlayFloatingMenu         = "overlay.floating.menu"
+	OverlayFeedbackModal        = "overlay.feedback.modal"
+	OverlayPrintConfigModal     = "overlay.print-config.modal"
 	OverlayImageViewer          = "overlay.image.viewer"
 )
 
@@ -59,6 +72,7 @@ type Surface struct {
 
 var Registry = []Surface{
 	{ID: PageCalendar, Kind: "page", Description: "Calendar landing page."},
+	{ID: PageInitialSetup, Kind: "page", Description: "First launch setup page."},
 	{ID: PanelCalendarQuote, Kind: "panel", Description: "Quote of the Day panel on the calendar page."},
 	{ID: PanelCalendarGrid, Kind: "panel", Description: "Month grid panel on the calendar page."},
 	{ID: PanelCalendarDetails, Kind: "panel", Description: "Calendar day detail panel that shows custom items and anniversary results."},
@@ -92,11 +106,23 @@ var Registry = []Surface{
 	{ID: PanelInsightsDuplicateAudit, Kind: "panel", Description: "Duplicate audit card on the insights page."},
 	{ID: PageReviewQueue, Kind: "page", Description: "Review queue page for flagged records."},
 	{ID: PanelReviewQueueList, Kind: "panel", Description: "Main list of records awaiting review."},
-	{ID: PageReviewQueueCompare, Kind: "page", Description: "Duplicate audit comparison page."},
+	{ID: PageReviewQueueCompare, Kind: "page", Description: "Duplicate audit and manual person-record comparison page."},
 	{ID: PanelReviewQueueCompare, Kind: "panel", Description: "Side-by-side duplicate comparison panel."},
+	{ID: PageResearchCollectionsHub, Kind: "page", Description: "Research collections hub page."},
+	{ID: PageResearchCollection, Kind: "page", Description: "Research collection detail page."},
+	{ID: PageResearchLog, Kind: "page", Description: "Research log page for a person record."},
+	{ID: PageResearchPack, Kind: "page", Description: "Research pack page for county or state context."},
+	{ID: PageServiceTimeline, Kind: "page", Description: "Service timeline page for a person record."},
+	{ID: PageUnitCamaraderie, Kind: "page", Description: "Unit camaraderie page for a person record."},
+	{ID: PageMergeReviewLedger, Kind: "page", Description: "Merge review ledger page for a person record."},
+	{ID: PageInsightsDrilldown, Kind: "page", Description: "Insights drilldown results page."},
 	{ID: PageSettings, Kind: "page", Description: "Settings page."},
+	{ID: PanelSettingsLayout, Kind: "panel", Description: "Responsive layout mode controls on the settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: PanelSettingsUpdates, Kind: "panel", Description: "Software Updates panel on the settings page."},
+	{ID: OverlayFloatingMenu, Kind: "overlay", Description: "Floating quick-navigation menu overlay."},
+	{ID: OverlayFeedbackModal, Kind: "overlay", Description: "Global feedback modal overlay."},
+	{ID: OverlayPrintConfigModal, Kind: "overlay", Description: "Printable export settings modal overlay."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
 }
 

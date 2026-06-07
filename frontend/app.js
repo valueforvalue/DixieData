@@ -8,9 +8,12 @@
   const browseColumnsStorageKey = "dixiedata.browse.columns";
   const browseSelectionStorageKey = "dixiedata.browse.selection";
   const calendarAnniversaryDensityStorageKey = "dixiedata.calendar.anniversaryDensity";
+  const layoutModeStorageKey = "dixiedata.layout.mode";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
+  const splitScreenBreakpointPx = 1000;
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
+  let layoutModeMediaQuery = null;
   const imageViewerState = {
     baseScale: 1,
     zoom: 1,
@@ -129,6 +132,99 @@
 
   function saveCalendarAnniversaryDensity(mode) {
     saveJSONStorage(calendarAnniversaryDensityStorageKey, mode === "compact" ? "compact" : "expanded");
+  }
+
+  function loadLayoutModePreference() {
+    const value = loadJSONStorage(layoutModeStorageKey, "auto");
+    return value === "relaxed" || value === "split-screen" ? value : "auto";
+  }
+
+  function saveLayoutModePreference(mode) {
+    const normalized = mode === "relaxed" || mode === "split-screen" ? mode : "auto";
+    saveJSONStorage(layoutModeStorageKey, normalized);
+    return normalized;
+  }
+
+  function resolveResponsiveLayoutMode(preference) {
+    if (preference === "relaxed" || preference === "split-screen") {
+      return preference;
+    }
+    if (typeof window.matchMedia === "function") {
+      return window.matchMedia(`(max-width: ${splitScreenBreakpointPx}px)`).matches ? "split-screen" : "relaxed";
+    }
+    return window.innerWidth <= splitScreenBreakpointPx ? "split-screen" : "relaxed";
+  }
+
+  function layoutModeLabel(mode) {
+    return mode === "split-screen" ? "Split-screen" : "Relaxed";
+  }
+
+  function layoutPreferenceLabel(preference) {
+    switch (preference) {
+      case "relaxed":
+        return "Manual relaxed";
+      case "split-screen":
+        return "Manual split-screen";
+      default:
+        return "Auto";
+    }
+  }
+
+  function refreshResponsiveLayoutControls(root, preference, mode) {
+    const scope = root && root.nodeType === 9 ? root : document;
+    scope.querySelectorAll("[data-layout-mode-option]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const value = button.getAttribute("data-layout-mode-option") || "auto";
+      const active = value === preference;
+      button.setAttribute("data-layout-mode-active", active ? "true" : "false");
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    scope.querySelectorAll("[data-layout-mode-status]").forEach((node) => {
+      node.textContent = layoutModeLabel(mode);
+    });
+    scope.querySelectorAll("[data-layout-mode-preference-label]").forEach((node) => {
+      node.textContent = layoutPreferenceLabel(preference);
+    });
+    scope.querySelectorAll("[data-layout-mode-breakpoint]").forEach((node) => {
+      node.textContent = `${splitScreenBreakpointPx}px`;
+    });
+  }
+
+  function applyResponsiveLayout(root = document) {
+    const doc = root && root.nodeType === 9 ? root : document;
+    const body = doc.body;
+    const html = doc.documentElement || document.documentElement;
+    if (!(body instanceof HTMLElement) || !(html instanceof HTMLElement)) {
+      return;
+    }
+    const preference = loadLayoutModePreference();
+    const mode = resolveResponsiveLayoutMode(preference);
+    html.setAttribute("data-layout-mode", mode);
+    html.setAttribute("data-layout-mode-preference", preference);
+    body.setAttribute("data-layout-mode", mode);
+    body.setAttribute("data-layout-mode-preference", preference);
+    refreshResponsiveLayoutControls(doc, preference, mode);
+  }
+
+  function ensureResponsiveLayoutWatcher() {
+    if (layoutModeMediaQuery || typeof window.matchMedia !== "function") {
+      return;
+    }
+    layoutModeMediaQuery = window.matchMedia(`(max-width: ${splitScreenBreakpointPx}px)`);
+    const handleChange = () => {
+      if (loadLayoutModePreference() === "auto") {
+        applyResponsiveLayout(document);
+      }
+    };
+    if (typeof layoutModeMediaQuery.addEventListener === "function") {
+      layoutModeMediaQuery.addEventListener("change", handleChange);
+      return;
+    }
+    if (typeof layoutModeMediaQuery.addListener === "function") {
+      layoutModeMediaQuery.addListener(handleChange);
+    }
   }
 
   function saveBrowseSelection(ids) {
@@ -669,7 +765,7 @@
 
     menu = document.createElement("div");
     menu.id = "text-context-menu";
-    menu.className = "fixed hidden min-w-[12rem] rounded-2xl border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-2 shadow-[0_18px_50px_rgba(23,33,43,0.28)]";
+    menu.className = "fixed hidden min-w-[12rem] max-w-[calc(100vw-1rem)] rounded-2xl border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-2 shadow-[0_18px_50px_rgba(23,33,43,0.28)]";
     menu.style.zIndex = "95";
     menu.innerHTML = `
       <button type="button" data-text-menu-action="cut" class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-[#22303d] hover:bg-[rgba(36,48,61,0.08)]">Cut</button>
@@ -809,16 +905,16 @@
 
     viewer = document.createElement("div");
     viewer.id = "image-viewer";
-    viewer.className = "fixed inset-0 z-50 hidden items-center justify-center bg-[rgba(15,23,42,0.7)] p-6";
+    viewer.className = "fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.7)] p-3 sm:items-center sm:p-6";
     viewer.innerHTML = `
-      <div data-ui-id="overlay.image.viewer" class="relative flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(36,48,61,0.97)] shadow-2xl">
+      <div data-ui-id="overlay.image.viewer" class="relative my-3 flex max-h-[calc(100vh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(36,48,61,0.97)] shadow-2xl sm:my-0 sm:max-h-[calc(100vh-3rem)]">
         ${debugSurfaceIDsEnabled() ? '<div class="ui-debug-badge" aria-hidden="true">overlay.image.viewer</div>' : ""}
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(141,116,64,0.35)] px-5 py-4 text-[#f4ead0]">
+        <div class="flex flex-col gap-3 border-b border-[rgba(141,116,64,0.35)] px-4 py-4 text-[#f4ead0] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
           <div>
             <p data-image-caption class="text-sm font-semibold tracking-[0.14em] text-[#eddca6]"></p>
             <p data-image-file class="mt-1 text-xs text-[rgba(244,234,208,0.72)]"></p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <span data-image-zoom-label class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-xs text-[rgba(244,234,208,0.82)]">100%</span>
             <button type="button" data-image-rotate-ccw class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Rotate CCW</button>
             <button type="button" data-image-rotate-cw class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Rotate CW</button>
@@ -829,10 +925,10 @@
             <button type="button" data-image-close class="rounded-full border border-[rgba(141,116,64,0.5)] bg-[rgba(246,241,228,0.08)] px-3 py-1 text-sm text-[#f4ead0]">Close</button>
           </div>
         </div>
-        <div data-image-stage class="relative h-[78vh] overflow-hidden bg-[rgba(21,29,38,0.96)]">
+        <div data-image-stage class="relative h-[60vh] overflow-hidden bg-[rgba(21,29,38,0.96)] sm:h-[78vh]">
           <img data-image-element class="absolute left-1/2 top-1/2 max-w-none select-none rounded-2xl bg-white shadow-2xl" alt="" draggable="false" />
         </div>
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-[rgba(141,116,64,0.35)] px-5 py-3 text-xs text-[rgba(244,234,208,0.68)]">
+        <div class="flex flex-col gap-2 border-t border-[rgba(141,116,64,0.35)] px-4 py-3 text-xs text-[rgba(244,234,208,0.68)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
           <p>Mouse wheel zooms. Drag to move when zoomed in.</p>
           <p data-image-status></p>
         </div>
@@ -1562,6 +1658,54 @@
     });
   }
 
+  function updateLiveCount(input) {
+    if (!(input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement)) {
+      return;
+    }
+    const target = input.getAttribute("data-live-count-target");
+    if (!target) {
+      return;
+    }
+    const count = input.value.length;
+    document.querySelectorAll(`[data-live-count-display="${target}"]`).forEach((node) => {
+      const budgetRaw = input.getAttribute("data-live-count-budget");
+      const budget = Number.parseInt(String(budgetRaw || ""), 10);
+      node.textContent = Number.isInteger(budget) && budget > 0 ? `${count} / ${budget}` : `${count} chars`;
+    });
+    document.querySelectorAll(`[data-live-count-status="${target}"]`).forEach((node) => {
+      const budgetRaw = input.getAttribute("data-live-count-budget");
+      const budget = Number.parseInt(String(budgetRaw || ""), 10);
+      if (!Number.isInteger(budget) || budget <= 0) {
+        node.textContent = "";
+        node.classList.remove("text-[#6f2c26]", "text-emerald-700");
+        node.classList.add("text-slate-500");
+        return;
+      }
+      if (count > budget) {
+        node.textContent = `Over export-fit target by ${count - budget} chars.`;
+        node.classList.remove("text-slate-500", "text-emerald-700");
+        node.classList.add("text-[#6f2c26]");
+        return;
+      }
+      node.textContent = `Within export-fit target. ${budget - count} chars remaining.`;
+      node.classList.remove("text-slate-500", "text-[#6f2c26]");
+      node.classList.add("text-emerald-700");
+    });
+  }
+
+  function initializeLiveCounts(root = document) {
+    root.querySelectorAll("[data-live-count-input]").forEach((input) => {
+      if (!(input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement)) {
+        return;
+      }
+      input.removeEventListener("input", input.__dixieLiveCountHandler || (() => {}));
+      const handler = () => updateLiveCount(input);
+      input.__dixieLiveCountHandler = handler;
+      input.addEventListener("input", handler);
+      updateLiveCount(input);
+    });
+  }
+
   function syncConfederateHomeFields(form) {
     if (!(form instanceof HTMLFormElement)) {
       return;
@@ -1828,8 +1972,10 @@
   }
 
   function initializeDynamicContent() {
+    applyResponsiveLayout(document);
     initializeTabs();
     initializeEntryTypeForms();
+    initializeLiveCounts(document);
     restoreRedirectState();
     restorePendingToast();
     applySmartBackLabels();
@@ -2354,9 +2500,12 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    ensureResponsiveLayoutWatcher();
+    applyResponsiveLayout(document);
     initializeTabs();
     initializeDraftForms();
     initializeEntryTypeForms();
+    initializeLiveCounts(document);
     initializeFloatingNav();
     applyCalendarAnniversaryDensity();
     syncPrintRecordPickerState();
@@ -2426,6 +2575,13 @@
       event.preventDefault();
       saveCalendarAnniversaryDensity(anniversaryDensityToggle.getAttribute("data-calendar-anniversary-density-toggle") || "expanded");
       applyCalendarAnniversaryDensity(document);
+      return;
+    }
+    const layoutModeToggle = event.target.closest("[data-layout-mode-option]");
+    if (layoutModeToggle instanceof HTMLButtonElement) {
+      event.preventDefault();
+      saveLayoutModePreference(layoutModeToggle.getAttribute("data-layout-mode-option") || "auto");
+      applyResponsiveLayout(document);
       return;
     }
     const openFeedback = event.target.closest("[data-feedback-open]");

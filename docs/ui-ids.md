@@ -1,14 +1,27 @@
 # UI surface IDs
 
-Use these IDs when requesting changes to a specific part of the UI. The canonical source of truth lives in `internal\uiids\uiids.go`.
+Use these IDs when requesting changes to a specific part of UI. Canonical source stays in `internal\uiids\uiids.go`.
 
 ## Debug visibility
 
-Set `DIXIEDATA_DEBUG_UI_IDS=1` before launching the app to show surface badges in the UI.
+Set `DIXIEDATA_DEBUG_UI_IDS=1` before launch to show surface badges in UI.
 
 - Development example: `set DIXIEDATA_DEBUG_UI_IDS=1`
-- Release builds stay visually clean as long as that variable is not set.
-- The app still keeps `data-ui-id` attributes in the markup so surfaces remain inspectable in DevTools.
+- Debug build path:
+  - `.\scripts\build-debug.ps1`
+  - `.\scripts\run-debug.ps1`
+- Release builds stay visually clean while variable stays unset.
+- Markup still keeps `data-ui-id` attributes for DevTools inspection.
+
+## Responsive audit gate
+
+Every responsive release slice should clear this path before closeout:
+
+1. Build debug app with `.\scripts\build-debug.ps1`.
+2. Launch with `.\scripts\run-debug.ps1` or set `DIXIEDATA_DEBUG_UI_IDS=1`.
+3. Verify relaxed mode, split-screen mode, narrow-window behavior, and overlay behavior against surface IDs below.
+4. Confirm shell overlays count as first-class responsive surfaces: floating menu, feedback modal, print-config modal, image viewer.
+5. Keep automated proof green with `go test ./...`, `go build ./...`, and debug build regeneration.
 
 ## Naming rules
 
@@ -22,28 +35,55 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launching the app to show surface badges i
 | ID | Type | Surface |
 | --- | --- | --- |
 | `page.calendar` | page | Calendar landing page |
+| `page.setup` | page | First launch setup page |
 | `panel.calendar.quote` | panel | Quote of the Day panel |
 | `panel.calendar.grid` | panel | Calendar month grid |
 | `panel.calendar.details` | panel | Calendar day detail panel |
 | `page.soldiers.list` | page | Soldier list and search page |
+| `page.browse` | page | Dedicated local archive browse page |
 | `tab.soldiers.search.basic` | tab | Quick Search tab trigger |
 | `panel.soldiers.search.basic` | panel | Quick Search tab panel |
 | `tab.soldiers.search.advanced` | tab | Advanced Search tab trigger |
 | `panel.soldiers.search.advanced` | panel | Advanced Search tab panel |
 | `panel.soldiers.results` | panel | Soldier search results area |
-| `page.soldier.detail` | page | Soldier detail page |
+| `panel.browse.results` | panel | Browse results table |
+| `page.soldier.detail` | page | Person Record detail page |
 | `panel.soldier.detail.summary` | panel | Summary and action card |
-| `panel.soldier.detail.records` | panel | Records section |
+| `panel.soldier.detail.records` | panel | Source Records section |
 | `panel.soldier.detail.images` | panel | Images section |
-| `page.soldier.new` | page | New soldier record form |
-| `page.soldier.edit` | page | Edit soldier record form |
-| `panel.soldier.form.scratchpad` | panel | Scratch pad launcher section in the soldier form |
-| `panel.soldier.form.records` | panel | Record entry editor |
+| `page.soldier.new` | page | New Person Record form |
+| `page.soldier.edit` | page | Edit Person Record form |
+| `panel.soldier.form.scratchpad` | panel | Scratch pad launcher section in form |
+| `panel.soldier.form.records` | panel | Source Record entry editor |
 | `panel.soldier.form.images` | panel | Image upload section |
-| `page.export` | page | Export page |
+| `page.export` | page | Share / export page |
 | `panel.export.actions` | panel | Export/import actions panel |
 | `panel.export.google` | panel | Google integration panel |
+| `page.insights` | page | Archive insights dashboard |
+| `panel.insights.overview` | panel | Overview card |
+| `panel.insights.cemeteries` | panel | Top cemeteries card |
+| `panel.insights.homes` | panel | Confederate Home analytics card |
+| `panel.insights.pensions` | panel | Pension distribution card |
+| `panel.insights.units` | panel | Unit representation card |
+| `panel.insights.chronology` | panel | Chronology card |
+| `panel.insights.duplicate-audit` | panel | Duplicate audit card |
+| `page.review-queue` | page | Review queue page |
+| `panel.review-queue.list` | panel | Review queue list |
+| `page.review-queue.compare` | page | Review compare page |
+| `panel.review-queue.compare` | panel | Side-by-side compare panel |
+| `page.research-collections.hub` | page | Research collections hub |
+| `page.research-collections.detail` | page | Research collection detail |
+| `page.research-log` | page | Research log page |
+| `page.research-pack` | page | Research pack page |
+| `page.service-timeline` | page | Service timeline page |
+| `page.unit-camaraderie` | page | Unit camaraderie page |
+| `page.merge-review-ledger` | page | Merge review ledger page |
+| `page.insights.drilldown` | page | Insights drilldown page |
 | `page.settings` | page | Settings page |
-| `panel.settings.updates` | panel | Software Updates panel |
+| `panel.settings.layout` | panel | Responsive layout controls |
 | `panel.settings.initialize` | panel | Initialize Data panel |
+| `panel.settings.updates` | panel | Software Updates panel |
+| `overlay.floating.menu` | overlay | Floating quick-navigation menu |
+| `overlay.feedback.modal` | overlay | Global feedback modal |
+| `overlay.print-config.modal` | overlay | Printable export settings modal |
 | `overlay.image.viewer` | overlay | Full-screen image viewer |

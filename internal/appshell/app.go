@@ -1727,6 +1727,7 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 	return archive.PrintSettings{
 		Orientation:                  strings.TrimSpace(r.FormValue("orientation")),
 		PrinterFriendly:              r.FormValue("printer_friendly") != "",
+		FullBiographyPage:            r.FormValue("full_biography_page") != "",
 		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),
 		GroupByUnit:                  r.FormValue("group_by_unit") != "",
 		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
@@ -2737,6 +2738,8 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		DeathDate:             deathDate,
 		BirthInfo:             r.FormValue("birth_info"),
 		BuriedIn:              r.FormValue("buried_in"),
+		Biography:             r.FormValue("biography"),
+		PDFExcerptOverride:    r.FormValue("pdf_excerpt_override"),
 		Notes:                 r.FormValue("notes"),
 		NeedsReview:           needsReview,
 		ReviewReason:          reviewReason,
@@ -3051,10 +3054,14 @@ func monthPDFName(month int, options archive.PDFOptions) string {
 }
 
 func printableArchivePDFName(settings archive.PrintSettings) string {
-	return pdfReportName("dixiedata-printable-archive", archive.PDFOptions{
+	name := pdfReportName("dixiedata-printable-archive", archive.PDFOptions{
 		Orientation:     settings.Orientation,
 		PrinterFriendly: settings.PrinterFriendly,
 	}, false)
+	if !settings.FullBiographyPage {
+		return name
+	}
+	return strings.TrimSuffix(name, ".pdf") + "-full-biography.pdf"
 }
 
 func pdfReportName(base string, options archive.PDFOptions, noImages bool) string {

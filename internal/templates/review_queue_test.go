@@ -40,6 +40,7 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 		"/soldiers/12/review/resolve?context=queue",
 		"/review-queue/compare/9",
 		"<em>Carter</em>",
+		"w-full sm:w-auto",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("review queue missing %s", needle)
@@ -113,6 +114,8 @@ func TestReviewQueueCompareViewShowsSideBySideFields(t *testing.T) {
 		"Jon",
 		"/review-queue/compare/4/resolve",
 		"xl:flex-row xl:items-start xl:justify-between",
+		"overflow-x-auto",
+		"min-w-[38rem]",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("comparison view missing %s", needle)

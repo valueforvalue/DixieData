@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 	@Layout("Research Collections") {
-		<div class="mx-auto max-w-6xl space-y-5">
-			<div class="flex flex-wrap items-center justify-between gap-3">
+		<div data-ui-id={ uiids.PageResearchCollectionsHub } class="relative mx-auto max-w-6xl space-y-5">
+			@SurfaceBadge(uiids.PageResearchCollectionsHub)
+			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Named Research Collections</h2>
 					<p class="mt-2 text-sm text-slate-600">Save custom record groups for a project, family cluster, cemetery visit, or unresolved investigation thread.</p>
@@ -21,7 +23,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 						data-history-back
 						data-fallback-href={ fmt.Sprintf("/soldiers/%d", hub.CurrentPersonRecord.ID) }
 						data-fallback-label="Back to Person Record"
-						class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+						class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
 					>← Back to Person Record</button>
 				}
 			</div>
@@ -51,7 +53,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 						</label>
 					</div>
 					<div class="md:col-span-2">
-						<button type="submit" class="primary-button">Create Collection</button>
+						<button type="submit" class="primary-button w-full sm:w-auto">Create Collection</button>
 					</div>
 				</form>
 			</section>
@@ -79,13 +81,13 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 										<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Current person record added</span>
 									}
 								</div>
-								<div class="mt-4 flex flex-wrap gap-3">
-									<a href={ researchCollectionDetailHref(collection.ID, hub.CurrentPersonRecord) } class="pill-link">Open Collection</a>
+								<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+									<a href={ researchCollectionDetailHref(collection.ID, hub.CurrentPersonRecord) } class="pill-link w-full sm:w-auto">Open Collection</a>
 									if hub.CurrentPersonRecord != nil && !collection.ContainsCurrent {
 										<form hx-post={ fmt.Sprintf("/research-collections/%d/add", collection.ID) }>
 											<input type="hidden" name="soldier_id" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 											<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
-											<button type="submit" class="secondary-button">Add Current Person Record</button>
+											<button type="submit" class="secondary-button w-full sm:w-auto">Add Current Person Record</button>
 										</form>
 									}
 								</div>
@@ -100,14 +102,15 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 
 templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 	@Layout("Research Collection") {
-		<div class="mx-auto max-w-6xl space-y-5">
-			<div class="flex flex-wrap items-center gap-3">
+		<div data-ui-id={ uiids.PageResearchCollection } class="relative mx-auto max-w-6xl space-y-5">
+			@SurfaceBadge(uiids.PageResearchCollection)
+			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
 					type="button"
 					data-history-back
 					data-fallback-href={ researchCollectionFallbackHref(detail.CurrentPersonRecord) }
 					data-fallback-label={ researchCollectionBackLabel(detail.CurrentPersonRecord) }
-					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
 					>← { researchCollectionBackLabel(detail.CurrentPersonRecord) }</button>
 			</div>
 			<div class="card rounded-3xl p-6">
@@ -133,10 +136,10 @@ templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 							<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
 								<p class="text-sm font-semibold text-slate-900">{ detailHeading(personRecord) }</p>
 								<p class="mt-1 text-sm text-slate-500">{ personRecord.DisplayID }</p>
-								<div class="mt-4 flex flex-wrap gap-3">
-									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", personRecord.ID)) } class="pill-link">Open Person Record</a>
+								<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", personRecord.ID)) } class="pill-link w-full sm:w-auto">Open Person Record</a>
 									if detail.CurrentPersonRecord != nil && detail.CurrentPersonRecord.ID != personRecord.ID {
-										<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", detail.CurrentPersonRecord.ID, personRecord.ID, detail.CurrentPersonRecord.ID)) } class="secondary-button">Compare Person Records</a>
+										<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", detail.CurrentPersonRecord.ID, personRecord.ID, detail.CurrentPersonRecord.ID)) } class="secondary-button w-full sm:w-auto">Compare Person Records</a>
 									}
 								</div>
 							</div>

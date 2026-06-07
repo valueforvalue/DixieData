@@ -201,6 +201,7 @@ func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
 func TestParsePrintSettingsRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
 		"export_all":                       {"1"},
+		"full_biography_page":              {"1"},
 		"sort_by":                          {"birth_year"},
 		"group_by_unit":                    {"1"},
 		"group_by_confederate_home_status": {"1"},
@@ -217,6 +218,9 @@ func TestParsePrintSettingsRequest(t *testing.T) {
 	}
 	if !settings.GroupByUnit || !settings.GroupByConfederateHomeStatus || !settings.GroupByBuriedIn || settings.GroupByPensionState {
 		t.Fatalf("unexpected parsed settings: %#v", settings)
+	}
+	if !settings.FullBiographyPage {
+		t.Fatalf("expected full biography page flag, got %#v", settings)
 	}
 	if !settings.ExportAll || len(settings.SelectedIDs) != 0 {
 		t.Fatalf("unexpected export scope: %#v", settings)
@@ -551,6 +555,13 @@ func TestPDFOptionFilenameSuffixIncludesPrinterFriendlyLandscape(t *testing.T) {
 func TestPrintableArchivePDFNameIncludesPrinterFriendlyLandscape(t *testing.T) {
 	name := printableArchivePDFName(archive.PrintSettings{Orientation: "L", PrinterFriendly: true})
 	if name != "dixiedata-printable-archive-printer-friendly-landscape.pdf" {
+		t.Fatalf("printable archive pdf name = %q", name)
+	}
+}
+
+func TestPrintableArchivePDFNameIncludesFullBiographySuffix(t *testing.T) {
+	name := printableArchivePDFName(archive.PrintSettings{Orientation: "L", FullBiographyPage: true})
+	if name != "dixiedata-printable-archive-landscape-full-biography.pdf" {
 		t.Fatalf("printable archive pdf name = %q", name)
 	}
 }

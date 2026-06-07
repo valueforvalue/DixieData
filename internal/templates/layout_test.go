@@ -41,11 +41,29 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, `data-floating-nav-toggle`) || !strings.Contains(content, "Quick Navigation") {
 		t.Fatalf("layout should include floating navigation controls")
 	}
+	for _, needle := range []string{
+		`dixiedata.layout.mode`,
+		`data-layout-mode-option="auto"`,
+		`data-layout-mode-option="split-screen"`,
+		`data-layout-mode-status`,
+		`data-ui-id="overlay.floating.menu"`,
+		`data-ui-id="overlay.feedback.modal"`,
+		`overflow-y-auto`,
+		`max-h-[calc(100vh-2rem)]`,
+		`sm:max-h-[calc(100vh-4rem)]`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("layout should include responsive foundation control %s", needle)
+		}
+	}
 	if !strings.Contains(content, `data-scratchpad-open`) || !strings.Contains(content, "Scratch Pad") {
 		t.Fatalf("layout should include floating scratch pad controls")
 	}
 	if !strings.Contains(content, `data-feedback-open`) || !strings.Contains(content, `data-feedback-modal`) {
 		t.Fatalf("layout should include global feedback controls")
+	}
+	if !strings.Contains(content, `floating-nav-panel`) || !strings.Contains(content, `max-w-[min(100vw-2rem`) {
+		t.Fatalf("layout should keep floating menu viewport-bounded")
 	}
 	if !strings.Contains(content, `.top-shell {`) || !strings.Contains(content, `position: sticky;`) || !strings.Contains(content, `class="top-shell flex`) || !strings.Contains(content, `class="app-shell"`) {
 		t.Fatalf("layout should render the header as a floating top bar")

@@ -49,6 +49,35 @@ func TestSoldierListShowsExpandedAdvancedSearchFields(t *testing.T) {
 	}
 }
 
+func TestSoldierListUsesResponsiveContractForSearchControls(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierList(nil, 1, 0, "", viewmodel.SoldierFormSuggestions{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`grid grid-cols-1 gap-2 sm:flex sm:flex-wrap`,
+		`flex w-full items-center justify-between rounded-xl`,
+		`flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center`,
+		`<label class="block text-sm text-slate-500 mb-1">Buried In</label>`,
+		`<label class="block text-sm text-slate-500 mb-1">Status</label>`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("search/quick view surface missing responsive control contract %s", needle)
+		}
+	}
+	if strings.Contains(content, `<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Buried In</label>`) {
+		t.Fatalf("advanced search should not use a raw col-span-2 wrapper for Buried In")
+	}
+	if strings.Contains(content, `<div class="col-span-2">
+						<label class="block text-sm text-slate-500 mb-1">Status</label>`) {
+		t.Fatalf("advanced search should not use a raw col-span-2 wrapper for Status")
+	}
+}
+
 func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
@@ -79,6 +108,34 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("metadata/history panel missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailSeparatesBiographyFromInternalNotes(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:        42,
+		DisplayID: "STC38-00001",
+		FirstName: "John",
+		LastName:  "Taylor",
+		Biography: "Public-facing life sketch with [[STC38-00002]] link.",
+		Notes:     "Private research note.",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Biography",
+		"Internal Notes",
+		"Public-facing life sketch",
+		"Private research note.",
+		`href="/soldiers/display/STC38-00002"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("detail view missing biography/internal notes content %s", needle)
 		}
 	}
 }
@@ -243,9 +300,40 @@ func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 		"Primary Image",
 		"/soldiers/42/images/primary/8",
 		"Set as Primary",
+		`class="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between"`,
+		`class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"`,
+		`class="pill-link w-full justify-center sm:w-auto"`,
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("primary image controls missing %s", needle)
+		}
+	}
+}
+
+func TestSoldierDetailUsesMobileSafeSummaryActions(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:              42,
+		DisplayID:       "STC38-00001",
+		FirstName:       "John",
+		LastName:        "Taylor",
+		LinkedSoldierID: 7,
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end"`,
+		`class="pill-link w-full justify-center sm:w-auto"`,
+		`class="secondary-button w-full list-none cursor-pointer justify-center gap-2 sm:w-auto"`,
+		`class="secondary-button w-full justify-center sm:w-auto"`,
+		`class="primary-button w-full sm:w-auto">Export PDF`,
+		`class="secondary-button w-full sm:w-auto">Export JPG`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("detail view missing mobile-safe summary action fragment %s", needle)
 		}
 	}
 }

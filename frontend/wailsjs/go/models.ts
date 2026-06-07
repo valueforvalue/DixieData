@@ -20,6 +20,7 @@ export namespace archive {
 	export class PrintSettings {
 	    orientation: string;
 	    printerFriendly: boolean;
+	    fullBiographyPage: boolean;
 	    sortBy: string;
 	    groupByUnit: boolean;
 	    groupByPensionState: boolean;
@@ -36,6 +37,7 @@ export namespace archive {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.orientation = source["orientation"];
 	        this.printerFriendly = source["printerFriendly"];
+	        this.fullBiographyPage = source["fullBiographyPage"];
 	        this.sortBy = source["sortBy"];
 	        this.groupByUnit = source["groupByUnit"];
 	        this.groupByPensionState = source["groupByPensionState"];

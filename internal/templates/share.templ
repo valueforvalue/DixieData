@@ -120,12 +120,12 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
 						<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
 					</div>
-					<div class="flex flex-wrap gap-3">
-						<button hx-post="/export/feedback-log" hx-target="#share-status" class="secondary-button justify-start text-left">
+					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+						<button hx-post="/export/feedback-log" hx-target="#share-status" class="secondary-button w-full justify-start text-left sm:w-auto">
 							<div class="font-bold">Export Feedback Log</div>
 							<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
 						</button>
-						<button hx-post="/export/bug-report" hx-target="#share-status" class="secondary-button justify-start text-left">
+						<button hx-post="/export/bug-report" hx-target="#share-status" class="secondary-button w-full justify-start text-left sm:w-auto">
 							<div class="font-bold">Export Bug Report Bundle</div>
 							<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
 						</button>
@@ -133,16 +133,17 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</section>
 				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"></div>
 			</div>
-			<div id="share-print-config-modal" data-print-config-modal class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
-				<div class="w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+			<div id="share-print-config-modal" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+					@SurfaceBadge(uiids.OverlayPrintConfigModal)
 					<form id="share-print-config-form" hx-post="/export/database-pdf" hx-target="#share-status" data-pdf-pref-scope="archive" class="space-y-6">
-						<div class="flex items-start justify-between gap-4">
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
 								<h3 class="mt-2 text-xl gold font-bold">Configure the archive layout</h3>
 								<p class="mt-2 text-sm text-slate-600">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p>
 							</div>
-							<button type="button" data-print-config-close class="secondary-button px-4">Close</button>
+							<button type="button" data-print-config-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
 							<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Export Scope</div>
@@ -168,7 +169,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
 							<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Page Setup</div>
-							<div class="flex flex-wrap items-center gap-4">
+							<div class="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-center">
 								<label class="text-sm text-slate-700">
 									<span class="mr-2 font-semibold text-[#22303d]">Orientation</span>
 									<select name="orientation" data-pdf-pref-key="orientation" class="rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
@@ -181,6 +182,10 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 									<span><strong class="text-[#22303d]">Printer-friendly</strong> removes links, export metadata, and empty placeholder fields.</span>
 								</label>
 							</div>
+							<label class="flex items-start gap-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-700">
+								<input type="checkbox" name="full_biography_page" value="1" data-pdf-pref-key="fullBiographyPage" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+								<span><strong class="text-[#22303d]">Append full biography page</strong><br/><span class="text-slate-500">Keep concise first page, then add text-friendly full biography appendix when a record has biography content.</span></span>
+							</label>
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
 							<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Sort Options</div>
@@ -217,11 +222,11 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							</label>
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
-							The printable layout still uses one landscape record page per entry. Group selections add divider pages before each section, and images remain omitted from the printable PDF export.
+							The printable layout keeps one concise first page per record by default. Group selections add divider pages, primary images stay captioned on record pages, and the optional full biography appendix only appears when you opt in.
 						</div>
-						<div class="flex flex-wrap justify-end gap-3">
-							<button type="button" data-print-config-close class="secondary-button">Cancel</button>
-							<button type="submit" data-print-config-submit class="primary-button">Generate Printable PDF</button>
+						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+							<button type="button" data-print-config-close class="secondary-button w-full sm:w-auto">Cancel</button>
+							<button type="submit" data-print-config-submit class="primary-button w-full sm:w-auto">Generate Printable PDF</button>
 						</div>
 					</form>
 				</div>

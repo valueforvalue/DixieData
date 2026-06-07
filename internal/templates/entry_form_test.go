@@ -91,7 +91,7 @@ func TestEntryFormShowsPrefixVisibilityToggle(t *testing.T) {
 	}
 }
 
-func TestEntryFormShowsNotesLinkQuickReference(t *testing.T) {
+func TestEntryFormSeparatesBiographyAndInternalNotes(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
 	if err != nil {
@@ -100,12 +100,41 @@ func TestEntryFormShowsNotesLinkQuickReference(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
+		"name=\"biography\"",
+		"Biography is the public-facing narrative",
+		"Advanced PDF Excerpt Override",
+		`name="pdf_excerpt_override"`,
+		"Target 900 chars",
+		`data-live-count-display="pdf-excerpt"`,
+		"Internal Notes",
 		"Quick reference:",
 		"[[DISPLAY-ID]]",
 		"[[STC38-00007]]",
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("entry form missing notes link reference %s", needle)
+			t.Fatalf("entry form missing biography/internal notes content %s", needle)
+		}
+	}
+}
+
+func TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts(t *testing.T) {
+	var buf bytes.Buffer
+	err := EntryForm(viewmodel.Soldier{ID: 42, DisplayID: "DXD-00042"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, true).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto"`,
+		`data-record-remove class="pill-link w-full justify-center sm:w-auto"`,
+		`Add Images From Computer</button>`,
+		`class="primary-button w-full sm:w-auto">Add Images From Computer`,
+		`class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap"`,
+		`class="ghost-link w-full px-4 py-2 sm:w-auto"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("entry form missing mobile-safe layout fragment %s", needle)
 		}
 	}
 }
@@ -142,6 +171,23 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 		t.Fatalf("share view missing printable export selection controls")
 	}
 	for _, needle := range []string{"data-print-config-modal", "overflow-y-auto", "max-h-[calc(100vh-2rem)]", "sm:max-h-[calc(100vh-4rem)]"} {
+		if needle == "data-print-config-modal" && !strings.Contains(content, `data-ui-id="overlay.print-config.modal"`) {
+			t.Fatalf("share view should include the print-config surface inventory id")
+		}
+		for _, needle := range []string{
+			`Export Feedback Log`,
+			`Bug Report Bundle`,
+			`data-print-config-close`,
+			`class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end"`,
+			`data-print-config-submit`,
+			`data-pdf-pref-key="fullBiographyPage"`,
+			`w-full px-4 sm:w-auto`,
+			`w-full sm:w-auto`,
+		} {
+			if !strings.Contains(content, needle) {
+				t.Fatalf("share view missing mobile-safe overlay fragment %s", needle)
+			}
+		}
 		if !strings.Contains(content, needle) {
 			t.Fatalf("share view missing responsive printable export modal fragment %s", needle)
 		}
@@ -183,6 +229,45 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("share view missing merge review status UI: %s", needle)
+		}
+	}
+}
+
+func TestInitialSetupViewHasSurfaceInventoryID(t *testing.T) {
+	var buf bytes.Buffer
+	err := InitialSetupView(viewmodel.InitialSetupForm{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if !strings.Contains(content, `data-ui-id="page.setup"`) {
+		t.Fatalf("initial setup should participate in the surface inventory")
+	}
+}
+
+func TestSettingsViewShowsResponsiveLayoutControls(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsView("RESET", viewmodel.UpdateSettings{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`data-ui-id="panel.settings.layout"`,
+		`data-layout-mode-option="auto"`,
+		`data-layout-mode-option="relaxed"`,
+		`data-layout-mode-option="split-screen"`,
+		`data-layout-mode-status`,
+		`data-layout-mode-preference-label`,
+		`Initialize Data`,
+		`Check for Updates`,
+		`w-full sm:w-auto`,
+		`w-full px-4 py-2 sm:w-auto`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("settings view missing responsive layout control %s", needle)
 		}
 	}
 }

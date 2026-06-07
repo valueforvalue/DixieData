@@ -43,6 +43,8 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		DeathDate:             input.DeathDate,
 		BirthInfo:             input.BirthInfo,
 		BuriedIn:              input.BuriedIn,
+		Biography:             input.Biography,
+		PDFExcerptOverride:    input.PDFExcerptOverride,
 		Notes:                 input.Notes,
 		NeedsReview:           input.NeedsReview,
 		ReviewReason:          input.ReviewReason,

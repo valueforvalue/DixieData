@@ -117,4 +117,20 @@ CREATE TABLE images (
 	if pensionState != "N/A" {
 		t.Fatalf("expected migrated pension state to be N/A, got %q", pensionState)
 	}
+
+	var biography string
+	if err := database.Conn().QueryRow(`SELECT COALESCE(biography, '') FROM soldiers WHERE display_id = 'DXD-00001'`).Scan(&biography); err != nil {
+		t.Fatalf("read biography: %v", err)
+	}
+	if biography != "" {
+		t.Fatalf("expected migrated biography to default blank, got %q", biography)
+	}
+
+	var pdfExcerptOverride string
+	if err := database.Conn().QueryRow(`SELECT COALESCE(pdf_excerpt_override, '') FROM soldiers WHERE display_id = 'DXD-00001'`).Scan(&pdfExcerptOverride); err != nil {
+		t.Fatalf("read pdf_excerpt_override: %v", err)
+	}
+	if pdfExcerptOverride != "" {
+		t.Fatalf("expected migrated pdf excerpt override to default blank, got %q", pdfExcerptOverride)
+	}
 }

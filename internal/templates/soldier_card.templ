@@ -143,14 +143,14 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					<h2 class="text-2xl gold font-bold">Person Records</h2>
 					<a href="/soldiers/new" class="primary-button">+ Add Person Record</a>
 				</div>
-				<div class="mb-3 flex flex-wrap gap-2">
+				<div class="mb-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
 					<button type="button" data-ui-id={ uiids.TabSoldiersSearchBasic } data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
-						class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">
+						class="flex w-full items-center justify-between rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
 						Quick Search
 						@InlineSurfaceBadge(uiids.TabSoldiersSearchBasic)
 					</button>
 					<button type="button" data-ui-id={ uiids.TabSoldiersSearchAdvanced } data-tab-group="soldier-search" data-tab-target="advanced"
-						class="rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)]">
+						class="flex w-full items-center justify-between rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
 						Advanced Search
 						@InlineSurfaceBadge(uiids.TabSoldiersSearchAdvanced)
 					</button>
@@ -161,7 +161,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						value={ query }
 						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
 						class="field-input"/>
-					<div class="flex flex-wrap items-center gap-3">
+					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
 						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
 					</div>
 					<p class="text-xs text-slate-500">Quick search matches names, relationship labels, units, ranks, pension states, burial locations, and display IDs.</p>
@@ -240,11 +240,11 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
 						<input type="text" name="confederate_home_name" list="advanced-confederate-home-name-suggestions" class="field-input"/>
 					</div>
-					<div class="col-span-2">
+					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
 						<input type="text" name="buried_in" list="advanced-buried-in-suggestions" class="field-input"/>
 					</div>
-					<div class="col-span-2">
+					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1">Status</label>
 						<select name="review_status" class="field-input">
 							<option value="">All Person Records</option>
@@ -276,7 +276,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<label class="block text-sm text-slate-500 mb-1">Death Date</label>
 						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 					</div>
-					<div class="responsive-span-2 col-span-2 flex flex-wrap gap-2 items-center">
+					<div class="responsive-span-2 col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
 						<button type="submit" class="primary-button">Run Advanced Search</button>
 						<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
 					</div>
@@ -321,11 +321,11 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								<p class="mt-2 text-sm text-slate-600">{ detailSubheading(s) }</p>
 							}
 						</div>
-					<div class="flex flex-wrap items-center gap-2">
-						<span class="gold rounded-full border border-[rgba(141,116,64,0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
-						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link">Edit Person Record</a>
-						<details class="relative">
-							<summary class="secondary-button list-none cursor-pointer gap-2">
+					<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+						<span class="gold self-start rounded-full border border-[rgba(141,116,64,0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
+						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Person Record</a>
+						<details class="relative w-full sm:w-auto">
+							<summary class="secondary-button w-full list-none cursor-pointer justify-center gap-2 sm:w-auto">
 								<span>Export Record</span>
 								<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / JPG</span>
 							</summary>
@@ -349,15 +349,15 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 											<span>Include images</span>
 										</label>
 									</div>
-									<div class="sm:col-span-2 flex flex-wrap justify-end gap-2 pt-1">
-										<button class="primary-button">Export PDF</button>
-										<button type="submit" hx-post={ fmt.Sprintf("/soldiers/%d/jpg", s.ID) } hx-target="#soldier-export-status" class="secondary-button">Export JPG</button>
+									<div class="sm:col-span-2 flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
+										<button class="primary-button w-full sm:w-auto">Export PDF</button>
+										<button type="submit" hx-post={ fmt.Sprintf("/soldiers/%d/jpg", s.ID) } hx-target="#soldier-export-status" class="secondary-button w-full sm:w-auto">Export JPG</button>
 									</div>
 								</div>
 							</form>
 						</details>
 						if s.LinkedSoldierID != 0 {
-							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button">Compare Family Person Records</a>
+							<a href={ templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)) } class="secondary-button w-full justify-center sm:w-auto">Compare Family Person Records</a>
 						}
 					</div>
 				</div>
@@ -419,8 +419,11 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					<dt class="text-slate-500">Birth Info</dt><dd>{ emptyDetail(s.BirthInfo) }</dd>
 					<dt class="text-slate-500">Buried In</dt><dd>{ emptyDetail(s.BuriedIn) }</dd>
 				</dl>
-				if s.Notes != "" {
-					@LinkedText(s.Notes, "mt-4 text-sm text-slate-600 leading-6")
+				if s.Biography != "" {
+					<div class="mt-5 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.48)] p-4">
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Biography</p>
+						@LinkedText(s.Biography, "mt-3 text-sm text-slate-700 leading-6")
+					</div>
 				}
 				<details class="mt-5 overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
@@ -432,6 +435,12 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					</summary>
 					<div class="border-t border-[rgba(141,116,64,0.28)] px-4 py-4">
 						<div class="grid gap-4 lg:grid-cols-2">
+							if s.Notes != "" {
+								<div class="rounded-2xl border border-slate-200 bg-white/80 p-4 lg:col-span-2">
+									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Internal Notes</p>
+									@LinkedText(s.Notes, "mt-3 text-sm text-slate-700 leading-6")
+								</div>
+							}
 							if soldierHasCamaraderie(s) {
 								<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Unit Camaraderie</p>
@@ -585,16 +594,16 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					@SurfaceBadge(uiids.PanelSoldierDetailImages)
 					<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
 					<form hx-post={ fmt.Sprintf("/soldiers/%d/images/download", s.ID) } hx-target="#image-download-status" class="mt-2">
-						<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+						<div class="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between">
 							<label class="inline-flex items-center gap-2 font-medium text-slate-700">
 								<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
 								Select all images
 							</label>
-							<div class="flex flex-wrap gap-2">
-								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import", s.ID) } hx-target="#image-download-status" class="primary-button">Add Images From Computer</button>
+							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import", s.ID) } hx-target="#image-download-status" class="primary-button w-full sm:w-auto">Add Images From Computer</button>
 								if len(s.Images) > 0 {
-									<button type="submit" class="primary-button">Download Selected Images</button>
-									<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/delete", s.ID) } hx-target="#image-download-status" hx-confirm="Delete the selected image(s)?" class="danger-button">Delete Selected Images</button>
+									<button type="submit" class="primary-button w-full sm:w-auto">Download Selected Images</button>
+									<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/delete", s.ID) } hx-target="#image-download-status" hx-confirm="Delete the selected image(s)?" class="danger-button w-full sm:w-auto">Delete Selected Images</button>
 								}
 							</div>
 						</div>
@@ -602,15 +611,15 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								for _, img := range s.Images {
 									<div data-image-card data-image-id={ fmt.Sprintf("%d", img.ID) } class="card rounded-2xl p-3">
-										<div class="mb-3 flex items-center justify-between gap-3">
+										<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 											<label class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
 												<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
 												Select
 											</label>
-											<div class="flex flex-wrap items-center justify-end gap-2">
+											<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
 												<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
-												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } hx-post={ fmt.Sprintf("/soldiers/%d/images/primary/%d", s.ID, img.ID) } hx-target="#image-download-status" hx-swap="none" class={ primaryImageButtonClass(img.IsPrimary) }>Set as Primary</button>
-												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link">Preview</button>
+												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } hx-post={ fmt.Sprintf("/soldiers/%d/images/primary/%d", s.ID, img.ID) } hx-target="#image-download-status" hx-swap="none" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
+												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
 											</div>
 										</div>
 										<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ img.Caption }
