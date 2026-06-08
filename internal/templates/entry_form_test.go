@@ -139,7 +139,7 @@ func TestEntryFormSeparatesBiographyAndInternalNotes(t *testing.T) {
 		"Biography is the public-facing narrative",
 		"Advanced PDF Excerpt Override",
 		`name="pdf_excerpt_override"`,
-		"Target 900 chars",
+		"Target 1200 chars",
 		`data-live-count-display="pdf-excerpt"`,
 		"Internal Notes",
 		"Quick reference:",
