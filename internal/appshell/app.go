@@ -47,31 +47,53 @@ import (
 var embeddedQuotes []byte
 
 type App struct {
-	ctx             context.Context
-	database        *db.DB
-	soldiers        personRecordsFacade
-	anniversary     anniversaryFacade
-	calendar        calendarFacade
-	analytics       analyticsFacade
-	audit           reviewFacade
-	images          imageFacade
-	export          exportFacade
-	backup          backupFacade
-	diagnostics     diagnosticsFacade
-	google          integrationFacade
-	updater         updaterFacade
-	restorePoints   *update.RestorePointManager
-	quotes          []models.Quote
-	mux             *http.ServeMux
-	startupErr      error
-	setupRequired   bool
-	pendingRecovery *update.RestorePointRecord
-	recoveryFailure string
-	dataDir         string
-	scratchpads     scratchpadOpener
-	frontendAssets  fs.FS
-	previewMu       sync.Mutex
-	memorialPreview map[string]string
+	ctx                     context.Context
+	database                *db.DB
+	soldiers                personRecordsFacade
+	anniversary             anniversaryFacade
+	calendar                calendarFacade
+	analytics               analyticsFacade
+	audit                   reviewFacade
+	images                  imageFacade
+	export                  exportFacade
+	backup                  backupFacade
+	diagnostics             diagnosticsFacade
+	google                  integrationFacade
+	updater                 updaterFacade
+	restorePoints           *update.RestorePointManager
+	quotes                  []models.Quote
+	mux                     *http.ServeMux
+	startupErr              error
+	setupRequired           bool
+	pendingLaunchStateClear bool
+	pendingRecovery         *update.RestorePointRecord
+	recoveryFailure         string
+	dataDir                 string
+	scratchpads             scratchpadOpener
+	frontendAssets          fs.FS
+	previewMu               sync.Mutex
+	memorialPreview         map[string]string
+}
+
+func (a *App) handleUpdateBootstrapHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !a.pendingLaunchStateClear {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if a.restorePoints == nil {
+		http.Error(w, "restore point manager unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if err := a.restorePoints.ClearLaunchState(); err != nil {
+		http.Error(w, fmt.Sprintf("failed to clear restore point launch state: %v", err), http.StatusInternalServerError)
+		return
+	}
+	a.pendingLaunchStateClear = false
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type scratchpadOpener interface {
@@ -192,14 +214,7 @@ func (a *App) startup(ctx context.Context) {
 		return
 	}
 
-	if postUpdateLaunchState != nil {
-		if err := a.restorePoints.ClearLaunchState(); err != nil {
-			a.startupErr = fmt.Errorf("failed to clear restore point launch state: %w", err)
-			fmt.Println(a.startupErr)
-			a.setupRoutes()
-			return
-		}
-	}
+	a.pendingLaunchStateClear = postUpdateLaunchState != nil
 
 	a.setupRoutes()
 }
@@ -248,6 +263,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/settings/updates/source", a.handleUpdateSource)
 	mux.HandleFunc("/settings/updates/check", a.handleCheckForUpdates)
 	mux.HandleFunc("/settings/updates/apply", a.handleApplyLatestUpdate)
+	mux.HandleFunc("/settings/updates/health/bootstrap", a.handleUpdateBootstrapHealth)
 	mux.HandleFunc("/settings/images/orphans/scan", a.handleScanImageOrphans)
 	mux.HandleFunc("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
 	mux.HandleFunc("/settings/quality/scan", a.handleScanDataQuality)
@@ -431,6 +447,8 @@ func setupRequestAllowed(path string) bool {
 		return true
 	case path == "/app.js":
 		return true
+	case path == "/app.css":
+		return true
 	case strings.HasPrefix(path, "/wailsjs/"):
 		return true
 	default:
@@ -443,6 +461,8 @@ func recoveryRequestAllowed(path string) bool {
 	case path == "/recovery":
 		return true
 	case path == "/version":
+		return true
+	case path == "/app.js":
 		return true
 	case path == "/app.css":
 		return true

@@ -123,6 +123,27 @@ func TestAppServeHTTPRedirectsToRecoveryWhenPending(t *testing.T) {
 	}
 }
 
+func TestAppServeHTTPAllowsFrontendJSWhenRecoveryPending(t *testing.T) {
+	app := NewApp().WithFrontendAssets(os.DirFS(repoFixturePath(t, "frontend")))
+	app.pendingRecovery = &update.RestorePointRecord{ID: "restore-point-1"}
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/app.js", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/javascript; charset=utf-8" {
+		t.Fatalf("content-type=%q", got)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "(() =>") {
+		t.Fatalf("expected frontend app.js body, got %q", body)
+	}
+}
+
 func TestHandleRecoveryRendersRestorePointPrompt(t *testing.T) {
 	app := NewApp()
 	app.pendingRecovery = &update.RestorePointRecord{
@@ -845,6 +866,76 @@ func TestAppServeHTTPRedirectsToInitialSetupWhenRequired(t *testing.T) {
 	}
 	if location := rec.Header().Get("Location"); location != "/setup" {
 		t.Fatalf("redirect location = %q", location)
+	}
+}
+
+func TestAppServeHTTPAllowsFrontendCSSWhenSetupRequired(t *testing.T) {
+	app := NewApp().WithFrontendAssets(os.DirFS(repoFixturePath(t, "frontend")))
+	app.setupRequired = true
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/app.css", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/css; charset=utf-8" {
+		t.Fatalf("content-type=%q", got)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "--tw-border-spacing-x") {
+		t.Fatalf("expected frontend app.css body, got %q", body)
+	}
+}
+
+func TestHandleUpdateBootstrapHealthClearsPendingLaunchState(t *testing.T) {
+	dataDir := t.TempDir()
+	manager := update.NewRestorePointManager(dataDir)
+	if err := manager.SaveLaunchState(update.RestorePointRecord{
+		ID:               "restore-point-1",
+		TargetAppVersion: "1.2.49",
+	}); err != nil {
+		t.Fatalf("SaveLaunchState: %v", err)
+	}
+
+	app := NewApp()
+	app.restorePoints = manager
+	app.pendingLaunchStateClear = true
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodPost, "/settings/updates/health/bootstrap", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+	if app.pendingLaunchStateClear {
+		t.Fatal("expected launch-state clear flag to be reset")
+	}
+	state, err := manager.LoadLaunchState()
+	if err != nil {
+		t.Fatalf("LoadLaunchState: %v", err)
+	}
+	if state != nil {
+		t.Fatalf("expected launch state to be cleared, got %#v", state)
+	}
+}
+
+func TestHandleUpdateBootstrapHealthNoPendingStateNoop(t *testing.T) {
+	app := NewApp()
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodPost, "/settings/updates/health/bootstrap", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusNoContent, rec.Body.String())
 	}
 }
 
