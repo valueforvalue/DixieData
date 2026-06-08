@@ -659,6 +659,51 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 	}
 }
 
+func TestExportService_ExportSoldierPDFPrinterFriendlyPortraitFits1200CharExcerpt(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := NewExportService(d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	override := strings.Repeat("Portrait override text for compact portrait layout. ", 25)[:1200]
+	outPath := filepath.Join(t.TempDir(), "soldier-printer-friendly-1200.pdf")
+	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
+		DisplayID:          "PENSION-1200",
+		FirstName:          "Robert",
+		LastName:           "Lee",
+		PensionState:       "N/A",
+		SpouseSoldierID:    5,
+		SpouseName:         "Mary Lee",
+		Biography:          "Full biography should stay out when excerpt override exists.",
+		PDFExcerptOverride: override,
+		Notes:              "Scratch note should never appear in portrait PDF.",
+		Records:            []models.Record{{RecordType: "Pension", Details: "Filed in 1880."}},
+		Images:             []models.Image{{FileName: "portrait.png", FilePath: `images\pension-1200\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait caption"}},
+	}, PDFOptions{Orientation: "P", PrinterFriendly: true, IncludeImages: true})
+	if err != nil {
+		t.Fatalf("ExportSoldierPDF printer friendly: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	text := string(data)
+	if !strings.Contains(text, "Portrait override text for compact portrait layout.") {
+		t.Fatalf("printer friendly portrait PDF should include the override text")
+	}
+	pageCount := len(regexp.MustCompile(`/Type /Page\b`).FindAll(data, -1))
+	if pageCount != 1 {
+		t.Fatalf("expected representative 1200-char portrait excerpt PDF to stay on one page, got %d pages", pageCount)
+	}
+}
+
 func TestExportService_ExportSoldierPDFOmitsPrimaryImageJPEGFileNameStoredAsCaption(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)

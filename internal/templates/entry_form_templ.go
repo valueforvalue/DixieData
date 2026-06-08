@@ -1455,7 +1455,7 @@ func rankOutValue(s viewmodel.PersonRecord) string {
 }
 
 func pdfExcerptBudget() int {
-	return 900
+	return 1200
 }
 
 type entryTypeOption struct {
