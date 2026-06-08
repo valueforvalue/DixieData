@@ -3,8 +3,8 @@ package viewmodel
 import (
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
@@ -619,6 +619,62 @@ func OrphanedImagesFromDomain(inputs []archive.OrphanedImage) []OrphanedImage {
 		items = append(items, OrphanedImage(input))
 	}
 	return items
+}
+
+func DataQualityScanResultFromDomain(input records.DataQualityScanResult) DataQualityScanResult {
+	type grouped struct {
+		group string
+		items []DataQualityIssue
+	}
+	groups := make([]grouped, 0)
+	indexByGroup := map[string]int{}
+	for _, issue := range input.Issues {
+		group := strings.TrimSpace(issue.Group)
+		if group == "" {
+			group = "Other"
+		}
+		mapped := DataQualityIssue{
+			PersonRecordID: issue.SoldierID,
+			DisplayID:      issue.DisplayID,
+			Name:           issue.Name,
+			EntryType:      issue.EntryType,
+			Group:          group,
+			Code:           issue.Code,
+			Severity:       issue.Severity,
+			Summary:        issue.Summary,
+			Detail:         issue.Detail,
+		}
+		groupIndex, ok := indexByGroup[group]
+		if !ok {
+			indexByGroup[group] = len(groups)
+			groups = append(groups, grouped{group: group, items: []DataQualityIssue{mapped}})
+			continue
+		}
+		groups[groupIndex].items = append(groups[groupIndex].items, mapped)
+	}
+	resultGroups := make([]DataQualityIssueGroup, 0, len(groups))
+	for _, group := range groups {
+		resultGroups = append(resultGroups, DataQualityIssueGroup{
+			Group:  group.group,
+			Count:  len(group.items),
+			Issues: group.items,
+		})
+	}
+	return DataQualityScanResult{
+		Mode:           string(input.Mode),
+		ScannedRecords: input.ScannedRecords,
+		IssueCount:     len(input.Issues),
+		Groups:         resultGroups,
+	}
+}
+
+func DataQualityApplyResultFromDomain(input records.DataQualityApplyResult) DataQualityApplyResult {
+	return DataQualityApplyResult{
+		Selected:       input.Selected,
+		Flagged:        input.Flagged,
+		AlreadyInQueue: input.AlreadyInQueue,
+		NotFound:       input.NotFound,
+	}
 }
 
 func CalendarFromModels(input map[int][]models.Soldier) map[int][]PersonRecord {

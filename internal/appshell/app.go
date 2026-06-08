@@ -250,6 +250,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/settings/updates/apply", a.handleApplyLatestUpdate)
 	mux.HandleFunc("/settings/images/orphans/scan", a.handleScanImageOrphans)
 	mux.HandleFunc("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
+	mux.HandleFunc("/settings/quality/scan", a.handleScanDataQuality)
+	mux.HandleFunc("/settings/quality/apply", a.handleApplyDataQuality)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
 	mux.HandleFunc("/export/csv", a.handleExportCSV)
 	mux.HandleFunc("/export/ical", a.handleExportICalendar)
@@ -1511,6 +1513,52 @@ func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	presentation.SettingsOrphanedImages(orphans).Render(r.Context(), w)
+}
+
+func (a *App) handleScanDataQuality(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	mode := strings.TrimSpace(r.FormValue("quality_mode"))
+	result, err := a.soldiers.RunDataQualityScan(mode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	presentation.SettingsQualityScanResults(result).Render(r.Context(), w)
+}
+
+func (a *App) handleApplyDataQuality(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	selected, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(selected) == 0 {
+		setToastHeaderWithType(w, "Select at least one finding first.", "warning")
+		fmt.Fprint(w, "Select at least one finding first.")
+		return
+	}
+	result, err := a.soldiers.ApplyDataQualityFindingsToReviewQueue(selected)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	setToastHeader(w, fmt.Sprintf("Moved %d record(s) to Review Queue (%d already queued).", result.Flagged, result.AlreadyInQueue))
+	presentation.SettingsQualityScanApplyResult(result).Render(r.Context(), w)
 }
 
 func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) {
