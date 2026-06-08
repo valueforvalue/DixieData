@@ -48,6 +48,8 @@ type personRecordsFacade interface {
 	SetPrimaryImage(personRecordID, imageID int64) error
 	MarriageCandidates() ([]personRecord, error)
 	AddImage(personRecordID int64, fileName, filePath, caption string) error
+	PreviewMemorialArchive(path string) (records.MemorialImportPreview, error)
+	ImportMemorialArchive(path string) (records.MemorialImportSummary, error)
 }
 
 type anniversaryFacade interface {
