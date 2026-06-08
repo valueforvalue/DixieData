@@ -425,6 +425,63 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 	}
 }
 
+func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"Data Quality Scan",
+		"/settings/quality/scan",
+		`name="quality_mode" value="high-confidence"`,
+		`name="quality_mode" value="advanced"`,
+		"Run Data Quality Scan",
+		`id="settings-quality-results"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("settings view missing quality scan UI: %s", needle)
+		}
+	}
+}
+
+func TestSettingsQualityScanResultsGroupsFindings(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsQualityScanResults(viewmodel.DataQualityScanResult{
+		Mode:           "advanced",
+		ScannedRecords: 12,
+		IssueCount:     2,
+		Groups: []viewmodel.DataQualityIssueGroup{
+			{
+				Group: "Identity",
+				Count: 2,
+				Issues: []viewmodel.DataQualityIssue{
+					{PersonRecordID: 7, DisplayID: "DXD-00007", Name: "John Doe", Summary: "Missing last name", Detail: "Name has placeholder values."},
+					{PersonRecordID: 8, DisplayID: "DXD-00008", Name: "Jane Doe", Summary: "Malformed display ID"},
+				},
+			},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"/settings/quality/apply",
+		"Identity (2)",
+		`name="selected_ids" value="7"`,
+		`name="selected_ids" value="8"`,
+		"Move Selected to Review Queue",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("quality scan results missing content %s", needle)
+		}
+	}
+}
+
 func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001", PensionState: "N/A", ConfederateHomeStatus: "N/A"}, nil, viewmodel.SoldierFormSuggestions{

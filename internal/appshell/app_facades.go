@@ -50,6 +50,8 @@ type personRecordsFacade interface {
 	AddImage(personRecordID int64, fileName, filePath, caption string) error
 	PreviewMemorialArchive(path string) (records.MemorialImportPreview, error)
 	ImportMemorialArchive(path string) (records.MemorialImportSummary, error)
+	RunDataQualityScan(mode string) (records.DataQualityScanResult, error)
+	ApplyDataQualityFindingsToReviewQueue(ids []int64) (records.DataQualityApplyResult, error)
 }
 
 type anniversaryFacade interface {

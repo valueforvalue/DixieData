@@ -139,6 +139,14 @@ func SettingsOrphanCleanupResult(moved int, trashRoot string) templ.Component {
 	return templates.SettingsOrphanCleanupResult(moved, trashRoot)
 }
 
+func SettingsQualityScanResults(result records.DataQualityScanResult) templ.Component {
+	return templates.SettingsQualityScanResults(viewmodel.DataQualityScanResultFromDomain(result))
+}
+
+func SettingsQualityScanApplyResult(result records.DataQualityApplyResult) templ.Component {
+	return templates.SettingsQualityScanApplyResult(viewmodel.DataQualityApplyResultFromDomain(result))
+}
+
 func ReviewQueueCompareView(comparison records.DuplicateAuditComparison) templ.Component {
 	return templates.ReviewQueueCompareView(viewmodel.DuplicateAuditComparisonFromDomain(comparison))
 }

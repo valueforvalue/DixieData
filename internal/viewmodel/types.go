@@ -225,14 +225,14 @@ type GoogleStatus struct {
 }
 
 type ExportRecordOption struct {
-	ID                     int64
-	DisplayID              string
-	DisplayName            string
-	EntryType              string
-	Unit                   string
-	PensionState           string
-	ConfederateHomeStatus  string
-	BuriedIn               string
+	ID                    int64
+	DisplayID             string
+	DisplayName           string
+	EntryType             string
+	Unit                  string
+	PensionState          string
+	ConfederateHomeStatus string
+	BuriedIn              string
 }
 
 type MergeReviewConflict struct {
@@ -426,6 +426,38 @@ type OrphanedImage struct {
 	RelativePath string
 	Size         int64
 	ModifiedAt   string
+}
+
+type DataQualityIssue struct {
+	PersonRecordID int64
+	DisplayID      string
+	Name           string
+	EntryType      string
+	Group          string
+	Code           string
+	Severity       string
+	Summary        string
+	Detail         string
+}
+
+type DataQualityIssueGroup struct {
+	Group  string
+	Count  int
+	Issues []DataQualityIssue
+}
+
+type DataQualityScanResult struct {
+	Mode           string
+	ScannedRecords int
+	IssueCount     int
+	Groups         []DataQualityIssueGroup
+}
+
+type DataQualityApplyResult struct {
+	Selected       int
+	Flagged        int
+	AlreadyInQueue int
+	NotFound       int
 }
 
 type UpdateSettings struct {

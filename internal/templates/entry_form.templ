@@ -803,6 +803,26 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 				</form>
 				<div id="settings-orphan-results" class="space-y-3"></div>
 			</div>
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
+					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
+				</div>
+				<form hx-post="/settings/quality/scan" hx-target="#settings-quality-results" class="space-y-4">
+					<div class="responsive-two-col grid gap-4">
+						<label class="inline-flex items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-white/70 px-4 py-3 text-sm text-slate-700">
+							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+							<span><strong>High-Confidence</strong> (recommended)</span>
+						</label>
+						<label class="inline-flex items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-white/70 px-4 py-3 text-sm text-slate-700">
+							<input type="radio" name="quality_mode" value="advanced" class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+							<span><strong>Advanced</strong> (broader checks)</span>
+						</label>
+					</div>
+					<button type="submit" class="secondary-button w-full sm:w-auto">Run Data Quality Scan</button>
+				</form>
+				<div id="settings-quality-results" class="space-y-3"></div>
+			</div>
 		</div>
 	}
 }
@@ -941,6 +961,49 @@ templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
 			No orphaned images were moved.
 		} else {
 			Moved <strong>{ fmt.Sprintf("%d", moved) }</strong> orphaned image file(s) to <code>{ trashRoot }</code>.
+		}
+	</div>
+}
+
+templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
+	<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-700">
+		Scanned <strong>{ fmt.Sprintf("%d", result.ScannedRecords) }</strong> person record(s) in <strong>{ result.Mode }</strong> mode and found <strong>{ fmt.Sprintf("%d", result.IssueCount) }</strong> issue(s).
+	</div>
+	if len(result.Groups) == 0 {
+		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-[rgba(242,252,244,0.95)] px-4 py-3 text-sm text-[#29522d]">No obvious issues were found in this run.</div>
+	} else {
+		<form hx-post="/settings/quality/apply" hx-target="#settings-quality-results" class="space-y-3">
+			for _, group := range result.Groups {
+				<details class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(246,241,228,0.72)]">
+					<summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">{ group.Group } ({ fmt.Sprintf("%d", group.Count) })</summary>
+					<div class="max-h-72 space-y-2 overflow-auto px-3 pb-3">
+						for _, issue := range group.Issues {
+							<label class="block rounded-xl border border-[rgba(141,116,64,0.2)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+								<div class="flex items-start gap-3">
+									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+									<div class="min-w-0">
+										<div class="font-medium">{ issue.DisplayID } · { issue.Name }</div>
+										<div class="mt-1 text-xs text-slate-500">{ issue.Summary }</div>
+										if strings.TrimSpace(issue.Detail) != "" {
+											<div class="mt-1 text-xs text-slate-500">{ issue.Detail }</div>
+										}
+									</div>
+								</div>
+							</label>
+						}
+					</div>
+				</details>
+			}
+			<button type="submit" class="primary-button w-full sm:w-auto">Move Selected to Review Queue</button>
+		</form>
+	}
+}
+
+templ SettingsQualityScanApplyResult(result viewmodel.DataQualityApplyResult) {
+	<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-700">
+		Selected <strong>{ fmt.Sprintf("%d", result.Selected) }</strong> finding(s). Moved <strong>{ fmt.Sprintf("%d", result.Flagged) }</strong> record(s) to Review Queue; <strong>{ fmt.Sprintf("%d", result.AlreadyInQueue) }</strong> were already queued.
+		if result.NotFound > 0 {
+			<span> { fmt.Sprintf("%d", result.NotFound) } selected record(s) were not found.</span>
 		}
 	</div>
 }
