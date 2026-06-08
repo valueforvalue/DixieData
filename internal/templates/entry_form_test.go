@@ -58,11 +58,20 @@ func TestEntryFormEditIncludesDraftVersionAndStaleDraftControls(t *testing.T) {
 	content := buf.String()
 	for _, needle := range []string{
 		`data-draft-record-version="2026-06-07T18:00:00Z|42"`,
+		`data-draft-reset-path="/soldiers/42/edit"`,
 		`data-record-persistence-preview`,
 		`data-record-persistence-preview-list`,
 		`data-reapply-stale-draft`,
+		`data-clear-draft-trigger="base"`,
+		`data-clear-draft-confirm="base"`,
+		`data-clear-draft-trigger="stale"`,
+		`data-clear-draft-confirm="stale"`,
+		`data-undo-cleared-draft`,
 		"Review older saved local changes",
 		"Reapply older saved local changes",
+		"Delete saved local draft",
+		"Confirm delete",
+		"Undo delete",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("entry form missing stale draft affordance %s", needle)

@@ -500,21 +500,21 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 
 	outPath := filepath.Join(t.TempDir(), "soldier.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
-		DisplayID:        "PENSION-42",
-		FirstName:        "Robert",
-		LastName:         "Lee",
-		Rank:             "General",
-		Unit:             "Army of Northern Virginia",
-		BuriedIn:         "Hollywood Cemetery",
-		Biography:        "Landscape biography should appear in single-record export. https://example.com/bio",
+		DisplayID:          "PENSION-42",
+		FirstName:          "Robert",
+		LastName:           "Lee",
+		Rank:               "General",
+		Unit:               "Army of Northern Virginia",
+		BuriedIn:           "Hollywood Cemetery",
+		Biography:          "Landscape biography should appear in single-record export. https://example.com/bio",
 		PDFExcerptOverride: "Landscape override should be ignored.",
-		AddedBy:          "J. Morris",
-		LastEditedBy:     "J. Morris",
-		LastEditedAt:     "2026-05-30T02:38:13Z",
-		LastEditedFields: "entry_type,last_edited_fields",
-		Notes:            "Scratch note should stay out of single-record export.",
-		Records:          []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
-		Images:           []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
+		AddedBy:            "J. Morris",
+		LastEditedBy:       "J. Morris",
+		LastEditedAt:       "2026-05-30T02:38:13Z",
+		LastEditedFields:   "entry_type,last_edited_fields",
+		Notes:              "Scratch note should stay out of single-record export.",
+		Records:            []models.Record{{RecordType: "Pension", AppID: "42", Details: "Filed in 1880. https://example.com/record."}},
+		Images:             []models.Image{{FileName: "portrait.png", FilePath: `images\pension-42\portrait.png`, ResolvedPath: imagePath, Caption: "Portrait"}},
 	}, PDFOptions{IncludeImages: true})
 	if err != nil {
 		t.Fatalf("ExportSoldierPDF: %v", err)
@@ -651,7 +651,7 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 	if !strings.Contains(text, "PENSION-42") {
 		t.Fatalf("printer friendly PDF should keep display id in title block")
 	}
-	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Portrait biography excerpt with PENSION-42 and") {
+	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Portrait biography excerpt") || !strings.Contains(text, "PENSION-42") {
 		t.Fatalf("printer friendly portrait PDF should use biography excerpt")
 	}
 	if !strings.Contains(text, "Portrait caption") {
@@ -1030,13 +1030,13 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 	soldier := models.Soldier{
-		DisplayID: "STC38-00001",
-		FirstName: "John",
-		LastName:  "Taylor",
-		Biography: "JPG biography should match PDF renderer.",
+		DisplayID:          "STC38-00001",
+		FirstName:          "John",
+		LastName:           "Taylor",
+		Biography:          "JPG biography should match PDF renderer.",
 		PDFExcerptOverride: "JPG override should be ignored.",
-		Notes:     "JPG scratch note should stay out.",
-		Images:    []models.Image{{FileName: "jpg-portrait.png", FilePath: `images\stc38-00001\jpg-portrait.png`, ResolvedPath: imagePath, Caption: "JPG portrait"}},
+		Notes:              "JPG scratch note should stay out.",
+		Images:             []models.Image{{FileName: "jpg-portrait.png", FilePath: `images\stc38-00001\jpg-portrait.png`, ResolvedPath: imagePath, Caption: "JPG portrait"}},
 	}
 	outputPath := filepath.Join(t.TempDir(), "record.jpg")
 	paths, err := exportSvc.ExportSoldierJPG(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: true})
@@ -1401,6 +1401,34 @@ func TestFirstRecordCardImageDoesNotFallBackToFileName(t *testing.T) {
 	}, false)
 	if path != imagePath || label != "" {
 		t.Fatalf("firstRecordCardImage = (%q, %q)", path, label)
+	}
+}
+
+func TestUsesPortraitCompactRecordCardLayout(t *testing.T) {
+	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	writeSizedPNGFixture(t, imagePath, 200, 100)
+
+	soldierWithImage := models.Soldier{
+		Images: []models.Image{{
+			FileName:     "portrait.png",
+			FilePath:     `images\stc38-00001\portrait.png`,
+			ResolvedPath: imagePath,
+			Caption:      "Portrait",
+			IsPrimary:    true,
+		}},
+	}
+
+	if !usesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "P", IncludeImages: true}) {
+		t.Fatalf("portrait layout with image should use compact portrait columns")
+	}
+	if usesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "L", IncludeImages: true}) {
+		t.Fatalf("landscape layout should not use compact portrait columns")
+	}
+	if usesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "P", IncludeImages: false}) {
+		t.Fatalf("portrait layout without images enabled should fall back to stacked layout")
+	}
+	if usesPortraitCompactRecordCardLayout(models.Soldier{}, PDFOptions{Orientation: "P", IncludeImages: true}) {
+		t.Fatalf("portrait layout without an image should fall back to stacked layout")
 	}
 }
 

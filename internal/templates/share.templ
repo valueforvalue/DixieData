@@ -192,6 +192,15 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
 								<h3 class="mt-2 text-xl gold font-bold">Configure the archive layout</h3>
 								<p class="mt-2 text-sm text-slate-600">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p>
+								<details class="mt-3 inline-block">
+									<summary class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</summary>
+									<div class="mt-2 w-full max-w-md rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/90 p-4 text-xs leading-5 text-slate-600 shadow-[0_18px_32px_rgba(23,33,43,0.12)]">
+										<p class="font-semibold text-[#22303d]">Which export should I choose?</p>
+										<p class="mt-2"><strong>Single-record portrait</strong> is best when you want one person's image with a short biography excerpt.</p>
+										<p class="mt-2"><strong>Single-record landscape</strong> is best when you want a concise first page plus the full biography on page 2.</p>
+										<p class="mt-2"><strong>Full database printable PDF</strong> creates a landscape archive-wide report using scope, filters, sorting, and grouping instead of one person at a time.</p>
+									</div>
+								</details>
 							</div>
 							<button type="button" data-print-config-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
 						</div>

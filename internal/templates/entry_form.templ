@@ -115,6 +115,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			hx-target="body"
 			enctype="multipart/form-data"
 			data-record-persistence-kind={ draftMode(isEdit) }
+			data-draft-reset-path={ draftResetPath(s, isEdit) }
 			class="card rounded-3xl p-5 sm:p-8 space-y-5"
 		>
 			<input type="hidden" name="existing_needs_review" value={ boolFlag(s.NeedsReview) }/>
@@ -129,21 +130,43 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<strong class="font-semibold" data-record-persistence-heading>{ recordPersistenceHeading(isEdit) }</strong>
 						<span class="ml-2" data-record-persistence-message>{ recordPersistenceMessage(isEdit) }</span>
 					</div>
-					<button
-						type="button"
-						class="secondary-button whitespace-nowrap"
-						data-clear-draft
-						data-clear-draft-path={ draftResetPath(s, isEdit) }
-					>
-						Discard local draft
-					</button>
+					<div class="flex flex-col items-stretch gap-2 sm:items-end">
+						<button
+							type="button"
+							class="secondary-button hidden whitespace-nowrap"
+							data-clear-draft-trigger="base"
+						>
+							Delete saved local draft
+						</button>
+						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]">
+							<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
+							<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
+								<button type="button" class="danger-button w-full sm:w-auto" data-confirm-clear-draft="base">Confirm delete</button>
+								<button type="button" class="secondary-button w-full sm:w-auto" data-cancel-clear-draft="base">Cancel</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div data-cleared-draft-undo class="mt-4 hidden rounded-2xl border border-emerald-700/30 bg-white/70 p-4 text-sm text-emerald-950">
+					<p>Saved local draft deleted. You can undo that while this tab stays open.</p>
+					<div class="mt-3">
+						<button type="button" class="secondary-button" data-undo-cleared-draft>Undo delete</button>
+					</div>
 				</div>
 				<div data-record-persistence-preview class="mt-4 hidden rounded-2xl border border-amber-700/30 bg-white/70 p-4">
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-900" data-record-persistence-preview-title>Review older saved local changes</p>
 					<p class="mt-2 text-sm text-amber-950" data-record-persistence-preview-message></p>
 					<ul class="mt-3 space-y-2 text-sm text-amber-950" data-record-persistence-preview-list></ul>
-					<div class="mt-4">
+					<div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 						<button type="button" class="secondary-button hidden" data-reapply-stale-draft>Reapply older saved local changes</button>
+						<button type="button" class="secondary-button hidden" data-clear-draft-trigger="stale">Delete saved local draft</button>
+					</div>
+					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]">
+						<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
+						<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
+							<button type="button" class="danger-button w-full sm:w-auto" data-confirm-clear-draft="stale">Confirm delete</button>
+							<button type="button" class="secondary-button w-full sm:w-auto" data-cancel-clear-draft="stale">Cancel</button>
+						</div>
 					</div>
 				</div>
 			</div>

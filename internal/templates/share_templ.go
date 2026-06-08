@@ -189,14 +189,14 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"share-print-config-form\" hx-post=\"/export/database-pdf\" hx-target=\"#share-status\" data-pdf-pref-scope=\"archive\" class=\"space-y-6\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Printable Export Settings</p><h3 class=\"mt-2 text-xl gold font-bold\">Configure the archive layout</h3><p class=\"mt-2 text-sm text-slate-600\">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p></div><button type=\"button\" data-print-config-close class=\"secondary-button w-full px-4 sm:w-auto\">Close</button></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Export Scope</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"all\" checked data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">All records</strong><br><span class=\"text-slate-500\">Export the full archive without applying structured filters.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"filtered\" data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Filtered records</strong><br><span class=\"text-slate-500\">Filter by burial location, entry type, unit, pension state, and Confederate Home status. If no filters are selected, export falls back to all records.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"selected\" data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Manually selected records</strong><br><span class=\"text-slate-500\">Choose an explicit subset by display ID or person name.</span></span></label><div data-print-filter-panel class=\"space-y-4 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Burial Location</p><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440] mt-3\">Search burial locations <input type=\"search\" placeholder=\"Type a cemetery or location\" data-print-buried-filter class=\"mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"></label><div class=\"mt-3 max-h-44 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><label data-print-buried-option data-print-buried-search=\"location unknown\" class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_buried_in\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<form id=\"share-print-config-form\" hx-post=\"/export/database-pdf\" hx-target=\"#share-status\" data-pdf-pref-scope=\"archive\" class=\"space-y-6\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Printable Export Settings</p><h3 class=\"mt-2 text-xl gold font-bold\">Configure the archive layout</h3><p class=\"mt-2 text-sm text-slate-600\">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p><details class=\"mt-3 inline-block\"><summary class=\"inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]\">?</summary><div class=\"mt-2 w-full max-w-md rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/90 p-4 text-xs leading-5 text-slate-600 shadow-[0_18px_32px_rgba(23,33,43,0.12)]\"><p class=\"font-semibold text-[#22303d]\">Which export should I choose?</p><p class=\"mt-2\"><strong>Single-record portrait</strong> is best when you want one person's image with a short biography excerpt.</p><p class=\"mt-2\"><strong>Single-record landscape</strong> is best when you want a concise first page plus the full biography on page 2.</p><p class=\"mt-2\"><strong>Full database printable PDF</strong> creates a landscape archive-wide report using scope, filters, sorting, and grouping instead of one person at a time.</p></div></details></div><button type=\"button\" data-print-config-close class=\"secondary-button w-full px-4 sm:w-auto\">Close</button></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3\"><div class=\"text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]\">Export Scope</div><label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"all\" checked data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">All records</strong><br><span class=\"text-slate-500\">Export the full archive without applying structured filters.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"filtered\" data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Filtered records</strong><br><span class=\"text-slate-500\">Filter by burial location, entry type, unit, pension state, and Confederate Home status. If no filters are selected, export falls back to all records.</span></span></label> <label class=\"flex items-start gap-3 text-sm text-slate-700\"><input type=\"radio\" name=\"scope\" value=\"selected\" data-print-scope-value class=\"mt-1 h-4 w-4 accent-[#8d7440]\"> <span><strong class=\"text-[#22303d]\">Manually selected records</strong><br><span class=\"text-slate-500\">Choose an explicit subset by display ID or person name.</span></span></label><div data-print-filter-panel class=\"space-y-4 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4\"><div><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">Burial Location</p><label class=\"block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440] mt-3\">Search burial locations <input type=\"search\" placeholder=\"Type a cemetery or location\" data-print-buried-filter class=\"mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700\"></label><div class=\"mt-3 max-h-44 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3\"><label data-print-buried-option data-print-buried-search=\"location unknown\" class=\"flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700\"><input type=\"checkbox\" name=\"filter_buried_in\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 221, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 230, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -214,7 +214,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(strings.ToLower(value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 225, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 234, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -227,7 +227,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 226, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 235, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {
@@ -240,7 +240,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 227, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 236, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -258,7 +258,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 236, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 245, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -276,7 +276,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 241, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 250, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -289,7 +289,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionEntryTypeLabel(value))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 242, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 251, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -307,7 +307,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 249, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 258, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -325,7 +325,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 254, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 263, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -338,7 +338,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 255, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 264, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
@@ -356,7 +356,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 262, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 271, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -374,7 +374,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 267, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 276, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -387,7 +387,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 268, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 277, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -405,7 +405,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(exportFilterUnknownValue)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 275, Col: 104}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 284, Col: 104}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -423,7 +423,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var20 string
 				templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 280, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 289, Col: 86}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 				if templ_7745c5c3_Err != nil {
@@ -436,7 +436,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var21 string
 				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 281, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 290, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
@@ -459,7 +459,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var22 string
 				templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionSearchText(record))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 295, Col: 105}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 304, Col: 105}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 				if templ_7745c5c3_Err != nil {
@@ -472,7 +472,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var23 string
 				templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", record.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 296, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 305, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 				if templ_7745c5c3_Err != nil {
@@ -485,7 +485,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(exportRecordOptionLabel(record))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 297, Col: 50}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 306, Col: 50}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -508,7 +508,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(conflicts)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 372, Col: 321}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 381, Col: 321}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -526,7 +526,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var26 string
 					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.ConflictType)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 377, Col: 95}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 386, Col: 95}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {
@@ -539,7 +539,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var27 string
 					templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingDisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 378, Col: 78}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 387, Col: 78}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 					if templ_7745c5c3_Err != nil {
@@ -552,7 +552,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var28 string
 					templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.Reason)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 379, Col: 64}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 388, Col: 64}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 					if templ_7745c5c3_Err != nil {
@@ -570,7 +570,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var29 string
 						templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.DisplayID)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 386, Col: 81}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 395, Col: 81}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 						if templ_7745c5c3_Err != nil {
@@ -583,7 +583,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var30 string
 						templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(*conflict.LocalRecord))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 386, Col: 124}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 395, Col: 124}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 						if templ_7745c5c3_Err != nil {
@@ -601,7 +601,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 							var templ_7745c5c3_Var31 string
 							templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(*conflict.LocalRecord))
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 388, Col: 89}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 397, Col: 89}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 							if templ_7745c5c3_Err != nil {
@@ -619,7 +619,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var32 string
 						templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.EntryType)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 392, Col: 54}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 401, Col: 54}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 						if templ_7745c5c3_Err != nil {
@@ -632,7 +632,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var33 string
 						templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.PensionID)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 393, Col: 57}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 402, Col: 57}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 						if templ_7745c5c3_Err != nil {
@@ -645,7 +645,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var34 string
 						templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.ApplicationID)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 394, Col: 65}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 403, Col: 65}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 						if templ_7745c5c3_Err != nil {
@@ -658,7 +658,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var35 string
 						templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.DeathDate)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 395, Col: 55}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 404, Col: 55}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 						if templ_7745c5c3_Err != nil {
@@ -676,7 +676,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 							var templ_7745c5c3_Var36 string
 							templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.LocalRecord.Notes)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 398, Col: 78}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 407, Col: 78}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 							if templ_7745c5c3_Err != nil {
@@ -700,7 +700,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var37 string
 					templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.DisplayID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 407, Col: 83}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 416, Col: 83}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 					if templ_7745c5c3_Err != nil {
@@ -713,7 +713,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var38 string
 					templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(conflict.IncomingRecord))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 407, Col: 128}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 416, Col: 128}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 					if templ_7745c5c3_Err != nil {
@@ -731,7 +731,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var39 string
 						templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(conflict.IncomingRecord))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 409, Col: 90}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 418, Col: 90}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 						if templ_7745c5c3_Err != nil {
@@ -749,7 +749,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var40 string
 					templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.EntryType)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 413, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 422, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 					if templ_7745c5c3_Err != nil {
@@ -762,7 +762,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var41 string
 					templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.PensionID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 414, Col: 59}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 423, Col: 59}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 					if templ_7745c5c3_Err != nil {
@@ -775,7 +775,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var42 string
 					templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.ApplicationID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 415, Col: 67}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 424, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 					if templ_7745c5c3_Err != nil {
@@ -788,7 +788,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var43 string
 					templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.DeathDate)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 416, Col: 57}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 425, Col: 57}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 					if templ_7745c5c3_Err != nil {
@@ -806,7 +806,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var44 string
 						templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(conflict.IncomingRecord.Notes)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 419, Col: 80}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 428, Col: 80}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 						if templ_7745c5c3_Err != nil {
@@ -824,7 +824,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var45 string
 					templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 424, Col: 106}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 433, Col: 106}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 					if templ_7745c5c3_Err != nil {
@@ -837,7 +837,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					var templ_7745c5c3_Var46 string
 					templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 427, Col: 107}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 436, Col: 107}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 					if templ_7745c5c3_Err != nil {
@@ -855,7 +855,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 						var templ_7745c5c3_Var47 string
 						templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 431, Col: 106}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 440, Col: 106}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 						if templ_7745c5c3_Err != nil {
@@ -898,7 +898,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelExportGoogle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 445, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 454, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {
@@ -924,7 +924,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var49 string
 				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(status.SharedClientSource)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 452, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 461, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 				if templ_7745c5c3_Err != nil {
