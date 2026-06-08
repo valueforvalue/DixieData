@@ -29,10 +29,17 @@ const (
 	googleDefaultsFile     = "google-oauth-defaults.json"
 	googleSettingsFile     = "google-settings.json"
 	googleTokenFile        = "google-token.json"
+	managedCalendarName    = "DixieData"
+	testCalendarName       = "DixieData Test"
 )
 
 type GoogleCalendarSyncState struct {
-	EventIDs map[string]string `json:"event_ids"`
+	CalendarID         string            `json:"calendar_id,omitempty"`
+	EventIDs           map[string]string `json:"event_ids"`
+	LastSyncedAt       string            `json:"last_synced_at,omitempty"`
+	LastSyncSignatures map[string]string `json:"last_sync_signatures,omitempty"`
+	TestCalendarID     string            `json:"test_calendar_id,omitempty"`
+	TestEventIDs       map[string]string `json:"test_event_ids,omitempty"`
 }
 
 type GoogleDriveUploadResult struct {
@@ -50,6 +57,14 @@ type GoogleCalendarSyncResult struct {
 
 type GoogleCalendarUnsyncResult struct {
 	Deleted int
+}
+
+type GoogleCalendarDriftStatus struct {
+	LastSyncedAt string
+	Added        int
+	Updated      int
+	Removed      int
+	OutOfSync    bool
 }
 
 type GoogleService struct {
@@ -70,6 +85,10 @@ func (g *GoogleService) Status() (models.GoogleStatus, error) {
 		return models.GoogleStatus{}, err
 	}
 	token, _ := g.loadToken()
+	syncState, err := g.loadCalendarSyncState()
+	if err != nil {
+		return models.GoogleStatus{}, err
+	}
 	return models.GoogleStatus{
 		Settings:              settings,
 		Connected:             token != nil,
@@ -79,6 +98,9 @@ func (g *GoogleService) Status() (models.GoogleStatus, error) {
 		SharedClientAvailable: sharedClientAvailable,
 		SharedClientSource:    sharedClientSource,
 		UsingSharedClient:     usingSharedClient,
+		ManagedCalendarID:     strings.TrimSpace(effective.CalendarID),
+		TestCalendarID:        strings.TrimSpace(syncState.TestCalendarID),
+		LastSyncedAt:          strings.TrimSpace(syncState.LastSyncedAt),
 	}, nil
 }
 
@@ -220,6 +242,86 @@ func (g *GoogleService) Connect(ctx context.Context) error {
 		return err
 	}
 	return g.saveToken(token)
+}
+
+func (g *GoogleService) UseManagedCalendar(ctx context.Context) (string, bool, error) {
+	client, _, err := g.client(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	calSvc, err := gcal.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return "", false, err
+	}
+	calendarID, created, err := ensureOwnedCalendar(ctx, calSvc, managedCalendarName)
+	if err != nil {
+		return "", false, err
+	}
+	saved, err := g.loadSavedSettings()
+	if err != nil {
+		return "", false, err
+	}
+	saved.CalendarID = calendarID
+	if err := g.SaveSettings(saved); err != nil {
+		return "", false, err
+	}
+	return calendarID, created, nil
+}
+
+func (g *GoogleService) UseTestCalendar(ctx context.Context) (string, bool, error) {
+	client, _, err := g.client(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	calSvc, err := gcal.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return "", false, err
+	}
+	calendarID, created, err := ensureOwnedCalendar(ctx, calSvc, testCalendarName)
+	if err != nil {
+		return "", false, err
+	}
+	syncState, err := g.loadCalendarSyncState()
+	if err != nil {
+		return "", false, err
+	}
+	syncState.TestCalendarID = calendarID
+	if err := g.saveCalendarSyncState(syncState); err != nil {
+		return "", false, err
+	}
+	return calendarID, created, nil
+}
+
+func (g *GoogleService) CalendarDriftStatus(soldiers []models.Soldier) (GoogleCalendarDriftStatus, error) {
+	syncState, err := g.loadCalendarSyncState()
+	if err != nil {
+		return GoogleCalendarDriftStatus{}, err
+	}
+	last := syncState.LastSyncSignatures
+	if last == nil {
+		last = map[string]string{}
+	}
+	current := googleCalendarSignatureSnapshot(soldiers)
+	status := GoogleCalendarDriftStatus{
+		LastSyncedAt: strings.TrimSpace(syncState.LastSyncedAt),
+	}
+	for key, signature := range current {
+		lastSignature, found := last[key]
+		if !found {
+			status.Added++
+			continue
+		}
+		if strings.TrimSpace(lastSignature) != strings.TrimSpace(signature) {
+			status.Updated++
+		}
+	}
+	for key := range last {
+		if _, found := current[key]; !found {
+			status.Removed++
+		}
+	}
+	status.OutOfSync = status.Added > 0 || status.Updated > 0 || status.Removed > 0
+	return status, nil
 }
 
 func (g *GoogleService) UploadBackup(ctx context.Context, backupPath string) (GoogleDriveUploadResult, error) {
@@ -434,6 +536,9 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 		result.Deleted++
 	}
 
+	syncState.CalendarID = strings.TrimSpace(calendarID)
+	syncState.LastSyncedAt = time.Now().UTC().Format(time.RFC3339)
+	syncState.LastSyncSignatures = googleCalendarSignatureSnapshot(soldiers)
 	if err := g.saveCalendarSyncState(syncState); err != nil {
 		return GoogleCalendarSyncResult{}, err
 	}
@@ -499,7 +604,114 @@ func (g *GoogleService) UnsyncCalendar(ctx context.Context) (GoogleCalendarUnsyn
 		}
 		delete(syncState.EventIDs, displayID)
 	}
+	syncState.LastSyncedAt = time.Now().UTC().Format(time.RFC3339)
+	syncState.LastSyncSignatures = map[string]string{}
 
+	if err := g.saveCalendarSyncState(syncState); err != nil {
+		return GoogleCalendarUnsyncResult{}, err
+	}
+	return result, nil
+}
+
+func (g *GoogleService) SyncTestCalendar(ctx context.Context) (GoogleCalendarSyncResult, error) {
+	client, _, err := g.client(ctx)
+	if err != nil {
+		return GoogleCalendarSyncResult{}, err
+	}
+	calSvc, err := gcal.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return GoogleCalendarSyncResult{}, err
+	}
+	syncState, err := g.loadCalendarSyncState()
+	if err != nil {
+		return GoogleCalendarSyncResult{}, err
+	}
+	calendarID := strings.TrimSpace(syncState.TestCalendarID)
+	if calendarID == "" {
+		var created bool
+		calendarID, created, err = ensureOwnedCalendar(ctx, calSvc, testCalendarName)
+		if err != nil {
+			return GoogleCalendarSyncResult{}, err
+		}
+		_ = created
+		syncState.TestCalendarID = calendarID
+	}
+	if syncState.TestEventIDs == nil {
+		syncState.TestEventIDs = map[string]string{}
+	}
+
+	result := GoogleCalendarSyncResult{}
+	for _, synthetic := range syntheticTestEvents() {
+		event := synthetic.toCalendarEvent()
+		existingID := strings.TrimSpace(syncState.TestEventIDs[synthetic.Key])
+		if existingID != "" {
+			if _, err := calSvc.Events.Update(calendarID, existingID, event).Do(); err == nil {
+				result.Updated++
+				continue
+			} else if apiErr, ok := err.(*googleapi.Error); !ok || apiErr.Code != http.StatusNotFound {
+				return GoogleCalendarSyncResult{}, err
+			}
+		}
+		created, err := calSvc.Events.Insert(calendarID, event).Do()
+		if err != nil {
+			return GoogleCalendarSyncResult{}, err
+		}
+		syncState.TestEventIDs[synthetic.Key] = created.Id
+		result.Created++
+	}
+	if err := g.saveCalendarSyncState(syncState); err != nil {
+		return GoogleCalendarSyncResult{}, err
+	}
+	return result, nil
+}
+
+func (g *GoogleService) UnsyncTestCalendar(ctx context.Context) (GoogleCalendarUnsyncResult, error) {
+	client, _, err := g.client(ctx)
+	if err != nil {
+		return GoogleCalendarUnsyncResult{}, err
+	}
+	calSvc, err := gcal.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return GoogleCalendarUnsyncResult{}, err
+	}
+	syncState, err := g.loadCalendarSyncState()
+	if err != nil {
+		return GoogleCalendarUnsyncResult{}, err
+	}
+	calendarID := strings.TrimSpace(syncState.TestCalendarID)
+	if calendarID == "" {
+		return GoogleCalendarUnsyncResult{}, nil
+	}
+	result := GoogleCalendarUnsyncResult{}
+	deleted := map[string]struct{}{}
+	for key, eventID := range syncState.TestEventIDs {
+		if strings.TrimSpace(eventID) == "" {
+			delete(syncState.TestEventIDs, key)
+			continue
+		}
+		if err := deleteGoogleCalendarEvent(ctx, calSvc, calendarID, eventID); err != nil {
+			return GoogleCalendarUnsyncResult{}, err
+		}
+		deleted[eventID] = struct{}{}
+		delete(syncState.TestEventIDs, key)
+		result.Deleted++
+	}
+	if eventIDs, err := collectGoogleCalendarEventIDsForUnsync(ctx, calSvc, calendarID, func(call *gcal.EventsListCall) *gcal.EventsListCall {
+		return call.PrivateExtendedProperty("dixiedata_test=true")
+	}); err == nil {
+		for _, eventID := range eventIDs {
+			if _, seen := deleted[eventID]; seen || strings.TrimSpace(eventID) == "" {
+				continue
+			}
+			if err := deleteGoogleCalendarEvent(ctx, calSvc, calendarID, eventID); err != nil {
+				return GoogleCalendarUnsyncResult{}, err
+			}
+			deleted[eventID] = struct{}{}
+			result.Deleted++
+		}
+	} else {
+		return GoogleCalendarUnsyncResult{}, err
+	}
 	if err := g.saveCalendarSyncState(syncState); err != nil {
 		return GoogleCalendarUnsyncResult{}, err
 	}
@@ -748,7 +960,11 @@ func (g *GoogleService) loadCalendarSyncState() (GoogleCalendarSyncState, error)
 	path := filepath.Join(g.dataDir, googleCalendarSyncFile)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return GoogleCalendarSyncState{EventIDs: map[string]string{}}, nil
+			return GoogleCalendarSyncState{
+				EventIDs:           map[string]string{},
+				LastSyncSignatures: map[string]string{},
+				TestEventIDs:       map[string]string{},
+			}, nil
 		}
 		return GoogleCalendarSyncState{}, err
 	}
@@ -758,6 +974,12 @@ func (g *GoogleService) loadCalendarSyncState() (GoogleCalendarSyncState, error)
 	}
 	if state.EventIDs == nil {
 		state.EventIDs = map[string]string{}
+	}
+	if state.LastSyncSignatures == nil {
+		state.LastSyncSignatures = map[string]string{}
+	}
+	if state.TestEventIDs == nil {
+		state.TestEventIDs = map[string]string{}
 	}
 	return state, nil
 }
@@ -861,6 +1083,108 @@ func googleSoldierDisplayName(soldier models.Soldier) string {
 		return soldier.DisplayID
 	}
 	return name
+}
+
+func googleCalendarSignatureSnapshot(soldiers []models.Soldier) map[string]string {
+	snapshot := map[string]string{}
+	for _, soldier := range soldiers {
+		if soldier.DeathMonth < 1 || soldier.DeathDay < 1 {
+			continue
+		}
+		key := googleCalendarSyncKey(soldier)
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		snapshot[key] = googleCalendarSignature(soldier)
+	}
+	return snapshot
+}
+
+func googleCalendarSignature(soldier models.Soldier) string {
+	parts := []string{
+		strings.TrimSpace(soldier.SyncID),
+		strings.TrimSpace(soldier.DisplayID),
+		strings.TrimSpace(soldier.FirstName),
+		strings.TrimSpace(soldier.MiddleName),
+		strings.TrimSpace(soldier.LastName),
+		strings.TrimSpace(soldier.Prefix),
+		strings.TrimSpace(soldier.Rank),
+		strings.TrimSpace(soldier.Unit),
+		strings.TrimSpace(soldier.BuriedIn),
+		soldier.DeathDate,
+		fmt.Sprintf("%d-%d-%d", soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay),
+	}
+	return strings.Join(parts, "|")
+}
+
+func ensureOwnedCalendar(ctx context.Context, calSvc *gcal.Service, calendarName string) (string, bool, error) {
+	targetName := strings.TrimSpace(calendarName)
+	if targetName == "" {
+		return "", false, fmt.Errorf("calendar name is required")
+	}
+	pageToken := ""
+	for {
+		call := calSvc.CalendarList.List().
+			MinAccessRole("owner").
+			ShowHidden(true)
+		if strings.TrimSpace(pageToken) != "" {
+			call = call.PageToken(pageToken)
+		}
+		list, err := call.Context(ctx).Do()
+		if err != nil {
+			return "", false, err
+		}
+		for _, item := range list.Items {
+			if item == nil {
+				continue
+			}
+			if strings.EqualFold(strings.TrimSpace(item.Summary), targetName) && strings.TrimSpace(item.Id) != "" {
+				return strings.TrimSpace(item.Id), false, nil
+			}
+		}
+		if strings.TrimSpace(list.NextPageToken) == "" {
+			break
+		}
+		pageToken = list.NextPageToken
+	}
+	created, err := calSvc.Calendars.Insert(&gcal.Calendar{Summary: targetName}).Context(ctx).Do()
+	if err != nil {
+		return "", false, err
+	}
+	return strings.TrimSpace(created.Id), true, nil
+}
+
+type googleSyntheticEvent struct {
+	Key       string
+	Summary   string
+	OffsetDay int
+}
+
+func syntheticTestEvents() []googleSyntheticEvent {
+	return []googleSyntheticEvent{
+		{Key: "dixiedata-test-001", Summary: "DixieData TEST Event 1", OffsetDay: 1},
+		{Key: "dixiedata-test-002", Summary: "DixieData TEST Event 2", OffsetDay: 2},
+		{Key: "dixiedata-test-003", Summary: "DixieData TEST Event 3", OffsetDay: 3},
+	}
+}
+
+func (e googleSyntheticEvent) toCalendarEvent() *gcal.Event {
+	start := time.Now().AddDate(0, 0, e.OffsetDay).In(time.Local)
+	start = time.Date(start.Year(), start.Month(), start.Day(), 10, 0, 0, 0, time.Local)
+	end := start.Add(30 * time.Minute)
+	return &gcal.Event{
+		Summary:     e.Summary,
+		Description: "Synthetic DixieData test event. Safe to remove.",
+		Start:       &gcal.EventDateTime{DateTime: start.Format(time.RFC3339)},
+		End:         &gcal.EventDateTime{DateTime: end.Format(time.RFC3339)},
+		ExtendedProperties: &gcal.EventExtendedProperties{
+			Private: map[string]string{
+				"dixiedata_test": "true",
+				"dixiedata":      "true",
+				"dixiedata_key":  e.Key,
+			},
+		},
+	}
 }
 
 func randomOAuthState() (string, error) {

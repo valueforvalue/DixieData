@@ -361,6 +361,13 @@ func GoogleStatusFromModel(input models.GoogleStatus) GoogleStatus {
 		SharedClientAvailable: input.SharedClientAvailable,
 		SharedClientSource:    input.SharedClientSource,
 		UsingSharedClient:     input.UsingSharedClient,
+		ManagedCalendarID:     input.ManagedCalendarID,
+		TestCalendarID:        input.TestCalendarID,
+		LastSyncedAt:          input.LastSyncedAt,
+		OutOfSync:             input.OutOfSync,
+		DriftAdded:            input.DriftAdded,
+		DriftUpdated:          input.DriftUpdated,
+		DriftRemoved:          input.DriftRemoved,
 	}
 }
 

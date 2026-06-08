@@ -271,8 +271,12 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
 	mux.HandleFunc("/integrations/google/backup", a.handleGoogleBackup)
 	mux.HandleFunc("/integrations/google/sheets/export", a.handleGoogleSheetsExport)
-	mux.HandleFunc("/integrations/google/calendar/sync", a.handleGoogleCalendarSync)
-	mux.HandleFunc("/integrations/google/calendar/unsync", a.handleGoogleCalendarUnsync)
+	mux.HandleFunc("/integrations/google/calendar/use-managed", a.handleGoogleCalendarUseManaged)
+	mux.HandleFunc("/integrations/google/calendar/sync-managed", a.handleGoogleCalendarSyncManaged)
+	mux.HandleFunc("/integrations/google/calendar/unsync-managed", a.handleGoogleCalendarUnsyncManaged)
+	mux.HandleFunc("/integrations/google/calendar/use-test", a.handleGoogleCalendarUseTest)
+	mux.HandleFunc("/integrations/google/calendar/sync-test", a.handleGoogleCalendarSyncTest)
+	mux.HandleFunc("/integrations/google/calendar/unsync-test", a.handleGoogleCalendarUnsyncTest)
 	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
 	mux.HandleFunc("/images/rotate", a.handleImageRotate)
 	mux.HandleFunc("/open-link", a.handleOpenLink)
@@ -1197,6 +1201,16 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	drift, err := a.google.CalendarDriftStatus(exportRecords)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	status.LastSyncedAt = drift.LastSyncedAt
+	status.DriftAdded = drift.Added
+	status.DriftUpdated = drift.Updated
+	status.DriftRemoved = drift.Removed
+	status.OutOfSync = drift.OutOfSync
 	presentation.ShareView(status, conflicts, exportRecords).Render(r.Context(), w)
 }
 
@@ -2331,9 +2345,30 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
-func (a *App) handleGoogleCalendarSync(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleGoogleCalendarUseManaged(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	calendarID, created, err := a.google.UseManagedCalendar(r.Context())
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar setup failed: %v", err)
+		return
+	}
+	if created {
+		fmt.Fprintf(w, "Managed DixieData calendar created and selected (%s).", calendarID)
+		return
+	}
+	fmt.Fprintf(w, "Managed DixieData calendar selected (%s).", calendarID)
+}
+
+func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, _, err := a.google.UseManagedCalendar(r.Context()); err != nil {
+		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
 		return
 	}
 	settings, _, _, _, err := a.google.LoadEffectiveSettings()
@@ -2351,10 +2386,10 @@ func (a *App) handleGoogleCalendarSync(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
 		return
 	}
-	fmt.Fprintf(w, "Google Calendar synced: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped)
+	fmt.Fprintf(w, "DixieData Calendar synced: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped)
 }
 
-func (a *App) handleGoogleCalendarUnsync(w http.ResponseWriter, r *http.Request) {
+func (a *App) handleGoogleCalendarUnsyncManaged(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -2364,7 +2399,50 @@ func (a *App) handleGoogleCalendarUnsync(w http.ResponseWriter, r *http.Request)
 		fmt.Fprintf(w, "Google Calendar unsync failed: %v", err)
 		return
 	}
-	fmt.Fprintf(w, "Google Calendar unsynced: %d event(s) removed.", result.Deleted)
+	fmt.Fprintf(w, "DixieData Calendar unsynced: %d event(s) removed.", result.Deleted)
+}
+
+func (a *App) handleGoogleCalendarUseTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	calendarID, created, err := a.google.UseTestCalendar(r.Context())
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar test setup failed: %v", err)
+		return
+	}
+	if created {
+		fmt.Fprintf(w, "DixieData Test calendar created and selected (%s).", calendarID)
+		return
+	}
+	fmt.Fprintf(w, "DixieData Test calendar selected (%s).", calendarID)
+}
+
+func (a *App) handleGoogleCalendarSyncTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	result, err := a.google.SyncTestCalendar(r.Context())
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar test sync failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "DixieData Test sync complete: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped)
+}
+
+func (a *App) handleGoogleCalendarUnsyncTest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	result, err := a.google.UnsyncTestCalendar(r.Context())
+	if err != nil {
+		fmt.Fprintf(w, "Google Calendar test unsync failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "DixieData Test unsynced: %d event(s) removed.", result.Deleted)
 }
 
 func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64) {

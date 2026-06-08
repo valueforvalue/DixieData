@@ -170,3 +170,51 @@ func TestGoogleDriveUploadResultUsesSheetsLinkFallback(t *testing.T) {
 		t.Fatalf("WebViewLink = %q", result.WebViewLink)
 	}
 }
+
+func TestGoogleService_CalendarDriftStatusCountsAddedUpdatedRemoved(t *testing.T) {
+	service := NewGoogleService(t.TempDir())
+	baselineSame := models.Soldier{SyncID: "sync-b", DisplayID: "DXD-00002", FirstName: "Beta", LastName: "Same", DeathMonth: 5, DeathDay: 11}
+	if err := writeJSONFile(filepath.Join(service.dataDir, googleCalendarSyncFile), GoogleCalendarSyncState{
+		LastSyncedAt: "2026-06-08T18:00:00Z",
+		LastSyncSignatures: map[string]string{
+			"sync-a": "sig-a-old",
+			"sync-b": googleCalendarSignature(baselineSame),
+			"sync-c": "sig-c",
+		},
+	}); err != nil {
+		t.Fatalf("write sync state: %v", err)
+	}
+
+	status, err := service.CalendarDriftStatus([]models.Soldier{
+		{SyncID: "sync-a", DisplayID: "DXD-00001", FirstName: "Alpha", LastName: "Updated", DeathMonth: 5, DeathDay: 10},
+		{SyncID: "sync-b", DisplayID: "DXD-00002", FirstName: "Beta", LastName: "Same", DeathMonth: 5, DeathDay: 11},
+		{SyncID: "sync-new", DisplayID: "DXD-00003", FirstName: "Gamma", LastName: "Added", DeathMonth: 5, DeathDay: 12},
+	})
+	if err != nil {
+		t.Fatalf("CalendarDriftStatus: %v", err)
+	}
+	if status.LastSyncedAt != "2026-06-08T18:00:00Z" {
+		t.Fatalf("LastSyncedAt = %q", status.LastSyncedAt)
+	}
+	if status.Added != 1 || status.Updated != 1 || status.Removed != 1 || !status.OutOfSync {
+		t.Fatalf("status = %#v", status)
+	}
+}
+
+func TestSyntheticTestEventsProducesThreeDeterministicEntries(t *testing.T) {
+	events := syntheticTestEvents()
+	if len(events) != 3 {
+		t.Fatalf("len(events) = %d", len(events))
+	}
+	seen := map[string]struct{}{}
+	for _, event := range events {
+		if _, ok := seen[event.Key]; ok {
+			t.Fatalf("duplicate test event key %q", event.Key)
+		}
+		seen[event.Key] = struct{}{}
+		googleEvent := event.toCalendarEvent()
+		if googleEvent.ExtendedProperties == nil || googleEvent.ExtendedProperties.Private["dixiedata_test"] != "true" {
+			t.Fatalf("missing test marker: %#v", googleEvent.ExtendedProperties)
+		}
+	}
+}
