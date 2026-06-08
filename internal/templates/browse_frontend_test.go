@@ -345,8 +345,10 @@ Object.assign(global, {
   File,
   MutationObserver: class MutationObserver { observe() {} disconnect() {} },
   URLSearchParams,
-  fetch: async () => {
-    fetchCalls += 1;
+  fetch: async (url) => {
+    if (!url || !url.includes("bootstrap")) {
+      fetchCalls += 1;
+    }
     return {
       ok: true,
       redirected: false,
@@ -590,8 +592,10 @@ Object.assign(global, {
   File,
   MutationObserver: class MutationObserver { observe() {} disconnect() {} },
   URLSearchParams,
-  fetch: async () => {
-    fetchCalls += 1;
+  fetch: async (url) => {
+    if (!url || !url.includes("bootstrap")) {
+      fetchCalls += 1;
+    }
     return {
       ok: true,
       redirected: false,
