@@ -12,6 +12,7 @@
   const layoutModeStorageKey = "dixiedata.layout.mode";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
   const splitScreenBreakpointPx = 1000;
+  const recentSearchHydrationState = { token: 0 };
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const draftBaselines = new WeakMap();
   const staleDrafts = new WeakMap();
@@ -311,30 +312,53 @@
     saveRecentRecords(next);
   }
 
+  function quickSearchInput() {
+    const input = document.querySelector('input[name="q"][hx-get="/soldiers/search"]');
+    return input instanceof HTMLInputElement ? input : null;
+  }
+
+  function invalidateRecentSearchHydration() {
+    recentSearchHydrationState.token += 1;
+  }
+
   async function hydrateRecentSearchResults() {
     const emptyState = document.querySelector("[data-recent-records-empty]");
     const target = document.getElementById("soldier-list");
-    const queryInput = document.querySelector('input[name="q"][hx-get="/soldiers/search"]');
+    const queryInput = quickSearchInput();
     if (!(emptyState instanceof HTMLElement) || !(target instanceof HTMLElement) || !(queryInput instanceof HTMLInputElement)) {
       return;
     }
-    if (queryInput.value.trim() !== "") {
+    if (queryInput.value.trim() !== "" || document.activeElement === queryInput) {
       return;
     }
     const ids = loadRecentRecords();
     if (ids.length === 0) {
       return;
     }
+    const token = recentSearchHydrationState.token + 1;
+    recentSearchHydrationState.token = token;
     try {
       const response = await fetch(`/soldiers/search/recent?ids=${encodeURIComponent(ids.join(","))}`, {
         headers: {
           "X-Requested-With": "fetch",
         },
       });
-      if (!response.ok) {
+      if (!response.ok || recentSearchHydrationState.token !== token) {
         return;
       }
-      target.innerHTML = await response.text();
+      const html = await response.text();
+      if (recentSearchHydrationState.token !== token) {
+        return;
+      }
+      const liveQueryInput = quickSearchInput();
+      const liveTarget = document.getElementById("soldier-list");
+      if (!(liveQueryInput instanceof HTMLInputElement) || !(liveTarget instanceof HTMLElement)) {
+        return;
+      }
+      if (liveQueryInput.value.trim() !== "" || document.activeElement === liveQueryInput) {
+        return;
+      }
+      liveTarget.innerHTML = html;
       initializeDynamicContent();
     } catch (error) {
       // Leave the empty state in place if the recent list cannot be loaded.
@@ -3399,6 +3423,28 @@
 
   document.addEventListener("input", triggerInputRequest);
   document.addEventListener("change", triggerInputRequest);
+  document.addEventListener("focusin", (event) => {
+    if (event.target === quickSearchInput()) {
+      invalidateRecentSearchHydration();
+    }
+  });
+  document.addEventListener("input", (event) => {
+    if (event.target === quickSearchInput()) {
+      invalidateRecentSearchHydration();
+    }
+  });
+  document.addEventListener("focusout", (event) => {
+    if (event.target !== quickSearchInput()) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      const queryInput = quickSearchInput();
+      if (!(queryInput instanceof HTMLInputElement) || document.activeElement === queryInput) {
+        return;
+      }
+      hydrateRecentSearchResults();
+    });
+  });
   document.addEventListener("input", (event) => {
     const form = event.target.closest("form[data-draft-key]");
     if (form instanceof HTMLFormElement) {
