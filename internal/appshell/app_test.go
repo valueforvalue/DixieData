@@ -86,6 +86,25 @@ func TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux(t *testing.T) {
 	}
 }
 
+func TestAppServeHTTPStartupServesFrontendAssetsWithoutMux(t *testing.T) {
+	app := NewApp().WithFrontendAssets(os.DirFS(repoFixturePath(t, "frontend")))
+
+	req := httptest.NewRequest(http.MethodGet, "/app.js", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/javascript; charset=utf-8" {
+		t.Fatalf("content-type=%q", got)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "(() =>") {
+		t.Fatalf("expected frontend app.js body, got %q", body)
+	}
+}
+
 func TestAppServeHTTPRedirectsToRecoveryWhenPending(t *testing.T) {
 	app := NewApp()
 	app.pendingRecovery = &update.RestorePointRecord{ID: "restore-point-1"}

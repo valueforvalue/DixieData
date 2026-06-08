@@ -8,7 +8,7 @@ $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Get-DixieDataRoot -StartPath $scriptRoot
 
 Set-DixieDataBuildLocation -Root $root
-Invoke-DixieDataBuild -Root $root
+Invoke-DixieDataBuild -Root $root -AllowExampleOAuthDefaults
 
 $binDir = Get-DixieDataBuildBinDir -Root $root
 Write-Host "Release build ready:" (Join-Path $binDir "DixieData.exe")
