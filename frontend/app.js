@@ -1727,20 +1727,24 @@
       return;
     }
     const preview = target.querySelector("[data-record-persistence-preview]");
+    const previewTitle = target.querySelector("[data-record-persistence-preview-title]");
     const previewMessage = target.querySelector("[data-record-persistence-preview-message]");
     const previewList = target.querySelector("[data-record-persistence-preview-list]");
     const reapply = target.querySelector("[data-reapply-stale-draft]");
-    if (!(preview instanceof HTMLElement) || !(previewMessage instanceof HTMLElement) || !(previewList instanceof HTMLElement) || !(reapply instanceof HTMLElement)) {
+    if (!(preview instanceof HTMLElement) || !(previewTitle instanceof HTMLElement) || !(previewMessage instanceof HTMLElement) || !(previewList instanceof HTMLElement) || !(reapply instanceof HTMLElement)) {
       return;
     }
     if (!Array.isArray(entries) || entries.length === 0) {
       preview.classList.add("hidden");
+      previewTitle.textContent = "Review older saved local changes";
       previewMessage.textContent = "";
       previewList.innerHTML = "";
+      reapply.textContent = "Reapply older saved local changes";
       reapply.classList.add("hidden");
       return;
     }
     preview.classList.remove("hidden");
+    previewTitle.textContent = "Review older saved local changes";
     previewMessage.textContent = "Current form values are coming from the database. Reapplying will replace only the fields listed below with the saved local draft values.";
     previewList.innerHTML = "";
     entries.forEach((entry) => {
@@ -1760,6 +1764,7 @@
       item.appendChild(localValue);
       previewList.appendChild(item);
     });
+    reapply.textContent = "Reapply older saved local changes";
     reapply.classList.toggle("hidden", !showReapply);
   }
 
@@ -1770,13 +1775,15 @@
     }
     const headingNode = target.querySelector("[data-record-persistence-heading]");
     const messageNode = target.querySelector("[data-record-persistence-message]");
-    if (!(headingNode instanceof HTMLElement) || !(messageNode instanceof HTMLElement)) {
+    const clearDraftButton = target.querySelector("[data-clear-draft]");
+    if (!(headingNode instanceof HTMLElement) || !(messageNode instanceof HTMLElement) || !(clearDraftButton instanceof HTMLButtonElement)) {
       return;
     }
     const kind = target.getAttribute("data-record-persistence-kind") || "new";
     target.classList.remove("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900", "border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     let heading = "";
     let message = "";
+    let clearDraftLabel = "Discard local draft";
     renderRecordPersistencePreview(form, [], false);
     if (kind === "edit" && state === "clean") {
       heading = "Committed to database.";
@@ -1787,8 +1794,9 @@
       message = "Your current changes are cached in localStorage and have not been committed to the database yet.";
       target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     } else if (kind === "edit" && state === "stale") {
-      heading = "Saved local draft not applied.";
+      heading = "Older saved local draft not applied.";
       message = "This form is showing the current database values because the saved local draft is older than the database record.";
+      clearDraftLabel = "Delete saved local draft";
       target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
       renderRecordPersistencePreview(form, options.entries || [], true);
     } else {
@@ -1800,6 +1808,7 @@
     }
     headingNode.textContent = heading;
     messageNode.textContent = message;
+    clearDraftButton.textContent = clearDraftLabel;
   }
 
   function clearDraftForForm(form) {
