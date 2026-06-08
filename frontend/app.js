@@ -10,6 +10,7 @@
   const browseSelectionStorageKey = "dixiedata.browse.selection";
   const calendarAnniversaryDensityStorageKey = "dixiedata.calendar.anniversaryDensity";
   const layoutModeStorageKey = "dixiedata.layout.mode";
+  const updateBootstrapHealthSentKey = "dixiedata.updateBootstrapHealthSent";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
   const splitScreenBreakpointPx = 1000;
   const recentSearchHydrationState = { token: 0 };
@@ -147,6 +148,29 @@
     const normalized = mode === "relaxed" || mode === "split-screen" ? mode : "auto";
     saveJSONStorage(layoutModeStorageKey, normalized);
     return normalized;
+  }
+
+  function markUpdateBootstrapHealthy() {
+    if (window.location.pathname === "/recovery") {
+      return;
+    }
+    try {
+      if (window.sessionStorage.getItem(updateBootstrapHealthSentKey) === "1") {
+        return;
+      }
+      window.sessionStorage.setItem(updateBootstrapHealthSentKey, "1");
+    } catch (error) {
+      // Ignore storage errors and still attempt best-effort handshake.
+    }
+    fetch("/settings/updates/health/bootstrap", {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "DixieData",
+      },
+      keepalive: true,
+    }).catch(() => {
+      // Best-effort health handshake only.
+    });
   }
 
   function resolveResponsiveLayoutMode(preference) {
@@ -3147,6 +3171,7 @@
     hydrateRecentSearchResults();
     initializeBrowseView();
     openPrintConfigFromQuery();
+    markUpdateBootstrapHealthy();
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
