@@ -335,6 +335,16 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if a.mux == nil {
+		// During startup, serve bootstrap frontend assets directly so the initial
+		// index page can keep executing client bootstrap logic while routes warm up.
+		switch r.URL.Path {
+		case "/app.js":
+			a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
+			return
+		case "/app.css":
+			a.handleFrontendAsset("app.css", "text/css; charset=utf-8").ServeHTTP(w, r)
+			return
+		}
 		renderStartupPlaceholder(w, r)
 		return
 	}
