@@ -31,3 +31,24 @@ func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 		}
 	}
 }
+
+func TestShareViewKeepsResponsiveImportLayoutContract(t *testing.T) {
+	var buf bytes.Buffer
+	err := ShareView(viewmodel.GoogleStatus{}, nil, nil).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		`class="responsive-two-col relative grid gap-6"`,
+		`class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4"`,
+		`class="secondary-button justify-start text-left"`,
+		`Preview Memorial JSON Import (.json)`,
+		`id="share-status" class="responsive-span-2 md:col-span-2`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing responsive/split-screen contract %s", needle)
+		}
+	}
+}
