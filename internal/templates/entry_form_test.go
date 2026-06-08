@@ -61,7 +61,8 @@ func TestEntryFormEditIncludesDraftVersionAndStaleDraftControls(t *testing.T) {
 		`data-record-persistence-preview`,
 		`data-record-persistence-preview-list`,
 		`data-reapply-stale-draft`,
-		"Saved local draft review",
+		"Review older saved local changes",
+		"Reapply older saved local changes",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("entry form missing stale draft affordance %s", needle)
