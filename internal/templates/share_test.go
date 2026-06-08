@@ -23,6 +23,8 @@ func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 		"Single-record landscape",
 		"Full database printable PDF",
 		"Full Database Printable PDF Export",
+		"Preview Memorial JSON Import (.json)",
+		"dry-run analysis",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("share view missing export help content %s", needle)

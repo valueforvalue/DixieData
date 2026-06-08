@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "embed"
@@ -69,6 +70,8 @@ type App struct {
 	dataDir         string
 	scratchpads     scratchpadOpener
 	frontendAssets  fs.FS
+	previewMu       sync.Mutex
+	memorialPreview map[string]string
 }
 
 type scratchpadOpener interface {
@@ -259,6 +262,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/insights/report/pdf", a.handleExportInsightsPDF)
 	mux.HandleFunc("/import/backup", a.handleImportBackup)
 	mux.HandleFunc("/import/shared-archive", a.handleImportSharedArchive)
+	mux.HandleFunc("/import/memorial-json/preview", a.handlePreviewMemorialJSONImport)
+	mux.HandleFunc("/import/memorial-json/confirm", a.handleConfirmMemorialJSONImport)
 	mux.HandleFunc("/merge-review/", a.handleMergeReviewConflict)
 	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
 	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
@@ -1954,6 +1959,93 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 	)
 }
 
+func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Memorial archive JSON", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Memorial JSON import preview cancelled.")
+		return
+	}
+	preview, err := a.soldiers.PreviewMemorialArchive(path)
+	if err != nil {
+		fmt.Fprintf(w, "Memorial JSON preview failed: %v", err)
+		return
+	}
+	token, err := a.rememberMemorialPreview(path)
+	if err != nil {
+		fmt.Fprintf(w, "Memorial JSON preview failed: %v", err)
+		return
+	}
+	fmt.Fprint(w, memorialImportPreviewMarkup(preview, token))
+}
+
+func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+	token := strings.TrimSpace(r.FormValue("preview_token"))
+	path, ok := a.consumeMemorialPreview(token)
+	if !ok {
+		http.Error(w, "import preview expired. Run preview again.", http.StatusBadRequest)
+		return
+	}
+	summary, err := a.soldiers.ImportMemorialArchive(path)
+	if err != nil {
+		fmt.Fprintf(w, "Memorial JSON import failed: %v", err)
+		return
+	}
+	logPath, logErr := writeMemorialImportErrorLog(summary)
+	if logErr != nil {
+		fmt.Fprintf(w, "Memorial JSON import failed while writing error log: %v", logErr)
+		return
+	}
+	setToastHeader(w, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed.", summary.Created, summary.Skipped, summary.Failed))
+	fmt.Fprint(w, memorialImportSummaryMarkup(summary, logPath))
+}
+
+func (a *App) rememberMemorialPreview(path string) (string, error) {
+	token, err := db.NewSyncID()
+	if err != nil {
+		return "", err
+	}
+	a.previewMu.Lock()
+	if a.memorialPreview == nil {
+		a.memorialPreview = make(map[string]string)
+	}
+	a.memorialPreview[token] = strings.TrimSpace(path)
+	a.previewMu.Unlock()
+	return token, nil
+}
+
+func (a *App) consumeMemorialPreview(token string) (string, bool) {
+	trimmed := strings.TrimSpace(token)
+	if trimmed == "" {
+		return "", false
+	}
+	a.previewMu.Lock()
+	defer a.previewMu.Unlock()
+	if a.memorialPreview == nil {
+		return "", false
+	}
+	path, ok := a.memorialPreview[trimmed]
+	if ok {
+		delete(a.memorialPreview, trimmed)
+	}
+	return path, ok
+}
+
 func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -3174,6 +3266,106 @@ func parseRecordInputs(r *http.Request) []models.Record {
 		records = append(records, record)
 	}
 	return records
+}
+
+func memorialImportPreviewMarkup(preview records.MemorialImportPreview, token string) string {
+	confirm := fmt.Sprintf(
+		`<form hx-post="/import/memorial-json/confirm" hx-target="#share-status" class="mt-4"><input type="hidden" name="preview_token" value="%s"/><button class="primary-button" type="submit">Confirm Import</button></form>`,
+		html.EscapeString(strings.TrimSpace(token)),
+	)
+	return fmt.Sprintf(
+		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">
+<div class="font-semibold text-[#22303d]">Memorial JSON preview ready</div>
+<div class="mt-2">File: <code>%s</code></div>
+<div class="mt-1">Rows: %d · Would create: %d · Would skip: %d · Would fail: %d</div>
+%s%s
+</div>`,
+		html.EscapeString(strings.TrimSpace(preview.FilePath)),
+		preview.TotalRows,
+		preview.WouldCreate,
+		preview.WouldSkip,
+		preview.WouldFail,
+		memorialImportIssuesList(preview.Issues, ""),
+		confirm,
+	)
+}
+
+func memorialImportSummaryMarkup(summary records.MemorialImportSummary, logPath string) string {
+	reportLink := `<a href="/browse?scope=last_import&sort=created_desc" class="pill-link">Open Browse Last Import</a>`
+	logLine := ""
+	trimmedLog := strings.TrimSpace(logPath)
+	if trimmedLog != "" {
+		logLine = fmt.Sprintf(`<div class="mt-2 text-xs text-slate-500">Full error log: <code>%s</code></div>`, html.EscapeString(trimmedLog))
+	}
+	return fmt.Sprintf(
+		`<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.85)] px-4 py-3 text-sm text-slate-700">
+<div class="font-semibold text-[#22303d]">Memorial JSON import complete</div>
+<div class="mt-2">Rows: %d · Created: %d · Skipped: %d · Failed: %d</div>
+<div class="mt-2">%s</div>
+%s%s
+</div>`,
+		summary.TotalRows,
+		summary.Created,
+		summary.Skipped,
+		summary.Failed,
+		reportLink,
+		memorialImportIssuesList(summary.Issues, "first 20 errors"),
+		logLine,
+	)
+}
+
+func memorialImportIssuesList(issues []records.MemorialImportIssue, label string) string {
+	if len(issues) == 0 {
+		return ""
+	}
+	limit := 20
+	if len(issues) < limit {
+		limit = len(issues)
+	}
+	lines := make([]string, 0, limit)
+	for i := 0; i < limit; i++ {
+		issue := issues[i]
+		memorialID := strings.TrimSpace(issue.MemorialID)
+		if memorialID == "" {
+			memorialID = "unknown memorial_id"
+		}
+		name := strings.TrimSpace(issue.Name)
+		if name == "" {
+			name = "unnamed"
+		}
+		lines = append(lines, fmt.Sprintf(`<li>Row %d (%s / %s): %s</li>`,
+			issue.Row,
+			html.EscapeString(memorialID),
+			html.EscapeString(name),
+			html.EscapeString(issue.Error),
+		))
+	}
+	prefix := "Issues"
+	if strings.TrimSpace(label) != "" {
+		prefix = strings.TrimSpace(label)
+	}
+	return fmt.Sprintf(`<div class="mt-3 rounded-2xl border border-amber-700/40 bg-amber-50/80 px-3 py-2 text-xs text-amber-950"><div class="font-semibold">%s</div><ul class="mt-2 list-disc space-y-1 pl-5">%s</ul></div>`,
+		html.EscapeString(prefix),
+		strings.Join(lines, ""),
+	)
+}
+
+func writeMemorialImportErrorLog(summary records.MemorialImportSummary) (string, error) {
+	if len(summary.Issues) == 0 {
+		return "", nil
+	}
+	file, err := os.CreateTemp("", "dixiedata-memorial-import-*.log")
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	for _, issue := range summary.Issues {
+		_, err := fmt.Fprintf(file, "row=%d memorial_id=%q name=%q error=%q\n", issue.Row, issue.MemorialID, issue.Name, issue.Error)
+		if err != nil {
+			return "", err
+		}
+	}
+	return file.Name(), nil
 }
 
 func exportLinkMarkup(label, path string) string {
