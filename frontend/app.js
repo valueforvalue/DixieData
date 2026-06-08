@@ -2716,6 +2716,26 @@
     if (!(el instanceof HTMLElement)) {
       return;
     }
+
+    function setBusyGroupState(el, busy) {
+      if (!(el instanceof HTMLElement)) {
+        return;
+      }
+      const group = (el.getAttribute("data-busy-group") || "").trim();
+      if (!group) {
+        return;
+      }
+      const selector = `[data-busy-group="${group}"]`;
+      document.querySelectorAll(selector).forEach((member) => {
+        if (!(member instanceof HTMLElement)) {
+          return;
+        }
+        if (member === el) {
+          return;
+        }
+        setBusyState(member, busy);
+      });
+    }
     if (busy) {
       el.setAttribute("aria-busy", "true");
       if (el instanceof HTMLButtonElement) {
@@ -2776,6 +2796,7 @@
 
     showProgress(el);
     setBusyState(el, true);
+    setBusyGroupState(el, true);
     const requestState = {
       scrollX: window.scrollX,
       scrollY: window.scrollY,
@@ -2823,6 +2844,7 @@
       showToast("Request failed.", "error");
     } finally {
       setBusyState(el, false);
+      setBusyGroupState(el, false);
     }
   }
 

@@ -885,6 +885,9 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			<form hx-post="/settings/updates/check" hx-target="#settings-update-status" class="w-full sm:w-auto">
 				<button type="submit" class="secondary-button w-full sm:w-auto">Check for Updates</button>
 			</form>
+			<form hx-post="/export/backup" hx-target="#settings-update-status" class="w-full sm:w-auto">
+				<button type="submit" class="secondary-button w-full sm:w-auto">Export Backup (.ddbak)</button>
+			</form>
 			if state.CanApply {
 				<form hx-post="/settings/updates/apply" hx-target="#settings-update-status" class="w-full sm:w-auto">
 					<button type="submit" class="primary-button w-full sm:w-auto">Download and Apply Latest Update</button>

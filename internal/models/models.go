@@ -187,6 +187,13 @@ type GoogleStatus struct {
 	SharedClientAvailable bool
 	SharedClientSource    string
 	UsingSharedClient     bool
+	ManagedCalendarID     string
+	TestCalendarID        string
+	LastSyncedAt          string
+	OutOfSync             bool
+	DriftAdded            int
+	DriftUpdated          int
+	DriftRemoved          int
 }
 
 type MergeReviewConflict struct {

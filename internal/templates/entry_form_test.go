@@ -283,6 +283,49 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 	}
 }
 
+func TestShareViewUsesManagedGoogleCalendarActions(t *testing.T) {
+	var buf bytes.Buffer
+	err := ShareView(viewmodel.GoogleStatus{
+		Connected:         true,
+		ManagedCalendarID: "managed-123",
+		TestCalendarID:    "test-456",
+		LastSyncedAt:      "2026-06-08T20:00:00Z",
+		OutOfSync:         true,
+		DriftAdded:        2,
+		DriftUpdated:      1,
+		DriftRemoved:      3,
+	}, nil, nil).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	for _, needle := range []string{
+		"/integrations/google/calendar/use-managed",
+		"/integrations/google/calendar/sync-managed",
+		"/integrations/google/calendar/unsync-managed",
+		"/integrations/google/calendar/use-test",
+		"/integrations/google/calendar/sync-test",
+		"/integrations/google/calendar/unsync-test",
+		"Create/Use DixieData Calendar",
+		"Sync DixieData Calendar",
+		"Unsync DixieData Calendar",
+		"Create/Use DixieData Test Calendar",
+		"Test Sync",
+		"Test Unsync",
+		"Added 2 • Updated 1 • Removed 3",
+		"Out of sync",
+		`data-busy-group="google-calendar-actions"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing managed google calendar content: %s", needle)
+		}
+	}
+	if strings.Contains(content, "/integrations/google/calendar/sync\"") || strings.Contains(content, "Sync Google Calendar") {
+		t.Fatalf("share view should not render legacy generic calendar sync actions")
+	}
+}
+
 func TestInitialSetupViewHasSurfaceInventoryID(t *testing.T) {
 	var buf bytes.Buffer
 	err := InitialSetupView(viewmodel.InitialSetupForm{}).Render(context.Background(), &buf)
@@ -415,6 +458,8 @@ func TestSettingsViewIncludesSoftwareUpdatePanel(t *testing.T) {
 		"Software Updates",
 		"/settings/updates/source",
 		"/settings/updates/check",
+		"/export/backup",
+		"Export Backup (.ddbak)",
 		"/settings/updates/apply",
 		"Last update attempt failed",
 		"https://api.github.com/repos/valueforvalue/DixieData/releases/latest",

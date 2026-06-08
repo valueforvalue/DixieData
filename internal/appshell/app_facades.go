@@ -123,8 +123,13 @@ type integrationFacade interface {
 	UploadBackup(ctx context.Context, backupPath string) (integrations.GoogleDriveUploadResult, error)
 	UploadCSVAsSheet(ctx context.Context, csvPath, title string) (integrations.GoogleDriveUploadResult, error)
 	LoadEffectiveSettings() (models.GoogleSettings, bool, bool, string, error)
+	UseManagedCalendar(ctx context.Context) (string, bool, error)
+	UseTestCalendar(ctx context.Context) (string, bool, error)
+	CalendarDriftStatus(soldiers []models.Soldier) (integrations.GoogleCalendarDriftStatus, error)
 	SyncCalendar(ctx context.Context, settings models.GoogleSettings, soldiers []models.Soldier) (integrations.GoogleCalendarSyncResult, error)
 	UnsyncCalendar(ctx context.Context) (integrations.GoogleCalendarUnsyncResult, error)
+	SyncTestCalendar(ctx context.Context) (integrations.GoogleCalendarSyncResult, error)
+	UnsyncTestCalendar(ctx context.Context) (integrations.GoogleCalendarUnsyncResult, error)
 }
 
 type updaterFacade interface {
