@@ -2736,29 +2736,29 @@
     `;
   }
 
-  function setBusyState(el, busy) {
+  function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
     }
+    const group = (el.getAttribute("data-busy-group") || "").trim();
+    if (!group) {
+      return;
+    }
+    const selector = `[data-busy-group="${group}"]`;
+    document.querySelectorAll(selector).forEach((member) => {
+      if (!(member instanceof HTMLElement)) {
+        return;
+      }
+      if (member === el) {
+        return;
+      }
+      setBusyState(member, busy);
+    });
+  }
 
-    function setBusyGroupState(el, busy) {
-      if (!(el instanceof HTMLElement)) {
-        return;
-      }
-      const group = (el.getAttribute("data-busy-group") || "").trim();
-      if (!group) {
-        return;
-      }
-      const selector = `[data-busy-group="${group}"]`;
-      document.querySelectorAll(selector).forEach((member) => {
-        if (!(member instanceof HTMLElement)) {
-          return;
-        }
-        if (member === el) {
-          return;
-        }
-        setBusyState(member, busy);
-      });
+  function setBusyState(el, busy) {
+    if (!(el instanceof HTMLElement)) {
+      return;
     }
     if (busy) {
       el.setAttribute("aria-busy", "true");
