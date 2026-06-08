@@ -2,6 +2,7 @@
   const timers = new WeakMap();
   const redirectStateStorageKey = "dixiedata.redirectState";
   const toastStateStorageKey = "dixiedata.toastState";
+  const deletedDraftStateStorageKey = "dixiedata.deletedDraftState";
   const backStackStorageKey = "dixiedata.backStack";
   const recentRecordsStorageKey = "dixiedata.recentRecords";
   const browseStateStorageKey = "dixiedata.browse.state";
@@ -1438,6 +1439,13 @@
     return form.getAttribute("data-draft-record-version") || "";
   }
 
+  function draftResetPathForForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return "";
+    }
+    return form.getAttribute("data-draft-reset-path") || "";
+  }
+
   function isDraftableField(field) {
     if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
       return false;
@@ -1457,6 +1465,51 @@
     }
     const target = form.querySelector("[data-record-persistence]");
     return target instanceof HTMLElement ? target : null;
+  }
+
+  function loadDeletedDraftState() {
+    try {
+      const raw = window.sessionStorage.getItem(deletedDraftStateStorageKey);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function saveDeletedDraftState(state) {
+    try {
+      if (!state) {
+        window.sessionStorage.removeItem(deletedDraftStateStorageKey);
+        return;
+      }
+      window.sessionStorage.setItem(deletedDraftStateStorageKey, JSON.stringify(state));
+    } catch (error) {
+    }
+  }
+
+  function clearDeletedDraftState() {
+    try {
+      window.sessionStorage.removeItem(deletedDraftStateStorageKey);
+    } catch (error) {
+    }
+  }
+
+  function deletedDraftStateForForm(form) {
+    const state = loadDeletedDraftState();
+    if (!state || state.draftKey !== draftKeyForForm(form)) {
+      return null;
+    }
+    return state;
+  }
+
+  function clearDeletedDraftStateForForm(form) {
+    if (deletedDraftStateForForm(form)) {
+      clearDeletedDraftState();
+    }
   }
 
   function formRecordRowCount(form) {
@@ -1633,6 +1686,7 @@
         window.localStorage.removeItem(storageKey);
         return { hasDraft: false };
       }
+      clearDeletedDraftStateForForm(form);
       window.localStorage.setItem(storageKey, JSON.stringify(payload));
       return { hasDraft: true };
     } catch (error) {
@@ -1768,6 +1822,92 @@
     reapply.classList.toggle("hidden", !showReapply);
   }
 
+  function hideDraftDeleteConfirmation(form, scope, options = {}) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const normalized = scope === "stale" ? "stale" : "base";
+    const trigger = form.querySelector(`[data-clear-draft-trigger="${normalized}"]`);
+    const confirm = form.querySelector(`[data-clear-draft-confirm="${normalized}"]`);
+    if (trigger instanceof HTMLElement && options.restoreTrigger !== false) {
+      trigger.classList.remove("hidden");
+    }
+    if (confirm instanceof HTMLElement) {
+      confirm.classList.add("hidden");
+    }
+    if ((form.dataset.clearDraftConfirmScope || "") === normalized) {
+      delete form.dataset.clearDraftConfirmScope;
+    }
+  }
+
+  function showDraftDeleteConfirmation(form, scope) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const normalized = scope === "stale" ? "stale" : "base";
+    const trigger = form.querySelector(`[data-clear-draft-trigger="${normalized}"]`);
+    const confirm = form.querySelector(`[data-clear-draft-confirm="${normalized}"]`);
+    if (!(trigger instanceof HTMLElement) || !(confirm instanceof HTMLElement)) {
+      return;
+    }
+    form.dataset.clearDraftConfirmScope = normalized;
+    trigger.classList.add("hidden");
+    confirm.classList.remove("hidden");
+    const cancel = confirm.querySelector(`[data-cancel-clear-draft="${normalized}"]`);
+    if (cancel instanceof HTMLButtonElement) {
+      cancel.focus();
+    }
+  }
+
+  function resetDraftDeleteConfirmations(form) {
+    hideDraftDeleteConfirmation(form, "base", { restoreTrigger: false });
+    hideDraftDeleteConfirmation(form, "stale", { restoreTrigger: false });
+  }
+
+  function syncDraftDeleteControls(form, state) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const baseTrigger = form.querySelector('[data-clear-draft-trigger="base"]');
+    const staleTrigger = form.querySelector('[data-clear-draft-trigger="stale"]');
+    const staleReapply = form.querySelector("[data-reapply-stale-draft]");
+    if (baseTrigger instanceof HTMLElement) {
+      baseTrigger.classList.add("hidden");
+    }
+    if (staleTrigger instanceof HTMLElement) {
+      staleTrigger.classList.add("hidden");
+    }
+    if (staleReapply instanceof HTMLElement) {
+      staleReapply.classList.add("hidden");
+    }
+    resetDraftDeleteConfirmations(form);
+    if (state === "stale") {
+      if (staleTrigger instanceof HTMLElement) {
+        staleTrigger.classList.remove("hidden");
+      }
+      if (staleReapply instanceof HTMLElement) {
+        staleReapply.classList.remove("hidden");
+      }
+      return;
+    }
+    if (state === "dirty" || state === "restored") {
+      if (baseTrigger instanceof HTMLElement) {
+        baseTrigger.classList.remove("hidden");
+      }
+    }
+  }
+
+  function syncDeletedDraftUndo(form, visible) {
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const panel = form.querySelector("[data-cleared-draft-undo]");
+    if (!(panel instanceof HTMLElement)) {
+      return;
+    }
+    panel.classList.toggle("hidden", !visible);
+  }
+
   function setRecordPersistenceState(form, state, options = {}) {
     const target = recordPersistenceTarget(form);
     if (!(target instanceof HTMLElement)) {
@@ -1775,15 +1915,14 @@
     }
     const headingNode = target.querySelector("[data-record-persistence-heading]");
     const messageNode = target.querySelector("[data-record-persistence-message]");
-    const clearDraftButton = target.querySelector("[data-clear-draft]");
-    if (!(headingNode instanceof HTMLElement) || !(messageNode instanceof HTMLElement) || !(clearDraftButton instanceof HTMLButtonElement)) {
+    if (!(headingNode instanceof HTMLElement) || !(messageNode instanceof HTMLElement)) {
       return;
     }
     const kind = target.getAttribute("data-record-persistence-kind") || "new";
     target.classList.remove("border-emerald-700/40", "bg-emerald-50/80", "text-emerald-900", "border-amber-700/40", "bg-amber-50/80", "text-amber-900");
     let heading = "";
     let message = "";
-    let clearDraftLabel = "Discard local draft";
+    form.dataset.recordPersistenceState = state;
     renderRecordPersistencePreview(form, [], false);
     if (kind === "edit" && state === "clean") {
       heading = "Committed to database.";
@@ -1796,7 +1935,6 @@
     } else if (kind === "edit" && state === "stale") {
       heading = "Older saved local draft not applied.";
       message = "This form is showing the current database values because the saved local draft is older than the database record.";
-      clearDraftLabel = "Delete saved local draft";
       target.classList.add("border-amber-700/40", "bg-amber-50/80", "text-amber-900");
       renderRecordPersistencePreview(form, options.entries || [], true);
     } else {
@@ -1808,29 +1946,41 @@
     }
     headingNode.textContent = heading;
     messageNode.textContent = message;
-    clearDraftButton.textContent = clearDraftLabel;
+    syncDraftDeleteControls(form, state);
+    syncDeletedDraftUndo(form, Boolean(options.showUndo));
   }
 
-  function clearDraftForForm(form) {
+  function clearDraftForForm(form, options = {}) {
     const storageKey = draftStorageKeyForForm(form);
     if (!storageKey) {
       return;
     }
+    let savedDraft = null;
     try {
+      savedDraft = window.localStorage.getItem(storageKey);
       window.localStorage.removeItem(storageKey);
     } catch (error) {
     }
+    if (options.rememberDeleted && savedDraft) {
+      saveDeletedDraftState({
+        draftKey: draftKeyForForm(form),
+        payload: savedDraft,
+      });
+    } else if (!options.preserveDeletedState) {
+      clearDeletedDraftStateForForm(form);
+    }
     staleDrafts.delete(form);
-    setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty");
+    resetDraftDeleteConfirmations(form);
+    setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty", { showUndo: Boolean(options.rememberDeleted && savedDraft) });
   }
 
-  function discardDraftFromControl(control) {
+  function confirmDeleteDraftFromControl(control) {
     const form = ownerForm(control);
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    clearDraftForForm(form);
-    const resetPath = control.getAttribute("data-clear-draft-path");
+    clearDraftForForm(form, { rememberDeleted: true });
+    const resetPath = draftResetPathForForm(form);
     if (resetPath) {
       window.location.assign(resetPath);
     }
@@ -1911,9 +2061,10 @@
     const baseline = baselineStateForForm(form);
     const stored = readStoredDraft(form);
     if (!stored) {
-      setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty");
+      setRecordPersistenceState(form, draftKindForForm(form) === "edit" ? "clean" : "dirty", { showUndo: Boolean(deletedDraftStateForForm(form)) });
       return;
     }
+    clearDeletedDraftStateForForm(form);
     const effectiveSnapshot = stored.kind === "edit" ? mergeDraftSnapshot(baseline.fields, stored.fields) : cloneDraftSnapshot(stored.fields);
     if (stored.kind === "edit" && snapshotsEqual(baseline.fields, effectiveSnapshot)) {
       clearDraftForForm(form);
@@ -1946,6 +2097,26 @@
     staleDrafts.delete(form);
     const result = persistDraftForForm(form);
     setRecordPersistenceState(form, result.hasDraft ? "dirty" : "clean");
+  }
+
+  function undoDeletedDraftFromControl(control) {
+    const form = ownerForm(control);
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const deletedState = deletedDraftStateForForm(form);
+    const storageKey = draftStorageKeyForForm(form);
+    if (!deletedState || !storageKey || typeof deletedState.payload !== "string" || deletedState.payload.length === 0) {
+      syncDeletedDraftUndo(form, false);
+      return;
+    }
+    try {
+      window.localStorage.setItem(storageKey, deletedState.payload);
+      clearDeletedDraftState();
+      restoreDraftForForm(form);
+      showToast("Saved local draft restored.", "success");
+    } catch (error) {
+    }
   }
 
   function initializeDraftForms() {
@@ -3111,10 +3282,28 @@
       }
       return;
     }
-    const clearDraft = event.target.closest("[data-clear-draft]");
-    if (clearDraft instanceof HTMLElement) {
+    const clearDraftTrigger = event.target.closest("[data-clear-draft-trigger]");
+    if (clearDraftTrigger instanceof HTMLElement) {
       event.preventDefault();
-      discardDraftFromControl(clearDraft);
+      showDraftDeleteConfirmation(clearDraftTrigger.closest("form"), clearDraftTrigger.getAttribute("data-clear-draft-trigger"));
+      return;
+    }
+    const confirmClearDraft = event.target.closest("[data-confirm-clear-draft]");
+    if (confirmClearDraft instanceof HTMLElement) {
+      event.preventDefault();
+      confirmDeleteDraftFromControl(confirmClearDraft);
+      return;
+    }
+    const cancelClearDraft = event.target.closest("[data-cancel-clear-draft]");
+    if (cancelClearDraft instanceof HTMLElement) {
+      event.preventDefault();
+      hideDraftDeleteConfirmation(cancelClearDraft.closest("form"), cancelClearDraft.getAttribute("data-cancel-clear-draft"));
+      return;
+    }
+    const undoClearedDraft = event.target.closest("[data-undo-cleared-draft]");
+    if (undoClearedDraft instanceof HTMLElement) {
+      event.preventDefault();
+      undoDeletedDraftFromControl(undoClearedDraft);
       return;
     }
     const reapplyStaleDraft = event.target.closest("[data-reapply-stale-draft]");

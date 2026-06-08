@@ -511,139 +511,139 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" class=\"card rounded-3xl p-5 sm:p-8 space-y-5\"><input type=\"hidden\" name=\"existing_needs_review\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" data-draft-reset-path=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(boolFlag(s.NeedsReview))
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(draftResetPath(s, isEdit))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 120, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 118, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\"> <input type=\"hidden\" name=\"existing_review_reason\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" class=\"card rounded-3xl p-5 sm:p-8 space-y-5\"><input type=\"hidden\" name=\"existing_needs_review\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var26 string
-		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(s.ReviewReason)
+		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(boolFlag(s.NeedsReview))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 121, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 121, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\"> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\"> <input type=\"hidden\" name=\"existing_review_reason\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var27 string
+		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(s.ReviewReason)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 122, Col: 76}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if scrape.SourceLabel != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<input type=\"hidden\" name=\"scrape_source_label\" value=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var27 string
-			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(scrape.SourceLabel)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 123, Col: 78}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\"> <input type=\"hidden\" name=\"scrape_confidence_score\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<input type=\"hidden\" name=\"scrape_source_label\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
-			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", scrape.ConfidenceScore))
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(scrape.SourceLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 124, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 124, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\"> <input type=\"hidden\" name=\"scrape_confidence_score\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var29 string
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", scrape.ConfidenceScore))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 125, Col: 105}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var29 = []any{recordPersistenceClass(isEdit)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var29...)
+		var templ_7745c5c3_Var30 = []any{recordPersistenceClass(isEdit)}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var30...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<div data-record-persistence data-record-persistence-kind=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(draftMode(isEdit))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 126, Col: 80}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\" class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div data-record-persistence data-record-persistence-kind=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var31 string
-		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var29).String())
+		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(draftMode(isEdit))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 127, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\"><div><strong class=\"font-semibold\" data-record-persistence-heading>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\" class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var32 string
-		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(recordPersistenceHeading(isEdit))
+		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var30).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 129, Col: 102}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</strong> <span class=\"ml-2\" data-record-persistence-message>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\"><div class=\"flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\"><div><strong class=\"font-semibold\" data-record-persistence-heading>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var33 string
-		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(recordPersistenceMessage(isEdit))
+		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(recordPersistenceHeading(isEdit))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 130, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 130, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</span></div><button type=\"button\" class=\"secondary-button whitespace-nowrap\" data-clear-draft data-clear-draft-path=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</strong> <span class=\"ml-2\" data-record-persistence-message>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var34 string
-		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(draftResetPath(s, isEdit))
+		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(recordPersistenceMessage(isEdit))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 136, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 131, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\">Discard local draft</button></div><div data-record-persistence-preview class=\"mt-4 hidden rounded-2xl border border-amber-700/30 bg-white/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-amber-900\" data-record-persistence-preview-title>Review older saved local changes</p><p class=\"mt-2 text-sm text-amber-950\" data-record-persistence-preview-message></p><ul class=\"mt-3 space-y-2 text-sm text-amber-950\" data-record-persistence-preview-list></ul><div class=\"mt-4\"><button type=\"button\" class=\"secondary-button hidden\" data-reapply-stale-draft>Reapply older saved local changes</button></div></div></div><div class=\"space-y-5\"><section class=\"rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5\"><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Identity & Relationship</p><p class=\"mt-2 text-sm text-slate-600\">Start with who this person is and how the person record should behave in the local archive.</p></div><div class=\"responsive-two-col grid gap-4\"><div><label class=\"block text-sm text-slate-500 mb-1\">Display ID</label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</span></div><div class=\"flex flex-col items-stretch gap-2 sm:items-end\"><button type=\"button\" class=\"secondary-button hidden whitespace-nowrap\" data-clear-draft-trigger=\"base\">Delete saved local draft</button><div data-clear-draft-confirm=\"base\" class=\"hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]\"><p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p><div class=\"mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end\"><button type=\"button\" class=\"danger-button w-full sm:w-auto\" data-confirm-clear-draft=\"base\">Confirm delete</button> <button type=\"button\" class=\"secondary-button w-full sm:w-auto\" data-cancel-clear-draft=\"base\">Cancel</button></div></div></div></div><div data-cleared-draft-undo class=\"mt-4 hidden rounded-2xl border border-emerald-700/30 bg-white/70 p-4 text-sm text-emerald-950\"><p>Saved local draft deleted. You can undo that while this tab stays open.</p><div class=\"mt-3\"><button type=\"button\" class=\"secondary-button\" data-undo-cleared-draft>Undo delete</button></div></div><div data-record-persistence-preview class=\"mt-4 hidden rounded-2xl border border-amber-700/30 bg-white/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.24em] text-amber-900\" data-record-persistence-preview-title>Review older saved local changes</p><p class=\"mt-2 text-sm text-amber-950\" data-record-persistence-preview-message></p><ul class=\"mt-3 space-y-2 text-sm text-amber-950\" data-record-persistence-preview-list></ul><div class=\"mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap\"><button type=\"button\" class=\"secondary-button hidden\" data-reapply-stale-draft>Reapply older saved local changes</button> <button type=\"button\" class=\"secondary-button hidden\" data-clear-draft-trigger=\"stale\">Delete saved local draft</button></div><div data-clear-draft-confirm=\"stale\" class=\"mt-3 hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]\"><p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p><div class=\"mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end\"><button type=\"button\" class=\"danger-button w-full sm:w-auto\" data-confirm-clear-draft=\"stale\">Confirm delete</button> <button type=\"button\" class=\"secondary-button w-full sm:w-auto\" data-cancel-clear-draft=\"stale\">Cancel</button></div></div></div></div><div class=\"space-y-5\"><section class=\"rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5\"><div class=\"mb-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]\">Identity & Relationship</p><p class=\"mt-2 text-sm text-slate-600\">Start with who this person is and how the person record should behave in the local archive.</p></div><div class=\"responsive-two-col grid gap-4\"><div><label class=\"block text-sm text-slate-500 mb-1\">Display ID</label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -659,7 +659,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 159, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 182, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -690,7 +690,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var38 string
 			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(entryType.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 167, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 190, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 			if templ_7745c5c3_Err != nil {
@@ -713,7 +713,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(entryType.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 167, Col: 118}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 190, Col: 118}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -731,7 +731,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(s.Prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 174, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 197, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -754,7 +754,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(s.FirstName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 184, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 207, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -767,7 +767,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(s.MiddleName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 189, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 212, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -780,7 +780,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(s.LastName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 194, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 217, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -793,7 +793,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(s.Suffix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 199, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 222, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -811,7 +811,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", candidate.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 214, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 237, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -834,7 +834,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(spouseCandidateLabel(candidate))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 214, Col: 144}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 237, Col: 144}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
@@ -852,7 +852,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(s.RelationshipLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 220, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 243, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -865,7 +865,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(s.MaidenName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 226, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 249, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -878,7 +878,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var49 string
 		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(s.RankIn)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 241, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 264, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 		if templ_7745c5c3_Err != nil {
@@ -891,7 +891,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var50 string
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(rankOutValue(s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 247, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 270, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
@@ -904,7 +904,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var51 string
 		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(s.Unit)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 253, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 276, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {
@@ -917,7 +917,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var52 string
 		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(selectedPensionState(s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 259, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 282, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 		if templ_7745c5c3_Err != nil {
@@ -935,7 +935,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 267, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 290, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -958,7 +958,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 267, Col: 103}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 290, Col: 103}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -976,7 +976,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var55 string
 		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(s.ConfederateHomeName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 273, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 296, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 		if templ_7745c5c3_Err != nil {
@@ -989,7 +989,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var56 string
 		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(s.PensionID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 281, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 304, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 		if templ_7745c5c3_Err != nil {
@@ -1002,7 +1002,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var57 string
 		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(s.ApplicationID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 286, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 309, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
@@ -1015,7 +1015,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var58 string
 		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(s.BirthDate)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 299, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 322, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
@@ -1028,7 +1028,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var59 string
 		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(s.DeathDate)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 304, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 327, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 		if templ_7745c5c3_Err != nil {
@@ -1041,7 +1041,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var60 string
 		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(s.BirthInfo)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 309, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 332, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 		if templ_7745c5c3_Err != nil {
@@ -1054,7 +1054,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var61 string
 		templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(s.BuriedIn)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 314, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 337, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var61))
 		if templ_7745c5c3_Err != nil {
@@ -1067,7 +1067,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var62 string
 		templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelSoldierFormRecords)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 323, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 346, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 		if templ_7745c5c3_Err != nil {
@@ -1106,7 +1106,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var63 string
 		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(s.Biography)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 353, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 376, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 		if templ_7745c5c3_Err != nil {
@@ -1119,7 +1119,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var64 string
 		templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", pdfExcerptBudget()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 375, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 398, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
 		if templ_7745c5c3_Err != nil {
@@ -1132,7 +1132,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var65 string
 		templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(s.PDFExcerptOverride)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 376, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 399, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 		if templ_7745c5c3_Err != nil {
@@ -1145,7 +1145,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var66 string
 		templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", pdfExcerptBudget()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 378, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 401, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 		if templ_7745c5c3_Err != nil {
@@ -1158,7 +1158,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var67 string
 		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", pdfExcerptBudget()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 379, Col: 128}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 402, Col: 128}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 		if templ_7745c5c3_Err != nil {
@@ -1171,7 +1171,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var68 string
 		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(s.Notes)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 387, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 410, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 		if templ_7745c5c3_Err != nil {
@@ -1184,7 +1184,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var69 string
 		templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelSoldierFormImages)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 392, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 415, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 		if templ_7745c5c3_Err != nil {
@@ -1210,7 +1210,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var70 string
 			templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 406, Col: 99}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 429, Col: 99}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 			if templ_7745c5c3_Err != nil {
@@ -1244,7 +1244,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 			var templ_7745c5c3_Var71 string
 			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(s.Images)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 421, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 444, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 			if templ_7745c5c3_Err != nil {
@@ -1277,7 +1277,7 @@ func EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.Pe
 		var templ_7745c5c3_Var72 string
 		templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(entryFormBackHref(s, isEdit))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 436, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 459, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 		if templ_7745c5c3_Err != nil {
@@ -1529,7 +1529,7 @@ func RecordInputRow(record viewmodel.SourceRecord) templ.Component {
 		var templ_7745c5c3_Var74 string
 		templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(record.SourceRecordType)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 630, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 653, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 		if templ_7745c5c3_Err != nil {
@@ -1542,7 +1542,7 @@ func RecordInputRow(record viewmodel.SourceRecord) templ.Component {
 		var templ_7745c5c3_Var75 string
 		templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(record.AppID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 634, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 657, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 		if templ_7745c5c3_Err != nil {
@@ -1555,7 +1555,7 @@ func RecordInputRow(record viewmodel.SourceRecord) templ.Component {
 		var templ_7745c5c3_Var76 string
 		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(record.Details)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 638, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 661, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 		if templ_7745c5c3_Err != nil {
@@ -1597,7 +1597,7 @@ func SuggestionDatalist(id string, values []string) templ.Component {
 		var templ_7745c5c3_Var78 string
 		templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 645, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 668, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 		if templ_7745c5c3_Err != nil {
@@ -1615,7 +1615,7 @@ func SuggestionDatalist(id string, values []string) templ.Component {
 			var templ_7745c5c3_Var79 string
 			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 647, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 670, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 			if templ_7745c5c3_Err != nil {
@@ -1681,7 +1681,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 			var templ_7745c5c3_Var82 string
 			templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PageInitialSetup)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 661, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 684, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 			if templ_7745c5c3_Err != nil {
@@ -1707,7 +1707,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 				var templ_7745c5c3_Var83 string
 				templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(form.ErrorMessage)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 670, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 693, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
 				if templ_7745c5c3_Err != nil {
@@ -1725,7 +1725,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 			var templ_7745c5c3_Var84 string
 			templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(form.FirstName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 676, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 699, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
 			if templ_7745c5c3_Err != nil {
@@ -1738,7 +1738,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 			var templ_7745c5c3_Var85 string
 			templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(form.MiddleName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 680, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 703, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 			if templ_7745c5c3_Err != nil {
@@ -1751,7 +1751,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 			var templ_7745c5c3_Var86 string
 			templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(form.LastName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 684, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 707, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 			if templ_7745c5c3_Err != nil {
@@ -1764,7 +1764,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 			var templ_7745c5c3_Var87 string
 			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(form.BirthYear)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 688, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 711, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 			if templ_7745c5c3_Err != nil {
@@ -1782,7 +1782,7 @@ func InitialSetupView(form viewmodel.InitialSetupForm) templ.Component {
 				var templ_7745c5c3_Var88 string
 				templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(form.PrefixPreview)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 692, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 715, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 				if templ_7745c5c3_Err != nil {
@@ -1862,7 +1862,7 @@ func SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings)
 			var templ_7745c5c3_Var91 string
 			templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PageSettings)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 721, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 744, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 			if templ_7745c5c3_Err != nil {
@@ -1891,7 +1891,7 @@ func SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings)
 			var templ_7745c5c3_Var92 string
 			templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelSettingsLayout)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 725, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 748, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 			if templ_7745c5c3_Err != nil {
@@ -1912,7 +1912,7 @@ func SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings)
 			var templ_7745c5c3_Var93 string
 			templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelSettingsInitialize)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 754, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 777, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 			if templ_7745c5c3_Err != nil {
@@ -1933,7 +1933,7 @@ func SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings)
 			var templ_7745c5c3_Var94 string
 			templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(confirmationWord)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 763, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 786, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 			if templ_7745c5c3_Err != nil {
@@ -1981,7 +1981,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 		var templ_7745c5c3_Var96 string
 		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.PanelSettingsUpdates)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 788, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 811, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
 		if templ_7745c5c3_Err != nil {
@@ -2002,7 +2002,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 		var templ_7745c5c3_Var97 string
 		templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(state.CurrentVersion)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 795, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 818, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
 		if templ_7745c5c3_Err != nil {
@@ -2020,7 +2020,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 			var templ_7745c5c3_Var98 string
 			templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinStringErrs(state.BuildIdentity)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 797, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 820, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
 			if templ_7745c5c3_Err != nil {
@@ -2067,7 +2067,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 			var templ_7745c5c3_Var101 string
 			templ_7745c5c3_Var101, templ_7745c5c3_Err = templ.JoinStringErrs(updateStatusHeading(state.LastApply.Status))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 805, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 828, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var101))
 			if templ_7745c5c3_Err != nil {
@@ -2085,7 +2085,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 				var templ_7745c5c3_Var102 string
 				templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.JoinStringErrs(state.LastApply.Version)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 807, Col: 56}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 830, Col: 56}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var102))
 				if templ_7745c5c3_Err != nil {
@@ -2104,7 +2104,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 				var templ_7745c5c3_Var103 string
 				templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(state.LastApply.AppliedAt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 810, Col: 69}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 833, Col: 69}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 				if templ_7745c5c3_Err != nil {
@@ -2123,7 +2123,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 				var templ_7745c5c3_Var104 string
 				templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(state.LastApply.Message)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 813, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 836, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
 				if templ_7745c5c3_Err != nil {
@@ -2146,7 +2146,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 		var templ_7745c5c3_Var105 string
 		templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(state.SourceURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 820, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 843, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
 		if templ_7745c5c3_Err != nil {
@@ -2174,7 +2174,7 @@ func SettingsUpdatePanel(state viewmodel.UpdateSettings) templ.Component {
 		var templ_7745c5c3_Var106 string
 		templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(state.EffectiveSourceURL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 836, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 859, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
 		if templ_7745c5c3_Err != nil {
@@ -2237,7 +2237,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 			var templ_7745c5c3_Var108 string
 			templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinStringErrs(result.AvailableVersion)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 858, Col: 81}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 881, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var108))
 			if templ_7745c5c3_Err != nil {
@@ -2250,7 +2250,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 			var templ_7745c5c3_Var109 string
 			templ_7745c5c3_Var109, templ_7745c5c3_Err = templ.JoinStringErrs(result.CurrentVersion)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 859, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 882, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var109))
 			if templ_7745c5c3_Err != nil {
@@ -2268,7 +2268,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 				var templ_7745c5c3_Var110 string
 				templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(result.SourceLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 861, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 884, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
 				if templ_7745c5c3_Err != nil {
@@ -2287,7 +2287,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 				var templ_7745c5c3_Var111 string
 				templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.JoinStringErrs(result.PublishedAt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 864, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 887, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var111))
 				if templ_7745c5c3_Err != nil {
@@ -2306,7 +2306,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 				var templ_7745c5c3_Var112 string
 				templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(result.ReleaseNotes)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 867, Col: 135}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 890, Col: 135}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 				if templ_7745c5c3_Err != nil {
@@ -2325,7 +2325,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 				var templ_7745c5c3_Var113 templ.SafeURL
 				templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.JoinURLErrs(result.NotesURL)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 870, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 893, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var113))
 				if templ_7745c5c3_Err != nil {
@@ -2354,7 +2354,7 @@ func SettingsUpdateStatus(result viewmodel.UpdateCheckResult) templ.Component {
 			var templ_7745c5c3_Var114 string
 			templ_7745c5c3_Var114, templ_7745c5c3_Err = templ.JoinStringErrs(result.CurrentVersion)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 878, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 901, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var114))
 			if templ_7745c5c3_Err != nil {
@@ -2415,7 +2415,7 @@ func SettingsUpdateStatusMessage(kind string, message string) templ.Component {
 		var templ_7745c5c3_Var118 string
 		templ_7745c5c3_Var118, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 884, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 907, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var118))
 		if templ_7745c5c3_Err != nil {
@@ -2457,7 +2457,7 @@ func SettingsUpdateApplyStarted(version string) templ.Component {
 		var templ_7745c5c3_Var120 string
 		templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.JoinStringErrs(version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 889, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 912, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var120))
 		if templ_7745c5c3_Err != nil {
@@ -2505,7 +2505,7 @@ func SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) templ.Component {
 			var templ_7745c5c3_Var122 string
 			templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(orphans)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 899, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 922, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var122))
 			if templ_7745c5c3_Err != nil {
@@ -2523,7 +2523,7 @@ func SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) templ.Component {
 				var templ_7745c5c3_Var123 string
 				templ_7745c5c3_Var123, templ_7745c5c3_Err = templ.JoinStringErrs(orphan.RelativePath)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 903, Col: 72}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 926, Col: 72}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var123))
 				if templ_7745c5c3_Err != nil {
@@ -2536,7 +2536,7 @@ func SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) templ.Component {
 				var templ_7745c5c3_Var124 string
 				templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.JoinStringErrs(orphan.RelativePath)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 905, Col: 52}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 928, Col: 52}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var124))
 				if templ_7745c5c3_Err != nil {
@@ -2549,7 +2549,7 @@ func SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) templ.Component {
 				var templ_7745c5c3_Var125 string
 				templ_7745c5c3_Var125, templ_7745c5c3_Err = templ.JoinStringErrs(orphan.ModifiedAt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 906, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 929, Col: 66}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var125))
 				if templ_7745c5c3_Err != nil {
@@ -2562,7 +2562,7 @@ func SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) templ.Component {
 				var templ_7745c5c3_Var126 string
 				templ_7745c5c3_Var126, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d bytes", orphan.Size))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 906, Col: 110}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 929, Col: 110}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var126))
 				if templ_7745c5c3_Err != nil {
@@ -2620,7 +2620,7 @@ func SettingsOrphanCleanupResult(moved int, trashRoot string) templ.Component {
 			var templ_7745c5c3_Var128 string
 			templ_7745c5c3_Var128, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", moved))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 920, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 943, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var128))
 			if templ_7745c5c3_Err != nil {
@@ -2633,7 +2633,7 @@ func SettingsOrphanCleanupResult(moved int, trashRoot string) templ.Component {
 			var templ_7745c5c3_Var129 string
 			templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.JoinStringErrs(trashRoot)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 920, Col: 98}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 943, Col: 98}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var129))
 			if templ_7745c5c3_Err != nil {
@@ -2733,7 +2733,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var131 string
 				templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.JoinStringErrs(searchSummary(search))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 962, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 985, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var131))
 				if templ_7745c5c3_Err != nil {
@@ -2797,7 +2797,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var132 string
 				templ_7745c5c3_Var132, templ_7745c5c3_Err = templ.JoinStringErrs(search.Query)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 994, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1017, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var132))
 				if templ_7745c5c3_Err != nil {
@@ -2822,7 +2822,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var133 string
 				templ_7745c5c3_Var133, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1003, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1026, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var133))
 				if templ_7745c5c3_Err != nil {
@@ -2835,7 +2835,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var134 string
 				templ_7745c5c3_Var134, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1003, Col: 152}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1026, Col: 152}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var134))
 				if templ_7745c5c3_Err != nil {
@@ -2848,7 +2848,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var135 string
 				templ_7745c5c3_Var135, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("soldier-preview-%d", s.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1006, Col: 106}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1029, Col: 106}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var135))
 				if templ_7745c5c3_Err != nil {
@@ -2869,7 +2869,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var136 string
 				templ_7745c5c3_Var136, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("soldier-preview-%d", s.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1011, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1034, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var136))
 				if templ_7745c5c3_Err != nil {
@@ -2897,7 +2897,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 			var templ_7745c5c3_Var137 string
 			templ_7745c5c3_Var137, templ_7745c5c3_Err = templ.JoinStringErrs(searchSummary(search))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1019, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1042, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var137))
 			if templ_7745c5c3_Err != nil {
@@ -2910,7 +2910,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 			var templ_7745c5c3_Var138 string
 			templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", total))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1019, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1042, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var138))
 			if templ_7745c5c3_Err != nil {
@@ -2923,7 +2923,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 			var templ_7745c5c3_Var139 string
 			templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", page))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1020, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1043, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var139))
 			if templ_7745c5c3_Err != nil {
@@ -2941,7 +2941,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var140 templ.SafeURL
 				templ_7745c5c3_Var140, templ_7745c5c3_Err = templ.JoinURLErrs(pageHref(search, page-1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1022, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1045, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var140))
 				if templ_7745c5c3_Err != nil {
@@ -2954,7 +2954,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var141 string
 				templ_7745c5c3_Var141, templ_7745c5c3_Err = templ.JoinStringErrs(pageRequestURL(search, page-1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1022, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1045, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var141))
 				if templ_7745c5c3_Err != nil {
@@ -2973,7 +2973,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var142 templ.SafeURL
 				templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.JoinURLErrs(pageHref(search, page+1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1025, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1048, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var142))
 				if templ_7745c5c3_Err != nil {
@@ -2986,7 +2986,7 @@ func SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRec
 				var templ_7745c5c3_Var143 string
 				templ_7745c5c3_Var143, templ_7745c5c3_Err = templ.JoinStringErrs(pageRequestURL(search, page+1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1025, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1048, Col: 80}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var143))
 				if templ_7745c5c3_Err != nil {
@@ -3034,7 +3034,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var145 string
 		templ_7745c5c3_Var145, templ_7745c5c3_Err = templ.JoinStringErrs(entryBadgeLabel(s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1036, Col: 101}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1059, Col: 101}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var145))
 		if templ_7745c5c3_Err != nil {
@@ -3047,7 +3047,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var146 string
 		templ_7745c5c3_Var146, templ_7745c5c3_Err = templ.JoinStringErrs(detailHeading(s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1037, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1060, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var146))
 		if templ_7745c5c3_Err != nil {
@@ -3066,7 +3066,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 				var templ_7745c5c3_Var147 string
 				templ_7745c5c3_Var147, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(s))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1040, Col: 71}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1063, Col: 71}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var147))
 				if templ_7745c5c3_Err != nil {
@@ -3084,7 +3084,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 				var templ_7745c5c3_Var148 string
 				templ_7745c5c3_Var148, templ_7745c5c3_Err = templ.JoinStringErrs(detailSubheading(s))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1042, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1065, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var148))
 				if templ_7745c5c3_Err != nil {
@@ -3103,7 +3103,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var149 string
 		templ_7745c5c3_Var149, templ_7745c5c3_Err = templ.JoinStringErrs(s.DisplayID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1046, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1069, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var149))
 		if templ_7745c5c3_Err != nil {
@@ -3116,7 +3116,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var150 string
 		templ_7745c5c3_Var150, templ_7745c5c3_Err = templ.JoinStringErrs(dates.DisplayUnknown(s.BirthDate))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1051, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1074, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var150))
 		if templ_7745c5c3_Err != nil {
@@ -3129,7 +3129,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var151 string
 		templ_7745c5c3_Var151, templ_7745c5c3_Err = templ.JoinStringErrs(dates.DisplayUnknown(s.DeathDate))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1055, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1078, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var151))
 		if templ_7745c5c3_Err != nil {
@@ -3147,7 +3147,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var152 string
 			templ_7745c5c3_Var152, templ_7745c5c3_Err = templ.JoinStringErrs(s.Unit)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1060, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1083, Col: 47}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var152))
 			if templ_7745c5c3_Err != nil {
@@ -3166,7 +3166,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var153 string
 			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.JoinStringErrs(s.BuriedIn)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1066, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1089, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var153))
 			if templ_7745c5c3_Err != nil {
@@ -3184,7 +3184,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var154 string
 		templ_7745c5c3_Var154, templ_7745c5c3_Err = templ.JoinStringErrs(entryBadgeLabel(s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1076, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1099, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var154))
 		if templ_7745c5c3_Err != nil {
@@ -3197,7 +3197,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var155 string
 		templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.SourceRecordCount))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1078, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1101, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var155))
 		if templ_7745c5c3_Err != nil {
@@ -3210,7 +3210,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var156 string
 		templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", s.ImageCount))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1080, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1103, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var156))
 		if templ_7745c5c3_Err != nil {
@@ -3223,7 +3223,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var157 string
 		templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.JoinStringErrs(reviewStatusLabel(s))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1082, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1105, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var157))
 		if templ_7745c5c3_Err != nil {
@@ -3241,7 +3241,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var158 string
 			templ_7745c5c3_Var158, templ_7745c5c3_Err = templ.JoinStringErrs(s.SearchMatchField)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1090, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1113, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var158))
 			if templ_7745c5c3_Err != nil {
@@ -3254,7 +3254,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var159 string
 			templ_7745c5c3_Var159, templ_7745c5c3_Err = templ.JoinStringErrs(s.SearchMatchSnippet)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1090, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1113, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var159))
 			if templ_7745c5c3_Err != nil {
@@ -3273,7 +3273,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var160 string
 			templ_7745c5c3_Var160, templ_7745c5c3_Err = templ.JoinStringErrs(s.PensionID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1094, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1117, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var160))
 			if templ_7745c5c3_Err != nil {
@@ -3292,7 +3292,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var161 string
 			templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.JoinStringErrs(s.ApplicationID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1098, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1121, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var161))
 			if templ_7745c5c3_Err != nil {
@@ -3311,7 +3311,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var162 string
 			templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.JoinStringErrs(s.BirthInfo)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1102, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1125, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var162))
 			if templ_7745c5c3_Err != nil {
@@ -3330,7 +3330,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var163 string
 			templ_7745c5c3_Var163, templ_7745c5c3_Err = templ.JoinStringErrs(previewUpdatedByline(s))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1106, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1129, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var163))
 			if templ_7745c5c3_Err != nil {
@@ -3353,7 +3353,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var164 string
 			templ_7745c5c3_Var164, templ_7745c5c3_Err = templ.JoinStringErrs(s.SpouseDisplayID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1115, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1138, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var164))
 			if templ_7745c5c3_Err != nil {
@@ -3372,7 +3372,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var165 string
 			templ_7745c5c3_Var165, templ_7745c5c3_Err = templ.JoinStringErrs(s.RelationshipLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1119, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1142, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var165))
 			if templ_7745c5c3_Err != nil {
@@ -3391,7 +3391,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var166 string
 			templ_7745c5c3_Var166, templ_7745c5c3_Err = templ.JoinStringErrs(s.MaidenName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1123, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1146, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var166))
 			if templ_7745c5c3_Err != nil {
@@ -3410,7 +3410,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var167 string
 			templ_7745c5c3_Var167, templ_7745c5c3_Err = templ.JoinStringErrs(previewConfederateHomeLabel(s))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1127, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1150, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var167))
 			if templ_7745c5c3_Err != nil {
@@ -3439,7 +3439,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var168 string
 			templ_7745c5c3_Var168, templ_7745c5c3_Err = templ.JoinStringErrs(previewText(s.Notes, 260))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1139, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1162, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var168))
 			if templ_7745c5c3_Err != nil {
@@ -3458,7 +3458,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var169 string
 			templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.JoinStringErrs(emptyDetail(s.ReviewReason))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1145, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1168, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var169))
 			if templ_7745c5c3_Err != nil {
@@ -3476,7 +3476,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var170 templ.SafeURL
 		templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1149, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1172, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var170))
 		if templ_7745c5c3_Err != nil {
@@ -3489,7 +3489,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 		var templ_7745c5c3_Var171 templ.SafeURL
 		templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1150, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1173, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var171))
 		if templ_7745c5c3_Err != nil {
@@ -3507,7 +3507,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var172 templ.SafeURL
 			templ_7745c5c3_Var172, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/soldiers/%d?from=%d", s.LinkedSoldierID, s.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1152, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1175, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var172))
 			if templ_7745c5c3_Err != nil {
@@ -3526,7 +3526,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var173 templ.SafeURL
 			templ_7745c5c3_Var173, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/compare?id1=%d&id2=%d&from=%d", s.ID, s.LinkedSoldierID, s.ID)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1155, Col: 105}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1178, Col: 105}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var173))
 			if templ_7745c5c3_Err != nil {
@@ -3539,7 +3539,7 @@ func SearchPreviewContent(s viewmodel.PersonRecord) templ.Component {
 			var templ_7745c5c3_Var174 string
 			templ_7745c5c3_Var174, templ_7745c5c3_Err = templ.JoinStringErrs(previewCompareLabel(s))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1155, Col: 157}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/entry_form.templ`, Line: 1178, Col: 157}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var174))
 			if templ_7745c5c3_Err != nil {

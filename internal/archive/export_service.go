@@ -3337,8 +3337,13 @@ func choosePDFRecordCardLayout(pdf *fpdf.Fpdf, soldier models.Soldier, startY fl
 	_, _, _, bottomMargin := pdf.GetMargins()
 	availableHeight := pageHeight - bottomMargin - startY - 18
 	base := defaultPDFRecordCardLayout()
-	if !options.IncludeImages {
+	if usesPortraitCompactRecordCardLayout(soldier, options) {
+		base.LeftWidthRatio = 0.6
+	} else if !options.IncludeImages {
 		base.LeftWidthRatio = 0.43
+	}
+	if usesPortraitRecordPDFLayout(options) && !usesPortraitCompactRecordCardLayout(soldier, options) {
+		return base.scaled(minReadablePDFRecordCardScale), false
 	}
 	for _, scale := range []float64{1, 0.94, 0.88, 0.82, minReadablePDFRecordCardScale} {
 		layout := base.scaled(scale)
@@ -3355,10 +3360,22 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, options
 	contentWidth := pageWidth - leftMargin - rightMargin
 	leftWidth := contentWidth * layout.LeftWidthRatio
 	rightWidth := contentWidth - leftWidth - layout.ColumnGap
+	usesPortraitCompact := usesPortraitCompactRecordCardLayout(soldier, options)
 
 	leftHeight := estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordIdentityFields(soldier), layout)
 	leftHeight += layout.SectionGap
 	leftHeight += estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordServiceFields(soldier, false), layout)
+	if usesPortraitCompact {
+		householdHeight := estimatePDFCompactFieldSectionHeight(pdf, leftWidth, recordHouseholdFields(soldier, false), layout)
+		if householdHeight > 0 {
+			leftHeight += layout.SectionGap
+			leftHeight += householdHeight
+		}
+		if len(soldier.Records) > 0 {
+			leftHeight += layout.SectionGap
+			leftHeight += estimatePDFRecordsSectionHeight(pdf, leftWidth, soldier.Records, layout)
+		}
+	}
 
 	rightHeight := 0.0
 	if options.IncludeImages {
@@ -3366,12 +3383,14 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, options
 			rightHeight += estimatePDFImagePanelHeight(layout, recordPDFImageSectionTitle(options) != "")
 		}
 	}
-	householdHeight := estimatePDFCompactFieldSectionHeight(pdf, rightWidth, recordHouseholdFields(soldier, false), layout)
-	if householdHeight > 0 {
-		if rightHeight > 0 {
-			rightHeight += layout.SectionGap
+	if !usesPortraitCompact {
+		householdHeight := estimatePDFCompactFieldSectionHeight(pdf, rightWidth, recordHouseholdFields(soldier, false), layout)
+		if householdHeight > 0 {
+			if rightHeight > 0 {
+				rightHeight += layout.SectionGap
+			}
+			rightHeight += householdHeight
 		}
-		rightHeight += householdHeight
 	}
 	_, narrativeText := recordPDFNarrativeSection(soldier, options)
 	if strings.TrimSpace(narrativeText) != "" {
@@ -3380,7 +3399,7 @@ func estimatePDFRecordCardHeight(pdf *fpdf.Fpdf, soldier models.Soldier, options
 		}
 		rightHeight += estimatePDFRichTextSectionHeight(pdf, rightWidth, narrativeText, layout)
 	}
-	if len(soldier.Records) > 0 {
+	if !usesPortraitCompact && len(soldier.Records) > 0 {
 		if rightHeight > 0 {
 			rightHeight += layout.SectionGap
 		}
@@ -3484,11 +3503,21 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 	gapWidth := layout.ColumnGap
 	rightWidth := contentWidth - leftWidth - gapWidth
 	rightX := leftMargin + leftWidth + gapWidth
+	usesPortraitCompact := usesPortraitCompactRecordCardLayout(soldier, options)
 	defer pdf.SetAutoPageBreak(true, bottomMargin)
 	pdf.SetAutoPageBreak(false, bottomMargin)
 
 	leftY := writePDFCompactFieldSection(pdf, leftMargin, startY, leftWidth, "Identity & Vital Details", recordIdentityFields(soldier), layout)
 	leftY = writePDFCompactFieldSection(pdf, leftMargin, leftY+layout.SectionGap, leftWidth, "Service & Archive Details", recordServiceFields(soldier, options.PrinterFriendly), layout)
+	if usesPortraitCompact {
+		householdFields := recordHouseholdFields(soldier, options.PrinterFriendly)
+		if hasVisiblePDFField(householdFields) {
+			leftY = writePDFCompactFieldSection(pdf, leftMargin, leftY+layout.SectionGap, leftWidth, "Household & Context", householdFields, layout)
+		}
+		if len(soldier.Records) > 0 {
+			leftY = writePDFRecordsColumnSection(pdf, leftMargin, leftY+layout.SectionGap, leftWidth, soldier.Records, layout, options.PrinterFriendly)
+		}
+	}
 
 	rightY := startY
 	if options.IncludeImages {
@@ -3496,12 +3525,14 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 			rightY = writePDFImagePanel(pdf, rightX, rightY, rightWidth, recordPDFImageSectionTitle(options), imagePath, imageLabel, layout)
 		}
 	}
-	householdFields := recordHouseholdFields(soldier, options.PrinterFriendly)
-	if hasVisiblePDFField(householdFields) {
-		if rightY > startY {
-			rightY += layout.SectionGap
+	if !usesPortraitCompact {
+		householdFields := recordHouseholdFields(soldier, options.PrinterFriendly)
+		if hasVisiblePDFField(householdFields) {
+			if rightY > startY {
+				rightY += layout.SectionGap
+			}
+			rightY = writePDFCompactFieldSection(pdf, rightX, rightY, rightWidth, "Household & Context", householdFields, layout)
 		}
-		rightY = writePDFCompactFieldSection(pdf, rightX, rightY, rightWidth, "Household & Context", householdFields, layout)
 	}
 	narrativeTitle, narrativeText := recordPDFNarrativeSection(soldier, options)
 	if strings.TrimSpace(narrativeText) != "" {
@@ -3510,7 +3541,7 @@ func writePDFRecordCard(pdf *fpdf.Fpdf, soldier models.Soldier, options PDFOptio
 		}
 		rightY = writePDFRichTextColumnSection(pdf, rightX, rightY, rightWidth, narrativeTitle, narrativeText, layout)
 	}
-	if len(soldier.Records) > 0 {
+	if !usesPortraitCompact && len(soldier.Records) > 0 {
 		if rightY > startY {
 			rightY += layout.SectionGap
 		}
@@ -3803,6 +3834,15 @@ func recordPDFNarrativeSection(soldier models.Soldier, options PDFOptions) (stri
 		text = soldier.Biography
 	}
 	return "Biography", pdfFreeTextValue(text, options.PrinterFriendly)
+}
+
+func usesPortraitCompactRecordCardLayout(soldier models.Soldier, options PDFOptions) bool {
+	options = options.Normalize("L", true)
+	if options.PrintableArchive || !usesPortraitRecordPDFLayout(options) || !options.IncludeImages {
+		return false
+	}
+	imagePath, _ := firstRecordCardImage(soldier, options.PrinterFriendly)
+	return imagePath != ""
 }
 
 func usesPortraitRecordPDFLayout(options PDFOptions) bool {
