@@ -1065,6 +1065,7 @@ func googleCalendarEventWithTimeZone(soldier models.Soldier, timeZone string) *g
 				{Method: "popup", Minutes: 24 * 60},
 				{Method: "popup", Minutes: 60},
 			},
+			ForceSendFields: []string{"UseDefault"},
 		},
 		ExtendedProperties: &gcal.EventExtendedProperties{
 			Private: map[string]string{

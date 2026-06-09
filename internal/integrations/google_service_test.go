@@ -69,6 +69,9 @@ func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 	if event.Reminders == nil || event.Reminders.UseDefault || len(event.Reminders.Overrides) != 2 {
 		t.Fatalf("reminders = %#v", event.Reminders)
 	}
+	if len(event.Reminders.ForceSendFields) != 1 || event.Reminders.ForceSendFields[0] != "UseDefault" {
+		t.Fatalf("force send fields = %#v", event.Reminders.ForceSendFields)
+	}
 	if event.ExtendedProperties == nil || event.ExtendedProperties.Private["dixiedata_display_id"] != "PENSION-42" {
 		t.Fatalf("extended properties = %#v", event.ExtendedProperties)
 	}
