@@ -348,7 +348,22 @@ func FindAGraveScrapeStateFromModel(input models.FindAGraveScrapeState) FindAGra
 }
 
 func GoogleSettingsFromModel(input models.GoogleSettings) GoogleSettings {
-	return GoogleSettings(input)
+	return GoogleSettings{
+		ClientID:      input.ClientID,
+		ClientSecret:  input.ClientSecret,
+		CalendarID:    input.CalendarID,
+		DriveFolderID: input.DriveFolderID,
+		ManagedEventPreferences: CalendarEventPreferences{
+			TitlePreset:         input.ManagedEventPreferences.TitlePreset,
+			StartTime:           input.ManagedEventPreferences.StartTime,
+			ReminderPrimary:     input.ManagedEventPreferences.ReminderPrimary,
+			ReminderSecondary:   input.ManagedEventPreferences.ReminderSecondary,
+			IncludeRecordID:     input.ManagedEventPreferences.IncludeRecordID,
+			IncludeUnit:         input.ManagedEventPreferences.IncludeUnit,
+			IncludeBuriedIn:     input.ManagedEventPreferences.IncludeBuriedIn,
+			IncludeOriginalDate: input.ManagedEventPreferences.IncludeOriginalDate,
+		},
+	}
 }
 
 func GoogleStatusFromModel(input models.GoogleStatus) GoogleStatus {

@@ -489,6 +489,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<button type="button" hx-post="/integrations/google/calendar/use-managed" hx-target="#google-status" data-progress-label="Configuring DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Create/Use DixieData Calendar</button>
 							<button type="button" hx-post="/integrations/google/calendar/sync-managed" hx-target="#google-status" data-progress-label="Syncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Sync DixieData Calendar</button>
 							<button type="button" hx-post="/integrations/google/calendar/unsync-managed" hx-target="#google-status" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Unsync DixieData Calendar</button>
+							<button type="button" data-google-calendar-preferences-open class="secondary-button">Calendar Event Preferences</button>
 						</div>
 					</div>
 					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4">
@@ -532,6 +533,83 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>
+			</div>
+			<div data-google-calendar-preferences-modal data-ui-id={ uiids.OverlayGoogleCalendarPrefs } class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">DixieData Calendar</p>
+							<h3 class="mt-2 text-xl gold font-bold">Managed event preferences</h3>
+							<p class="mt-2 text-sm text-slate-600">Save one global preference profile. Changes apply on the next managed sync and overwrite DixieData-owned event formatting.</p>
+						</div>
+						<button type="button" data-google-calendar-preferences-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
+					</div>
+					<form class="mt-6 space-y-5" hx-post="/integrations/google/calendar/preferences/save" hx-target="#google-status">
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-3">
+							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Title format</p>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="radio" name="title_preset" value="memorial_full_name" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "memorial_full_name" { checked }/>
+								<span>Memorial Anniversary: &#123;FullName&#125;</span>
+							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="radio" name="title_preset" value="full_name_memorial" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "full_name_memorial" { checked }/>
+								<span>&#123;FullName&#125; Memorial Anniversary</span>
+							</label>
+							<label class="flex items-start gap-3 text-sm text-slate-700">
+								<input type="radio" name="title_preset" value="display_id_full_name" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "display_id_full_name" { checked }/>
+								<span>&#123;DisplayID&#125; • &#123;FullName&#125;</span>
+							</label>
+						</div>
+						<div class="grid gap-4 sm:grid-cols-2">
+							<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
+								<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Start time</span>
+								<input type="time" name="start_time" data-google-pref-start-time data-google-pref-input min="05:00" max="23:00" step="900" value={ status.Settings.ManagedEventPreferences.StartTime } class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
+							</label>
+							<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-2 text-sm text-slate-700">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Description fields</p>
+								<label class="flex items-center gap-2"><input type="checkbox" name="include_record_id" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeRecordID { checked }/>Record ID</label>
+								<label class="flex items-center gap-2"><input type="checkbox" name="include_unit" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeUnit { checked }/>Unit</label>
+								<label class="flex items-center gap-2"><input type="checkbox" name="include_buried_in" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeBuriedIn { checked }/>Buried In</label>
+								<label class="flex items-center gap-2"><input type="checkbox" name="include_original_date" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeOriginalDate { checked }/>Original Death Date</label>
+							</div>
+						</div>
+						<div class="grid gap-4 sm:grid-cols-2">
+							<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
+								<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Primary reminder</span>
+								<select name="reminder_primary" data-google-pref-input class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
+									<option value="none" if status.Settings.ManagedEventPreferences.ReminderPrimary == "none" { selected }>None</option>
+									<option value="1h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1h" { selected }>1 hour before</option>
+									<option value="3h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "3h" { selected }>3 hours before</option>
+									<option value="12h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "12h" { selected }>12 hours before</option>
+									<option value="1d" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1d" { selected }>1 day before</option>
+									<option value="2d" if status.Settings.ManagedEventPreferences.ReminderPrimary == "2d" { selected }>2 days before</option>
+									<option value="1w" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1w" { selected }>1 week before</option>
+								</select>
+							</label>
+							<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
+								<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Secondary reminder</span>
+								<select name="reminder_secondary" data-google-pref-input class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
+									<option value="none" if status.Settings.ManagedEventPreferences.ReminderSecondary == "none" { selected }>None</option>
+									<option value="1h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1h" { selected }>1 hour before</option>
+									<option value="3h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "3h" { selected }>3 hours before</option>
+									<option value="12h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "12h" { selected }>12 hours before</option>
+									<option value="1d" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1d" { selected }>1 day before</option>
+									<option value="2d" if status.Settings.ManagedEventPreferences.ReminderSecondary == "2d" { selected }>2 days before</option>
+									<option value="1w" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1w" { selected }>1 week before</option>
+								</select>
+							</label>
+						</div>
+						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(36,48,61,0.04)] p-4 text-sm text-slate-600">
+							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Sample preview</p>
+							<div class="mt-2 font-semibold text-[#22303d]" data-google-pref-preview-title>Memorial Anniversary: Capt. John Smith</div>
+							<div class="mt-1 text-xs text-slate-500" data-google-pref-preview-time>Start: 09:00 America/Chicago</div>
+						</div>
+						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+							<button type="button" data-google-calendar-preferences-close class="secondary-button w-full px-4 sm:w-auto">Cancel</button>
+							<button type="submit" class="primary-button w-full px-4 sm:w-auto">Save Preferences</button>
+						</div>
+					</form>
+				</div>
 			</div>
 		</div>
 	}

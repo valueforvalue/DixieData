@@ -1,5 +1,11 @@
 package models
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 type Soldier struct {
 	ID                    int64    `json:"id"`
 	DisplayID             string   `json:"display_id"`
@@ -172,10 +178,11 @@ type CalendarItem struct {
 }
 
 type GoogleSettings struct {
-	ClientID      string `json:"client_id"`
-	ClientSecret  string `json:"client_secret"`
-	CalendarID    string `json:"calendar_id"`
-	DriveFolderID string `json:"drive_folder_id"`
+	ClientID                string                   `json:"client_id"`
+	ClientSecret            string                   `json:"client_secret"`
+	CalendarID              string                   `json:"calendar_id"`
+	DriveFolderID           string                   `json:"drive_folder_id"`
+	ManagedEventPreferences CalendarEventPreferences `json:"managed_event_preferences"`
 }
 
 type GoogleStatus struct {
@@ -194,6 +201,120 @@ type GoogleStatus struct {
 	DriftAdded            int
 	DriftUpdated          int
 	DriftRemoved          int
+}
+
+const (
+	CalendarEventTitlePresetMemorial = "memorial_full_name"
+	CalendarEventTitlePresetNameLead = "full_name_memorial"
+	CalendarEventTitlePresetDisplay  = "display_id_full_name"
+)
+
+type CalendarEventPreferences struct {
+	TitlePreset         string `json:"title_preset,omitempty"`
+	StartTime           string `json:"start_time,omitempty"`
+	ReminderPrimary     string `json:"reminder_primary,omitempty"`
+	ReminderSecondary   string `json:"reminder_secondary,omitempty"`
+	IncludeRecordID     bool   `json:"include_record_id"`
+	IncludeUnit         bool   `json:"include_unit"`
+	IncludeBuriedIn     bool   `json:"include_buried_in"`
+	IncludeOriginalDate bool   `json:"include_original_date"`
+}
+
+func DefaultCalendarEventPreferences() CalendarEventPreferences {
+	return CalendarEventPreferences{
+		TitlePreset:         CalendarEventTitlePresetMemorial,
+		StartTime:           "09:00",
+		ReminderPrimary:     "1d",
+		ReminderSecondary:   "1h",
+		IncludeRecordID:     true,
+		IncludeUnit:         true,
+		IncludeBuriedIn:     true,
+		IncludeOriginalDate: true,
+	}
+}
+
+func NormalizeCalendarEventPreferences(input CalendarEventPreferences) CalendarEventPreferences {
+	normalized := DefaultCalendarEventPreferences()
+	switch strings.TrimSpace(input.TitlePreset) {
+	case CalendarEventTitlePresetNameLead, CalendarEventTitlePresetDisplay:
+		normalized.TitlePreset = strings.TrimSpace(input.TitlePreset)
+	}
+	if validCalendarEventTime(input.StartTime) {
+		normalized.StartTime = strings.TrimSpace(input.StartTime)
+	}
+	if _, ok := CalendarReminderMinutes(strings.TrimSpace(input.ReminderPrimary)); ok {
+		normalized.ReminderPrimary = strings.TrimSpace(input.ReminderPrimary)
+	}
+	if _, ok := CalendarReminderMinutes(strings.TrimSpace(input.ReminderSecondary)); ok {
+		normalized.ReminderSecondary = strings.TrimSpace(input.ReminderSecondary)
+	}
+	if normalized.ReminderPrimary != "none" && normalized.ReminderPrimary == normalized.ReminderSecondary {
+		normalized.ReminderSecondary = "none"
+	}
+	if input.IncludeRecordID || input.IncludeUnit || input.IncludeBuriedIn || input.IncludeOriginalDate {
+		normalized.IncludeRecordID = input.IncludeRecordID
+		normalized.IncludeUnit = input.IncludeUnit
+		normalized.IncludeBuriedIn = input.IncludeBuriedIn
+		normalized.IncludeOriginalDate = input.IncludeOriginalDate
+	}
+	return normalized
+}
+
+func CalendarReminderMinutes(value string) (int64, bool) {
+	switch strings.TrimSpace(strings.ToLower(value)) {
+	case "none":
+		return 0, true
+	case "1h":
+		return 60, true
+	case "3h":
+		return 3 * 60, true
+	case "12h":
+		return 12 * 60, true
+	case "1d":
+		return 24 * 60, true
+	case "2d":
+		return 2 * 24 * 60, true
+	case "1w":
+		return 7 * 24 * 60, true
+	default:
+		return 0, false
+	}
+}
+
+func CalendarTimeComponents(value string) (int, int, bool) {
+	trimmed := strings.TrimSpace(value)
+	parts := strings.Split(trimmed, ":")
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	hour, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return 0, 0, false
+	}
+	minute, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return 0, 0, false
+	}
+	if hour < 5 || hour > 23 {
+		return 0, 0, false
+	}
+	if minute < 0 || minute > 59 || minute%15 != 0 {
+		return 0, 0, false
+	}
+	return hour, minute, true
+}
+
+func CalendarTimeLabel(value string) string {
+	hour, minute, ok := CalendarTimeComponents(value)
+	if !ok {
+		return "09:00"
+	}
+	return fmt.Sprintf("%02d:%02d", hour, minute)
+}
+
+func validCalendarEventTime(value string) bool {
+	_, _, ok := CalendarTimeComponents(value)
+	return ok
 }
 
 type MergeReviewConflict struct {

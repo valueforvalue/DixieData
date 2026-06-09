@@ -61,6 +61,7 @@ const (
 	OverlayFloatingMenu         = "overlay.floating.menu"
 	OverlayFeedbackModal        = "overlay.feedback.modal"
 	OverlayPrintConfigModal     = "overlay.print-config.modal"
+	OverlayGoogleCalendarPrefs  = "overlay.google-calendar-prefs.modal"
 	OverlayImageViewer          = "overlay.image.viewer"
 )
 
@@ -123,6 +124,7 @@ var Registry = []Surface{
 	{ID: OverlayFloatingMenu, Kind: "overlay", Description: "Floating quick-navigation menu overlay."},
 	{ID: OverlayFeedbackModal, Kind: "overlay", Description: "Global feedback modal overlay."},
 	{ID: OverlayPrintConfigModal, Kind: "overlay", Description: "Printable export settings modal overlay."},
+	{ID: OverlayGoogleCalendarPrefs, Kind: "overlay", Description: "Google managed calendar event preferences modal overlay."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
 }
 

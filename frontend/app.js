@@ -2901,6 +2901,11 @@
     return form instanceof HTMLFormElement ? form : null;
   }
 
+  function googleCalendarPreferencesModal() {
+    const modal = document.querySelector("[data-google-calendar-preferences-modal]");
+    return modal instanceof HTMLElement ? modal : null;
+  }
+
   function openPrintConfigModal() {
     const modal = printConfigModal();
     if (!(modal instanceof HTMLElement)) {
@@ -2923,6 +2928,48 @@
     modal.classList.add("hidden");
     modal.classList.remove("flex");
     modal.setAttribute("aria-hidden", "true");
+  }
+
+  function openGoogleCalendarPreferencesModal() {
+    const modal = googleCalendarPreferencesModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    syncGoogleCalendarPreview();
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeGoogleCalendarPreferencesModal() {
+    const modal = googleCalendarPreferencesModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function syncGoogleCalendarPreview() {
+    const titleTarget = document.querySelector("[data-google-pref-preview-title]");
+    const timeTarget = document.querySelector("[data-google-pref-preview-time]");
+    if (!(titleTarget instanceof HTMLElement) || !(timeTarget instanceof HTMLElement)) {
+      return;
+    }
+    const titlePreset = document.querySelector('input[name="title_preset"]:checked')?.value || "memorial_full_name";
+    const sampleName = "Capt. John Smith";
+    const sampleDisplayID = "STC38-00001";
+    if (titlePreset === "full_name_memorial") {
+      titleTarget.textContent = `${sampleName} Memorial Anniversary`;
+    } else if (titlePreset === "display_id_full_name") {
+      titleTarget.textContent = `${sampleDisplayID} • ${sampleName}`;
+    } else {
+      titleTarget.textContent = `Memorial Anniversary: ${sampleName}`;
+    }
+    const startTimeInput = document.querySelector("[data-google-pref-start-time]");
+    const startTime = startTimeInput instanceof HTMLInputElement && startTimeInput.value ? startTimeInput.value : "09:00";
+    timeTarget.textContent = `Start: ${startTime} America/Chicago`;
   }
 
   function openFeedbackModal() {
@@ -3140,6 +3187,7 @@
     syncPrintScopeState();
     applyPrintRecordFilter();
     applyPrintBuriedFilter();
+    syncGoogleCalendarPreview();
     restoreRedirectState();
     restorePendingToast();
     applySmartBackLabels();
@@ -3185,6 +3233,12 @@
       openPrintConfigModal();
       return;
     }
+    const openGoogleCalendarPreferences = event.target.closest("[data-google-calendar-preferences-open]");
+    if (openGoogleCalendarPreferences) {
+      event.preventDefault();
+      openGoogleCalendarPreferencesModal();
+      return;
+    }
     const clearBrowseSelection = event.target.closest("[data-browse-clear-selection]");
     if (clearBrowseSelection instanceof HTMLButtonElement) {
       event.preventDefault();
@@ -3226,10 +3280,20 @@
       closePrintConfigModal();
       return;
     }
+    const closeGoogleCalendarPreferences = event.target.closest("[data-google-calendar-preferences-close]");
+    if (closeGoogleCalendarPreferences) {
+      event.preventDefault();
+      closeGoogleCalendarPreferencesModal();
+      return;
+    }
     if (event.target instanceof HTMLInputElement && event.target.matches("[data-print-scope-value]")) {
       syncPrintScopeState();
       applyPrintRecordFilter();
       applyPrintBuriedFilter();
+      return;
+    }
+    if ((event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) && event.target.matches("[data-google-pref-input]")) {
+      syncGoogleCalendarPreview();
       return;
     }
     const closeFeedback = event.target.closest("[data-feedback-close]");
@@ -3580,6 +3644,7 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closePrintConfigModal();
+      closeGoogleCalendarPreferencesModal();
       closeFeedbackModal();
       closeTextContextMenu();
       closeImageViewer();
@@ -3615,6 +3680,11 @@
     const feedback = feedbackModal();
     if (feedback && event.target === feedback) {
       closeFeedbackModal();
+      return;
+    }
+    const googlePreferences = googleCalendarPreferencesModal();
+    if (googlePreferences && event.target === googlePreferences) {
+      closeGoogleCalendarPreferencesModal();
       return;
     }
     const stage = event.target.closest("[data-image-stage]");

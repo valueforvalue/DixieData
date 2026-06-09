@@ -26,6 +26,7 @@ func TestGoogleService_SaveAndLoadSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadSettings: %v", err)
 	}
+	settings.ManagedEventPreferences = models.DefaultCalendarEventPreferences()
 	if loaded != settings {
 		t.Fatalf("loaded settings = %#v", loaded)
 	}
@@ -44,7 +45,7 @@ func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 		DeathYear:  1862,
 		DeathMonth: 5,
 		DeathDay:   13,
-	}, calendarTimeZone)
+	}, calendarTimeZone, models.DefaultCalendarEventPreferences())
 
 	location, err := time.LoadLocation(calendarTimeZone)
 	if err != nil {
@@ -77,6 +78,37 @@ func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 	}
 	if event.ExtendedProperties.Private["dixiedata_sync_id"] != "sync-42" {
 		t.Fatalf("sync property = %#v", event.ExtendedProperties)
+	}
+}
+
+func TestGoogleCalendarEventBuildsFromCustomPreferences(t *testing.T) {
+	event := googleCalendarEventWithTimeZone(models.Soldier{
+		DisplayID:  "PENSION-99",
+		FirstName:  "John",
+		LastName:   "Taylor",
+		DeathMonth: 5,
+		DeathDay:   13,
+	}, "America/Chicago", models.CalendarEventPreferences{
+		TitlePreset:         models.CalendarEventTitlePresetDisplay,
+		StartTime:           "13:30",
+		ReminderPrimary:     "1w",
+		ReminderSecondary:   "none",
+		IncludeRecordID:     true,
+		IncludeUnit:         false,
+		IncludeBuriedIn:     false,
+		IncludeOriginalDate: true,
+	})
+	if event.Summary != "PENSION-99 • John Taylor" {
+		t.Fatalf("summary=%q", event.Summary)
+	}
+	if !strings.Contains(event.Start.DateTime, "T13:30:00") {
+		t.Fatalf("start datetime=%q", event.Start.DateTime)
+	}
+	if event.Reminders == nil || len(event.Reminders.Overrides) != 1 || event.Reminders.Overrides[0].Minutes != 10080 {
+		t.Fatalf("reminders=%#v", event.Reminders)
+	}
+	if strings.Contains(event.Description, "Unit:") || strings.Contains(event.Description, "Buried In:") {
+		t.Fatalf("description should omit disabled fields: %q", event.Description)
 	}
 }
 
@@ -215,6 +247,36 @@ func TestGoogleService_CalendarDriftStatusCountsAddedUpdatedRemoved(t *testing.T
 	}
 }
 
+func TestGoogleService_CalendarDriftStatusMarksOutOfSyncWhenTrackedCalendarChanges(t *testing.T) {
+	service := NewGoogleService(t.TempDir())
+	if err := service.SaveSettings(models.GoogleSettings{
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		CalendarID:   "managed-calendar-new",
+	}); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
+	if err := writeJSONFile(filepath.Join(service.dataDir, googleCalendarSyncFile), GoogleCalendarSyncState{
+		CalendarID:   "managed-calendar-old",
+		LastSyncedAt: "2026-06-08T18:00:00Z",
+		LastSyncSignatures: map[string]string{
+			"sync-a": googleCalendarSignature(models.Soldier{SyncID: "sync-a", DisplayID: "DXD-00001", FirstName: "Alpha", LastName: "One", DeathMonth: 5, DeathDay: 10}),
+		},
+	}); err != nil {
+		t.Fatalf("write sync state: %v", err)
+	}
+
+	status, err := service.CalendarDriftStatus([]models.Soldier{
+		{SyncID: "sync-a", DisplayID: "DXD-00001", FirstName: "Alpha", LastName: "One", DeathMonth: 5, DeathDay: 10},
+	})
+	if err != nil {
+		t.Fatalf("CalendarDriftStatus: %v", err)
+	}
+	if !status.OutOfSync || status.Added != 1 {
+		t.Fatalf("status = %#v", status)
+	}
+}
+
 func TestSyntheticTestEventsProducesThreeDeterministicEntries(t *testing.T) {
 	const calendarTimeZone = "America/Chicago"
 	events := syntheticTestEvents()
@@ -244,7 +306,7 @@ func TestGoogleCalendarEventWithInvalidTimeZoneFallsBackToUTC(t *testing.T) {
 		LastName:   "User",
 		DeathMonth: 5,
 		DeathDay:   13,
-	}, "Not/A-Real-TimeZone")
+	}, "Not/A-Real-TimeZone", models.DefaultCalendarEventPreferences())
 	if event.Start == nil || event.Start.TimeZone != "UTC" {
 		t.Fatalf("start timezone = %#v", event.Start)
 	}

@@ -207,10 +207,22 @@ type InitialSetupForm struct {
 }
 
 type GoogleSettings struct {
-	ClientID      string
-	ClientSecret  string
-	CalendarID    string
-	DriveFolderID string
+	ClientID                string
+	ClientSecret            string
+	CalendarID              string
+	DriveFolderID           string
+	ManagedEventPreferences CalendarEventPreferences
+}
+
+type CalendarEventPreferences struct {
+	TitlePreset         string
+	StartTime           string
+	ReminderPrimary     string
+	ReminderSecondary   string
+	IncludeRecordID     bool
+	IncludeUnit         bool
+	IncludeBuriedIn     bool
+	IncludeOriginalDate bool
 }
 
 type GoogleStatus struct {

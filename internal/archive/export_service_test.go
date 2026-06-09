@@ -1538,7 +1538,7 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	})
 
 	outPath := filepath.Join(t.TempDir(), "anniversaries.ics")
-	if err := exportSvc.ExportICalendar(outPath); err != nil {
+	if err := exportSvc.ExportICalendar(outPath, models.DefaultCalendarEventPreferences()); err != nil {
 		t.Fatalf("ExportICalendar: %v", err)
 	}
 
@@ -1557,7 +1557,7 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	if !strings.Contains(text, "SUMMARY:Memorial Anniversary: John Smith") {
 		t.Fatalf("ics missing summary: %q", text)
 	}
-	if !strings.Contains(normalizedText, "DESCRIPTION:Record ID: CSA-1\\nEntry Type: Soldier\\nFull Name: John Smith") ||
+	if !strings.Contains(normalizedText, "DESCRIPTION:Record ID: CSA-1") ||
 		!strings.Contains(normalizedText, "\\nUnit: 1st Virginia") ||
 		!strings.Contains(normalizedText, "\\nBuried In: Richmond") ||
 		!strings.Contains(normalizedText, "\\nOriginal Death Date: April 9\\, 1862") {
