@@ -32,7 +32,8 @@ func TestGoogleService_SaveAndLoadSettings(t *testing.T) {
 }
 
 func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
-	event := googleCalendarEvent(models.Soldier{
+	const calendarTimeZone = "America/Chicago"
+	event := googleCalendarEventWithTimeZone(models.Soldier{
 		DisplayID:  "PENSION-42",
 		SyncID:     "sync-42",
 		FirstName:  "Robert",
@@ -43,14 +44,24 @@ func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 		DeathYear:  1862,
 		DeathMonth: 5,
 		DeathDay:   13,
-	})
+	}, calendarTimeZone)
 
-	expectedDate := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 5, DeathDay: 13}, time.Now()).Format("2006-01-02")
+	location, err := time.LoadLocation(calendarTimeZone)
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	expectedDate := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 5, DeathDay: 13}, time.Now().In(location)).Format("2006-01-02")
 	if event.Start == nil || event.Start.DateTime == "" || !strings.HasPrefix(event.Start.DateTime, expectedDate+"T09:00:00") {
 		t.Fatalf("start = %#v", event.Start)
 	}
+	if event.Start.TimeZone != calendarTimeZone {
+		t.Fatalf("start timezone = %q", event.Start.TimeZone)
+	}
 	if event.End == nil || event.End.DateTime == "" {
 		t.Fatalf("end = %#v", event.End)
+	}
+	if event.End.TimeZone != calendarTimeZone {
+		t.Fatalf("end timezone = %q", event.End.TimeZone)
 	}
 	if len(event.Recurrence) != 1 || event.Recurrence[0] != "RRULE:FREQ=YEARLY" {
 		t.Fatalf("recurrence = %#v", event.Recurrence)
@@ -202,6 +213,7 @@ func TestGoogleService_CalendarDriftStatusCountsAddedUpdatedRemoved(t *testing.T
 }
 
 func TestSyntheticTestEventsProducesThreeDeterministicEntries(t *testing.T) {
+	const calendarTimeZone = "America/Chicago"
 	events := syntheticTestEvents()
 	if len(events) != 3 {
 		t.Fatalf("len(events) = %d", len(events))
@@ -212,9 +224,12 @@ func TestSyntheticTestEventsProducesThreeDeterministicEntries(t *testing.T) {
 			t.Fatalf("duplicate test event key %q", event.Key)
 		}
 		seen[event.Key] = struct{}{}
-		googleEvent := event.toCalendarEvent()
+		googleEvent := event.toCalendarEvent(calendarTimeZone)
 		if googleEvent.ExtendedProperties == nil || googleEvent.ExtendedProperties.Private["dixiedata_test"] != "true" {
 			t.Fatalf("missing test marker: %#v", googleEvent.ExtendedProperties)
+		}
+		if googleEvent.Start == nil || googleEvent.Start.TimeZone != calendarTimeZone {
+			t.Fatalf("start timezone = %#v", googleEvent.Start)
 		}
 	}
 }
