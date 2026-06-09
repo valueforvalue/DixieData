@@ -124,8 +124,28 @@ func shouldAttemptPostUpdateHealthClear(r *http.Request) bool {
 	if r == nil || r.Method != http.MethodGet || r.URL == nil {
 		return false
 	}
-	switch r.URL.Path {
-	case "/", "/calendar":
+	return isPostUpdateHealthTrustPath(r.URL.Path)
+}
+
+func isPostUpdateHealthTrustPath(path string) bool {
+	switch {
+	case path == "/", path == "/calendar":
+		return true
+	case strings.HasPrefix(path, "/browse"):
+		return true
+	case strings.HasPrefix(path, "/settings"):
+		return true
+	case strings.HasPrefix(path, "/insights"):
+		return true
+	case strings.HasPrefix(path, "/soldiers"):
+		return true
+	case strings.HasPrefix(path, "/review-queue"):
+		return true
+	case strings.HasPrefix(path, "/research-collections"):
+		return true
+	case strings.HasPrefix(path, "/export"):
+		return true
+	case strings.HasPrefix(path, "/compare"):
 		return true
 	default:
 		return false
