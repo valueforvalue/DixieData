@@ -252,3 +252,24 @@ func TestGoogleCalendarEventWithInvalidTimeZoneFallsBackToUTC(t *testing.T) {
 		t.Fatalf("end timezone = %#v", event.End)
 	}
 }
+
+func TestChooseGoogleEventTimeZonePrefersNonUTCCalendarTimeZone(t *testing.T) {
+	got := chooseGoogleEventTimeZone("America/Chicago", "America/New_York")
+	if got != "America/Chicago" {
+		t.Fatalf("timezone=%q", got)
+	}
+}
+
+func TestChooseGoogleEventTimeZoneFallsBackToPreferredWhenCalendarUTC(t *testing.T) {
+	got := chooseGoogleEventTimeZone("UTC", "America/Chicago")
+	if got != "America/Chicago" {
+		t.Fatalf("timezone=%q", got)
+	}
+}
+
+func TestChooseGoogleEventTimeZoneFallsBackToUTCWhenBothUTC(t *testing.T) {
+	got := chooseGoogleEventTimeZone("UTC", "UTC")
+	if got != "UTC" {
+		t.Fatalf("timezone=%q", got)
+	}
+}
