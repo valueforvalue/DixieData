@@ -940,7 +940,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</div><div class=\"responsive-two-col grid gap-4\"><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/connect\" hx-target=\"#google-status\" class=\"primary-button\">Connect Google Account</button> <button type=\"button\" hx-post=\"/integrations/google/disconnect\" hx-target=\"#google-status\" class=\"secondary-button\">Disconnect</button></div><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/backup\" hx-target=\"#google-status\" class=\"primary-button\">Upload Backup to Google Drive</button> <button type=\"button\" hx-post=\"/integrations/google/sheets/export\" hx-target=\"#google-status\" class=\"secondary-button\">Export CSV to Google Sheets</button></div><div class=\"col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">DixieData Calendar</p><div class=\"mt-3 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/calendar/use-managed\" hx-target=\"#google-status\" data-progress-label=\"Configuring DixieData Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Create/Use DixieData Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync-managed\" hx-target=\"#google-status\" data-progress-label=\"Syncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Sync DixieData Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync-managed\" hx-target=\"#google-status\" hx-confirm=\"Remove all Google Calendar events previously created by DixieData?\" data-progress-label=\"Unsyncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Unsync DixieData Calendar</button> <button type=\"button\" data-google-calendar-preferences-open class=\"secondary-button\">Calendar Event Preferences</button></div></div><div class=\"col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">DixieData Test Calendar</p><div class=\"mt-3 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/calendar/use-test\" hx-target=\"#google-status\" data-progress-label=\"Configuring DixieData Test Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Create/Use DixieData Test Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync-test\" hx-target=\"#google-status\" data-progress-label=\"Running DixieData Test Sync...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Test Sync</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync-test\" hx-target=\"#google-status\" data-progress-label=\"Removing DixieData Test events...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Test Unsync</button></div></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600\">Status: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</div><div class=\"responsive-two-col grid gap-4\"><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/connect\" hx-target=\"#google-status\" class=\"primary-button\">Connect Google Account</button> <button type=\"button\" hx-post=\"/integrations/google/disconnect\" hx-target=\"#google-status\" class=\"secondary-button\">Disconnect</button></div><div class=\"col-span-2 flex flex-wrap gap-3\"><button type=\"button\" hx-post=\"/integrations/google/backup\" hx-target=\"#google-status\" class=\"primary-button\">Upload Backup to Google Drive</button> <button type=\"button\" hx-post=\"/integrations/google/sheets/export\" hx-target=\"#google-status\" class=\"secondary-button\">Export CSV to Google Sheets</button></div><div class=\"col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-3\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">DixieData Calendar</p><div class=\"grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3\"><button type=\"button\" hx-post=\"/integrations/google/calendar/use-managed\" hx-target=\"#google-status\" data-progress-label=\"Configuring DixieData Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Use Calendar</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync-managed\" hx-target=\"#google-status\" data-progress-label=\"Syncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Sync</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync-managed\" hx-target=\"#google-status\" hx-confirm=\"Remove all Google Calendar events previously created by DixieData?\" data-progress-label=\"Unsyncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Unsync</button> <button type=\"button\" data-google-calendar-preferences-open class=\"secondary-button\">Preferences</button></div><p class=\"text-xs text-slate-500\">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p></div><div class=\"col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-2\"><p class=\"text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]\">DixieData Test Calendar</p><div class=\"grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3\"><button type=\"button\" hx-post=\"/integrations/google/calendar/use-test\" hx-target=\"#google-status\" data-progress-label=\"Configuring DixieData Test Calendar...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Use Test</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/sync-test\" hx-target=\"#google-status\" data-progress-label=\"Running DixieData Test Sync...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Test Sync</button> <button type=\"button\" hx-post=\"/integrations/google/calendar/unsync-test\" hx-target=\"#google-status\" data-progress-label=\"Removing DixieData Test events...\" data-busy-group=\"google-calendar-actions\" class=\"secondary-button\">Test Unsync</button></div></div></div><div class=\"rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600\">Status: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -973,7 +973,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(status.ManagedCalendarID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 518, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 519, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 			if templ_7745c5c3_Err != nil {
@@ -986,7 +986,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(status.TestCalendarID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 519, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 520, Col: 91}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -1004,7 +1004,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 				var templ_7745c5c3_Var52 string
 				templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(status.LastSyncedAt)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 521, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 522, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 				if templ_7745c5c3_Err != nil {
@@ -1037,7 +1037,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", status.DriftAdded))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 529, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 530, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1050,7 +1050,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", status.DriftUpdated))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 529, Col: 147}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 530, Col: 147}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -1063,7 +1063,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", status.DriftRemoved))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 529, Col: 202}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 530, Col: 202}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
@@ -1076,7 +1076,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var56 string
 			templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(uiids.OverlayGoogleCalendarPrefs)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 537, Col: 92}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 538, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 			if templ_7745c5c3_Err != nil {
@@ -1119,7 +1119,7 @@ func ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewC
 			var templ_7745c5c3_Var57 string
 			templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(status.Settings.ManagedEventPreferences.StartTime)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 566, Col: 188}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/share.templ`, Line: 567, Col: 188}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 			if templ_7745c5c3_Err != nil {

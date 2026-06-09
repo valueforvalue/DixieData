@@ -87,13 +87,17 @@ func (g *GoogleService) Status() (models.GoogleStatus, error) {
 	}
 	settings.ManagedEventPreferences = effective.ManagedEventPreferences
 	token, _ := g.loadToken()
+	connected := false
+	if token != nil {
+		connected = g.connectionHealthy(effective, token)
+	}
 	syncState, err := g.loadCalendarSyncState()
 	if err != nil {
 		return models.GoogleStatus{}, err
 	}
 	return models.GoogleStatus{
 		Settings:              settings,
-		Connected:             token != nil,
+		Connected:             connected,
 		HasClientID:           strings.TrimSpace(effective.ClientID) != "",
 		HasSecret:             strings.TrimSpace(effective.ClientSecret) != "",
 		HasToken:              token != nil,
@@ -104,6 +108,24 @@ func (g *GoogleService) Status() (models.GoogleStatus, error) {
 		TestCalendarID:        strings.TrimSpace(syncState.TestCalendarID),
 		LastSyncedAt:          strings.TrimSpace(syncState.LastSyncedAt),
 	}, nil
+}
+
+func (g *GoogleService) connectionHealthy(settings models.GoogleSettings, token *oauth2.Token) bool {
+	if token == nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	config := g.oauthConfig(settings, "http://127.0.0.1")
+	tokenSource := config.TokenSource(ctx, token)
+	refreshed, err := tokenSource.Token()
+	if err != nil {
+		return false
+	}
+	if (refreshed.AccessToken != token.AccessToken || refreshed.Expiry != token.Expiry) && g.saveToken(refreshed) != nil {
+		return false
+	}
+	return true
 }
 
 func (g *GoogleService) SaveSettings(settings models.GoogleSettings) error {

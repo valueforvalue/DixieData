@@ -483,19 +483,20 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						<button type="button" hx-post="/integrations/google/backup" hx-target="#google-status" class="primary-button">Upload Backup to Google Drive</button>
 						<button type="button" hx-post="/integrations/google/sheets/export" hx-target="#google-status" class="secondary-button">Export CSV to Google Sheets</button>
 					</div>
-					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4">
+					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
-						<div class="mt-3 flex flex-wrap gap-3">
-							<button type="button" hx-post="/integrations/google/calendar/use-managed" hx-target="#google-status" data-progress-label="Configuring DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Create/Use DixieData Calendar</button>
-							<button type="button" hx-post="/integrations/google/calendar/sync-managed" hx-target="#google-status" data-progress-label="Syncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Sync DixieData Calendar</button>
-							<button type="button" hx-post="/integrations/google/calendar/unsync-managed" hx-target="#google-status" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Unsync DixieData Calendar</button>
-							<button type="button" data-google-calendar-preferences-open class="secondary-button">Calendar Event Preferences</button>
+						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+							<button type="button" hx-post="/integrations/google/calendar/use-managed" hx-target="#google-status" data-progress-label="Configuring DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Use Calendar</button>
+							<button type="button" hx-post="/integrations/google/calendar/sync-managed" hx-target="#google-status" data-progress-label="Syncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Sync</button>
+							<button type="button" hx-post="/integrations/google/calendar/unsync-managed" hx-target="#google-status" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Unsync</button>
+							<button type="button" data-google-calendar-preferences-open class="secondary-button">Preferences</button>
 						</div>
+						<p class="text-xs text-slate-500">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p>
 					</div>
-					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4">
+					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-2">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
-						<div class="mt-3 flex flex-wrap gap-3">
-							<button type="button" hx-post="/integrations/google/calendar/use-test" hx-target="#google-status" data-progress-label="Configuring DixieData Test Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Create/Use DixieData Test Calendar</button>
+						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+							<button type="button" hx-post="/integrations/google/calendar/use-test" hx-target="#google-status" data-progress-label="Configuring DixieData Test Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Use Test</button>
 							<button type="button" hx-post="/integrations/google/calendar/sync-test" hx-target="#google-status" data-progress-label="Running DixieData Test Sync..." data-busy-group="google-calendar-actions" class="secondary-button">Test Sync</button>
 							<button type="button" hx-post="/integrations/google/calendar/unsync-test" hx-target="#google-status" data-progress-label="Removing DixieData Test events..." data-busy-group="google-calendar-actions" class="secondary-button">Test Unsync</button>
 						</div>
