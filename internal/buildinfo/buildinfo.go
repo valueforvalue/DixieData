@@ -8,6 +8,7 @@ import (
 
 const (
 	AppName                   = "DixieData"
+	CalendarTimeZone          = "America/Chicago"
 	JSONExportVersion         = 3
 	CSVExportVersion          = 4
 	XLSXExportVersion         = 1

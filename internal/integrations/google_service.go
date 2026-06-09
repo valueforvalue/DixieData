@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/browser"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -639,6 +640,14 @@ func (g *GoogleService) SyncTestCalendar(ctx context.Context) (GoogleCalendarSyn
 		}
 		_ = created
 		syncState.TestCalendarID = calendarID
+	} else {
+		calendarTimeZone, tzErr := googleCalendarTimeZone(ctx, calSvc, calendarID)
+		if tzErr != nil {
+			return GoogleCalendarSyncResult{}, tzErr
+		}
+		if tzErr = ensureCalendarTimeZone(ctx, calSvc, calendarID, calendarTimeZone, buildinfo.CalendarTimeZone); tzErr != nil {
+			return GoogleCalendarSyncResult{}, tzErr
+		}
 	}
 	if syncState.TestEventIDs == nil {
 		syncState.TestEventIDs = map[string]string{}
@@ -1137,11 +1146,13 @@ func ensureOwnedCalendar(ctx context.Context, calSvc *gcal.Service, calendarName
 	if targetName == "" {
 		return "", false, fmt.Errorf("calendar name is required")
 	}
+	targetTimeZone := normalizeGoogleCalendarTimeZone(buildinfo.CalendarTimeZone)
 	pageToken := ""
 	for {
 		call := calSvc.CalendarList.List().
 			MinAccessRole("owner").
-			ShowHidden(true)
+			ShowHidden(true).
+			Fields("items(id,summary,timeZone),nextPageToken")
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -1154,7 +1165,11 @@ func ensureOwnedCalendar(ctx context.Context, calSvc *gcal.Service, calendarName
 				continue
 			}
 			if strings.EqualFold(strings.TrimSpace(item.Summary), targetName) && strings.TrimSpace(item.Id) != "" {
-				return strings.TrimSpace(item.Id), false, nil
+				calendarID := strings.TrimSpace(item.Id)
+				if err := ensureCalendarTimeZone(ctx, calSvc, calendarID, item.TimeZone, targetTimeZone); err != nil {
+					return "", false, err
+				}
+				return calendarID, false, nil
 			}
 		}
 		if strings.TrimSpace(list.NextPageToken) == "" {
@@ -1162,11 +1177,23 @@ func ensureOwnedCalendar(ctx context.Context, calSvc *gcal.Service, calendarName
 		}
 		pageToken = list.NextPageToken
 	}
-	created, err := calSvc.Calendars.Insert(&gcal.Calendar{Summary: targetName}).Context(ctx).Do()
+	created, err := calSvc.Calendars.Insert(&gcal.Calendar{Summary: targetName, TimeZone: targetTimeZone}).Context(ctx).Do()
 	if err != nil {
 		return "", false, err
 	}
 	return strings.TrimSpace(created.Id), true, nil
+}
+
+func ensureCalendarTimeZone(ctx context.Context, calSvc *gcal.Service, calendarID, currentTimeZone, targetTimeZone string) error {
+	if strings.TrimSpace(calendarID) == "" {
+		return fmt.Errorf("calendar id is required")
+	}
+	targetTimeZone = normalizeGoogleCalendarTimeZone(targetTimeZone)
+	if normalizeGoogleCalendarTimeZone(currentTimeZone) == targetTimeZone {
+		return nil
+	}
+	_, err := calSvc.Calendars.Patch(calendarID, &gcal.Calendar{TimeZone: targetTimeZone}).Context(ctx).Do()
+	return err
 }
 
 func googleCalendarTimeZone(ctx context.Context, calSvc *gcal.Service, calendarID string) (string, error) {
