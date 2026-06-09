@@ -46,7 +46,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 							<span>Export Month</span>
 							<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / Print</span>
 						</summary>
-						<form hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" data-pdf-pref-scope="calendar" class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
+						<form hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="#calendar-export-status" data-pdf-pref-scope="calendar" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Monthly Calendar Export</p>
 							<p class="mt-2 text-sm text-slate-600">Generate a printable PDF for the selected month.</p>
 							<div class="mt-4 grid gap-3 sm:grid-cols-2">

@@ -210,6 +210,40 @@
     body.setAttribute("data-layout-mode", mode);
     body.setAttribute("data-layout-mode-preference", preference);
     refreshResponsiveLayoutControls(doc, preference, mode);
+    clampPopoutPanels(doc);
+  }
+
+  function clampPopoutPanels(root = document) {
+    const scope = root && root.nodeType === 9 ? root : document;
+    const viewportPadding = 12;
+    scope.querySelectorAll("[data-popout-panel]").forEach((panel) => {
+      if (!(panel instanceof HTMLElement)) {
+        return;
+      }
+      const detailsHost = panel.closest("details");
+      if (detailsHost && detailsHost.tagName === "DETAILS" && !detailsHost.open) {
+        panel.style.removeProperty("transform");
+        return;
+      }
+      if (panel.offsetParent === null) {
+        panel.style.removeProperty("transform");
+        return;
+      }
+      panel.style.removeProperty("transform");
+      const rect = panel.getBoundingClientRect();
+      let shiftX = 0;
+      if (rect.right > window.innerWidth - viewportPadding) {
+        shiftX -= rect.right - (window.innerWidth - viewportPadding);
+      }
+      if (rect.left + shiftX < viewportPadding) {
+        shiftX += viewportPadding - (rect.left + shiftX);
+      }
+      if (Math.abs(shiftX) > 0.5) {
+        panel.style.transform = `translateX(${Math.round(shiftX)}px)`;
+        return;
+      }
+      panel.style.removeProperty("transform");
+    });
   }
 
   function ensureResponsiveLayoutWatcher() {
@@ -3198,9 +3232,13 @@
     document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
       request(el);
     });
+    window.requestAnimationFrame(() => clampPopoutPanels(document));
   });
 
   document.addEventListener("click", (event) => {
+    if (event.target && typeof event.target.closest === "function" && event.target.closest("summary")) {
+      window.requestAnimationFrame(() => clampPopoutPanels(document));
+    }
     const textMenuAction = event.target.closest("[data-text-menu-action]");
     if (textMenuAction instanceof HTMLButtonElement) {
       event.preventDefault();
@@ -3721,7 +3759,17 @@
     if (viewer && !viewer.classList.contains("hidden")) {
       resetImageViewerTransform();
     }
+    clampPopoutPanels(document);
   });
+  document.addEventListener(
+    "toggle",
+    (event) => {
+      if (event.target && event.target.tagName === "DETAILS") {
+        window.requestAnimationFrame(() => clampPopoutPanels(document));
+      }
+    },
+    true,
+  );
   document.addEventListener(
     "wheel",
     (event) => {

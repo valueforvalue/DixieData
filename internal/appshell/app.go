@@ -2543,7 +2543,7 @@ func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Req
 			fmt.Fprintf(w, "Google Calendar sync preview failed: %v", err)
 			return
 		}
-		fmt.Fprintf(w, "Dry run: %d create, %d update, %d delete, %d skip. <button type=\"button\" class=\"secondary-button ml-2\" hx-post=\"/integrations/google/calendar/sync-managed\" hx-target=\"#google-status\" hx-vals='{\"confirm_sync\":\"1\"}' data-progress-label=\"Syncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\">Run Sync Now</button>", preview.Created, preview.Updated, preview.Deleted, preview.Skipped)
+		fmt.Fprintf(w, "Dry run: %d create, %d update, %d delete, %d skip. <button type=\"button\" name=\"confirm_sync\" value=\"1\" class=\"secondary-button ml-2\" hx-post=\"/integrations/google/calendar/sync-managed\" hx-target=\"#google-status\" data-progress-label=\"Syncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\">Run Sync Now</button>", preview.Created, preview.Updated, preview.Deleted, preview.Skipped)
 		return
 	}
 	result, err := a.google.SyncCalendar(r.Context(), settings, soldiers)

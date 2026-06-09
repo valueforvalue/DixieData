@@ -561,7 +561,7 @@ func CalendarDayActionMenu(day viewmodel.CalendarDayDetail) templ.Component {
 			templ_7745c5c3_Var25 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<div class=\"absolute right-0 z-20 mt-3 w-[min(28rem,calc(100vw-5rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)]\"><div class=\"flex flex-wrap items-start justify-between gap-3\"><div><h4 class=\"text-lg font-semibold text-[#22303d]\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<div data-popout-panel class=\"absolute right-0 z-20 mt-3 w-[min(28rem,calc(100vw-5rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)]\"><div class=\"flex flex-wrap items-start justify-between gap-3\"><div><h4 class=\"text-lg font-semibold text-[#22303d]\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
