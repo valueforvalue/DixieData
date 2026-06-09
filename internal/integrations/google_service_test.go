@@ -233,3 +233,19 @@ func TestSyntheticTestEventsProducesThreeDeterministicEntries(t *testing.T) {
 		}
 	}
 }
+
+func TestGoogleCalendarEventWithInvalidTimeZoneFallsBackToUTC(t *testing.T) {
+	event := googleCalendarEventWithTimeZone(models.Soldier{
+		DisplayID:  "PENSION-100",
+		FirstName:  "Test",
+		LastName:   "User",
+		DeathMonth: 5,
+		DeathDay:   13,
+	}, "Not/A-Real-TimeZone")
+	if event.Start == nil || event.Start.TimeZone != "UTC" {
+		t.Fatalf("start timezone = %#v", event.Start)
+	}
+	if event.End == nil || event.End.TimeZone != "UTC" {
+		t.Fatalf("end timezone = %#v", event.End)
+	}
+}
