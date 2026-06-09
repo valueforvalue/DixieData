@@ -1551,6 +1551,9 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	if !strings.Contains(text, "BEGIN:VCALENDAR") || !strings.Contains(text, "END:VCALENDAR") {
 		t.Fatalf("ics missing calendar wrapper: %q", text)
 	}
+	if !strings.Contains(text, "X-WR-TIMEZONE:"+buildinfo.CalendarTimeZone) {
+		t.Fatalf("ics missing calendar timezone header: %q", text)
+	}
 	if !strings.Contains(text, "SUMMARY:Memorial Anniversary: John Smith") {
 		t.Fatalf("ics missing summary: %q", text)
 	}
@@ -1560,11 +1563,15 @@ func TestExportService_ExportICalendar(t *testing.T) {
 		!strings.Contains(normalizedText, "\\nOriginal Death Date: April 9\\, 1862") {
 		t.Fatalf("ics missing cleaned description: %q", text)
 	}
-	expectedStart := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now()).Format("20060102") + "T090000"
-	if !strings.Contains(text, "DTSTART:"+expectedStart) {
+	location, err := time.LoadLocation(buildinfo.CalendarTimeZone)
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	expectedStart := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now().In(location)).Format("20060102") + "T090000"
+	if !strings.Contains(text, "DTSTART;TZID="+buildinfo.CalendarTimeZone+":"+expectedStart) {
 		t.Fatalf("ics missing start date: %q", text)
 	}
-	if !strings.Contains(text, "DTEND:"+nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now()).Format("20060102")+"T100000") {
+	if !strings.Contains(text, "DTEND;TZID="+buildinfo.CalendarTimeZone+":"+nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now().In(location)).Format("20060102")+"T100000") {
 		t.Fatalf("ics missing end date: %q", text)
 	}
 	if !strings.Contains(text, "RRULE:FREQ=YEARLY") {

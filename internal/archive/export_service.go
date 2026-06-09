@@ -1768,6 +1768,12 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 
 	now := time.Now()
 	dtstamp := now.UTC()
+	iCalTimeZone := buildinfo.CalendarTimeZone
+	location, err := time.LoadLocation(iCalTimeZone)
+	if err != nil {
+		location = time.UTC
+		iCalTimeZone = "UTC"
+	}
 	for _, line := range []string{
 		"BEGIN:VCALENDAR",
 		"VERSION:2.0",
@@ -1775,6 +1781,7 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 		"CALSCALE:GREGORIAN",
 		"METHOD:PUBLISH",
 		"X-WR-CALNAME:DixieData Memorial Anniversaries",
+		fmt.Sprintf("X-WR-TIMEZONE:%s", iCalTimeZone),
 		fmt.Sprintf("X-DIXIEDATA-APP-VERSION:%s", buildinfo.AppVersion),
 		fmt.Sprintf("X-DIXIEDATA-SCHEMA-VERSION:%d", buildinfo.SchemaVersion),
 		fmt.Sprintf("X-DIXIEDATA-EXPORT-VERSION:%d", buildinfo.ICalendarExportVersion),
@@ -1788,8 +1795,8 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 		if soldier.DeathMonth < 1 || soldier.DeathDay < 1 {
 			continue
 		}
-		start := nextGoogleAnniversaryDate(soldier, now)
-		start = time.Date(start.Year(), start.Month(), start.Day(), 9, 0, 0, 0, time.Local)
+		start := nextGoogleAnniversaryDate(soldier, now.In(location))
+		start = time.Date(start.Year(), start.Month(), start.Day(), 9, 0, 0, 0, location)
 		end := start.Add(time.Hour)
 		description := strings.Join(compactICalendarDescriptionLines(
 			"Record ID: "+emptyPDFValue(strings.TrimSpace(soldier.DisplayID)),
@@ -1828,8 +1835,8 @@ func (e *ExportService) ExportICalendar(outputPath string) error {
 			fmt.Sprintf("DTSTAMP:%s", dtstamp.Format("20060102T150405Z")),
 			fmt.Sprintf("SUMMARY:%s", icalText("Memorial Anniversary: "+soldierDisplayName(soldier))),
 			fmt.Sprintf("DESCRIPTION:%s", icalText(description)),
-			fmt.Sprintf("DTSTART:%s", start.Format("20060102T150405")),
-			fmt.Sprintf("DTEND:%s", end.Format("20060102T150405")),
+			fmt.Sprintf("DTSTART;TZID=%s:%s", iCalTimeZone, start.Format("20060102T150405")),
+			fmt.Sprintf("DTEND;TZID=%s:%s", iCalTimeZone, end.Format("20060102T150405")),
 			"RRULE:FREQ=YEARLY",
 			"STATUS:CONFIRMED",
 			"TRANSP:TRANSPARENT",
