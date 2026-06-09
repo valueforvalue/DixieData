@@ -1,6 +1,7 @@
 package appshell
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/base64"
@@ -75,6 +76,76 @@ type App struct {
 	memorialPreview         map[string]string
 }
 
+type bufferedResponseWriter struct {
+	header     http.Header
+	statusCode int
+	body       bytes.Buffer
+}
+
+func newBufferedResponseWriter() *bufferedResponseWriter {
+	return &bufferedResponseWriter{header: make(http.Header)}
+}
+
+func (b *bufferedResponseWriter) Header() http.Header {
+	return b.header
+}
+
+func (b *bufferedResponseWriter) WriteHeader(statusCode int) {
+	if b.statusCode != 0 {
+		return
+	}
+	b.statusCode = statusCode
+}
+
+func (b *bufferedResponseWriter) Write(data []byte) (int, error) {
+	if b.statusCode == 0 {
+		b.statusCode = http.StatusOK
+	}
+	return b.body.Write(data)
+}
+
+func (b *bufferedResponseWriter) FlushTo(target http.ResponseWriter) {
+	for key, values := range b.header {
+		for _, value := range values {
+			target.Header().Add(key, value)
+		}
+	}
+	statusCode := b.statusCode
+	if statusCode == 0 {
+		statusCode = http.StatusOK
+	}
+	target.WriteHeader(statusCode)
+	if b.body.Len() > 0 {
+		_, _ = target.Write(b.body.Bytes())
+	}
+}
+
+func shouldAttemptPostUpdateHealthClear(r *http.Request) bool {
+	if r == nil || r.Method != http.MethodGet || r.URL == nil {
+		return false
+	}
+	switch r.URL.Path {
+	case "/", "/calendar":
+		return true
+	default:
+		return false
+	}
+}
+
+func (a *App) clearPendingLaunchState() error {
+	if !a.pendingLaunchStateClear {
+		return nil
+	}
+	if a.restorePoints == nil {
+		return fmt.Errorf("restore point manager unavailable")
+	}
+	if err := a.restorePoints.ClearLaunchState(); err != nil {
+		return fmt.Errorf("failed to clear restore point launch state: %w", err)
+	}
+	a.pendingLaunchStateClear = false
+	return nil
+}
+
 func (a *App) handleUpdateBootstrapHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -88,11 +159,10 @@ func (a *App) handleUpdateBootstrapHealth(w http.ResponseWriter, r *http.Request
 		http.Error(w, "restore point manager unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if err := a.restorePoints.ClearLaunchState(); err != nil {
-		http.Error(w, fmt.Sprintf("failed to clear restore point launch state: %v", err), http.StatusInternalServerError)
+	if err := a.clearPendingLaunchState(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	a.pendingLaunchStateClear = false
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -379,6 +449,18 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if override := requestMethodOverride(r); override != "" {
 		r = r.Clone(r.Context())
 		r.Method = override
+	}
+	if a.pendingLaunchStateClear && shouldAttemptPostUpdateHealthClear(r) {
+		buffered := newBufferedResponseWriter()
+		a.mux.ServeHTTP(buffered, r)
+		if buffered.statusCode >= http.StatusOK && buffered.statusCode < http.StatusMultipleChoices {
+			if err := a.clearPendingLaunchState(); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		buffered.FlushTo(w)
+		return
 	}
 	a.mux.ServeHTTP(w, r)
 }

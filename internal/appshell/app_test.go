@@ -939,6 +939,102 @@ func TestHandleUpdateBootstrapHealthNoPendingStateNoop(t *testing.T) {
 	}
 }
 
+func TestAppServeHTTPClearsPendingLaunchStateAfterHealthyCalendarResponse(t *testing.T) {
+	dataDir := t.TempDir()
+	manager := update.NewRestorePointManager(dataDir)
+	if err := manager.SaveLaunchState(update.RestorePointRecord{
+		ID:               "restore-point-1",
+		TargetAppVersion: "1.2.49",
+	}); err != nil {
+		t.Fatalf("SaveLaunchState: %v", err)
+	}
+
+	app := NewApp()
+	app.restorePoints = manager
+	app.pendingLaunchStateClear = true
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if app.pendingLaunchStateClear {
+		t.Fatal("expected launch-state clear flag to be reset")
+	}
+	state, err := manager.LoadLaunchState()
+	if err != nil {
+		t.Fatalf("LoadLaunchState: %v", err)
+	}
+	if state != nil {
+		t.Fatalf("expected launch state to be cleared, got %#v", state)
+	}
+}
+
+func TestAppServeHTTPPreservesPendingLaunchStateWhenCalendarFails(t *testing.T) {
+	dataDir := t.TempDir()
+	manager := update.NewRestorePointManager(dataDir)
+	if err := manager.SaveLaunchState(update.RestorePointRecord{
+		ID:               "restore-point-1",
+		TargetAppVersion: "1.2.49",
+	}); err != nil {
+		t.Fatalf("SaveLaunchState: %v", err)
+	}
+
+	app := NewApp()
+	app.restorePoints = manager
+	app.pendingLaunchStateClear = true
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "calendar failed", http.StatusInternalServerError)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusInternalServerError)
+	}
+	if !app.pendingLaunchStateClear {
+		t.Fatal("expected launch-state clear flag to remain set")
+	}
+	state, err := manager.LoadLaunchState()
+	if err != nil {
+		t.Fatalf("LoadLaunchState: %v", err)
+	}
+	if state == nil {
+		t.Fatal("expected launch state to remain present")
+	}
+}
+
+func TestAppServeHTTPFailsClosedWhenPendingLaunchStateCannotClear(t *testing.T) {
+	app := NewApp()
+	app.pendingLaunchStateClear = true
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "restore point manager unavailable") {
+		t.Fatalf("body=%q", rec.Body.String())
+	}
+}
+
 func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)
