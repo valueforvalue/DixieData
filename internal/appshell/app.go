@@ -378,6 +378,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/integrations/google/backup", a.handleGoogleBackup)
 	mux.HandleFunc("/integrations/google/sheets/export", a.handleGoogleSheetsExport)
 	mux.HandleFunc("/integrations/google/calendar/use-managed", a.handleGoogleCalendarUseManaged)
+	mux.HandleFunc("/integrations/google/calendar/preferences/save", a.handleGoogleCalendarPreferencesSave)
 	mux.HandleFunc("/integrations/google/calendar/sync-managed", a.handleGoogleCalendarSyncManaged)
 	mux.HandleFunc("/integrations/google/calendar/unsync-managed", a.handleGoogleCalendarUnsyncManaged)
 	mux.HandleFunc("/integrations/google/calendar/use-test", a.handleGoogleCalendarUseTest)
@@ -1842,7 +1843,12 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "iCalendar export cancelled.")
 		return
 	}
-	if err := a.export.ExportICalendar(path); err != nil {
+	preferences, err := a.google.ManagedEventPreferences()
+	if err != nil {
+		fmt.Fprintf(w, "iCalendar export failed: %v", err)
+		return
+	}
+	if err := a.export.ExportICalendar(path, preferences); err != nil {
 		fmt.Fprintf(w, "iCalendar export failed: %v", err)
 		return
 	}
@@ -2494,6 +2500,24 @@ func (a *App) handleGoogleCalendarUseManaged(w http.ResponseWriter, r *http.Requ
 	fmt.Fprintf(w, "Managed DixieData calendar selected (%s).", calendarID)
 }
 
+func (a *App) handleGoogleCalendarPreferencesSave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	preferences, err := parseCalendarEventPreferencesForm(r)
+	if err != nil {
+		fmt.Fprintf(w, "Calendar preference save failed: %v", err)
+		return
+	}
+	saved, err := a.google.SaveManagedEventPreferences(preferences)
+	if err != nil {
+		fmt.Fprintf(w, "Calendar preference save failed: %v", err)
+		return
+	}
+	fmt.Fprintf(w, "Calendar preferences saved. Title preset: %s. Start time: %s. Sync DixieData Calendar to apply changes globally.", saved.TitlePreset, saved.StartTime)
+}
+
 func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -2511,6 +2535,15 @@ func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Req
 	soldiers, err := a.listAllSoldiers()
 	if err != nil {
 		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		return
+	}
+	if strings.TrimSpace(r.FormValue("confirm_sync")) != "1" {
+		preview, err := a.google.PreviewSyncCalendar(settings, soldiers)
+		if err != nil {
+			fmt.Fprintf(w, "Google Calendar sync preview failed: %v", err)
+			return
+		}
+		fmt.Fprintf(w, "Dry run: %d create, %d update, %d delete, %d skip. <button type=\"button\" class=\"secondary-button ml-2\" hx-post=\"/integrations/google/calendar/sync-managed\" hx-target=\"#google-status\" hx-vals='{\"confirm_sync\":\"1\"}' data-progress-label=\"Syncing DixieData Calendar...\" data-busy-group=\"google-calendar-actions\">Run Sync Now</button>", preview.Created, preview.Updated, preview.Deleted, preview.Skipped)
 		return
 	}
 	result, err := a.google.SyncCalendar(r.Context(), settings, soldiers)
@@ -3034,6 +3067,38 @@ func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Reques
 	}
 	setToastHeader(w, "Primary image updated.")
 	fmt.Fprint(w, "Primary image updated.")
+}
+
+func parseCalendarEventPreferencesForm(r *http.Request) (models.CalendarEventPreferences, error) {
+	if err := r.ParseForm(); err != nil {
+		return models.CalendarEventPreferences{}, fmt.Errorf("failed to parse form: %w", err)
+	}
+	preferences := models.CalendarEventPreferences{
+		TitlePreset:         strings.TrimSpace(r.FormValue("title_preset")),
+		StartTime:           strings.TrimSpace(r.FormValue("start_time")),
+		ReminderPrimary:     strings.TrimSpace(r.FormValue("reminder_primary")),
+		ReminderSecondary:   strings.TrimSpace(r.FormValue("reminder_secondary")),
+		IncludeRecordID:     r.FormValue("include_record_id") == "1",
+		IncludeUnit:         r.FormValue("include_unit") == "1",
+		IncludeBuriedIn:     r.FormValue("include_buried_in") == "1",
+		IncludeOriginalDate: r.FormValue("include_original_date") == "1",
+	}
+	if _, _, ok := models.CalendarTimeComponents(preferences.StartTime); !ok {
+		return models.CalendarEventPreferences{}, fmt.Errorf("start time must be between 05:00 and 23:00 in 15-minute increments")
+	}
+	if _, ok := models.CalendarReminderMinutes(preferences.ReminderPrimary); !ok {
+		return models.CalendarEventPreferences{}, fmt.Errorf("invalid primary reminder option")
+	}
+	if _, ok := models.CalendarReminderMinutes(preferences.ReminderSecondary); !ok {
+		return models.CalendarEventPreferences{}, fmt.Errorf("invalid secondary reminder option")
+	}
+	if strings.TrimSpace(preferences.ReminderPrimary) != "none" && preferences.ReminderPrimary == preferences.ReminderSecondary {
+		return models.CalendarEventPreferences{}, fmt.Errorf("reminder selections must be different")
+	}
+	if !preferences.IncludeRecordID && !preferences.IncludeUnit && !preferences.IncludeBuriedIn && !preferences.IncludeOriginalDate {
+		return models.CalendarEventPreferences{}, fmt.Errorf("select at least one description field")
+	}
+	return preferences, nil
 }
 
 func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {

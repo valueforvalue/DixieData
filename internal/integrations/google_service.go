@@ -85,6 +85,7 @@ func (g *GoogleService) Status() (models.GoogleStatus, error) {
 	if err != nil {
 		return models.GoogleStatus{}, err
 	}
+	settings.ManagedEventPreferences = effective.ManagedEventPreferences
 	token, _ := g.loadToken()
 	syncState, err := g.loadCalendarSyncState()
 	if err != nil {
@@ -109,6 +110,7 @@ func (g *GoogleService) SaveSettings(settings models.GoogleSettings) error {
 	if strings.TrimSpace(settings.CalendarID) == "" {
 		settings.CalendarID = "primary"
 	}
+	settings.ManagedEventPreferences = models.NormalizeCalendarEventPreferences(settings.ManagedEventPreferences)
 	return writeJSONFile(filepath.Join(g.dataDir, googleSettingsFile), settings)
 }
 
@@ -134,6 +136,7 @@ func (g *GoogleService) LoadEffectiveSettings() (models.GoogleSettings, bool, bo
 	if strings.TrimSpace(effective.CalendarID) == "" {
 		effective.CalendarID = "primary"
 	}
+	effective.ManagedEventPreferences = models.NormalizeCalendarEventPreferences(saved.ManagedEventPreferences)
 	return effective, usingSharedClient, sharedClientAvailable, sharedClientSource, nil
 }
 
@@ -141,7 +144,10 @@ func (g *GoogleService) loadSavedSettings() (models.GoogleSettings, error) {
 	path := filepath.Join(g.dataDir, googleSettingsFile)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return models.GoogleSettings{CalendarID: "primary"}, nil
+			return models.GoogleSettings{
+				CalendarID:              "primary",
+				ManagedEventPreferences: models.DefaultCalendarEventPreferences(),
+			}, nil
 		}
 		return models.GoogleSettings{}, err
 	}
@@ -152,7 +158,28 @@ func (g *GoogleService) loadSavedSettings() (models.GoogleSettings, error) {
 	if strings.TrimSpace(settings.CalendarID) == "" {
 		settings.CalendarID = "primary"
 	}
+	settings.ManagedEventPreferences = models.NormalizeCalendarEventPreferences(settings.ManagedEventPreferences)
 	return settings, nil
+}
+
+func (g *GoogleService) ManagedEventPreferences() (models.CalendarEventPreferences, error) {
+	settings, err := g.loadSavedSettings()
+	if err != nil {
+		return models.CalendarEventPreferences{}, err
+	}
+	return models.NormalizeCalendarEventPreferences(settings.ManagedEventPreferences), nil
+}
+
+func (g *GoogleService) SaveManagedEventPreferences(preferences models.CalendarEventPreferences) (models.CalendarEventPreferences, error) {
+	saved, err := g.loadSavedSettings()
+	if err != nil {
+		return models.CalendarEventPreferences{}, err
+	}
+	saved.ManagedEventPreferences = models.NormalizeCalendarEventPreferences(preferences)
+	if err := g.SaveSettings(saved); err != nil {
+		return models.CalendarEventPreferences{}, err
+	}
+	return saved.ManagedEventPreferences, nil
 }
 
 func (g *GoogleService) Disconnect() error {
@@ -293,6 +320,36 @@ func (g *GoogleService) UseTestCalendar(ctx context.Context) (string, bool, erro
 	return calendarID, created, nil
 }
 
+func (g *GoogleService) PreviewSyncCalendar(settings models.GoogleSettings, soldiers []models.Soldier) (GoogleCalendarSyncResult, error) {
+	syncState, err := g.loadCalendarSyncState()
+	if err != nil {
+		return GoogleCalendarSyncResult{}, err
+	}
+	result := GoogleCalendarSyncResult{}
+	active := make(map[string]struct{})
+	for _, soldier := range soldiers {
+		if soldier.DeathMonth < 1 || soldier.DeathDay < 1 {
+			result.Skipped++
+			continue
+		}
+		syncKey := googleCalendarSyncKey(soldier)
+		active[syncKey] = struct{}{}
+		_, existingID := googleCalendarEventID(syncState.EventIDs, soldier)
+		if strings.TrimSpace(existingID) == "" {
+			result.Created++
+		} else {
+			result.Updated++
+		}
+	}
+	for key := range syncState.EventIDs {
+		if _, ok := active[key]; !ok {
+			result.Deleted++
+		}
+	}
+	_ = settings
+	return result, nil
+}
+
 func (g *GoogleService) CalendarDriftStatus(soldiers []models.Soldier) (GoogleCalendarDriftStatus, error) {
 	syncState, err := g.loadCalendarSyncState()
 	if err != nil {
@@ -321,8 +378,104 @@ func (g *GoogleService) CalendarDriftStatus(soldiers []models.Soldier) (GoogleCa
 			status.Removed++
 		}
 	}
+
+	if effective, _, _, _, effectiveErr := g.LoadEffectiveSettings(); effectiveErr == nil {
+		effectiveCalendarID := strings.TrimSpace(effective.CalendarID)
+		if effectiveCalendarID == "" {
+			effectiveCalendarID = "primary"
+		}
+		syncedCalendarID := strings.TrimSpace(syncState.CalendarID)
+		if syncedCalendarID != "" && !strings.EqualFold(syncedCalendarID, effectiveCalendarID) {
+			if len(current) > status.Added {
+				status.Added = len(current)
+			}
+		}
+	}
+
+	if remoteOutOfSync, probeErr := g.googleCalendarRemoteOutOfSync(syncState); probeErr == nil && remoteOutOfSync {
+		if len(current) > status.Added {
+			status.Added = len(current)
+		}
+	}
+
 	status.OutOfSync = status.Added > 0 || status.Updated > 0 || status.Removed > 0
 	return status, nil
+}
+
+func (g *GoogleService) googleCalendarRemoteOutOfSync(syncState GoogleCalendarSyncState) (bool, error) {
+	if strings.TrimSpace(syncState.LastSyncedAt) == "" {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	client, settings, err := g.client(ctx)
+	if err != nil {
+		return false, nil
+	}
+	calendarID := strings.TrimSpace(settings.CalendarID)
+	if calendarID == "" {
+		calendarID = "primary"
+	}
+	if strings.EqualFold(calendarID, "primary") {
+		return false, nil
+	}
+	calSvc, err := gcal.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return false, err
+	}
+	exists, err := googleCalendarExists(ctx, calSvc, calendarID)
+	if err != nil {
+		return false, nil
+	}
+	if !exists {
+		return true, nil
+	}
+	eventID := firstGoogleTrackedEventID(syncState.EventIDs)
+	if eventID == "" {
+		return false, nil
+	}
+	eventExists, err := googleCalendarEventExists(ctx, calSvc, calendarID, eventID)
+	if err != nil {
+		return false, nil
+	}
+	return !eventExists, nil
+}
+
+func googleCalendarExists(ctx context.Context, calSvc *gcal.Service, calendarID string) (bool, error) {
+	if strings.TrimSpace(calendarID) == "" {
+		return false, nil
+	}
+	_, err := calSvc.Calendars.Get(calendarID).Fields("id").Context(ctx).Do()
+	if err == nil {
+		return true, nil
+	}
+	if apiErr, ok := err.(*googleapi.Error); ok && apiErr.Code == http.StatusNotFound {
+		return false, nil
+	}
+	return false, err
+}
+
+func googleCalendarEventExists(ctx context.Context, calSvc *gcal.Service, calendarID, eventID string) (bool, error) {
+	if strings.TrimSpace(calendarID) == "" || strings.TrimSpace(eventID) == "" {
+		return false, nil
+	}
+	_, err := calSvc.Events.Get(calendarID, eventID).Fields("id").Context(ctx).Do()
+	if err == nil {
+		return true, nil
+	}
+	if apiErr, ok := err.(*googleapi.Error); ok && apiErr.Code == http.StatusNotFound {
+		return false, nil
+	}
+	return false, err
+}
+
+func firstGoogleTrackedEventID(eventIDs map[string]string) string {
+	for _, eventID := range eventIDs {
+		if strings.TrimSpace(eventID) != "" {
+			return strings.TrimSpace(eventID)
+		}
+	}
+	return ""
 }
 
 func (g *GoogleService) UploadBackup(ctx context.Context, backupPath string) (GoogleDriveUploadResult, error) {
@@ -495,6 +648,7 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 	if err != nil {
 		return GoogleCalendarSyncResult{}, err
 	}
+	preferences := models.NormalizeCalendarEventPreferences(settings.ManagedEventPreferences)
 
 	for _, soldier := range soldiers {
 		if soldier.DeathMonth < 1 || soldier.DeathDay < 1 {
@@ -503,7 +657,7 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 		}
 		syncKey := googleCalendarSyncKey(soldier)
 		active[syncKey] = struct{}{}
-		event := googleCalendarEventWithTimeZone(soldier, calendarTimeZone)
+		event := googleCalendarEventWithTimeZone(soldier, calendarTimeZone, preferences)
 		existingKey, existingID := googleCalendarEventID(syncState.EventIDs, soldier)
 		if existingID != "" {
 			if existingKey != syncKey {
@@ -517,6 +671,13 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 			}
 			if apiErr, ok := err.(*googleapi.Error); !ok || apiErr.Code != http.StatusNotFound {
 				return GoogleCalendarSyncResult{}, err
+			}
+		}
+		if reconciledID, reconcileErr := reconcileManagedCalendarEventID(ctx, calSvc, calendarID, syncKey); reconcileErr == nil && strings.TrimSpace(reconciledID) != "" {
+			syncState.EventIDs[syncKey] = strings.TrimSpace(reconciledID)
+			if _, updateErr := calSvc.Events.Update(calendarID, strings.TrimSpace(reconciledID), event).Do(); updateErr == nil {
+				result.Updated++
+				continue
 			}
 		}
 
@@ -779,6 +940,30 @@ func deleteGoogleCalendarEvent(ctx context.Context, calSvc *gcal.Service, calend
 	return nil
 }
 
+func reconcileManagedCalendarEventID(ctx context.Context, calSvc *gcal.Service, calendarID, syncKey string) (string, error) {
+	syncKey = strings.TrimSpace(syncKey)
+	if syncKey == "" || strings.TrimSpace(calendarID) == "" {
+		return "", nil
+	}
+	events, err := calSvc.Events.List(calendarID).
+		ShowDeleted(false).
+		SingleEvents(false).
+		PrivateExtendedProperty("dixiedata=true").
+		PrivateExtendedProperty("dixiedata_sync_id=" + syncKey).
+		Fields("items(id)").
+		Context(ctx).
+		Do()
+	if err != nil {
+		return "", err
+	}
+	for _, event := range events.Items {
+		if event != nil && strings.TrimSpace(event.Id) != "" {
+			return strings.TrimSpace(event.Id), nil
+		}
+	}
+	return "", nil
+}
+
 func googleRateLimitRetry(ctx context.Context, fn func() error) error {
 	var err error
 	for attempt := 0; attempt < 6; attempt++ {
@@ -951,6 +1136,7 @@ func mergeGoogleSettings(base, override models.GoogleSettings) models.GoogleSett
 	if strings.TrimSpace(override.DriveFolderID) != "" {
 		merged.DriveFolderID = override.DriveFolderID
 	}
+	merged.ManagedEventPreferences = models.NormalizeCalendarEventPreferences(override.ManagedEventPreferences)
 	return merged
 }
 
@@ -1051,31 +1237,29 @@ func soldierDeathLine(soldier models.Soldier) string {
 }
 
 func googleCalendarEvent(soldier models.Soldier) *gcal.Event {
-	return googleCalendarEventWithTimeZone(soldier, "UTC")
+	return googleCalendarEventWithTimeZone(soldier, "UTC", models.DefaultCalendarEventPreferences())
 }
 
-func googleCalendarEventWithTimeZone(soldier models.Soldier, timeZone string) *gcal.Event {
+func googleCalendarEventWithTimeZone(soldier models.Soldier, timeZone string, preferences models.CalendarEventPreferences) *gcal.Event {
+	preferences = models.NormalizeCalendarEventPreferences(preferences)
 	timeZone = normalizeGoogleCalendarTimeZone(timeZone)
 	location := googleCalendarLocation(timeZone)
 	start := nextGoogleAnniversaryDate(soldier, time.Now().In(location)).In(location)
-	start = time.Date(start.Year(), start.Month(), start.Day(), 9, 0, 0, 0, location)
+	hour, minute, ok := models.CalendarTimeComponents(preferences.StartTime)
+	if !ok {
+		hour, minute = 9, 0
+	}
+	start = time.Date(start.Year(), start.Month(), start.Day(), hour, minute, 0, 0, location)
 	end := start.Add(time.Hour)
-
-	description := fmt.Sprintf("Database Number: %s\nUnit: %s\nBuried In: %s\nOriginal Death Date: %s\nGenerated by DixieData.", soldier.DisplayID, soldier.Unit, soldier.BuriedIn, soldierDeathLine(soldier))
+	description := googleManagedEventDescription(soldier, preferences)
+	reminders := googleManagedEventReminders(preferences)
 	return &gcal.Event{
-		Summary:     fmt.Sprintf("DixieData Anniversary: %s", googleSoldierDisplayName(soldier)),
+		Summary:     googleManagedEventSummary(soldier, preferences),
 		Description: description,
 		Start:       &gcal.EventDateTime{DateTime: start.Format(time.RFC3339), TimeZone: timeZone},
 		End:         &gcal.EventDateTime{DateTime: end.Format(time.RFC3339), TimeZone: timeZone},
 		Recurrence:  []string{"RRULE:FREQ=YEARLY"},
-		Reminders: &gcal.EventReminders{
-			UseDefault: false,
-			Overrides: []*gcal.EventReminder{
-				{Method: "popup", Minutes: 24 * 60},
-				{Method: "popup", Minutes: 60},
-			},
-			ForceSendFields: []string{"UseDefault"},
-		},
+		Reminders:   reminders,
 		ExtendedProperties: &gcal.EventExtendedProperties{
 			Private: map[string]string{
 				"dixiedata_display_id": soldier.DisplayID,
@@ -1083,6 +1267,52 @@ func googleCalendarEventWithTimeZone(soldier models.Soldier, timeZone string) *g
 				"dixiedata":            "true",
 			},
 		},
+	}
+}
+
+func googleManagedEventSummary(soldier models.Soldier, preferences models.CalendarEventPreferences) string {
+	name := googleSoldierDisplayName(soldier)
+	switch preferences.TitlePreset {
+	case models.CalendarEventTitlePresetNameLead:
+		return fmt.Sprintf("%s Memorial Anniversary", name)
+	case models.CalendarEventTitlePresetDisplay:
+		return fmt.Sprintf("%s • %s", strings.TrimSpace(soldier.DisplayID), name)
+	default:
+		return fmt.Sprintf("Memorial Anniversary: %s", name)
+	}
+}
+
+func googleManagedEventDescription(soldier models.Soldier, preferences models.CalendarEventPreferences) string {
+	lines := []string{}
+	if preferences.IncludeRecordID {
+		lines = append(lines, "Database Number: "+strings.TrimSpace(soldier.DisplayID))
+	}
+	if preferences.IncludeUnit {
+		lines = append(lines, "Unit: "+strings.TrimSpace(soldier.Unit))
+	}
+	if preferences.IncludeBuriedIn {
+		lines = append(lines, "Buried In: "+strings.TrimSpace(soldier.BuriedIn))
+	}
+	if preferences.IncludeOriginalDate {
+		lines = append(lines, "Original Death Date: "+soldierDeathLine(soldier))
+	}
+	lines = append(lines, "Generated by DixieData.")
+	return strings.Join(lines, "\n")
+}
+
+func googleManagedEventReminders(preferences models.CalendarEventPreferences) *gcal.EventReminders {
+	overrides := []*gcal.EventReminder{}
+	for _, reminder := range []string{preferences.ReminderPrimary, preferences.ReminderSecondary} {
+		minutes, ok := models.CalendarReminderMinutes(reminder)
+		if !ok || minutes <= 0 {
+			continue
+		}
+		overrides = append(overrides, &gcal.EventReminder{Method: "popup", Minutes: minutes})
+	}
+	return &gcal.EventReminders{
+		UseDefault:      false,
+		Overrides:       overrides,
+		ForceSendFields: []string{"UseDefault"},
 	}
 }
 

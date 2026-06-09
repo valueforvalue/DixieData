@@ -90,7 +90,7 @@ type exportFacade interface {
 	ExportJSON(outputPath string) error
 	ExportAnalyticsSummaryPDF(outputPath string, snapshot records.AnalyticsSnapshot, options archive.PDFOptions) error
 	ExportExcel(outputPath string) error
-	ExportICalendar(outputPath string) error
+	ExportICalendar(outputPath string, preferences models.CalendarEventPreferences) error
 	StaticArchiveFileName(now time.Time) (string, error)
 	ExportStaticArchive(outputPath, dataDir string) error
 	ExportFullDatabasePDF(outputPath string, settings archive.PrintSettings) error
@@ -127,6 +127,9 @@ type integrationFacade interface {
 	UseTestCalendar(ctx context.Context) (string, bool, error)
 	CalendarDriftStatus(soldiers []models.Soldier) (integrations.GoogleCalendarDriftStatus, error)
 	SyncCalendar(ctx context.Context, settings models.GoogleSettings, soldiers []models.Soldier) (integrations.GoogleCalendarSyncResult, error)
+	PreviewSyncCalendar(settings models.GoogleSettings, soldiers []models.Soldier) (integrations.GoogleCalendarSyncResult, error)
+	ManagedEventPreferences() (models.CalendarEventPreferences, error)
+	SaveManagedEventPreferences(preferences models.CalendarEventPreferences) (models.CalendarEventPreferences, error)
 	UnsyncCalendar(ctx context.Context) (integrations.GoogleCalendarUnsyncResult, error)
 	SyncTestCalendar(ctx context.Context) (integrations.GoogleCalendarSyncResult, error)
 	UnsyncTestCalendar(ctx context.Context) (integrations.GoogleCalendarUnsyncResult, error)

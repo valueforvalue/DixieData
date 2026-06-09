@@ -86,4 +86,5 @@ Every responsive release slice should clear this path before closeout:
 | `overlay.floating.menu` | overlay | Floating quick-navigation menu |
 | `overlay.feedback.modal` | overlay | Global feedback modal |
 | `overlay.print-config.modal` | overlay | Printable export settings modal |
+| `overlay.google-calendar-prefs.modal` | overlay | Google managed calendar event preferences modal |
 | `overlay.image.viewer` | overlay | Full-screen image viewer |
