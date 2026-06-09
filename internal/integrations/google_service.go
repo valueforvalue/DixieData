@@ -490,7 +490,7 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 	if strings.TrimSpace(calendarID) == "" {
 		calendarID = "primary"
 	}
-	calendarTimeZone, err := googleCalendarTimeZone(ctx, calSvc, calendarID)
+	calendarTimeZone, err := googleEventTimeZone(ctx, calSvc, calendarID)
 	if err != nil {
 		return GoogleCalendarSyncResult{}, err
 	}
@@ -643,7 +643,7 @@ func (g *GoogleService) SyncTestCalendar(ctx context.Context) (GoogleCalendarSyn
 	if syncState.TestEventIDs == nil {
 		syncState.TestEventIDs = map[string]string{}
 	}
-	calendarTimeZone, err := googleCalendarTimeZone(ctx, calSvc, calendarID)
+	calendarTimeZone, err := googleEventTimeZone(ctx, calSvc, calendarID)
 	if err != nil {
 		return GoogleCalendarSyncResult{}, err
 	}
@@ -1182,6 +1182,41 @@ func googleCalendarTimeZone(ctx context.Context, calSvc *gcal.Service, calendarI
 		timeZone = normalizeGoogleCalendarTimeZone(calendar.TimeZone)
 	}
 	return timeZone, nil
+}
+
+func googlePreferredTimeZone(ctx context.Context, calSvc *gcal.Service) (string, error) {
+	setting, err := calSvc.Settings.Get("timezone").Context(ctx).Do()
+	if err != nil {
+		return "", err
+	}
+	if setting == nil {
+		return "UTC", nil
+	}
+	return normalizeGoogleCalendarTimeZone(setting.Value), nil
+}
+
+func googleEventTimeZone(ctx context.Context, calSvc *gcal.Service, calendarID string) (string, error) {
+	calendarTimeZone, err := googleCalendarTimeZone(ctx, calSvc, calendarID)
+	if err != nil {
+		return "", err
+	}
+	preferredTimeZone, err := googlePreferredTimeZone(ctx, calSvc)
+	if err != nil {
+		return "", err
+	}
+	return chooseGoogleEventTimeZone(calendarTimeZone, preferredTimeZone), nil
+}
+
+func chooseGoogleEventTimeZone(calendarTimeZone, preferredTimeZone string) string {
+	calendarTimeZone = normalizeGoogleCalendarTimeZone(calendarTimeZone)
+	preferredTimeZone = normalizeGoogleCalendarTimeZone(preferredTimeZone)
+	if calendarTimeZone != "UTC" {
+		return calendarTimeZone
+	}
+	if preferredTimeZone != "UTC" {
+		return preferredTimeZone
+	}
+	return "UTC"
 }
 
 func normalizeGoogleCalendarTimeZone(timeZone string) string {
