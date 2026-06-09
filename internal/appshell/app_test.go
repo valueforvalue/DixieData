@@ -1035,6 +1035,68 @@ func TestAppServeHTTPFailsClosedWhenPendingLaunchStateCannotClear(t *testing.T) 
 	}
 }
 
+func TestAppServeHTTPClearsPendingLaunchStateAfterTrustedBrowseResponse(t *testing.T) {
+	dataDir := t.TempDir()
+	manager := update.NewRestorePointManager(dataDir)
+	if err := manager.SaveLaunchState(update.RestorePointRecord{
+		ID:               "restore-point-1",
+		TargetAppVersion: "1.2.49",
+	}); err != nil {
+		t.Fatalf("SaveLaunchState: %v", err)
+	}
+
+	app := NewApp()
+	app.restorePoints = manager
+	app.pendingLaunchStateClear = true
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/browse", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("browse"))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/browse", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if app.pendingLaunchStateClear {
+		t.Fatal("expected launch-state clear flag to be reset")
+	}
+}
+
+func TestAppServeHTTPDoesNotClearPendingLaunchStateForAssetResponse(t *testing.T) {
+	dataDir := t.TempDir()
+	manager := update.NewRestorePointManager(dataDir)
+	if err := manager.SaveLaunchState(update.RestorePointRecord{
+		ID:               "restore-point-1",
+		TargetAppVersion: "1.2.49",
+	}); err != nil {
+		t.Fatalf("SaveLaunchState: %v", err)
+	}
+
+	app := NewApp()
+	app.restorePoints = manager
+	app.pendingLaunchStateClear = true
+	app.mux = http.NewServeMux()
+	app.mux.HandleFunc("/app.js", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("asset"))
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/app.js", nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if !app.pendingLaunchStateClear {
+		t.Fatal("expected launch-state clear flag to remain set")
+	}
+}
+
 func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)
