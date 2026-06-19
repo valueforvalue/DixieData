@@ -12,7 +12,7 @@ LOGDIR := build/log
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
-        stress goldmaster tpl css audit clean log-clean
+        stress goldmaster tpl css audit clean log-clean bump release-github
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -101,3 +101,18 @@ log-clean: ## Truncate build/log/*.log
 	@mkdir -p $(LOGDIR)
 	@rm -f $(LOGDIR)/*.log
 	@echo "Cleared $(LOGDIR)/*.log"
+
+# --- Release pipeline (interactive; output NOT logged) ---
+
+# Bump CurrentSchemaVersion in internal/versioninfo/versioninfo.go.
+# Strict: refuses to advance > 1 without -Force, requires
+# docs/migrations/v{N+1}.md to exist with at least one '- ' bullet.
+# Protects DixieData's local update feature.
+bump: ## Bump schema version (writes versioninfo.go; commit before tagging)
+	$(PWSH) -File scripts/bump-version.ps1
+
+# Tag, push main, push tag, create DRAFT GitHub release via gh CLI.
+# Safety gates: clean tree, committed bump, archive present, tag absent
+# (local + remote), gh authenticated. Draft = not auto-published.
+release-github: ## Tag + push + draft gh release (run 'make archive' first)
+	$(PWSH) -File scripts/release-github.ps1
