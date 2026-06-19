@@ -315,6 +315,7 @@ Known-good commands:
 - `templ generate`
 - `go test ./...`
 - `go build ./...`
+- `make <target>` — preferred entry point; see `make help` for full list. Wraps the PowerShell scripts below with log capture in `build\log\`.
 - `.\scripts\build-release.ps1`
 - `.\scripts\build-debug.ps1`
 - `.\scripts\run-debug.ps1`

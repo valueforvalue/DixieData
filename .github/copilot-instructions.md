@@ -2,6 +2,18 @@
 
 ## Build and test commands
 
+The Makefile is the preferred entry point. `make help` lists every target. Common:
+
+- `make test` — `go test ./... -short -count=1`
+- `make tpl` — regenerate `*_templ.go` after editing `.templ` files
+- `make debug` — debug build (writes `build\bin\Run-DixieData-Debug.ps1`)
+- `make run` — build + launch debug build with UI IDs enabled
+- `make release` / `make archive` — release build, with or without versioned zip
+- `make demo` — seeded demo release package
+- `make stress` / `make goldmaster` — full test suites
+
+Underlying PowerShell scripts (for advanced use):
+
 - `go test ./...` runs the full Go test suite.
 - `go test -run TestAppServeHTTPMethodOverride .` runs a single root-package test. Swap in another test name as needed, or use `go test -run TestName ./...` when you do not know the package yet.
 - `go build ./...` is the baseline full build validation.
