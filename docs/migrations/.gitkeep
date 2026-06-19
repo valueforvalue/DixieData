@@ -1,0 +1,8 @@
+# Keep this directory in git.
+#
+# scripts/bump-version.ps1 requires a paired migration note here for every
+# CurrentSchemaVersion bump (e.g., docs/migrations/v55.md). The note must
+# contain at least one '- ' bullet describing the schema change.
+#
+# This file exists only so the directory tracks. Delete it once real
+# migration notes live alongside it.
