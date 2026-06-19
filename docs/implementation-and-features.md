@@ -437,6 +437,7 @@ Repository validation commands:
 - `templ generate`
 - `go test ./...`
 - `go build ./...`
+- `make <target>` — preferred entry point; see `make help` for full list. Wraps the PowerShell build scripts with log capture in `build\log\`.
 - `.\scripts\build-release.ps1`
 
 There are tests for:

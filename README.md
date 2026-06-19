@@ -20,15 +20,30 @@ DixieData is a Windows-first Wails desktop archive for Civil War research record
 
 ## Build and validation
 
-- `go test ./...` runs the full Go test suite
-- `go build ./...` runs the baseline compile check
-- `npm install` installs the local Tailwind CSS toolchain used for offline UI styling
-- `npm run build:css` regenerates `frontend\app.css` after utility class changes in `frontend\`, `internal\templates\`, or `internal\appshell\app.go`
+The Makefile is the preferred entry point. PowerShell scripts under `scripts\` remain the underlying implementation that the Makefile wraps.
+
+`make help` lists every target. The most common:
+
+- `make test` — `go test ./... -short -count=1`
+- `make tpl` — regenerate `*_templ.go` after editing `.templ` files
+- `make css` — regenerate `frontend\app.css` after Tailwind class changes
+- `make debug` — debug build via `scripts\build-debug.ps1`
+- `make release` — release build (executable only)
+- `make archive` — release build + versioned zip in `release\`
+- `make demo` — seeded demo release package
+- `make run` — build + launch debug build with UI IDs enabled
+- `make stress` / `make goldmaster` — full test suites
+- `make audit` / `make clean` / `make log-clean` — maintenance
+
+Verbose build output is captured to `build\log\<target>.log` for post-mortem; `make` itself only surfaces pass/fail. Underlying entry points (for advanced use):
+
 - `.\scripts\build-release.ps1` builds the production executable in `build\bin\DixieData.exe`
 - `.\scripts\build-debug.ps1` builds the debug executable and launcher
 - `.\scripts\run-debug.ps1` launches the current debug build with UI IDs enabled
 
-The debug and release build scripts now regenerate the checked-in offline CSS bundle automatically before invoking Wails.
+The debug and release build scripts regenerate the checked-in offline CSS bundle automatically before invoking Wails. They also restore `build\bin\google-oauth-defaults.json` from the repo root if present, and fetch the PDFium runtime into `build\bin\` for release builds.
+
+See [docs\RELEASING.md](docs/RELEASING.md) for the version-bump + GitHub release workflow.
 
 ## Current release line
 

@@ -39,14 +39,18 @@ The root no longer carries the delivery runtime implementation, its tests, or Po
 
 ### Automation entrypoints
 
+- `Makefile` — preferred entry point. Wraps the PowerShell scripts below with log capture (verbose output to `build\log\<target>.log`) and pipefail so script failures propagate. Targets: `help`, `build`/`debug`, `release`, `archive`, `demo`, `run`, `dev`, `test`/`test-quiet`, `stress`, `goldmaster`, `tpl`, `css`, `audit`, `clean`, `log-clean`, `bump`, `release-github`.
 - `scripts/build-common.ps1`
 - `scripts/build-debug.ps1`
 - `scripts/build-demo-release.ps1`
 - `scripts/build-release.ps1`
 - `scripts/run-debug.ps1`
 - `scripts/run-stress-tests.ps1`
+- `scripts/bump-version.ps1` — strict increment of `CurrentSchemaVersion`; requires a paired `docs\migrations\v{N+1}.md` note before any rewrite.
+- `scripts/release-github.ps1` — tag + push + draft GitHub release via `gh` CLI; five safety gates before any mutation.
+- `scripts/token-audit.ps1` / `scripts/token-clean.ps1` — workspace hygiene audits and generated-artifact cleanup.
 
-Responsibility: repo-level build, packaging, debug launch, and stress-workflow automation through the standard Go/Wails toolchain.
+Responsibility: repo-level build, packaging, debug launch, stress-workflow automation, version bumping, and GitHub release publishing through the standard Go/Wails toolchain and `gh` CLI.
 
 ### Delivery surface
 

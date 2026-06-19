@@ -8,8 +8,8 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launch to show surface badges in UI.
 
 - Development example: `set DIXIEDATA_DEBUG_UI_IDS=1`
 - Debug build path:
-  - `.\scripts\build-debug.ps1`
-  - `.\scripts\run-debug.ps1`
+  - `make debug` (or `.\scripts\build-debug.ps1` for direct invocation)
+  - `make run` (or `.\scripts\run-debug.ps1`)
 - Release builds stay visually clean while variable stays unset.
 - Markup still keeps `data-ui-id` attributes for DevTools inspection.
 
@@ -17,8 +17,8 @@ Set `DIXIEDATA_DEBUG_UI_IDS=1` before launch to show surface badges in UI.
 
 Every responsive release slice should clear this path before closeout:
 
-1. Build debug app with `.\scripts\build-debug.ps1`.
-2. Launch with `.\scripts\run-debug.ps1` or set `DIXIEDATA_DEBUG_UI_IDS=1`.
+1. Build debug app with `make debug` (or `.\scripts\build-debug.ps1`).
+2. Launch with `make run` (or `.\scripts\run-debug.ps1`) or set `DIXIEDATA_DEBUG_UI_IDS=1`.
 3. Verify relaxed mode, split-screen mode, narrow-window behavior, and overlay behavior against surface IDs below.
 4. Confirm shell overlays count as first-class responsive surfaces: floating menu, feedback modal, print-config modal, image viewer.
 5. Keep automated proof green with `go test ./...`, `go build ./...`, and debug build regeneration.
