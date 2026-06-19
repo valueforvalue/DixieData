@@ -1,11 +1,37 @@
 # Build artifacts
 build/bin/
+build/log/
+build/release/
+build/darwin/
+build/windows/
+build/linux/
 DixieData
+DixieData.exe
+*.exe
+*.test
+
+# Frontend build outputs
+frontend/dist/
+frontend/app.css
+frontend/wailsjs/
+frontend/node_modules/
+node_modules/
+
+# Templ generated files
+internal/templates/*_templ.go
+internal/templates/*_templ.txt
+*_templ.go
+*_templ.txt
 
 # Database files (user data)
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+*-wal
+*-shm
+*-journal
 
 # OS files
 .DS_Store
@@ -14,13 +40,30 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+.cursor/
+.aider*
 
 # User data directory
 .dixiedata/
+dixiedata-backup-*.ddbak
 
 # Go test cache
-*.test
+*.out
+coverage.out
+*.prof
+
+# Project secrets + telemetry
 google-oauth-defaults.json
+google-oauth-defaults.example.json
+feedback.jsonl
+
+# Releases + test artifacts
 release/
 tests/goldmaster/artifacts/
+tests/stress/artifacts/
 tests/goldmaster/playwright/node_modules/
+tests/goldmaster/playwright/test-results/
+tests/goldmaster/playwright/playwright-report/
+
+# Copilot transient
+.copilot-temp/
