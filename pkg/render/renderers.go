@@ -140,14 +140,25 @@ func (t *TypstRenderer) ListTemplates() ([]Template, error) {
 // serialized as JSON and exposed to the template via #let data =
 // json("data.json"). The output is written to w as a PDF.
 func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[string]any, w io.Writer) error {
-	// Build a temporary working directory: write the template as
-	// main.typ, write data.json, run `typst compile data.json main.typ -`.
+	// Build a temporary working directory. Copy the template and any
+	// sibling files it may import (e.g. common/theme.typ). Typst's
+	// import paths are resolved relative to the root (which we set
+	// to the work directory), so we need the full template tree
+	// there.
 	workDir, err := os.MkdirTemp("", "dixiedata-typst-")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(workDir)
 
+	// Copy the template's containing directory contents into workDir
+	// so the template's #import statements resolve.
+	srcDir := filepath.Dir(tpl.Path)
+	if err := copyDir(srcDir, workDir); err != nil {
+		return fmt.Errorf("copy template dir: %w", err)
+	}
+	// Also copy the template's name as main.typ so the import
+	// statements find it under that name.
 	mainPath := filepath.Join(workDir, "main.typ")
 	if err := copyFile(tpl.Path, mainPath); err != nil {
 		return fmt.Errorf("copy template: %w", err)
@@ -168,6 +179,36 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		},
 	); err != nil {
 		return fmt.Errorf("typst compile: %w", err)
+	}
+	return nil
+}
+
+// copyDir recursively copies a directory tree from src to dst. It
+// skips the special "main.typ" filename since the renderer writes
+// its own main.typ.
+func copyDir(src, dst string) error {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.Name() == "main.typ" {
+			continue
+		}
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			if err := os.MkdirAll(dstPath, 0o755); err != nil {
+				return err
+			}
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			if err := copyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
