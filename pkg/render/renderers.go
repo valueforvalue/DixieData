@@ -51,8 +51,8 @@ func (f *FpdfRenderer) Render(ctx context.Context, tpl Template, data map[string
 		return err
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
 	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
 		return err
 	}
 
@@ -64,19 +64,36 @@ func (f *FpdfRenderer) Render(ctx context.Context, tpl Template, data map[string
 	month, _ := data["month"].(int)
 	calendarAny, _ := data["calendar"].(map[int][]models.Soldier)
 
+	var renderErr error
 	switch recordType {
 	case "soldier":
-		return f.service.ExportSoldierPDF(tmpPath, soldier, options)
+		renderErr = f.service.ExportSoldierPDF(tmpPath, soldier, options)
 	case "soldier-no-images":
-		return f.service.ExportSoldierPDFWithoutImages(tmpPath, soldier)
+		renderErr = f.service.ExportSoldierPDFWithoutImages(tmpPath, soldier)
 	case "anniversary":
-		return f.service.ExportMonthlyAnniversaryPDF(tmpPath, month, calendarAny, options)
+		renderErr = f.service.ExportMonthlyAnniversaryPDF(tmpPath, month, calendarAny, options)
 	case "database":
-		return f.service.ExportFullDatabasePDF(tmpPath, settings)
+		renderErr = f.service.ExportFullDatabasePDF(tmpPath, settings)
 	case "analytics":
-		return f.service.ExportAnalyticsSummaryPDF(tmpPath, snapshot, options)
+		renderErr = f.service.ExportAnalyticsSummaryPDF(tmpPath, snapshot, options)
+	default:
+		os.Remove(tmpPath)
+		return fmt.Errorf("fpdf renderer: unknown template %q", tpl.Name)
 	}
-	return fmt.Errorf("fpdf renderer: unknown template %q", tpl.Name)
+	if renderErr != nil {
+		os.Remove(tmpPath)
+		return renderErr
+	}
+	defer os.Remove(tmpPath)
+
+	// Copy the temp file to the writer.
+	f2, err := os.Open(tmpPath)
+	if err != nil {
+		return err
+	}
+	defer f2.Close()
+	_, err = io.Copy(w, f2)
+	return err
 }
 
 // recordTypeFromTemplateName extracts the record-type portion of a

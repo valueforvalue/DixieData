@@ -64,6 +64,10 @@ type PDFOptions struct {
 	PrinterFriendly  bool   `json:"printerFriendly"`
 	IncludeImages    bool   `json:"includeImages"`
 	PrintableArchive bool   `json:"printableArchive"`
+	// Template overrides the registry's default template selection.
+	// When empty, the registry picks a default by record type and
+	// orientation.
+	Template string `json:"template"`
 }
 
 const (

@@ -16,6 +16,15 @@ type DB struct {
 	dataDir string
 }
 
+// NewFromExisting wraps an already-opened *sql.DB as a *DB without
+// running schema migrations. Used by read-only tools (e.g.
+// tools/tune) that need the DB's query methods but must not mutate
+// the underlying file. The caller is responsible for closing the
+// *sql.DB; the returned *DB's Close closes it.
+func NewFromExisting(conn *sql.DB) *DB {
+	return &DB{conn: conn}
+}
+
 func Open(dataDir string) (*DB, error) {
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
