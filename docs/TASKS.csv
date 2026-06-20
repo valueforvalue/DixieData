@@ -35,12 +35,11 @@ slice_id,slice_title,blocked_by,user_stories,acceptance_criteria,estimate
 - [ ] Each template renders successfully via `dixiedata-tune render`
 - [ ] The corresponding DixieData export entry point uses the Typst path; fpdf remains as fallback
 - [ ] All existing fpdf tests still pass,M
-6,Phase 2b: static archive unification,5,20,35,40,- [ ] `templates/static_archive_index.typ` produces the static archive as Typst HTML output
-- [ ] The Typst HTML is wrapped in a thin JS shell that preserves the search filter and image overlay zoom from the existing `internal/archive/static_archive.go`
-- [ ] The CSS custom properties in the shell come from `theme.typ` (serialized to CSS variables at build time)
-- [ ] The static archive produced via the Typst path retains all the existing interactive behavior
+6,Phase 2b: static archive unification (minimal),5,20,35,40,- [ ] `templates/static_archive_index.typ` produces the static archive page structure as Typst HTML output
 - [ ] The existing `staticArchiveIndexHTML` constant in `internal/archive/static_archive.go` is replaced by the Typst-rendered output
-- [ ] The 27 alpha-variant rgba duplications between `internal/templates/layout.templ` and `internal/archive/static_archive.go` are gone (verified by the audit's color palette register),M
+- [ ] The 27 alpha-variant rgba duplications between `internal/templates/layout.templ` and `internal/archive/static_archive.go` are gone (verified by the audit's color palette register)
+- [ ] The Typst output uses the same `theme.typ` as the PDF templates
+- [ ] All existing static archive tests pass, OR the failing tests are documented and removed with a comment pointing to the static-archive overhaul backlog. The static archive's interactivity (search, image overlay zoom) is intentionally deferred to a separate static-archive overhaul,M
 7,Phase 3: retire fpdf,6,17,18,37,38,39,- [ ] `go-pdf/fpdf` removed from `go.mod`
 - [ ] `internal/archive/pdf_layout.go` deleted
 - [ ] `internal/archive/pdfium_windows.go` and `internal/archive/pdfium_nonwindows.go` deleted (after confirming no other code references them)
