@@ -21,6 +21,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/peopleinfo"
+	"github.com/valueforvalue/DixieData/internal/render"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -360,46 +362,6 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 		!strings.Contains(entries["viewer.html"], "['Unit', blankDetailValue(record.unit)]") {
 		t.Fatalf("viewer.html should keep blank name/service fields blank: %s", entries["viewer.html"])
 	}
-}
-
-func TestRecordPDFFieldsUseDisplaySpecificEmptyStates(t *testing.T) {
-	soldier := models.Soldier{
-		EntryType:             "soldier",
-		ConfederateHomeStatus: "N/A",
-		ConfederateHomeName:   "",
-		PensionState:          "N/A",
-	}
-
-	identity := recordIdentityFields(soldier)
-	service := recordServiceFields(soldier, false)
-
-	assertPDFField := func(fields []pdfField, label, want string, wantVisible bool) {
-		t.Helper()
-		for _, field := range fields {
-			if field.Label != label {
-				continue
-			}
-			if field.visible() != wantVisible {
-				t.Fatalf("%s visible = %v, want %v", label, field.visible(), wantVisible)
-			}
-			if field.renderedValue() != want {
-				t.Fatalf("%s renderedValue = %q, want %q", label, field.renderedValue(), want)
-			}
-			return
-		}
-		t.Fatalf("missing field %s", label)
-	}
-
-	assertPDFField(identity, "Prefix", "", true)
-	assertPDFField(identity, "First Name", "", true)
-	assertPDFField(identity, "Birth Date", "Unknown", true)
-	assertPDFField(identity, "Death Date", "Unknown", true)
-	assertPDFField(service, "Rank In", "", true)
-	assertPDFField(service, "Rank Out", "", true)
-	assertPDFField(service, "Unit", "", true)
-	assertPDFField(service, "Pension State", "N/A", true)
-	assertPDFField(service, "Confederate Home Status", "N/A", true)
-	assertPDFField(service, "Confederate Home Name", "N/A", true)
 }
 
 func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
@@ -1176,7 +1138,7 @@ func TestImagePathForPDFSkipsEmptyFile(t *testing.T) {
 	if err := os.WriteFile(path, nil, 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
+	if got := render.ImagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
 		t.Fatalf("imagePathForPDF returned %q for empty file", got)
 	}
 }
@@ -1329,7 +1291,7 @@ func TestExportService_ExportFullDatabasePDFFiltersByStructuredScope(t *testing.
 	outPath := filepath.Join(t.TempDir(), "filtered-registry.pdf")
 	settings := PrintSettings{
 		Scope:                       PrintScopeFiltered,
-		FilterBuriedIn:              []string{"Oak Hill Cemetery", printFilterUnknownValue},
+		FilterBuriedIn:              []string{"Oak Hill Cemetery", render.PrintFilterUnknownValue},
 		FilterEntryTypes:            []string{"soldier"},
 		FilterUnits:                 []string{"A Company", "D Company"},
 		FilterPensionStates:         []string{"Texas"},
@@ -1407,7 +1369,7 @@ func TestFitPDFImageToBoundsPreservesAspectRatio(t *testing.T) {
 			imagePath := filepath.Join(t.TempDir(), test.name+".png")
 			writeSizedPNGFixture(t, imagePath, test.width, test.height)
 
-			_, _, gotWidth, gotHeight, ok := fitPDFImageToBounds(imagePath, 10, 20, test.maxWidth, test.maxHeight)
+			_, _, gotWidth, gotHeight, ok := render.FitPDFImageToBounds(imagePath, 10, 20, test.maxWidth, test.maxHeight)
 			if !ok {
 				t.Fatalf("fitPDFImageToBounds returned ok=false")
 			}
@@ -1424,7 +1386,7 @@ func TestFirstRecordCardImagePrefersPrimaryImage(t *testing.T) {
 	primaryPath := filepath.Join(t.TempDir(), "primary.png")
 	writeSizedPNGFixture(t, primaryPath, 200, 100)
 
-	path, label := firstRecordCardImage(models.Soldier{
+	path, label := render.FirstRecordCardImage(models.Soldier{
 		Images: []models.Image{
 			{FileName: "secondary.png", Caption: "Secondary", ResolvedPath: secondaryPath},
 			{FileName: "primary.png", Caption: "Primary Portrait", ResolvedPath: primaryPath, IsPrimary: true},
@@ -1439,7 +1401,7 @@ func TestFirstRecordCardImageDoesNotFallBackToFileName(t *testing.T) {
 	imagePath := filepath.Join(t.TempDir(), "primary.png")
 	writeSizedPNGFixture(t, imagePath, 200, 100)
 
-	path, label := firstRecordCardImage(models.Soldier{
+	path, label := render.FirstRecordCardImage(models.Soldier{
 		Images: []models.Image{
 			{FileName: "primary.png", ResolvedPath: imagePath, IsPrimary: true},
 		},
@@ -1463,16 +1425,16 @@ func TestUsesPortraitCompactRecordCardLayout(t *testing.T) {
 		}},
 	}
 
-	if !usesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "P", IncludeImages: true}) {
+	if !render.UsesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "P", IncludeImages: true}) {
 		t.Fatalf("portrait layout with image should use compact portrait columns")
 	}
-	if usesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "L", IncludeImages: true}) {
+	if render.UsesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "L", IncludeImages: true}) {
 		t.Fatalf("landscape layout should not use compact portrait columns")
 	}
-	if usesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "P", IncludeImages: false}) {
+	if render.UsesPortraitCompactRecordCardLayout(soldierWithImage, PDFOptions{Orientation: "P", IncludeImages: false}) {
 		t.Fatalf("portrait layout without images enabled should fall back to stacked layout")
 	}
-	if usesPortraitCompactRecordCardLayout(models.Soldier{}, PDFOptions{Orientation: "P", IncludeImages: true}) {
+	if render.UsesPortraitCompactRecordCardLayout(models.Soldier{}, PDFOptions{Orientation: "P", IncludeImages: true}) {
 		t.Fatalf("portrait layout without an image should fall back to stacked layout")
 	}
 }
@@ -1482,7 +1444,7 @@ func TestImagePathForPDFSkipsUnsupportedFormat(t *testing.T) {
 	if err := os.WriteFile(path, []byte("not-a-pdf-image"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
+	if got := render.ImagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
 		t.Fatalf("imagePathForPDF returned %q for unsupported format", got)
 	}
 }
@@ -1492,13 +1454,13 @@ func TestImagePathForPDFSkipsCorruptPNG(t *testing.T) {
 	if err := os.WriteFile(path, []byte("not-a-real-png"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	if got := imagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
+	if got := render.ImagePathForPDF(models.Image{ResolvedPath: path}); got != "" {
 		t.Fatalf("imagePathForPDF returned %q for corrupt PNG", got)
 	}
 }
 
 func TestPDFTextSegments(t *testing.T) {
-	segments := pdfTextSegments("See https://example.com/test, then http://example.org.")
+	segments := render.PDFTextSegments("See https://example.com/test, then http://example.org.")
 	if len(segments) != 6 {
 		t.Fatalf("segment count = %d, want 6", len(segments))
 	}
@@ -1602,13 +1564,13 @@ func TestSoldierDisplayNameUsesVisibleNameFormatting(t *testing.T) {
 		Unit:                 "1st Virginia",
 	}
 
-	if got := soldierDisplayName(soldier); got != "John Smith" {
-		t.Fatalf("soldierDisplayName() = %q, want %q", got, "John Smith")
+	if got := peopleinfo.SoldierDisplayName(soldier); got != "John Smith" {
+		t.Fatalf("peopleinfo.SoldierDisplayName() = %q, want %q", got, "John Smith")
 	}
 }
 
 func TestRegistryEntryLinesUseServiceSummaryFormatting(t *testing.T) {
-	lines := registryEntryLines(models.Soldier{
+	lines := render.RegistryEntryLines(models.Soldier{
 		EntryType: "soldier",
 		RankOut:   "Captain",
 		Unit:      "1st Virginia",
@@ -1629,7 +1591,7 @@ func TestRegistryEntryLinesUseServiceSummaryFormatting(t *testing.T) {
 }
 
 func TestRegistryEntryLinesNormalizePensionStateNA(t *testing.T) {
-	lines := registryEntryLines(models.Soldier{
+	lines := render.RegistryEntryLines(models.Soldier{
 		EntryType:    "soldier",
 		PensionState: "None",
 		PensionID:    "P-123",

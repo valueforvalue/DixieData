@@ -22,6 +22,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/peopleinfo"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
@@ -1297,8 +1298,8 @@ func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Sol
 	record := StaticArchiveRecord{
 		DisplayID:         strings.TrimSpace(soldier.DisplayID),
 		EntryType:         strings.TrimSpace(soldier.EntryType),
-		DisplayType:       displayEntryType(soldier),
-		Name:              soldierDisplayName(soldier),
+		DisplayType:       peopleinfo.DisplayEntryType(soldier),
+		Name:              peopleinfo.SoldierDisplayName(soldier),
 		Dates:             staticArchiveDateSummary(soldier),
 		Prefix:            strings.TrimSpace(soldier.Prefix),
 		FirstName:         strings.TrimSpace(soldier.FirstName),
@@ -1348,7 +1349,7 @@ func newStaticArchiveRecord(soldier models.Soldier, idIndex map[int64]models.Sol
 		if linked, ok := idIndex[soldier.SpouseSoldierID]; ok {
 			record.SpouseDisplayID = strings.TrimSpace(linked.DisplayID)
 			if record.SpouseName == "" {
-				record.SpouseName = soldierDisplayName(linked)
+				record.SpouseName = peopleinfo.SoldierDisplayName(linked)
 			}
 		}
 	}

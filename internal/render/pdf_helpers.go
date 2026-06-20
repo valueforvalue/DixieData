@@ -3,7 +3,7 @@
 // (issue #42). No exported surface — everything is package-private. The
 // *ExportService methods in export_service.go depend on these but do not
 // re-export them.
-package archive
+package render
 
 import (
 	"fmt"
@@ -24,6 +24,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/peopleinfo"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
 )
 
@@ -221,6 +222,7 @@ type pdfBranding struct {
 
 // --- printGroupChange struct ---
 type printGroupChange struct {
+	Field string
 	Key   string
 	Label string
 	Value string
@@ -1277,6 +1279,13 @@ func emptyPDFValue(value string) string {
 	return sanitized
 }
 
+// EmptyPDFValue is the public form of emptyPDFValue, exposed for callers
+// outside this package (e.g. the iCal export in internal/archive) that
+// want the same "N/A" placeholder convention.
+func EmptyPDFValue(value string) string {
+	return emptyPDFValue(value)
+}
+
 func sanitizePDFText(value string) string {
 	replaced := strings.NewReplacer(
 		"\u2018", "'",
@@ -1302,21 +1311,11 @@ func sanitizePDFText(value string) string {
 }
 
 func soldierDisplayName(soldier models.Soldier) string {
-	if name := soldierFullName(soldier); name != "" {
-		return name
-	}
-	return displayEntryType(soldier)
+	return peopleinfo.SoldierDisplayName(soldier)
 }
 
 func soldierFullName(soldier models.Soldier) string {
-	return persondisplay.FullName(persondisplay.NameParts{
-		Prefix:               soldier.Prefix,
-		ShowPrefixBeforeName: soldier.ShowPrefixBeforeName,
-		FirstName:            soldier.FirstName,
-		MiddleName:           soldier.MiddleName,
-		LastName:             soldier.LastName,
-		Suffix:               soldier.Suffix,
-	})
+	return peopleinfo.SoldierFullName(soldier)
 }
 
 func soldierServiceLine(soldier models.Soldier) string {
@@ -1338,16 +1337,7 @@ func isSoldierEntry(soldier models.Soldier) bool {
 }
 
 func displayEntryType(soldier models.Soldier) string {
-	switch soldier.EntryType {
-	case "wife":
-		return "Wife"
-	case "widow":
-		return "Widow"
-	case "linked_person":
-		return "Person Record"
-	default:
-		return "Soldier"
-	}
+	return peopleinfo.DisplayEntryType(soldier)
 }
 
 func soldierDeathLine(soldier models.Soldier) string {
