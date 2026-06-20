@@ -208,10 +208,12 @@ func findTemplatesDir() string {
 	return "templates"
 }
 
-// doRender renders a Typst template against a single record.
+// doRender renders a template against a single record. Routes to
+// the FpdfRenderer for "fpdf:*" template names (the fpdf baseline
+// path); routes to the TypstRenderer for everything else.
 func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchive, binPath, templateDir string) error {
 	fs := flag.NewFlagSet("render", flag.ContinueOnError)
-	templateName := fs.String("template", "", "Template name (e.g. soldier_landscape)")
+	templateName := fs.String("template", "", "Template name (e.g. soldier_landscape, or fpdf:soldier for the baseline)")
 	recordID := fs.Int64("record", 0, "Record ID to render")
 	outPath := fs.String("out", "", "Output PDF path")
 	if err := fs.Parse(args); err != nil {
@@ -227,7 +229,7 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 		return fmt.Errorf("--out is required")
 	}
 
-	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
+	adapter := dixiedataToFpdfAdapter{archive}
 	soldier, err := archive.GetByID(*recordID)
 	if err != nil {
 		return fmt.Errorf("get record: %w", err)
@@ -236,18 +238,39 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 	if err != nil {
 		return fmt.Errorf("get identity: %w", err)
 	}
-	data := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{}, encode.BrandingFromIdentity(identity))
+	data := map[string]any{
+		"soldier":  *soldier,
+		"options":  render.PDFOptions{Orientation: "L"},
+		"branding": encode.BrandingFromIdentity(identity),
+	}
 
-	tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
 	out, err := os.Create(*outPath)
 	if err != nil {
 		return fmt.Errorf("create output: %w", err)
 	}
 	defer out.Close()
-	payload := templateDataToMap(data)
-	if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {
-		return fmt.Errorf("render: %w", err)
+
+	if strings.HasPrefix(*templateName, "fpdf:") {
+		// fpdf baseline path. The fpdfRenderer writes through a temp
+		// file because fpdf requires a real path; the file is then
+		// copied to the writer.
+		fpdfRenderer := render.NewFpdfRenderer(render.New(adapter, adapter))
+		tpl := render.Template{Name: *templateName, Engine: "fpdf"}
+		if err := fpdfRenderer.Render(ctx, tpl, data, out); err != nil {
+			return fmt.Errorf("render: %w", err)
+		}
+	} else {
+		// Typst path. Build the full TemplateData payload and run
+		// through the TypstRenderer.
+		typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
+		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{}, encode.BrandingFromIdentity(identity))
+		tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
+		payload := templateDataToMap(fullData)
+		if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {
+			return fmt.Errorf("render: %w", err)
+		}
 	}
+
 	st, _ := out.Stat()
 	fmt.Printf("wrote %s (%d bytes)\n", *outPath, st.Size())
 	return nil
