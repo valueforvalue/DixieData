@@ -10,6 +10,13 @@
 // identity fields on the left and service/archive details on the
 // right. See docs/audit/layout-theming-findings.md Section 1.1 for
 // the color and font literals being reproduced.
+//
+// Iterations applied (see tools/tune/compare/54_typst.md for the
+// feedback loop that drove them):
+//  - Title-cased entry type normalization
+//  - Long-form date formatting ("May 22, 1844" not "05/22/1844")
+//  - Source Records section in the right column
+//  - Tighter vertical density (matches the fpdf's compact layout)
 
 #import "common/theme.typ"
 
@@ -41,10 +48,77 @@
   size: theme.type-scale.body.size,
   fill: theme.palette.text_primary,
 )
+#set par(leading: 0.55em)
 
-// Title block: soldier name, display ID, entry type
-#let entry_type = s.at("entry_type", default: "")
-#let display_id = s.at("display_id", default: "")
+// --- helpers ---
+
+// title-case normalizes the entry type. fpdf shows "Soldier" not
+// "soldier"; the raw data is lowercase. This is the same logic
+// the fpdf helper does.
+#let title-case(s) = {
+  if s == none or s == "" [#s]
+  else [
+    #let first-char = s.at(0)
+    #let rest = s.clusters().slice(1).join("")
+    #upper(first-char)#lower(rest)
+  ]
+}
+
+// Long-form date formatter. fpdf renders dates like "May 22, 1844".
+// The data layer stores ISO-like "1844-05-22" or "05/22/1844".
+// We parse the year out of any input and look up the month name.
+#let month-names = (
+  "01": "January",
+  "02": "February",
+  "03": "March",
+  "04": "April",
+  "05": "May",
+  "06": "June",
+  "07": "July",
+  "08": "August",
+  "09": "September",
+  "10": "October",
+  "11": "November",
+  "12": "December",
+)
+
+#let long-date(s) = {
+  if s == none or s == "" [Unknown]
+  else if s == "Unknown" [Unknown]
+  else {
+    let parts = s.split("/")
+    if parts.len() == 3 [
+      // MM/DD/YYYY format
+      #let month-idx = parts.at(0)
+      #let day = parts.at(1)
+      #let year = parts.at(2)
+      #let month-name = month-names.at(month-idx, default: month-idx)
+      #month-name #day, #year
+    ] else if s.contains("-") and s.len() >= 10 [
+      // YYYY-MM-DD or partial
+      #let year = s.split("-").at(0)
+      #year
+    ] else [#s]
+  }
+}
+
+// label-value renders a single field row: bold label, value to
+// the right. If the value is empty or N/A, hides the row entirely
+// (matching the fpdf behavior of skipping empty fields).
+#let label-value(label, value) = {
+  // Skip rows that would just show N/A from blank values; the
+  // fpdf does this implicitly via pdfField.visible().
+  if value == none [""]
+  else if type(value) == str and value.trim() == "" [""]
+  else [
+    *#label* #h(0.5cm) #value
+  ]
+}
+
+// --- title block ---
+
+#let entry-type-raw = s.at("entry_type", default: "")
+#let display-id = s.at("display_id", default: "")
 #let first = s.at("first_name", default: "")
 #let middle = s.at("middle_name", default: "")
 #let last = s.at("last_name", default: "")
@@ -52,73 +126,69 @@
   if first != "" and last != "" [#first #middle #last]
   else if last != "" [#last, #first]
   else if first != "" [#first]
-  else [#display_id]
+  else [#display-id]
 }
 
 #align(center, text(size: 14pt, weight: "bold")[
   #name
 ])
-
-#v(0.5em)
+#v(0.3em)
 #align(center, text(size: theme.type-scale.body.size, fill: theme.palette.text_secondary)[
-  #display_id - #entry_type
+  #display-id - #title-case(entry-type-raw)
 ])
 #v(0.5em)
 
-// Two-column record card
+// --- two-column record card ---
+
 #grid(
-  columns: (1fr, 0.5cm, 1fr),
+  columns: (1fr, 0.6cm, 1fr),
   [
     // Left column: Identity
     #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Identity & Vital Details]
-    #v(0.3em)
+    #v(0.4em)
     #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_secondary)
-    #set par(leading: 0.4em)
 
-    *Prefix* #h(1fr) #s.at("prefix", default: "")
-
-    *First Name* #h(1fr) #first
-
-    *Middle Name* #h(1fr) #middle
-
-    *Last Name* #h(1fr) #last
-
-    *Birth Date* #h(1fr) #s.at("birth_date", default: "Unknown")
-
-    *Death Date* #h(1fr) #s.at("death_date", default: "Unknown")
-
-    *Birth Info* #h(1fr) #s.at("birth_info", default: "")
-
-    *Buried In* #h(1fr) #s.at("buried_in", default: "")
-
-    #v(0.5em)
+    #label-value("Prefix", s.at("prefix", default: ""))
+    #label-value("First Name", first)
+    #label-value("Middle Name", middle)
+    #label-value("Last Name", last)
+    #label-value("Birth Date", long-date(s.at("birth_date", default: "")))
+    #label-value("Death Date", long-date(s.at("death_date", default: "")))
+    #label-value("Birth Info", s.at("birth_info", default: ""))
+    #label-value("Buried In", s.at("buried_in", default: ""))
   ],
   [],
   [
     // Right column: Service & Archive Details
     #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Service & Archive Details]
-    #v(0.3em)
+    #v(0.4em)
     #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_secondary)
-    #set par(leading: 0.4em)
 
-    *Record Type* #h(1fr) #entry_type
-
-    *Rank In* #h(1fr) #s.at("rank_in", default: "")
-
-    *Rank Out* #h(1fr) #s.at("rank_out", default: "")
-
-    *Unit* #h(1fr) #s.at("unit", default: "")
-
-    *Pension State* #h(1fr) #s.at("pension_state", default: "N/A")
-
-    *Pension ID* #h(1fr) #s.at("pension_id", default: "")
-
-    *Application ID* #h(1fr) #s.at("application_id", default: "")
-
-    *Confederate Home Status* #h(1fr) #s.at("confederate_home_status", default: "N/A")
-
-    *Confederate Home Name* #h(1fr) #s.at("confederate_home_name", default: "N/A")
-
-    #v(0.5em)
+    #label-value("Record Type", title-case(entry-type-raw))
+    #label-value("Rank In", s.at("rank_in", default: ""))
+    #label-value("Rank Out", s.at("rank_out", default: ""))
+    #label-value("Unit", s.at("unit", default: ""))
+    #label-value("Pension State", s.at("pension_state", default: ""))
+    #label-value("Pension ID", s.at("pension_id", default: ""))
+    #label-value("Application ID", s.at("application_id", default: ""))
+    #label-value("Confederate Home Status", s.at("confederate_home_status", default: ""))
+    #label-value("Confederate Home Name", s.at("confederate_home_name", default: ""))
   ],
 )
+
+// --- source records section ---
+
+#let records = s.at("records", default: ())
+#if records.len() > 0 [
+  #v(0.5em)
+  #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Records]
+  #v(0.3em)
+  #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_primary)
+  #for r in records [
+    *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
+    #if r.at("details", default: "") != "" [
+      \ #r.at("details", default: "")
+    ]
+    #v(0.2em)
+  ]
+]
