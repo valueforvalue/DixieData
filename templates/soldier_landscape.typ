@@ -82,24 +82,42 @@
   "12": "December",
 )
 
+// long-date renders a date string as the long form ("May 22, 1844")
+// or "Unknown" if any component is "00". The data layer uses "00"
+// as a sentinel for unknown date parts. The fpdf path also emits
+// "Unknown" in this case.
 #let long-date(s) = {
-  if s == none or s == "" [Unknown]
-  else if s == "Unknown" [Unknown]
-  else {
-    let parts = s.split("/")
-    if parts.len() == 3 [
-      #let month-idx = parts.at(0)
-      #let day = if parts.at(1).starts-with("0") and parts.at(1).len() > 1 {
-        parts.at(1).slice(1)
-      } else { parts.at(1) }
-      #let year = parts.at(2)
-      #let month-name = month-names.at(month-idx, default: month-idx)
-      [#month-name #day, #year]
-    ] else if s.contains("-") and s.len() >= 10 [
-      #let year = s.split("-").at(0)
-      [#year]
-    ] else [#s]
+  if s == none or s == "" {
+    return [Unknown]
   }
+  if s == "Unknown" or s == "0000-00-00" {
+    return [Unknown]
+  }
+
+  let parts = s.split("/")
+  if parts.len() == 3 {
+    let month-idx = parts.at(0)
+    let day-raw = parts.at(1)
+    let year-raw = parts.at(2)
+
+    if month-idx == "00" or day-raw == "00" or year-raw == "00" {
+      return [Unknown]
+    }
+
+    let day = if day-raw.starts-with("0") and day-raw.len() > 1 {
+      day-raw.slice(1)
+    } else {
+      day-raw
+    }
+    let mname = month-names.at(month-idx, default: month-idx)
+    return [#mname #day, #year-raw]
+  }
+
+  if s.contains("-") and s.len() >= 10 {
+    return [s.split("-").at(0)]
+  }
+
+  return [#s]
 }
 
 // title-cased entry type label. fpdf shows "Soldier" / "Wife" /
@@ -143,15 +161,23 @@
 
 #let entry-type-raw = s.at("entry_type", default: "")
 #let display-id = s.at("display_id", default: "")
+#let prefix = s.at("prefix", default: "")
 #let first = s.at("first_name", default: "")
 #let middle = s.at("middle_name", default: "")
 #let last = s.at("last_name", default: "")
 #let suffix = s.at("suffix", default: "")
 #let name = {
-  if first != "" and last != "" [#first #middle #last]
-  else if last != "" [#last, #first]
-  else if first != "" [#first]
-  else [#display-id]
+  if prefix != "" [
+    #prefix #first #middle #last
+  ] else if first != "" and last != "" [
+    #first #middle #last
+  ] else if last != "" [
+    #last, #first
+  ] else if first != "" [
+    #first
+  ] else [
+    #display-id
+  ]
 }
 
 #align(center, text(size: 14pt, weight: "bold")[
