@@ -18,7 +18,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/peopleinfo"
-	"github.com/valueforvalue/DixieData/internal/render"
+	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/xuri/excelize/v2"
 )
 

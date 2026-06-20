@@ -1,5 +1,5 @@
 // Package peopleinfo provides shared name-derivation helpers used by both
-// the PDF render path (internal/render) and the non-PDF export path
+// the PDF render path (pkg/render) and the non-PDF export path
 // (internal/archive) for JSON, iCal, and Excel exports. The functions
 // here are small and only operate on the public models.Soldier type, so
 // they are not coupled to either calling package.
