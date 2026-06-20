@@ -33,8 +33,19 @@
 #let opts = data.at("options", default: (:))
 #let branding = data.at("branding", default: (:))
 
+// Determine orientation from options. The fpdf path defaults to
+// landscape ("L") for the single-soldier export; the bulk export
+// uses whatever the user picked in PrintSettings. Typst doesn't
+// have a .upper() method on strings, so we check both forms.
+#let orientation-raw = str(opts.at("orientation", default: "L")).trim()
+#let is-landscape = orientation-raw == "L" or orientation-raw == "LANDSCAPE" or orientation-raw == "l" or orientation-raw == "landscape"
+
 #set page(
-  paper: "us-letter",
+  // fpdf's orientation comes from PDFOptions.Orientation. When the
+  // page is landscape (the default for the single-soldier export)
+  // the page is wider than tall.
+  width: if is-landscape { 11in } else { 8.5in },
+  height: if is-landscape { 8.5in } else { 11in },
   // Match the fpdf path's margins: 16mm left/right, 28mm top,
   // 16mm bottom. fpdf's 28mm top is 0.4in less than the audit's
   // 0.75in top margin; the audit's value was a generalization.
