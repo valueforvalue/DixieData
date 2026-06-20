@@ -1,5 +1,9 @@
 slice_id,slice_title,blocked_by,user_stories,acceptance_criteria,estimate
-1,Phase 0: scaffolding, baseline capture, tuning tool shell,,1,3,4,5,6,7,8,9,10,11,12,21,22,27,28,29,30,33,34,- [ ] `internal/render` package created with `Renderer` interface, `FpdfRenderer` (existing behavior), `TypstRenderer` (skeleton wrapping `go-typst`), and `Registry` (template discovery + PrintSettings resolution)
+0,Prefactor: extract PDF methods from ExportService,,12,17,38,39,- [ ] PDF methods (`ExportSoldierPDF`, `ExportSoldierPDFWithoutImages`, `ExportMonthlyAnniversaryPDF`, `ExportFullDatabasePDF`, `ExportAnalyticsSummaryPDF`) and supporting helpers (`brandedPDFDocument`, `newPDFDocument`, `pdfBranding`) are moved from `internal/archive/export_service.go` to a new `internal/render` package
+- [ ] Existing methods on `ExportService` are kept as thin facades that call the new package
+- [ ] No behavior change; no fpdf removal
+- [ ] All existing export tests pass,M
+1,Phase 0: scaffolding, baseline capture, tuning tool shell,0,1,3,4,5,6,7,8,9,11,12,21,22,27,28,29,30,33,34,- [ ] `internal/render` package extended with `Renderer` interface, `FpdfRenderer` (wraps the extracted PDF code from slice 0), `TypstRenderer` (skeleton wrapping `go-typst`), and `Registry` (template discovery + PrintSettings resolution)
 - [ ] `PrintSettings` gets a new `Template string` field with empty default
 - [ ] `templates/` directory in program root; `templates/common/theme.typ` exists with palette + type-scale + geometry let-bindings (can be stub values for now)
 - [ ] `bin/typst(.exe)` is present in program root (downloaded from Typst 0.15 release); `go-typst` configured to use it
@@ -25,16 +29,15 @@ slice_id,slice_title,blocked_by,user_stories,acceptance_criteria,estimate
 - [ ] `dixiedata-tune compare` works for each variant on at least one representative record,M
 4,Phase 1c: bulk export wiring,3,1,12,17,18,38,40,- [ ] `ExportFullDatabasePDF` (the bulk export) renders through the Typst path by default
 - [ ] A UI toggle in `share.templ` lets the user fall back to the fpdf path (default ON in this phase; user can flip off)
-- [ ] All existing fpdf tests still pass
+- [ ] All existing fpdf tests pass
 - [ ] The bulk export visual output is recognizable as the same export, with the same fields, same color palette, same header/footer, and same two-column record card structure,M
-5,Phase 2a: special-purpose templates,4,7,8,9,10,11,12,13,14,18,19,38,40,- [ ] `templates/biography_appendix.typ` renders the full-biography appendix page
+5,Phase 2a: special-purpose templates,4,7,8,9,11,12,13,14,18,19,38,40,- [ ] `templates/biography_appendix.typ` renders the full-biography appendix page
 - [ ] `templates/anniversary.typ` renders the monthly anniversary report
 - [ ] `templates/analytics_summary.typ` renders the analytics summary
 - [ ] `templates/group_divider.typ` renders the group divider page (one template handles all `GroupBy*` options)
-- [ ] `templates/printable_archive_registry.typ` renders the printable archive registry
 - [ ] Each template renders successfully via `dixiedata-tune render`
 - [ ] The corresponding DixieData export entry point uses the Typst path; fpdf remains as fallback
-- [ ] All existing fpdf tests still pass,M
+- [ ] All existing fpdf tests pass,M
 6,Phase 2b: static archive unification (minimal),5,20,35,40,- [ ] `templates/static_archive_index.typ` produces the static archive page structure as Typst HTML output
 - [ ] The existing `staticArchiveIndexHTML` constant in `internal/archive/static_archive.go` is replaced by the Typst-rendered output
 - [ ] The 27 alpha-variant rgba duplications between `internal/templates/layout.templ` and `internal/archive/static_archive.go` are gone (verified by the audit's color palette register)
