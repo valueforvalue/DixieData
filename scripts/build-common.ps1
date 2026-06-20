@@ -127,7 +127,9 @@ function Restore-DixieDataPdfiumBinary {
         Write-Host "Downloading PDFium runtime $expectedVersion..."
         Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
 
-        tar -xzf $archivePath -C $tempDir
+        # Use Windows native tar (System32) to avoid git-bash /usr/bin/tar
+        # shadowing pwsh's lookup and failing on 'C:' path resolution.
+        & "$env:SystemRoot\System32\tar.exe" -xzf $archivePath -C $tempDir
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to extract $assetName"
         }
