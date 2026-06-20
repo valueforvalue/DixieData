@@ -103,13 +103,13 @@
 }
 
 // label-value renders a single field row: bold label, value to
-// the right. If the value is empty or N/A, hides the row entirely
-// (matching the fpdf behavior of skipping empty fields).
+// the right. If the value is empty or N/A, returns empty content
+// (matches the fpdf behavior of skipping empty fields). Returns
+// content() so the caller can decide whether to render the
+// result or not.
 #let label-value(label, value) = {
-  // Skip rows that would just show N/A from blank values; the
-  // fpdf does this implicitly via pdfField.visible().
-  if value == none [""]
-  else if type(value) == str and value.trim() == "" [""]
+  if value == none { none }
+  else if type(value) == str and value.trim() == "" { none }
   else [
     *#label* #h(0.5cm) #value
   ]
@@ -148,14 +148,22 @@
     #v(0.4em)
     #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_secondary)
 
-    #label-value("Prefix", s.at("prefix", default: ""))
-    #label-value("First Name", first)
-    #label-value("Middle Name", middle)
-    #label-value("Last Name", last)
-    #label-value("Birth Date", long-date(s.at("birth_date", default: "")))
-    #label-value("Death Date", long-date(s.at("death_date", default: "")))
-    #label-value("Birth Info", s.at("birth_info", default: ""))
-    #label-value("Buried In", s.at("buried_in", default: ""))
+    #let prefix = label-value("Prefix", s.at("prefix", default: ""))
+    #if prefix != none [#prefix]
+    #let first-name = label-value("First Name", first)
+    #if first-name != none [#first-name]
+    #let middle-name = label-value("Middle Name", middle)
+    #if middle-name != none [#middle-name]
+    #let last-name = label-value("Last Name", last)
+    #if last-name != none [#last-name]
+    #let birth-date = label-value("Birth Date", long-date(s.at("birth_date", default: "")))
+    #if birth-date != none [#birth-date]
+    #let death-date = label-value("Death Date", long-date(s.at("death_date", default: "")))
+    #if death-date != none [#death-date]
+    #let birth-info = label-value("Birth Info", s.at("birth_info", default: ""))
+    #if birth-info != none [#birth-info]
+    #let buried-in = label-value("Buried In", s.at("buried_in", default: ""))
+    #if buried-in != none [#buried-in]
   ],
   [],
   [
@@ -164,15 +172,24 @@
     #v(0.4em)
     #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_secondary)
 
-    #label-value("Record Type", title-case(entry-type-raw))
-    #label-value("Rank In", s.at("rank_in", default: ""))
-    #label-value("Rank Out", s.at("rank_out", default: ""))
-    #label-value("Unit", s.at("unit", default: ""))
-    #label-value("Pension State", s.at("pension_state", default: ""))
-    #label-value("Pension ID", s.at("pension_id", default: ""))
-    #label-value("Application ID", s.at("application_id", default: ""))
-    #label-value("Confederate Home Status", s.at("confederate_home_status", default: ""))
-    #label-value("Confederate Home Name", s.at("confederate_home_name", default: ""))
+    #let record-type = label-value("Record Type", title-case(entry-type-raw))
+    #if record-type != none [#record-type]
+    #let rank-in = label-value("Rank In", s.at("rank_in", default: ""))
+    #if rank-in != none [#rank-in]
+    #let rank-out = label-value("Rank Out", s.at("rank_out", default: ""))
+    #if rank-out != none [#rank-out]
+    #let unit = label-value("Unit", s.at("unit", default: ""))
+    #if unit != none [#unit]
+    #let pension-state = label-value("Pension State", s.at("pension_state", default: ""))
+    #if pension-state != none [#pension-state]
+    #let pension-id = label-value("Pension ID", s.at("pension_id", default: ""))
+    #if pension-id != none [#pension-id]
+    #let application-id = label-value("Application ID", s.at("application_id", default: ""))
+    #if application-id != none [#application-id]
+    #let confederate-status = label-value("Confederate Home Status", s.at("confederate_home_status", default: ""))
+    #if confederate-status != none [#confederate-status]
+    #let confederate-name = label-value("Confederate Home Name", s.at("confederate_home_name", default: ""))
+    #if confederate-name != none [#confederate-name]
   ],
 )
 
