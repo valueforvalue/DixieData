@@ -98,10 +98,16 @@
   "12": "December",
 )
 
-// long-date renders a date string as the long form ("May 22, 1844")
-// or "Unknown" if any component is "00". The data layer uses "00"
-// as a sentinel for unknown date parts. The fpdf path also emits
-// "Unknown" in this case.
+// long-date renders a date string as the long form ("May 22, 1844"),
+// the year alone if month/day are unknown ("1835"), or "Unknown"
+// if all parts are unknown. The data layer uses "00" as a sentinel
+// for unknown date parts.
+//
+// Matches the fpdf path's internal/dates.DisplayUnknown behavior:
+//   "00/00/0000" -> "Unknown"
+//   "00/00/1835" -> "1835"   (year only, no "Unknown")
+//   "05/00/1844" -> "May 1844"
+//   "05/22/1844" -> "May 22, 1844"
 #let long-date(s) = {
   if s == none or s == "" {
     return [Unknown]
@@ -116,6 +122,24 @@
     let day-raw = parts.at(1)
     let year-raw = parts.at(2)
 
+    // All three unknown: "Unknown".
+    if month-idx == "00" and day-raw == "00" and year-raw == "00" {
+      return [Unknown]
+    }
+
+    // Year is known but month and day are unknown: just the year.
+    if month-idx == "00" and day-raw == "00" {
+      return [#year-raw]
+    }
+
+    // Month is known but year or day is unknown.
+    // If only the day is unknown: "May 1844".
+    if day-raw == "00" and month-idx != "00" and year-raw != "00" {
+      let mname = month-names.at(month-idx, default: month-idx)
+      return [#mname #year-raw]
+    }
+
+    // Any other partial combination: "Unknown".
     if month-idx == "00" or day-raw == "00" or year-raw == "00" {
       return [Unknown]
     }
@@ -282,14 +306,9 @@
 
     #v(0.5em)
 
-    // Biography
-    #let biography = s.at("biography", default: "")
-    #if biography != none and biography.trim() != "" [
-      #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
-      #v(0.4em)
-      #set text(size: 9pt)
-      #biography
-    ]
+    // Note: biography is rendered on its own page below (matching
+    // the fpdf path's behavior of appending a separate biography
+    // page rather than embedding it inline).
 
     #v(0.6em)
 
@@ -313,3 +332,26 @@
     ]
   ],
 )
+
+// --- Separate biography page ---
+// Matches the fpdf path: when the record has a non-empty biography,
+// append a dedicated page with the full title block, the
+// "Full Biography" subtitle, and the biography text below a
+// "Biography" section title.
+#let biography = s.at("biography", default: "")
+#if biography != none and biography.trim() != "" [
+  #pagebreak()
+  #text(size: 20pt, font: ("Times New Roman", "Liberation Serif", "DejaVu Serif"), weight: "bold")[
+    #name
+    #if suffix != "" [, #suffix]
+  ]
+  #v(0.2em)
+  #text(size: 10pt, fill: theme.palette.text_secondary)[
+    #display-id | #entry-type-label(entry-type-raw) | Full Biography
+  ]
+  #v(0.8em)
+  #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
+  #v(0.4em)
+  #set text(size: 9pt, fill: theme.palette.text_primary)
+  #biography
+] 
