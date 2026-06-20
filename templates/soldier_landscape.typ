@@ -163,6 +163,8 @@
 // a true two-column grid so the value column is at a FIXED x
 // position (matches the fpdf path's setX(labelWidth)+MultiCell
 // pattern where labelWidth = 32% of column width).
+//
+// fpdf font sizes: label = 8pt bold, value = 9pt regular.
 #let label-value(label, value) = {
   if value == none {
     none
@@ -173,8 +175,8 @@
       columns: (32%, 1fr),
       column-gutter: 0.3cm,
       align: (left, left),
-      [#text(weight: "bold")[#label]],
-      [#value],
+      [#text(size: 8pt, weight: "bold")[#label]],
+      [#text(size: 9pt)[#value]],
     )
   }
 }
@@ -207,15 +209,15 @@
   ]
 }
 
-// Match the fpdf layout: title is left-aligned, not centered. The
-// fpdf path uses text(14pt bold) for the name and 9pt regular for
-// the display-id/entry-type line below, both at the left margin.
-#text(size: 14pt, weight: "bold")[
+// Match the fpdf layout: title is left-aligned. The fpdf path
+// uses Times Bold 20pt for the name and Helvetica 10pt for the
+// display-id/entry-type line below.
+#text(size: 20pt, font: ("Times New Roman", "Liberation Serif", "DejaVu Serif"), weight: "bold")[
   #name
   #if suffix != "" [, #suffix]
 ]
 #v(0.2em)
-#text(size: 9pt, fill: theme.palette.text_secondary)[
+#text(size: 10pt, fill: theme.palette.text_secondary)[
   #display-id - #entry-type-label(entry-type-raw)
 ]
 #v(0.6em)
@@ -232,7 +234,8 @@
 
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Identity & Vital Details]
     #v(0.4em)
-    #set text(size: 8pt, fill: theme.palette.text_secondary)
+    // The label-value grid sets its own font sizes (8pt label,
+    // 9pt value) to match the fpdf spec.
 
     #field-row("Prefix", s.at("prefix", default: ""))
     #field-row("First Name", first)
@@ -252,17 +255,23 @@
     #field-row("Rank In", s.at("rank_in", default: ""))
     #field-row("Rank Out", s.at("rank_out", default: ""))
     #field-row("Unit", s.at("unit", default: ""))
-    #field-row("Pension State", s.at("pension_state", default: "N/A"))
-    #field-row("Pension ID", s.at("pension_id", default: ""))
-    #field-row("Application ID", s.at("application_id", default: ""))
-    #field-row("Confederate Home Status", s.at("confederate_home_status", default: "N/A"))
-    #field-row("Confederate Home Name", s.at("confederate_home_name", default: "N/A"))
+    // fpdf renders an empty string as "N/A" for these fields.
+    #let pension-state = s.at("pension_state", default: "")
+    #let pension-id = s.at("pension_id", default: "")
+    #let app-id = s.at("application_id", default: "")
+    #let ch-status = s.at("confederate_home_status", default: "")
+    #let ch-name = s.at("confederate_home_name", default: "")
+    #field-row("Pension State", if pension-state.trim() == "" [N/A] else [#pension-state])
+    #field-row("Pension ID", if pension-id.trim() == "" [N/A] else [#pension-id])
+    #field-row("Application ID", if app-id.trim() == "" [N/A] else [#app-id])
+    #field-row("Confederate Home Status", if ch-status.trim() == "" [N/A] else [#ch-status])
+    #field-row("Confederate Home Name", if ch-name.trim() == "" [N/A] else [#ch-name])
   ],
   [],
   [
     // === Right column: image, household, biography, records ===
 
-    #set text(size: 8pt, fill: theme.palette.text_primary)
+    #set text(size: 9pt, fill: theme.palette.text_primary)
 
     // Household & Context
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Household & Context]
