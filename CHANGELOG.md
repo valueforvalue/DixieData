@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Extracted PDF-layout types and standalone PDF rendering helpers from `internal/archive/export_service.go` into a new `internal/archive/pdf_layout.go` (PR1 of the God-class reduction tracked in issue #42). `export_service.go` shrinks from 4,510 to 3,108 LOC. Pure file move; no public API or behavior change.
 - Added `Makefile` as the preferred entry point for build, test, asset generation, and release tasks. Each target routes through the underlying PowerShell scripts with verbose output captured to `build\log\<target>.log` and `pipefail` so script failures propagate. See `make help`.
 - Added `scripts/bump-version.ps1` (`make bump`) — strict increment of `CurrentSchemaVersion` in `internal/versioninfo/versioninfo.go`. Refuses bumps greater than `+1` without `-Force`, and refuses any bump without a paired `docs\migrations\v{N+1}.md` note. Protects the local update feature, which depends on schema migrations.
 - Added `scripts/release-github.ps1` (`make release-github`) — tag + push + draft GitHub release via `gh` CLI. Five safety gates before any mutation (clean tree, committed bump, archive present, tag absent locally + on origin, `gh` authenticated). Draft means not auto-published; reviewer runs `gh release edit v{VER} --draft=false` to publish.
