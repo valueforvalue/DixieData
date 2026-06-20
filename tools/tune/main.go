@@ -261,9 +261,10 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 		}
 	} else {
 		// Typst path. Build the full TemplateData payload and run
-		// through the TypstRenderer.
+		// through the TypstRenderer. Match the fpdf path's default
+		// of landscape ("L") so the output page size matches.
 		typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
-		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{}, encode.BrandingFromIdentity(identity))
+		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{Orientation: "L"}, encode.BrandingFromIdentity(identity))
 		tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
 		payload := templateDataToMap(fullData)
 		if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {
