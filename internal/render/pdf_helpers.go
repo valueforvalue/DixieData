@@ -50,6 +50,11 @@ type PrintSettings struct {
 	FilterConfederateHomeStatus  []string `json:"filterConfederateHomeStatuses"`
 	ExportAll                    bool     `json:"exportAll"`
 	SelectedIDs                  []int64  `json:"selectedIds"`
+	// Template overrides the registry's default template selection. When
+	// set, the registry looks up <template>.typ in the templates
+	// directory and renders it with Typst. When empty, the registry
+	// picks a default based on the record type and orientation.
+	Template string `json:"template"`
 }
 
 
