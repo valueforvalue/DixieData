@@ -160,18 +160,23 @@
 
 // label-value renders a single field row. Returns none if the
 // value is blank so the caller can decide to skip the row. Uses
-// a `block` to force each row onto its own line, matching the
-// fpdf path's per-row layout.
+// a true two-column grid so the value column is at a FIXED x
+// position (matches the fpdf path's setX(labelWidth)+MultiCell
+// pattern where labelWidth = 32% of column width).
 #let label-value(label, value) = {
-  if value == none { none }
-  else if type(value) == str and value.trim() == "" { none }
-  else [
-    // block() forces a line break after the content so multiple
-    // field-value pairs don't flow onto a single line.
-    #block[
-      *#label* #h(0.6cm) #value
-    ]
-  ]
+  if value == none {
+    none
+  } else if type(value) == str and value.trim() == "" {
+    none
+  } else {
+    grid(
+      columns: (32%, 1fr),
+      column-gutter: 0.3cm,
+      align: (left, left),
+      [#text(weight: "bold")[#label]],
+      [#value],
+    )
+  }
 }
 
 #let field-row(label, value) = {
@@ -202,15 +207,18 @@
   ]
 }
 
-#align(center, text(size: 14pt, weight: "bold")[
+// Match the fpdf layout: title is left-aligned, not centered. The
+// fpdf path uses text(14pt bold) for the name and 9pt regular for
+// the display-id/entry-type line below, both at the left margin.
+#text(size: 14pt, weight: "bold")[
   #name
   #if suffix != "" [, #suffix]
-])
-#v(0.3em)
-#align(center, text(size: theme.type-scale.body.size, fill: theme.palette.text_secondary)[
+]
+#v(0.2em)
+#text(size: 9pt, fill: theme.palette.text_secondary)[
   #display-id - #entry-type-label(entry-type-raw)
-])
-#v(0.5em)
+]
+#v(0.6em)
 
 // --- two-column record card ---
 // Mirrors the fpdf layout: BOTH identity and service stacked in
@@ -283,9 +291,13 @@
       #v(0.4em)
       #set text(size: 9pt)
       #for r in records [
-        *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
-        #if r.at("details", default: "") != "" [
-          \ #r.at("details", default: "")
+        // block(width: 100%) constrains the URL to the column width
+        // so it wraps instead of overflowing the page edge.
+        #block(width: 100%)[
+          *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
+          #if r.at("details", default: "") != "" [
+            #linebreak() #text(size: 8pt)[#r.at("details", default: "")]
+          ]
         ]
         #v(0.2em)
       ]
