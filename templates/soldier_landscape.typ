@@ -90,7 +90,12 @@
     if parts.len() == 3 [
       // MM/DD/YYYY format
       #let month-idx = parts.at(0)
-      #let day = parts.at(1)
+      // Strip leading zeros from the day (e.g. "09" -> "9") to
+      // match the fpdf output style ("February 9, 1926" not
+      // "February 09, 1926").
+      #let day = if parts.at(1).starts-with("0") and parts.at(1).len() > 1 {
+        parts.at(1).slice(1)
+      } else { parts.at(1) }
       #let year = parts.at(2)
       #let month-name = month-names.at(month-idx, default: month-idx)
       #month-name #day, #year
