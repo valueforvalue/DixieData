@@ -35,15 +35,18 @@
 
 #set page(
   paper: "us-letter",
-  margin: theme.geometry.page_margin,
+  // Match the fpdf path's margins: 16mm left/right, 28mm top,
+  // 16mm bottom. fpdf's 28mm top is 0.4in less than the audit's
+  // 0.75in top margin; the audit's value was a generalization.
+  margin: (top: 0.4in, bottom: 0.4in, left: 0.63in, right: 0.63in),
   header: align(center, text(
-    size: theme.type-scale.header.size,
+    size: 10pt,
     weight: "bold",
     fill: theme.palette.text_primary,
   )[#branding.at("archive_title", default: "DixieData Archive")]),
   footer: if not opts.at("printerFriendly", default: false) {
     align(center, text(
-      size: theme.type-scale.footer.size,
+      size: 8pt,
       fill: theme.palette.text_secondary,
     )[#branding.at("footer_text", default: "")])
   },
@@ -51,10 +54,12 @@
 
 #set text(
   font: "Arial",
-  size: theme.type-scale.body.size,
+  // The fpdf path uses a 9pt body font; the audit's theme.typ
+  // was at 8pt which made the output too small and crowded.
+  size: 9pt,
   fill: theme.palette.text_primary,
 )
-#set par(leading: 0.5em)
+#set par(leading: 0.45em)
 
 // --- helpers ---
 
@@ -143,12 +148,18 @@
 }
 
 // label-value renders a single field row. Returns none if the
-// value is blank so the caller can decide to skip the row.
+// value is blank so the caller can decide to skip the row. Uses
+// a `block` to force each row onto its own line, matching the
+// fpdf path's per-row layout.
 #let label-value(label, value) = {
   if value == none { none }
   else if type(value) == str and value.trim() == "" { none }
   else [
-    *#label* #h(0.5cm) #value
+    // block() forces a line break after the content so multiple
+    // field-value pairs don't flow onto a single line.
+    #block[
+      *#label* #h(0.6cm) #value
+    ]
   ]
 }
 
@@ -200,9 +211,9 @@
   [
     // === Left column: Identity + Service ===
 
-    #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Identity & Vital Details]
-    #v(0.3em)
-    #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_primary)
+    #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Identity & Vital Details]
+    #v(0.4em)
+    #set text(size: 8pt, fill: theme.palette.text_secondary)
 
     #field-row("Prefix", s.at("prefix", default: ""))
     #field-row("First Name", first)
@@ -214,9 +225,9 @@
     #field-row("Birth Info", s.at("birth_info", default: ""))
     #field-row("Buried In", s.at("buried_in", default: ""))
 
-    #v(0.5em)
-    #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Service & Archive Details]
-    #v(0.3em)
+    #v(0.6em)
+    #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Service & Archive Details]
+    #v(0.4em)
 
     #field-row("Record Type", entry-type-label(entry-type-raw))
     #field-row("Rank In", s.at("rank_in", default: ""))
@@ -232,11 +243,11 @@
   [
     // === Right column: image, household, biography, records ===
 
-    #set text(size: theme.type-scale.field_label.size, fill: theme.palette.text_primary)
+    #set text(size: 8pt, fill: theme.palette.text_primary)
 
     // Household & Context
-    #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Household & Context]
-    #v(0.3em)
+    #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Household & Context]
+    #v(0.4em)
 
     #field-row("Spouse", s.at("spouse_name", default: ""))
     #field-row("Maiden Name", s.at("maiden_name", default: ""))
@@ -246,20 +257,20 @@
     // Biography
     #let biography = s.at("biography", default: "")
     #if biography != none and biography.trim() != "" [
-      #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Biography]
-      #v(0.3em)
-      #set text(size: theme.type-scale.body.size)
+      #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
+      #v(0.4em)
+      #set text(size: 9pt)
       #biography
     ]
 
-    #v(0.5em)
+    #v(0.6em)
 
     // Records
     #let records = s.at("records", default: ())
     #if records.len() > 0 [
-      #text(size: theme.type-scale.section_title.size, weight: "bold", fill: theme.palette.accent)[Records]
-      #v(0.3em)
-      #set text(size: theme.type-scale.body.size)
+      #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Records]
+      #v(0.4em)
+      #set text(size: 9pt)
       #for r in records [
         *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
         #if r.at("details", default: "") != "" [
