@@ -8,19 +8,17 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-pdf/fpdf"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/peopleinfo"
+	"github.com/valueforvalue/DixieData/internal/render"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -30,6 +28,7 @@ type ExportService struct {
 	db         *db.DB
 	soldier    *SoldierService
 	rasterizer pdfToJPEGRasterizer
+	pdf        *render.Service
 }
 
 type pdfToJPEGRasterizer interface {
@@ -54,7 +53,118 @@ func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
 		db:         database,
 		soldier:    soldier,
 		rasterizer: newPDFJPEGRasterizer(),
+		pdf:        render.New(database, soldier),
 	}
+}
+
+// ExportSoldierPDF is a thin facade over the render.Service method. Kept
+// on ExportService for backwards compatibility with the existing Wails
+// facade (internal/appshell/app_facades.go) and existing tests.
+func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier, options PDFOptions) error {
+	return e.pdf.ExportSoldierPDF(outputPath, soldier, options)
+}
+
+// ExportSoldierPDFWithoutImages is a thin facade.
+func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error {
+	return e.pdf.ExportSoldierPDFWithoutImages(outputPath, soldier)
+}
+
+// ExportMonthlyAnniversaryPDF is a thin facade.
+func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
+	return e.pdf.ExportMonthlyAnniversaryPDF(outputPath, month, calendar, options)
+}
+
+// ExportFullDatabasePDF is a thin facade.
+func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintSettings) error {
+	return e.pdf.ExportFullDatabasePDF(outputPath, settings)
+}
+
+// ExportAnalyticsSummaryPDF is a thin facade.
+func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot AnalyticsSnapshot, options PDFOptions) error {
+	return e.pdf.ExportAnalyticsSummaryPDF(outputPath, snapshot, options)
+}
+
+// ExportSoldierJPG still needs the temp PDF step, so it lives on
+// ExportService and delegates the PDF write to the render service.
+func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldier, options PDFOptions) ([]string, error) {
+	options = options.Normalize("L", true)
+	outputPath = ensureJPGOutputPath(outputPath)
+
+	tempDir, err := os.MkdirTemp(filepath.Dir(outputPath), ".dixiedata-soldier-jpg-*")
+	if err != nil {
+		return nil, fmt.Errorf("create temporary JPG export directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pdfPath := filepath.Join(tempDir, "record.pdf")
+	if err := e.pdf.ExportSoldierPDF(pdfPath, soldier, options); err != nil {
+		return nil, err
+	}
+
+	renderedDir := filepath.Join(tempDir, "pages")
+	if err := os.MkdirAll(renderedDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create temporary JPG page directory: %w", err)
+	}
+
+	renderedPaths, err := e.rasterizer.Rasterize(pdfPath, renderedDir)
+	if err != nil {
+		return nil, err
+	}
+	if len(renderedPaths) == 0 {
+		return nil, errors.New("PDF rasterizer did not produce any JPG pages")
+	}
+
+	finalPaths := make([]string, len(renderedPaths))
+	for i := range renderedPaths {
+		finalPaths[i] = jpgPagePath(outputPath, i+1)
+	}
+
+	if err := removeExistingJPGArtifacts(outputPath); err != nil {
+		return nil, err
+	}
+	for i, renderedPath := range renderedPaths {
+		if err := os.Rename(renderedPath, finalPaths[i]); err != nil {
+			return nil, fmt.Errorf("save JPG page %d: %w", i+1, err)
+		}
+	}
+	return finalPaths, nil
+}
+
+func ensureJPGOutputPath(outputPath string) string {
+	if strings.EqualFold(filepath.Ext(outputPath), ".jpg") {
+		return outputPath
+	}
+	return outputPath + ".jpg"
+}
+
+func jpgPagePath(outputPath string, pageNumber int) string {
+	outputPath = ensureJPGOutputPath(outputPath)
+	if pageNumber <= 1 {
+		return outputPath
+	}
+	ext := filepath.Ext(outputPath)
+	stem := strings.TrimSuffix(outputPath, ext)
+	return fmt.Sprintf("%s-page-%03d%s", stem, pageNumber, ext)
+}
+
+func removeExistingJPGArtifacts(outputPath string) error {
+	primaryPath := ensureJPGOutputPath(outputPath)
+	if err := os.Remove(primaryPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove existing JPG export: %w", err)
+	}
+
+	ext := filepath.Ext(primaryPath)
+	stem := strings.TrimSuffix(primaryPath, ext)
+	matches, err := filepath.Glob(stem + "-page-*" + ext)
+	if err != nil {
+		return fmt.Errorf("list existing JPG page exports: %w", err)
+	}
+	for _, match := range matches {
+		if err := os.Remove(match); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove existing JPG page export %s: %w", match, err)
+		}
+	}
+	return nil
 }
 
 // ExportJSON writes a full hierarchical export document with metadata and
@@ -118,8 +228,8 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		if leftLast != rightLast {
 			return leftLast < rightLast
 		}
-		leftName := strings.ToLower(strings.TrimSpace(soldierFullName(soldiers[i])))
-		rightName := strings.ToLower(strings.TrimSpace(soldierFullName(soldiers[j])))
+		leftName := strings.ToLower(strings.TrimSpace(peopleinfo.SoldierFullName(soldiers[i])))
+		rightName := strings.ToLower(strings.TrimSpace(peopleinfo.SoldierFullName(soldiers[j])))
 		if leftName != rightName {
 			return leftName < rightName
 		}
@@ -192,7 +302,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		if spouseLinked {
 			linkedSpouseDisplayID = strings.TrimSpace(spouse.DisplayID)
 			if linkedSpouseName == "" {
-				linkedSpouseName = strings.TrimSpace(soldierFullName(spouse))
+				linkedSpouseName = strings.TrimSpace(peopleinfo.SoldierFullName(spouse))
 			}
 		}
 		values := []string{
@@ -307,8 +417,8 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		spouse, spouseLinked := spouseIndex[soldier.SpouseSoldierID]
 		rowValues := []string{
 			soldier.DisplayID,
-			soldierDisplayName(soldier),
-			displayEntryType(soldier),
+			peopleinfo.SoldierDisplayName(soldier),
+			peopleinfo.DisplayEntryType(soldier),
 			func() string {
 				if soldier.SpouseSoldierID <= 0 {
 					return ""
@@ -326,13 +436,13 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 					return soldier.SpouseName
 				}
 				if spouseLinked {
-					return soldierFullName(spouse)
+					return peopleinfo.SoldierFullName(spouse)
 				}
 				return ""
 			}(),
 			func() string {
 				if spouseLinked {
-					return displayEntryType(spouse)
+					return peopleinfo.DisplayEntryType(spouse)
 				}
 				return ""
 			}(),
@@ -410,7 +520,7 @@ func (e *ExportService) ExportICalendar(outputPath string, preferences models.Ca
 		start = time.Date(start.Year(), start.Month(), start.Day(), hour, minute, 0, 0, location)
 		end := start.Add(time.Hour)
 		description := strings.Join(compactICalendarDescriptionLines(iCalendarManagedDescriptionLines(soldier, preferences)...), "\n")
-		alarmLines := iCalendarAlarmLines(soldierDisplayName(soldier), preferences)
+		alarmLines := iCalendarAlarmLines(peopleinfo.SoldierDisplayName(soldier), preferences)
 
 		lines := []string{
 			"BEGIN:VEVENT",
@@ -655,7 +765,7 @@ func compactICalendarDescriptionLines(lines ...string) []string {
 }
 
 func iCalendarManagedSummary(soldier models.Soldier, preferences models.CalendarEventPreferences) string {
-	name := soldierDisplayName(soldier)
+	name := peopleinfo.SoldierDisplayName(soldier)
 	switch preferences.TitlePreset {
 	case models.CalendarEventTitlePresetNameLead:
 		return name + " Memorial Anniversary"
@@ -669,16 +779,16 @@ func iCalendarManagedSummary(soldier models.Soldier, preferences models.Calendar
 func iCalendarManagedDescriptionLines(soldier models.Soldier, preferences models.CalendarEventPreferences) []string {
 	lines := []string{}
 	if preferences.IncludeRecordID {
-		lines = append(lines, "Record ID: "+emptyPDFValue(strings.TrimSpace(soldier.DisplayID)))
+		lines = append(lines, "Record ID: "+render.EmptyPDFValue(strings.TrimSpace(soldier.DisplayID)))
 	}
 	if preferences.IncludeUnit {
-		lines = append(lines, "Unit: "+emptyPDFValue(strings.TrimSpace(soldier.Unit)))
+		lines = append(lines, "Unit: "+render.EmptyPDFValue(strings.TrimSpace(soldier.Unit)))
 	}
 	if preferences.IncludeBuriedIn {
-		lines = append(lines, "Buried In: "+emptyPDFValue(strings.TrimSpace(soldier.BuriedIn)))
+		lines = append(lines, "Buried In: "+render.EmptyPDFValue(strings.TrimSpace(soldier.BuriedIn)))
 	}
 	if preferences.IncludeOriginalDate {
-		lines = append(lines, "Original Death Date: "+emptyPDFValue(soldierDeathLine(soldier)))
+		lines = append(lines, "Original Death Date: "+render.EmptyPDFValue(dates.DisplayUnknown(soldier.DeathDate)))
 	}
 	lines = append(lines, "Generated by DixieData.")
 	return lines
@@ -842,308 +952,6 @@ func uniqueCopiedImagePath(rootDir, fileName string, usedNames map[string]bool) 
 	}
 }
 
-func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier, options PDFOptions) error {
-	return e.exportSoldierPDF(outputPath, soldier, options.Normalize("L", true))
-}
-
-func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error {
-	return e.exportSoldierPDF(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: false})
-}
-
-func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldier, options PDFOptions) ([]string, error) {
-	options = options.Normalize("L", true)
-	outputPath = ensureJPGOutputPath(outputPath)
-
-	tempDir, err := os.MkdirTemp(filepath.Dir(outputPath), ".dixiedata-soldier-jpg-*")
-	if err != nil {
-		return nil, fmt.Errorf("create temporary JPG export directory: %w", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	pdfPath := filepath.Join(tempDir, "record.pdf")
-	if err := e.exportSoldierPDF(pdfPath, soldier, options); err != nil {
-		return nil, err
-	}
-
-	renderedDir := filepath.Join(tempDir, "pages")
-	if err := os.MkdirAll(renderedDir, 0o755); err != nil {
-		return nil, fmt.Errorf("create temporary JPG page directory: %w", err)
-	}
-
-	renderedPaths, err := e.rasterizer.Rasterize(pdfPath, renderedDir)
-	if err != nil {
-		return nil, err
-	}
-	if len(renderedPaths) == 0 {
-		return nil, errors.New("PDF rasterizer did not produce any JPG pages")
-	}
-
-	finalPaths := make([]string, len(renderedPaths))
-	for i := range renderedPaths {
-		finalPaths[i] = jpgPagePath(outputPath, i+1)
-	}
-
-	if err := removeExistingJPGArtifacts(outputPath); err != nil {
-		return nil, err
-	}
-	for i, renderedPath := range renderedPaths {
-		if err := os.Rename(renderedPath, finalPaths[i]); err != nil {
-			return nil, fmt.Errorf("save JPG page %d: %w", i+1, err)
-		}
-	}
-	return finalPaths, nil
-}
-
-func (e *ExportService) exportSoldierPDF(outputPath string, soldier models.Soldier, options PDFOptions) error {
-	options = options.Normalize("L", true)
-	pdf, err := e.brandedPDFDocument(options.Orientation, "Record Card", "soldier-pdf", buildinfo.SoldierPDFExportVersion, "", options.PrinterFriendly)
-	if err != nil {
-		return err
-	}
-	pdf.AddPage()
-
-	writePDFTitleBlock(pdf, recordPDFTitle(soldier), fmt.Sprintf("%s - %s", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)))
-	writePDFRecordCard(pdf, soldier, options)
-	if shouldAppendSingleRecordBiographyPage(soldier, options) {
-		writeSingleRecordBiographyPage(pdf, soldier, options.PrinterFriendly)
-	}
-
-	return pdf.OutputFileAndClose(outputPath)
-}
-
-func ensureJPGOutputPath(outputPath string) string {
-	if strings.EqualFold(filepath.Ext(outputPath), ".jpg") {
-		return outputPath
-	}
-	return outputPath + ".jpg"
-}
-
-func jpgPagePath(outputPath string, pageNumber int) string {
-	outputPath = ensureJPGOutputPath(outputPath)
-	if pageNumber <= 1 {
-		return outputPath
-	}
-	ext := filepath.Ext(outputPath)
-	stem := strings.TrimSuffix(outputPath, ext)
-	return fmt.Sprintf("%s-page-%03d%s", stem, pageNumber, ext)
-}
-
-func removeExistingJPGArtifacts(outputPath string) error {
-	primaryPath := ensureJPGOutputPath(outputPath)
-	if err := os.Remove(primaryPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("remove existing JPG export: %w", err)
-	}
-
-	ext := filepath.Ext(primaryPath)
-	stem := strings.TrimSuffix(primaryPath, ext)
-	matches, err := filepath.Glob(stem + "-page-*" + ext)
-	if err != nil {
-		return fmt.Errorf("list existing JPG page exports: %w", err)
-	}
-	for _, match := range matches {
-		if err := os.Remove(match); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("remove existing JPG page export %s: %w", match, err)
-		}
-	}
-	return nil
-}
-
-func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
-	options = options.Normalize("P", false)
-	pdf, err := e.brandedPDFDocument(options.Orientation, "Monthly Anniversary Report", "monthly-pdf", buildinfo.MonthlyPDFExportVersion, pdfFooterMetadata("monthly-pdf", buildinfo.MonthlyPDFExportVersion), options.PrinterFriendly)
-	if err != nil {
-		return err
-	}
-	pdf.AddPage()
-
-	title := fmt.Sprintf("%s Anniversary Report", monthLabel(month))
-	writePDFTitleBlock(pdf, title, "Includes soldier names and database numbers for the selected month.")
-
-	days := make([]int, 0, len(calendar))
-	for day := range calendar {
-		if day == 0 {
-			continue
-		}
-		days = append(days, day)
-	}
-	sort.Ints(days)
-
-	if len(days) == 0 {
-		writePDFBody(pdf, "No soldiers are recorded for this month.")
-		return pdf.OutputFileAndClose(outputPath)
-	}
-
-	for _, day := range days {
-		soldiers := append([]models.Soldier(nil), calendar[day]...)
-		sort.Slice(soldiers, func(i, j int) bool {
-			left := strings.ToLower(soldierDisplayName(soldiers[i]))
-			right := strings.ToLower(soldierDisplayName(soldiers[j]))
-			return left < right
-		})
-
-		writePDFSection(pdf, fmt.Sprintf("%s %d", monthLabel(month), day))
-		for _, soldier := range soldiers {
-			writePDFBullet(pdf, fmt.Sprintf("%s - %s", soldierDisplayName(soldier), soldier.DisplayID))
-		}
-	}
-
-	return pdf.OutputFileAndClose(outputPath)
-}
-
-func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintSettings) error {
-	settings = settings.Normalize()
-	pdf, err := e.brandedPDFDocument(settings.Orientation, "Printable Archive Registry", "database-pdf", buildinfo.DatabasePDFExportVersion, pdfFooterMetadata("database-pdf", buildinfo.DatabasePDFExportVersion), settings.PrinterFriendly)
-	if err != nil {
-		return err
-	}
-	pdf.AddPage()
-	writePDFTitleBlock(pdf, "Printable Archive Registry", "Full database export with concise record pages, captioned primary images, and bounded biography excerpts that continue onto additional pages when needed.")
-
-	var selectedIDs []int64
-	if settings.Scope == PrintScopeSelected {
-		selectedIDs = settings.SelectedIDs
-	}
-	soldiers, err := exportDetailedSoldiers(e.soldier, selectedIDs)
-	if err != nil {
-		return err
-	}
-	if settings.Scope == PrintScopeFiltered {
-		soldiers = filterPrintableSoldiers(soldiers, settings)
-	}
-	if len(soldiers) == 0 {
-		writePDFBody(pdf, "No records are currently stored in this archive.")
-		return pdf.OutputFileAndClose(outputPath)
-	}
-
-	sortPrintableSoldiers(soldiers, settings)
-	groupOrder := selectedPrintGroups(settings)
-	lastGroupValues := map[string]string{}
-	firstRecord := true
-
-	for _, soldier := range soldiers {
-		for _, groupChange := range changedPrintGroups(lastGroupValues, soldier, groupOrder, firstRecord) {
-			pdf.AddPage()
-			writePDFGroupDividerPage(pdf, groupChange.Label, groupChange.Title, groupChange.Level)
-		}
-		firstRecord = false
-		pdf.AddPage()
-		writePDFTitleBlock(
-			pdf,
-			recordPDFTitle(soldier),
-			fmt.Sprintf("%s | %s | Captioned primary image + concise biography excerpt", emptyPDFValue(strings.TrimSpace(soldier.DisplayID)), displayEntryType(soldier)),
-		)
-		writePDFRecordCard(pdf, soldier, PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true})
-		if settings.FullBiographyPage {
-			writePrintableBiographyAppendixPage(pdf, soldier, settings.PrinterFriendly)
-		}
-	}
-
-	return pdf.OutputFileAndClose(outputPath)
-}
-
-func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot AnalyticsSnapshot, options PDFOptions) error {
-	options = options.Normalize("P", false)
-	pdf, err := e.brandedPDFDocument(options.Orientation, "Archive Summary Report", "analytics-pdf", buildinfo.AnalyticsPDFExportVersion, pdfFooterMetadata("analytics-pdf", buildinfo.AnalyticsPDFExportVersion), options.PrinterFriendly)
-	if err != nil {
-		return err
-	}
-	pdf.AddPage()
-	writePDFTitleBlock(pdf, "Archive Summary Report", "High-level archive analytics covering burial density, Confederate Home participation, record types, pension geography, unit representation, and decade trends.")
-
-	writePDFSection(pdf, "Record Types")
-	writePDFBullet(pdf, fmt.Sprintf("Soldiers: %d", snapshot.RecordTypes.TotalSoldiers))
-	writePDFBullet(pdf, fmt.Sprintf("Spouses (Wives & Widows): %d", snapshot.RecordTypes.TotalWivesWidows))
-	writePDFBullet(pdf, fmt.Sprintf("Linked People: %d", snapshot.RecordTypes.TotalLinkedPeople))
-
-	writePDFSection(pdf, "Top Cemeteries")
-	writePDFAnalyticsRows(pdf, snapshot.CemeteryDensity, "No burial locations are recorded yet.")
-
-	writePDFSection(pdf, "Confederate Home Participation")
-	writePDFBody(pdf, "Status breakdown")
-	writePDFAnalyticsRows(pdf, snapshot.ConfederateHomeStatus, "No Confederate Home statuses are recorded yet.")
-	pdf.Ln(2)
-	writePDFBody(pdf, "Most frequent home names")
-	writePDFAnalyticsRows(pdf, snapshot.ConfederateHomeNames, "No Confederate Home names are recorded yet.")
-
-	writePDFSection(pdf, "Pension Distribution")
-	writePDFAnalyticsRows(pdf, snapshot.PensionDistribution, "No pension states are recorded yet.")
-
-	writePDFSection(pdf, "Unit Representation")
-	writePDFAnalyticsRows(pdf, snapshot.UnitRepresentation, "No units are recorded yet.")
-
-	writePDFSection(pdf, "Chronological Overview")
-	writePDFBody(pdf, "Birth decades")
-	writePDFAnalyticsRows(pdf, snapshot.BirthDecadeDistribution, "No birth decades are recorded yet.")
-	pdf.Ln(2)
-	writePDFBody(pdf, "Death decades")
-	writePDFAnalyticsRows(pdf, snapshot.DeathDecadeDistribution, "No death decades are recorded yet.")
-
-	return pdf.OutputFileAndClose(outputPath)
-}
-
-func newPDFDocument(orientation, title, format string, version int) *fpdf.Fpdf {
-	pdf := fpdf.New(orientation, "mm", "Letter", "")
-	pdf.SetTitle(title, false)
-	pdf.SetAuthor(buildinfo.AppLabel(), false)
-	pdf.SetCreator(fmt.Sprintf("%s %s export v%d", buildinfo.AppName, format, version), false)
-	pdf.SetSubject(fmt.Sprintf("%s schema v%d", buildinfo.AppName, buildinfo.SchemaVersion), false)
-	pdf.SetMargins(16, 28, 16)
-	pdf.SetAutoPageBreak(true, 20)
-	pdf.SetCompression(false)
-	return pdf
-}
-
-func (e *ExportService) brandedPDFDocument(orientation, title, format string, version int, footerDetail string, printerFriendly bool) (*fpdf.Fpdf, error) {
-	branding, err := e.pdfBranding()
-	if err != nil {
-		return nil, err
-	}
-	pdf := newPDFDocument(orientation, title, format, version)
-	pdf.SetHeaderFuncMode(func() {
-		pageWidth, _ := pdf.GetPageSize()
-		leftMargin, _, rightMargin, _ := pdf.GetMargins()
-		pdf.SetY(10)
-		pdf.SetFont("Helvetica", "B", 10)
-		pdf.SetTextColor(34, 48, 61)
-		pdf.CellFormat(0, 5, sanitizePDFText(branding.ArchiveTitle), "", 1, "L", false, 0, "")
-		pdf.SetDrawColor(141, 116, 64)
-		pdf.Line(leftMargin, 17, pageWidth-rightMargin, 17)
-		pdf.Ln(3)
-	}, true)
-	if !printerFriendly {
-		pdf.SetFooterFunc(func() {
-			pageWidth, _ := pdf.GetPageSize()
-			leftMargin, _, rightMargin, _ := pdf.GetMargins()
-			pdf.SetY(-11)
-			pdf.SetDrawColor(141, 116, 64)
-			pdf.Line(leftMargin, pdf.GetY(), pageWidth-rightMargin, pdf.GetY())
-			pdf.Ln(1)
-			pdf.SetFont("Helvetica", "", 8)
-			pdf.SetTextColor(68, 82, 96)
-			footerText := sanitizePDFText(branding.FooterText)
-			if strings.TrimSpace(footerDetail) != "" {
-				footerText = footerText + " | " + sanitizePDFText(footerDetail)
-			}
-			pdf.CellFormat(0, 4, footerText, "", 0, "C", false, 0, "")
-		})
-	}
-	return pdf, nil
-}
-
-func (e *ExportService) pdfBranding() (pdfBranding, error) {
-	identity, err := e.db.UserIdentity()
-	if err != nil {
-		return pdfBranding{}, err
-	}
-	owner := strings.TrimSpace(identity.BrandingName())
-	if owner == "" {
-		return pdfBranding{}, fmt.Errorf("user identity is incomplete")
-	}
-	return pdfBranding{
-		ArchiveTitle: owner + "'s Civil War Research Archive",
-		FooterText:   "Made with DixieData | Version: " + buildinfo.AppVersion + " | Build: " + buildinfo.BuildIdentity(),
-	}, nil
-}
 
 func newExportMetadata(format string, version int) ExportMetadata {
 	return ExportMetadata{
@@ -1155,436 +963,6 @@ func newExportMetadata(format string, version int) ExportMetadata {
 	}
 }
 
-func exportSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
-	var all []models.Soldier
-	page := 1
-	for {
-		batch, _, err := soldierSvc.List(page, exportBatchSize)
-		if err != nil {
-			return nil, err
-		}
-		if len(batch) == 0 {
-			break
-		}
-		all = append(all, batch...)
-		if len(batch) < exportBatchSize {
-			break
-		}
-		page++
-	}
-	sort.Slice(all, func(i, j int) bool {
-		return strings.ToLower(all[i].DisplayID) < strings.ToLower(all[j].DisplayID)
-	})
-	return all, nil
-}
-
-func exportDetailedSoldiers(soldierSvc *SoldierService, selectedIDs []int64) ([]models.Soldier, error) {
-	batch, err := exportSoldiers(soldierSvc)
-	if err != nil {
-		return nil, err
-	}
-	if len(selectedIDs) > 0 {
-		selectedSet := make(map[int64]struct{}, len(selectedIDs))
-		for _, id := range selectedIDs {
-			selectedSet[id] = struct{}{}
-		}
-		filtered := make([]models.Soldier, 0, len(selectedIDs))
-		for _, item := range batch {
-			if _, ok := selectedSet[item.ID]; ok {
-				filtered = append(filtered, item)
-			}
-		}
-		batch = filtered
-	}
-	all := make([]models.Soldier, 0, len(batch))
-	for _, item := range batch {
-		soldier, err := soldierSvc.GetByID(item.ID)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, *soldier)
-	}
-	return all, nil
-}
-
-func printablePDFMetadataDetails(settings PrintSettings) map[string]string {
-	settings = settings.Normalize()
-	metadata := map[string]string{
-		"Includes Images":     "true",
-		"Full Biography Page": fmt.Sprintf("%t", settings.FullBiographyPage),
-		"Sort By":             printableSortLabel(settings.SortBy),
-		"Group By":            printableGroupSummary(settings),
-	}
-	switch settings.Scope {
-	case PrintScopeSelected:
-		metadata["Export Scope"] = fmt.Sprintf("Selected records (%d)", len(settings.SelectedIDs))
-	case PrintScopeFiltered:
-		metadata["Export Scope"] = printableFilterScopeSummary(settings)
-	default:
-		metadata["Export Scope"] = "All records"
-	}
-	metadata["Printer Friendly"] = fmt.Sprintf("%t", settings.PrinterFriendly)
-	metadata["Orientation"] = pdfOrientationLabel(settings.Orientation)
-	return metadata
-}
-
-func printableFilterScopeSummary(settings PrintSettings) string {
-	settings = settings.Normalize()
-	if !settings.HasFilters() {
-		return "All records"
-	}
-	return fmt.Sprintf("Filtered records (%d active filter family)", activePrintableFilterFamilyCount(settings))
-}
-
-func activePrintableFilterFamilyCount(settings PrintSettings) int {
-	settings = settings.Normalize()
-	count := 0
-	for _, values := range [][]string{
-		settings.FilterBuriedIn,
-		settings.FilterEntryTypes,
-		settings.FilterUnits,
-		settings.FilterPensionStates,
-		settings.FilterConfederateHomeStatus,
-	} {
-		if len(values) > 0 {
-			count++
-		}
-	}
-	return count
-}
-
-func printableSortLabel(sortBy string) string {
-	switch strings.TrimSpace(sortBy) {
-	case PrintSortBirthYear:
-		return "Chronological by Birth Year"
-	case PrintSortDeathYear:
-		return "Chronological by Death Year"
-	default:
-		return "Alphabetical by Last Name"
-	}
-}
-
-func printableGroupSummary(settings PrintSettings) string {
-	fields := selectedPrintGroups(settings.Normalize())
-	if len(fields) == 0 {
-		return "None"
-	}
-	labels := make([]string, 0, len(fields))
-	for _, field := range fields {
-		labels = append(labels, printGroupLabel(field))
-	}
-	return strings.Join(labels, ", ")
-}
-
-func selectedPrintGroups(settings PrintSettings) []string {
-	fields := []string{}
-	if settings.GroupByUnit {
-		fields = append(fields, "unit")
-	}
-	if settings.GroupByPensionState {
-		fields = append(fields, "pension_state")
-	}
-	if settings.GroupByConfederateHomeStatus {
-		fields = append(fields, "confederate_home_status")
-	}
-	if settings.GroupByBuriedIn {
-		fields = append(fields, "buried_in")
-	}
-	return fields
-}
-
-func normalizeSelectedPrintIDs(values []int64) []int64 {
-	if len(values) == 0 {
-		return nil
-	}
-	seen := make(map[int64]struct{}, len(values))
-	normalized := make([]int64, 0, len(values))
-	for _, value := range values {
-		if value < 1 {
-			continue
-		}
-		if _, ok := seen[value]; ok {
-			continue
-		}
-		seen[value] = struct{}{}
-		normalized = append(normalized, value)
-	}
-	sort.Slice(normalized, func(i, j int) bool {
-		return normalized[i] < normalized[j]
-	})
-	return normalized
-}
-
-func filterPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) []models.Soldier {
-	settings = settings.Normalize()
-	if settings.Scope != PrintScopeFiltered || !settings.HasFilters() {
-		return soldiers
-	}
-	filtered := make([]models.Soldier, 0, len(soldiers))
-	for _, soldier := range soldiers {
-		if matchesPrintableFilters(soldier, settings) {
-			filtered = append(filtered, soldier)
-		}
-	}
-	return filtered
-}
-
-func matchesPrintableFilters(soldier models.Soldier, settings PrintSettings) bool {
-	settings = settings.Normalize()
-	return matchesPrintableFilterFamily(settings.FilterBuriedIn, printableBuriedInFilterValue(soldier)) &&
-		matchesPrintableFilterFamily(settings.FilterEntryTypes, printableEntryTypeFilterValue(soldier)) &&
-		matchesPrintableFilterFamily(settings.FilterUnits, printableUnitFilterValue(soldier)) &&
-		matchesPrintableFilterFamily(settings.FilterPensionStates, printablePensionStateFilterValue(soldier)) &&
-		matchesPrintableFilterFamily(settings.FilterConfederateHomeStatus, printableConfederateHomeStatusFilterValue(soldier))
-}
-
-func matchesPrintableFilterFamily(selected []string, actual string) bool {
-	if len(selected) == 0 {
-		return true
-	}
-	for _, candidate := range selected {
-		if strings.EqualFold(strings.TrimSpace(candidate), strings.TrimSpace(actual)) {
-			return true
-		}
-	}
-	return false
-}
-
-func printableBuriedInFilterValue(soldier models.Soldier) string {
-	value := strings.TrimSpace(soldier.BuriedIn)
-	if value == "" {
-		return printFilterUnknownValue
-	}
-	return value
-}
-
-func printableEntryTypeFilterValue(soldier models.Soldier) string {
-	value := strings.TrimSpace(strings.ToLower(soldier.EntryType))
-	if value == "" {
-		return printFilterUnknownValue
-	}
-	return value
-}
-
-func printableUnitFilterValue(soldier models.Soldier) string {
-	value := strings.TrimSpace(soldier.Unit)
-	if value == "" {
-		return printFilterUnknownValue
-	}
-	return value
-}
-
-func printablePensionStateFilterValue(soldier models.Soldier) string {
-	value := strings.TrimSpace(pensionstate.Normalize(soldier.PensionState))
-	if omitPDFValue(value) {
-		return printFilterUnknownValue
-	}
-	return value
-}
-
-func printableConfederateHomeStatusFilterValue(soldier models.Soldier) string {
-	value := strings.TrimSpace(confederatehomestatus.Normalize(soldier.ConfederateHomeStatus))
-	if omitPDFValue(value) {
-		return printFilterUnknownValue
-	}
-	return value
-}
-
-func changedPrintGroups(previous map[string]string, soldier models.Soldier, groupOrder []string, firstRecord bool) []printGroupChange {
-	changes := []printGroupChange{}
-	startLevel := len(groupOrder)
-	if firstRecord {
-		startLevel = 0
-	} else {
-		for index, field := range groupOrder {
-			value := printGroupValue(soldier, field)
-			if previous[field] != value {
-				startLevel = index
-				break
-			}
-		}
-	}
-	if startLevel >= len(groupOrder) {
-		return changes
-	}
-	for index := startLevel; index < len(groupOrder); index++ {
-		field := groupOrder[index]
-		value := printGroupValue(soldier, field)
-		previous[field] = value
-		changes = append(changes, printGroupChange{
-			Key:   field,
-			Label: printGroupLabel(field),
-			Value: value,
-			Title: printGroupTitle(field, value),
-			Level: index,
-		})
-	}
-	return changes
-}
-
-func sortPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) {
-	settings = settings.Normalize()
-	groupOrder := selectedPrintGroups(settings)
-	sort.Slice(soldiers, func(i, j int) bool {
-		left := soldiers[i]
-		right := soldiers[j]
-
-		for _, field := range groupOrder {
-			leftValue := printGroupSortKey(left, field)
-			rightValue := printGroupSortKey(right, field)
-			if leftValue != rightValue {
-				return leftValue < rightValue
-			}
-		}
-
-		switch settings.SortBy {
-		case PrintSortBirthYear:
-			leftYear, leftHasYear := printBirthYear(left)
-			rightYear, rightHasYear := printBirthYear(right)
-			if result, decided := compareOptionalYears(leftYear, leftHasYear, rightYear, rightHasYear); decided {
-				return result
-			}
-			leftDate := strings.TrimSpace(left.BirthDate)
-			rightDate := strings.TrimSpace(right.BirthDate)
-			if leftDate != rightDate {
-				return leftDate < rightDate
-			}
-		case PrintSortDeathYear:
-			leftYear, leftHasYear := printDeathYear(left)
-			rightYear, rightHasYear := printDeathYear(right)
-			if result, decided := compareOptionalYears(leftYear, leftHasYear, rightYear, rightHasYear); decided {
-				return result
-			}
-			leftDate := strings.TrimSpace(left.DeathDate)
-			rightDate := strings.TrimSpace(right.DeathDate)
-			if leftDate != rightDate {
-				return leftDate < rightDate
-			}
-		default:
-			leftLast := strings.ToLower(strings.TrimSpace(left.LastName))
-			rightLast := strings.ToLower(strings.TrimSpace(right.LastName))
-			if leftLast != rightLast {
-				return leftLast < rightLast
-			}
-		}
-
-		leftName := strings.ToLower(strings.TrimSpace(soldierFullName(left)))
-		rightName := strings.ToLower(strings.TrimSpace(soldierFullName(right)))
-		if leftName != rightName {
-			return leftName < rightName
-		}
-		return strings.ToLower(strings.TrimSpace(left.DisplayID)) < strings.ToLower(strings.TrimSpace(right.DisplayID))
-	})
-}
-
-func compareOptionalYears(left int, leftOK bool, right int, rightOK bool) (bool, bool) {
-	switch {
-	case leftOK && rightOK && left != right:
-		return left < right, true
-	case leftOK != rightOK:
-		return leftOK, true
-	default:
-		return false, false
-	}
-}
-
-func printBirthYear(soldier models.Soldier) (int, bool) {
-	if year := printYearFromCanonical(strings.TrimSpace(soldier.BirthDate)); year > 0 {
-		return year, true
-	}
-	if year := firstFourDigitYear(strings.TrimSpace(soldier.BirthInfo)); year > 0 {
-		return year, true
-	}
-	return 0, false
-}
-
-func printDeathYear(soldier models.Soldier) (int, bool) {
-	if soldier.DeathYear > 0 {
-		return soldier.DeathYear, true
-	}
-	if year := printYearFromCanonical(strings.TrimSpace(soldier.DeathDate)); year > 0 {
-		return year, true
-	}
-	return 0, false
-}
-
-func printYearFromCanonical(value string) int {
-	if len(value) < 4 {
-		return 0
-	}
-	year := strings.TrimSpace(value[len(value)-4:])
-	if len(year) != 4 {
-		return 0
-	}
-	if year == "0000" {
-		return 0
-	}
-	parsed, err := strconv.Atoi(year)
-	if err != nil {
-		return 0
-	}
-	return parsed
-}
-
-func firstFourDigitYear(value string) int {
-	match := regexp.MustCompile(`\b(1[0-9]{3}|20[0-9]{2})\b`).FindString(value)
-	if match == "" {
-		return 0
-	}
-	parsed, err := strconv.Atoi(match)
-	if err != nil {
-		return 0
-	}
-	return parsed
-}
-
-func printGroupLabel(field string) string {
-	switch field {
-	case "unit":
-		return "Unit"
-	case "pension_state":
-		return "Pension State"
-	case "confederate_home_status":
-		return "Confederate Home Status"
-	case "buried_in":
-		return "Burial Location"
-	default:
-		return "Group"
-	}
-}
-
-func printGroupSortKey(soldier models.Soldier, field string) string {
-	if field == "buried_in" && strings.TrimSpace(soldier.BuriedIn) == "" {
-		return "\uffff"
-	}
-	return strings.ToLower(printGroupValue(soldier, field))
-}
-
-func printGroupValue(soldier models.Soldier, field string) string {
-	switch field {
-	case "unit":
-		return emptyPDFValue(strings.TrimSpace(soldier.Unit))
-	case "pension_state":
-		return emptyPDFValue(strings.TrimSpace(soldier.PensionState))
-	case "confederate_home_status":
-		return emptyPDFValue(confederatehomestatus.Normalize(soldier.ConfederateHomeStatus))
-	case "buried_in":
-		value := strings.TrimSpace(soldier.BuriedIn)
-		if value == "" {
-			return "Location Unknown"
-		}
-		return value
-	default:
-		return "N/A"
-	}
-}
-
-func printGroupTitle(field, value string) string {
-	if field == "buried_in" {
-		return "Cemetery: " + value
-	}
-	return value
-}
 
 func icalText(value string) string {
 	replacer := strings.NewReplacer(
@@ -1622,5 +1000,66 @@ func writeICalendarLine(w io.Writer, line string) error {
 	}
 	_, err := fmt.Fprintf(w, "%s\r\n", line)
 	return err
+}
+
+// --- bulk-fetch helpers (kept for non-PDF exports) ---
+
+// exportSoldiers paginates the entire soldier table, returning a slice of
+// minimally-populated Soldier rows. Used by ExportJSON, ExportICalendar,
+// and the static archive. The PDF bulk export's render package has its
+// own copy of this helper, but the non-PDF exports keep using this one
+// to avoid a cross-package call for every export.
+func exportSoldiers(soldierSvc *SoldierService) ([]models.Soldier, error) {
+	var all []models.Soldier
+	page := 1
+	for {
+		batch, _, err := soldierSvc.List(page, exportBatchSize)
+		if err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+		all = append(all, batch...)
+		if len(batch) < exportBatchSize {
+			break
+		}
+		page++
+	}
+	sort.Slice(all, func(i, j int) bool {
+		return strings.ToLower(all[i].DisplayID) < strings.ToLower(all[j].DisplayID)
+	})
+	return all, nil
+}
+
+// exportDetailedSoldiers returns the fully enriched record for every
+// soldier, optionally filtered to a set of selected IDs.
+func exportDetailedSoldiers(soldierSvc *SoldierService, selectedIDs []int64) ([]models.Soldier, error) {
+	batch, err := exportSoldiers(soldierSvc)
+	if err != nil {
+		return nil, err
+	}
+	if len(selectedIDs) > 0 {
+		selectedSet := make(map[int64]struct{}, len(selectedIDs))
+		for _, id := range selectedIDs {
+			selectedSet[id] = struct{}{}
+		}
+		filtered := make([]models.Soldier, 0, len(selectedIDs))
+		for _, item := range batch {
+			if _, ok := selectedSet[item.ID]; ok {
+				filtered = append(filtered, item)
+			}
+		}
+		batch = filtered
+	}
+	all := make([]models.Soldier, 0, len(batch))
+	for _, item := range batch {
+		soldier, err := soldierSvc.GetByID(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, *soldier)
+	}
+	return all, nil
 }
 

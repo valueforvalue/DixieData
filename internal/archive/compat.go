@@ -10,6 +10,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/render"
 )
 
 const (
@@ -21,6 +22,16 @@ const (
 type SoldierService = records.SoldierService
 type AnalyticsCount = records.AnalyticsCount
 type AnalyticsSnapshot = records.AnalyticsSnapshot
+type PrintSettings = render.PrintSettings
+type PDFOptions = render.PDFOptions
+const (
+	PrintSortLastName  = render.PrintSortLastName
+	PrintSortBirthYear = render.PrintSortBirthYear
+	PrintSortDeathYear = render.PrintSortDeathYear
+	PrintScopeAll      = render.PrintScopeAll
+	PrintScopeFiltered = render.PrintScopeFiltered
+	PrintScopeSelected = render.PrintScopeSelected
+)
 
 func NewSoldierService(database *db.DB) *SoldierService { return records.NewSoldierService(database) }
 
