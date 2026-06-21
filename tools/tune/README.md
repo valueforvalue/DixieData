@@ -48,8 +48,9 @@ module:
   SQLite and walks the Person Records.
 - `internal/models` — the `models.Soldier` type.
 
-The tool uses `github.com/Dadido3/go-typst` to shell out to the
-bundled Typst binary in `bin/`.
+The tool shells out to the bundled Typst binary in `bin/` via
+`exec.Command` directly (no go-typst wrapper). This keeps the
+Windows build free of console-window flashes during render.
 
 ## Annotation feedback loop
 

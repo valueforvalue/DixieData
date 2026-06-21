@@ -3,7 +3,6 @@ module github.com/valueforvalue/DixieData
 go 1.25.0
 
 require (
-	github.com/Dadido3/go-typst v0.10.0
 	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/a-h/templ v0.3.1001
 	github.com/agnivade/levenshtein v1.2.1
@@ -52,7 +51,6 @@ require (
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/samber/lo v1.49.1 // indirect
-	github.com/smasher164/xid v0.1.2 // indirect
 	github.com/tiendc/go-deepcopy v1.6.0 // indirect
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
