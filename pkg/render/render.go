@@ -283,3 +283,126 @@ func EmptyPDFValue(value string) string {
 	}
 	return value
 }
+
+// GroupKey describes one group in the printable archive's
+// divider-page sequence. The bulk template (templates/bulk_soldier.typ)
+// loops over Group and renders the divider page before the group's
+// soldiers. The struct is serialised to JSON inside the typst
+// data.json payload; field names below are the JSON keys the
+// template reads.
+type GroupKey struct {
+	// Axis is the printable archive grouping axis the group was
+	// built from: "unit", "pension_state",
+	// "confederate_home_status", or "buried_in".
+	Axis string `json:"axis"`
+	// Label is the human-readable axis name the divider page
+	// prints ("Unit", "Pension State", ...).
+	Label string `json:"label"`
+	// Value is the group's key (e.g. "Co. C, 19th AL
+	// Infantry"). Empty when the soldier has no value on the
+	// axis.
+	Value string `json:"value"`
+	// Level is the divider depth: 1 for the first (outermost)
+	// axis, deeper levels reserved for nested grouping in a
+	// future slice.
+	Level int `json:"level"`
+	// Soldiers is the sorted list of soldiers in this group.
+	// The bulk template iterates these and renders a record
+	// card per soldier.
+	Soldiers []models.Soldier `json:"soldiers"`
+}
+
+// ActiveGroupAxis returns the grouping axis the user picked via
+// PrintSettings.GroupBy*, with precedence Unit > PensionState >
+// ConfederateHomeStatus > BuriedIn (matching the fpdf path's
+// behaviour). Returns the empty string when no grouping is
+// requested.
+func ActiveGroupAxis(settings PrintSettings) string {
+	switch {
+	case settings.GroupByUnit:
+		return PrintGroupUnit
+	case settings.GroupByPensionState:
+		return PrintGroupPensionState
+	case settings.GroupByConfederateHomeStatus:
+		return PrintGroupConfederateHomeStatus
+	case settings.GroupByBuriedIn:
+		return PrintGroupBuriedIn
+	}
+	return ""
+}
+
+// GroupPrintableSoldiers partitions an already-sorted soldiers
+// slice into groups along the active axis. When no axis is
+// active, returns a single group with no Label/Value so the
+// template renders the records without a divider. The order of
+// groups follows the order of first appearance in the input
+// slice, which is the input's sort order.
+func GroupPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) []GroupKey {
+	axis := ActiveGroupAxis(settings)
+	if axis == "" {
+		return []GroupKey{{Axis: "", Soldiers: soldiers}}
+	}
+	indexByKey := map[string]int{}
+	groups := []GroupKey{}
+	for _, s := range soldiers {
+		key := groupAxisValue(s, axis)
+		idx, ok := indexByKey[key]
+		if !ok {
+			idx = len(groups)
+			indexByKey[key] = idx
+			groups = append(groups, GroupKey{
+				Axis:     axis,
+				Label:    groupAxisLabel(axis),
+				Value:    groupDisplayValue(axis, key),
+				Level:    1,
+				Soldiers: []models.Soldier{},
+			})
+		}
+		groups[idx].Soldiers = append(groups[idx].Soldiers, s)
+	}
+	return groups
+}
+
+// groupAxisValue returns the raw value of the given axis on a
+// soldier. Empty values map to the same group so the divider
+// page reads "(unknown)" once instead of emitting one divider per
+// soldier with no value.
+func groupAxisValue(s models.Soldier, axis string) string {
+	switch axis {
+	case PrintGroupUnit:
+		return strings.TrimSpace(s.Unit)
+	case PrintGroupPensionState:
+		return strings.TrimSpace(s.PensionState)
+	case PrintGroupConfederateHomeStatus:
+		return strings.TrimSpace(s.ConfederateHomeStatus)
+	case PrintGroupBuriedIn:
+		return strings.TrimSpace(s.BuriedIn)
+	}
+	return ""
+}
+
+// groupAxisLabel returns the human-readable axis name for the
+// divider page header.
+func groupAxisLabel(axis string) string {
+	switch axis {
+	case PrintGroupUnit:
+		return "Unit"
+	case PrintGroupPensionState:
+		return "Pension State"
+	case PrintGroupConfederateHomeStatus:
+		return "Confederate Home Status"
+	case PrintGroupBuriedIn:
+		return "Burial Location"
+	}
+	return ""
+}
+
+// groupDisplayValue renders the axis value for the divider page.
+// Empty values become "(unknown)" so the divider page still
+// names a coherent group.
+func groupDisplayValue(axis, value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "(unknown)"
+	}
+	return value
+}
