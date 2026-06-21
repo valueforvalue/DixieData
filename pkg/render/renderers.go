@@ -166,78 +166,178 @@ func hideWindow(cmd *exec.Cmd) {
 }
 
 // stageSoldierImages copies any image files referenced by the
-// soldier record into <workDir>/images/. The template can then
-// reference them as images/filename. We deliberately accept either a
+// payload into <workDir>/images/. The template can then reference
+// them as images/filename. We deliberately accept either a
 // []models.Image or a []map[string]any so this stays flexible across
 // the encoder and any future refactors.
+//
+// Single-record payloads expose the soldier on data["soldier"];
+// bulk payloads expose the sorted array on data["soldiers"]. Both
+// shapes stage images into the same <workDir>/images/ directory
+// because templates/bulk_soldier.typ references images by the
+// renamed file_name which is unique across the archive.
 //
 // Images whose source file does not exist (e.g. the soldier has no
 // image, or the file was moved) are skipped silently — the template
 // is expected to handle a missing file path gracefully.
 func stageSoldierImages(workDir string, data map[string]any) error {
-	soldier, ok := data["soldier"]
-	if !ok {
-		return nil
+	if soldier, ok := data["soldier"]; ok {
+		return stageOneSoldierImages(workDir, data, soldier)
 	}
+	if soldiers, ok := data["soldiers"]; ok {
+		return stageBulkSoldiersImages(workDir, data, soldiers)
+	}
+	return nil
+}
+
+// stageOneSoldierImages stages images for the single-record path.
+// The original code re-iterated the soldier's Images slice after
+// staging each file to look up the source path and persist the
+// rename. We preserve that behaviour here: stageOneImage copies
+// the file under the detected-format filename and returns the
+// (source, destName) pair so the caller can write the rename back
+// into the right slice.
+func stageOneSoldierImages(workDir string, data map[string]any, soldier any) error {
 	images := extractImages(soldier)
 	if len(images) == 0 {
 		return nil
 	}
-
 	imagesDir := filepath.Join(workDir, "images")
 	if err := os.MkdirAll(imagesDir, 0o755); err != nil {
 		return err
 	}
-
 	for _, img := range images {
-		source := imageSourcePath(img)
+		source, destName, err := stageOneImage(imagesDir, img)
+		if err != nil {
+			return err
+		}
 		if source == "" {
 			continue
 		}
-		info, err := os.Stat(source)
-		if err != nil || info.IsDir() {
-			continue
-		}
-		// Detect the actual image format from the magic bytes.
-		// Some files in the DB have a `.jpg` extension but PNG
-		// content (or vice versa). Typst's image decoder uses
-		// the file extension to pick a decoder, so a mismatched
-		// file fails with "illegal start bytes" errors. We rename
-		// the staged copy to the detected extension and update
-		// the data payload so the template can find the file
-		// under its renamed name.
-		ext, err := detectImageFormat(source)
-		if err != nil {
-			continue
-		}
-		base := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
-		destName := base + ext
-		dest := filepath.Join(imagesDir, destName)
-		if err := copyFile(source, dest); err != nil {
-			return fmt.Errorf("copy image %q: %w", source, err)
-		}
-		// Mutate the data so the template can find the renamed
-		// file. Only the staged file_name matters; the original
-		// `file_path` / `resolved_path` are not used by the
-		// template at render time.
+		// Persist the rename into the caller-visible soldier so
+		// the template lookup matches the staged file name.
 		switch v := img.(type) {
 		case models.Image:
-			v.FileName = destName
-			// The image is a value in the caller's slice; the
-			// caller reads `soldier.Images` after this returns,
-			// so we need to persist the rename into the slice.
-			if soldier, ok := data["soldier"].(models.Soldier); ok {
-				for i := range soldier.Images {
-					if soldier.Images[i].ResolvedPath == source ||
-						soldier.Images[i].FilePath == source {
-						soldier.Images[i].FileName = destName
+			if s, ok := data["soldier"].(models.Soldier); ok {
+				for i := range s.Images {
+					if s.Images[i].ResolvedPath == source ||
+						s.Images[i].FilePath == source {
+						s.Images[i].FileName = destName
 					}
 				}
-				data["soldier"] = soldier
+				data["soldier"] = s
 			}
+			_ = v
 		case map[string]any:
 			v["file_name"] = destName
 		}
+	}
+	return nil
+}
+
+// stageBulkSoldiersImages stages images for the bulk path. The
+// payload is a []models.Soldier or []map[string]any. We walk each
+// soldier's Images and stage each unique source file. The
+// `soldier.Images[i].FileName` mutation happens in place on the
+// typed-Soldier case so the JSON serialization carries the renamed
+// name to the typst template.
+func stageBulkSoldiersImages(workDir string, data map[string]any, soldiers any) error {
+	list := extractSoldiersList(soldiers)
+	if len(list) == 0 {
+		return nil
+	}
+	imagesDir := filepath.Join(workDir, "images")
+	if err := os.MkdirAll(imagesDir, 0o755); err != nil {
+		return err
+	}
+	// Track which soldier payload to mutate back. The JSON encoder
+	// serialises the map case as-is, but for []models.Soldier we
+	// need to write the renamed file_name back into the slice.
+	var typedSoldiers []models.Soldier
+	if ts, ok := soldiers.([]models.Soldier); ok {
+		typedSoldiers = ts
+	}
+	for soldierIdx, s := range list {
+		images := extractImages(s)
+		for _, img := range images {
+			source, destName, err := stageOneImage(imagesDir, img)
+			if err != nil {
+				return err
+			}
+			if source == "" {
+				continue
+			}
+			// For typed-Soldier input, persist the rename back
+			// into the original slice so JSON serialization to
+			// data.json carries the renamed file_name.
+			if soldierIdx < len(typedSoldiers) {
+				switch v := img.(type) {
+				case models.Image:
+					for i := range typedSoldiers[soldierIdx].Images {
+						if typedSoldiers[soldierIdx].Images[i].ResolvedPath == source ||
+							typedSoldiers[soldierIdx].Images[i].FilePath == source {
+							typedSoldiers[soldierIdx].Images[i].FileName = destName
+						}
+					}
+					_ = v
+				case map[string]any:
+					v["file_name"] = destName
+				}
+			}
+		}
+	}
+	if typedSoldiers != nil {
+		data["soldiers"] = typedSoldiers
+	}
+	return nil
+}
+
+// stageOneImage copies a single image file into <imagesDir> under
+// its detected-format filename. Returns the (source, destName) pair
+// so the caller can write the rename back into the right slice.
+// Returning the pair instead of mutating the in-memory image keeps
+// the staging step independent of the caller's payload type.
+func stageOneImage(imagesDir string, img any) (source string, destName string, err error) {
+	source = imageSourcePath(img)
+	if source == "" {
+		return source, "", nil
+	}
+	info, statErr := os.Stat(source)
+	if statErr != nil || info.IsDir() {
+		return source, "", nil
+	}
+	ext, formatErr := detectImageFormat(source)
+	if formatErr != nil {
+		return source, "", nil
+	}
+	base := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
+	destName = base + ext
+	dest := filepath.Join(imagesDir, destName)
+	if copyErr := copyFile(source, dest); copyErr != nil {
+		return source, "", fmt.Errorf("copy image %q: %w", source, copyErr)
+	}
+	return source, destName, nil
+}
+
+// extractSoldiersList normalises the soldiers payload to a []any so
+// the bulk staging loop can iterate uniformly over both
+// []models.Soldier and []map[string]any.
+func extractSoldiersList(soldiers any) []any {
+	switch v := soldiers.(type) {
+	case []models.Soldier:
+		out := make([]any, len(v))
+		for i := range v {
+			out[i] = v[i]
+		}
+		return out
+	case []any:
+		return v
+	case []map[string]any:
+		out := make([]any, len(v))
+		for i := range v {
+			out[i] = v[i]
+		}
+		return out
 	}
 	return nil
 }

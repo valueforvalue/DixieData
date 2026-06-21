@@ -789,24 +789,22 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
 
-	// The fpdf path wrote a concatenated PDF at outPath; the
-	// typst registry path writes per-record PDFs to a sibling
-	// directory instead. outPath may or may not exist; we
-	// read it best-effort.
-	data, _ := os.ReadFile(outPath)
-	// The registry path writes per-record PDFs to a subdirectory
-	// alongside the (unused) outPath target. Verify a sibling
-	// directory was created.
+	// Issue #64: the bulk path writes a SINGLE sorted PDF at the
+	// user-chosen path. No sibling record-pdfs directory is
+	// created anymore. (The pre-fix behavior emitted one PDF per
+	// record into <outPath-stem>-record-pdfs/.)
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("expected single PDF at %q: %v", outPath, err)
+	}
+	if len(data) == 0 || string(data[:4]) != "%PDF" {
+		t.Fatalf("output at %q is not a PDF (got %d bytes)", outPath, len(data))
+	}
 	recordDir := strings.TrimSuffix(outPath, filepath.Ext(outPath)) + "-record-pdfs"
-	if _, err := os.Stat(recordDir); err != nil {
-		t.Fatalf("expected record-pdfs dir at %q: %v", recordDir, err)
+	if _, err := os.Stat(recordDir); err == nil {
+		t.Fatalf("did not expect sibling %q directory for bulk export", recordDir)
 	}
-	if len(data) == 0 {
-		// The fpdf path wrote a concatenated PDF here. The typst
-		// path writes per-record PDFs; the target file may not
-		// contain a PDF. Skip the magic check.
-	}
-	text := extractDirectoryPDFText(t, recordDir)
+	text := extractPDFText(t, outPath)
 	// The fpdf path put a "Printable Archive Registry" title on
 	// every page. The typst path renders each record as its own
 	// PDF with the archive title (S. Carter's Civil War Research
@@ -875,22 +873,32 @@ func TestExportService_ExportFullDatabasePDFRoutesThroughRegistry(t *testing.T) 
 
 	settings := PrintSettings{
 		Orientation: "L",
-		Template:    "soldier_landscape",
 		SortBy:      PrintSortLastName,
 	}.Normalize()
 	outDir := filepath.Join(t.TempDir(), "typst-out.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(outDir, settings); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
-	// The registry path writes a subdirectory of one PDF per
-	// record alongside the (unused) target file.
-	expected := strings.TrimSuffix(outDir, filepath.Ext(outDir)) + "-record-pdfs"
-	entries, err := os.ReadDir(expected)
+	// Issue #64: bulk export writes a single PDF at outDir; no
+	// sibling record-pdfs directory. (Pre-fix: per-record PDFs in
+	// <outDir-stem>-record-pdfs/.)
+	info, err := os.Stat(outDir)
 	if err != nil {
-		t.Fatalf("ReadDir: %v", err)
+		t.Fatalf("Stat %q: %v", outDir, err)
 	}
-	if len(entries) == 0 {
-		t.Fatalf("expected registry-routed export to produce files in %s", expected)
+	if info.Size() < 100 {
+		t.Fatalf("expected non-trivial PDF at %q, got %d bytes", outDir, info.Size())
+	}
+	data, err := os.ReadFile(outDir)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if len(data) < 4 || string(data[:4]) != "%PDF" {
+		t.Fatalf("output at %q is not a PDF (magic %q)", outDir, string(data[:4]))
+	}
+	notExpected := strings.TrimSuffix(outDir, filepath.Ext(outDir)) + "-record-pdfs"
+	if _, err := os.Stat(notExpected); err == nil {
+		t.Fatalf("did not expect sibling %q directory for bulk export", notExpected)
 	}
 }
 
@@ -1056,20 +1064,23 @@ func TestExportService_ExportFullDatabasePDFResolvesRelativeImagePaths(t *testin
 	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
-	recordDir := strings.TrimSuffix(out, filepath.Ext(out)) + "-record-pdfs"
-	text := extractDirectoryPDFText(t, recordDir)
+	text := extractPDFText(t, out)
 	if !strings.Contains(text, "Primary") {
 		t.Fatalf("expected caption %q in rendered output, got: %s", "Primary", text)
 	}
 }
 
-// TestExportService_ExportFullDatabasePDFWithoutDataDirFailsForRelativePaths
-// documents the failure mode when the caller forgets SetDataDir. The
-// image is silently skipped, the data payload's FileName is still
-// mutated to point at the would-be staged name, and typst fails with
-// "file not found" at the #image() reference. This test guards against
-// silent regressions that would re-introduce the bug.
-func TestExportService_ExportFullDatabasePDFWithoutDataDirFailsForRelativePaths(t *testing.T) {
+// TestExportService_ExportFullDatabasePDFWithoutDataDirRendersWithoutImage
+// documents the rendering behaviour when the caller forgets
+// SetDataDir. The single-invocation bulk path passes through the
+// image-staging step which silently skips files whose source path
+// cannot be Stat'd from the typst workdir (which is the case for
+// dataDir-relative FilePath values when dataDir is unset). The
+// template degrades gracefully: the image panel is omitted and
+// the rest of the record renders. This guards against a future
+// refactor that re-introduces the typst "file not found" hard
+// error from the per-record path.
+func TestExportService_ExportFullDatabasePDFWithoutDataDirRendersWithoutImage(t *testing.T) {
 	dataDir := t.TempDir()
 	d, err := openExistingTestDB(dataDir)
 	if err != nil {
@@ -1105,12 +1116,15 @@ func TestExportService_ExportFullDatabasePDFWithoutDataDirFailsForRelativePaths(
 	}
 
 	out := filepath.Join(t.TempDir(), "bulk.pdf")
-	err = exportSvc.ExportFullDatabasePDF(out, PrintSettings{})
-	if err == nil {
-		t.Fatalf("expected ExportFullDatabasePDF to fail when dataDir is unset; got nil")
+	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
-	if !strings.Contains(err.Error(), "file not found") {
-		t.Fatalf("expected typst 'file not found' error, got: %v", err)
+	text := extractPDFText(t, out)
+	if !strings.Contains(text, "Hood") {
+		t.Fatalf("expected soldier name in rendered output, got: %s", text)
+	}
+	if strings.Contains(text, "Primary") {
+		t.Fatalf("expected image caption to be omitted when image cannot be staged, got: %s", text)
 	}
 }
 
@@ -1135,8 +1149,7 @@ func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(
 	if err := exportSvc.ExportFullDatabasePDF(withoutAppendixPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF default: %v", err)
 	}
-	withoutAppendixDir := strings.TrimSuffix(withoutAppendixPath, filepath.Ext(withoutAppendixPath)) + "-record-pdfs"
-	withoutAppendixText := extractDirectoryPDFText(t, withoutAppendixDir)
+	withoutAppendixText := extractPDFText(t, withoutAppendixPath)
 	// The typst path includes the biography on page 2 of each
 	// soldier_landscape.typ render by default. The fpdf path's
 	// `FullBiographyPage: false` setting suppressed it. The
@@ -1150,10 +1163,9 @@ func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(
 	if err := exportSvc.ExportFullDatabasePDF(withAppendixPath, PrintSettings{FullBiographyPage: true}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF full biography: %v", err)
 	}
-	withAppendixDir := strings.TrimSuffix(withAppendixPath, filepath.Ext(withAppendixPath)) + "-record-pdfs"
-	withAppendixText := extractDirectoryPDFText(t, withAppendixDir)
-	// The typst soldier_landscape template renders the biography
-	// on a continuation page with the section heading "Biography"
+	withAppendixText := extractPDFText(t, withAppendixPath)
+	// The typst bulk_soldier template renders the biography on
+	// a continuation page with the section heading "Biography"
 	// and the full biography text. Verify the final sentence is
 	// in the rendered text.
 	if !strings.Contains(withAppendixText, "FINAL BIOGRAPHY LINE") {
@@ -1165,13 +1177,11 @@ func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(
 	if strings.Contains(withAppendixText, "Internal scratch note should stay out.") {
 		t.Fatalf("full biography appendix should not leak internal notes")
 	}
-	// The typst registry path writes one PDF per record; the
-	// FullBiographyPage option is a no-op for the typst path
-	// (each soldier_landscape.typ render already includes the
-	// full bio on its own page 2 when biography is set). The
-	// page count assertion is removed because the per-record
-	// PDF has its own page layout, not the fpdf layout's
-	// title+record+appendix structure.
+	// The typst single-PDF path emits each record with its own
+	// page layout (no shared appendix). The FullBiographyPage
+	// option is a no-op; the soldier_landscape template already
+	// includes the full bio on its own page 2 when biography is
+	// set.
 }
 
 func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
@@ -1262,7 +1272,7 @@ func TestExportService_ExportFullDatabasePDFUsesMultiPageFallbackForLongRecords(
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
 
-	text := extractDirectoryPDFText(t, strings.TrimSuffix(outPath, filepath.Ext(outPath))+"-record-pdfs")
+	text := extractPDFText(t, outPath)
 	for _, forbidden := range []string{"Added By", "Last Edited By", "Last Edited At", "Last Edited Fields", "J. Morris", "notes,records"} {
 		if strings.Contains(text, forbidden) {
 			t.Fatalf("registry PDF should omit audit metadata %q", forbidden)

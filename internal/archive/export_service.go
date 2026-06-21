@@ -141,20 +141,20 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
 }
 
-// exportFullDatabasePDFViaRegistry writes a bulk export by
-// rendering each record through the Registry. The output is one
-// PDF per record in a directory under outputPath (rather than a
-// single concatenated PDF). The user picked a Typst template so
-// the records render as standalone PDFs that can be opened
-// individually or zipped for sharing.
+// exportFullDatabasePDFViaRegistry writes a bulk export as a
+// single sorted PDF at outputPath. The typst path renders the
+// entire sorted record set in one invocation of
+// templates/bulk_soldier.typ, which loops over the array and
+// emits a pagebreak between records.
 //
-// The directory is named <outputPath-stem>-record-pdfs/.
+// The single-invocation approach replaces the previous per-record
+// loop that wrote one PDF per record into a sibling
+// `<outputPath-stem>-record-pdfs/` directory (issue #64). That
+// behaviour produced hundreds of standalone PDFs instead of the
+// single sortable PDF the user manual and the typst-migration
+// slice-4 acceptance criteria describe.
 func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, settings PrintSettings) error {
 	settings = settings.Normalize()
-	outDir := strings.TrimSuffix(outputPath, filepath.Ext(outputPath)) + "-record-pdfs"
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return err
-	}
 
 	var selectedIDs []int64
 	if settings.Scope == PrintScopeSelected {
@@ -168,8 +168,9 @@ func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, sett
 		soldiers = render.FilterPrintableSoldiers(soldiers, settings)
 	}
 	if len(soldiers) == 0 {
-		// Write a single empty PDF so the caller knows we ran.
-		return writeNoRecordsPDF(outDir, settings)
+		// Write a single empty PDF at the chosen path so the
+		// caller knows we ran.
+		return writeNoRecordsPDF(outputPath, settings)
 	}
 
 	render.SortPrintableSoldiers(soldiers, settings)
@@ -188,31 +189,27 @@ func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, sett
 		}
 	}
 
-	for _, soldier := range soldiers {
-		recordType := recordTypeForSoldier(soldier)
-		soldierCopy := soldier
-		data := map[string]any{
-			"soldier":  soldierCopy,
-			"options":  render.PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true},
-			"settings": settings,
-			"branding": e.archiveBranding(settings.PrinterFriendly),
-		}
-		safe := printableArchiveFileName(soldier.DisplayID, settings)
-		dst := filepath.Join(outDir, safe)
-		f, err := os.Create(dst)
-		if err != nil {
-			return err
-		}
-		ctx := context.Background()
-		if err := e.registry.Render(ctx, settings, recordType, data, f); err != nil {
-			f.Close()
-			os.Remove(dst)
-			return err
-		}
-		if err := f.Close(); err != nil {
-			os.Remove(dst)
-			return err
-		}
+	// The typst bulk template loops over the full sorted array;
+	// one invocation produces the entire archive PDF.
+	data := map[string]any{
+		"soldiers": soldiers,
+		"options":  render.PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true},
+		"settings": settings,
+		"branding": e.archiveBranding(settings.PrinterFriendly),
+	}
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	ctx := context.Background()
+	if err := e.registry.Render(ctx, settings, "bulk", data, f); err != nil {
+		os.Remove(outputPath)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(outputPath)
+		return err
 	}
 	return nil
 }
