@@ -29,6 +29,15 @@ type ExportService struct {
 	db         *db.DB
 	soldier    *SoldierService
 	rasterizer pdfToJPEGRasterizer
+	// dataDir is the on-disk root the appshell (or any other
+	// caller) passes via SetDataDir. Bulk export uses it to
+	// resolve each soldier image's relative FilePath into an
+	// absolute ResolvedPath before handing the record to the
+	// typst renderer. The single-record export paths in the
+	// appshell set ResolvedPath themselves; the bulk path
+	// would otherwise miss it and the typst image-staging step
+	// would silently skip the file.
+	dataDir string
 	// registry is the Typst-backed renderer. After slice 7, every
 	// export goes through the registry; there is no fpdf fallback.
 	// The appshell must wire a Registry at startup. If the Typst
@@ -68,6 +77,20 @@ func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
 // instead of the fpdf Service directly.
 func (e *ExportService) SetRegistry(reg *render.Registry) {
 	e.registry = reg
+}
+
+// SetDataDir records the on-disk root used to resolve image
+// paths during bulk export. The single-record export paths
+// (ExportSoldierPDF, ExportSoldierPDFWithoutImages) take a
+// fully populated models.Soldier with ResolvedPath already
+// filled in by the caller; the bulk export path (ExportFullDatabasePDF)
+// fetches its own soldiers and would otherwise leave ResolvedPath
+// empty when FilePath is stored as a dataDir-relative path. With
+// SetDataDir wired, the bulk path resolves each image's FilePath
+// against dataDir before handing the record to the typst
+// renderer, so the image-staging step can find the source file.
+func (e *ExportService) SetDataDir(dataDir string) {
+	e.dataDir = dataDir
 }
 
 // errPDFRegistryMissing is returned by every PDF export method
@@ -150,6 +173,20 @@ func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, sett
 	}
 
 	render.SortPrintableSoldiers(soldiers, settings)
+
+	if e.dataDir != "" {
+		for i := range soldiers {
+			for j := range soldiers[i].Images {
+				if strings.TrimSpace(soldiers[i].Images[j].ResolvedPath) == "" &&
+					strings.TrimSpace(soldiers[i].Images[j].FilePath) != "" {
+					soldiers[i].Images[j].ResolvedPath = filepath.Join(
+						e.dataDir,
+						filepath.FromSlash(soldiers[i].Images[j].FilePath),
+					)
+				}
+			}
+		}
+	}
 
 	for _, soldier := range soldiers {
 		recordType := recordTypeForSoldier(soldier)

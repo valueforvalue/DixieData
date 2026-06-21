@@ -28,6 +28,17 @@ func newTestExportServiceWithRegistry(t *testing.T, d *db.DB, svc *SoldierServic
 	return exportSvc
 }
 
+// newTestExportServiceWithDataDir wires SetDataDir alongside
+// SetRegistry so tests that exercise the bulk export with
+// dataDir-relative image paths exercise the same code path the
+// appshell does.
+func newTestExportServiceWithDataDir(t *testing.T, d *db.DB, svc *SoldierService, dataDir string) *ExportService {
+	t.Helper()
+	exportSvc := newTestExportServiceWithRegistry(t, d, svc)
+	exportSvc.SetDataDir(dataDir)
+	return exportSvc
+}
+
 // findTypstBinaryInTest walks the repo looking for a typst binary.
 // Mirrors pkg/render/smoke_test.go::findTypstBinary.
 func findTypstBinaryInTest(t *testing.T) string {

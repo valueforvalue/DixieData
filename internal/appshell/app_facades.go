@@ -102,6 +102,7 @@ type exportFacade interface {
 	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options archive.PDFOptions) error
 	ExportImages(outputPath string, images []models.Image) error
 	SetRegistry(reg *render.Registry)
+	SetDataDir(dataDir string)
 }
 
 type backupFacade interface {

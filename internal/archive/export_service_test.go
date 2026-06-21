@@ -1008,6 +1008,112 @@ func findTemplatesDirForTest() (string, error) {
 	return "", os.ErrNotExist
 }
 
+// TestExportService_ExportFullDatabasePDFResolvesRelativeImagePaths
+// reproduces the production bulk-export failure: soldier images are
+// stored with FilePath relative to the data dir (e.g.
+// "images/dxd-00052/portrait.jpeg") and ResolvedPath is empty because
+// the bulk export path used to skip the appshell's image-resolution
+// step that the single-record export handlers perform. With SetDataDir
+// wired, the bulk export resolves each image's FilePath against the
+// data dir before handing the record to the typst renderer, and the
+// image is staged and embedded.
+func TestExportService_ExportFullDatabasePDFResolvesRelativeImagePaths(t *testing.T) {
+	dataDir := t.TempDir()
+	d, err := openExistingTestDB(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer d.Close()
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithDataDir(t, d, soldierSvc, dataDir)
+	configureExportIdentity(t, d)
+
+	relDir := filepath.Join("images", "dxd-00052")
+	absDir := filepath.Join(dataDir, relDir)
+	if err := os.MkdirAll(absDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	absImage := filepath.Join(absDir, "DXD-00052-img-001.png")
+	if err := os.WriteFile(absImage, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	relImage := filepath.ToSlash(filepath.Join(relDir, "DXD-00052-img-001.png"))
+
+	soldier, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "DXD-00052",
+		FirstName: "Test",
+		LastName:  "Hood",
+		Unit:      "Test Unit",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := soldierSvc.AddImage(soldier.ID, "DXD-00052-img-001.png", relImage, "Primary"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+	recordDir := strings.TrimSuffix(out, filepath.Ext(out)) + "-record-pdfs"
+	text := extractDirectoryPDFText(t, recordDir)
+	if !strings.Contains(text, "Primary") {
+		t.Fatalf("expected caption %q in rendered output, got: %s", "Primary", text)
+	}
+}
+
+// TestExportService_ExportFullDatabasePDFWithoutDataDirFailsForRelativePaths
+// documents the failure mode when the caller forgets SetDataDir. The
+// image is silently skipped, the data payload's FileName is still
+// mutated to point at the would-be staged name, and typst fails with
+// "file not found" at the #image() reference. This test guards against
+// silent regressions that would re-introduce the bug.
+func TestExportService_ExportFullDatabasePDFWithoutDataDirFailsForRelativePaths(t *testing.T) {
+	dataDir := t.TempDir()
+	d, err := openExistingTestDB(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer d.Close()
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	relDir := filepath.Join("images", "dxd-00053")
+	absDir := filepath.Join(dataDir, relDir)
+	if err := os.MkdirAll(absDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	absImage := filepath.Join(absDir, "DXD-00053-img-001.png")
+	if err := os.WriteFile(absImage, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	relImage := filepath.ToSlash(filepath.Join(relDir, "DXD-00053-img-001.png"))
+
+	soldier, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "DXD-00053",
+		FirstName: "Test",
+		LastName:  "Hood",
+		Unit:      "Test Unit",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := soldierSvc.AddImage(soldier.ID, "DXD-00053-img-001.png", relImage, "Primary"); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	err = exportSvc.ExportFullDatabasePDF(out, PrintSettings{})
+	if err == nil {
+		t.Fatalf("expected ExportFullDatabasePDF to fail when dataDir is unset; got nil")
+	}
+	if !strings.Contains(err.Error(), "file not found") {
+		t.Fatalf("expected typst 'file not found' error, got: %v", err)
+	}
+}
+
 func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)

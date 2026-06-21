@@ -110,6 +110,7 @@ func runOutputAudit(reportDir string) (report, error) {
 
 	soldierSvc := services.NewSoldierService(database)
 	exportSvc := services.NewExportService(database, soldierSvc)
+	exportSvc.SetDataDir(dataDir)
 	backupSvc := services.NewBackupService(database, soldierSvc)
 	analyticsSvc := services.NewAnalyticsService(database)
 
@@ -309,6 +310,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 
 	soldierSvc := services.NewSoldierService(database)
 	exportSvc := services.NewExportService(database, soldierSvc)
+	exportSvc.SetDataDir(dataDir)
 	analyticsSvc := services.NewAnalyticsService(database)
 
 	totalSoldiers, err := countRows(database.Conn(), "soldiers")
