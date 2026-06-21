@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -67,50 +68,79 @@ func (t *TypstRenderer) ListTemplates() ([]Template, error) {
 // (no stdout-piping from a hidden child) and the caller gets a clean
 // io.Writer stream.
 func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[string]any, w io.Writer) error {
+	// Issue #67: capture per-phase timing when TYPST_TIMING is set.
+	// Disabled by default to avoid log noise; the bulk bench enables
+	// it to characterize where time goes.
+	timing := strings.TrimSpace(os.Getenv("TYPST_TIMING")) != ""
+	phaseStart := func(name string) {
+		if timing {
+			fmt.Fprintf(os.Stderr, "[typst-timing] %s start\n", name)
+		}
+	}
+	phaseEnd := func(name string, start time.Time) {
+		if timing {
+			fmt.Fprintf(os.Stderr, "[typst-timing] %s %dms\n", name, time.Since(start).Milliseconds())
+		}
+	}
+
 	// Build a temporary working directory. Copy the template and any
 	// sibling files it may import (e.g. common/theme.typ). Typst's
 	// import paths are resolved relative to the root (which we set
 	// to the work directory), so we need the full template tree
 	// there.
+	mkdirStart := time.Now()
 	workDir, err := os.MkdirTemp("", "dixiedata-typst-")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(workDir)
+	phaseEnd("mkdir", mkdirStart)
 
 	// Copy the template's containing directory contents into workDir
 	// so the template's #import statements resolve.
+	copyDirStart := time.Now()
 	srcDir := filepath.Dir(tpl.Path)
 	if err := copyDir(srcDir, workDir); err != nil {
 		return fmt.Errorf("copy template dir: %w", err)
 	}
+	phaseEnd("copy_template_dir", copyDirStart)
+
 	// Also copy the template's name as main.typ so the import
 	// statements find it under that name.
+	copyMainStart := time.Now()
 	mainPath := filepath.Join(workDir, "main.typ")
 	if err := copyFile(tpl.Path, mainPath); err != nil {
 		return fmt.Errorf("copy template: %w", err)
 	}
+	phaseEnd("copy_main", copyMainStart)
 
 	// Stage image files referenced by the data payload. The template
 	// can reference them as `images/filename`. We look for soldier
 	// images on data["soldier"].Images (a []models.Image or similar)
 	// and copy each one whose ResolvedPath or FilePath exists.
+	stageStart := time.Now()
 	if err := stageSoldierImages(workDir, data); err != nil {
 		return fmt.Errorf("stage images: %w", err)
 	}
+	phaseEnd("stage_images", stageStart)
 
+	writeDataStart := time.Now()
 	dataPath := filepath.Join(workDir, "data.json")
 	if err := writeJSONFile(dataPath, data); err != nil {
 		return fmt.Errorf("write data: %w", err)
 	}
+	phaseEnd("write_data", writeDataStart)
 
 	// Run typst compile. Output goes to a temp PDF file which we
 	// then stream to w.
+	compileStart := time.Now()
 	outputPath := filepath.Join(workDir, "out.pdf")
 	if err := runTypstCompile(t.binPath, workDir, mainPath, outputPath); err != nil {
 		return err
 	}
+	phaseEnd("typst_compile", compileStart)
 
+	streamStart := time.Now()
 	f, err := os.Open(outputPath)
 	if err != nil {
 		return fmt.Errorf("open typst output: %w", err)
@@ -118,6 +148,10 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 	defer f.Close()
 	if _, err := io.Copy(w, f); err != nil {
 		return fmt.Errorf("copy typst output: %w", err)
+	}
+	phaseEnd("stream_pdf", streamStart)
+	if timing {
+		_ = phaseStart
 	}
 	return nil
 }
@@ -241,6 +275,11 @@ func stageOneSoldierImages(workDir string, data map[string]any, soldier any) err
 // `soldier.Images[i].FileName` mutation happens in place on the
 // typed-Soldier case so the JSON serialization carries the renamed
 // name to the typst template.
+//
+// Issue #67: file copies run on a bounded worker pool so a 3000-image
+// archive doesn't take 4-5 seconds of serial disk I/O before typst
+// compile. Worker count is min(runtime.NumCPU, 8); more than that
+// is wasteful for disk-bound work on this hardware.
 func stageBulkSoldiersImages(workDir string, data map[string]any, soldiers any) error {
 	list := extractSoldiersList(soldiers)
 	if len(list) == 0 {
@@ -250,39 +289,92 @@ func stageBulkSoldiersImages(workDir string, data map[string]any, soldiers any) 
 	if err := os.MkdirAll(imagesDir, 0o755); err != nil {
 		return err
 	}
-	// Track which soldier payload to mutate back. The JSON encoder
-	// serialises the map case as-is, but for []models.Soldier we
-	// need to write the renamed file_name back into the slice.
+	// Build a flat work queue: one job per (soldierIndex, image).
+	type job struct {
+		soldierIdx int
+		img        any
+	}
+	var jobs []job
+	for soldierIdx, s := range list {
+		images := extractImages(s)
+		for _, img := range images {
+			jobs = append(jobs, job{soldierIdx: soldierIdx, img: img})
+		}
+	}
+	if len(jobs) == 0 {
+		return nil
+	}
+	// Run jobs in parallel; collect (source, destName) results per
+	// soldier so the rename-mutation phase can stay sequential and
+	// race-free.
+	type result struct {
+		soldierIdx int
+		img        any
+		source     string
+		destName   string
+		err        error
+	}
+	workers := runtime.NumCPU()
+	if workers > 8 {
+		workers = 8
+	}
+	if workers < 1 {
+		workers = 1
+	}
+	if len(jobs) < workers {
+		workers = len(jobs)
+	}
+	jobCh := make(chan job, len(jobs))
+	resultCh := make(chan result, len(jobs))
+	for w := 0; w < workers; w++ {
+		go func() {
+			for j := range jobCh {
+				source, destName, err := stageOneImage(imagesDir, j.img)
+				resultCh <- result{
+					soldierIdx: j.soldierIdx,
+					img:        j.img,
+					source:     source,
+					destName:   destName,
+					err:        err,
+				}
+			}
+		}()
+	}
+	for _, j := range jobs {
+		jobCh <- j
+	}
+	close(jobCh)
+	var results []result
+	for i := 0; i < len(jobs); i++ {
+		results = append(results, <-resultCh)
+	}
+	// Sequential mutation phase: each image only updates its own
+	// soldier's slice, so there's no cross-goroutine write hazard
+	// but the workers may have finished in any order. Group
+	// results by soldier for the rename pass.
 	var typedSoldiers []models.Soldier
 	if ts, ok := soldiers.([]models.Soldier); ok {
 		typedSoldiers = ts
 	}
-	for soldierIdx, s := range list {
-		images := extractImages(s)
-		for _, img := range images {
-			source, destName, err := stageOneImage(imagesDir, img)
-			if err != nil {
-				return err
-			}
-			if source == "" {
-				continue
-			}
-			// For typed-Soldier input, persist the rename back
-			// into the original slice so JSON serialization to
-			// data.json carries the renamed file_name.
-			if soldierIdx < len(typedSoldiers) {
-				switch v := img.(type) {
-				case models.Image:
-					for i := range typedSoldiers[soldierIdx].Images {
-						if typedSoldiers[soldierIdx].Images[i].ResolvedPath == source ||
-							typedSoldiers[soldierIdx].Images[i].FilePath == source {
-							typedSoldiers[soldierIdx].Images[i].FileName = destName
-						}
+	for _, r := range results {
+		if r.err != nil {
+			return r.err
+		}
+		if r.source == "" {
+			continue
+		}
+		if r.soldierIdx < len(typedSoldiers) {
+			switch v := r.img.(type) {
+			case models.Image:
+				for i := range typedSoldiers[r.soldierIdx].Images {
+					if typedSoldiers[r.soldierIdx].Images[i].ResolvedPath == r.source ||
+						typedSoldiers[r.soldierIdx].Images[i].FilePath == r.source {
+						typedSoldiers[r.soldierIdx].Images[i].FileName = r.destName
 					}
-					_ = v
-				case map[string]any:
-					v["file_name"] = destName
 				}
+				_ = v
+			case map[string]any:
+				v["file_name"] = r.destName
 			}
 		}
 	}

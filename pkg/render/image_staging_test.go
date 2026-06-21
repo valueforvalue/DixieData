@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -339,6 +340,80 @@ func TestRenderWithImagesEndToEnd(t *testing.T) {
 	}
 	if len(buf) < 100 {
 		t.Fatalf("rendered PDF suspiciously small (%d bytes)", len(buf))
+	}
+}
+
+// TestStageBulkSoldiersImagesParallel verifies the bulk image-
+// staging path (issue #67) copies every referenced image into the
+// workdir and updates the typed-Soldier payload's FileName for the
+// JSON encoder to serialise the renamed file.
+//
+// The parallel worker pool was added to amortise disk-bound file
+// copies across runtime.NumCPU cores (capped at 8). This test
+// does not assert on timing (test machines vary) but does assert
+// on correctness: every image ends up on disk under the right
+// name and the typed payload has the rename persisted.
+func TestStageBulkSoldiersImagesParallel(t *testing.T) {
+	srcDir := t.TempDir()
+	wd := t.TempDir()
+
+	// Build a typed payload of 8 soldiers, each with one image.
+	const n = 8
+	soldiers := make([]models.Soldier, n)
+	for i := 0; i < n; i++ {
+		displayID := fmt.Sprintf("BULK-%05d", i+1)
+		imgRel := displayID + ".png"
+		imgAbs := filepath.Join(srcDir, imgRel)
+		if err := os.WriteFile(imgAbs, pngFixture(t), 0o644); err != nil {
+			t.Fatalf("WriteFile %d: %v", i, err)
+		}
+		soldiers[i] = models.Soldier{
+			DisplayID: displayID,
+			Images: []models.Image{
+				{
+					FileName:     imgRel,
+					FilePath:     imgAbs,
+					ResolvedPath: imgAbs,
+					IsPrimary:    true,
+				},
+			},
+		}
+	}
+
+	data := map[string]any{"soldiers": soldiers}
+	if err := stageSoldierImages(wd, data); err != nil {
+		t.Fatalf("stageSoldierImages: %v", err)
+	}
+
+	// Every image is staged under its renamed name (which equals
+	// the original basename + detected .png extension here).
+	imagesDir := filepath.Join(wd, "images")
+	for i := 0; i < n; i++ {
+		displayID := fmt.Sprintf("BULK-%05d", i+1)
+		staged := filepath.Join(imagesDir, displayID+".png")
+		if _, err := os.Stat(staged); err != nil {
+			t.Fatalf("expected staged image at %q: %v", staged, err)
+		}
+	}
+
+	// The typed payload's FileName reflects the rename so the
+	// JSON encoder ships the correct file_name to the typst
+	// template.
+	out, ok := data["soldiers"].([]models.Soldier)
+	if !ok {
+		t.Fatalf("data[\"soldiers\"] type = %T, want []models.Soldier", data["soldiers"])
+	}
+	if len(out) != n {
+		t.Fatalf("len(soldiers) = %d, want %d", len(out), n)
+	}
+	for i, s := range out {
+		if len(s.Images) != 1 {
+			t.Fatalf("soldier %d: len(Images) = %d, want 1", i, len(s.Images))
+		}
+		expected := fmt.Sprintf("BULK-%05d.png", i+1)
+		if s.Images[0].FileName != expected {
+			t.Fatalf("soldier %d: FileName = %q, want %q", i, s.Images[0].FileName, expected)
+		}
 	}
 }
 
