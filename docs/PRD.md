@@ -182,3 +182,205 @@ Prior art: the existing `internal/archive/export_service_test.go` tests render r
 - The Typst binary is pinned to a specific version (Typst 0.15 as of June 2026). The bundled binary version is documented in `THIRDPARTY.md` and updated when the tool is re-bundled.
 - The bundled binary is ~30–50 MB per platform. Three platform binaries in `<program-dir>/bin/` is ~150 MB worst case. This is a one-time install cost.
 - **Static archive has its own upcoming audit and overhaul.** The static archive today (in `internal/archive/static_archive.go`) has 27 alpha-variant rgba duplications with the live design system, a 490-line inline `<style>` block, interactive JS for search and image overlay zoom, and a structure that predates the audit. The Phase 2b slice in this PRD is intentionally minimal — it moves the static archive onto Typst HTML output to kill the design-system duplication, but does not preserve visual fidelity or interactive behavior. A separate, follow-up audit and overhaul of the static archive will address structure, interactivity, accessibility, and visual design. The follow-up work is out of scope for this PRD; it will get its own PRD, its own issues, and its own phased plan when prioritized.
+
+---
+
+# UI/UX Audit Findings (June 2026)
+
+This section captures a separate UI/UX audit performed against the live application shell (`frontend/` + `internal/appshell/` + `internal/templates/`). It is independent of the Typst PDF migration above and addresses design-system consistency, accessibility, and small redundancies in the rendered HTML/HTMX surface.
+
+## Current State
+
+DixieData is a single-window Wails desktop app serving an HTMX-driven SPA where Go templates emit complete pages into `body` and one ~3,800-line vanilla JS IIFE progressively enhances them. The design system lives in `<style>` inside `internal/templates/layout.templ:60-230`, not in `app.css` or `tailwind.config.js`. Visual components (`.primary-button`, `.secondary-button`, `.danger-button`, `.field-input`, `.card`, `.pill-link`, `.ghost-link`, `.toast-card`, `.layout-mode-option`, `.google-progress-*`, `.ui-debug-*`) are defined once and reused consistently across 20+ templates.
+
+## Design Language
+
+- **Palette:** `#8d7440` (bronze), `#c5ab68`/`#cfb77a` (gold), `#22303d`/`#1f2b38` (slate), `#6f2c26`/`#54211d` (oxblood), `#fff8e7`/`#f5f1e6` (parchment) — Civil-War archival themed.
+- **Type:** `"Helvetica Neue", Arial, sans-serif` body; `.gold` class uses Georgia/serif. Uppercase + `tracking-[0.18em]`–`[0.28em]` for section labels.
+- **Breakpoint:** single 1000px split-screen/relaxed toggle.
+- **ARIA:** `aria-live` regions on toasts, feedback, merge-review, scratchpad; `[aria-busy]` styling; `aria-pressed` on layout toggle.
+
+## Redundancy Found (Minimal)
+
+1. **Startup placeholder duplicated.** `frontend/index.html:14-22` and `internal/appshell/app.go:155-181` emit the same loading card with slightly different copy.
+2. **Layout breakpoint logic duplicated.** `internal/templates/layout.templ:14-32` inline script and `frontend/app.js:152-158` both implement the same 1000px constant (`splitScreenBreakpointPx`).
+3. **Inline `<style>` in `frontend/index.html:6-13`** duplicates CSS already in `layout.templ:38-44`.
+4. **2–3 inline-styled `<button>` strings** hand-built in Go handlers (`app.go:1379`, `google_handlers.go:163`) instead of templ components.
+
+## Genuine Gaps (Priority Order)
+
+### Priority 1 — Form labels disconnected from inputs (Accessibility)
+
+- **Evidence:** `internal/templates/soldier_card.templ:177-244`, `entry_form.templ:60,145,449`, `layout.templ:504-522` — every `<label class="…">` lacks `for=`, every `<input>` lacks `id=`.
+- **User impact:** Screen readers cannot announce the input's purpose; clicking the label does not focus the field. Largest concrete a11y deficit.
+- **Solution:** Mechanical `for=`/`id=` pairing across templ files. Templ variables interpolate cleanly.
+- **No redundancy:** Confirmed — no existing label/input pairings to conflict with.
+- **Scope estimate:** ~30 form fields, ~30 minutes of work, no new architecture.
+
+### Priority 2 — Hex tokens scattered, no CSS variables
+
+- **Evidence:** `#8d7440`, `#22303d`, `#6f2c26`, `#c5ab68` recur 20–40+ times across `frontend/app.css` and `internal/templates/*.templ`. `tailwind.config.js:5` `theme.extend: {}` is empty.
+- **User impact:** Theme tweaks (e.g. dark mode) require find/replace in dozens of files. Not user-visible today but blocks future consistency work.
+- **Solution:** Promote 4–6 most-used colors to CSS custom properties in `:root` inside `layout.templ:38` (the existing inline-style home). Swap ~10 most-common literals. Do NOT migrate every `rgba(…, 0.x)` alpha variant — ~30 distinct alpha values exist for legitimate layering reasons.
+- **Scope estimate:** ~1 hour. Defer unless dark-mode or theme toggle is on the roadmap.
+
+### Priority 3 — Remove duplicate startup placeholder
+
+- **Evidence:** `frontend/index.html:14-22` and `internal/appshell/app.go:155-181` both emit the same loading card.
+- **User impact:** Drift risk — copy or styling changes in one place silently fail to apply to the other.
+- **Solution:** Have `app.go:handleCalendar` redirect (HTTP 302) to `/` for first-load, OR delete the `index.html` loading card and rely on the Go-rendered one. Pick one source of truth.
+- **Scope estimate:** ~10 minutes.
+
+## Concerns (Not Gaps)
+
+- `frontend/app.js` is 3,789 lines in one IIFE. Functionally organized: storage helpers, drafts, browse, toasts, HTMX bridge. Splitting into ES modules would add CSP surface without functional gain in a Wails sandbox.
+- `internal/appshell/app.go` is 2,230 LOC — the "god class" extraction work is already tracked (issue #42). Not a UI/UX issue.
+- `tailwind.config.js` `theme.extend` is empty — adding tokens there is a parallel option to CSS variables, but the inline `<style>` block in `layout.templ` is the actual stylesheet entry point today.
+
+## Design Philosophy Compliance
+
+**High compliance.** The team has done the hard part: extracted consistent button/input/card classes, used them across 20+ templates, namespaced client storage (`dixiedata.*`), and given HTMX swap targets stable IDs. The inline-hex-color pattern is the main shortcut, and it is consistent within itself. The app reads as one product, not 12 pages stitched together.
+
+## NOT Recommended
+
+- Refactoring `frontend/app.js` into ES modules. It works, the Wails sandbox doesn't need them, and the file is logically sectioned.
+- Migrating every `rgba(…, 0.x)` to a token — at least 30 distinct alpha variants exist for legitimate layering reasons (`.12`, `.18`, `.25`, `.35`, `.45`, `.55`, `.7`, `.8`).
+- Extracting every Go `fmt.Fprintf` HTML to a templ file — only `app.go:1379` and `google_handlers.go:163` are worth converting (2 instances).
+- Adding a UI component library. The existing `.primary-button` / `.secondary-button` / `.field-input` already are the component library.
+
+## Recommendation
+
+1. **Add `for=`/`id=` pairs to form labels** (Priority 1) — biggest user-visible win, mechanical change. Filable as one GitHub issue.
+2. **Delete the duplicate startup placeholder** (Priority 3) — small, prevents drift. Filable as one GitHub issue.
+3. **Promote the 4–6 most-used hex colors to CSS variables** (Priority 2) — only if a future theme toggle is on the roadmap. Optional, file as a separate issue gated on roadmap decision.
+
+Each priority is small enough to ship in a single pass later. The work is non-blocking and orthogonal to the Typst PDF migration in the rest of this PRD.
+
+---
+
+# UI/UX Audit Round 2 (June 2026): Density & Feedback Placement
+
+A second audit pass, driven by user feedback that the existing design "looks right" but the page flow forces too much scrolling and that action confirmations (e.g. backup load) are buried mid-page instead of being visible. This section captures both problems and proposes targeted fixes.
+
+## Context
+
+The existing app already has a toast system (`frontend/app.js:2400-2421`, `layout.templ:150-167`, toast region at `layout.templ:423`). Toasts are fixed top-center, `z-80`, `aria-live="polite"`, with a dismiss button. **They currently auto-dismiss at 4200 ms** (`app.js:2421`) — Round 2 changes this to manual-dismiss-only. The Go backend already pipes `X-DixieData-Toast` headers through `setToastHeader` / `setToastHeaderWithType` (`exports_handlers.go:251-268`); the client reads them at `app.js:2842-2874`. Many handlers already trigger toasts; some still write to inline status divs instead.
+
+## Problem 1 — Density / Scrolling
+
+The app is functionally clean but several surfaces grow too tall, forcing unnecessary scroll on 13" laptop screens. Findings:
+
+### Data rows / tables
+- **`browse.templ:25-145`** — Browse filters panel is 380+ px tall (column toggles + selection status). Collapse column toggles behind `<details>` when 4+ columns selected.
+- **`browse.templ:51-56`** — page-size options are 50-250; add 25-row option for screen-bound archives.
+- **`calendar.templ:228`** — day cells are `min-h-[115px]` (6 rows × 7 cols = ~700 px before any click). Drop to `min-h-[90px]` below `xl`.
+- **`calendar.templ:74-83`** — quote panel + month header strip = ~280 px of vertical chrome before the grid renders.
+
+### Buttons / controls
+- **`layout.templ:103`** — `.ghost-link` has no padding, sits shorter than adjacent pill buttons in `browse.templ:96`, `entry_form.templ:789-793`. Add `py-1`.
+- **`entry_form.templ:813-819`** — radio cards (`.rounded-2xl px-4 py-3` × 2) take 60 px for a binary choice. Collapse to inline.
+- **`share.templ:105-131`** — Export button cards stack title + description; 7 cards = ~450 px before any status appears. Collapse to single line.
+
+### Forms / sections
+- **`entry_form.templ:119`** — main form is flat `card rounded-3xl p-5 sm:p-8 space-y-5`. Bio/Notes/Source Records should wrap in `<details>` (Soldier detail already does this at `soldier_card.templ:450-540`).
+- **`entry_form.templ:284-289`** — 4-5 Special-case panels each ~80 px of chrome stacked vertically.
+
+### Modals / dialogs
+- **`layout.templ:489`, `share.templ:197, 551`** — three modals use `p-6 sm:p-8` (32 px each side). Tighten to `p-6 sm:p-7`.
+- **`layout.templ:518`** — feedback textarea defaults to `rows="5"` (~120 px); reduce to 4.
+- **`soldier_card.templ:332-368`** + **`calendar.templ:49-77`** — Export popouts overlap page content below `xl` (`z-20`, not modal-grade).
+
+## Problem 2 — Buried Feedback
+
+The app has 16 inline status divs. Some host actionable content (must stay inline); most just announce action results (should become toasts).
+
+### Existing toast system summary
+- `showToast(message, kind)` (`app.js:2400-2421`)
+- `.toast-card` (`layout.templ:150-167`) — fixed top-center, dismiss button
+- Toast region `[data-toast-region]` (`layout.templ:423`) — `aria-live="polite" aria-atomic="true"`
+- Auto-dismiss at 4200 ms (currently). **Change to manual-only for Round 2.**
+- Backend: `X-DixieData-Toast` / `X-DixieData-Toast-Type` headers, `setToastHeader` helpers
+
+### Buried feedback sites — full inventory
+
+| File:line | Action | Severity | aria-live? | Toast-safe? | Notes |
+|---|---|---|---|---|---|
+| `share.templ:194` (`#share-status`) | Export/Import/Feedback-log + Merge review | Mixed | No | Mostly yes; merge already triggers `setToastHeader` from `app.go:99` | Memorial JSON preview at `app.go:1377-1381` embeds a Confirm button — must stay inline |
+| `share.templ:548` (`#google-status`) | 10+ Google Drive/Calendar/Sheets buttons | Mixed | No | Yes for connect/disconnect/sync; no for `google_handlers.go:163` dry-run (embeds "Run Sync Now" button) | |
+| `entry_form.templ:441` (`#form-image-import-status`) | Add Images From Computer | Info | No | Yes — `app.go:777` already redirects | |
+| `soldier_card.templ:589` (`#soldier-export-status`) | PDF/JPG export | Info | No | Partial — contains clickable `file://` link. Use `runtime.BrowserOpenURL` + toast | |
+| `soldier_card.templ:647` (`#image-download-status`) | Image add/download/delete | Info | No | Yes for counts; no for in-place badge refresh (`hx-swap="none"`) | |
+| `soldier_card.templ:535` (`#review-resolution-status`) | Flag/Resolve review | Critical | No | Yes — `app.go:166, 175` already toast | |
+| `entry_form.templ:794` (`#settings-status`) | Initialize Data (typed-confirm) | Critical | No | Yes after typed-confirm passes | |
+| `entry_form.templ:897` (`#settings-update-status`) | Check/Apply update + Export Backup | Critical | No | Yes for "Saved update source"; keep `LastApply` card inline | |
+| `entry_form.templ:804` (`#settings-orphan-results`) | Image orphan scan/cleanup | Info | No | Yes for action; keep result list inline | |
+| `entry_form.templ:824` (`#settings-quality-results`) | Quality scan + apply | Info | No | Yes for action; keep result list inline | |
+| `insights.templ:33` (`#insights-export-status`) | Insights PDF export | Info | No | Same `exportLinkMarkup` issue | |
+| `insights.templ:108` (`#insights-audit-status`) | Duplicate audit | Info | No | Keep "Last scan" timestamp inline (persistent metadata); migrate action result to toast | |
+| `calendar.templ:33` (`#calendar-export-status`) | Monthly PDF export | Info | No | Same `exportLinkMarkup` issue | |
+| `share.templ:403` (`#merge-review-loaded-status`) | Merge Review initial render | Info | Yes | No — initial render metadata, not action feedback | |
+| `layout.templ:525` (`#feedback-form-status`) | Feedback submit | Info | Yes | Yes — `app_feedback.go:90` already toast; status div is redundant. Drop it. | |
+| `layout.templ:450` (`data-floating-scratchpad-status`) | Scratchpad save from floating dock | Info | Yes | Yes — optional migration | |
+
+### Critical findings — migrate first
+1. **`#share-status` for Merge Review Keep Local/Shared/Both** — high-traffic critical; inline text is overwritten by next merge. Already has `setToastHeader` from `app.go:99, 129, 146`.
+2. **`#google-status`** — 10+ buttons funnel through one tiny div; during 30s sync the status is unreadable deep in the panel.
+3. **`#settings-update-status`** — Software updates + backup export results sit at the bottom of a 200-line panel; user has already scrolled away.
+4. **`#review-resolution-status`** — destructive-ish action; status buried under the Review Queue card.
+5. **Export link divs** (`#soldier-export-status`, `#insights-export-status`, `#calendar-export-status`) — success path: trigger `runtime.BrowserOpenURL` + toast. Error path: keep inline so user can retry.
+
+### NOT candidates for toast migration
+- Memorial JSON preview confirm button (`app.go:1377-1381`)
+- Google dry-run sync button (`google_handlers.go:163`)
+- Merge review loaded count (`share.templ:403`) — initial render metadata
+- Orphan/quality result lists (`entry_form.templ:804, 824`) — contain actionable lists
+
+## Proposed Changes (priority order)
+
+### Priority 1 — Switch toast to manual-dismiss-only
+- Remove the 4200 ms auto-dismiss timer (`app.js:2421`); toast stays until user clicks the dismiss button.
+- ~10 minutes. Single-file change. Reversible.
+
+### Priority 2 — Migrate buried feedback to manual-dismiss toasts
+- Add `setToastHeader` to ~6 Go handlers where missing: `google_handlers.go` (connect/disconnect/sync, 6+ spots), `soldiers_handlers.go` image routes, `settings_handlers.go` initialize, `app_update.go` check/apply.
+- Remove or repurpose status divs in `share.templ:194`, `soldier_card.templ:589,647`, `entry_form.templ:794`, `insights.templ:33`.
+- Keep inline status divs that host actionable content (Memorial JSON confirm, Google dry-run, orphan/quality lists).
+- For export links: replace `exportLinkMarkup` with `runtime.BrowserOpenURL` + toast "PDF saved to Downloads".
+- Estimated effort: ~3 hours.
+
+### Priority 3 — Density pass (data rows + buttons)
+- Collapse Browse column toggles behind `<details>` (`browse.templ:25-145`).
+- Add 25-row page-size option (`browse.templ:51-56`).
+- Drop calendar cell `min-h-[115px]` → `min-h-[90px]` below `xl` (`calendar.templ:228`).
+- Add `py-1` to `.ghost-link` (`layout.templ:103`).
+- Collapse radio cards in `entry_form.templ:813-819`.
+- Estimated effort: ~2 hours.
+
+### Priority 4 — Density pass (forms + modals)
+- Wrap Bio/Notes/Source Records in `<details>` (`entry_form.templ:382`).
+- Tighten modal padding `p-6 sm:p-8` → `p-6 sm:p-7` (3 sites).
+- Drop feedback textarea default rows 5 → 4 (`layout.templ:518`).
+- Estimated effort: ~2 hours.
+
+## Design Philosophy Compliance
+
+All recommendations keep existing `.primary-button / .secondary-button / .pill-link` tokens and the `aria-live="polite"` toast region. No new colors, no new component classes. The split-screen / relaxed layout-mode toggle already lets users choose density; these fixes reduce the *minimum* density so even relaxed mode fits more on a 13" laptop without scroll.
+
+## NOT Recommended
+
+- Adding a toast queue / stacking UI — current `flex-direction: column` in `.toast-region` (`layout.templ:140-148`) already stacks. More than 3 toasts becomes visual noise.
+- Re-architecting with a global notification drawer — over-engineering for the 16 sites in scope.
+- Migrating status-then-redirect pattern (e.g. `merge_review` import → toast in URL state, `app.js:2450-2455`) — already works.
+- Adding a compact/comfortable data-row toggle on Browse — page-size dropdown already gives users control.
+
+## Recommendation
+
+Ship in this order (each is small enough for one PR):
+
+1. **Priority 1** — Switch toast to manual-dismiss (~10 min, one-liner behavior change).
+2. **Priority 2** — Migrate buried feedback (~3 hrs).
+3. **Priority 3** — Density pass A (~2 hrs).
+4. **Priority 4** — Density pass B (~2 hrs).
+
+All orthogonal to the Typst PDF migration above and to the Round 1 issues (#51, #52, #53).
+
