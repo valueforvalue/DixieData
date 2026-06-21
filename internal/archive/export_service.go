@@ -190,12 +190,19 @@ func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, sett
 	}
 
 	// The typst bulk template loops over the full sorted array;
-	// one invocation produces the entire archive PDF.
+	// one invocation produces the entire archive PDF. When
+	// grouping is active, Go partitions the sorted slice into
+	// groups (issue #65) and the template emits a divider page
+	// before each group.
 	data := map[string]any{
-		"soldiers": soldiers,
 		"options":  render.PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true},
 		"settings": settings,
 		"branding": e.archiveBranding(settings.PrinterFriendly),
+	}
+	if axis := render.ActiveGroupAxis(settings); axis != "" {
+		data["groups"] = render.GroupPrintableSoldiers(soldiers, settings)
+	} else {
+		data["soldiers"] = soldiers
 	}
 	f, err := os.Create(outputPath)
 	if err != nil {

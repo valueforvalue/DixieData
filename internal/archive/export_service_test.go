@@ -1128,6 +1128,156 @@ func TestExportService_ExportFullDatabasePDFWithoutDataDirRendersWithoutImage(t 
 	}
 }
 
+// TestExportService_ExportFullDatabasePDFGroupByPensionState verifies
+// the bulk export emits a divider page for each pension-state group
+// when GroupByPensionState is set. Issue #65.
+//
+// The fixture seeds three soldiers with three distinct pension
+// states; the rendered PDF must contain a divider page for each
+// group plus a header showing the active axis label.
+func TestExportService_ExportFullDatabasePDFGroupByPensionState(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	// Seed three soldiers with distinct, alphabetically-different
+	// pension states so the divider pages sort predictably.
+	cases := []struct {
+		displayID string
+		lastName  string
+		state     string
+	}{
+		{"GRP-001", "Carter", "Texas"},
+		{"GRP-002", "Adams", "Virginia"},
+		{"GRP-003", "Brown", "Georgia"},
+	}
+	for _, c := range cases {
+		_, err := soldierSvc.Create(models.Soldier{
+			DisplayID:      c.displayID,
+			FirstName:      "Test",
+			LastName:       c.lastName,
+			Unit:           "Test Unit",
+			PensionState:   c.state,
+			PensionID:      "P-" + c.displayID,
+			ApplicationID:  "A-" + c.displayID,
+			EntryType:      "soldier",
+			ConfederateHomeStatus: "N/A",
+		})
+		if err != nil {
+			t.Fatalf("Create %s: %v", c.displayID, err)
+		}
+	}
+
+	out := filepath.Join(t.TempDir(), "grouped.pdf")
+	settings := PrintSettings{GroupByPensionState: true}.Normalize()
+	if err := exportSvc.ExportFullDatabasePDF(out, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+	text := extractPDFText(t, out)
+	// Divider page header.
+	if !strings.Contains(text, "Grouped by") {
+		t.Fatalf("expected divider page header 'Grouped by', got: %s", text)
+	}
+	if !strings.Contains(text, "Pension State") {
+		t.Fatalf("expected axis label 'Pension State' in divider page, got: %s", text)
+	}
+	// All three pension-state values appear (as divider headings
+	// and as record field values).
+	for _, expected := range []string{"Texas", "Virginia", "Georgia"} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("expected pension state %q in rendered output, got: %s", expected, text)
+		}
+	}
+}
+
+// TestExportService_ExportFullDatabasePDFGroupByUnitPrecedence verifies
+// the axis precedence rule: when multiple GroupBy* flags are set,
+// Unit wins.
+func TestExportService_ExportFullDatabasePDFGroupByUnitPrecedence(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	// Two soldiers in the same Unit but different PensionState.
+	// Unit grouping must produce one divider page; if PensionState
+	// grouping won (precedence violation), there would be two.
+	cases := []struct {
+		displayID string
+		lastName  string
+		unit      string
+		state     string
+	}{
+		{"PRC-001", "Carter", "Co. A, 1st TX Cavalry", "Texas"},
+		{"PRC-002", "Adams", "Co. A, 1st TX Cavalry", "Virginia"},
+	}
+	for _, c := range cases {
+		_, err := soldierSvc.Create(models.Soldier{
+			DisplayID:    c.displayID,
+			FirstName:    "Test",
+			LastName:     c.lastName,
+			Unit:         c.unit,
+			PensionState: c.state,
+			EntryType:    "soldier",
+		})
+		if err != nil {
+			t.Fatalf("Create %s: %v", c.displayID, err)
+		}
+	}
+
+	out := filepath.Join(t.TempDir(), "precedence.pdf")
+	settings := PrintSettings{
+		GroupByUnit:          true,
+		GroupByPensionState:  true,
+		GroupByBuriedIn:      true,
+	}.Normalize()
+	if err := exportSvc.ExportFullDatabasePDF(out, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+	text := extractPDFText(t, out)
+	if !strings.Contains(text, "Unit") {
+		t.Fatalf("expected axis label 'Unit' (precedence winner), got: %s", text)
+	}
+	// PensionState and BuriedIn do not appear as divider axis
+	// labels when Unit wins precedence. 'Burial Location' is the
+	// unique axis-only string; 'Pension State' also appears as a
+	// record card field label so we cannot use it as a sentinel.
+	if strings.Contains(text, "Burial Location") {
+		t.Fatalf("expected only Unit grouping; BuriedIn must not appear as axis")
+	}
+}
+
+// TestRenderGroupPrintableSoldiers is a unit test for the grouping
+// helper. It does not exercise typst; it pins the partitioning
+// behavior so the template wiring can be trusted.
+func TestRenderGroupPrintableSoldiers(t *testing.T) {
+	soldiers := []models.Soldier{
+		{DisplayID: "A", LastName: "Adams", PensionState: "Texas"},
+		{DisplayID: "B", LastName: "Brown", PensionState: "Virginia"},
+		{DisplayID: "C", LastName: "Carter", PensionState: "Texas"},
+	}
+	groups := render.GroupPrintableSoldiers(soldiers, render.PrintSettings{
+		GroupByPensionState: true,
+	}.Normalize())
+	if len(groups) != 2 {
+		t.Fatalf("groups = %d, want 2 (Texas, Virginia)", len(groups))
+	}
+	if groups[0].Value != "Texas" || groups[1].Value != "Virginia" {
+		t.Fatalf("group values = [%q, %q], want [Texas, Virginia]",
+			groups[0].Value, groups[1].Value)
+	}
+	if len(groups[0].Soldiers) != 2 || len(groups[1].Soldiers) != 1 {
+		t.Fatalf("group sizes = [%d, %d], want [2, 1]",
+			len(groups[0].Soldiers), len(groups[1].Soldiers))
+	}
+	// No grouping -> single group with the full slice.
+	all := render.GroupPrintableSoldiers(soldiers, render.PrintSettings{}.Normalize())
+	if len(all) != 1 || len(all[0].Soldiers) != 3 {
+		t.Fatalf("ungrouped = %d groups of %d, want 1 group of 3", len(all), len(all[0].Soldiers))
+	}
+}
+
 func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
