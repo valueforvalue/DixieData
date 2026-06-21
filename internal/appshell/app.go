@@ -1659,11 +1659,12 @@ func (a *App) reloadServices() error {
 	a.export = archive.NewExportService(a.database, soldierSvc)
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
 
-	// Wire the Typst-backed Registry into the export service so
-	// bulk database exports can use Typst templates when the user
-	// opts in via PrintSettings.Template.
-	if typstRenderer, fpdfRenderer, templateDir, err := a.buildRenderRegistry(); err == nil && typstRenderer != nil {
-		a.export.SetRegistry(render.NewRegistry(typstRenderer, fpdfRenderer, templateDir))
+	// Wire the Typst-backed Registry into the export service. Per
+	// slice 7, the appshell uses Typst exclusively; if the binary
+	// or templates directory is missing, ExportService falls back
+	// to its fpdf Service (which is preserved as a test scaffold).
+	if reg, _, err := a.buildRenderRegistry(); err == nil && reg != nil {
+		a.export.SetRegistry(reg)
 	}
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
@@ -1699,35 +1700,31 @@ func (a *App) reloadServices() error {
 	return nil
 }
 
-// buildRenderRegistry constructs the Typst and fpdf renderers and
-// returns them plus the templates directory. Returns (nil, nil, "",
-// err) when the Typst binary or templates directory cannot be
-// located; the caller should treat this as 'no Registry available'
-// and fall back to the fpdf-only path.
-func (a *App) buildRenderRegistry() (*render.TypstRenderer, *render.FpdfRenderer, string, error) {
+// buildRenderRegistry constructs the Typst-backed Registry and
+// returns it plus the templates directory. Returns (nil, "", err)
+// when the Typst binary or templates directory cannot be located;
+// the caller treats this as 'no Registry available' and the
+// ExportService falls back to its fpdf Service for tests only.
+//
+// Per slice 7, the appshell does NOT include an FpdfRenderer in
+// the Registry. The Registry's Resolve method falls back to the
+// 'fpdf:recordType' engine when no Typst template matches, but
+// because the Registry doesn't have an FpdfRenderer, that
+// fallback returns an error. In practice all the production
+// record types (soldier, widow, wife, linked_person) have
+// matching Typst templates, so the fpdf fallback is never hit.
+func (a *App) buildRenderRegistry() (*render.Registry, string, error) {
 	binPath, err := a.findTypstBinary()
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 	templatesDir, err := a.findTemplatesDir()
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
 	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templatesDir))
-	fpdfRenderer := render.NewFpdfRenderer(render.New(a.database, soldierSvcForRender(a)))
-	return typstRenderer, fpdfRenderer, templatesDir, nil
-}
-
-// soldierSvcForRender returns a records.SoldierService that
-// the render.Service can use. The App's a.soldiers is an
-// interface, but render.New wants the concrete type.
-func soldierSvcForRender(a *App) *records.SoldierService {
-	if s, ok := a.soldiers.(*records.SoldierService); ok {
-		return s
-	}
-	// Fallback: construct one from the database. This is a best
-	// effort for the render layer.
-	return records.NewSoldierService(a.database)
+	reg := render.NewRegistry(typstRenderer, nil, templatesDir)
+	return reg, templatesDir, nil
 }
 
 // findTypstBinary walks up from dataDir to find bin/typst-*.

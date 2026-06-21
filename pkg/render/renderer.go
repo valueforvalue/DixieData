@@ -112,6 +112,9 @@ func (r *Registry) Render(ctx context.Context, ps PrintSettings, recordType stri
 	case "typst":
 		rd = r.typst
 	case "fpdf":
+		if r.fpdf == nil {
+			return fmt.Errorf("template %q requires fpdf renderer, but Registry has no fpdf fallback", tpl.Name)
+		}
 		rd = r.fpdf
 	default:
 		return fmt.Errorf("unknown template engine %q", tpl.Engine)
