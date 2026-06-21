@@ -1,5 +1,23 @@
 package render
 
+// Service is the legacy fpdf-backed PDF generator. As of slice 7
+// (commit retiring fpdf), the DixieData appshell no longer calls
+// Service for any export path; instead the appshell's
+// ExportService wraps a render.Registry that dispatches to
+// Typst templates under templates/.
+//
+// Service is retained ONLY as a test scaffold and as a fallback
+// when the Typst binary or templates directory cannot be located.
+// New code should NOT depend on it. The fpdf dependency
+// (github.com/go-pdf/fpdf) is kept solely to support Service.
+//
+// All public Service methods (ExportSoldierPDF,
+// ExportMonthlyAnniversaryPDF, ExportFullDatabasePDF,
+// ExportAnalyticsSummaryPDF, etc.) are preserved verbatim so the
+// existing TestExportService_* tests continue to pass. These
+// tests will be migrated to the Registry path in a follow-up
+// slice once the visual parity audit is complete.
+
 import (
 	"fmt"
 	"sort"
