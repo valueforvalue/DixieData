@@ -92,9 +92,9 @@ The fpdf path remains the default for all exports during a phased migration. The
 ### Typst integration
 
 - The Typst compiler binary is bundled in `<program-dir>/bin/typst(.exe)`.
-- The Go side uses `github.com/Dadido3/go-typst` (CLI shell-out) to invoke the bundled binary.
+- The Go side shells out to the bundled binary via `exec.Command` directly (no `go-typst` wrapper). On Windows the child is spawned with `CREATE_NO_WINDOW` so PDF export does not flash a black console.
 - Data flows from Go to the template via `sys.inputs` (a JSON object).
-- Errors from `go-typst` are returned as structured Go errors with line/column info.
+- Errors from `typst compile` are surfaced verbatim from stderr (line/column info included).
 
 ### Tuning tool
 
@@ -125,7 +125,7 @@ The migration is 8 slices: 1 prefactor + 7 implementation. The 7 implementation 
 
 - **Slice 0 (prefactor) — extract PDF methods from `ExportService`.** Move `ExportSoldierPDF`, `ExportSoldierPDFWithoutImages`, `ExportMonthlyAnniversaryPDF`, `ExportFullDatabasePDF`, `ExportAnalyticsSummaryPDF`, and the supporting `brandedPDFDocument` / `newPDFDocument` / `pdfBranding` helpers into a new `internal/render` package. The existing methods on `ExportService` become thin facades that call the new package. No behavior change. No fpdf removal. This is the seam that makes the `Renderer` interface possible.
 
-- **Slice 1 (Phase 0) — scaffolding and baseline capture.** Renderer interface, TypstRenderer skeleton wrapping `go-typst`, template discovery, `tools/tune/` separate Go module, `dixiedata-tune` CLI with `render`/`list-templates`/`list-records`/`capture-baseline`/`compare` subcommands, baseline capture of every fpdf export to `tools/tune/baseline/`, annotation convention, smoke test that produces a trivial PDF. After this slice, the Typst pipeline works for a one-line template; all fpdf behavior is unchanged.
+- **Slice 1 (Phase 0) — scaffolding and baseline capture.** Renderer interface, TypstRenderer that shells out to the bundled binary directly, template discovery, `tools/tune/` separate Go module, `dixiedata-tune` CLI with `render`/`list-templates`/`list-records`/`capture-baseline`/`compare` subcommands, baseline capture of every fpdf export to `tools/tune/baseline/`, annotation convention, smoke test that produces a trivial PDF. After this slice, the Typst pipeline works for a one-line template; all fpdf behavior is unchanged.
 
 - **Slice 2 (Phase 1a) — first real record card.** `templates/soldier_landscape.typ` renders all current Soldier record card fields with the current visual design. `templates/common/theme.typ` filled in with real palette and type-scale. `templates/common/components.typ` with reusable functions. `dixiedata-tune compare` works for Soldier landscape. At least one Soldier record passes the "close enough to be recognizable" visual bar.
 
@@ -164,7 +164,7 @@ Prior art: the existing `internal/archive/export_service_test.go` tests render r
 
 ## Out of Scope
 
-- Replacing the Typst binary with a WASM-embedded version. Considered and rejected; the user picked CLI shell-out via `go-typst`.
+- Replacing the Typst binary with a WASM-embedded version. Considered and rejected; the user picked CLI shell-out via direct `exec.Command`.
 - A visual diff tool that overlays two rasterized PDFs. The `compare` subcommand produces text diffs; visual diff is manual.
 - Letting end users author templates. The author is the developer; templates ship with the application.
 - A template marketplace or per-user override directory. The program directory is the only source of templates.

@@ -11,7 +11,7 @@ import (
 // TestTypstRendererSmoke is the slice-1 smoke test. It loads the
 // templates/hello.typ template, feeds it a tiny JSON payload, and
 // asserts the output is a non-empty PDF. Proves the end-to-end
-// pipeline: Go -> go-typst -> bundled binary -> Typst -> PDF.
+// pipeline: Go -> exec.Command -> bundled binary -> Typst -> PDF.
 func TestTypstRendererSmoke(t *testing.T) {
 	binPath := findTypstBinary(t)
 	templatesDir := findTemplatesDir(t)

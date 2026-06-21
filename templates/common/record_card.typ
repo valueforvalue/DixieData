@@ -351,13 +351,72 @@
   )
 }
 
+// --- image panel ---
+
+// render-image-panel returns the soldier's primary image (or the
+// first image if there is no primary) sized to fit the panel area
+// defined in theme.geometry. Returns none when the user has not
+// asked for images, when the soldier has no images, or when the
+// image file is missing on disk.
+//
+// The TypstRenderer stages image files at <workdir>/images/ before
+// compiling, so this template can reference them as relative paths
+// like `images/<file_name>`. The renderer only stages files that
+// exist on disk; a missing file means the template just renders
+// nothing here.
+#let render-image-panel(opts, s) = {
+  if not opts.at("includeImages", default: false) { return none }
+  let images = s.at("images", default: ())
+  if images.len() == 0 { return none }
+
+  let chosen = none
+  for img in images {
+    if img.at("is_primary", default: false) {
+      chosen = img
+      break
+    }
+  }
+  if chosen == none { chosen = images.first() }
+
+  let file-name = chosen.at("file_name", default: none)
+  if file-name == none or file-name == "" { return none }
+
+  let caption = chosen.at("caption", default: "")
+
+  block(
+    width: 100%,
+    inset: (bottom: 0.4em),
+  )[
+    #box(
+      width: 100%,
+      height: theme.geometry.image_panel_height,
+      clip: true,
+      align(center + horizon)[
+        // The image lookup is rooted at the typst workdir, which is
+        // the temp dir we pass via `--root`. The renderer's image
+        // staging step copies the image to <workdir>/images/, so
+        // the absolute path "/images/..." resolves regardless of
+        // which file the template is being evaluated from. (A
+        // relative path like "images/..." would be resolved
+        // relative to common/record_card.typ, which is wrong.)
+        #image("/images/" + file-name, fit: "contain")
+      ],
+    )
+    #if caption != "" [
+      #set text(size: 7.5pt, fill: theme.palette.text_secondary, style: "italic")
+      #align(center)[#caption]
+    ]
+  ]
+}
+
 // --- main card layouts ---
 
 // render-landscape-card is the standard two-column landscape
 // card with identity+service stacked on the left and
 // household+records on the right. Used by all landscape
 // variants.
-#let render-landscape-card(s, service-show-all: false, household-show-all: false) = {
+#let render-landscape-card(s, opts, service-show-all: false, household-show-all: false) = {
+  let image-panel = render-image-panel(opts, s)
   grid(
     columns: (1fr, 0.6cm, 1fr),
     [
@@ -367,6 +426,7 @@
     [],
     [
       #set text(size: 9pt, fill: theme.palette.text_primary)
+      #if image-panel != none [#image-panel]
       #render-household-section(s, show-all: household-show-all)
       // Biography intentionally rendered on its own page (see
       // render-biography-page below).
@@ -378,10 +438,12 @@
 
 // render-portrait-card is a single-column portrait variant.
 // All sections stack vertically.
-#let render-portrait-card(s, service-show-all: false, household-show-all: false) = {
+#let render-portrait-card(s, opts, service-show-all: false, household-show-all: false) = {
+  let image-panel = render-image-panel(opts, s)
   render-identity-section(s)
   render-service-section(s, show-all: service-show-all)
   v(0.6em)
+  if image-panel != none { image-panel }
   render-household-section(s, show-all: household-show-all)
   v(0.6em)
   render-records-section(s)
@@ -401,9 +463,9 @@
   let household-show-all = variant == "widow" or variant == "spouse"
 
   if is-landscape {
-    render-landscape-card(s, service-show-all: service-show-all, household-show-all: household-show-all)
+    render-landscape-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
   } else {
-    render-portrait-card(s, service-show-all: service-show-all, household-show-all: household-show-all)
+    render-portrait-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
   }
 
   render-biography-page(s)

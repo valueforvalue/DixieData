@@ -12,13 +12,14 @@ vendored as Go modules.
   - `bin/typst-windows.exe` (Windows x86_64)
   - `bin/typst-macos` (macOS Apple Silicon, aarch64)
   - `bin/typst-linux` (Linux x86_64, musl)
-- **Used by:** `internal/render` (via `github.com/Dadido3/go-typst`) to
-  compile `.typ` templates to PDF.
+- **Used by:** `pkg/render` (via direct `os/exec` calls) to compile
+  `.typ` templates to PDF.
 
-The Typst binary is invoked via `go-typst`, which shells out to the
-`typst` CLI on PATH or to a configured `ExecutablePath`. The bundled
-binary means the app works out of the box without a separate Typst
-install.
+The Typst binary is invoked via `exec.Command`, which shells out to
+the bundled `typst-windows.exe` (or `typst` on PATH if the bundled
+binary is absent). On Windows the child process is created with
+`CREATE_NO_WINDOW` / `HideWindow` so the user does not see a black
+console window during PDF export.
 
 The license text and notice from the Typst upstream are committed at
 `bin/LICENSE` and `bin/NOTICE`.

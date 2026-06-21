@@ -310,7 +310,10 @@ func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot An
 }
 
 // ExportSoldierJPG still needs the temp PDF step, so it lives on
-// ExportService and delegates the PDF write to the render service.
+// ExportService. When a Registry is wired, the temp PDF is produced
+// through it so the user's "Template engine" selection in the share
+// modal is honoured for JPGs too (e.g. Typst soldier_landscape
+// instead of the legacy fpdf path).
 func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldier, options PDFOptions) ([]string, error) {
 	options = options.Normalize("L", true)
 	outputPath = ensureJPGOutputPath(outputPath)
@@ -322,8 +325,14 @@ func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldi
 	defer os.RemoveAll(tempDir)
 
 	pdfPath := filepath.Join(tempDir, "record.pdf")
-	if err := e.pdf.ExportSoldierPDF(pdfPath, soldier, options); err != nil {
-		return nil, err
+	if e.registry != nil {
+		if err := e.exportSingleRecordViaRegistry(pdfPath, soldier, options, "soldier"); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := e.pdf.ExportSoldierPDF(pdfPath, soldier, options); err != nil {
+			return nil, err
+		}
 	}
 
 	renderedDir := filepath.Join(tempDir, "pages")

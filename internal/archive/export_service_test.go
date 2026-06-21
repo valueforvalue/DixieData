@@ -890,6 +890,69 @@ func TestExportService_ExportFullDatabasePDFRoutesThroughRegistry(t *testing.T) 
 	}
 }
 
+// TestExportService_ExportSoldierJPGRoutesThroughRegistry verifies
+// that when a Registry is wired, ExportSoldierJPG goes through the
+// registry's temp-PDF step instead of the legacy fpdf service. The
+// rasterizer mock records the path it sees so we can also confirm
+// the PDF was actually produced (and not skipped).
+func TestExportService_ExportSoldierJPGRoutesThroughRegistry(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	configureExportIdentity(t, d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	binPath, err := findTypstBinaryForTest()
+	if err != nil {
+		t.Skipf("typst binary not found: %v", err)
+	}
+	templatesDir, err := findTemplatesDirForTest()
+	if err != nil {
+		t.Skipf("templates dir not found: %v", err)
+	}
+	typst := render.NewTypstRenderer(binPath, filepath.Dir(templatesDir))
+	fpdf := render.NewFpdfRenderer(render.New(d, soldierSvc))
+	reg := render.NewRegistry(typst, fpdf, templatesDir)
+	exportSvc.SetRegistry(reg)
+
+	var seenPDF string
+	exportSvc.rasterizer = rasterizerFunc(func(pdfPath, outputDir string) ([]string, error) {
+		seenPDF = pdfPath
+		if _, err := os.Stat(pdfPath); err != nil {
+			t.Fatalf("registry-produced PDF missing: %v", err)
+		}
+		first := filepath.Join(outputDir, "page-001.jpg")
+		if err := os.WriteFile(first, []byte("jpg-payload"), 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+		return []string{first}, nil
+	})
+
+	soldier := models.Soldier{
+		EntryType:  "soldier",
+		FirstName:  "Registry",
+		LastName:   "JPG",
+		DisplayID:  "RJ-001",
+		Biography:  "Registry-routed JPG biography.",
+		DeathDate:  "00/00/1870",
+		BirthDate:  "00/00/1840",
+	}
+	outputPath := filepath.Join(t.TempDir(), "record.jpg")
+	paths, err := exportSvc.ExportSoldierJPG(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: true})
+	if err != nil {
+		t.Fatalf("ExportSoldierJPG: %v", err)
+	}
+	if len(paths) == 0 {
+		t.Fatalf("expected at least one JPG output, got none")
+	}
+	if seenPDF == "" {
+		t.Fatalf("rasterizer mock never invoked; registry path did not produce a PDF")
+	}
+	// Sanity: the rasterized JPG was renamed into place.
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Fatalf("expected final JPG at %q: %v", outputPath, err)
+	}
+}
+
 // fakeTypstRenderer removed: the registry requires concrete
 // *render.TypstRenderer, so we use the real renderer with the
 // bundled binary instead. The test skips if the binary is
@@ -904,7 +967,7 @@ func findTypstBinaryForTest() (string, error) {
 	}
 	for i := 0; i < 6; i++ {
 		for _, name := range []string{"typst-windows.exe", "typst-macos", "typst-linux"} {
-			candidate := filepath.Join(dir, "..", "..", "..", "bin", name)
+			candidate := filepath.Join(dir, "bin", name)
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate, nil
 			}
@@ -924,7 +987,7 @@ func findTemplatesDirForTest() (string, error) {
 		return "", err
 	}
 	for i := 0; i < 6; i++ {
-		candidate := filepath.Join(dir, "..", "..", "..", "templates")
+		candidate := filepath.Join(dir, "templates")
 		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
 			return candidate, nil
 		}
