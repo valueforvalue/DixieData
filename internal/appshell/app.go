@@ -1666,6 +1666,16 @@ func (a *App) reloadServices() error {
 	if reg, _, err := a.buildRenderRegistry(); err == nil && reg != nil {
 		a.export.SetRegistry(reg)
 	}
+	// Bulk export reads each soldier's images by absolute path.
+	// Soldier.Images[i].FilePath is stored relative to the data
+	// dir, and the single-record export handlers fill in
+	// ResolvedPath themselves. The bulk export path (ExportFullDatabasePDF)
+	// fetches its own soldiers and would otherwise leave ResolvedPath
+	// empty; without it the typst image-staging step silently skips
+	// the file and the template's #image("images/<name>") reference
+	// fails with "file not found". SetDataDir lets the bulk path
+	// resolve FilePath against the data dir on the fly.
+	a.export.SetDataDir(a.dataDir)
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
 	a.updater = update.NewService(a.database, a.dataDir, func(outputPath string) error {
