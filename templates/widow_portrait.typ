@@ -1,15 +1,12 @@
 // metadata:
-//   name: soldier_landscape
-//   record_types: [soldier]
-//   orientation: landscape
+//   name: widow_portrait
+//   record_types: [widow]
+//   orientation: portrait
 //   export_types: [record_card]
-//   description: Standard Soldier record card (landscape).
+//   description: Widow record card (portrait).
 //
-// All real logic lives in templates/common/record_card.typ. This
-// file loads the data, applies page setup at document scope
-// (required because #set rules must be at the document root in
-// Typst, not inside function bodies), then dispatches to the
-// shared helper.
+// Portrait variant. Same field rules as widow_landscape but with
+// a single-column vertical layout.
 
 #import "common/record_card.typ": *
 
@@ -25,4 +22,4 @@
 #set text(font: "Arial", size: 9pt, fill: theme.palette.text_primary)
 #set par(leading: 0.45em)
 
-#render-record-card(opts, branding, s, "soldier")
+#render-record-card(opts, branding, s, "widow")

@@ -1,15 +1,14 @@
 // metadata:
-//   name: soldier_landscape
+//   name: soldier_portrait
 //   record_types: [soldier]
-//   orientation: landscape
+//   orientation: portrait
 //   export_types: [record_card]
-//   description: Standard Soldier record card (landscape).
+//   description: Standard Soldier record card (portrait).
 //
-// All real logic lives in templates/common/record_card.typ. This
-// file loads the data, applies page setup at document scope
-// (required because #set rules must be at the document root in
-// Typst, not inside function bodies), then dispatches to the
-// shared helper.
+// Portrait variant of the soldier record card. The layout is
+// single-column (vs the landscape two-column layout) because
+// portrait pages are too narrow for two columns of label/value
+// pairs. All sections stack vertically.
 
 #import "common/record_card.typ": *
 

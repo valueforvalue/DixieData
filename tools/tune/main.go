@@ -216,6 +216,7 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 	templateName := fs.String("template", "", "Template name (e.g. soldier_landscape, or fpdf:soldier for the baseline)")
 	recordID := fs.Int64("record", 0, "Record ID to render")
 	outPath := fs.String("out", "", "Output PDF path")
+	orientation := fs.String("orientation", "L", "Page orientation: L (landscape) or P (portrait)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -240,7 +241,7 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 	}
 	data := map[string]any{
 		"soldier":  *soldier,
-		"options":  render.PDFOptions{Orientation: "L"},
+		"options":  render.PDFOptions{Orientation: *orientation},
 		"branding": encode.BrandingFromIdentity(identity),
 	}
 
@@ -261,10 +262,9 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 		}
 	} else {
 		// Typst path. Build the full TemplateData payload and run
-		// through the TypstRenderer. Match the fpdf path's default
-		// of landscape ("L") so the output page size matches.
+		// through the TypstRenderer. Honor the --orientation flag.
 		typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
-		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{Orientation: "L"}, encode.BrandingFromIdentity(identity))
+		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{Orientation: *orientation}, encode.BrandingFromIdentity(identity))
 		tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
 		payload := templateDataToMap(fullData)
 		if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {
