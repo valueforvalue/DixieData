@@ -34,8 +34,10 @@
 #set text(font: "Arial", size: 9pt, fill: theme.palette.text_primary)
 #set par(leading: 0.45em)
 
-// Helper: render a bullet list from a list of (label, value) pairs,
-// or show a fallback message if the list is empty.
+// Helper: render a bullet list from a list of dicts, each with
+// `label` and `count` keys (matching the JSON shape of
+// records.AnalyticsCount). The data is normalized to this shape
+// by `normalize-rows` so all call sites pass the same type.
 #let bullet-list(rows, empty-msg) = {
   if rows.len() == 0 [
     #set text(size: 9pt, fill: theme.palette.text_secondary)
@@ -43,10 +45,27 @@
   ] else [
     #set text(size: 9pt)
     #for row in rows [
-      - #row.at(0, default: ""): #row.at(1, default: "")
+      + [#row.label: #row.count]
       #v(0.2em)
     ]
   ]
+}
+
+// normalize-rows converts a list of mixed-shape rows to a
+// uniform list of (label, count) dicts. Accepts either:
+//   - dicts with `label` and `count` (the JSON shape), or
+//   - arrays of two elements (label, count) (the legacy shape).
+// Returns a list of dicts.
+#let normalize-rows(rows) = {
+  let out = ()
+  for row in rows {
+    if type(row) == dictionary {
+      out.push(row)
+    } else if type(row) == array and row.len() == 2 {
+      out.push((label: str(row.at(0)), count: str(row.at(1))))
+    }
+  }
+  out
 }
 
 // Title.
@@ -67,11 +86,11 @@
 #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Record Types]
 #v(0.3em)
 #bullet-list(
-  (
-    ("Soldiers", str(snapshot.at("record_types", default: (:)).at("total_soldiers", default: 0))),
-    ("Spouses (Wives & Widows)", str(snapshot.at("record_types", default: (:)).at("total_wives_widows", default: 0))),
-    ("Linked People", str(snapshot.at("record_types", default: (:)).at("total_linked_people", default: 0))),
-  ),
+  normalize-rows((
+    (label: "Soldiers", count: str(snapshot.at("record_types", default: (:)).at("total_soldiers", default: 0))),
+    (label: "Spouses (Wives & Widows)", count: str(snapshot.at("record_types", default: (:)).at("total_wives_widows", default: 0))),
+    (label: "Linked People", count: str(snapshot.at("record_types", default: (:)).at("total_linked_people", default: 0))),
+  )),
   "No records to summarise."
 )
 #v(0.5em)

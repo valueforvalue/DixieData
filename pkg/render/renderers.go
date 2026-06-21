@@ -16,99 +16,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
-// FpdfRenderer implements Renderer using the existing fpdf-based
-// service. It exists as a wrapper so the new Registry can dispatch
-// uniformly; the actual fpdf work happens in (*Service).Export*PDF.
-type FpdfRenderer struct {
-	service *Service
-}
-
-// NewFpdfRenderer wraps an existing Service as a Renderer.
-func NewFpdfRenderer(s *Service) *FpdfRenderer {
-	return &FpdfRenderer{service: s}
-}
-
-// Name returns the engine name.
-func (f *FpdfRenderer) Name() string { return "fpdf" }
-
-// ListTemplates returns a single synthetic "fpdf:soldier" template
-// that the registry uses to mean "render with fpdf, no template file".
-// The fpdf path does not read .typ files.
-func (f *FpdfRenderer) ListTemplates() ([]Template, error) {
-	return []Template{
-		{Name: "fpdf:soldier", Engine: "fpdf", Description: "fpdf fallback (legacy)"},
-		{Name: "fpdf:spouse", Engine: "fpdf", Description: "fpdf fallback (legacy)"},
-		{Name: "fpdf:widow", Engine: "fpdf", Description: "fpdf fallback (legacy)"},
-	}, nil
-}
-
-// Render dispatches to the fpdf service. The template's name encodes
-// the record type; data is ignored (the fpdf service reads from the
-// model directly via the soldier service). The output is a PDF.
-func (f *FpdfRenderer) Render(ctx context.Context, tpl Template, data map[string]any, w io.Writer) error {
-	// The fpdf path needs a real file path because fpdf writes to disk.
-	// Write to a temp file then copy to w.
-	tmp, err := os.CreateTemp("", "dixiedata-fpdf-*.pdf")
-	if err != nil {
-		return err
-	}
-	tmpPath := tmp.Name()
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpPath)
-		return err
-	}
-
-	recordType := recordTypeFromTemplateName(tpl.Name)
-	soldier, _ := data["soldier"].(models.Soldier)
-	options, _ := data["options"].(PDFOptions)
-	settings, _ := data["settings"].(PrintSettings)
-	snapshot, _ := data["snapshot"].(AnalyticsSnapshot)
-	month, _ := data["month"].(int)
-	calendarAny, _ := data["calendar"].(map[int][]models.Soldier)
-
-	var renderErr error
-	switch recordType {
-	case "soldier":
-		renderErr = f.service.ExportSoldierPDF(tmpPath, soldier, options)
-	case "soldier-no-images":
-		renderErr = f.service.ExportSoldierPDFWithoutImages(tmpPath, soldier)
-	case "anniversary":
-		renderErr = f.service.ExportMonthlyAnniversaryPDF(tmpPath, month, calendarAny, options)
-	case "database":
-		renderErr = f.service.ExportFullDatabasePDF(tmpPath, settings)
-	case "analytics":
-		renderErr = f.service.ExportAnalyticsSummaryPDF(tmpPath, snapshot, options)
-	default:
-		os.Remove(tmpPath)
-		return fmt.Errorf("fpdf renderer: unknown template %q", tpl.Name)
-	}
-	if renderErr != nil {
-		os.Remove(tmpPath)
-		return renderErr
-	}
-	defer os.Remove(tmpPath)
-
-	// Copy the temp file to the writer.
-	f2, err := os.Open(tmpPath)
-	if err != nil {
-		return err
-	}
-	defer f2.Close()
-	_, err = io.Copy(w, f2)
-	return err
-}
-
-// recordTypeFromTemplateName extracts the record-type portion of a
-// template name like "fpdf:soldier" or "fpdf:database". Returns "" if
-// the name doesn't fit the convention.
-func recordTypeFromTemplateName(name string) string {
-	name = strings.TrimSpace(name)
-	if !strings.HasPrefix(name, "fpdf:") {
-		return name
-	}
-	return strings.TrimPrefix(name, "fpdf:")
-}
-
 // TypstRenderer implements Renderer by compiling .typ templates with
 // the bundled Typst binary. It shells out directly to the binary
 // (rather than via the github.com/Dadido3/go-typst wrapper) so we can
@@ -314,6 +221,20 @@ func stageSoldierImages(workDir string, data map[string]any) error {
 		// `file_path` / `resolved_path` are not used by the
 		// template at render time.
 		switch v := img.(type) {
+		case models.Image:
+			v.FileName = destName
+			// The image is a value in the caller's slice; the
+			// caller reads `soldier.Images` after this returns,
+			// so we need to persist the rename into the slice.
+			if soldier, ok := data["soldier"].(models.Soldier); ok {
+				for i := range soldier.Images {
+					if soldier.Images[i].ResolvedPath == source ||
+						soldier.Images[i].FilePath == source {
+						soldier.Images[i].FileName = destName
+					}
+				}
+				data["soldier"] = soldier
+			}
 		case map[string]any:
 			v["file_name"] = destName
 		}

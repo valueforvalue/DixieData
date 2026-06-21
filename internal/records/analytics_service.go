@@ -15,20 +15,20 @@ type AnalyticsService struct {
 }
 
 type AnalyticsCount struct {
-	Label string
-	Count int
+	Label string `json:"label"`
+	Count int    `json:"count"`
 }
 
 type AnalyticsSnapshot struct {
-	RecordTypes             models.ArchiveCounts
-	CemeteryDensity         []AnalyticsCount
-	ConfederateHomeStatus   []AnalyticsCount
-	ConfederateHomeNames    []AnalyticsCount
-	PensionDistribution     []AnalyticsCount
-	UnitRepresentation      []AnalyticsCount
-	BirthDecadeDistribution []AnalyticsCount
-	DeathDecadeDistribution []AnalyticsCount
-	DuplicateAudit          DuplicateAuditSummary
+	RecordTypes             models.ArchiveCounts        `json:"record_types"`
+	CemeteryDensity         []AnalyticsCount            `json:"cemetery_density"`
+	ConfederateHomeStatus   []AnalyticsCount            `json:"confederate_home_status"`
+	ConfederateHomeNames    []AnalyticsCount            `json:"confederate_home_names"`
+	PensionDistribution     []AnalyticsCount            `json:"pension_distribution"`
+	UnitRepresentation      []AnalyticsCount            `json:"unit_representation"`
+	BirthDecadeDistribution []AnalyticsCount            `json:"birth_decade_distribution"`
+	DeathDecadeDistribution []AnalyticsCount            `json:"death_decade_distribution"`
+	DuplicateAudit          DuplicateAuditSummary       `json:"duplicate_audit"`
 }
 
 func NewAnalyticsService(database *db.DB) *AnalyticsService {

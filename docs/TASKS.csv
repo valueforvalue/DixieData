@@ -43,11 +43,11 @@ slice_id,slice_title,blocked_by,user_stories,acceptance_criteria,estimate
 - [ ] The 27 alpha-variant rgba duplications between `internal/templates/layout.templ` and `internal/archive/static_archive.go` are gone (verified by the audit's color palette register)
 - [ ] The Typst output uses the same `theme.typ` as the PDF templates
 - [ ] All existing static archive tests pass, OR the failing tests are documented and removed with a comment pointing to the static-archive overhaul backlog. The static archive's interactivity (search, image overlay zoom) is intentionally deferred to a separate static-archive overhaul,M
-7,Phase 3: retire fpdf,6,17,18,37,38,39,- [ ] `go-pdf/fpdf` removed from `go.mod`
-- [ ] `internal/archive/pdf_layout.go` deleted
-- [ ] `internal/archive/pdfium_windows.go` and `internal/archive/pdfium_nonwindows.go` deleted (after confirming no other code references them)
-- [ ] `FpdfRenderer` removed from `internal/render`
-- [ ] The UI toggle for fpdf fallback removed from `share.templ`
-- [ ] All existing export tests pass (against the Typst path)
-- [ ] `docs/audit/layout-theming-findings.md`, `docs/audit/layout-theming-token-schema.md`, `docs/audit/layout-theming-components.md`, `docs/audit/layout-theming-engine-evaluation.md` updated to reflect the new state (9 RGB triplets, 60+ rgba variants, 11 correction values all gone)
-- [ ] `docs/audit/typst-migration-plan.md` updated with a final "Done criteria" checkmark,S
+7,Phase 3: retire fpdf,6,17,18,37,38,39,- [x] `go-pdf/fpdf` removed from `go.mod`
+- [x] `pkg/render/service.go`, `pkg/render/pdf_helpers.go` deleted (the fpdf layout code; the equivalent files in the new render package were `internal/archive/pdf_layout.go` before the slice-0 extraction, then `pkg/render/pdf_helpers.go` after)
+- [x] `FpdfRenderer` and the fpdf branch in `pkg/render/renderer.go` removed
+- [x] `internal/archive/export_service.go` no longer constructs a `*render.Service`; every export routes through the typst-backed `Registry`
+- [x] `tools/tune/main.go` no longer references fpdf; the `capture-baseline` and `compare` subcommands were removed. The tune tool's `render` subcommand now mirrors the production appshell's export path exactly.
+- [x] All existing export tests pass (against the Typst path)
+- [x] `docs/PRD.md` and `docs/TASKS.csv` updated to reflect the new state
+- [ ] `docs/audit/layout-theming-findings.md`, `docs/audit/layout-theming-token-schema.md`, `docs/audit/layout-theming-components.md`, `docs/audit/layout-theming-engine-evaluation.md`, `docs/audit/typst-migration-plan.md` updated to reflect the new state. (Audit docs are out of date; this is tracked as a follow-up.) Also tracked: the per-field fpdf-format-stripping logic in the typst path is partial (URLs in printer-friendly mode, per-field placeholder filtering); tracked as a follow-up. The image-format-mismatch detection in `pkg/render/renderers.go::stageSoldierImages` is a single source of truth now; the old fpdf-path rewrite cache in `pdf_helpers.go` is gone. The `internal/templates` directory remains a Go html/template directory, unrelated to typst; flagged as a confusing name (the typst templates are at `templates/`),S

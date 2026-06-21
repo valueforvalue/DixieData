@@ -1723,7 +1723,7 @@ func (a *App) buildRenderRegistry() (*render.Registry, string, error) {
 		return nil, "", err
 	}
 	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templatesDir))
-	reg := render.NewRegistry(typstRenderer, nil, templatesDir)
+	reg := render.NewRegistry(typstRenderer, templatesDir)
 	return reg, templatesDir, nil
 }
 

@@ -213,7 +213,7 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 		FilterEntryTypes:             append([]string(nil), r.Form["filter_entry_type"]...),
 		FilterUnits:                  append([]string(nil), r.Form["filter_unit"]...),
 		FilterPensionStates:          append([]string(nil), r.Form["filter_pension_state"]...),
-		FilterConfederateHomeStatus:  append([]string(nil), r.Form["filter_confederate_home_status"]...),
+		FilterConfederateHomeStatuses:  append([]string(nil), r.Form["filter_confederate_home_status"]...),
 		ExportAll:                    r.FormValue("export_all") != "",
 		SelectedIDs:                  selectedIDs,
 	}.Normalize()

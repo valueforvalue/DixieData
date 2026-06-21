@@ -87,19 +87,23 @@ func findTypstBinary(t *testing.T) string {
 	return ""
 }
 
-// findTemplatesDir returns the absolute path to the templates/
-// directory in the repo root. Walks up from the test's working
-// directory to find it.
+// findTemplatesDir returns the absolute path to the typst
+// templates directory. Walks up from the test's working
+// directory to find it. Must contain a known .typ file to
+// distinguish it from the Go html/template directory at
+// internal/templates.
 func findTemplatesDir(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
 	}
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 8; i++ {
 		candidate := filepath.Join(dir, "templates")
 		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
-			return candidate
+			if _, err := os.Stat(filepath.Join(candidate, "soldier_landscape.typ")); err == nil {
+				return candidate
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -107,6 +111,6 @@ func findTemplatesDir(t *testing.T) string {
 		}
 		dir = parent
 	}
-	t.Fatalf("no templates/ directory found above the working dir")
+	t.Fatalf("no typst templates/ directory found above the working dir")
 	return ""
 }
