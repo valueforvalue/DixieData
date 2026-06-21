@@ -106,3 +106,36 @@ The hybrid path should be revisited under any of the following conditions:
 5. **Repro tests fail to keep up with fpdf version drift.** If a future fpdf version changes the byte output of a tested export, the test surface becomes a maintenance burden. This is a low-probability scenario — fpdf has been byte-stable for years — but it should be tracked.
 
 If any of these conditions is met, re-evaluate the matrix. None of them is true today.
+
+---
+
+## 5. Status as of 2026-06-20 (post-migration)
+
+The Typst-based migration tracked in `typst-migration-plan.md`
+has shipped. As of slice 7 (commit 7139fff), the production
+appshell routes every export through Typst templates under
+`templates/`:
+
+- `soldier_landscape`, `soldier_portrait`
+- `widow_landscape`, `widow_portrait`
+- `spouse_landscape`, `spouse_portrait` (covers `wife` and
+  `linked_person` entry types)
+- `biography_appendix`
+- `anniversary`
+- `analytics_summary`
+- `group_divider`
+- `static_archive_index` (printable companion; the HTML
+  static-archive index remains unchanged)
+
+The `pkg/render/fpdf` Service is retained as a test scaffold
+only. `FpdfRenderer` is no longer wired into the appshell's
+Registry. The `go-pdf/fpdf` dependency stays solely to compile
+the test fixtures. New code should NOT depend on the fpdf
+Service.
+
+The hybrid recommendation in section 3 still describes the
+target end-state, but the path taken (via Typst rather than the
+proposed coordinate-grid PDF layer) reaches the same outcomes:
+single source of truth for theme tokens, page geometry, and
+section components. See `docs/PRD.md` and `docs/TASKS.csv`
+for the closed user stories.
