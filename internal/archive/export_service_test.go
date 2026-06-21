@@ -834,6 +834,109 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	}
 }
 
+// TestExportService_ExportFullDatabasePDFRoutesThroughRegistry
+// verifies the new Typst-backed Registry path is selected when
+// settings.Template is non-empty. The test uses a fake registry
+// that just writes a small marker file so the test doesn't depend
+// on the bundled Typst binary. This exercises only the routing
+// logic; rendering fidelity is covered by the tune tool.
+func TestExportService_ExportFullDatabasePDFRoutesThroughRegistry(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	configureExportIdentity(t, d)
+	exportSvc := NewExportService(d, soldierSvc)
+
+	if _, err := soldierSvc.Create(models.Soldier{
+		EntryType: "soldier",
+		FirstName: "Jane",
+		LastName:  "Doe",
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// Use the real TypstRenderer with the bundled binary. Skips
+	// if the binary or templates directory cannot be located.
+	binPath, err := findTypstBinaryForTest()
+	if err != nil {
+		t.Skipf("typst binary not found: %v", err)
+	}
+	templatesDir, err := findTemplatesDirForTest()
+	if err != nil {
+		t.Skipf("templates dir not found: %v", err)
+	}
+	typst := render.NewTypstRenderer(binPath, filepath.Dir(templatesDir))
+	fpdf := render.NewFpdfRenderer(render.New(d, soldierSvc))
+	reg := render.NewRegistry(typst, fpdf, templatesDir)
+	exportSvc.SetRegistry(reg)
+
+	settings := PrintSettings{
+		Orientation: "L",
+		Template:    "soldier_landscape",
+		SortBy:      PrintSortLastName,
+	}.Normalize()
+	outDir := filepath.Join(t.TempDir(), "typst-out.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(outDir, settings); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+	// The registry path writes a subdirectory of one PDF per
+	// record alongside the (unused) target file.
+	expected := strings.TrimSuffix(outDir, filepath.Ext(outDir)) + "-record-pdfs"
+	entries, err := os.ReadDir(expected)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatalf("expected registry-routed export to produce files in %s", expected)
+	}
+}
+
+// fakeTypstRenderer removed: the registry requires concrete
+// *render.TypstRenderer, so we use the real renderer with the
+// bundled binary instead. The test skips if the binary is
+// missing.
+
+// findTypstBinaryForTest walks up from the test's working
+// directory looking for the bundled Typst binary.
+func findTypstBinaryForTest() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < 6; i++ {
+		for _, name := range []string{"typst-windows.exe", "typst-macos", "typst-linux"} {
+			candidate := filepath.Join(dir, "..", "..", "..", "bin", name)
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate, nil
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", os.ErrNotExist
+}
+
+func findTemplatesDirForTest() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < 6; i++ {
+		candidate := filepath.Join(dir, "..", "..", "..", "templates")
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", os.ErrNotExist
+}
+
 func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
