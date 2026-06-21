@@ -67,3 +67,7 @@ tests/goldmaster/playwright/playwright-report/
 
 # Copilot transient
 .copilot-temp/
+
+# rpiv-workflow runtime state
+.rpiv/runs/
+.rpiv/artifacts/
