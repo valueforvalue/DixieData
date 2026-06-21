@@ -488,8 +488,8 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "Hollywood Cemetery") {
 		t.Fatalf("pdf missing buried-in text")
 	}
-	if !strings.Contains(text, "Portrait") {
-		t.Fatalf("pdf missing image caption")
+	if strings.Contains(text, "Portrait") {
+		t.Fatalf("pdf should not render image caption %q", "Portrait")
 	}
 	if !strings.Contains(text, "S. Carter's Civil War Research Archive") {
 		t.Fatalf("pdf missing standardized branding")
@@ -610,8 +610,8 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Portrait biography excerpt") || !strings.Contains(text, "PENSION-42") {
 		t.Fatalf("printer friendly portrait PDF should use biography excerpt")
 	}
-	if !strings.Contains(text, "Portrait caption") {
-		t.Fatalf("printer friendly portrait PDF should preserve image caption")
+	if strings.Contains(text, "Portrait caption") {
+		t.Fatalf("printer friendly portrait PDF should not render image caption %q", "Portrait caption")
 	}
 }
 
@@ -818,8 +818,8 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	if !strings.Contains(text, "Pension State") || !strings.Contains(text, "Texas") || !strings.Contains(text, "Trustee") || !strings.Contains(text, "Texas Confederate Home") {
 		t.Fatalf("registry PDF missing expanded status fields")
 	}
-	if !strings.Contains(text, "Registry portrait") {
-		t.Fatalf("registry PDF missing captioned primary image")
+	if strings.Contains(text, "Registry portrait") {
+		t.Fatalf("registry PDF should not render image caption %q under the image; captions are suppressed in the printable archive", "Registry portrait")
 	}
 	if !strings.Contains(text, "Linked Spouse Record") || !strings.Contains(text, "John Bell Hood") || !strings.Contains(text, "Maiden Name") || !strings.Contains(text, "Jones") {
 		t.Fatalf("registry PDF missing spouse linkage fields")
@@ -1065,8 +1065,65 @@ func TestExportService_ExportFullDatabasePDFResolvesRelativeImagePaths(t *testin
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
 	text := extractPDFText(t, out)
-	if !strings.Contains(text, "Primary") {
-		t.Fatalf("expected caption %q in rendered output, got: %s", "Primary", text)
+	// Captions are intentionally NOT rendered under images in the
+	// printable archive; only the image itself appears. The image
+	// must render (filename absent from text, but caption "Primary"
+	// must also be absent).
+	if strings.Contains(text, "Primary") {
+		t.Fatalf("printable PDF should not render image caption %q, got: %s", "Primary", text)
+	}
+}
+
+// TestExportService_ExportFullDatabasePDFSuppressesImageCaption pins
+// the behaviour: captions are never rendered under images in the
+// printable archive, regardless of value. This guards against the
+// historical behaviour where imported archives carried caption
+// strings that looked like source-document filenames (e.g.
+// "Marshall_County_Enterprise_1926_02_18_5.jpg") and leaked into
+// the PDF as text under otherwise clean record cards.
+func TestExportService_ExportFullDatabasePDFSuppressesImageCaption(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	// Real-sized PNG so the image panel has visible content.
+	imgPath := filepath.Join(t.TempDir(), "p.png")
+	writeSizedPNGFixture(t, imgPath, 80, 80)
+
+	if _, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "CAP-001",
+		FirstName: "Caption",
+		LastName:  "Suppress",
+		EntryType: "soldier",
+		Unit:      "Test Unit",
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	soldier, err := soldierSvc.GetByDisplayID("CAP-001")
+	if err != nil {
+		t.Fatalf("GetByDisplayID: %v", err)
+	}
+	const caption = "Marshall_County_Enterprise_1926_02_18_5.jpg"
+	if err := soldierSvc.AddImage(soldier.ID, "DXD-00052-img-001.jpg", imgPath, caption); err != nil {
+		t.Fatalf("AddImage: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
+		t.Fatalf("ExportFullDatabasePDF: %v", err)
+	}
+	text := extractPDFText(t, out)
+	if strings.Contains(text, caption) {
+		t.Fatalf("printable PDF leaked image caption %q into rendered output. Captions are not rendered under images in the printable archive.", caption)
+	}
+	// The image's own filename should also not appear (it never did).
+	if strings.Contains(text, "DXD-00052-img-001.jpg") {
+		t.Fatalf("printable PDF leaked image filename %q into rendered output", "DXD-00052-img-001.jpg")
+	}
+	// The record's identifying text should still be present.
+	if !strings.Contains(text, "Caption Suppress") {
+		t.Fatalf("expected soldier name in rendered output, got: %s", text)
 	}
 }
 
@@ -1486,10 +1543,15 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		// compresses text streams so substring matching on raw
 		// bytes is unreliable.
 		pdfText := extractPDFText(t, pdfPath)
-		for _, needle := range []string{"JPG biography should match PDF renderer.", "JPG portrait", "Full Biography"} {
+		for _, needle := range []string{"JPG biography should match PDF renderer.", "Full Biography"} {
 			if !strings.Contains(pdfText, needle) {
 				t.Fatalf("JPG source PDF missing %q", needle)
 			}
+		}
+		// Captions are intentionally not rendered under images in
+		// the printable archive; verify the JPG caption is absent.
+		if strings.Contains(pdfText, "JPG portrait") {
+			t.Fatalf("JPG source PDF should not render image caption %q", "JPG portrait")
 		}
 		pageCount := len(regexp.MustCompile(`/Type/Page[^s]\b`).FindAll(pdfData, -1))
 		if pageCount < 2 {

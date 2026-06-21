@@ -426,8 +426,14 @@
   let file-name = chosen.at("file_name", default: none)
   if file-name == none or file-name == "" { return none }
 
-  let caption = chosen.at("caption", default: "")
-
+  // Image renders alone. Captions are intentionally not rendered
+  // under the image in printable exports; they were never part of
+  // the documented layout and in practice they often contained
+  // source-document filenames from imported archives, which leaked
+  // into the PDF as ugly text under otherwise clean record cards.
+  // The caption field is still stored on the model for in-app
+  // display (image viewer) but is suppressed in the printable
+  // archive.
   block(
     width: 100%,
     inset: (bottom: 0.4em),
@@ -447,10 +453,6 @@
         #image("/images/" + file-name, fit: "contain")
       ],
     )
-    #if caption != "" [
-      #set text(size: 7.5pt, fill: theme.palette.text_secondary, style: "italic")
-      #align(center)[#caption]
-    ]
   ]
 }
 
