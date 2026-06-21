@@ -50,6 +50,26 @@ Issue #64 collapsed the per-record loop into a single `typst compile` invocation
 
 The remaining ~11 ms/record is dominated by the single typst compile pass; image staging accounts for the bulk of the per-record work in the single invocation.
 
+## Post-#67 measurement (commit `TBD`, 2026-06-21)
+
+Issue #67 added per-phase instrumentation (`TYPST_TIMING=1` env var) and parallelized the image-staging step with a bounded worker pool (`min(runtime.NumCPU, 8)`). Same 100-record fixture:
+
+### Per-phase breakdown (TYPST_TIMING=1)
+
+| Phase | Post-#64 | Post-#67 | Delta |
+| --- | ---: | ---: | ---: |
+| `mkdir` | 0 | 0 | — |
+| `copy_template_dir` | 16 | 8 | -50 % (warm cache) |
+| `copy_main` | 0 | 0 | — |
+| **`stage_images`** | **149** | **34** | **-77 %** |
+| `write_data` | 2 | 2 | — |
+| **`typst_compile`** | **653** | **639** | -2 % (within noise) |
+| `stream_pdf` | 3 | 1 | — |
+| **Total export_ms** | **865** | **731** | **-15 %** |
+| **ms_per_record** | **8.65** | **7.31** | **-15 %** |
+
+Image staging is now 4.4× faster; typst compile is unchanged (no daemon in 0.15).
+
 ## Extrapolation
 
 Linear in N (no caching, no shared state between records):
@@ -65,16 +85,16 @@ Linear in N (no caching, no shared state between records):
 
 User-reported archive (500 records growing to 3 000+) matches this band. The 23-minute figure for 3 000 records is consistent with the user's "very long time" report.
 
-### Post-#64 (single invocation)
+### Post-#67 (single invocation + parallel image staging)
 
 | Records | Predicted `export_ms` | Predicted wall-clock |
 | ---: | ---: | --- |
-| 100 | 1 110 | ~1.1 s |
-| 500 | 5 550 | ~5.6 s |
-| 1 000 | 11 100 | ~11 s |
-| 3 000 | 33 300 | ~33 s |
+| 100 | 731 | ~0.7 s |
+| 500 | 3 655 | ~3.7 s |
+| 1 000 | 7 310 | ~7.3 s |
+| 3 000 | 21 930 | ~22 s |
 
-Targets for #67 (≤ 30 s for 500, ≤ 3 min for 3 000) are already met by the single-invocation path on Windows. Re-measure on the user's hardware before closing #67.
+Typst compile is still the dominant phase; the remaining optimization surface is reducing image bytes on disk (PNG→JPEG re-encode during staging) and pre-staging the template tree across exports. Neither is needed to meet #67's acceptance criteria.
 
 ## Where the time goes (pre-#64)
 
@@ -92,15 +112,24 @@ Steps 1, 2, and 6 dominate on Windows. Each `typst compile` cold-start costs ~50
 
 ## Implications for #67
 
-Slice A (#64) collapsed the per-record cold-start cost. Targets from #67's acceptance criteria:
+Slice A (#64) collapsed the per-record cold-start cost. Slice B (#67) added parallel image staging and per-phase instrumentation. Targets from #67's acceptance criteria:
 
-- **500 records: under 30 s** — predicted 5.6 s post-#64. ✓
-- **3 000 records: under 3 min** — predicted 33 s post-#64. ✓
+- **500 records: under 30 s** — measured 0.7 s/100 → predicted 3.7 s. ✓
+- **3 000 records: under 3 min** — measured 0.7 s/100 → predicted 22 s. ✓
+- **No regression on small archives (≤10 records still completes in <5 s)** — 100 records in 0.7 s; 10 records would extrapolate to ~0.07 s, well under 5 s. ✓
 
-Re-measure on the user's hardware before closing #67; the bench above is on dev hardware (Windows 11, AMD64). If the user's machine is significantly slower (e.g. older CPU, disk-based workdir), the targets may not be met and the remaining optimization surface is parallel image staging + pre-staged template tree. See the issue body for details.
+All three acceptance criteria met on dev hardware. Re-measure on the user's hardware before closing #67.
 
 ## Out of scope for this baseline
 
-- Per-renderer instrumentation of `copyDir` / `stageSoldierImages` / `runTypstCompile`. Add it in #67 if the post-#A numbers still fall short.
-- `pprof` CPU/memory profiles. Add if a single typst invocation still takes >30 s.
+- Per-renderer instrumentation of `copyDir` / `stageSoldierImages` / `runTypstCompile`. **Done in #67** via `TYPST_TIMING=1` env var.
+- `pprof` CPU/memory profiles. Not added; per-phase timing is sufficient to characterise the bulk path.
 - Fpdf path baseline. Retired in slice 7 (commit `39a4909`); no comparison available.
+
+## Capturing per-phase timing
+
+```sh
+TYPST_TIMING=1 go test ./internal/archive/ -run '^TestFullDatabasePDFBaseline$' -v -count=1
+```
+
+Each phase emits one `[typst-timing] <name> <ms>` line to stderr. Useful when a future change reintroduces a perf regression and you need to know which phase regressed.
