@@ -138,6 +138,16 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	if e.registry == nil {
 		return errPDFRegistryMissing
 	}
+	// The bulk export uses a single typst invocation that loops
+	// over a sorted array of records (templates/bulk_soldier.typ).
+	// The UI's per-record template dropdown (soldier_landscape,
+	// widow_portrait, etc.) is meaningless in this mode and a
+	// selection there would route the bulk payload to a single-
+	// record template that reads data["soldier"] -- producing
+	// the typst "type none has no method `at`" error because
+	// data["soldier"] is not present. Force-clear Template so
+	// Resolve falls through to the bulk default.
+	settings.Template = ""
 	return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
 }
 
