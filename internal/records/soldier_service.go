@@ -2268,8 +2268,25 @@ func spouseReference(conn *sql.DB, spouseSoldierID int64) string {
 	if spouseSoldierID < 1 {
 		return ""
 	}
-	var spouse models.Soldier
-	if err := conn.QueryRow(`SELECT prefix, first_name, middle_name, last_name, suffix FROM soldiers WHERE id = ?`, spouseSoldierID).Scan(&spouse.Prefix, &spouse.FirstName, &spouse.MiddleName, &spouse.LastName, &spouse.Suffix); err == nil {
+	// COALESCE is used because the prefix and middle_name columns
+	// can be NULL in the DB, and the database/sql Scan cannot
+	// convert NULL into a plain string. Without this the scan
+	// returns an error, the function falls through to the
+	// display_id lookup, and the rendered PDF shows the
+	// display_id (e.g. \"DXD-00082\") instead of the actual
+	// name (e.g. \"James H. Magness\").
+	var prefix, first, middle, last, suffix string
+	if err := conn.QueryRow(
+		`SELECT COALESCE(prefix, ''), COALESCE(first_name, ''), COALESCE(middle_name, ''), COALESCE(last_name, ''), COALESCE(suffix, '') FROM soldiers WHERE id = ?`,
+		spouseSoldierID,
+	).Scan(&prefix, &first, &middle, &last, &suffix); err == nil {
+		spouse := models.Soldier{
+			Prefix:    prefix,
+			FirstName: first,
+			MiddleName: middle,
+			LastName:  last,
+			Suffix:    suffix,
+		}
 		if fullName := strings.TrimSpace(spouse.GetFullName()); fullName != "" {
 			return fullName
 		}

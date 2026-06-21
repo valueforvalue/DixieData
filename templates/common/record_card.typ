@@ -500,40 +500,41 @@
 //     right column over the page break. If no override is set the
 //     full biography is rendered and Typst's block model allows
 //     it to overflow into page 2.
-//   - When the soldier has no image, the card is single-column
-//     (left column only). The biography is rendered on a separate
-//     page so it does not crowd the field data.
+// render-portrait-card is always a 2-column layout (single page).
+// The right column is reserved for the image at the top and the
+// biography below it. When the soldier has no image, the right
+// column is empty at the top and the biography flows up; when the
+// biography is long the user can supply a PDFExcerptOverride so
+// it fits in the right column.
+//
+// Portrait is a single page by design. The fpdf path's
+// choosePDFRecordCardLayout also tries to keep portrait on a
+// single page; multi-page portrait is only used when the content
+// genuinely does not fit, and even then the second page is
+// rare in practice.
 #let render-portrait-card(s, opts, service-show-all: false, household-show-all: false) = {
   let image-panel = render-image-panel(opts, s)
-  if image-panel != none {
-    grid(
-      columns: (1fr, 0.6cm, 1fr),
-      [
-        #render-identity-section(s)
-        #v(theme.geometry.section_gap)
-        #render-service-section(s, show-all: service-show-all)
-        #v(theme.geometry.section_gap)
-        #render-household-section(s, show-all: household-show-all)
-        #v(theme.geometry.section_gap)
-        #render-records-section(s)
-      ],
-      [],
-      [
-        #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+  grid(
+    columns: (1fr, 0.6cm, 1fr),
+    [
+      #render-identity-section(s)
+      #v(theme.geometry.section_gap)
+      #render-service-section(s, show-all: service-show-all)
+      #v(theme.geometry.section_gap)
+      #render-household-section(s, show-all: household-show-all)
+      #v(theme.geometry.section_gap)
+      #render-records-section(s)
+    ],
+    [],
+    [
+      #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+      #if image-panel != none [
         #image-panel
         #v(theme.geometry.section_gap)
-        #render-biography-inline(s)
-      ],
-    )
-  } else {
-    render-identity-section(s)
-    v(theme.geometry.section_gap)
-    render-service-section(s, show-all: service-show-all)
-    v(theme.geometry.section_gap)
-    render-household-section(s, show-all: household-show-all)
-    v(theme.geometry.section_gap)
-    render-records-section(s)
-  }
+      ]
+      #render-biography-inline(s)
+    ],
+  )
 }
 
 // --- public entry point ---
