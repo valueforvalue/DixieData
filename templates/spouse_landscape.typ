@@ -1,15 +1,15 @@
 // metadata:
-//   name: soldier_landscape
-//   record_types: [soldier]
+//   name: spouse_landscape
+//   record_types: [wife, linked_person]
 //   orientation: landscape
 //   export_types: [record_card]
-//   description: Standard Soldier record card (landscape).
+//   description: Spouse/linked-person record card (landscape).
 //
-// All real logic lives in templates/common/record_card.typ. This
-// file loads the data, applies page setup at document scope
-// (required because #set rules must be at the document root in
-// Typst, not inside function bodies), then dispatches to the
-// shared helper.
+// Covers both "wife" and "linked_person" entry types. They share
+// the same structure: a person record linked to a soldier record
+// (e.g., a soldier's wife or sister). The variant string
+// "spouse" enables the same field visibility rules as "widow"
+// (always show Linked Spouse Record, Maiden Name, Rank fields).
 
 #import "common/record_card.typ": *
 
@@ -25,4 +25,4 @@
 #set text(font: "Arial", size: 9pt, fill: theme.palette.text_primary)
 #set par(leading: 0.45em)
 
-#render-record-card(opts, branding, s, "soldier")
+#render-record-card(opts, branding, s, "spouse")
