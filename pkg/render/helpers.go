@@ -456,3 +456,17 @@ func printGroupTitle(field, value string) string {
 	}
 	return value
 }
+
+// FilterPrintableSoldiers is the public wrapper for
+// filterPrintableSoldiers. Lets callers outside the package apply
+// the same filtering rules used by ExportFullDatabasePDF.
+func FilterPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) []models.Soldier {
+	return filterPrintableSoldiers(soldiers, settings)
+}
+
+// SortPrintableSoldiers is the public wrapper for
+// sortPrintableSoldiers. Sorts the slice in place using the same
+// ordering ExportFullDatabasePDF applies.
+func SortPrintableSoldiers(soldiers []models.Soldier, settings PrintSettings) {
+	sortPrintableSoldiers(soldiers, settings)
+}

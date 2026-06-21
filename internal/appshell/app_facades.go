@@ -9,6 +9,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
+	"github.com/valueforvalue/DixieData/pkg/render"
 )
 
 type personRecord = models.Soldier
@@ -100,6 +101,7 @@ type exportFacade interface {
 	ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error
 	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options archive.PDFOptions) error
 	ExportImages(outputPath string, images []models.Image) error
+	SetRegistry(reg *render.Registry)
 }
 
 type backupFacade interface {

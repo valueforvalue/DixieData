@@ -201,6 +201,7 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 	settings := archive.PrintSettings{
 		Scope:                        strings.TrimSpace(r.FormValue("scope")),
 		Orientation:                  strings.TrimSpace(r.FormValue("orientation")),
+		Template:                     strings.TrimSpace(r.FormValue("template")),
 		PrinterFriendly:              r.FormValue("printer_friendly") != "",
 		FullBiographyPage:            r.FormValue("full_biography_page") != "",
 		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),

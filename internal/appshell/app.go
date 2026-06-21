@@ -28,6 +28,7 @@ import (
 	_ "embed"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -1657,6 +1658,13 @@ func (a *App) reloadServices() error {
 	a.images = archive.NewImageService(a.database)
 	a.export = archive.NewExportService(a.database, soldierSvc)
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
+
+	// Wire the Typst-backed Registry into the export service so
+	// bulk database exports can use Typst templates when the user
+	// opts in via PrintSettings.Template.
+	if typstRenderer, fpdfRenderer, templateDir, err := a.buildRenderRegistry(); err == nil && typstRenderer != nil {
+		a.export.SetRegistry(render.NewRegistry(typstRenderer, fpdfRenderer, templateDir))
+	}
 	a.diagnostics = archive.NewDiagnosticsService(a.database, soldierSvc)
 	a.google = integrations.NewGoogleService(a.dataDir)
 	a.updater = update.NewService(a.database, a.dataDir, func(outputPath string) error {
@@ -1689,6 +1697,79 @@ func (a *App) reloadServices() error {
 		}
 	}
 	return nil
+}
+
+// buildRenderRegistry constructs the Typst and fpdf renderers and
+// returns them plus the templates directory. Returns (nil, nil, "",
+// err) when the Typst binary or templates directory cannot be
+// located; the caller should treat this as 'no Registry available'
+// and fall back to the fpdf-only path.
+func (a *App) buildRenderRegistry() (*render.TypstRenderer, *render.FpdfRenderer, string, error) {
+	binPath, err := a.findTypstBinary()
+	if err != nil {
+		return nil, nil, "", err
+	}
+	templatesDir, err := a.findTemplatesDir()
+	if err != nil {
+		return nil, nil, "", err
+	}
+	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templatesDir))
+	fpdfRenderer := render.NewFpdfRenderer(render.New(a.database, soldierSvcForRender(a)))
+	return typstRenderer, fpdfRenderer, templatesDir, nil
+}
+
+// soldierSvcForRender returns a records.SoldierService that
+// the render.Service can use. The App's a.soldiers is an
+// interface, but render.New wants the concrete type.
+func soldierSvcForRender(a *App) *records.SoldierService {
+	if s, ok := a.soldiers.(*records.SoldierService); ok {
+		return s
+	}
+	// Fallback: construct one from the database. This is a best
+	// effort for the render layer.
+	return records.NewSoldierService(a.database)
+}
+
+// findTypstBinary walks up from dataDir to find bin/typst-*.
+func (a *App) findTypstBinary() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < 6; i++ {
+		for _, name := range []string{"typst-windows.exe", "typst-macos", "typst-linux"} {
+			candidate := filepath.Join(dir, "bin", name)
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate, nil
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("typst binary not found in bin/")
+}
+
+// findTemplatesDir walks up from dataDir to find the templates/ dir.
+func (a *App) findTemplatesDir() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for i := 0; i < 6; i++ {
+		candidate := filepath.Join(dir, "templates")
+		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+			return candidate, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("templates directory not found")
 }
 
 func (a *App) activatePendingRecovery(restorePointID string, cause error) error {

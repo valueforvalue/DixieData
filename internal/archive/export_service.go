@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -29,6 +30,11 @@ type ExportService struct {
 	soldier    *SoldierService
 	rasterizer pdfToJPEGRasterizer
 	pdf        *render.Service
+	// registry is the new dispatcher that picks between fpdf and
+	// Typst templates. When non-nil, ExportFullDatabasePDF uses it
+	// per record instead of the fpdf Service directly. The Template
+	// field on PrintSettings chooses which template to render with.
+	registry *render.Registry
 }
 
 type pdfToJPEGRasterizer interface {
@@ -57,6 +63,13 @@ func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
 	}
 }
 
+// SetRegistry wires up the Typst-backed Registry. When set,
+// ExportFullDatabasePDF dispatches each record to the Registry
+// instead of the fpdf Service directly.
+func (e *ExportService) SetRegistry(reg *render.Registry) {
+	e.registry = reg
+}
+
 // ExportSoldierPDF is a thin facade over the render.Service method. Kept
 // on ExportService for backwards compatibility with the existing Wails
 // facade (internal/appshell/app_facades.go) and existing tests.
@@ -76,7 +89,118 @@ func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int
 
 // ExportFullDatabasePDF is a thin facade.
 func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintSettings) error {
+	settings = settings.Normalize()
+	// When the Registry is wired AND the user picked a Typst template
+	// (either explicitly via settings.Template or implicitly by leaving
+	// it empty while having a default template for the orientation),
+	// route through the Registry per record.
+	if e.registry != nil && strings.TrimSpace(settings.Template) != "" {
+		return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
+	}
 	return e.pdf.ExportFullDatabasePDF(outputPath, settings)
+}
+
+// exportFullDatabasePDFViaRegistry writes a bulk export by
+// rendering each record through the Registry. The output is one
+// PDF per record in a directory under outputPath (rather than a
+// single concatenated PDF). The user picked a Typst template so
+// the records render as standalone PDFs that can be opened
+// individually or zipped for sharing.
+//
+// The directory is named <outputPath-stem>-record-pdfs/.
+func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, settings PrintSettings) error {
+	settings = settings.Normalize()
+	outDir := strings.TrimSuffix(outputPath, filepath.Ext(outputPath)) + "-record-pdfs"
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return err
+	}
+
+	var selectedIDs []int64
+	if settings.Scope == PrintScopeSelected {
+		selectedIDs = settings.SelectedIDs
+	}
+	soldiers, err := exportDetailedSoldiers(e.soldier, selectedIDs)
+	if err != nil {
+		return err
+	}
+	if settings.Scope == PrintScopeFiltered {
+		soldiers = render.FilterPrintableSoldiers(soldiers, settings)
+	}
+	if len(soldiers) == 0 {
+		// Write a single empty PDF so the caller knows we ran.
+		return writeNoRecordsPDF(outDir, settings)
+	}
+
+	render.SortPrintableSoldiers(soldiers, settings)
+
+	for _, soldier := range soldiers {
+		recordType := recordTypeForSoldier(soldier)
+		soldierCopy := soldier
+		data := map[string]any{
+			"soldier":  soldierCopy,
+			"options":  render.PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true},
+			"settings": settings,
+		}
+		safe := printableArchiveFileName(soldier.DisplayID, settings)
+		dst := filepath.Join(outDir, safe)
+		f, err := os.Create(dst)
+		if err != nil {
+			return err
+		}
+		ctx := context.Background()
+		if err := e.registry.Render(ctx, settings, recordType, data, f); err != nil {
+			f.Close()
+			os.Remove(dst)
+			return err
+		}
+		if err := f.Close(); err != nil {
+			os.Remove(dst)
+			return err
+		}
+	}
+	return nil
+}
+
+// recordTypeForSoldier maps a soldier's entry_type to the
+// Registry's recordType argument.
+func recordTypeForSoldier(soldier models.Soldier) string {
+	switch strings.ToLower(strings.TrimSpace(soldier.EntryType)) {
+	case "soldier":
+		return "soldier"
+	case "widow":
+		return "widow"
+	case "wife":
+		return "wife"
+	case "linked_person":
+		return "linked_person"
+	default:
+		return "soldier"
+	}
+}
+
+// writeNoRecordsPDF writes a tiny placeholder PDF so callers can
+// tell the export ran when no records matched.
+func writeNoRecordsPDF(outDir string, settings PrintSettings) error {
+	dst := filepath.Join(outDir, "no-records.pdf")
+	f, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString("%PDF-1.4\n%placeholder\n")
+	return err
+}
+
+// printableArchiveFileName returns a filesystem-safe filename for
+// a record's PDF, given its display ID.
+func printableArchiveFileName(displayID string, settings PrintSettings) string {
+	safe := strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, displayID)
+	return safe + ".pdf"
 }
 
 // ExportAnalyticsSummaryPDF is a thin facade.
