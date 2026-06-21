@@ -37,9 +37,24 @@ Fixture: 100 soldiers, 100 images, each soldier ~400 words of biography, single 
 
 Host: Windows 11, AMD64, `bin/typst-windows.exe` 0.15.0, Go 1.23.
 
+## Post-#64 measurement (commit `TBD`, 2026-06-21)
+
+Issue #64 collapsed the per-record loop into a single `typst compile` invocation over the sorted array (`templates/bulk_soldier.typ`). Same 100-record fixture:
+
+| Metric | Pre-#64 | Post-#64 | Delta |
+| --- | ---: | ---: | ---: |
+| `export_ms` | 45 766 | **1 110** | **-97.6 %** |
+| `ms_per_record` | 457.66 | **11.10** | **-97.6 %** |
+| `pdf_size_bytes` | -1 (no single PDF) | **1 166 537** | fixed |
+| `record_dir_record_count` | 100 | 0 | fixed |
+
+The remaining ~11 ms/record is dominated by the single typst compile pass; image staging accounts for the bulk of the per-record work in the single invocation.
+
 ## Extrapolation
 
 Linear in N (no caching, no shared state between records):
+
+### Pre-#64 (per-record loop)
 
 | Records | Predicted `export_ms` | Predicted wall-clock |
 | ---: | ---: | --- |
@@ -50,7 +65,18 @@ Linear in N (no caching, no shared state between records):
 
 User-reported archive (500 records growing to 3 000+) matches this band. The 23-minute figure for 3 000 records is consistent with the user's "very long time" report.
 
-## Where the time goes
+### Post-#64 (single invocation)
+
+| Records | Predicted `export_ms` | Predicted wall-clock |
+| ---: | ---: | --- |
+| 100 | 1 110 | ~1.1 s |
+| 500 | 5 550 | ~5.6 s |
+| 1 000 | 11 100 | ~11 s |
+| 3 000 | 33 300 | ~33 s |
+
+Targets for #67 (≤ 30 s for 500, ≤ 3 min for 3 000) are already met by the single-invocation path on Windows. Re-measure on the user's hardware before closing #67.
+
+## Where the time goes (pre-#64)
 
 Each record goes through `pkg/render/renderers.go::TypstRenderer.Render`:
 
@@ -66,12 +92,12 @@ Steps 1, 2, and 6 dominate on Windows. Each `typst compile` cold-start costs ~50
 
 ## Implications for #67
 
-If slice A (#64) lands and the export becomes a single typst invocation over an array of records, the per-record cold-start cost disappears. The remaining cost is one typst compile for the whole archive plus the N image copies (which can be parallelized and pre-staged). Target for #67:
+Slice A (#64) collapsed the per-record cold-start cost. Targets from #67's acceptance criteria:
 
-- **500 records: under 30 s**
-- **3 000 records: under 3 min**
+- **500 records: under 30 s** — predicted 5.6 s post-#64. ✓
+- **3 000 records: under 3 min** — predicted 33 s post-#64. ✓
 
-If slice A is in effect by the time #67 runs, the 500/3000 target is realistically achievable without further code changes beyond what slice A already provides.
+Re-measure on the user's hardware before closing #67; the bench above is on dev hardware (Windows 11, AMD64). If the user's machine is significantly slower (e.g. older CPU, disk-based workdir), the targets may not be met and the remaining optimization surface is parallel image staging + pre-staged template tree. See the issue body for details.
 
 ## Out of scope for this baseline
 

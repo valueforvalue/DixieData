@@ -86,6 +86,13 @@ func defaultTemplateName(recordType, orientation string) string {
 	if recordType == "" {
 		recordType = "soldier"
 	}
+	// Bulk templates are orientation-agnostic; a single template
+	// loops over the sorted array and emits each record with the
+	// orientation the caller asked for. The metadata block in
+	// templates/bulk_soldier.typ uses orientation: any.
+	if recordType == "bulk" {
+		return "bulk_soldier"
+	}
 	if orientation == "p" || orientation == "portrait" {
 		return recordType + "_portrait"
 	}
