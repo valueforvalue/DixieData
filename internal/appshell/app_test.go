@@ -304,7 +304,7 @@ func TestParsePrintSettingsRequestForFilteredScope(t *testing.T) {
 	if settings.Scope != archive.PrintScopeFiltered || settings.ExportAll {
 		t.Fatalf("expected filtered export scope, got %#v", settings)
 	}
-	if !reflect.DeepEqual(settings.FilterBuriedIn, []string{"__unknown__", "Oak Hill Cemetery"}) {
+	if !reflect.DeepEqual(settings.FilterBuriedIn, []string{"Oak Hill Cemetery"}) {
 		t.Fatalf("FilterBuriedIn = %#v", settings.FilterBuriedIn)
 	}
 	if !reflect.DeepEqual(settings.FilterEntryTypes, []string{"soldier"}) {
@@ -313,8 +313,8 @@ func TestParsePrintSettingsRequestForFilteredScope(t *testing.T) {
 	if !reflect.DeepEqual(settings.FilterPensionStates, []string{"Texas"}) {
 		t.Fatalf("FilterPensionStates = %#v", settings.FilterPensionStates)
 	}
-	if !reflect.DeepEqual(settings.FilterConfederateHomeStatus, []string{"Trustee"}) {
-		t.Fatalf("FilterConfederateHomeStatus = %#v", settings.FilterConfederateHomeStatus)
+	if !reflect.DeepEqual(settings.FilterConfederateHomeStatuses, []string{"Trustee"}) {
+		t.Fatalf("FilterConfederateHomeStatuses = %#v", settings.FilterConfederateHomeStatuses)
 	}
 }
 

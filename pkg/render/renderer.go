@@ -10,14 +10,12 @@ import (
 	"strings"
 )
 
-// Renderer is the interface that both FpdfRenderer and TypstRenderer
-// implement. The render.Registry dispatches PrintSettings to the right
-// renderer for the chosen template.
+// Renderer is the interface that TypstRenderer implements. The
+// render.Registry dispatches PrintSettings to the right template.
 //
-// Render writes a single PDF (or HTML, in the Typst case) to out. The
-// template name selects a `.typ` file from <program-dir>/templates/.
-// Data is the JSON-marshalable payload that the template's #sys.inputs
-// reads. The concrete data shape depends on the template's metadata.
+// Render writes a single PDF to out. The template name selects a
+// `.typ` file from <program-dir>/templates/. Data is the
+// JSON-marshalable payload that the template reads.
 type Renderer interface {
 	Name() string
 	// ListTemplates returns the templates this renderer can serve.
@@ -37,21 +35,19 @@ type Template struct {
 	Orientation string
 	ExportTypes []string
 	Description string
-	Engine      string // "typst" or "fpdf"
+	Engine      string // "typst"
 }
 
-// Registry is the dispatcher. The existing render.Service is treated as
-// the FpdfRenderer for the duration of the migration; the TypstRenderer
-// is the new path.
+// Registry is the dispatcher. After slice 7, the Registry only
+// dispatches to the TypstRenderer; the fpdf fallback is gone.
 type Registry struct {
-	typst      *TypstRenderer
-	fpdf       *FpdfRenderer
+	typst       *TypstRenderer
 	templateDir string
 }
 
-// NewRegistry constructs a Registry with both renderers wired up.
-func NewRegistry(typst *TypstRenderer, fpdf *FpdfRenderer, templateDir string) *Registry {
-	return &Registry{typst: typst, fpdf: fpdf, templateDir: templateDir}
+// NewRegistry constructs a Registry with the typst renderer wired up.
+func NewRegistry(typst *TypstRenderer, templateDir string) *Registry {
+	return &Registry{typst: typst, templateDir: templateDir}
 }
 
 // Resolve returns the template that matches the given PrintSettings, or
@@ -59,7 +55,7 @@ func NewRegistry(typst *TypstRenderer, fpdf *FpdfRenderer, templateDir string) *
 //
 // If PrintSettings.Template is set and a .typ file with that name
 // exists, return it. Otherwise, return the default for (recordType,
-// orientation). If no Typst template matches, fall back to FpdfRenderer.
+// orientation). If no typst template matches, return an error.
 func (r *Registry) Resolve(ps PrintSettings, recordType string) (Template, error) {
 	if r.templateDir == "" {
 		return Template{}, fmt.Errorf("template directory not configured")
@@ -72,7 +68,8 @@ func (r *Registry) Resolve(ps PrintSettings, recordType string) (Template, error
 	}
 	// Default mapping: the audit-derived record-subtype and orientation.
 	// Each subtype gets a template named <subtype>_<orientation>. If
-	// the file does not exist, fall back to a "fpdf" template.
+	// the file does not exist, return an error rather than falling
+	// back to a missing renderer.
 	defaultName := defaultTemplateName(recordType, ps.Orientation)
 	if defaultName != "" {
 		path := filepath.Join(r.templateDir, defaultName+".typ")
@@ -80,9 +77,7 @@ func (r *Registry) Resolve(ps PrintSettings, recordType string) (Template, error
 			return Template{Name: defaultName, Path: path, Engine: "typst"}, nil
 		}
 	}
-	// Last-resort: return a "fpdf" template that the FpdfRenderer
-	// knows how to handle by name.
-	return Template{Name: "fpdf:" + recordType, Engine: "fpdf"}, nil
+	return Template{}, fmt.Errorf("no typst template matches recordType=%q orientation=%q", recordType, ps.Orientation)
 }
 
 func defaultTemplateName(recordType, orientation string) string {
@@ -91,35 +86,24 @@ func defaultTemplateName(recordType, orientation string) string {
 	if recordType == "" {
 		recordType = "soldier"
 	}
-	if orientation != "p" && orientation != "portrait" {
-		orientation = "l"
-	} else {
-		orientation = "p"
+	if orientation == "p" || orientation == "portrait" {
+		return recordType + "_portrait"
 	}
-	return recordType + "_" + orientation
+	return recordType + "_landscape"
 }
 
 // Render is the public entry point used by the DixieData export entry
-// points. It resolves the template and dispatches to the right
+// points. It resolves the template and dispatches to the typst
 // renderer.
 func (r *Registry) Render(ctx context.Context, ps PrintSettings, recordType string, data map[string]any, w io.Writer) error {
 	tpl, err := r.Resolve(ps, recordType)
 	if err != nil {
 		return err
 	}
-	var rd Renderer
-	switch tpl.Engine {
-	case "typst":
-		rd = r.typst
-	case "fpdf":
-		if r.fpdf == nil {
-			return fmt.Errorf("template %q requires fpdf renderer, but Registry has no fpdf fallback", tpl.Name)
-		}
-		rd = r.fpdf
-	default:
+	if tpl.Engine != "typst" {
 		return fmt.Errorf("unknown template engine %q", tpl.Engine)
 	}
-	return rd.Render(ctx, tpl, data, w)
+	return r.typst.Render(ctx, tpl, data, w)
 }
 
 // templateMetadataPattern matches the metadata block at the top of a

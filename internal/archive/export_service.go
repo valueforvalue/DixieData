@@ -29,11 +29,12 @@ type ExportService struct {
 	db         *db.DB
 	soldier    *SoldierService
 	rasterizer pdfToJPEGRasterizer
-	pdf        *render.Service
-	// registry is the new dispatcher that picks between fpdf and
-	// Typst templates. When non-nil, ExportFullDatabasePDF uses it
-	// per record instead of the fpdf Service directly. The Template
-	// field on PrintSettings chooses which template to render with.
+	// registry is the Typst-backed renderer. After slice 7, every
+	// export goes through the registry; there is no fpdf fallback.
+	// The appshell must wire a Registry at startup. If the Typst
+	// binary or templates directory is missing, the export methods
+	// return an error rather than silently falling back to a
+	// different renderer.
 	registry *render.Registry
 }
 
@@ -59,7 +60,6 @@ func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
 		db:         database,
 		soldier:    soldier,
 		rasterizer: newPDFJPEGRasterizer(),
-		pdf:        render.New(database, soldier),
 	}
 }
 
@@ -70,46 +70,52 @@ func (e *ExportService) SetRegistry(reg *render.Registry) {
 	e.registry = reg
 }
 
-// ExportSoldierPDF is a thin facade over the render.Service method. Kept
-// on ExportService for backwards compatibility with the existing Wails
-// ExportSoldierPDF is a thin facade. When a Registry is wired,
-// routes through the Registry (Typst) per record. Otherwise
-// falls back to the legacy fpdf Service.
+// errPDFRegistryMissing is returned by every PDF export method
+// when the typst-backed Registry has not been wired. After slice
+// 7 the appshell must wire a Registry at startup; a missing
+// Registry is a configuration error, not a fallback to fpdf.
+var errPDFRegistryMissing = errors.New("PDF export requires a render.Registry; the typst binary or templates directory is missing at startup")
+
+// ExportSoldierPDF is a thin facade. Routes through the typst-backed
+// Registry. The Registry MUST be wired (see SetRegistry); a missing
+// Registry returns an error rather than falling back to the legacy
+// fpdf Service, which has been removed.
 func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier, options PDFOptions) error {
-	if e.registry != nil {
-		return e.exportSingleRecordViaRegistry(outputPath, soldier, options, "soldier")
+	if e.registry == nil {
+		return errPDFRegistryMissing
 	}
-	return e.pdf.ExportSoldierPDF(outputPath, soldier, options)
+	return e.exportSingleRecordViaRegistry(outputPath, soldier, options, "soldier")
 }
 
-// ExportSoldierPDFWithoutImages is a thin facade.
+// ExportSoldierPDFWithoutImages is a thin facade. See ExportSoldierPDF.
 func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error {
-	if e.registry != nil {
-		return e.exportSingleRecordViaRegistry(outputPath, soldier, PDFOptions{}, "soldier")
+	if e.registry == nil {
+		return errPDFRegistryMissing
 	}
-	return e.pdf.ExportSoldierPDFWithoutImages(outputPath, soldier)
+	return e.exportSingleRecordViaRegistry(outputPath, soldier, PDFOptions{}, "soldier")
 }
 
 // ExportMonthlyAnniversaryPDF is a thin facade. The Registry
 // path uses the 'anniversary' template.
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
-	if e.registry != nil {
-		return e.exportAnniversaryViaRegistry(outputPath, month, calendar, options)
+	if e.registry == nil {
+		return errPDFRegistryMissing
 	}
-	return e.pdf.ExportMonthlyAnniversaryPDF(outputPath, month, calendar, options)
+	return e.exportAnniversaryViaRegistry(outputPath, month, calendar, options)
 }
 
-// ExportFullDatabasePDF is a thin facade.
+// ExportFullDatabasePDF is a thin facade. Routes through the
+// typst-backed Registry for every record; the Registry MUST be
+// wired (see SetRegistry). The Registry's Resolve method picks
+// the default typst template for the (recordType, orientation)
+// tuple when settings.Template is empty, so this method now
+// always returns a typst-rendered PDF per record.
 func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintSettings) error {
 	settings = settings.Normalize()
-	// When the Registry is wired AND the user picked a Typst template
-	// (either explicitly via settings.Template or implicitly by leaving
-	// it empty while having a default template for the orientation),
-	// route through the Registry per record.
-	if e.registry != nil && strings.TrimSpace(settings.Template) != "" {
-		return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
+	if e.registry == nil {
+		return errPDFRegistryMissing
 	}
-	return e.pdf.ExportFullDatabasePDF(outputPath, settings)
+	return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
 }
 
 // exportFullDatabasePDFViaRegistry writes a bulk export by
@@ -152,6 +158,7 @@ func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, sett
 			"soldier":  soldierCopy,
 			"options":  render.PDFOptions{Orientation: settings.Orientation, PrinterFriendly: settings.PrinterFriendly, IncludeImages: true, PrintableArchive: true},
 			"settings": settings,
+			"branding": e.archiveBranding(settings.PrinterFriendly),
 		}
 		safe := printableArchiveFileName(soldier.DisplayID, settings)
 		dst := filepath.Join(outDir, safe)
@@ -226,12 +233,42 @@ func (e *ExportService) exportSingleRecordViaRegistry(outputPath string, soldier
 	}
 	defer f.Close()
 	soldierCopy := soldier
+	// Normalize options for the typst data payload. The template
+	// reads `opts.at("orientation", default: "L")` and a missing
+	// default case (when the key exists with an empty value) is
+	// treated as not-landscape, which would route a landscape
+	// soldier to the portrait layout. Pass the normalized value.
+	normalizedOptions := options.Normalize("L", true)
 	data := map[string]any{
 		"soldier":  soldierCopy,
-		"options":  options,
+		"options":  normalizedOptions,
 		"settings": settings,
+		"branding": e.archiveBranding(options.PrinterFriendly),
 	}
 	return e.registry.Render(context.Background(), settings, recordType, data, f)
+}
+
+// archiveBranding returns the header/footer strings used by the
+// typst templates. Mirrors pkg/render/service.go::pdfBranding so
+// the typst path produces the same archive title and footer
+// text the fpdf path used to produce. If the user identity is
+// not configured, returns a zero-value branding and the typst
+// template falls back to its built-in defaults.
+func (e *ExportService) archiveBranding(printerFriendly bool) map[string]string {
+	identity, err := e.db.UserIdentity()
+	if err != nil {
+		return map[string]string{}
+	}
+	owner := strings.TrimSpace(identity.BrandingName())
+	if owner == "" {
+		return map[string]string{}
+	}
+	branding := map[string]string{
+		"archive_title": owner + "'s Civil War Research Archive",
+		"footer_text":   "Made with DixieData | Version: " + buildinfo.AppVersion + " | Build: " + buildinfo.BuildIdentity(),
+	}
+	_ = printerFriendly
+	return branding
 }
 
 // exportAnniversaryViaRegistry renders the anniversary report
@@ -246,11 +283,13 @@ func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month in
 		return err
 	}
 	defer f.Close()
+	normalizedOptions := options.Normalize("P", false)
 	data := map[string]any{
-		"options":  options,
+		"options":  normalizedOptions,
 		"settings": settings,
 		"month":    month,
 		"calendar": calendar,
+		"branding": e.archiveBranding(options.PrinterFriendly),
 	}
 	return e.registry.Render(context.Background(), settings, "soldier", data, f)
 }
@@ -267,10 +306,12 @@ func (e *ExportService) exportAnalyticsViaRegistry(outputPath string, snapshot A
 		return err
 	}
 	defer f.Close()
+	normalizedOptions := options.Normalize("P", false)
 	data := map[string]any{
-		"options":  options,
+		"options":  normalizedOptions,
 		"settings": settings,
 		"snapshot": snapshot,
+		"branding": e.archiveBranding(options.PrinterFriendly),
 	}
 	return e.registry.Render(context.Background(), settings, "soldier", data, f)
 }
@@ -301,12 +342,14 @@ func printableArchiveFileName(displayID string, settings PrintSettings) string {
 }
 
 // ExportAnalyticsSummaryPDF is a thin facade. Routes through
-// the Registry's 'analytics_summary' template when available.
+// the Registry's 'analytics_summary' template. The Registry
+// must be wired; a missing registry returns an error rather
+// than falling back to fpdf (which has been removed).
 func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot AnalyticsSnapshot, options PDFOptions) error {
-	if e.registry != nil {
-		return e.exportAnalyticsViaRegistry(outputPath, snapshot, options)
+	if e.registry == nil {
+		return errPDFRegistryMissing
 	}
-	return e.pdf.ExportAnalyticsSummaryPDF(outputPath, snapshot, options)
+	return e.exportAnalyticsViaRegistry(outputPath, snapshot, options)
 }
 
 // ExportSoldierJPG still needs the temp PDF step, so it lives on
@@ -325,14 +368,11 @@ func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldi
 	defer os.RemoveAll(tempDir)
 
 	pdfPath := filepath.Join(tempDir, "record.pdf")
-	if e.registry != nil {
-		if err := e.exportSingleRecordViaRegistry(pdfPath, soldier, options, "soldier"); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := e.pdf.ExportSoldierPDF(pdfPath, soldier, options); err != nil {
-			return nil, err
-		}
+	if e.registry == nil {
+		return nil, errPDFRegistryMissing
+	}
+	if err := e.exportSingleRecordViaRegistry(pdfPath, soldier, options, "soldier"); err != nil {
+		return nil, err
 	}
 
 	renderedDir := filepath.Join(tempDir, "pages")

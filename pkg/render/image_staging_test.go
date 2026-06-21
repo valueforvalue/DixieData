@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/models"
 )
 
 // TestStageSoldierImagesCopiesPrimaryAndFallback verifies that the
@@ -47,6 +49,79 @@ func TestStageSoldierImagesCopiesPrimaryAndFallback(t *testing.T) {
 	staged := filepath.Join(wd, "images", "portrait.png")
 	if _, err := os.Stat(staged); err != nil {
 		t.Fatalf("expected staged image at %q: %v", staged, err)
+	}
+}
+
+// TestImagePathForPDFReturnsCorrectedPathForMisnamedFile exercises the
+// fpdf path's image-rewriting helper. The fpdf library dispatches
+// to its decoder based on the file's extension; a real PNG saved
+// with a .jpg extension causes fpdf's parsejpg to fail with
+// "invalid JPEG format: missing SOI marker", which sets fpdf's
+// internal error and halts the rest of the render (producing a
+// 0-byte / no-output PDF). The helper must detect the format
+// mismatch and return a path with the corrected extension so
+// fpdf dispatches to parsepng instead.
+//
+// (The two TestImagePathForPDF* tests that previously lived here
+// tested the fpdf path's image-rewriting helper. After slice 7
+// removed the fpdf path, those tests are gone; the rewrite
+// helper itself was the only place the on-disk cache lived.)
+
+// TestStageSoldierImagesTypedSoldierRenamesMisnamedFile exercises the
+// typed-Soldier path: when the soldier is passed as a models.Soldier
+// value (not a map[string]any from JSON round-trip), the staging step
+// must still detect a misnamed image (PNG content in a .jpg file) and
+// update the data payload so the template references the renamed
+// file. The map-only code path left typed-Soldier data with the
+// original extension, so typst failed with "file not found" at
+// #image("images/<original>") even though the staged file was on
+// disk under its detected name.
+func TestStageSoldierImagesTypedSoldierRenamesMisnamedFile(t *testing.T) {
+	srcDir := t.TempDir()
+	// Real PNG bytes, but stored with a .jpg extension.
+	misnamed := filepath.Join(srcDir, "DXD-00052-img-001.jpg")
+	if err := os.WriteFile(misnamed, pngFixture(t), 0o644); err != nil {
+		t.Fatalf("WriteFile misnamed: %v", err)
+	}
+
+	wd := t.TempDir()
+	soldier := models.Soldier{
+		Images: []models.Image{
+			{
+				FileName:      "DXD-00052-img-001.jpg",
+				FilePath:      misnamed,
+				ResolvedPath:  misnamed,
+				IsPrimary:     true,
+			},
+		},
+	}
+	data := map[string]any{"soldier": soldier}
+	if err := stageSoldierImages(wd, data); err != nil {
+		t.Fatalf("stageSoldierImages: %v", err)
+	}
+
+	// File on disk must be staged under the detected extension.
+	stagedJpg := filepath.Join(wd, "images", "DXD-00052-img-001.jpg")
+	if _, err := os.Stat(stagedJpg); err == nil {
+		t.Fatalf("did not expect misnamed-name file to be staged verbatim at %q", stagedJpg)
+	}
+	stagedPng := filepath.Join(wd, "images", "DXD-00052-img-001.png")
+	if _, err := os.Stat(stagedPng); err != nil {
+		t.Fatalf("expected staged image at %q: %v", stagedPng, err)
+	}
+
+	// And the data payload's FileName must have been updated so
+	// the typst template resolves #image("images/<name>") to the
+	// file that actually exists.
+	out, ok := data["soldier"].(models.Soldier)
+	if !ok {
+		t.Fatalf("data[\"soldier\"] type = %T, want models.Soldier", data["soldier"])
+	}
+	if len(out.Images) != 1 {
+		t.Fatalf("len(images) = %d, want 1", len(out.Images))
+	}
+	if out.Images[0].FileName != "DXD-00052-img-001.png" {
+		t.Fatalf("FileName = %q, want %q", out.Images[0].FileName, "DXD-00052-img-001.png")
 	}
 }
 

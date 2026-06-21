@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-The DixieData PDF export system is built on a hand-rolled `go-pdf/fpdf` coordinate-grid renderer. Adding or removing a field requires editing Go source; changing the visual theme (colors, fonts, margins) requires editing nine hard-coded RGB callsites and sixty-plus CSS rgba variants across two layers. The renderer bakes in eleven "correction values" (e.g. `pageHeight-16` at `internal/archive/pdf_layout.go:1128`, `pdf.GetY() > 230` at `internal/archive/pdf_layout.go:1160`) that exist only because fpdf's layout model is primitive. Orphan/widow control is weak. The visual design system is duplicated between the PDF export path and the static-archive HTML path.
+The DixieData PDF export system was built on a hand-rolled `go-pdf/fpdf` coordinate-grid renderer. Adding or removing a field required editing Go source; changing the visual theme (colors, fonts, margins) required editing nine hard-coded RGB callsites and sixty-plus CSS rgba variants across two layers. The renderer baked in eleven "correction values" (e.g. `pageHeight-16` at `internal/archive/pdf_layout.go:1128`, `pdf.GetY() > 230` at `internal/archive/pdf_layout.go:1160`) that existed only because fpdf's layout model is primitive. Orphan/widow control was weak. The visual design system was duplicated between the PDF export path and the static-archive HTML path. (This PRD is now historical: the fpdf path was removed in slice 7. The current export pipeline is typst-only; the duplication, the hard-coded RGB triplets, the correction values, and the orphan/widow control problem are all gone. This Problem Statement section is preserved to document the original motivation.)
 
 A researcher using DixieData cannot:
 
@@ -25,7 +25,7 @@ A new **`dixiedata-tune`** tool lives in the same repository as a separate Go mo
 
 The visual design is captured in a single `theme.typ` file. The audit's `theme.json` schema (see `docs/audit/layout-theming-token-schema.md`) ports almost verbatim into Typst `let` bindings.
 
-The fpdf path remains the default for all exports during a phased migration. The Typst path becomes the default for migrated exports. Eventually the fpdf path is removed.
+The fpdf path remains the default for all exports during a phased migration. The Typst path becomes the default for migrated exports. Eventually the fpdf path is removed. (Done: the fpdf path is now fully removed. The typst path is the only path. Slice 7 completed.)
 
 ## User Stories
 
@@ -45,13 +45,13 @@ The fpdf path remains the default for all exports during a phased migration. The
 14. As a developer working on DixieData, I want to add a new field to a record card by editing one `.typ` file, so that field selection is a template concern.
 15. As a developer working on DixieData, I want to change a color or font by editing one `theme.typ` file, so that theme tokens are centralized.
 16. As a developer working on DixieData, I want to change page margins by editing one `theme.typ` file, so that geometry is centralized.
-17. As a developer working on DixieData, I want the fpdf path to remain functional during the migration, so that the test surface stays green.
+17. ~~As a developer working on DixieData, I want the fpdf path to remain functional during the migration, so that the test surface stays green.~~ (Fulfilled by slices 0-6; superseded by slice 7.)
 18. As a researcher using DixieData, I want exports to look the same as they do today (close enough, not byte-identical), so that the migration is visually non-disruptive.
 19. As a developer working on DixieData, I want orphan/widow control handled by the renderer, so that I do not have to hand-roll keep-together logic.
 20. As a developer working on DixieData, I want the static-archive HTML to use the same design system as the PDF exports, so that the duplication between `internal/archive/static_archive.go` and `internal/templates/layout.templ` is eliminated.
 21. As a developer iterating on template design, I want a CLI tool that renders a template against a real record in seconds, so that I can iterate without rebuilding DixieData.
 22. As a developer iterating on template design, I want a web UI in the tuning tool that shows the rendered PDF inline, so that I can iterate visually.
-23. As a developer iterating on template design, I want a side-by-side comparison of the fpdf baseline and the Typst render for the same record, so that I can see how close I am to the original.
+23. ~~As a developer iterating on template design, I want a side-by-side comparison of the fpdf baseline and the Typst render for the same record, so that I can see how close I am to the original.~~ (Replaced: the fpdf baseline is gone. The tune tool renders the same record through the production typst path that the appshell uses, so iterating on a template produces a faithful preview. There is no separate baseline.)
 24. As a researcher providing feedback on a template, I want to write free-form markdown notes alongside the rendered PDF, so that I can describe what to change in a structured way.
 25. As a developer iterating on a template, I want the agent to read my annotation markdown before the next render, so that my feedback drives the next iteration.
 26. As a developer, I want annotation markdown files to persist across agent sessions, so that feedback is not lost when a session ends.
@@ -65,7 +65,7 @@ The fpdf path remains the default for all exports during a phased migration. The
 34. As a developer, I want the visual comparison baseline to be captured before any Typst code is written, so that there is something to compare against.
 35. As a researcher, I want the static archive to be migrated to Typst HTML output as a thin slice, so that the design-system duplication is killed. The static archive's interactivity (search, image overlay zoom) is intentionally deferred to a separate static-archive overhaul; the slice accepts that the static archive may look and behave differently.
 36. As a developer, I want the printer-friendly export option to suppress the footer and switch the palette to black-on-white, so that ink usage is reduced.
-37. As a developer, I want the fpdf path to be removed in a final phase, so that the Go module is clean.
+37. ~~As a developer, I want the fpdf path to be removed in a final phase, so that the Go module is clean.~~ (Done: `go-pdf/fpdf` removed from `go.mod`. The export pipeline is typst-only.)
 38. As a developer, I want every existing export test to continue passing through the migration, so that the test surface is preserved.
 39. As a developer, I want the audit's hard-coded literals (RGB triplets, rgba variants, correction values) to be eliminated by the migration, so that the audit findings are resolved.
 40. As a researcher, I want the export UI to show a dropdown of available templates per record type, so that I can pick the format I want.
@@ -137,7 +137,7 @@ The migration is 8 slices: 1 prefactor + 7 implementation. The 7 implementation 
 
 - **Slice 6 (Phase 2b) — minimal static archive unification.** `templates/static_archive_index.typ` produces the static archive page structure as Typst HTML output. The existing `staticArchiveIndexHTML` constant in `internal/archive/static_archive.go` is replaced. The 27 alpha-variant rgba duplications are gone. The static archive's interactivity (search, image overlay zoom) is intentionally deferred to a separate static-archive overhaul.
 
-- **Slice 7 (Phase 3) — retire fpdf.** Remove the fpdf path; remove `go-pdf/fpdf` from `go.mod`; delete `internal/archive/pdf_layout.go`; delete `FpdfRenderer`; remove the UI toggle. Update the audit findings documents.
+- **Slice 7 (Phase 3) — retire fpdf.** Remove the fpdf path; remove `go-pdf/fpdf` from `go.mod`; delete `internal/archive/pdf_layout.go`; delete `FpdfRenderer`; remove the UI toggle. Update the audit findings documents. (Done.)
 
 ### Data flow
 
@@ -176,7 +176,7 @@ Prior art: the existing `internal/archive/export_service_test.go` tests render r
 
 - The audit findings documents (`docs/audit/layout-theming-*.md`) are resolved by this PRD. After Phase 3, the 9 hard-coded RGB triplets, 60+ rgba variants, and 11 correction values are all gone. The audit deliverables should be updated to reflect the new state.
 - The `theme.json` audit deliverable (`docs/audit/layout-theming-token-schema.md`) is the source of truth for the design tokens. The Typst `theme.typ` is a near-verbatim port.
-- The phased migration means the fpdf path is live for the duration of Phases 0–2. The test surface stays green. Phase 3 deletes it.
+- The phased migration means the fpdf path is live for the duration of Phases 0–2. The test surface stays green. Phase 3 deletes it. (Done: the fpdf path is gone. The only PDF export path is the typst-backed one.)
 - The tuning tool's `serve` subcommand is a small Go HTTP server with templ-rendered HTML (using the same template engine DixieData uses, since the templates directory is shared). It is not a full web app; it is a developer tool.
 - The annotation feedback loop is a convention, not a system. The agent reads `.md` files alongside renders. The convention is: filename ends in `.md`, content is free-form markdown, the most recent one for a `(template, record)` pair is the source of truth.
 - The Typst binary is pinned to a specific version (Typst 0.15 as of June 2026). The bundled binary version is documented in `THIRDPARTY.md` and updated when the tool is re-bundled.

@@ -1,16 +1,19 @@
 // Command dixiedata-tune is a developer tool for iterating on the
 // Typst-based PDF export templates. It opens a DixieData SQLite in
-// read-only mode, runs the existing fpdf exports to capture a
-// baseline, and renders the same record through a Typst template so
-// the researcher can see them side by side.
+// read-only mode and renders a single record (or every record) through
+// a Typst template so the researcher can see the output, then
+// iterate on the .typ file in their editor and re-run.
+//
+// Slice 7 of the Typst migration removed the fpdf path. The tune
+// tool's exports now mirror the appshell's exports exactly: every
+// render goes through pkg/render.TypstRenderer, the same renderer
+// the production appshell uses. There is no separate fpdf baseline.
 //
 // Usage:
 //
-//	dixiedata-tune --db <path-to-dixiedata> render --template <name> --record <id> --out <pdf>
-//	dixiedata-tune --db <path-to-dixiedata> capture-baseline
-//	dixiedata-tune --db <path-to-dixiedata> compare --template <name> --record <id>
-//	dixiedata-tune --db <path-to-dixiedata> list-templates
-//	dixiedata-tune --db <path-to-dixiedata> list-records
+//	dixiedata-tune --db <path> render --template <name> --record <id> --out <pdf>
+//	dixiedata-tune --db <path> list-templates
+//	dixiedata-tune --db <path> list-records
 package main
 
 import (
@@ -38,7 +41,7 @@ func main() {
 func run() error {
 	knownSubs := map[string]bool{
 		"render": true, "list-templates": true, "list-records": true,
-		"capture-baseline": true, "compare": true, "help": true, "-h": true, "--help": true,
+		"help": true, "-h": true, "--help": true,
 	}
 	if len(os.Args) < 2 {
 		return usage()
@@ -104,10 +107,6 @@ func run() error {
 		return doRender(ctx, args, archive, *binFlag, *templateDir, filepath.Dir(*dbFlag))
 	case "list-records":
 		return doListRecords(archive)
-	case "capture-baseline":
-		return doCaptureBaseline(archive)
-	case "compare":
-		return doCompare(ctx, args, archive, *binFlag, *templateDir)
 	case "help", "-h", "--help":
 		return usage()
 	default:
@@ -162,8 +161,6 @@ func usage() error {
 	fmt.Fprintln(os.Stderr, "  render            render a template against a record")
 	fmt.Fprintln(os.Stderr, "  list-templates    list discovered .typ templates")
 	fmt.Fprintln(os.Stderr, "  list-records      list records in the DixieData SQLite")
-	fmt.Fprintln(os.Stderr, "  capture-baseline  render every record through fpdf; save to baseline/")
-	fmt.Fprintln(os.Stderr, "  compare           render the same record through fpdf and Typst; save both")
 	return nil
 }
 
@@ -198,13 +195,17 @@ func defaultTypstBinary() string {
 }
 
 // findTemplatesDir walks up from the current working directory to
-// find a templates/ directory.
+// find a templates/ directory that contains a known typst
+// template (soldier_landscape.typ). Distinct from the Go
+// html/template directory at internal/templates.
 func findTemplatesDir() string {
 	dir, _ := os.Getwd()
 	for i := 0; i < 6; i++ {
 		candidate := filepath.Join(dir, "templates")
 		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
-			return candidate
+			if _, err := os.Stat(filepath.Join(candidate, "soldier_landscape.typ")); err == nil {
+				return candidate
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -215,12 +216,13 @@ func findTemplatesDir() string {
 	return "templates"
 }
 
-// doRender renders a template against a single record. Routes to
-// the FpdfRenderer for "fpdf:*" template names (the fpdf baseline
-// path); routes to the TypstRenderer for everything else.
+// doRender renders a Typst template against a single record. The
+// output mirrors what the production appshell produces for the same
+// record, so iterating on a .typ file in this tool produces a
+// faithful preview of the export.
 func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchive, binPath, templateDir, dataDir string) error {
 	fs := flag.NewFlagSet("render", flag.ContinueOnError)
-	templateName := fs.String("template", "", "Template name (e.g. soldier_landscape, or fpdf:soldier for the baseline)")
+	templateName := fs.String("template", "", "Template name (e.g. soldier_landscape)")
 	recordID := fs.Int64("record", 0, "Record ID to render")
 	outPath := fs.String("out", "", "Output PDF path")
 	orientation := fs.String("orientation", "L", "Page orientation: L (landscape) or P (portrait)")
@@ -237,7 +239,6 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 		return fmt.Errorf("--out is required")
 	}
 
-	adapter := dixiedataToFpdfAdapter{archive}
 	soldier, err := archive.GetByID(*recordID)
 	if err != nil {
 		return fmt.Errorf("get record: %w", err)
@@ -254,11 +255,11 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 	if err != nil {
 		return fmt.Errorf("get identity: %w", err)
 	}
-	data := map[string]any{
-		"soldier":  *soldier,
-		"options":  render.PDFOptions{Orientation: *orientation, IncludeImages: true},
-		"branding": encode.BrandingFromIdentity(identity),
-	}
+
+	options := render.PDFOptions{Orientation: *orientation, IncludeImages: true}
+	branding := encode.BrandingFromIdentity(identity)
+	fullData := encode.NewTemplateDataForSoldier(*soldier, options, branding)
+	payload := templateDataToMap(fullData)
 
 	out, err := os.Create(*outPath)
 	if err != nil {
@@ -266,25 +267,14 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 	}
 	defer out.Close()
 
-	if strings.HasPrefix(*templateName, "fpdf:") {
-		// fpdf baseline path. The fpdfRenderer writes through a temp
-		// file because fpdf requires a real path; the file is then
-		// copied to the writer.
-		fpdfRenderer := render.NewFpdfRenderer(render.New(adapter, adapter))
-		tpl := render.Template{Name: *templateName, Engine: "fpdf"}
-		if err := fpdfRenderer.Render(ctx, tpl, data, out); err != nil {
-			return fmt.Errorf("render: %w", err)
-		}
-	} else {
-		// Typst path. Build the full TemplateData payload and run
-		// through the TypstRenderer. Honor the --orientation flag.
-		typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
-		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{Orientation: *orientation, IncludeImages: true}, encode.BrandingFromIdentity(identity))
-		tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
-		payload := templateDataToMap(fullData)
-		if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {
-			return fmt.Errorf("render: %w", err)
-		}
+	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
+	tpl := render.Template{
+		Name: *templateName,
+		Path: filepath.Join(templateDir, *templateName+".typ"),
+		Engine: "typst",
+	}
+	if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {
+		return fmt.Errorf("render: %w", err)
 	}
 
 	st, _ := out.Stat()
@@ -332,148 +322,6 @@ func doListRecords(archive *dixiedata.LocalArchive) error {
 	}
 	fmt.Fprintf(os.Stderr, "total: %d records\n", total)
 	return nil
-}
-
-// doCaptureBaseline renders every record through the fpdf service and
-// saves the PDFs to baseline/soldier/<record-id>.pdf.
-func doCaptureBaseline(archive *dixiedata.LocalArchive) error {
-	identity, err := archive.UserIdentity()
-	if err != nil {
-		return fmt.Errorf("get identity: %w", err)
-	}
-	adapter := dixiedataToFpdfAdapter{archive}
-	fpdfRenderer := render.NewFpdfRenderer(render.New(adapter, adapter))
-
-	baselineDir := filepath.Join("baseline", "soldier")
-	if err := os.MkdirAll(baselineDir, 0o755); err != nil {
-		return err
-	}
-
-	page := 1
-	count := 0
-	for {
-		batch, total, err := archive.List(page, 50)
-		if err != nil {
-			return err
-		}
-		count = total
-		if len(batch) == 0 {
-			break
-		}
-		for _, s := range batch {
-			enriched, err := archive.GetByID(s.ID)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "skip %d: %v\n", s.ID, err)
-				continue
-			}
-			outPath := filepath.Join(baselineDir, fmt.Sprintf("%d.pdf", enriched.ID))
-			tpl := render.Template{Name: "fpdf:soldier", Engine: "fpdf"}
-			out, err := os.Create(outPath)
-			if err != nil {
-				return err
-			}
-			if err := fpdfRenderer.Render(context.Background(), tpl, map[string]any{
-				"soldier":  *enriched,
-				"options":  render.PDFOptions{Orientation: "L"},
-				"branding": encode.BrandingFromIdentity(identity),
-			}, out); err != nil {
-				out.Close()
-				return fmt.Errorf("render %d: %w", enriched.ID, err)
-			}
-			out.Close()
-			fmt.Printf("baseline %d -> %s\n", enriched.ID, outPath)
-		}
-		page++
-		if page > 200 {
-			break
-		}
-	}
-	fmt.Fprintf(os.Stderr, "captured %d baselines to %s/\n", count, baselineDir)
-	return nil
-}
-
-// doCompare renders the same record through both fpdf and Typst and
-// saves both PDFs side-by-side.
-func doCompare(ctx context.Context, args []string, archive *dixiedata.LocalArchive, binPath, templateDir string) error {
-	fs := flag.NewFlagSet("compare", flag.ContinueOnError)
-	templateName := fs.String("template", "", "Typst template name")
-	recordID := fs.Int64("record", 0, "Record ID")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if *templateName == "" {
-		return fmt.Errorf("--template is required")
-	}
-	if *recordID == 0 {
-		return fmt.Errorf("--record is required")
-	}
-
-	identity, err := archive.UserIdentity()
-	if err != nil {
-		return err
-	}
-	enriched, err := archive.GetByID(*recordID)
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll("compare", 0o755); err != nil {
-		return err
-	}
-
-	adapter := dixiedataToFpdfAdapter{archive}
-	fpdfRenderer := render.NewFpdfRenderer(render.New(adapter, adapter))
-	fpdfPath := filepath.Join("compare", fmt.Sprintf("%d_fpdf.pdf", *recordID))
-	fpdfOut, err := os.Create(fpdfPath)
-	if err != nil {
-		return err
-	}
-	if err := fpdfRenderer.Render(ctx, render.Template{Name: "fpdf:soldier", Engine: "fpdf"}, map[string]any{
-		"soldier":  *enriched,
-		"options":  render.PDFOptions{Orientation: "L"},
-		"branding": encode.BrandingFromIdentity(identity),
-	}, fpdfOut); err != nil {
-		fpdfOut.Close()
-		return fmt.Errorf("fpdf render: %w", err)
-	}
-	fpdfOut.Close()
-
-	typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
-	typstPath := filepath.Join("compare", fmt.Sprintf("%d_typst.pdf", *recordID))
-	typstOut, err := os.Create(typstPath)
-	if err != nil {
-		return err
-	}
-	data := encode.NewTemplateDataForSoldier(*enriched, render.PDFOptions{}, encode.BrandingFromIdentity(identity))
-	tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
-	payload := templateDataToMap(data)
-	if err := typstRenderer.Render(ctx, tpl, payload, typstOut); err != nil {
-		typstOut.Close()
-		return fmt.Errorf("typst render: %w", err)
-	}
-	typstOut.Close()
-
-	fmt.Printf("wrote %s and %s for record %d\n", fpdfPath, typstPath, *recordID)
-	return nil
-}
-
-// dixiedataToFpdfAdapter satisfies the render.SoldierLister and
-// render.UserIdentityStore interfaces so the LocalArchive can be
-// passed directly to a *render.Service.
-type dixiedataToFpdfAdapter struct {
-	a *dixiedata.LocalArchive
-}
-
-func (d dixiedataToFpdfAdapter) List(page, pageSize int) ([]models.Soldier, int, error) {
-	return d.a.List(page, pageSize)
-}
-
-func (d dixiedataToFpdfAdapter) GetByID(id int64) (*models.Soldier, error) {
-	return d.a.GetByID(id)
-}
-
-func (d dixiedataToFpdfAdapter) UserIdentity() (models.UserIdentity, error) {
-	return d.a.UserIdentity()
 }
 
 // templateDataToMap serializes a TemplateData to JSON and parses it

@@ -343,9 +343,7 @@
       #if s.at("suffix", default: "") != "" [, #s.at("suffix")]
     ]
     #v(0.2em)
-    #text(size: 10pt, fill: theme.palette.text_secondary)[
-      #s.at("display_id", default: "") | #entry-type-label(s.at("entry_type", default: "")) | Full Biography
-    ]
+    #text(size: 10pt, fill: theme.palette.text_secondary, [#s.at("display_id", default: "") #h(0.4em) "•" #h(0.4em) #entry-type-label(s.at("entry_type", default: "")) #h(0.4em) "•" #h(0.4em) "Full Biography"])
     #v(0.8em)
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
     #v(0.4em)
