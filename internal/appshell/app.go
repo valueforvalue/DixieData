@@ -1727,46 +1727,82 @@ func (a *App) buildRenderRegistry() (*render.Registry, string, error) {
 	return reg, templatesDir, nil
 }
 
-// findTypstBinary walks up from dataDir to find bin/typst-*.
+// findTypstBinary locates the bundled Typst binary. The lookup
+// order is:
+//   1. The directory containing the running exe (release layout
+//      has <install>/bin/typst-windows.exe next to DixieData.exe).
+//   2. The current working directory.
+//   3. Walk up to 6 parent levels from cwd (development layout
+//      where the exe runs from a subdirectory of the repo).
+//
+// DixieData is a Windows-only app; the primary binary is
+// typst-windows.exe. The macOS and Linux names are kept as
+// fallbacks so this code still locates a binary if a developer
+// happens to be running it on a non-Windows host for testing,
+// but the release builds bundle only typst-windows.exe.
 func (a *App) findTypstBinary() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for i := 0; i < 6; i++ {
-		for _, name := range []string{"typst-windows.exe", "typst-macos", "typst-linux"} {
+	candidates := []string{"typst-windows.exe", "typst-macos", "typst-linux"}
+	for _, dir := range a.findTypstSearchDirs() {
+		for _, name := range candidates {
 			candidate := filepath.Join(dir, "bin", name)
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate, nil
 			}
 		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
 	}
-	return "", fmt.Errorf("typst binary not found in bin/")
+	return "", fmt.Errorf("typst binary not found in bin/ (expected typst-windows.exe)")
 }
 
-// findTemplatesDir walks up from dataDir to find the templates/ dir.
+// findTemplatesDir locates the templates/ directory. Lookup
+// order matches findTypstBinary: exe's directory first, then
+// cwd, then up to 6 parent levels.
 func (a *App) findTemplatesDir() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for i := 0; i < 6; i++ {
+	for _, dir := range a.findTypstSearchDirs() {
 		candidate := filepath.Join(dir, "templates")
 		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
 			return candidate, nil
 		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
 	}
 	return "", fmt.Errorf("templates directory not found")
+}
+
+// findTypstSearchDirs returns the directories to search for
+// the Typst binary and templates, in priority order. The exe's
+// directory comes first so the release layout (everything next
+// to DixieData.exe) works regardless of cwd. cwd and its
+// parents follow for development layouts.
+func (a *App) findTypstSearchDirs() []string {
+	seen := map[string]bool{}
+	var dirs []string
+
+	add := func(dir string) {
+		if dir == "" || seen[dir] {
+			return
+		}
+		seen[dir] = true
+		dirs = append(dirs, dir)
+	}
+
+	// 1. Exe's directory.
+	if exePath, err := os.Executable(); err == nil {
+		add(filepath.Dir(exePath))
+	}
+
+	// 2. cwd and up to 6 parent levels.
+	cwd, err := os.Getwd()
+	if err == nil {
+		dir := cwd
+		for i := 0; i < 6; i++ {
+			add(dir)
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+
+	return dirs
 }
 
 func (a *App) activatePendingRecovery(restorePointID string, cause error) error {

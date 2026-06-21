@@ -89,6 +89,80 @@ function Get-DixieDataPdfiumBuildPath {
     return Join-Path (Get-DixieDataBuildBinDir -Root $Root) "pdfium.dll"
 }
 
+function Get-DixieDataTypstBinaryBuildPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    # The release archive places the Typst binary at <bin>/bin/
+    # (a subdirectory of build/bin/) so the appshell's
+    # findTypstBinary walker can locate it from the cwd.
+    $innerBin = Join-Path (Get-DixieDataBuildBinDir -Root $Root) "bin"
+    New-Item -ItemType Directory -Path $innerBin -Force | Out-Null
+    return Join-Path $innerBin "typst-windows.exe"
+}
+
+function Get-DixieDataTypstSourceBinaryPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    return Join-Path $Root "bin\typst-windows.exe"
+}
+
+function Get-DixieDataTypstTemplatesBuildDir {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    # Templates go at the root of build/bin/ so the appshell's
+    # findTemplatesDir walker finds templates/ next to DixieData.exe.
+    return Get-DixieDataBuildBinDir -Root $Root
+}
+
+function Get-DixieDataTypstTemplatesSourceDir {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    return Join-Path $Root "templates"
+}
+
+function Restore-DixieDataTypstAssets {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    # Restore the Typst binary from bin/ in the source tree.
+    $sourceBinary = Get-DixieDataTypstSourceBinaryPath -Root $Root
+    $targetBinary = Get-DixieDataTypstBinaryBuildPath -Root $Root
+    if (-not (Test-Path $sourceBinary)) {
+        throw "Typst binary not found at $sourceBinary. The Typst-migration release requires bin\typst-windows.exe to be present in the source tree."
+    }
+    Copy-Item $sourceBinary $targetBinary -Force
+    Write-Host "Bundled Typst binary: $targetBinary"
+
+    # Copy the templates directory wholesale. The appshell's
+    # findTemplatesDir walker looks for a `templates/` directory
+    # adjacent to DixieData.exe.
+    $sourceTemplates = Get-DixieDataTypstTemplatesSourceDir -Root $Root
+    $targetTemplates = Get-DixieDataTypstTemplatesBuildDir -Root $Root
+    if (-not (Test-Path $sourceTemplates)) {
+        throw "Templates directory not found at $sourceTemplates."
+    }
+    $targetTemplatesPath = Join-Path $targetTemplates "templates"
+    if (Test-Path $targetTemplatesPath) {
+        Remove-Item $targetTemplatesPath -Recurse -Force
+    }
+    Copy-Item $sourceTemplates $targetTemplatesPath -Recurse -Force
+    Write-Host "Bundled Typst templates: $targetTemplatesPath"
+}
+
 function Get-DixieDataPdfiumMarkerPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -336,6 +410,7 @@ function Invoke-DixieDataBuild {
         }
 
         Restore-DixieDataPdfiumBinary -Root $Root
+        Restore-DixieDataTypstAssets -Root $Root
     } finally {
         Remove-DixieDataPreservedOAuthDefaults -PreservedPath $preservedOAuth
     }
