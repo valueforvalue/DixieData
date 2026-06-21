@@ -127,14 +127,16 @@ func appMeta() AppMeta {
 }
 
 // mergeOptionsWithDefaults fills in the PrintSettings fields that
-// the template needs to read. The full PDFOptions struct has fields
-// (IncludeImages, PrintableArchive) that PrintSettings does not; the
-// template should read those from soldier.Records or soldier.Images
-// directly when it needs them.
+// the template needs to read. PrintSettings and PDFOptions have
+// been kept in sync: both include IncludeImages and PrintableArchive
+// so the encode layer (which JSON-round-trips the payload) doesn't
+// silently drop the flags before the template sees them.
 func mergeOptionsWithDefaults(options render.PDFOptions) render.PrintSettings {
 	return render.PrintSettings{
 		Orientation:     options.Orientation,
 		PrinterFriendly: options.PrinterFriendly,
 		Template:        options.Template,
+		IncludeImages:   options.IncludeImages,
+		PrintableArchive: options.PrintableArchive,
 	}
 }

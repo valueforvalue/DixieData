@@ -101,7 +101,7 @@ func run() error {
 	ctx := context.Background()
 	switch sub {
 	case "render":
-		return doRender(ctx, args, archive, *binFlag, *templateDir)
+		return doRender(ctx, args, archive, *binFlag, *templateDir, filepath.Dir(*dbFlag))
 	case "list-records":
 		return doListRecords(archive)
 	case "capture-baseline":
@@ -218,7 +218,7 @@ func findTemplatesDir() string {
 // doRender renders a template against a single record. Routes to
 // the FpdfRenderer for "fpdf:*" template names (the fpdf baseline
 // path); routes to the TypstRenderer for everything else.
-func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchive, binPath, templateDir string) error {
+func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchive, binPath, templateDir, dataDir string) error {
 	fs := flag.NewFlagSet("render", flag.ContinueOnError)
 	templateName := fs.String("template", "", "Template name (e.g. soldier_landscape, or fpdf:soldier for the baseline)")
 	recordID := fs.Int64("record", 0, "Record ID to render")
@@ -242,13 +242,21 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 	if err != nil {
 		return fmt.Errorf("get record: %w", err)
 	}
+	// The appshell resolves each image's FilePath against the data
+	// dir before calling the renderer. The tune tool needs to do the
+	// same so the renderer's image-staging step can find the file
+	// on disk. The data dir is the parent directory of the SQLite
+	// passed via --db.
+	for i := range soldier.Images {
+		soldier.Images[i].ResolvedPath = filepath.Join(dataDir, filepath.FromSlash(soldier.Images[i].FilePath))
+	}
 	identity, err := archive.UserIdentity()
 	if err != nil {
 		return fmt.Errorf("get identity: %w", err)
 	}
 	data := map[string]any{
 		"soldier":  *soldier,
-		"options":  render.PDFOptions{Orientation: *orientation},
+		"options":  render.PDFOptions{Orientation: *orientation, IncludeImages: true},
 		"branding": encode.BrandingFromIdentity(identity),
 	}
 
@@ -271,7 +279,7 @@ func doRender(ctx context.Context, args []string, archive *dixiedata.LocalArchiv
 		// Typst path. Build the full TemplateData payload and run
 		// through the TypstRenderer. Honor the --orientation flag.
 		typstRenderer := render.NewTypstRenderer(binPath, filepath.Dir(templateDir))
-		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{Orientation: *orientation}, encode.BrandingFromIdentity(identity))
+		fullData := encode.NewTemplateDataForSoldier(*soldier, render.PDFOptions{Orientation: *orientation, IncludeImages: true}, encode.BrandingFromIdentity(identity))
 		tpl := render.Template{Name: *templateName, Path: filepath.Join(templateDir, *templateName+".typ"), Engine: "typst"}
 		payload := templateDataToMap(fullData)
 		if err := typstRenderer.Render(ctx, tpl, payload, out); err != nil {

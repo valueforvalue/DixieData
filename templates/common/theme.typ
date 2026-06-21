@@ -38,7 +38,14 @@
   section_gap:    4mm,
   field_row_gap:  1mm,
   record_card_left_ratio: 52%,
-  image_panel_height: 64mm,
+  // The image panel is sized to fit at the top of a right column on
+  // a Letter page. 40mm keeps the panel compact enough that the
+  // household + records sections below it can stay on the same page
+  // for soldiers with up to ~6 records. fpdf uses 64mm here; the
+  // typst number is smaller because typst's text is rendered with a
+  // slightly larger effective line height and we want to keep the
+  // right column from overflowing the page.
+  image_panel_height: 40mm,
 )
 
 #let branding = (
