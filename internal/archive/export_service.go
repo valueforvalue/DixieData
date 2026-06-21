@@ -72,18 +72,30 @@ func (e *ExportService) SetRegistry(reg *render.Registry) {
 
 // ExportSoldierPDF is a thin facade over the render.Service method. Kept
 // on ExportService for backwards compatibility with the existing Wails
-// facade (internal/appshell/app_facades.go) and existing tests.
+// ExportSoldierPDF is a thin facade. When a Registry is wired,
+// routes through the Registry (Typst) per record. Otherwise
+// falls back to the legacy fpdf Service.
 func (e *ExportService) ExportSoldierPDF(outputPath string, soldier models.Soldier, options PDFOptions) error {
+	if e.registry != nil {
+		return e.exportSingleRecordViaRegistry(outputPath, soldier, options, "soldier")
+	}
 	return e.pdf.ExportSoldierPDF(outputPath, soldier, options)
 }
 
 // ExportSoldierPDFWithoutImages is a thin facade.
 func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error {
+	if e.registry != nil {
+		return e.exportSingleRecordViaRegistry(outputPath, soldier, PDFOptions{}, "soldier")
+	}
 	return e.pdf.ExportSoldierPDFWithoutImages(outputPath, soldier)
 }
 
-// ExportMonthlyAnniversaryPDF is a thin facade.
+// ExportMonthlyAnniversaryPDF is a thin facade. The Registry
+// path uses the 'anniversary' template.
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
+	if e.registry != nil {
+		return e.exportAnniversaryViaRegistry(outputPath, month, calendar, options)
+	}
 	return e.pdf.ExportMonthlyAnniversaryPDF(outputPath, month, calendar, options)
 }
 
@@ -178,6 +190,91 @@ func recordTypeForSoldier(soldier models.Soldier) string {
 	}
 }
 
+// templateForRecordType picks the default Typst template for a
+// given record type and orientation.
+func templateForRecordType(recordType, orientation string) string {
+	short := "landscape"
+	if strings.EqualFold(orientation, "P") || strings.EqualFold(orientation, "portrait") {
+		short = "portrait"
+	}
+	switch recordType {
+	case "widow":
+		return "widow_" + short
+	case "wife", "linked_person":
+		return "spouse_" + short
+	default:
+		return "soldier_" + short
+	}
+}
+
+// exportSingleRecordViaRegistry renders a single soldier record
+// via the Registry, using the default template for the
+// (recordType, orientation) tuple. Used by ExportSoldierPDF and
+// ExportSoldierPDFWithoutImages.
+func (e *ExportService) exportSingleRecordViaRegistry(outputPath string, soldier models.Soldier, options PDFOptions, fallbackType string) error {
+	recordType := recordTypeForSoldier(soldier)
+	if recordType == "" {
+		recordType = fallbackType
+	}
+	settings := PrintSettings{
+		Orientation: options.Orientation,
+		Template:    templateForRecordType(recordType, options.Orientation),
+	}.Normalize()
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	soldierCopy := soldier
+	data := map[string]any{
+		"soldier":  soldierCopy,
+		"options":  options,
+		"settings": settings,
+	}
+	return e.registry.Render(context.Background(), settings, recordType, data, f)
+}
+
+// exportAnniversaryViaRegistry renders the anniversary report
+// via the Registry's 'anniversary' template.
+func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
+	settings := PrintSettings{
+		Orientation: options.Orientation,
+		Template:    "anniversary",
+	}.Normalize()
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	data := map[string]any{
+		"options":  options,
+		"settings": settings,
+		"month":    month,
+		"calendar": calendar,
+	}
+	return e.registry.Render(context.Background(), settings, "soldier", data, f)
+}
+
+// exportAnalyticsViaRegistry renders the analytics summary via
+// the Registry's 'analytics_summary' template.
+func (e *ExportService) exportAnalyticsViaRegistry(outputPath string, snapshot AnalyticsSnapshot, options PDFOptions) error {
+	settings := PrintSettings{
+		Orientation: options.Orientation,
+		Template:    "analytics_summary",
+	}.Normalize()
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	data := map[string]any{
+		"options":  options,
+		"settings": settings,
+		"snapshot": snapshot,
+	}
+	return e.registry.Render(context.Background(), settings, "soldier", data, f)
+}
+
 // writeNoRecordsPDF writes a tiny placeholder PDF so callers can
 // tell the export ran when no records matched.
 func writeNoRecordsPDF(outDir string, settings PrintSettings) error {
@@ -203,8 +300,12 @@ func printableArchiveFileName(displayID string, settings PrintSettings) string {
 	return safe + ".pdf"
 }
 
-// ExportAnalyticsSummaryPDF is a thin facade.
+// ExportAnalyticsSummaryPDF is a thin facade. Routes through
+// the Registry's 'analytics_summary' template when available.
 func (e *ExportService) ExportAnalyticsSummaryPDF(outputPath string, snapshot AnalyticsSnapshot, options PDFOptions) error {
+	if e.registry != nil {
+		return e.exportAnalyticsViaRegistry(outputPath, snapshot, options)
+	}
 	return e.pdf.ExportAnalyticsSummaryPDF(outputPath, snapshot, options)
 }
 
