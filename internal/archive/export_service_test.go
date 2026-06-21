@@ -1128,6 +1128,44 @@ func TestExportService_ExportFullDatabasePDFWithoutDataDirRendersWithoutImage(t 
 	}
 }
 
+// TestExportService_ExportFullDatabasePDFIgnoresUITemplateSelection
+// reproduces the production failure mode where the print-config
+// form's "Template engine" dropdown sends template=soldier_landscape
+// to the bulk export handler. The resolver honoured ps.Template
+// first, picked soldier_landscape.typ, but the bulk payload carries
+// data["soldiers"] (an array) instead of data["soldier"] (a single
+// record). soldier_landscape.typ read s = data.at("soldier",
+// default: none) and crashed on s.at("display_id", default: "").
+//
+// The bulk path now force-clears settings.Template before calling
+// the registry so Resolve falls through to the bulk default
+// (templates/bulk_soldier.typ). The UI dropdown is being removed
+// from the bulk modal in a follow-up; this test guards against
+// future regressions if the dropdown stays around.
+func TestExportService_ExportFullDatabasePDFIgnoresUITemplateSelection(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	configureExportIdentity(t, d)
+	if _, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "UITPL-001",
+		FirstName: "UI",
+		LastName:  "Test",
+		EntryType: "soldier",
+		Unit:      "Test Unit",
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{Template: "soldier_landscape"}.Normalize())
+	if err != nil {
+		t.Fatalf("bulk export must ignore per-record template selection, got: %v", err)
+	}
+	if info, statErr := os.Stat(out); statErr != nil || info.Size() < 100 {
+		t.Fatalf("expected non-trivial single PDF at %q, got size=%d err=%v", out, info.Size(), statErr)
+	}
+}
+
 // TestExportService_ExportFullDatabasePDFGroupByPensionState verifies
 // the bulk export emits a divider page for each pension-state group
 // when GroupByPensionState is set. Issue #65.
