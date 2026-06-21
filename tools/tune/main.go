@@ -168,7 +168,14 @@ func usage() error {
 }
 
 // defaultTypstBinary returns the platform-specific Typst binary in
-// <repo>/bin/. The tool is run from the repo root or any subdirectory;
+// <repo>/bin/. DixieData is a Windows-only app; the release
+// archive ships only typst-windows.exe. The macOS and Linux
+// names are kept as fallbacks so this code still locates a
+// binary if a developer happens to be running it on a
+// non-Windows host for testing, but release builds do not
+// bundle them.
+//
+// The tool is run from the repo root or any subdirectory;
 // candidates list the most likely relative paths.
 func defaultTypstBinary() string {
 	candidates := []string{
