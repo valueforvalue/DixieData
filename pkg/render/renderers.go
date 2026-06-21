@@ -291,12 +291,65 @@ func stageSoldierImages(workDir string, data map[string]any) error {
 		if err != nil || info.IsDir() {
 			continue
 		}
-		dest := filepath.Join(imagesDir, filepath.Base(source))
+		// Detect the actual image format from the magic bytes.
+		// Some files in the DB have a `.jpg` extension but PNG
+		// content (or vice versa). Typst's image decoder uses
+		// the file extension to pick a decoder, so a mismatched
+		// file fails with "illegal start bytes" errors. We rename
+		// the staged copy to the detected extension and update
+		// the data payload so the template can find the file
+		// under its renamed name.
+		ext, err := detectImageFormat(source)
+		if err != nil {
+			continue
+		}
+		base := strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
+		destName := base + ext
+		dest := filepath.Join(imagesDir, destName)
 		if err := copyFile(source, dest); err != nil {
 			return fmt.Errorf("copy image %q: %w", source, err)
 		}
+		// Mutate the data so the template can find the renamed
+		// file. Only the staged file_name matters; the original
+		// `file_path` / `resolved_path` are not used by the
+		// template at render time.
+		switch v := img.(type) {
+		case map[string]any:
+			v["file_name"] = destName
+		}
 	}
 	return nil
+}
+
+// detectImageFormat reads the first 4 bytes of the file and
+// returns the canonical file extension (".jpg" for JPEG, ".png"
+// for PNG) based on the magic bytes. Returns an error if the
+// file cannot be read or the format is not recognized. The
+// extension is what the typst image decoder uses to pick its
+// decoder, so this lets us route around files that are named
+// with the wrong extension on disk (a real data issue in the
+// DixieData image library).
+func detectImageFormat(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	var head [4]byte
+	n, err := f.Read(head[:])
+	if err != nil || n < 2 {
+		return "", fmt.Errorf("read %d bytes: %v", n, err)
+	}
+	switch {
+	case head[0] == 0xFF && head[1] == 0xD8:
+		// JPEG magic (FF D8). Either JFIF (FF D8 FF E0) or
+		// Exif (FF D8 FF E1) are both JPEG.
+		return ".jpg", nil
+	case head[0] == 0x89 && head[1] == 0x50 && n >= 4 && head[2] == 0x4E && head[3] == 0x47:
+		// PNG magic (89 50 4E 47).
+		return ".png", nil
+	}
+	return "", fmt.Errorf("unrecognized image format in %q", path)
 }
 
 // extractImages pulls the Images field off the soldier record

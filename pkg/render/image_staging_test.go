@@ -1,9 +1,11 @@
 package render
 
 import (
+	"bytes"
 	"context"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -94,6 +96,58 @@ func TestStageSoldierImagesEmptyDataNoError(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("stageSoldierImages with empty soldier: %v", err)
 	}
+}
+
+// TestDetectImageFormat verifies the magic-byte sniffer used by
+// stageSoldierImages to rename files whose on-disk extension
+// does not match the file's actual format.
+func TestDetectImageFormat(t *testing.T) {
+	dir := t.TempDir()
+	// PNG with a `.jpg` extension: should return ".png".
+	pngPath := filepath.Join(dir, "misnamed.jpg")
+	if err := os.WriteFile(pngPath, pngFixture(t), 0o644); err != nil {
+		t.Fatalf("write png: %v", err)
+	}
+	ext, err := detectImageFormat(pngPath)
+	if err != nil {
+		t.Fatalf("detectImageFormat png: %v", err)
+	}
+	if ext != ".png" {
+		t.Fatalf("ext = %q, want .png", ext)
+	}
+	// Real JPEG: should return ".jpg".
+	jpgPath := filepath.Join(dir, "real.jpg")
+	if err := os.WriteFile(jpgPath, jpegFixture(t), 0o644); err != nil {
+		t.Fatalf("write jpg: %v", err)
+	}
+	ext, err = detectImageFormat(jpgPath)
+	if err != nil {
+		t.Fatalf("detectImageFormat jpg: %v", err)
+	}
+	if ext != ".jpg" {
+		t.Fatalf("ext = %q, want .jpg", ext)
+	}
+	// Unknown format (text file): should return an error.
+	txtPath := filepath.Join(dir, "notes.txt")
+	if err := os.WriteFile(txtPath, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("write txt: %v", err)
+	}
+	if _, err := detectImageFormat(txtPath); err == nil {
+		t.Fatalf("detectImageFormat txt: expected error, got nil")
+	}
+}
+
+// jpegFixture returns the bytes of a tiny but valid JPEG (a
+// 1x1 dark-grey image). Mirrors pngFixture.
+func jpegFixture(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.RGBA{R: 64, G: 64, B: 64, A: 255})
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
+		t.Fatalf("encode jpeg fixture: %v", err)
+	}
+	return buf.Bytes()
 }
 
 // TestRenderSoldierLandscapeWithImage is the closest end-to-end
