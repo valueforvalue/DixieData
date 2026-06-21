@@ -55,6 +55,15 @@ type PrintSettings struct {
 	// directory and renders it with Typst. When empty, the registry
 	// picks a default based on the record type and orientation.
 	Template string `json:"template"`
+	// IncludeImages tells the renderer to embed the soldier's
+	// primary image. PDFOptions also has this field; PrintSettings
+	// carries it so the encode layer (which round-trips through
+	// JSON) doesn't drop it before the template sees it.
+	IncludeImages bool `json:"includeImages"`
+	// PrintableArchive is set when the export is part of the
+	// static archive flow rather than a one-off print. Affects
+	// layout choice in some templates.
+	PrintableArchive bool `json:"printableArchive"`
 }
 
 

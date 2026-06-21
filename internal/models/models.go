@@ -151,7 +151,19 @@ type Image struct {
 	FilePath      string `json:"file_path"`
 	Caption       string `json:"caption"`
 	IsPrimary     bool   `json:"is_primary"`
-	ResolvedPath  string `json:"-"`
+	// ResolvedPath is the absolute path on the user's filesystem.
+	// It is set by the appshell before each export so the renderer
+	// does not have to know where the data dir lives. We DO
+	// serialize it (json:"resolved_path") because the tune tool
+	// round-trips soldier data through JSON, and dropping it
+	// would mean the image-staging step in the renderer could
+	// not find the file. The appshell and the tune tool set it
+	// just before calling the renderer, and the value is
+	// transient — the renderer copies the file into its
+	// workdir and the resolved path never reaches a user-facing
+	// output (it lives only in the typst workdir's data.json,
+	// which is cleaned up after the compile).
+	ResolvedPath  string `json:"resolved_path"`
 }
 
 type Quote struct {

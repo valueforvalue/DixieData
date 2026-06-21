@@ -230,11 +230,35 @@
   field-row("Confederate Home Name", if ch-name.trim() == "" [N/A] else [#ch-name])
 }
 
+// household-has-visible-fields returns true when at least one
+// household field has a non-blank value. The household section
+// header is suppressed when no fields are visible so empty widow /
+// spouse records don't waste vertical space.
+#let household-has-visible-fields(s, show-all: false) = {
+  let spouse-name = s.at("spouse_name", default: "")
+  if spouse-name != none and spouse-name.trim() != "" { return true }
+  let spouse-id = s.at("spouse_soldier_id", default: 0)
+  if spouse-id != none and spouse-id > 0 { return true }
+  if show-all {
+    // The widow / spouse variants show the labels even when blank,
+    // so the section is "visible" for layout purposes.
+    return true
+  }
+  let maiden = s.at("maiden_name", default: "")
+  if maiden != none and maiden.trim() != "" { return true }
+  return false
+}
+
 // render-household-section renders the right-column "Household & Context".
 // The default behavior is to hide blank fields; widow/spouse pass
 // `show-all: true` to show Linked Spouse Record / Maiden Name even
-// when blank.
+// when blank. The section header is suppressed when no fields are
+// visible (matches fpdf, which writes the section only when
+// hasVisiblePDFField returns true).
 #let render-household-section(s, show-all: false) = {
+  if not household-has-visible-fields(s, show-all: show-all) {
+    return none
+  }
   text(size: 9pt, weight: "bold", fill: theme.palette.accent)[
     Household & Context
   ]
@@ -279,6 +303,29 @@
 }
 
 // --- biography page ---
+
+// render-biography-inline renders the soldier's biography in
+// compact form, suitable for fitting alongside a record card on
+// the same page. Uses the user-supplied PDFExcerptOverride when
+// set (typically a shortened version) and falls back to the full
+// biography. The full bio is allowed to overflow onto a new
+// page if needed; the override is what keeps the layout compact.
+#let render-biography-inline(s) = {
+  let excerpt = s.at("pdf_excerpt_override", default: "")
+  let body = if excerpt != none and excerpt.trim() != "" {
+    excerpt
+  } else {
+    s.at("biography", default: "")
+  }
+  if body == none or body.trim() == "" { return none }
+
+  text(size: theme.type-scale.biography.size, weight: "bold", fill: theme.palette.accent)[
+    Biography
+  ]
+  v(0.4em)
+  set text(size: theme.type-scale.biography.size - 2pt, fill: theme.palette.text_primary)
+  body
+}
 
 // render-biography-page appends a dedicated page with the
 // biography if the record has one. Matches the fpdf path's
@@ -411,42 +458,82 @@
 
 // --- main card layouts ---
 
-// render-landscape-card is the standard two-column landscape
-// card with identity+service stacked on the left and
-// household+records on the right. Used by all landscape
-// variants.
+// render-landscape-card is a 2-column grid matching the fpdf
+// landscape layout: left = identity + service + household, right =
+// image at the top and records below. The grid's right column is
+// the same X range the fpdf layout uses (50% of the page). The
+// label-value grid inside each column uses 32% of the column's
+// local width, not of the page, which is the same convention fpdf
+// uses. This means labels in the right column start at the column
+// edge (50% of page), not the page edge; the trade-off is that
+// landscape rendering still fits a typical record on a single
+// page, while portrait uses a different layout (see
+// render-portrait-card) where the column proportions can be
+// inverted.
 #let render-landscape-card(s, opts, service-show-all: false, household-show-all: false) = {
   let image-panel = render-image-panel(opts, s)
   grid(
     columns: (1fr, 0.6cm, 1fr),
     [
       #render-identity-section(s)
+      #v(theme.geometry.section_gap)
       #render-service-section(s, show-all: service-show-all)
+      #v(theme.geometry.section_gap)
+      #render-household-section(s, show-all: household-show-all)
     ],
     [],
     [
-      #set text(size: 9pt, fill: theme.palette.text_primary)
-      #if image-panel != none [#image-panel]
-      #render-household-section(s, show-all: household-show-all)
-      // Biography intentionally rendered on its own page (see
-      // render-biography-page below).
-      #v(0.6em)
+      #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+      #if image-panel != none [#image-panel #v(theme.geometry.section_gap)]
       #render-records-section(s)
     ],
   )
 }
 
-// render-portrait-card is a single-column portrait variant.
-// All sections stack vertically.
+// render-portrait-card has two shapes:
+//   - When the soldier has a primary image, the card is laid out
+//     as a 2-column grid:
+//       left  = title + identity + service + household + records
+//       right = image at top, biography underneath
+//     The biography uses PDFExcerptOverride when set (the user-
+//     supplied short version) so a long bio does not push the
+//     right column over the page break. If no override is set the
+//     full biography is rendered and Typst's block model allows
+//     it to overflow into page 2.
+//   - When the soldier has no image, the card is single-column
+//     (left column only). The biography is rendered on a separate
+//     page so it does not crowd the field data.
 #let render-portrait-card(s, opts, service-show-all: false, household-show-all: false) = {
   let image-panel = render-image-panel(opts, s)
-  render-identity-section(s)
-  render-service-section(s, show-all: service-show-all)
-  v(0.6em)
-  if image-panel != none { image-panel }
-  render-household-section(s, show-all: household-show-all)
-  v(0.6em)
-  render-records-section(s)
+  if image-panel != none {
+    grid(
+      columns: (1fr, 0.6cm, 1fr),
+      [
+        #render-identity-section(s)
+        #v(theme.geometry.section_gap)
+        #render-service-section(s, show-all: service-show-all)
+        #v(theme.geometry.section_gap)
+        #render-household-section(s, show-all: household-show-all)
+        #v(theme.geometry.section_gap)
+        #render-records-section(s)
+      ],
+      [],
+      [
+        #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+        #image-panel
+        #v(theme.geometry.section_gap)
+        #render-biography-inline(s)
+      ],
+    )
+  } else {
+    render-identity-section(s)
+    v(theme.geometry.section_gap)
+    render-service-section(s, show-all: service-show-all)
+    v(theme.geometry.section_gap)
+    render-household-section(s, show-all: household-show-all)
+    v(theme.geometry.section_gap)
+    render-records-section(s)
+  }
 }
 
 // --- public entry point ---
@@ -464,9 +551,11 @@
 
   if is-landscape {
     render-landscape-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
+    // Landscape puts the long biography on a separate page (page 2)
+    // rather than squeezing it into the card. Portrait handles the
+    // biography inline in the right column.
+    render-biography-page(s)
   } else {
     render-portrait-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
   }
-
-  render-biography-page(s)
 }
