@@ -99,7 +99,9 @@
 
 // Title: centered (overrides the global page header alignment),
 // tighter spacing to the body so the user-requested closeness is
-// preserved.
+// preserved. The horizontal rule under the title uses the same
+// color as the day text (theme.palette.accent) and spans the
+// full margin width.
 #align(center)[
   #text(
     size: 16pt,
@@ -107,7 +109,12 @@
     weight: "bold",
   )[#mlabel Anniversary Report]
 ]
-#v(0.15em)
+// Horizontal rule: full margin width, accent color, ~0.6pt
+// thick. The `length: 100%` ensures it spans the full text
+// width (which is page width minus the 0.63in left/right
+// margins set by page-params).
+#line(length: 100%, stroke: 0.6pt + theme.palette.accent)
+#v(0.4em)
 
 #if days.len() == 0 [
   #set text(size: 8pt)
