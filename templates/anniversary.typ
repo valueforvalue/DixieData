@@ -26,13 +26,25 @@
 
 #let is-landscape = detect-landscape(opts)
 #let page-dict = page-params(is-landscape, branding, opts)
-// Override the shared header: branding text goes top-left in a
-// small font (the user asked for it not to be centered /
-// prominent). Footer stays as page-params sets it.
-#set page(..page-dict, header: align(left, text(
-  size: 7pt,
-  fill: theme.palette.text_secondary,
-)[#branding.at("archive_title", default: "DixieData Archive")]))
+// Override the shared header and footer: branding text goes
+// top-left in a small font (the user asked for it not to be
+// centered / prominent); footer is smaller and uses the
+// muted-text colour (less prominent than the 8pt secondary
+// the shared helper uses).
+#set page(..page-dict,
+  header: align(left, text(
+    size: 7pt,
+    fill: theme.palette.text_secondary,
+  )[#branding.at("archive_title", default: "DixieData Archive")]),
+  footer: if not opts.at("printerFriendly", default: false) {
+    align(center, text(
+      size: 6pt,
+      fill: theme.palette.text_muted,
+    )[#branding.at("footer_text", default: "")])
+  } else {
+    none
+  },
+)
 #set text(font: "Arial", size: 9pt, fill: theme.palette.text_primary)
 #set par(leading: 0.45em)
 
@@ -75,11 +87,13 @@
 }
 
 // Helper: decade bucket for a death year. Returns "1840s",
-// "1910s", or "" if no death year. Used to sub-group soldiers
-// within a day.
+// "1910s", "Unknown" if no death year. Used to sub-group
+// soldiers within a day. The "Unknown" label puts the
+// yearless entries under a single sub-header so they don't
+// float loose at the end of a day.
 #let soldier-decade(s) = {
   let y = s.at("death_year", default: 0)
-  if y <= 0 { "" } else { let base = calc.floor(y / 10) * 10; str(base) + "s" }
+  if y <= 0 { "Unknown" } else { let base = calc.floor(y / 10) * 10; str(base) + "s" }
 }
 
 // Sort days ascending numerically (the keys come from the Go
@@ -120,10 +134,15 @@
   #set text(size: 8pt)
   No soldiers are recorded for this month.
 ] else [
-  // Two columns. Smaller font (7pt) so a typical month
-  // (40-50 entries) fits on one page; large months (over
-  // one-page-budget entries) just flow onto a second page at the
-  // same density.
+  // Two columns via typst's `columns(2, ...)` block. Day
+  // headers do NOT repeat across the column boundary — typst
+  // treats the entire `#for day in days` loop as a single flow
+  // and breaks only at content boundaries. A day that contains
+  // a long soldier list will wrap into the right column
+  // without repeating its header, so the user-requested
+  // "(cont.)" suffix is moot in the current data (no day in
+  // the live archive's monthly calendar has enough soldiers to
+  // span both columns).
   #set text(size: 7pt)
   #set par(leading: 0.35em)
   #columns(2, gutter: 0.9em)[
@@ -133,25 +152,28 @@
       #let soldiers = calendar.at(day, default: ())
       // Group soldiers within a day by death-year decade so a
       // day with mixed eras is readable. Sort by (decade, year,
-      // last name) within each bucket.
+      // last name) within each bucket. soldiers with unknown
+      // death year go under the "Unknown" sub-header rather
+      // than floating loose at the end of the day.
       #let sorted = soldiers.sorted(key: s => (
         s.at("death_year", default: 0),
         s.at("last_name", default: ""),
         s.at("first_name", default: ""),
       ))
-      #let by-decade = (
-        (:)
-      )
+      #let by-decade = (:)
       #for s in sorted [
         #let dec = soldier-decade(s)
         #let bucket = by-decade.at(dec, default: ())
         #by-decade.insert(dec, bucket + (s,))
       ]
-      #let decade-keys = by-decade.keys().sorted()
+      // Decade keys: "Unknown" sorts after real decades because
+      // 'U' > '9' lexicographically. We want it last; sort by
+      // (-1 for Unknown, decade-int otherwise).
+      #let decade-keys = by-decade.keys().sorted(key: k => {
+        if k == "Unknown" { 9999 } else { int(k.trim("s")) }
+      })
       #for dec in decade-keys [
-        #if dec != "" [
-          #text(size: 6.5pt, fill: theme.palette.text_secondary, style: "italic")[#dec]
-        ]
+        #text(size: 6.5pt, fill: theme.palette.text_secondary, style: "italic")[#dec]
         #for s in by-decade.at(dec) [
           - #let name = soldier-name(s)
             #if name != "" [
