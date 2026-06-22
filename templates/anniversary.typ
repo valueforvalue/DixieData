@@ -151,12 +151,13 @@
       #v(0.05em)
       #let soldiers = calendar.at(day, default: ())
       // Group soldiers within a day by death-year decade so a
-      // day with mixed eras is readable. Sort by (decade, year,
-      // last name) within each bucket. soldiers with unknown
-      // death year go under the "Unknown" sub-header rather
-      // than floating loose at the end of the day.
+      // day with mixed eras is readable. Sort by (last name,
+      // first name) within a decade — the year tie-breaker was
+      // dropped per user request so a name search within a day
+      // is alphabetic. soldiers with unknown death year go
+      // under the "Unknown" sub-header rather than floating
+      // loose at the end of the day.
       #let sorted = soldiers.sorted(key: s => (
-        s.at("death_year", default: 0),
         s.at("last_name", default: ""),
         s.at("first_name", default: ""),
       ))
