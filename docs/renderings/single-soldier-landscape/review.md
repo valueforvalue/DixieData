@@ -8,95 +8,70 @@ One Soldier record card, landscape orientation. Template:
 `Registry.Render` → `templates/soldier_landscape.typ` (which
 delegates to `templates/common/record_card.typ`).
 
-## Round 1 → Round 2 changes
+## Round 2 → Round 3 changes
 
-User annotations in round 1:
+User annotations in round 2:
 
-1. "This is rendered without an image? is the image missing
-   from the actual soldier data or missing from PDF"
-2. "This text should match the location size etc of the
-   anniversary pdf we just worked on. J. Morris's Civil War
-   Research Archive and have the same horizontal line under
-   it."
-3. "This William Pickney Looney should be smaller and closer
-   to DXD-00001 - Soldier and the DXD-00001 - Soldier should
-   be closer to Identity & Vital Details"
-4. "There needs to be a matching horizontal line above the
-   dixiedata footer as well"
+1. "No we will deal with that later. If we tune this right
+   that should take care of itself" — bulk layout check,
+   declined for now.
+2. "Okay we will address that later as well once we get to
+   portrait PDF" — portrait tweak, deferred.
+3. "Not yet we need a couple of tweeks to figure out how
+   the image should go" — image panel size, deferred.
+4. "Okay we should probably file those as an issue to look
+   at later" — file an issue for terminology conflicts.
+5. "William Pickney Looney needs to be closer to
+   DXD-00001 - Soldier almost resting on top of it" — title
+   tightening.
+6. "J. Morris's Civil War Research Archive should stay
+   where it is but needs a horiz line that matches the
+   color of the one at the bottom above the footer just
+   underneath it" — header rule.
 
 ### What changed
 
-- **Image renders** (BUGFIX): the bridge set
-  `soldier.Images[i].ResolvedPath` to a *relative* path
-  (`images\D\X\DXD-00001\...`) because the data dir passed in
-  by `tools/tune` was `.` (`filepath.Dir(".dixiedata")` →
-  `.` — `Dir` drops the trailing component when it's a
-  directory, not a file). The image-staging step does an
-  `os.Stat` on `ResolvedPath`; a relative path from the
-  current working directory didn't find the file, so the
-  source-image copy was silently skipped and the template
-  rendered no image.
-  Fix: bridge `NewBulkRenderer` now resolves `dataDir` to an
-  absolute path via `filepath.Abs` before storing it. The
-  tune flag handling also changed: `--db <dir>` is treated
-  as the data directory directly (rather than
-  `Dir(<dir>)`), so `--db .dixiedata` no longer collapses to
-  `.`. The pre-iteration render of soldier 1 was 79 KB with
-  no image; round 2 is 224 KB with the primary image
-  embedded. PDF text extraction confirms the rest of the
-  layout is unchanged.
+- **Header rule** in `page-params`: `place(bottom, line(...))`
+  anchored at the bottom of the header area draws a 0.6pt
+  accent-coloured line directly under the top-left
+  branding text. Same color as the footer rule, so the
+  document is now framed top-and-bottom with matching
+  accent rules. Verified in the PDF stream: 2 `0.6 w`
+  matches (header + footer).
 
-- **Header + footer match anniversary**: the shared
-  `page-params` helper in `templates/common/record_card.typ`
-  is now the single source of truth for header/footer
-  chrome, matching the anniversary layout. Header: top-left
-  7pt secondary text. Footer: 6pt muted text with a 0.6pt
-  accent-coloured horizontal rule above it. Anniversary
-  already had this layout (round 4-5 of that surface); the
-  per-record templates now inherit it instead of carrying
-  their own.
+- **Title block gap closed**: gap between the 14pt name and
+  the 9pt display-id line was `v(0.1em)` (a visible space);
+  now `v(-0.3em)` so the display-id "rests on" the name. The
+  two lines now visually merge into a single header unit.
+  The 0.2em gap to the first section heading is unchanged.
 
-- **Title hierarchy tightened**: `render-title-block` is
-  20pt → 14pt, gap to display-id 0.2em → 0.1em, display-id
-  10pt → 9pt, gap to first section 0.6em → 0.2em. The three
-  title-block lines now read as a single header unit rather
-  than three separate chunks.
+- **Terminology conflicts filed as issue #72**:
+  `Records` → `Source Records`, `Record Type` → `Person
+  Record Type`, `Archive Summary Report` → `Local Archive
+  Summary Report`, `Record Types` → `Person Record Types`,
+  `No records to summarise.` → `No Person Records to
+  summarise.`. Acceptance criteria include regenerating
+  the 22 exportcontract snapshot fixtures.
 
-- **All 11 record-card snapshots regenerated**:
-  `TestArchiveContractSnapshots` and
-  `TestCLIContractSnapshots` both updated. The changes
-  apply uniformly to soldier/widow/wife/linked-person
-  variants and the bulk path (which uses the same
-  `page-params`).
-
-## Verification
-
-- Soldier 1 landscape: 79,397 bytes (no image) → 224,142
-  bytes (with image). 4 image files staged into the typst
-  workdir.
-- All 22 snapshot tests pass against the regenerated
-  fixtures (11 in-process, 11 CLI).
-- Single round 2 PDF for comparison:
-  `docs/renderings/single-soldier-landscape/round-2.pdf`.
+- **All 22 exportcontract snapshots regenerated**:
+  `TestArchiveContractSnapshots` x 11,
+  `TestCLIContractSnapshots` x 11. The header rule and
+  tightened title gap apply to every per-record and bulk
+  surface that uses `page-params` /
+  `render-title-block`.
 
 ## Open questions for the next round
 
-- **Bulk path header**: the bulk export reuses
-  `page-params` so the new chrome applies to bulk too.
-  The bulk divider pages (templates/group_divider.typ,
-  templates/bulk_soldier.typ) also use `page-params` —
-  consistent. Want me to check the bulk layout specifically
-  to see if anything looks off?
-- **Portrait orientation**: the title block was
-  left-aligned for landscape and centered for portrait.
-  The smaller font + tighter gaps may need a portrait-only
-  tweak if the title overlaps the image panel.
-- **Image panel size**: the right-column image panel
-  position is unchanged. With the title block now
-  tighter, the image might benefit from a slight size bump
-  to fill the visual gap. Want me to try?
-- **Terminology conflicts** tracked in
-  `docs/renderings/TERMINOLOGY.md` are still open (Records
-  vs Source Records, Record Type vs Person Record Type).
-  These are visible on every record card and can be tackled
-  as a separate round.
+- **Image panel size** (deferred from round 2): the user
+  wants to "figure out how the image should go" before
+  bumping the right-column image panel. Want a specific
+  soldier with multiple images to render and see the
+  current size before deciding?
+- **Portrait orientation** (deferred): will be picked up
+  when iterating on `single-soldier-portrait`.
+- **Bulk layout** (deferred): `bulk-sorted` and
+  `bulk-grouped-*` PDFs are now affected by the
+  `page-params` change; not yet reviewed.
+- **Issue #72** (terminology): 5 conflicts remain in
+  `templates/`. Tracked separately; not part of this
+  surface's iteration.
