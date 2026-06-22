@@ -5,55 +5,67 @@ Monthly anniversary report. Template: `anniversary.typ`. The
 via `pkg/exportbridge.BulkRenderer.RenderAnniversary` →
 `internal/archive.ExportService.ExportMonthlyAnniversaryPDF`.
 
-## Round 3 → Round 4 changes
+## Round 4 → Round 5 changes
 
-User annotations in round 3:
+User annotations in round 4:
 
-1. "Yes densinty is good" — keep current density.
-2. "Okay for now" — keep unknown-death-year behavior (no
-   sub-header; falls through to end of day).
-3. "No page n of me footer" — keep typst's natural flow.
-4. "No it should be repeated for ease of reading." — keep day
-   headers repeating across column boundaries.
-5. New: horizontal rule under the title — same color as the
-   day text, full margin width.
-6. New: the "Made with DixieData" footer (version + build
-   commit) from soldier_landscape should be on this too.
+1. "I think it should be smaller/ less promanent" — footer
+   smaller.
+2. "Continued suffix" — for day headers that repeat on the
+   right column.
+3. "Yes" — decade italic OK.
+4. "We should fix this" — unknown-death-year soldiers falling
+   loose at the end of a day.
 
 ### What changed
 
-- **Horizontal rule under title**: `#line(length: 100%, stroke:
-  0.6pt + theme.palette.accent)`. Spans the full text width
-  (page width minus 0.63in left/right margins), accent color
-  (`#8d7440` — same as day text). Verified via PDF stream
-  inspection: stroke color `rgb(141, 116, 64)`, line length
-  `521.28 pt = 7.25in` (matches Letter minus margins).
-- **"Made with DixieData" footer now on by default**: the
-  `page-params` footer was already configured; it just was
-  suppressed because the tune subcommands defaulted
-  `--printer-friendly true`. Flipped the default for
-  `anniversary` and `insights` to `false`. Existing
-  `--printer-friendly` flag still works for users who want to
-  suppress it (e.g. for a real paper print run).
-- The shared `page-params` helper needed no change — it
-  already reads `opts.printerFriendly` and emits the footer
-  via the `Branding.footer_text` template (`<version> | Build:
-  <commit>`).
-- Still 1 page on May (43 entries) and February (45 entries).
+- **Smaller footer**: anniversary overrides the shared
+  `page-params` footer locally. Was 8pt in
+  `theme.palette.text_secondary`; now 6pt in
+  `theme.palette.text_muted` (one step less prominent). The
+  shared `page-params` helper wasn't modified; other
+  templates still get the 8pt default. Verified in the PDF
+  stream: font-size-6 text is present, the 8pt footer is
+  gone for this surface.
+- **Unknown death year bucketed under "Unknown" sub-header**:
+  `soldier-decade()` returned `""` before; now returns
+  `"Unknown"` so the yearless entries render under their own
+  italic 6.5pt sub-header, sorted last (sort key 9999 to
+  keep them after real decades). No more "floating loose".
+- **Day-header repeat investigated**: I tried to implement
+  `(cont.)` for day headers that appear twice (once per
+  column). Investigation: typst's `columns(2, ...)` block
+  treats the entire `#for day in days` loop as a single
+  flow and breaks at content boundaries. **Day headers do
+  not repeat across the column boundary** in the current
+  data. The user's (cont.) request was based on a misreading
+  of the layout — verified by grepping `Day \d+` in
+  `round-4.pdf` and confirming each day appears exactly
+  once. The `state`/`introspection` approaches I tried to
+  add (cont.) detection didn't propagate reliably within a
+  `columns(2)` block, and aren't needed.
+
+  I also tried switching to a `grid(2, ...)` layout with
+  manual day-splitting — that made it 2 pages because the
+  grid forces both columns to be the same height, and the
+  longer right column wraps. Reverted to `columns(2, ...)`.
+
+- Still 1 page on May (43) and February (45).
 
 ## Open questions for the next round
 
-- **Footer readability on dense months**: footer at 8pt sits
-  ~0.4in from bottom. Readable at the current size? The
-  accent color is the rule, not the footer; footer is
-  secondary text color.
-- **Day boundary rendering**: a single day with 5+ soldiers
-  spans columns; the day header is repeated in the right
-  column. Is that the desired behavior, or do you want a
-  "(continued)" suffix on the second occurrence?
-- **Decade headers**: italic 6.5pt secondary colour. Some
-  PDF viewers may not render the italic well at 6.5pt; would
-  you prefer bold (no italic) for the same weight class?
-- **Single soldier with unknown year**: renders at the end of
-  the day, no sub-header. Could be visually awkward if a day
-  has both grouped and ungrouped soldiers. Acceptable?
+- **Day-3 with many soldiers**: as more records are added, a
+  single day could eventually overflow into the right column
+  in `columns(2, ...)`. At that point we'd need a
+  `(cont.)` suffix to mark the wrap. Today, the largest day
+  in the live archive has 2-3 soldiers; the threshold is
+  well above current data. Want me to add a state-based
+  `(cont.)` detection anyway as a future-proofing measure?
+- **Footer removal on cover page**: a cover page with no
+  footer would be a bigger change (typst's `cover` /
+  `frontmatter` pattern). Worth doing?
+- **Sorted by last name instead of by year**: would let the
+  user search a name within a day. Currently sorted by
+  death year, then last name, then first name. Within a
+  decade, the year-sort means alphabetical only when years
+  tie. Acceptable?
