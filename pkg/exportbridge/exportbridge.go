@@ -31,6 +31,7 @@ import (
 // render methods.
 type BulkRenderer struct {
 	export  *archive.ExportService
+	soldier *archive.SoldierService
 	dataDir string
 	dbPath  string
 }
@@ -53,9 +54,24 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 	exportSvc.SetDataDir(dataDir)
 	return &BulkRenderer{
 		export:  exportSvc,
+		soldier: soldierSvc,
 		dataDir: dataDir,
 		dbPath:  dbPath,
 	}, nil
+}
+
+// GetByID returns a single soldier by ID. Mirrors
+// internal/records.SoldierService.GetByID. Useful for
+// --mode record renders where the caller has an ID but not a
+// fully-populated models.Soldier.
+func (b *BulkRenderer) GetByID(id int64) (*models.Soldier, error) {
+	return b.soldier.GetByID(id)
+}
+
+// List returns a page of soldiers. Mirrors
+// internal/records.SoldierService.List.
+func (b *BulkRenderer) List(page, pageSize int) ([]models.Soldier, int, error) {
+	return b.soldier.List(page, pageSize)
 }
 
 // SetRegistry wires the typst-backed Registry into the underlying
