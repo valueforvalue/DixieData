@@ -55,13 +55,23 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 	anniversarySvc := archive.NewAnniversaryService(database)
 	analyticsSvc := archive.NewAnalyticsService(database)
 	exportSvc := archive.NewExportService(database, soldierSvc)
-	exportSvc.SetDataDir(dataDir)
+	// Resolve the data dir to an absolute path. A relative
+	// data dir would cascade into the per-image ResolvedPath
+	// strings (image staging reads those to copy source files
+	// into the workdir) and a relative ResolvedPath fails the
+	// os.Stat in pkg/render.stageOneImage — images silently
+	// don't render.
+	absDataDir, absErr := filepath.Abs(dataDir)
+	if absErr != nil {
+		return nil, fmt.Errorf("resolve data dir: %w", absErr)
+	}
+	exportSvc.SetDataDir(absDataDir)
 	return &BulkRenderer{
 		export:      exportSvc,
 		soldier:     soldierSvc,
 		anniversary: anniversarySvc,
 		analytics:   analyticsSvc,
-		dataDir:     dataDir,
+		dataDir:     absDataDir,
 		dbPath:      dbPath,
 	}, nil
 }
@@ -144,7 +154,10 @@ func (b *BulkRenderer) RenderSingle(ctx context.Context, soldier models.Soldier,
 	opts = opts.Normalize("L", true)
 	// Resolve image paths against dataDir if the caller has not
 	// already populated ResolvedPath. Mirrors the appshell's
-	// handleSoldierPDF pre-render loop.
+	// handleSoldierPDF pre-render loop. The dataDir has been
+	// resolved to an absolute path in NewBulkRenderer, so the
+	// result here is also absolute and the image-staging step
+	// (which does an os.Stat) can find the source files.
 	for i := range soldier.Images {
 		if strings.TrimSpace(soldier.Images[i].ResolvedPath) == "" &&
 			strings.TrimSpace(soldier.Images[i].FilePath) != "" {

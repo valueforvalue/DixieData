@@ -157,30 +157,35 @@
   ]
 }
 
-// render-title-block renders the title (Times serif 20pt) and
-// the display-id line (10pt gray) below it. Left-aligned for
-// landscape; centered for portrait via the `align-title` flag.
+// render-title-block renders the title and the display-id line
+// below it. The original fpdf design was a 20pt Times serif
+// name with a 0.6em gap to the first section heading; the
+// rendering-iteration loop trimmed both — the name to 14pt and
+// the gaps to 0.1em — so the title block reads as a single
+// header unit rather than three separate chunks. Left-aligned
+// for landscape; centered for portrait via the `align-title`
+// flag.
 #let render-title-block(s, align-title: left) = {
   let display-id = s.at("display_id", default: "")
   let entry-type-raw = s.at("entry_type", default: "")
   let suffix = s.at("suffix", default: "")
 
   align(align-title, text(
-    size: 20pt,
+    size: 14pt,
     font: ("Times New Roman", "Liberation Serif", "DejaVu Serif"),
     weight: "bold",
   )[
     #compose-name(s)
     #if suffix != "" [, #suffix]
   ])
-  v(0.2em)
+  v(0.1em)
   align(align-title, text(
-    size: 10pt,
+    size: 9pt,
     fill: theme.palette.text_secondary,
   )[
     #display-id - #entry-type-label(entry-type-raw)
   ])
-  v(0.6em)
+  v(0.2em)
 }
 
 // --- field sections (the left column on landscape, single col on portrait) ---
@@ -358,20 +363,36 @@
 // per-variant template applies via #set page(...). Returns a
 // dict, not content, so the caller can do
 // '#set page(..page-params(...))' at document scope.
+//
+// Header is top-left, 7pt secondary colour, with a horizontal
+// rule below it. Footer is centered, 6pt muted colour, with a
+// horizontal rule above it. The two rules match the accent
+// colour so a per-document colour cue ties the chrome to the
+// body content. The original fpdf design used a centered bold
+// 10pt header without rules; the user feedback over the
+// rendering-iteration loop moved the header off-centre and
+// wanted the rules as visual frames.
 #let page-params(is-landscape, branding, opts) = {
   let page-width = if is-landscape { 11in } else { 8.5in }
   let page-height = if is-landscape { 8.5in } else { 11in }
   let margins = (top: 0.4in, bottom: 0.4in, left: 0.63in, right: 0.63in)
-  let header-content = align(center, text(
-    size: 10pt,
-    weight: "bold",
-    fill: theme.palette.text_primary,
+  let header-content = align(left, text(
+    size: 7pt,
+    fill: theme.palette.text_secondary,
   )[#branding.at("archive_title", default: "DixieData Archive")])
+  // Body of the footer: a horizontal rule above the text. The
+  // rule uses place(top, ...) to anchor the line at the top of
+  // the footer area; the v(0.4em) reserves the gap between the
+  // rule and the centered footer text below it.
   let footer-content = if not opts.at("printerFriendly", default: false) {
-    align(center, text(
-      size: 8pt,
-      fill: theme.palette.text_secondary,
-    )[#branding.at("footer_text", default: "")])
+    {
+      place(top, line(length: 100%, stroke: 0.6pt + theme.palette.accent))
+      v(0.4em)
+      align(center, text(
+        size: 6pt,
+        fill: theme.palette.text_muted,
+      )[#branding.at("footer_text", default: "")])
+    }
   } else {
     none
   }

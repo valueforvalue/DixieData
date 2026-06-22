@@ -99,7 +99,11 @@ func run(args []string) error {
 		*templatesDir = abs
 	}
 	if strings.TrimSpace(*dataDir) == "" && strings.TrimSpace(*dbPath) != "" {
-		*dataDir = filepath.Dir(*dbPath)
+		// --db is documented as the data directory (the one
+		// containing dixiedata.db). Use it directly rather than
+		// Dir(db) which would drop ".dixiedata" -> "." for
+		// a relative path like ".dixiedata".
+		*dataDir = *dbPath
 	}
 
 	switch sub {
