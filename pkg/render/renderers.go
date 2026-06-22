@@ -584,3 +584,11 @@ func openFile(path string) io.Reader {
 	}
 	return f
 }
+
+// StageImages runs the renderer's image-staging step against
+// <workDir>. Used by diagnostic tooling (pkg/exportbridge) to
+// validate that the renderer would find every referenced image on
+// disk without producing a PDF.
+func (t *TypstRenderer) StageImages(workDir string, data map[string]any) error {
+	return stageSoldierImages(workDir, data)
+}

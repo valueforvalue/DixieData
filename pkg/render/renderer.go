@@ -50,6 +50,12 @@ func NewRegistry(typst *TypstRenderer, templateDir string) *Registry {
 	return &Registry{typst: typst, templateDir: templateDir}
 }
 
+// StageImages exposes the underlying renderer's image-staging step
+// for diagnostic tooling (pkg/exportbridge).
+func (r *Registry) StageImages(workDir string, data map[string]any) error {
+	return r.typst.StageImages(workDir, data)
+}
+
 // Resolve returns the template that matches the given PrintSettings, or
 // an error if no template matches.
 //
