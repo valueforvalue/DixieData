@@ -93,7 +93,21 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(workDir)
+	if keepDir := strings.TrimSpace(os.Getenv("TYPST_KEEP_WORKDIR")); keepDir != "" {
+		// Diagnostic mode: move the freshly-created tempdir into
+		// keepDir so the caller can inspect data.json, images/,
+		// out.pdf, etc. Skip the deferred cleanup.
+		if err := os.MkdirAll(keepDir, 0o755); err != nil {
+			return fmt.Errorf("TYPST_KEEP_WORKDIR mkdir: %w", err)
+		}
+		target := filepath.Join(keepDir, filepath.Base(workDir))
+		if err := os.Rename(workDir, target); err != nil {
+			return fmt.Errorf("TYPST_KEEP_WORKDIR rename: %w", err)
+		}
+		workDir = target
+	} else {
+		defer os.RemoveAll(workDir)
+	}
 	phaseEnd("mkdir", mkdirStart)
 
 	// Copy the template's containing directory contents into workDir
@@ -174,6 +188,18 @@ func runTypstCompile(binPath, workDir, mainPath, outputPath string) error {
 	cmd := exec.Command(binPath, args...)
 	cmd.Dir = workDir
 
+	// Pin the PDF's CreationDate / ModDate when the caller hasn't
+	// already set SOURCE_DATE_EPOCH. Typst honours SOURCE_DATE_EPOCH
+	// per the reproducible-builds spec; the result is byte-stable
+	// across runs when the env var is fixed. Issue #69 contract
+	// tests rely on this.
+	if cmd.Env == nil {
+		cmd.Env = os.Environ()
+	}
+	if os.Getenv("SOURCE_DATE_EPOCH") == "" {
+		cmd.Env = append(cmd.Env, "SOURCE_DATE_EPOCH=1577836800")
+	}
+
 	hideWindow(cmd)
 
 	var stderr bytes.Buffer
@@ -220,6 +246,9 @@ func stageSoldierImages(workDir string, data map[string]any) error {
 	}
 	if soldiers, ok := data["soldiers"]; ok {
 		return stageBulkSoldiersImages(workDir, data, soldiers)
+	}
+	if groups, ok := data["groups"]; ok {
+		return stageBulkSoldiersImages(workDir, data, groups)
 	}
 	return nil
 }
@@ -355,6 +384,13 @@ func stageBulkSoldiersImages(workDir string, data map[string]any, soldiers any) 
 	var typedSoldiers []models.Soldier
 	if ts, ok := soldiers.([]models.Soldier); ok {
 		typedSoldiers = ts
+	} else if gs, ok := soldiers.([]GroupKey); ok {
+		// Flatten so the mutation loop can index by r.soldierIdx
+		// the same way it does for the flat []models.Soldier
+		// case.
+		for _, g := range gs {
+			typedSoldiers = append(typedSoldiers, g.Soldiers...)
+		}
 	}
 	for _, r := range results {
 		if r.err != nil {
@@ -379,7 +415,21 @@ func stageBulkSoldiersImages(workDir string, data map[string]any, soldiers any) 
 		}
 	}
 	if typedSoldiers != nil {
-		data["soldiers"] = typedSoldiers
+		if _, ok := soldiers.([]GroupKey); ok {
+			// Re-pack the mutated soldiers into the original
+			// grouped shape so the rename survives the JSON
+			// serialisation.
+			gs := soldiers.([]GroupKey)
+			idx := 0
+			for gi := range gs {
+				count := len(gs[gi].Soldiers)
+				gs[gi].Soldiers = typedSoldiers[idx : idx+count]
+				idx += count
+			}
+			data["groups"] = gs
+		} else {
+			data["soldiers"] = typedSoldiers
+		}
 	}
 	return nil
 }
@@ -428,6 +478,16 @@ func extractSoldiersList(soldiers any) []any {
 		out := make([]any, len(v))
 		for i := range v {
 			out[i] = v[i]
+		}
+		return out
+	case []GroupKey:
+		// Flatten the grouped bulk payload to all soldiers across
+		// groups so the staging loop can walk them uniformly.
+		var out []any
+		for _, g := range v {
+			for i := range g.Soldiers {
+				out = append(out, g.Soldiers[i])
+			}
 		}
 		return out
 	}
