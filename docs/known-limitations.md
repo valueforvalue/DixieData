@@ -1,5 +1,10 @@
-Top 5 Break Points discovered while building the DixieData stress suite
-=====================================================================
+# Known Limitations
+
+Operational break points and constraints discovered while building the
+DixieData stress suite (`tests/stress/`). This file is documentation, not a
+source of truth for tests — the stress suite itself lives in `tests/stress/`.
+
+## Stress-suite break points
 
 1. `soldiers.added_by` does not exist in the current schema.
    - The migration stress pass can verify `prefix` and `suffix`, but `added_by` cannot be preserved because the field is not implemented in the current database model.
@@ -15,3 +20,9 @@ Top 5 Break Points discovered while building the DixieData stress suite
 
 5. Large note/record payloads can pressure page-fitting and file-handling paths.
    - The suite now stress-tests 10,000+ byte payloads, malformed HTML, and oversized dummy files because these are the fastest ways to expose layout, import, and parser edge cases.
+
+## See also
+
+- `tests/stress/` — Go integration + stress tests, `analyze_stress_log.py`
+- `scripts/run-stress-tests.ps1` — local stress harness entry point
+- `docs/audit/` — earlier layout-theming audits; see `layout-theming-findings.md`

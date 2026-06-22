@@ -72,4 +72,4 @@ Invoke-StressStep "Audit stress log" {
     python (Join-Path $root "tests\stress\analyze_stress_log.py") $logPath
 }
 
-Write-Host "Stress suite complete. Report: tests\stress\top-break-points.txt"
+Write-Host "Stress suite complete. See docs\known-limitations.md for known break points."

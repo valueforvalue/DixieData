@@ -17,7 +17,15 @@ This repo is configured as a single-context repo:
 /
 |-- CONTEXT.md
 |-- docs/adr/
-`-- src/
+|-- cmd/                -- Go entrypoints (gold-master, seed-data)
+|-- internal/           -- Go server code (appshell handlers, archive, templates)
+|-- pkg/                -- shared Go packages (render, encode, templatespec)
+|-- frontend/           -- HTML / JS / CSS (HTMX SPA, vanilla JS IIFE)
+|-- templates/          -- Typst template files (.typ) for PDF export
+|-- tools/tune/         -- separate Go module: dixiedata-tune CLI
+|-- bin/                -- bundled binaries (typst(.exe))
+|-- tests/              -- Go integration tests + stress suite
+|-- docs/               -- PRD, audit, agents, adr, migrations
 ```
 
 ## Use the glossary's vocabulary

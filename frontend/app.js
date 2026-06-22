@@ -2420,7 +2420,6 @@
       toast.remove();
     };
     toast.querySelector("[data-toast-dismiss]")?.addEventListener("click", dismiss);
-    window.setTimeout(dismiss, 4200);
   }
 
   function restorePendingToast() {

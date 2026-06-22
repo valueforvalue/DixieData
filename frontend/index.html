@@ -18,12 +18,8 @@
   </style>
 </head>
 <body hx-get="/calendar" hx-trigger="load" hx-target="body" hx-swap="outerHTML">
-  <div class="flex items-center justify-center h-screen">
-    <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
-      <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Soldier Archive</p>
-      <p class="text-2xl font-semibold text-[#f2ede1]">Loading DixieData...</p>
-      <p class="mt-2 text-sm text-[#d8cfbc]">Preparing the archive workspace.</p>
-    </div>
-  </div>
+  <!-- Loading card is rendered by internal/appshell/app.go::renderStartupPlaceholder
+       so that copy and styling stay in one place. This shell exists for the
+       brief window before the Go handler responds. -->
 </body>
 </html>

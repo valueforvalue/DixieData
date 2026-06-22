@@ -111,10 +111,7 @@ If any of these conditions is met, re-evaluate the matrix. None of them is true 
 
 ## 5. Status as of 2026-06-20 (post-migration)
 
-The Typst-based migration tracked in `typst-migration-plan.md`
-has shipped. As of slice 7 (commit 7139fff), the production
-appshell routes every export through Typst templates under
-`templates/`:
+The Typst-based migration has shipped. As of slice 7 (commit 7139fff), the production appshell routes every export through Typst templates under `templates/`:
 
 - `soldier_landscape`, `soldier_portrait`
 - `widow_landscape`, `widow_portrait`
