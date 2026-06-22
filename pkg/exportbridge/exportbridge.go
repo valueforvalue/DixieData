@@ -30,10 +30,12 @@ import (
 // external tools. Construct one via NewBulkRenderer and drive the
 // render methods.
 type BulkRenderer struct {
-	export  *archive.ExportService
-	soldier *archive.SoldierService
-	dataDir string
-	dbPath  string
+	export      *archive.ExportService
+	soldier     *archive.SoldierService
+	anniversary *archive.AnniversaryService
+	analytics   *archive.AnalyticsService
+	dataDir     string
+	dbPath      string
 }
 
 // NewBulkRenderer constructs a BulkRenderer for the DixieData
@@ -50,13 +52,17 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	soldierSvc := archive.NewSoldierService(database)
+	anniversarySvc := archive.NewAnniversaryService(database)
+	analyticsSvc := archive.NewAnalyticsService(database)
 	exportSvc := archive.NewExportService(database, soldierSvc)
 	exportSvc.SetDataDir(dataDir)
 	return &BulkRenderer{
-		export:  exportSvc,
-		soldier: soldierSvc,
-		dataDir: dataDir,
-		dbPath:  dbPath,
+		export:      exportSvc,
+		soldier:     soldierSvc,
+		anniversary: anniversarySvc,
+		analytics:   analyticsSvc,
+		dataDir:     dataDir,
+		dbPath:      dbPath,
 	}, nil
 }
 
@@ -158,6 +164,72 @@ func (b *BulkRenderer) RenderSingle(ctx context.Context, soldier models.Soldier,
 	}
 	defer os.Remove(tmp.Name())
 	if err := b.export.ExportSoldierPDF(tmp.Name(), soldier, opts); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(data)
+	return err
+}
+
+// RenderAnniversary renders the monthly anniversary report for the
+// given month (1-12). Mirrors the appshell's
+// handleMonthPDF path. Uses templates/anniversary.typ via the
+// Registry. The AnniversaryService builds the calendar from the
+// live archive.
+func (b *BulkRenderer) RenderAnniversary(ctx context.Context, month int, opts render.PDFOptions, out io.Writer) error {
+	opts = opts.Normalize("P", true)
+	calendar, err := b.anniversary.GetMonthCalendar(month)
+	if err != nil {
+		return fmt.Errorf("build anniversary calendar: %w", err)
+	}
+	if path := filePathFromWriter(out); path != "" {
+		return b.export.ExportMonthlyAnniversaryPDF(path, month, calendar, opts)
+	}
+	tmp, err := os.CreateTemp("", "dixiedata-exportbridge-anniversary-*.pdf")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if err := b.export.ExportMonthlyAnniversaryPDF(tmp.Name(), month, calendar, opts); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(data)
+	return err
+}
+
+// RenderInsights renders the archive summary report. Mirrors
+// handleExportInsightsPDF. Uses templates/analytics_summary.typ
+// via the Registry.
+func (b *BulkRenderer) RenderInsights(ctx context.Context, opts render.PDFOptions, out io.Writer) error {
+	opts = opts.Normalize("P", false)
+	snapshot, err := b.analytics.Snapshot()
+	if err != nil {
+		return fmt.Errorf("analytics snapshot: %w", err)
+	}
+	if path := filePathFromWriter(out); path != "" {
+		return b.export.ExportAnalyticsSummaryPDF(path, snapshot, opts)
+	}
+	tmp, err := os.CreateTemp("", "dixiedata-exportbridge-insights-*.pdf")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if err := b.export.ExportAnalyticsSummaryPDF(tmp.Name(), snapshot, opts); err != nil {
 		tmp.Close()
 		return err
 	}

@@ -61,6 +61,7 @@ func run(args []string) error {
 	// pass values like /tmp/foo.db which look like positions.
 	knownSubs := map[string]bool{
 		"render": true, "watch": true, "diff": true,
+		"anniversary": true, "insights": true,
 		"list-templates": true, "list-records": true,
 		"print-defaults": true, "help": true, "-h": true, "--help": true,
 	}
@@ -108,6 +109,10 @@ func run(args []string) error {
 		return doWatch(subArgs, *dbPath, *typstPath, *templatesDir, *dataDir)
 	case "diff":
 		return doDiff(subArgs)
+	case "anniversary":
+		return doAnniversary(subArgs, *dbPath, *typstPath, *templatesDir, *dataDir)
+	case "insights":
+		return doInsights(subArgs, *dbPath, *typstPath, *templatesDir, *dataDir)
 	case "list-templates":
 		return doListTemplates(*typstPath, *templatesDir)
 	case "list-records":
@@ -198,6 +203,8 @@ func usage(extra error) error {
 	fmt.Fprintln(os.Stderr, "  render             render a template against a record or the full archive")
 	fmt.Fprintln(os.Stderr, "  watch              re-render on templates/*.typ change")
 	fmt.Fprintln(os.Stderr, "  diff               diff two existing PDFs")
+	fmt.Fprintln(os.Stderr, "  anniversary        render the monthly anniversary report (--month N)")
+	fmt.Fprintln(os.Stderr, "  insights           render the archive summary / analytics report")
 	fmt.Fprintln(os.Stderr, "  list-templates     list discovered typst templates")
 	fmt.Fprintln(os.Stderr, "  list-records       list records in --db")
 	fmt.Fprintln(os.Stderr, "  print-defaults     print the appshell's default flag set (bulk or record)")
@@ -498,6 +505,105 @@ func mustCreate(path string) io.WriteCloser {
 		panic(err)
 	}
 	return f
+}
+
+// doAnniversary renders the monthly anniversary report for one
+// month. The anniversary template reads `data["month"]` and
+// `data["calendar"]` from the AnniversaryService. Required flag:
+// --month N (1-12).
+func doAnniversary(args []string, dbPath, typstPath, templatesDir, dataDir string) error {
+	fs := flag.NewFlagSet("anniversary", flag.ContinueOnError)
+	month := fs.Int("month", 0, "month to render (1-12)")
+	out := fs.String("out", "", "output PDF path")
+	orientation := fs.String("orientation", "P", "page orientation (L or P)")
+	printer := fs.Bool("printer-friendly", true, "suppress the page footer")
+	format := fs.String("format", "human", "output format: human or json")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *month < 1 || *month > 12 {
+		return fmt.Errorf("--month must be 1-12 (got %d)", *month)
+	}
+	if *out == "" {
+		return errors.New("--out is required")
+	}
+	if strings.TrimSpace(dbPath) == "" {
+		return errors.New("--db is required")
+	}
+	r, err := openRenderer(dbPath, dataDir, typstPath, templatesDir)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	start := time.Now()
+	opts := render.PDFOptions{
+		Orientation:     *orientation,
+		PrinterFriendly: *printer,
+	}
+	if err := r.RenderAnniversary(context.Background(), *month, opts, mustCreate(*out)); err != nil {
+		os.Remove(*out)
+		return err
+	}
+	dur := time.Since(start)
+	size, _ := fileSize(*out)
+	if *format == "json" {
+		return writeJSON(os.Stdout, map[string]any{
+			"subcommand":  "anniversary",
+			"month":       *month,
+			"output_path": *out,
+			"size_bytes":  size,
+			"duration_ms": dur.Milliseconds(),
+		})
+	}
+	fmt.Printf("wrote %s (%d bytes) in %dms\n", *out, size, dur.Milliseconds())
+	return nil
+}
+
+// doInsights renders the archive summary / analytics report.
+// Uses templates/analytics_summary.typ via the Registry.
+func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) error {
+	fs := flag.NewFlagSet("insights", flag.ContinueOnError)
+	out := fs.String("out", "", "output PDF path")
+	orientation := fs.String("orientation", "P", "page orientation (L or P)")
+	printer := fs.Bool("printer-friendly", true, "suppress the page footer")
+	format := fs.String("format", "human", "output format: human or json")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *out == "" {
+		return errors.New("--out is required")
+	}
+	if strings.TrimSpace(dbPath) == "" {
+		return errors.New("--db is required")
+	}
+	r, err := openRenderer(dbPath, dataDir, typstPath, templatesDir)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	start := time.Now()
+	opts := render.PDFOptions{
+		Orientation:     *orientation,
+		PrinterFriendly: *printer,
+	}
+	if err := r.RenderInsights(context.Background(), opts, mustCreate(*out)); err != nil {
+		os.Remove(*out)
+		return err
+	}
+	dur := time.Since(start)
+	size, _ := fileSize(*out)
+	if *format == "json" {
+		return writeJSON(os.Stdout, map[string]any{
+			"subcommand":  "insights",
+			"output_path": *out,
+			"size_bytes":  size,
+			"duration_ms": dur.Milliseconds(),
+		})
+	}
+	fmt.Printf("wrote %s (%d bytes) in %dms\n", *out, size, dur.Milliseconds())
+	return nil
 }
 
 // doWatch re-renders on templates/*.typ mtime change.
