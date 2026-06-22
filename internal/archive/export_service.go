@@ -99,6 +99,37 @@ func (e *ExportService) SetDataDir(dataDir string) {
 // Registry is a configuration error, not a fallback to fpdf.
 var errPDFRegistryMissing = errors.New("PDF export requires a render.Registry; the typst binary or templates directory is missing at startup")
 
+// ResolveTemplate exposes the underlying Registry.Resolve for
+// callers (notably pkg/exportbridge) that need to know which
+// template the renderer would pick for a given (recordType,
+// settings) tuple without producing a PDF. Returns
+// errPDFRegistryMissing when no Registry has been wired.
+func (e *ExportService) ResolveTemplate(settings PrintSettings, recordType string) (render.Template, error) {
+	if e.registry == nil {
+		return render.Template{}, errPDFRegistryMissing
+	}
+	return e.registry.Resolve(settings, recordType)
+}
+
+// StageImages exposes the underlying TypstRenderer's image-staging
+// step for diagnostic tooling. Returns errPDFRegistryMissing when
+// no Registry has been wired.
+func (e *ExportService) StageImages(workDir string, data map[string]any) error {
+	if e.registry == nil {
+		return errPDFRegistryMissing
+	}
+	return e.registry.StageImages(workDir, data)
+}
+
+// Close releases the underlying SQLite handle. Used by callers
+// (notably pkg/exportbridge) that own the BulkRenderer's lifetime.
+func (e *ExportService) Close() error {
+	if e.db == nil {
+		return nil
+	}
+	return e.db.Close()
+}
+
 // ExportSoldierPDF is a thin facade. Routes through the typst-backed
 // Registry. The Registry MUST be wired (see SetRegistry); a missing
 // Registry returns an error rather than falling back to the legacy
