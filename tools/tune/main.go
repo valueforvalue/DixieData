@@ -516,7 +516,7 @@ func doAnniversary(args []string, dbPath, typstPath, templatesDir, dataDir strin
 	month := fs.Int("month", 0, "month to render (1-12)")
 	out := fs.String("out", "", "output PDF path")
 	orientation := fs.String("orientation", "P", "page orientation (L or P)")
-	printer := fs.Bool("printer-friendly", true, "suppress the page footer")
+	printer := fs.Bool("printer-friendly", false, "suppress the 'Made with DixieData' page footer")
 	format := fs.String("format", "human", "output format: human or json")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -566,7 +566,7 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 	fs := flag.NewFlagSet("insights", flag.ContinueOnError)
 	out := fs.String("out", "", "output PDF path")
 	orientation := fs.String("orientation", "P", "page orientation (L or P)")
-	printer := fs.Bool("printer-friendly", true, "suppress the page footer")
+	printer := fs.Bool("printer-friendly", false, "suppress the 'Made with DixieData' page footer")
 	format := fs.String("format", "human", "output format: human or json")
 	if err := fs.Parse(args); err != nil {
 		return err
