@@ -1,5 +1,7 @@
 # Layout & Theming Diagnostic Audit Prompt
 
+> **STATUS: RESOLVED.** Audit produced the findings documents in this directory and drove slice 1–7 of the Typst PDF migration. Slice 7 (commit 7139fff) retired fpdf. The prompt is retained so future audits can pattern-match its structure. See `docs/PRD.md` for the live state.
+
 ## Purpose
 
 Isolate **formatting definitions** (page geometry, margins, colors, fonts, spacing, borders, grid columns) from the **template compilation engine** (the Go/Templ/HTML/CSS delivery stack and the `go-pdf/fpdf` rendering pipeline) in DixieData.

@@ -99,7 +99,7 @@ For the most common case (a single-soldier record card):
 The `templates/common/theme.typ` file holds centralized design tokens
 that every template can import. The values are derived from the
 audit's `theme.json` deliverable (see
-`docs/audit/layout-theming-token-schema.md`).
+`docs/audit/resolved/layout-theming-token-schema.md`).
 
 | Token | Type | Used for |
 |---|---|---|
@@ -181,6 +181,6 @@ and incorporates the feedback.
 
 - `docs/PRD.md` — the product requirements doc for the Typst PDF
   template system that introduced these templates.
-- `docs/audit/layout-theming-token-schema.md` — the design token
+- `docs/audit/resolved/layout-theming-token-schema.md` — the design token
   schema that `theme.typ` is derived from.
 - `tools/tune/README.md` — the tuning tool documentation.

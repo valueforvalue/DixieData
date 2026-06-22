@@ -19,7 +19,7 @@ Read-only audit. No source was modified.
 | 3 | The static archive's 1,142-LOC inline HTML template (`staticArchiveIndexHTML`, `static_archive.go:105-892`) uses its own class taxonomy (`.action-button`, `.image-button`, `.back-button`, `.overlay-close`, `.screen`) instead of the live app's global `.primary-button` / `.secondary-button` / `.card`. Visually identical, semantically divergent. | Drift |
 | 4 | `index.html` and `viewer.html` are byte-identical files in every export (`export_service.go:1228-1241`). Both written. Redundant bytes + future divergence risk. | Stale |
 | 5 | Hex literals scattered through `static_archive.go` CSS mirror the same `#8d7440`/`#22303d`/`#6f2c26`/`#c5ab68` pattern issue #53 documents for the live app. Same shortcut, different file. | Drift |
-| 6 | PRD (`docs/PRD.md:138,184`) and the typst-migration-plan (`docs/audit/typst-migration-plan.md:462`) describe a "Typst-based static archive" deliverable that does **not** exist in the codebase. The migration was deferred; the docs were not updated to say so. | Doc rot |
+| 6 | PRD (`docs/PRD.md:138,184`) and the typst-migration-plan (`docs/audit/typst-migration-plan.md:462`, since deleted) describe a "Typst-based static archive" deliverable that does **not** exist in the codebase. The migration was deferred; the docs were not updated to say so. | Doc rot |
 | 7 | No `aria-live` on `#result-count`, image overlay, or detail screen content. Only `#archive-results` is announced. Partial a11y coverage. | Drift |
 | 8 | Toast-region integration absent. The export writes `exportLinkMarkup` (a `file:///` pill-link) into `#share-status`; no `X-DixieData-Toast` header set. Inconsistent with the rest of the export surface — issue #55 plans to migrate this pattern but is itself blocked on #69. | Drift |
 | 9 | The static archive is triggered from one button (`share.templ:115-119`) and the UI is clean. No hidden, disabled, or commented-out triggers elsewhere. | OK |
@@ -157,13 +157,13 @@ Single form, single pairing — issue #51's scope is the live app, not this.
 
 | Doc | Claim | Code reality |
 |---|---|---|
-| `docs/PRD.md:138` | "Slice 6 — minimal static archive unification. `templates/static_archive_index.typ` produces the static archive page structure as Typst HTML output." | The `.typ` file exists but is **not wired**. The static archive uses `html/template`, not Typst. |
+| `docs/PRD.md:138` | "Slice 6 — minimal static archive unification. `templates/static_archive_index.typ` produces the static archive page structure as Typst HTML output." | The `.typ` file existed but is **not wired**; since deleted by PR #71. The static archive uses `html/template`, not Typst. |
 | `docs/PRD.md:184` | "27 alpha-variant rgba duplications" | Confirmed present in `static_archive.go`; unfixed. |
-| `docs/audit/typst-migration-plan.md:462` | "Static archive uses Typst. Fpdf path is dead code but still wired." | Fpdf is gone from `go.mod`. Static archive does **not** use Typst. |
+| `docs/audit/typst-migration-plan.md:462` (file since deleted by PR #70) | "Static archive uses Typst. Fpdf path is dead code but still wired." | Fpdf is gone from `go.mod`. Static archive does **not** use Typst. |
 | `docs/TASKS.csv:41-45` | Slice 6 task listed as `- [ ]` (open) | ✓ matches code |
-| `docs/audit/typst-migration-plan.md:464-467` | "Skip the static-archive unification and defer it" — explicitly listed as one of three options | Code reflects this option being chosen |
+| `docs/audit/typst-migration-plan.md:464-467` (file since deleted) | "Skip the static-archive unification and defer it" — explicitly listed as one of three options | Code reflects this option being chosen |
 
-**Recommendation:** mark Slice 6 as explicitly **deferred** in `docs/PRD.md` (move it from "planned" to "out of scope / future overhaul"). Update `docs/audit/typst-migration-plan.md:462` to "Static archive does not use Typst; defer Slice 6 indefinitely." Both are doc-only edits.
+**Recommendation:** mark Slice 6 as explicitly **deferred** in `docs/PRD.md` (move it from "planned" to "out of scope / future overhaul"). The typst-migration-plan.md is gone; PRD §Slice 6 should be amended to read "Static archive does not use Typst; defer Slice 6 indefinitely." Doc-only edit.
 
 ### 4.4 Class-name taxonomy divergence
 
@@ -216,7 +216,7 @@ The button is a sibling of JSON/iCal/CSV/Backup/SharedArchive/Printable PDF butt
 |---|---|---|---|
 | P1 | Delete `templates/static_archive_index.typ`. | 1 minute | One-line commit; orphan file. |
 | P1 | Pick `index.html` or `viewer.html` and remove the duplicate write in `export_service.go:1228-1241`. | 5 minutes | Recommendation: keep `viewer.html` (matches Playwright test). |
-| P2 | Update `docs/PRD.md:138` and `docs/audit/typst-migration-plan.md:462` to mark Slice 6 as explicitly deferred. | 10 minutes | Doc-only. Aligns docs with code reality. |
+| P2 | Update `docs/PRD.md:138` to mark Slice 6 as explicitly deferred. (The typst-migration-plan reference is gone — that file was deleted by PR #70.) | 10 minutes | Doc-only. Aligns docs with code reality. |
 | P3 | Audit `(e *ExportService) staticArchiveImagePath` field — see if `imagePath` in `StaticArchiveRecord` (`static_archive.go:60`) is consumed by the rendered UI or is dead data. | 15 minutes | Low priority cleanup; if dead, drop it. |
 | P3 | When issue #55 (toast migration) ships, fold the static-archive success/error into the toast flow alongside the other exports. | Depends on #55 | Drop the `exportLinkMarkup` write for this handler; emit `setToastHeader` instead. (Will require file:// link alternative — `runtime.BrowserOpenURL`?) |
 | P4 | When issue #53 (CSS variables) ships, extend the migration to `static_archive.go:113-538`. | Bundled with #53 | Same pattern; same gating. |
@@ -256,7 +256,7 @@ The feature does **not** need a rebuild. The static archive is not stale in the 
 - `tests/goldmaster/run-suite.ps1:41-48`
 - `tests/goldmaster/artifacts/output/artifacts/static-archive/` (committed sample)
 - `docs/PRD.md:138, 184`
-- `docs/audit/typst-migration-plan.md:462, 464-467, 534-562`
+- `docs/audit/typst-migration-plan.md:462, 464-467, 534-562` (file since deleted by PR #70)
 - `docs/TASKS.csv:41-45, 53`
 - `docs/user-manual.md:334-336, 447-457`
 - `docs/ai-handoff.md:299-310`

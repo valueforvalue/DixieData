@@ -25,4 +25,4 @@ source of truth for tests — the stress suite itself lives in `tests/stress/`.
 
 - `tests/stress/` — Go integration + stress tests, `analyze_stress_log.py`
 - `scripts/run-stress-tests.ps1` — local stress harness entry point
-- `docs/audit/` — earlier layout-theming audits; see `layout-theming-findings.md`
+- `docs/audit/` — diagnostic audits; `resolved/` subdirectory holds audits superseded by shipped work. See `docs/audit/README.md` for the status convention.

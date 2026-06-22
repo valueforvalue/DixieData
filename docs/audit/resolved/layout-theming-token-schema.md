@@ -1,5 +1,7 @@
 # Token Schema Proposal
 
+> **STATUS: RESOLVED.** Token schema was never implemented as a Go type. The Typst migration uses a different mechanism: theme variables are defined in `templates/common/theme.typ` and consumed directly by every template that imports it. This document is retained as the rationale for why a Go-typed config was rejected in favor of Typst-native theming. See `docs/PRD.md` for the live state.
+
 This is the typed configuration shape for layout and theming. It is **proposed only** — no Go code is written during the audit. Every field below is traceable to a finding in `layout-theming-findings.md`.
 
 ---

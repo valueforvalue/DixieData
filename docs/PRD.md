@@ -23,7 +23,7 @@ A new **`dixiedata-tune`** tool lives in the same repository as a separate Go mo
 - A side-by-side comparison view: render the same record with the fpdf baseline and the Typst template, show both PDFs.
 - A **markdown annotation feedback loop**: the researcher writes free-form notes in a `.md` file alongside the rendered PDF. The agent reads the annotations before the next render.
 
-The visual design is captured in a single `theme.typ` file. The audit's `theme.json` schema (see `docs/audit/layout-theming-token-schema.md`) ports almost verbatim into Typst `let` bindings.
+The visual design is captured in a single `theme.typ` file. The audit's `theme.json` schema (see `docs/audit/resolved/layout-theming-token-schema.md`) ports almost verbatim into Typst `let` bindings.
 
 The fpdf path remains the default for all exports during a phased migration. The Typst path becomes the default for migrated exports. Eventually the fpdf path is removed. (Done: the fpdf path is now fully removed. The typst path is the only path. Slice 7 completed.)
 
@@ -174,8 +174,8 @@ Prior art: the existing `internal/archive/export_service_test.go` tests render r
 
 ## Further Notes
 
-- The audit findings documents (`docs/audit/layout-theming-*.md`) are resolved by this PRD. After Phase 3, the 9 hard-coded RGB triplets, 60+ rgba variants, and 11 correction values are all gone. The audit deliverables should be updated to reflect the new state.
-- The `theme.json` audit deliverable (`docs/audit/layout-theming-token-schema.md`) is the source of truth for the design tokens. The Typst `theme.typ` is a near-verbatim port.
+- The audit findings documents (`docs/audit/resolved/layout-theming-*.md`) are resolved by this PRD. After Phase 3, the 9 hard-coded RGB triplets, 60+ rgba variants, and 11 correction values are all gone. The audit deliverables have been moved to `docs/audit/resolved/` with STATUS banners.
+- The `theme.json` audit deliverable (`docs/audit/resolved/layout-theming-token-schema.md`) is the source of truth for the design tokens. The Typst `theme.typ` is a near-verbatim port.
 - The phased migration means the fpdf path is live for the duration of Phases 0–2. The test surface stays green. Phase 3 deletes it. (Done: the fpdf path is gone. The only PDF export path is the typst-backed one.)
 - The tuning tool's `serve` subcommand is a small Go HTTP server with templ-rendered HTML (using the same template engine DixieData uses, since the templates directory is shared). It is not a full web app; it is a developer tool.
 - The annotation feedback loop is a convention, not a system. The agent reads `.md` files alongside renders. The convention is: filename ends in `.md`, content is free-form markdown, the most recent one for a `(template, record)` pair is the source of truth.
