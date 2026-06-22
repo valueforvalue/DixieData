@@ -1,7 +1,7 @@
 const { test, expect } = require("@playwright/test");
 
 test("static archive search and detail view keep family links intact", async ({ page }) => {
-  await page.goto("/viewer.html");
+  await page.goto("/index.html");
 
   await expect(page.locator("h1")).toContainText("Civil War Research Archive");
   await page.locator("#archive-search").fill("Sarah Carter");

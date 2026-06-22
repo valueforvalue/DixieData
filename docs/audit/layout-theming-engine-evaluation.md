@@ -121,8 +121,6 @@ The Typst-based migration has shipped. As of slice 7 (commit 7139fff), the produ
 - `anniversary`
 - `analytics_summary`
 - `group_divider`
-- `static_archive_index` (printable companion; the HTML
-  static-archive index remains unchanged)
 
 The `pkg/render/fpdf` Service is retained as a test scaffold
 only. `FpdfRenderer` is no longer wired into the appshell's

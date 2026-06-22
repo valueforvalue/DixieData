@@ -229,7 +229,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	viewerHTML, err := os.ReadFile(filepath.Join(staticDir, "viewer.html"))
+	indexHTML, err := os.ReadFile(filepath.Join(staticDir, "index.html"))
 	if err != nil {
 		return report{}, err
 	}
@@ -273,8 +273,8 @@ func runOutputAudit(reportDir string) (report, error) {
 		check("static-archive-crosslinks",
 			strings.Contains(string(staticData), fixture.Spouse.DisplayID) &&
 				strings.Contains(string(staticData), `"spouseDisplayId": "`+fixture.Soldier.DisplayID+`"`) &&
-				strings.Contains(string(viewerHTML), "Family Links") &&
-				strings.Contains(string(viewerHTML), "Archive Metadata"),
+				strings.Contains(string(indexHTML), "Family Links") &&
+				strings.Contains(string(indexHTML), "Archive Metadata"),
 			"Static archive viewer exposes family links and metadata for linked records."),
 	}
 

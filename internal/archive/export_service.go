@@ -1235,9 +1235,6 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(exportRoot, "viewer.html"), []byte(indexHTML), 0o644); err != nil {
-		return err
-	}
 	if err := os.WriteFile(filepath.Join(exportRoot, "index.html"), []byte(indexHTML), 0o644); err != nil {
 		return err
 	}

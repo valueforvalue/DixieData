@@ -300,11 +300,9 @@ Important note:
 
 The static archive now emits:
 
-- `viewer.html`
+- `index.html`
 - `archive_data.js`
 - `window.DIXIE_DATA`
-
-For compatibility, `index.html` is also written.
 
 The output is designed to be opened directly in a browser with no app server.
 
