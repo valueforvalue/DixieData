@@ -1,5 +1,7 @@
 # Layout Engine Evaluation
 
+> **STATUS: RESOLVED.** Typst was selected. The engine evaluation led to slice 1 of the Typst PDF migration; slice 7 (commit 7139fff) retired fpdf. The static-archive's interactive JS layer was preserved (Typst HTML output was rejected — see PRD §Static Archive). See `docs/PRD.md` for the live state.
+
 Comparison of the three candidate rendering paradigms for DixieData's PDF and HTML outputs. Scores are 1–5, higher is better. Justification cites specific findings in `layout-theming-findings.md`.
 
 The candidates are:

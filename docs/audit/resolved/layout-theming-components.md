@@ -1,5 +1,7 @@
 # Component Inventory
 
+> **STATUS: RESOLVED.** Migration to Typst templates is complete. Component breakdown was used to scope the move from fpdf helpers to `templates/common/record_card.typ` and `templates/common/components.typ`. The Typst templates now own the visual component vocabulary. See `docs/PRD.md` for the live state.
+
 The visual components that the rendering stack produces, mapped to the templates and PDF helpers that would migrate to each component, and the override surface each one exposes.
 
 This is **proposed only** — no code is written. The migration targets are the existing PDF helpers and templ templates; the components below describe the *shape* the migration should converge on.

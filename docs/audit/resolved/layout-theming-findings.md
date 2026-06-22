@@ -1,5 +1,7 @@
 # Layout & Theming Findings
 
+> **STATUS: RESOLVED.** Findings addressed by the Typst PDF migration (PRD §Typst migration, slice 7 / commit 7139fff). Retained for historical reference. Path citations in this document refer to the fpdf-era rendering stack that was retired; the equivalent code now lives in `pkg/render/`. Findings about hard-coded RGB triplets, alpha-variant rgba, and correction values are now obsolete because the Typst templates drive styling through `templates/common/theme.typ` and `templates/common/record_card.typ`. See `docs/PRD.md` for the live state.
+
 Read-only audit. No source was modified.
 
 **Scope.** Every literal that defines visual output across the PDF rendering stack (`internal/archive/pdf_layout.go`, `internal/archive/export_service.go`), the templ view layer (`internal/templates/*.templ`), the static-archive browser viewer (`internal/archive/static_archive.go`), the ViewModel adapter (`internal/presentation/views.go`), and the Tailwind config (`tailwind.config.js`).
