@@ -52,30 +52,52 @@
   font: ("Times New Roman", "Liberation Serif", "DejaVu Serif"),
   weight: "bold",
 )[#mlabel Anniversary Report]
-#v(0.2em)
-#text(size: 10pt, fill: theme.palette.text_secondary)[
-  Includes soldier names and database numbers for the selected month.
-]
 #v(0.6em)
 
-// Sort days ascending and skip 0 (sentinel for unknown).
-#let days-raw = calendar.keys().filter(d => d != 0)
-#let days = days-raw.sorted()
+// Helper: assemble a soldier's display name from first/middle/last.
+// The Go-side Soldier.DisplayName method isn't included in the
+// JSON payload sent to typst, so the template composes it from
+// the available fields. Returns "" when no name parts are set;
+// the caller is expected to fall back to the display_id.
+#let soldier-name(s) = {
+  let parts = (
+    s.at("first_name", default: ""),
+    s.at("middle_name", default: ""),
+    s.at("last_name", default: ""),
+  ).filter(p => p != "")
+  parts.join(" ")
+}
+
+// Sort days ascending numerically (the keys come from the Go
+// map[string][]Soldier JSON round-trip as strings, so a
+// lexicographic sort puts "11" before "2"). Skip 0 (sentinel
+// for unknown day).
+#let days-raw = calendar.keys().filter(d => d != "0")
+#let days = days-raw.sorted(key: d => int(d))
 
 #if days.len() == 0 [
   #set text(size: 9pt)
   No soldiers are recorded for this month.
 ] else [
-  // For each day, render a section.
+  // For each day, render a section. Two columns so a 31-day
+  // month with many anniversaries still fits on a single page.
   #set text(size: 9pt)
-  #for day in days [
-    #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Day #day]
-    #v(0.3em)
-    #let soldiers = calendar.at(day, default: ())
-    #for s in soldiers [
-      - #s.at("display_name", default: s.at("display_id", default: "")) (#s.at("display_id", default: ""))
-      #v(0.2em)
+  #columns(2, gutter: 1.2em)[
+    #for day in days [
+      #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Day #day]
+      #v(0.3em)
+      #let soldiers = calendar.at(day, default: ())
+      #for s in soldiers [
+        - #let name = soldier-name(s)
+          #if name != "" [
+            #name
+          ] else [
+            #s.at("display_id", default: "")
+          ]
+          (#s.at("display_id", default: ""))
+        #v(0.2em)
+      ]
+      #v(0.4em)
     ]
-    #v(0.4em)
   ]
 ]
