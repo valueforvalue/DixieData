@@ -106,8 +106,8 @@ func (b *BulkRenderer) RenderBulk(ctx context.Context, settings render.PrintSett
 	// template that reads data["soldier"].
 	settings.Template = ""
 
-	if closer, ok := out.(io.WriteCloser); ok {
-		err := b.export.ExportFullDatabasePDF(filePathFromWriter(closer), settings)
+	if path := filePathFromWriter(out); path != "" {
+		err := b.export.ExportFullDatabasePDF(path, settings)
 		return nil, err
 	}
 
@@ -148,8 +148,8 @@ func (b *BulkRenderer) RenderSingle(ctx context.Context, soldier models.Soldier,
 		}
 	}
 
-	if closer, ok := out.(io.WriteCloser); ok {
-		return b.export.ExportSoldierPDF(filePathFromWriter(closer), soldier, opts)
+	if path := filePathFromWriter(out); path != "" {
+		return b.export.ExportSoldierPDF(path, soldier, opts)
 	}
 	tmp, err := os.CreateTemp("", "dixiedata-exportbridge-*.pdf")
 	if err != nil {
@@ -279,12 +279,11 @@ func parseBoolFormValueDefault(values url.Values, key string, fallback bool) boo
 	return fallback
 }
 
-// filePathFromWriter extracts a filesystem path from a WriteCloser
-// when it is an *os.File. Returns empty string when the writer is
-// not backed by a file (e.g. bytes.Buffer). Today the export
-// service only accepts file paths; we extend to bytes by routing
-// through a temp file in the fallback path.
-func filePathFromWriter(w io.WriteCloser) string {
+// filePathFromWriter extracts a filesystem path from a writer
+// when it is backed by an *os.File. Returns empty string when the
+// writer is in-memory (e.g. bytes.Buffer); callers should fall back
+// to a temp file in that case.
+func filePathFromWriter(w io.Writer) string {
 	if f, ok := w.(*os.File); ok {
 		return f.Name()
 	}
