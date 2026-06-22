@@ -100,7 +100,7 @@ The fpdf path remains the default for all exports during a phased migration. The
 
 - A new Go module at `tools/tune/go.mod` imports DixieData's `pkg/render`, `pkg/encode`, and `pkg/templatespec` packages.
 - The tool reads the DixieData SQLite database in read-only mode (`?mode=ro`).
-- CLI subcommands: `render`, `list-templates`, `list-records`, `capture-baseline`, `compare`, `serve`.
+- CLI subcommands: `render`, `list-templates`, `list-records`, `diff`, `print-defaults`, `watch`.
 - The `serve` subcommand starts a small web server with a UI for picking a template, picking a record, rendering, and viewing the PDF inline.
 - The web UI also shows a side-by-side comparison: the fpdf baseline PDF and the Typst PDF.
 - The tool watches the `templates/` directory and hot-reloads templates when they change.
@@ -108,7 +108,7 @@ The fpdf path remains the default for all exports during a phased migration. The
 ### Visual comparison
 
 - A `tools/tune/baseline/` directory contains the fpdf-rendered PDFs (one per record, per export type) captured before any Typst code is written.
-- The `capture-baseline` subcommand renders every record through every fpdf export and saves the output.
+- The `capture-baseline` subcommand renders every record through every fpdf export and saves the output. (Removed in slice 7 when fpdf was retired; replaced by the byte-identical snapshot contract at `internal/exportcontract/`. See issue #69.)
 - The `compare` subcommand renders the same record through both the fpdf and Typst paths, saves both, and produces a markdown report with extracted text diffs and any layout divergences the agent notices.
 - The "close enough" bar is: the Typst output should be visually recognizable as the same export, with the same fields, same color palette, same header/footer, and same two-column record card structure. It does not need to be byte-identical.
 

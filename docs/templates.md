@@ -117,18 +117,24 @@ Every template that imports it picks up the change.
 
 ## Iteration workflow
 
+Issue #69 rewrote dixiedata-tune so it drives the same
+`pkg/exportbridge` facade the appshell uses. A PDF rendered by tune
+is byte-identical to one rendered by the appshell for the same
+input. The fpdf-era `compare` command no longer exists.
+
 1. Drop a `.typ` file in `templates/`.
 2. Run `dixiedata-tune list-templates` to confirm it's discovered.
-3. Run `dixiedata-tune render --template <name> --record <id> --out out.pdf`
-   against a real record to see the result.
-4. Compare with the fpdf baseline:
-   `dixiedata-tune compare --template <name> --record <id>` writes
-   both PDFs to `compare/`.
+3. Run `dixiedata-tune render --template <name> --mode record --record <id> --out out.pdf`
+   against a real record to see the result. For bulk-template
+   iteration, `--mode bulk` with `--record-ids 1,2,3,4,5` keeps
+   the watch loop fast.
+4. Iterate. `make tune` rebuilds the binary; `make tune-snapshots`
+   regenerates the byte-identical contract snapshots.
 5. Write notes in a sidecar `.md` file alongside the rendered PDF
    (e.g. `out.md` next to `out.pdf`). The next render of the same
    template+record will read this file as context.
-6. Iterate. When the Typst output is "close enough to be recognizable"
-   as the same export, ship the template.
+6. When the Typst output matches what the appshell would produce
+   for the same input, ship the template.
 
 ## Annotation convention
 
