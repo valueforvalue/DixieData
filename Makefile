@@ -12,7 +12,7 @@ LOGDIR := build/log
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
-        stress goldmaster tune tune-smoke tune-snapshots tpl css audit clean log-clean bump release-github
+        stress goldmaster tune tune-smoke tune-snapshots render-round tpl css audit clean log-clean bump release-github
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -104,6 +104,16 @@ tune-snapshots:
 	UPDATE_SNAPSHOTS=1 go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s
 	@echo "snapshots regenerated; rerun without UPDATE_SNAPSHOTS=1 to verify byte-stability"
 	go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s
+
+# Render every PDF export surface against the live archive for the
+# current iteration round. Writes to docs/renderings/<surface>/.
+# Iteration loop (issue #69 follow-up): user annotates
+# docs/renderings/<surface>/review.md; agent makes code changes;
+# rerun with ROUND=2+ to capture successive states.
+render-round:
+	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
+	cd tools/tune && go build -o bin/dixiedata-tune.exe .
+	pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round 1
 
 # --- Asset generation ---
 

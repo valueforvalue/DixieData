@@ -20,6 +20,8 @@ const (
 )
 
 type SoldierService = records.SoldierService
+type AnniversaryService = records.AnniversaryService
+type AnalyticsService = records.AnalyticsService
 type AnalyticsCount = records.AnalyticsCount
 type AnalyticsSnapshot = records.AnalyticsSnapshot
 type PrintSettings = render.PrintSettings
@@ -34,6 +36,8 @@ const (
 )
 
 func NewSoldierService(database *db.DB) *SoldierService { return records.NewSoldierService(database) }
+func NewAnniversaryService(database *db.DB) *AnniversaryService { return records.NewAnniversaryService(database) }
+func NewAnalyticsService(database *db.DB) *AnalyticsService { return records.NewAnalyticsService(database) }
 
 func nullableInt64(value int64) interface{} {
 	if value < 1 {
