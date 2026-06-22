@@ -178,7 +178,7 @@
     #compose-name(s)
     #if suffix != "" [, #suffix]
   ])
-  v(0.1em)
+  v(-0.3em)
   align(align-title, text(
     size: 9pt,
     fill: theme.palette.text_secondary,
@@ -376,10 +376,13 @@
   let page-width = if is-landscape { 11in } else { 8.5in }
   let page-height = if is-landscape { 8.5in } else { 11in }
   let margins = (top: 0.4in, bottom: 0.4in, left: 0.63in, right: 0.63in)
-  let header-content = align(left, text(
-    size: 7pt,
-    fill: theme.palette.text_secondary,
-  )[#branding.at("archive_title", default: "DixieData Archive")])
+  let header-content = {
+    align(left, text(
+      size: 7pt,
+      fill: theme.palette.text_secondary,
+    )[#branding.at("archive_title", default: "DixieData Archive")])
+    place(bottom, line(length: 100%, stroke: 0.6pt + theme.palette.accent))
+  }
   // Body of the footer: a horizontal rule above the text. The
   // rule uses place(top, ...) to anchor the line at the top of
   // the footer area; the v(0.4em) reserves the gap between the
