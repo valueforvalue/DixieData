@@ -9,12 +9,12 @@ package appshell
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/pkg/exportbridge"
 )
 
 
@@ -194,58 +194,20 @@ func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
 	if err := r.ParseForm(); err != nil {
 		return archive.PrintSettings{}, fmt.Errorf("failed to parse print settings")
 	}
-	selectedIDs, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
-	if err != nil {
-		return archive.PrintSettings{}, err
-	}
-	settings := archive.PrintSettings{
-		Scope:                        strings.TrimSpace(r.FormValue("scope")),
-		Orientation:                  strings.TrimSpace(r.FormValue("orientation")),
-		Template:                     strings.TrimSpace(r.FormValue("template")),
-		PrinterFriendly:              r.FormValue("printer_friendly") != "",
-		FullBiographyPage:            r.FormValue("full_biography_page") != "",
-		SortBy:                       strings.TrimSpace(r.FormValue("sort_by")),
-		GroupByUnit:                  r.FormValue("group_by_unit") != "",
-		GroupByPensionState:          r.FormValue("group_by_pension_state") != "",
-		GroupByConfederateHomeStatus: r.FormValue("group_by_confederate_home_status") != "",
-		GroupByBuriedIn:              r.FormValue("group_by_buried_in") != "",
-		FilterBuriedIn:               append([]string(nil), r.Form["filter_buried_in"]...),
-		FilterEntryTypes:             append([]string(nil), r.Form["filter_entry_type"]...),
-		FilterUnits:                  append([]string(nil), r.Form["filter_unit"]...),
-		FilterPensionStates:          append([]string(nil), r.Form["filter_pension_state"]...),
-		FilterConfederateHomeStatuses:  append([]string(nil), r.Form["filter_confederate_home_status"]...),
-		ExportAll:                    r.FormValue("export_all") != "",
-		SelectedIDs:                  selectedIDs,
-	}.Normalize()
-	if settings.Scope == archive.PrintScopeSelected && len(settings.SelectedIDs) == 0 {
-		return archive.PrintSettings{}, fmt.Errorf("select at least one record or choose a different export scope")
-	}
-	return settings, nil
+	// Issue #69: route through pkg/exportbridge so the appshell
+	// and tools/tune parse identically. The bridge's
+	// PrintSettingsFromForm is the canonical parser; this thin
+	// wrapper exists to preserve the http.Request signature and
+	// surface a friendly error message.
+	return exportbridge.PrintSettingsFromForm(r.Form)
 }
 
 func parsePDFOptionsRequest(r *http.Request, defaultOrientation string, defaultIncludeImages bool) archive.PDFOptions {
-	options := archive.PDFOptions{
-		Orientation:     strings.TrimSpace(r.FormValue("orientation")),
-		PrinterFriendly: r.FormValue("printer_friendly") != "",
-		IncludeImages:   parseBoolFormValueDefault(r.Form, "include_images", defaultIncludeImages),
+	if err := r.ParseForm(); err != nil {
+		// Fall through with empty form values; PDFOptionsFromForm
+		// will fall back to its defaults.
 	}
-	return options.Normalize(defaultOrientation, defaultIncludeImages)
-}
-
-func parseBoolFormValueDefault(values url.Values, key string, fallback bool) bool {
-	raw, ok := values[key]
-	if !ok {
-		return fallback
-	}
-	for _, value := range raw {
-		switch strings.TrimSpace(strings.ToLower(value)) {
-		case "1", "true", "on", "yes":
-			return true
-		case "0", "false", "off", "no", "":
-			return false
-		}
-	}
-	return fallback
+	return exportbridge.PDFOptionsFromForm(r.Form, defaultOrientation, defaultIncludeImages)
 }
 
 func setToastHeader(w http.ResponseWriter, message string) {
