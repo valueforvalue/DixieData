@@ -173,8 +173,8 @@ and incorporates the feedback.
 
 ## See also
 
-- `docs/audit/typst-migration-plan.md` — the migration plan that
-  introduced this template system.
+- `docs/PRD.md` — the product requirements doc for the Typst PDF
+  template system that introduced these templates.
 - `docs/audit/layout-theming-token-schema.md` — the design token
   schema that `theme.typ` is derived from.
 - `tools/tune/README.md` — the tuning tool documentation.
