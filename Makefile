@@ -12,7 +12,7 @@ LOGDIR := build/log
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
-        stress goldmaster tpl css audit clean log-clean bump release-github
+        stress goldmaster tune tune-smoke tune-snapshots tpl css audit clean log-clean bump release-github
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -78,6 +78,32 @@ goldmaster: TARGET := goldmaster
 goldmaster: ARGS :=
 goldmaster: ## Gold-master suite
 	$(LOG_RECIPE)
+
+# --- dixiedata-tune (issue #69 step 5) ---
+
+# Build the standalone tool. Output binary lives at
+# tools/tune/bin/dixiedata-tune (Windows: .exe suffix). Cached
+# across invocations unless source files change.
+tune:
+	@mkdir -p tools/tune/bin
+	cd tools/tune && go build -o bin/dixiedata-tune .
+
+# Run dixiedata-tune against the live archive (.dixiedata/dixiedata.db).
+# Smoke test only -- no byte comparison (the live DB changes over
+# time). Verifies the tool opens the archive, renders, and exits 0.
+# Useful for surfacing layout overflow / edge cases on real data.
+tune-smoke:
+	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
+	cd tools/tune && go build -o bin/dixiedata-tune .
+	tools/tune/bin/dixiedata-tune --db .dixiedata render --template bulk_soldier --mode bulk --out "$(PWD)/build/log/tune-smoke.pdf"
+	@ls -la "$(PWD)/build/log/tune-smoke.pdf"
+
+# Regenerate the byte-identical PDF snapshots that pin tune's
+# output against internal/archive's output. Requires typst in PATH.
+tune-snapshots:
+	UPDATE_SNAPSHOTS=1 go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s
+	@echo "snapshots regenerated; rerun without UPDATE_SNAPSHOTS=1 to verify byte-stability"
+	go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s
 
 # --- Asset generation ---
 
