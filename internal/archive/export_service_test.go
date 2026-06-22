@@ -319,9 +319,6 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if _, ok := entries["index.html"]; !ok {
 		t.Fatalf("archive missing index.html: %v", entries)
 	}
-	if _, ok := entries["viewer.html"]; !ok {
-		t.Fatalf("archive missing viewer.html: %v", entries)
-	}
 	if _, ok := entries["archive_data.js"]; !ok {
 		t.Fatalf("archive missing archive_data.js: %v", entries)
 	}
@@ -343,23 +340,23 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if !strings.Contains(entries["index.html"], "S. Carter&#39;s Civil War Research Archive") {
 		t.Fatalf("index.html missing owner title: %s", entries["index.html"])
 	}
-	if !strings.Contains(entries["viewer.html"], "Family Links") || !strings.Contains(entries["viewer.html"], "Archive Metadata") {
-		t.Fatalf("viewer.html missing expanded detail sections: %s", entries["viewer.html"])
+	if !strings.Contains(entries["index.html"], "Family Links") || !strings.Contains(entries["index.html"], "Archive Metadata") {
+		t.Fatalf("index.html missing expanded detail sections: %s", entries["index.html"])
 	}
-	if !strings.Contains(entries["viewer.html"], "function showDetailScreen(record, index, visibleCount, allRecords)") ||
-		!strings.Contains(entries["viewer.html"], "renderDetail(record, allRecords)") ||
-		!strings.Contains(entries["viewer.html"], "showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records);") {
-		t.Fatalf("viewer.html missing static detail render wiring fix: %s", entries["viewer.html"])
+	if !strings.Contains(entries["index.html"], "function showDetailScreen(record, index, visibleCount, allRecords)") ||
+		!strings.Contains(entries["index.html"], "renderDetail(record, allRecords)") ||
+		!strings.Contains(entries["index.html"], "showDetailScreen(records[matchIndex], finalVisibleIndex, filteredRecords.length, records);") {
+		t.Fatalf("index.html missing static detail render wiring fix: %s", entries["index.html"])
 	}
 	if !strings.Contains(entries["index.html"], "Made with DixieData | Version: "+buildinfo.AppVersion+" | Build: "+buildinfo.BuildIdentity()) {
 		t.Fatalf("index.html missing version/build footer")
 	}
-	if !strings.Contains(entries["viewer.html"], "return text || 'Unknown';") {
-		t.Fatalf("viewer.html should show Unknown for blank dates: %s", entries["viewer.html"])
+	if !strings.Contains(entries["index.html"], "return text || 'Unknown';") {
+		t.Fatalf("index.html should show Unknown for blank dates: %s", entries["index.html"])
 	}
-	if !strings.Contains(entries["viewer.html"], "['Prefix', blankDetailValue(record.prefix)]") ||
-		!strings.Contains(entries["viewer.html"], "['Unit', blankDetailValue(record.unit)]") {
-		t.Fatalf("viewer.html should keep blank name/service fields blank: %s", entries["viewer.html"])
+	if !strings.Contains(entries["index.html"], "['Prefix', blankDetailValue(record.prefix)]") ||
+		!strings.Contains(entries["index.html"], "['Unit', blankDetailValue(record.unit)]") {
+		t.Fatalf("index.html should keep blank name/service fields blank: %s", entries["index.html"])
 	}
 }
 
