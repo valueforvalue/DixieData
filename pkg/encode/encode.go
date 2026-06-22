@@ -80,7 +80,10 @@ func NewTemplateDataForBulk(settings render.PrintSettings, branding Branding) Te
 		Options: render.PrintSettings{
 			Orientation:     settings.Orientation,
 			PrinterFriendly: settings.PrinterFriendly,
-			Template:        settings.Template,
+			// The bulk payload's options mirror the caller's
+			// PrintSettings; the per-record Template field is
+			// always empty here because bulk uses BulkTemplate
+			// (issue #68).
 		},
 		Branding: branding,
 		App:      appMeta(),
@@ -131,12 +134,16 @@ func appMeta() AppMeta {
 // been kept in sync: both include IncludeImages and PrintableArchive
 // so the encode layer (which JSON-round-trips the payload) doesn't
 // silently drop the flags before the template sees them.
+//
+// Issue #68: PDFOptions.Template maps to PrintSettings.SingleRecordTemplate.
+// The PDFOptions struct is the per-record-render carrier; the bulk
+// path uses PrintSettings.BulkTemplate directly, never through here.
 func mergeOptionsWithDefaults(options render.PDFOptions) render.PrintSettings {
 	return render.PrintSettings{
-		Orientation:     options.Orientation,
-		PrinterFriendly: options.PrinterFriendly,
-		Template:        options.Template,
-		IncludeImages:   options.IncludeImages,
-		PrintableArchive: options.PrintableArchive,
+		Orientation:          options.Orientation,
+		PrinterFriendly:      options.PrinterFriendly,
+		SingleRecordTemplate: options.Template,
+		IncludeImages:        options.IncludeImages,
+		PrintableArchive:     options.PrintableArchive,
 	}
 }

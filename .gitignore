@@ -5,6 +5,7 @@ build/release/
 build/darwin/
 build/windows/
 build/linux/
+internal/archive/build/
 DixieData
 DixieData.exe
 *.exe
