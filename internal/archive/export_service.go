@@ -171,14 +171,12 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	}
 	// The bulk export uses a single typst invocation that loops
 	// over a sorted array of records (templates/bulk_soldier.typ).
-	// The UI's per-record template dropdown (soldier_landscape,
-	// widow_portrait, etc.) is meaningless in this mode and a
-	// selection there would route the bulk payload to a single-
-	// record template that reads data["soldier"] -- producing
-	// the typst "type none has no method `at`" error because
-	// data["soldier"] is not present. Force-clear Template so
-	// Resolve falls through to the bulk default.
-	settings.Template = ""
+	// Issue #68: dispatch through Registry.Resolve which reads
+	// PrintSettings.BulkTemplate. The old force-clear of
+	// PrintSettings.Template is gone; BulkTemplate is the
+	// authoritative field for the bulk path. If BulkTemplate is
+	// set to a per-record template, the Registry's bulk guard
+	// returns a clear error before typst is invoked.
 	return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
 }
 
@@ -306,8 +304,8 @@ func (e *ExportService) exportSingleRecordViaRegistry(outputPath string, soldier
 		recordType = fallbackType
 	}
 	settings := PrintSettings{
-		Orientation: options.Orientation,
-		Template:    templateForRecordType(recordType, options.Orientation),
+		Orientation:          options.Orientation,
+		SingleRecordTemplate: templateForRecordType(recordType, options.Orientation),
 	}.Normalize()
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -357,8 +355,8 @@ func (e *ExportService) archiveBranding(printerFriendly bool) map[string]string 
 // via the Registry's 'anniversary' template.
 func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
 	settings := PrintSettings{
-		Orientation: options.Orientation,
-		Template:    "anniversary",
+		Orientation:          options.Orientation,
+		SingleRecordTemplate: "anniversary",
 	}.Normalize()
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -380,8 +378,8 @@ func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month in
 // the Registry's 'analytics_summary' template.
 func (e *ExportService) exportAnalyticsViaRegistry(outputPath string, snapshot AnalyticsSnapshot, options PDFOptions) error {
 	settings := PrintSettings{
-		Orientation: options.Orientation,
-		Template:    "analytics_summary",
+		Orientation:          options.Orientation,
+		SingleRecordTemplate: "analytics_summary",
 	}.Normalize()
 	f, err := os.Create(outputPath)
 	if err != nil {

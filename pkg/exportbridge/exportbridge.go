@@ -101,10 +101,11 @@ func (b *BulkRenderer) DataDir() string { return b.dataDir }
 // record error accumulation is reserved for a future slice.
 func (b *BulkRenderer) RenderBulk(ctx context.Context, settings render.PrintSettings, out io.Writer) ([]RecordError, error) {
 	settings = settings.Normalize()
-	// The bulk path forces Template = "" so the per-record template
-	// dropdown does not route the bulk payload to a single-record
-	// template that reads data["soldier"].
-	settings.Template = ""
+	// Issue #68: the bulk path no longer force-clears the
+	// per-record Template field. PrintSettings.BulkTemplate is
+	// the authoritative override; the Registry's bulk guard
+	// rejects a per-record template assignment. The default
+	// (BulkTemplate unset) falls through to bulk_soldier.typ.
 
 	if path := filePathFromWriter(out); path != "" {
 		err := b.export.ExportFullDatabasePDF(path, settings)
@@ -212,7 +213,8 @@ func PrintSettingsFromForm(values url.Values) (render.PrintSettings, error) {
 	settings := render.PrintSettings{
 		Scope:                         strings.TrimSpace(values.Get("scope")),
 		Orientation:                   strings.TrimSpace(values.Get("orientation")),
-		Template:                      strings.TrimSpace(values.Get("template")),
+		SingleRecordTemplate:          strings.TrimSpace(values.Get("template")),
+		BulkTemplate:                  strings.TrimSpace(values.Get("bulk_template")),
 		PrinterFriendly:               values.Get("printer_friendly") != "",
 		FullBiographyPage:             values.Get("full_biography_page") != "",
 		SortBy:                        strings.TrimSpace(values.Get("sort_by")),

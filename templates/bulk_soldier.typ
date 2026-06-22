@@ -1,6 +1,6 @@
 // metadata:
 //   name: bulk_soldier
-//   record_types: [soldier, widow, wife, linked_person]
+//   record_types: [bulk]
 //   orientation: any
 //   export_types: [bulk_export]
 //   description: Bulk Printable Archive — single sorted PDF containing

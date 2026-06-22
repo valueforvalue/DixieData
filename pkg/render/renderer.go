@@ -59,16 +59,33 @@ func (r *Registry) StageImages(workDir string, data map[string]any) error {
 // Resolve returns the template that matches the given PrintSettings, or
 // an error if no template matches.
 //
-// If PrintSettings.Template is set and a .typ file with that name
-// exists, return it. Otherwise, return the default for (recordType,
+// Issue #68: dispatch on recordType. For recordType="bulk" the
+// BulkTemplate field takes precedence; for all other recordTypes
+// the SingleRecordTemplate field takes precedence. If the relevant
+// field is unset, fall through to the default for (recordType,
 // orientation). If no typst template matches, return an error.
+//
+// A BulkTemplate that names a per-record template (one whose
+// metadata block has record_types containing a per-record type
+// but not "bulk") is rejected with a clear error. The bulk
+// payload's data["soldiers"] array is incompatible with
+// per-record templates that read data["soldier"].
 func (r *Registry) Resolve(ps PrintSettings, recordType string) (Template, error) {
 	if r.templateDir == "" {
 		return Template{}, fmt.Errorf("template directory not configured")
 	}
-	if name := strings.TrimSpace(ps.Template); name != "" {
+	override := ps.SingleRecordTemplate
+	if strings.EqualFold(recordType, "bulk") {
+		override = ps.BulkTemplate
+	}
+	if name := strings.TrimSpace(override); name != "" {
 		path := filepath.Join(r.templateDir, name+".typ")
 		if _, err := os.Stat(path); err == nil {
+			if strings.EqualFold(recordType, "bulk") {
+				if err := r.assertBulkTemplateCompatible(name); err != nil {
+					return Template{}, err
+				}
+			}
 			return Template{Name: name, Path: path, Engine: "typst"}, nil
 		}
 	}
@@ -84,6 +101,32 @@ func (r *Registry) Resolve(ps PrintSettings, recordType string) (Template, error
 		}
 	}
 	return Template{}, fmt.Errorf("no typst template matches recordType=%q orientation=%q", recordType, ps.Orientation)
+}
+
+// assertBulkTemplateCompatible verifies that the named template
+// is suitable for the bulk render path. A per-record template
+// declares one or more record_types in its metadata block; if
+// "bulk" is absent the template expects data["soldier"] and the
+// bulk payload's data["soldiers"] array will fail with
+// "type none has no method `at`". Returns a clear error in that
+// case. Templates with no metadata block are treated as
+// bulk-compatible (matches the previous lenient behaviour).
+func (r *Registry) assertBulkTemplateCompatible(name string) error {
+	content, err := os.ReadFile(filepath.Join(r.templateDir, name+".typ"))
+	if err != nil {
+		// stat already passed in Resolve, so this is unexpected.
+		return fmt.Errorf("read bulk template %q: %w", name, err)
+	}
+	tpl := parseTemplateMetadata(filepath.Join(r.templateDir, name+".typ"), string(content))
+	if len(tpl.RecordTypes) == 0 {
+		return nil
+	}
+	for _, rt := range tpl.RecordTypes {
+		if strings.EqualFold(rt, "bulk") {
+			return nil
+		}
+	}
+	return fmt.Errorf("BulkTemplate %q is a per-record template (record_types=%v); the bulk payload uses data[\"soldiers\"] and would fail with \"type none has no method `at`\". Set BulkTemplate to a bulk template like \"bulk_soldier\"", name, tpl.RecordTypes)
 }
 
 func defaultTemplateName(recordType, orientation string) string {

@@ -32,10 +32,19 @@ type AnalyticsCount = records.AnalyticsCount
 // render. It was originally part of the fpdf Service's API; the
 // Typst path consumes the same struct so existing call sites
 // (the appshell HTTP handler, the test suite) keep working.
+//
+// Issue #68 splits the legacy single Template field into
+// SingleRecordTemplate (used by per-record renders) and
+// BulkTemplate (used by the bulk export). The bulk path must
+// use BulkTemplate, never SingleRecordTemplate, because the
+// bulk payload's data shape (data["soldiers"] array) is
+// incompatible with per-record templates that read
+// data["soldier"].
 type PrintSettings struct {
 	Scope                         string
 	Orientation                   string
-	Template                      string
+	SingleRecordTemplate          string
+	BulkTemplate                  string
 	PrinterFriendly               bool
 	FullBiographyPage             bool
 	SortBy                        string

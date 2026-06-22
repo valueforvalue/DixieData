@@ -425,10 +425,19 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			}
 			settings.Scope = render.PrintScopeSelected
 		}
-		// The bulk path forces Template = "" so the per-record
-		// template dropdown does not route the bulk payload to a
-		// single-record template.
-		settings.Template = ""
+		// Issue #68: the bulk path no longer force-clears the
+		// per-record Template field. PrintSettings.BulkTemplate
+		// is the authoritative override; the bridge no longer
+		// rewrites the field. If --template was passed for a bulk
+		// render, route it to BulkTemplate so the Registry's
+		// bulk-guard sees it.
+		if rf.mode == "bulk" {
+			settings.BulkTemplate = rf.template
+			settings.SingleRecordTemplate = ""
+		} else {
+			settings.SingleRecordTemplate = rf.template
+			settings.BulkTemplate = ""
+		}
 		f := mustCreate(rf.out)
 		errs, err := r.RenderBulk(ctx, settings, f)
 		f.Close()
