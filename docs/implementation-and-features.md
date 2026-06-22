@@ -286,7 +286,7 @@ Exports the Insights dashboard summary as a branded PDF report.
 
 Static export creates a standalone browser-viewable bundle containing:
 
-- `viewer.html`
+- `index.html`
 - `archive_data.js`
 - copied images
 

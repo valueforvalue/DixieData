@@ -450,7 +450,7 @@ The static archive export can be opened in a browser without running DixieData.
 
 It includes:
 
-- `viewer.html`
+- `index.html`
 - `archive_data.js`
 - copied image files
 
