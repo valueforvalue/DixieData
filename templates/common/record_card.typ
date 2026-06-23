@@ -220,7 +220,7 @@
     weight: "bold",
   )[
     #compose-name(s)
-    #if suffix != "" [, #suffix]
+    #if suffix != "" [ #suffix]
   ])
   v(0em)
   align(align-title, text(
@@ -424,7 +424,7 @@
       weight: "bold",
     )[
       #compose-name(s)
-      #if s.at("suffix", default: "") != "" [, #s.at("suffix")]
+      #if s.at("suffix", default: "") != "" [ #s.at("suffix")]
     ]
     #v(0.8em)
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
