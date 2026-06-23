@@ -123,7 +123,7 @@
       column-gutter: 0.3cm,
       align: (left, left),
       [#text(size: 8pt, weight: "bold")[#label]],
-      [#text(size: 9pt)[#value]],
+      [#box(width: 100%)[#text(size: 9pt)[#value]]],
     )
   }
 }
@@ -299,7 +299,7 @@
       #block(width: 100%)[
         *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
         #if r.at("details", default: "") != "" [
-          #linebreak() #text(size: 8pt)[#r.at("details", default: "")]
+          #linebreak() #box(width: 100%)[#text(size: 8pt)[#r.at("details", default: "")]]
         ]
       ]
       #v(0.2em)
@@ -502,14 +502,24 @@
 // render-portrait-card) where the column proportions can be
 // inverted.
 #let render-landscape-card(s, opts, image-panel, service-show-all: false, household-show-all: false) = {
-  // Landscape body grid (round 5): 2 columns. Left = the full
+  // Landscape body grid (round 16): 2 columns. Left = the full
   // vertical stack of identity + service + household sections.
-  // Right = the image panel at the top followed by the records
-  // section. Round 5 pins the right column to top alignment so
-  // the image sits at the top of the cell, not vertically
-  // centered (typst grid default). Without this, the image
-  // would float to the middle of the right column because the
-  // records section is shorter than the left column.
+  // Right = records only (the image was floated into the title
+  // region by the caller via place()). The right cell starts
+  // with a top padding equal to the image-panel height plus
+  // 3mm so Records sits close to the bottom of the image, in
+  // the same right column. The left cell has no top padding
+  // and is top-aligned, so the body's left-column text starts
+  // at the body's top Y (which is right after the title block
+  // since the title row's height is the title text's natural
+  // height, not the image's). When image-panel is none (no
+  // image to render), the records section uses its own default
+  // 0.5em top padding.
+  let right-top = if image-panel == none {
+    0.5em
+  } else {
+    theme.geometry.image_panel_height + 3mm
+  }
   grid(
     columns: (1fr, 0.6cm, 1fr),
     [
@@ -523,7 +533,7 @@
     [
       #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
       #align(top)[
-        #if image-panel != none [#image-panel #v(theme.geometry.section_gap)]
+        #v(right-top)
         #render-records-section(s)
       ]
     ],
@@ -597,23 +607,61 @@
   let image-panel = render-image-panel(opts, s)
 
   if is-landscape {
-    // Landscape layout (round 5 revert): the title block spans
-    // the full page width above the body grid. The body grid
-    // is 2-column: left = identity + service + household,
-    // right = image at the top + records below. The image
-    // top sits at the same Y as the "Identity & Vital Details"
-    // header on the left, which is closer to the round-3 user
-    // ask ("imaginary line across the page at the title's Y")
-    // than the round-4 title-row refactor (which produced a
-    // ~50pt gap between the title and the first section
-    // because typst's grid cells vertically center content by
-    // default and the 40mm image-panel height dominated the
-    // title row's height).
+    // Landscape layout (round 18): the title block spans the
+    // full page width and drives the title-row height. The
+    // body's left column (identity + service + household) is
+    // a 50%-page-width block that starts right after the title
+    // text so the label-value grids inside it use the column
+    // width, not the page width. The right column (image +
+    // records) is `place()`'d as a single floating block on
+    // the right side, with the image at the top and records
+    // just below it. Floating the right column keeps the
+    // left column's top Y pinned to the title's bottom Y,
+    // while the right column's top Y is pinned to the image's
+    // top Y (the page's top). This satisfies all three
+    // constraints: image at the title's Y, records just below
+    // the image, and the body's left-column data not pushed
+    // down by the image.
     render-title-block(s, align-title: align-title)
-
     let service-show-all = variant == "widow" or variant == "spouse"
     let household-show-all = variant == "widow" or variant == "spouse"
-    render-landscape-card(s, opts, image-panel, service-show-all: service-show-all, household-show-all: household-show-all)
+    // Left column: 50% page width minus half the gutter so the
+    // block ends at 50% - 0.3cm, leaving a 0.6cm visual gap
+    // before the right column's content begins.
+    block(width: 50% - 0.3cm)[
+      #render-identity-section(s)
+      #v(theme.geometry.section_gap)
+      #render-service-section(s, show-all: service-show-all)
+      #v(theme.geometry.section_gap)
+      #render-household-section(s, show-all: household-show-all)
+    ]
+    if image-panel != none {
+      // Right column: 50% page width minus half the gutter.
+      // The block sits flush with the page's right margin
+      // (place() with top + right + dx: 0). Records text is
+      // left-aligned within the block so it reads as the user
+      // expects, with the heading at the left edge of the
+      // right column.
+      place(
+        top + right,
+        dx: 0pt,
+        dy: 0pt,
+        block(width: 50% - 0.3cm)[
+          #align(center)[#image-panel]
+          #v(3mm)
+          #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+          #align(left)[#render-records-section(s)]
+        ]
+      )
+    } else {
+      // No image: render records in normal flow below the
+      // household section so they aren't lost.
+      block(width: 100%)[
+        #v(theme.geometry.section_gap)
+        #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+        #render-records-section(s)
+      ]
+    }
     render-biography-page(s)
   } else {
     render-title-block(s, align-title: align-title)

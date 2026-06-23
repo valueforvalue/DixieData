@@ -147,3 +147,75 @@ User-asked-for changes still open:
   section is short (one findagrave link for this record); the
   right column ends well before the left column does. Acceptable
   for sparse records; revisit if user finds it distracting.
+
+## Round 12-21 (signed off at round 21)
+
+The round-3 "image at the title's Y" ask required a structural
+shift: drop the typst grid for the title row, render the title
+block as a single full-width block, and `place()` the image
+absolutely at the page's top-right so its top edge sits at the
+title's Y. The body is then a single in-flow block on the left
+(`block(width: 50% - 0.3cm)`) and a `place()`'d right column
+on the right (`block(width: 50% - 0.3cm)`) with the image on
+top and records below with a 3mm gap. Each column is
+`50% - 0.3cm` wide so a 0.6cm visual gutter separates them.
+
+Concretely:
+
+- The title block (`render-title-block`) drives the title-row
+  height at its natural text height (~50pt), not the image's
+  height. The image is positioned with
+  `place(top + right, dx: 0, dy: 0, block(width: 50% - 0.3cm,
+  ...))` so the body's top Y is pinned to the title's bottom Y
+  rather than to the image's bottom Y. The left column's
+  identity/service/household data is therefore not pushed down
+  by the image.
+- The image is `align(center)[...]`'d within the right column
+  block so the form text reads centered horizontally in the
+  right half of the page.
+- The records section is `align(left)[...]`'d within the right
+  column block, with the heading at the left edge of the right
+  column and the records below with a 3mm gap below the image.
+- `label-value` was updated to wrap the value cell in
+  `block(width: 100%)` so long values like "Buried In: Battle
+  Creek Cemetery, Eolian, Stephens County, Texas, USA" wrap
+  to a second line within the column rather than overflowing.
+  Same wrap applied to records-section's details text.
+
+The image_panel_height was bumped 40mm -> 50mm in round 5
+(thread #2 above). 50mm is readable and keeps the form photo
++ records within the visible upper half of the page.
+
+User feedback during the round-12 to round-21 loop:
+
+- Round 13: image at title's Y was correct.
+- Round 14: records just below the image with a clear gap.
+- Round 15: image centered horizontally in the right column
+  (1fr cell with `align(center)`), not just centered in the
+  right half of the page.
+- Round 16: the left column's data had been pushed down by
+  the title-row refactor that included the image in the grid.
+  Fix: revert to in-flow title block + `place()`'d image so
+  the body grid's top Y is independent of the image's height.
+- Round 18: label-value grid expanded to use the full page
+  width when its parent block was 100% wide, leaving the
+  value column far to the right. Fix: constrain the body block
+  to 50% - 0.3cm width so the label-value grid uses the half-
+  page width, with values positioned appropriately.
+- Round 19: records were right-aligned within the right column
+  because `align(top)` on the place()'d block had the side
+  effect of horizontally aligning children to the right.
+  Fix: remove `align(top)` from the place()'d block, use
+  explicit `#align(left)[#render-records-section(s)]` for the
+  records text.
+- Round 20: long values like the findagrave URL overflowed
+  past the right column's right edge. Fix: wrap records-
+  section content in `block(width: 100%)` so long text breaks
+  on word boundaries within the column.
+- Round 21: the two columns touched at 50% page width with no
+  gutter. Fix: shrink both blocks to `50% - 0.3cm` so a 0.6cm
+  visual gap separates the left and right columns.
+
+Snapshots for all 11 in-process + 11 CLI surfaces were
+regenerated after round 21 (full UPDATE_SNAPSHOTS=1 pass) and
+verified byte-match.
