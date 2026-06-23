@@ -178,14 +178,14 @@
     #compose-name(s)
     #if suffix != "" [, #suffix]
   ])
-  v(-0.3em)
+  v(0em)
   align(align-title, text(
     size: 9pt,
     fill: theme.palette.text_secondary,
   )[
     #display-id - #entry-type-label(entry-type-raw)
   ])
-  v(0.2em)
+  v(0.1em)
 }
 
 // --- field sections (the left column on landscape, single col on portrait) ---
@@ -194,7 +194,7 @@
   text(size: 9pt, weight: "bold", fill: theme.palette.accent)[
     Identity & Vital Details
   ]
-  v(0.4em)
+  v(0.2em)
   field-row("Prefix", s.at("prefix", default: ""))
   field-row("First Name", s.at("first_name", default: ""))
   field-row("Middle Name", s.at("middle_name", default: ""))
@@ -211,11 +211,11 @@
 // blank; the widow/spouse variants pass `show-all: true` to
 // match the fpdf path which always shows the label.
 #let render-service-section(s, show-all: false) = {
-  v(0.6em)
+  v(0.4em)
   text(size: 9pt, weight: "bold", fill: theme.palette.accent)[
     Service & Archive Details
   ]
-  v(0.4em)
+  v(0.2em)
 
   let entry-type-raw = s.at("entry_type", default: "")
   let pension-state = s.at("pension_state", default: "")
@@ -267,7 +267,7 @@
   text(size: 9pt, weight: "bold", fill: theme.palette.accent)[
     Household & Context
   ]
-  v(0.4em)
+  v(0.2em)
 
   field-row("Spouse", s.at("spouse_name", default: ""))
 
@@ -293,7 +293,7 @@
   let records = s.at("records", default: ())
   if records.len() > 0 [
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Records]
-    #v(0.4em)
+    #v(0.2em)
     #set text(size: 9pt)
     #for r in records [
       #block(width: 100%)[
@@ -381,6 +381,13 @@
       size: 7pt,
       fill: theme.palette.text_secondary,
     )[#branding.at("archive_title", default: "DixieData Archive")])
+    // The v(0.3em) pushes the line away from the text by
+    // reserving vertical space in the header. The line is
+    // anchored at the bottom of the header area, so the v()
+    // creates visible breathing room between the branding
+    // text and the rule. The user wanted the line "slightly
+    // below the text" rather than flush against it.
+    v(0.3em)
     place(bottom, line(length: 100%, stroke: 0.6pt + theme.palette.accent))
   }
   // Body of the footer: a horizontal rule above the text. The
@@ -495,7 +502,9 @@
 // render-portrait-card) where the column proportions can be
 // inverted.
 #let render-landscape-card(s, opts, service-show-all: false, household-show-all: false) = {
-  let image-panel = render-image-panel(opts, s)
+  // The image is rendered in the title row (above) so its
+  // top edge aligns with the title text. The body grid below
+  // is just the left/right sections without an image.
   grid(
     columns: (1fr, 0.6cm, 1fr),
     [
@@ -508,7 +517,6 @@
     [],
     [
       #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-      #if image-panel != none [#image-panel #v(theme.geometry.section_gap)]
       #render-records-section(s)
     ],
   )
@@ -566,21 +574,42 @@
 // render-record-card renders the title block, card layout, and
 // biography page. The per-variant template must apply page
 // setup at document scope before calling this.
+//
+// Landscape layout: a 2-column row at the top (title on the
+// left, image on the right) so the image's top edge aligns
+// with the title text. Below that, the existing 3-column
+// body grid (left = identity+service+household, middle =
+// gutter, right = records). Portrait keeps the previous
+// layout where the image sits at the top of the right
+// column in a body-level grid (the image is taller than
+// the title there, so the alignment works out differently).
 #let render-record-card(opts, branding, s, variant) = {
   let is-landscape = detect-landscape(opts)
   let align-title = if is-landscape { left } else { center }
-  render-title-block(s, align-title: align-title)
-
-  let service-show-all = variant == "widow" or variant == "spouse"
-  let household-show-all = variant == "widow" or variant == "spouse"
+  let image-panel = render-image-panel(opts, s)
 
   if is-landscape {
+    // Title row: 2 columns. Title on the left, image on the
+    // right. The image top aligns with the title text.
+    grid(
+      columns: (1fr, 0.6cm, 1fr),
+      [
+        #render-title-block(s, align-title: align-title)
+      ],
+      [],
+      [
+        #if image-panel != none [#image-panel]
+      ],
+    )
+
+    let service-show-all = variant == "widow" or variant == "spouse"
+    let household-show-all = variant == "widow" or variant == "spouse"
     render-landscape-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
-    // Landscape puts the long biography on a separate page (page 2)
-    // rather than squeezing it into the card. Portrait handles the
-    // biography inline in the right column.
     render-biography-page(s)
   } else {
+    render-title-block(s, align-title: align-title)
+    let service-show-all = variant == "widow" or variant == "spouse"
+    let household-show-all = variant == "widow" or variant == "spouse"
     render-portrait-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
   }
 }
