@@ -75,8 +75,9 @@ func loadSharedAliasTargetSnapshot(tx *sql.Tx, sourceNodeID, sourcePersonSyncID 
 }
 
 type BackupService struct {
-	db      *db.DB
-	soldier *SoldierService
+	db       *db.DB
+	soldier  *SoldierService
+	compress *CompressService
 }
 
 type backupContents struct {
@@ -135,6 +136,14 @@ type SourceConflictLedgerEntry struct {
 
 func NewBackupService(database *db.DB, soldier *SoldierService) *BackupService {
 	return &BackupService{db: database, soldier: soldier}
+}
+
+// SetCompressService wires a CompressService after construction so the
+// signature of NewBackupService stays compatible with the 27+ test and
+// CLI callers. Returns the receiver so it can be chained.
+func (b *BackupService) SetCompressService(svc *CompressService) *BackupService {
+	b.compress = svc
+	return b
 }
 
 func (b *BackupService) Export(outputPath, dataDir string) (BackupManifest, error) {
@@ -1299,6 +1308,11 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 			if err := copySharedImageFile(sourceDataDir, targetDataDir, image.FilePath); err != nil {
 				return SharedImportSummary{}, err
 			}
+			if b.compress != nil {
+				if result, cerr := b.compress.Compress(targetDataDir, filepath.ToSlash(filepath.Clean(image.FilePath))); cerr == nil {
+					_ = b.compress.RecordCompression(result.RelativePath, result.OriginalBytes, result.CompressedBytes, result.CompressedAt)
+				}
+			}
 			existed, err := upsertSharedImage(tx, target.SoldierID, target.SoldierSync, image)
 			if err != nil {
 				return SharedImportSummary{}, err
@@ -1442,6 +1456,11 @@ func (b *BackupService) ResolveMergeConflict(conflictID int64, decision, dataDir
 		}
 	default:
 		return fmt.Errorf("unsupported merge review decision %q", decision)
+	}
+	if b.compress != nil {
+		if err := b.compressResolvedSharedImages(tx, conflict, sessionRoot, dataDir); err != nil {
+			return err
+		}
 	}
 
 	if _, err := tx.Exec(`UPDATE merge_review_conflicts SET resolution = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?`, decision, conflictID); err != nil {
@@ -1804,6 +1823,27 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 		}
 		if _, err := upsertSharedImage(tx, targetID, sourceSnapshot.Soldier.SyncID, image); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// compressResolvedSharedImages compresses every image that
+// applySharedConflictResolution just copied into the target data dir.
+// The conflict's source snapshot is the canonical "what was imported"
+// view; we walk its Images slice and run Compress on each relative path.
+func (b *BackupService) compressResolvedSharedImages(tx *sql.Tx, conflict models.MergeReviewConflict, sourceDataDir, targetDataDir string) error {
+	sourceSnapshot, err := loadSourceSnapshotForConflict(tx, conflict.ID)
+	if err != nil {
+		return err
+	}
+	for _, image := range sourceSnapshot.Soldier.Images {
+		relPath := filepath.ToSlash(filepath.Clean(image.FilePath))
+		if relPath == "" {
+			continue
+		}
+		if result, cerr := b.compress.Compress(targetDataDir, relPath); cerr == nil {
+			_ = b.compress.RecordCompression(result.RelativePath, result.OriginalBytes, result.CompressedBytes, result.CompressedAt)
 		}
 	}
 	return nil

@@ -9,9 +9,6 @@ import (
 	"fmt"
 	"html"
 	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"io/fs"
 	"mime/multipart"
@@ -55,6 +52,7 @@ type App struct {
 	analytics               analyticsFacade
 	audit                   reviewFacade
 	images                  imageFacade
+	compress                *archive.CompressService
 	export                  exportFacade
 	backup                  backupFacade
 	diagnostics             diagnosticsFacade
@@ -615,9 +613,9 @@ func (a *App) handleImageRotate(w http.ResponseWriter, r *http.Request) {
 	imagePath := filepath.Join(a.dataDir, filepath.FromSlash(imageRecord.FilePath))
 	switch strings.ToLower(strings.TrimSpace(req.Direction)) {
 	case "cw":
-		err = rotateImageFile(imagePath, true)
+		err = a.rotateImageFile(imagePath, true)
 	case "ccw":
-		err = rotateImageFile(imagePath, false)
+		err = a.rotateImageFile(imagePath, false)
 	default:
 		http.Error(w, "invalid rotate direction", http.StatusBadRequest)
 		return
@@ -630,50 +628,35 @@ func (a *App) handleImageRotate(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Image rotated.")
 }
 
-func rotateImageFile(path string, clockwise bool) error {
+// rotateImageFile rotates the image at path 90 degrees clockwise or
+// counter-clockwise and re-encodes via CompressService.EncodeAndWrite.
+// The wasteful q=95 path is replaced with the same q=85 encoder used by
+// import-time compression, so a rotated image is identical in shape to a
+// freshly-imported compressed image. Note: this also records the
+// compressed_at metadata on the images row so the rotation shows up in
+// the Settings "Compress Stored Images" flow as already-compressed.
+func (a *App) rotateImageFile(path string, clockwise bool) error {
 	source, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open image file: %w", err)
 	}
-	img, format, err := image.Decode(source)
+	img, _, err := image.Decode(source)
 	source.Close()
 	if err != nil {
 		return fmt.Errorf("decode image file: %w", err)
 	}
 
 	rotated := rotateImage90(img, clockwise)
-	tempPath := path + ".rotate"
-	output, err := os.Create(tempPath)
-	if err != nil {
-		return fmt.Errorf("create rotated image file: %w", err)
-	}
-
-	switch strings.ToLower(format) {
-	case "jpeg", "jpg":
-		err = jpeg.Encode(output, rotated, &jpeg.Options{Quality: 95})
-	case "png":
-		err = png.Encode(output, rotated)
-	case "gif":
-		err = gif.Encode(output, rotated, nil)
-	default:
-		err = fmt.Errorf("unsupported image format for rotation: %s", format)
-	}
-	closeErr := output.Close()
-	if err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		_ = os.Remove(tempPath)
+	if _, _, err := a.compress.EncodeAndWrite(rotated, path); err != nil {
 		return err
 	}
-
-	if err := os.Remove(path); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("replace rotated image file: %w", err)
-	}
-	if err := os.Rename(tempPath, path); err != nil {
-		_ = os.Remove(tempPath)
-		return fmt.Errorf("replace rotated image file: %w", err)
+	relPath, relErr := filepath.Rel(a.dataDir, path)
+	if relErr == nil {
+		originalInfo, statErr := os.Stat(path)
+		if statErr == nil {
+			now := time.Now().UTC()
+			_ = a.compress.RecordCompression(filepath.ToSlash(filepath.Clean(relPath)), originalInfo.Size(), originalInfo.Size(), now)
+		}
 	}
 	return nil
 }
@@ -1656,8 +1639,9 @@ func (a *App) reloadServices() error {
 	a.analytics = records.NewAnalyticsService(a.database)
 	a.audit = records.NewAuditService(a.database)
 	a.images = archive.NewImageService(a.database)
+	a.compress = archive.NewCompressService(a.database)
 	a.export = archive.NewExportService(a.database, soldierSvc)
-	a.backup = archive.NewBackupService(a.database, soldierSvc)
+	a.backup = archive.NewBackupService(a.database, soldierSvc).SetCompressService(a.compress)
 
 	// Wire the Typst-backed Registry into the export service. Per
 	// slice 7, the appshell uses Typst exclusively; if the binary
@@ -1688,6 +1672,9 @@ func (a *App) reloadServices() error {
 			return err
 		}
 		if err := a.images.PurgeExpiredTrash(a.dataDir); err != nil {
+			return err
+		}
+		if err := a.compress.PurgeExpiredCompressedTrash(a.dataDir); err != nil {
 			return err
 		}
 		required, err := a.database.IdentitySetupRequired()
@@ -2053,6 +2040,9 @@ func (a *App) saveUploadedImages(r *http.Request, soldier models.Soldier) error 
 			issues = append(issues, err.Error())
 			continue
 		}
+		if result, cerr := a.compress.Compress(a.dataDir, relativePath); cerr == nil {
+			_ = a.compress.RecordCompression(result.RelativePath, result.OriginalBytes, result.CompressedBytes, result.CompressedAt)
+		}
 		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, ""); err != nil {
 			_ = os.Remove(absolutePath)
 			issues = append(issues, err.Error())
@@ -2107,6 +2097,9 @@ func (a *App) importImagePaths(soldier models.Soldier, paths []string) (int, err
 		if err := copyImageFile(sourcePath, absolutePath); err != nil {
 			issues = append(issues, err.Error())
 			continue
+		}
+		if result, cerr := a.compress.Compress(a.dataDir, relativePath); cerr == nil {
+			_ = a.compress.RecordCompression(result.RelativePath, result.OriginalBytes, result.CompressedBytes, result.CompressedAt)
 		}
 		if err := a.soldiers.AddImage(soldier.ID, storedName, relativePath, ""); err != nil {
 			_ = os.Remove(absolutePath)
