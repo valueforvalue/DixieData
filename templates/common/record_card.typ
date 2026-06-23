@@ -269,9 +269,20 @@
   let ch-name = s.at("confederate_home_name", default: "")
 
   field-row("Record Type", entry-type-label(entry-type-raw), hide-if-blank: false)
-  field-row("Rank In", s.at("rank_in", default: ""), hide-if-blank: not show-all)
-  field-row("Rank Out", s.at("rank_out", default: ""), hide-if-blank: not show-all)
-  field-row("Unit", s.at("unit", default: ""), hide-if-blank: not show-all)
+  // Rank In, Rank Out, and Unit are military service fields.
+  // Widow and wife records inherit the linked soldier's
+  // service info via SpouseSoldierID, but the user asked
+  // for those rows to be dropped from widow/wife renders
+  // (round 31) because the data is duplicated on the linked
+  // soldier's record card and rarely useful in a widow/wife
+  // context. The variant is detected via `show-all: true`,
+  // which is the existing flag for widow/spouse rendering
+  // (set by the per-variant templates at the call sites).
+  if not show-all {
+    field-row("Rank In", s.at("rank_in", default: ""), hide-if-blank: not show-all)
+    field-row("Rank Out", s.at("rank_out", default: ""), hide-if-blank: not show-all)
+    field-row("Unit", s.at("unit", default: ""), hide-if-blank: not show-all)
+  }
   field-row("Pension State", if pension-state.trim() == "" [N/A] else [#pension-state])
   field-row("Pension ID", if pension-id.trim() == "" [N/A] else [#pension-id])
   field-row("Application ID", if app-id.trim() == "" [N/A] else [#app-id])
