@@ -219,3 +219,44 @@ User feedback during the round-12 to round-21 loop:
 Snapshots for all 11 in-process + 11 CLI surfaces were
 regenerated after round 21 (full UPDATE_SNAPSHOTS=1 pass) and
 verified byte-match.
+
+## Round 22 (no-image anomaly, signed off)
+
+The with-image and no-image code paths diverged in their
+records-section positioning. With an image, records was
+`place()`'d into the right column at the title's Y. Without
+an image, records was rendered in normal flow at the bottom
+of the left column, full-page-width. That put the records
+section on the wrong side of the page (left column at the
+bottom) and made the no-image layout visually inconsistent
+with the with-image layout.
+
+Round 22 fix:
+
+- Replaced the no-image's `block(width: 100%)[records]`
+  fallback with a `place(top + right, dx: 0,
+  block(width: 50% - 0.3cm, ...))` block, matching the
+  with-image right column's structure but without the image.
+  Records now sit in the right column at the title's Y, with
+  the same 0.6cm gutter to the left column as the with-image
+  case.
+- The `align(left)` wrapper around the records text is kept
+  so the heading sits at the left edge of the right column
+  rather than at the right.
+
+Round-22 sample: Elbert Dixon Anderson (DXD-00019), a record
+without an image. The records section is at the top of the
+right column ("Records" header, then the fold3 / findagrave
+record line, then the URL on its own line below).
+
+The snapshot tests (internal/exportcontract) exercise only the
+first 4 fixture records, all of which have images. The
+no-image code path is therefore not snapshot-covered.
+A full UPDATE_SNAPSHOTS=1 pass was run and produced no diff
+(snapshots were already byte-stable), so the test still passes
+but doesn't catch a regression in the no-image branch.
+
+If the user wants regression coverage for the no-image
+branch, add a fixture with a no-image record and a snapshot
+case for it. This is a future-test-improvement, not a
+round-22 deliverable.

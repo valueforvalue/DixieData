@@ -654,13 +654,23 @@
         ]
       )
     } else {
-      // No image: render records in normal flow below the
-      // household section so they aren't lost.
-      block(width: 100%)[
-        #v(theme.geometry.section_gap)
-        #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-        #render-records-section(s)
-      ]
+      // No image: render records in the right column, anchored
+      // to the title's Y via `place(top + right)`. This matches
+      // the with-image layout's right column position (image +
+      // records just below) but without the image, so the
+      // records section starts at the title's Y instead of
+      // being pushed down by the household section's height.
+      // The 50% - 0.3cm block width keeps the 0.6cm gutter
+      // between left and right columns.
+      place(
+        top + right,
+        dx: 0pt,
+        dy: 0pt,
+        block(width: 50% - 0.3cm)[
+          #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
+          #align(left)[#render-records-section(s)]
+        ]
+      )
     }
     render-biography-page(s)
   } else {
