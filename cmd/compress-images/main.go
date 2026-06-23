@@ -62,7 +62,7 @@ func run(args []string) error {
 		relPaths[i] = c.RelativePath
 	}
 	report, err := compress.CompressParallel(dir, relPaths, 4, func(r archive.CompressedResult, err error) {
-		if err == nil {
+		if err == nil && *format == "human" {
 			fmt.Printf("compressed %s: %d -> %d bytes\n", r.RelativePath, r.OriginalBytes, r.CompressedBytes)
 		}
 	})
