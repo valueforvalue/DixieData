@@ -82,3 +82,8 @@ tests/goldmaster/playwright/playwright-report/
 # TERMINOLOGY.md remain tracked.
 docs/renderings/**/pre-iteration.pdf
 docs/renderings/**/round-*.pdf
+# Native-SVG and PNG preview artifacts written by `make render-svg`
+# (or render-svg.sh). Multi-page surfaces emit one file per page
+# (round-{N,p}.svg), so these can balloon quickly during iteration.
+docs/renderings/**/round-*.svg
+docs/renderings/**/round-*.png

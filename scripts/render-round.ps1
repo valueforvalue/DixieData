@@ -4,14 +4,33 @@
 # it in a PDF viewer alongside the per-surface review.md file.
 #
 # Usage (from the repo root):
-#   pwsh -File scripts/render-round.ps1            # round 1, writes pre-iteration.pdf
-#   pwsh -File scripts/render-round.ps1 -Round 2   # writes round-2.pdf
+#   pwsh -File scripts/render-round.ps1                       # round 1, writes pre-iteration.pdf
+#   pwsh -File scripts/render-round.ps1 -Round 2              # writes round-2.pdf
+#   pwsh -File scripts/render-round.ps1 -Round 5 -Only single-soldier-landscape
+#   pwsh -File scripts/render-round.ps1 -Round 5 -RecordIDs 1,2,3
 #
 # The script must be re-runnable: it overwrites the target PDF for
 # the requested round. It does NOT touch pre-iteration.pdf from a
 # previous round.
+#
+# -Only <surface>     restrict to a single surface (saves disk +
+#                     wall-clock time when iterating on one layout).
+#                     Valid values:
+#                       single-soldier-landscape, single-soldier-portrait,
+#                       single-widow-landscape,  single-widow-portrait,
+#                       bulk-sorted, bulk-grouped-pension-state,
+#                       bulk-grouped-burial-location,
+#                       anniversary, insights
+# -RecordIDs <list>   comma-separated IDs for bulk renders. Skips
+#                     bulk surfaces entirely when set to the empty
+#                     string (default). The script auto-skips bulk
+#                     renders when the ID list is short enough that
+#                     a full bulk render would be wasteful; pass
+#                     "all" to force the bulk surfaces to render.
 param(
-    [int]$Round = 1
+    [int]$Round = 1,
+    [string]$Only = "",
+    [string]$RecordIDs = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +97,10 @@ function Render-Bulk {
         "--out", $out
     )
     if ($GroupFlag -ne "") { $args += @($GroupFlag) }
+    if ($RecordIDs -ne "") {
+        $args += @("--record-ids", $RecordIDs)
+        $args += @("--scope", "selected")
+    }
     Write-Host "  $Surface -> $out"
     & $tune @args | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "tune failed for $Surface" }
@@ -126,18 +149,48 @@ function Render-Insights {
 }
 
 Write-Host "=== Rendering round $Round ==="
+if ($RecordIDs -ne "") {
+    Write-Host "Bulk surfaces limited to record-ids: $RecordIDs (scope=selected)"
+}
+if ($Only -ne "") {
+    Write-Host "Restricting to surface: $Only"
+}
 
-Render-Record -Surface "single-soldier-landscape" -Template "soldier_landscape" -Orientation "L" -RecordID $soldierID
-Render-Record -Surface "single-soldier-portrait"  -Template "soldier_portrait"  -Orientation "P" -RecordID $soldierID
-Render-Record -Surface "single-widow-landscape"   -Template "widow_landscape"   -Orientation "L" -RecordID $widowID
-Render-Record -Surface "single-widow-portrait"    -Template "widow_portrait"    -Orientation "P" -RecordID $widowID
+function Should-Render {
+    param([string]$Surface)
+    if ($Only -eq "") { return $true }
+    return ($Surface -eq $Only)
+}
 
-Render-Bulk -Surface "bulk-sorted"
-Render-Bulk -Surface "bulk-grouped-pension-state" -GroupFlag "--group-by-pension-state"
-Render-Bulk -Surface "bulk-grouped-burial-location" -GroupFlag "--group-by-buried-in"
+if (Should-Render "single-soldier-landscape") {
+    Render-Record -Surface "single-soldier-landscape" -Template "soldier_landscape" -Orientation "L" -RecordID $soldierID
+}
+if (Should-Render "single-soldier-portrait") {
+    Render-Record -Surface "single-soldier-portrait"  -Template "soldier_portrait"  -Orientation "P" -RecordID $soldierID
+}
+if (Should-Render "single-widow-landscape") {
+    Render-Record -Surface "single-widow-landscape"   -Template "widow_landscape"   -Orientation "L" -RecordID $widowID
+}
+if (Should-Render "single-widow-portrait") {
+    Render-Record -Surface "single-widow-portrait"    -Template "widow_portrait"    -Orientation "P" -RecordID $widowID
+}
 
-Render-Month -Surface "anniversary"
-Render-Insights -Surface "insights"
+if (Should-Render "bulk-sorted") {
+    Render-Bulk -Surface "bulk-sorted"
+}
+if (Should-Render "bulk-grouped-pension-state") {
+    Render-Bulk -Surface "bulk-grouped-pension-state" -GroupFlag "--group-by-pension-state"
+}
+if (Should-Render "bulk-grouped-burial-location") {
+    Render-Bulk -Surface "bulk-grouped-burial-location" -GroupFlag "--group-by-buried-in"
+}
+
+if (Should-Render "anniversary") {
+    Render-Month -Surface "anniversary"
+}
+if (Should-Render "insights") {
+    Render-Insights -Surface "insights"
+}
 
 Write-Host "=== Round $Round complete ==="
 Write-Host "Open docs/renderings/<surface>/$outName alongside docs/renderings/<surface>/review.md"

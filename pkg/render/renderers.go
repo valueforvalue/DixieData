@@ -24,9 +24,10 @@ import (
 // black console window that the wrapper would otherwise allocate
 // when running on Windows.
 type TypstRenderer struct {
-	binPath  string
-	rootDir  string
-	fontDirs []string
+	binPath      string
+	rootDir      string
+	fontDirs     []string
+	outputFormat string // "" or "pdf" (default), "svg"
 }
 
 // NewTypstRenderer constructs a TypstRenderer that shells out to the
@@ -34,9 +35,26 @@ type TypstRenderer struct {
 // `typst compile`; the template files are resolved relative to it.
 func NewTypstRenderer(binPath, rootDir string) *TypstRenderer {
 	return &TypstRenderer{
-		binPath:  binPath,
-		rootDir:  rootDir,
-		fontDirs: nil,
+		binPath:      binPath,
+		rootDir:      rootDir,
+		fontDirs:     nil,
+		outputFormat: "pdf",
+	}
+}
+
+// SetOutputFormat switches the renderer between PDF (default),
+// native SVG, and per-page PNG output. Passing an empty string
+// resets to PDF. The format is read by Render on every call so
+// the same renderer instance can produce multiple formats across
+// calls.
+func (t *TypstRenderer) SetOutputFormat(format string) {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "svg":
+		t.outputFormat = "svg"
+	case "png":
+		t.outputFormat = "png"
+	default:
+		t.outputFormat = "pdf"
 	}
 }
 
@@ -145,16 +163,68 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 	}
 	phaseEnd("write_data", writeDataStart)
 
-	// Run typst compile. Output goes to a temp PDF file which we
-	// then stream to w.
+	// Run typst compile. Output format is taken from the render
+	// options: PDF (default) writes out.pdf; SVG and PNG both use
+	// the {p} page-template (out-{p}.{svg,png}) so multi-page
+	// surfaces work without typst refusing to split pages.
 	compileStart := time.Now()
-	outputPath := filepath.Join(workDir, "out.pdf")
+	var outputPath string
+	switch t.outputFormat {
+	case "svg", "png":
+		// typst's {p} page template does not honour {0p} (zero-
+		// padding is documented but the implementation ignores
+		// it for now). The renderer and tune's copyExtraPages
+		// therefore expect files like out-1.svg / out-2.svg,
+		// sorted alphabetically — out-10 sorts before out-2.
+		outputPath = filepath.Join(workDir, "out-{p}."+t.outputFormat)
+	default:
+		outputPath = filepath.Join(workDir, "out.pdf")
+	}
 	if err := runTypstCompile(t.binPath, workDir, mainPath, outputPath); err != nil {
 		return err
 	}
 	phaseEnd("typst_compile", compileStart)
 
 	streamStart := time.Now()
+	if t.outputFormat == "png" {
+		// Typst emits one PNG per page (out-{p}.png); copy the
+		// first into w so callers that want a single preview
+		// stream still get one PNG. Subsequent pages are left on
+		// disk in the workdir (and cleaned up when the workdir
+		// is removed).
+		f, err := os.Open(filepath.Join(workDir, "out-1.png"))
+		if err != nil {
+			return fmt.Errorf("open typst png output: %w", err)
+		}
+		defer f.Close()
+		if _, err := io.Copy(w, f); err != nil {
+			return fmt.Errorf("copy typst png output: %w", err)
+		}
+		phaseEnd("stream_png", streamStart)
+		if timing {
+			_ = phaseStart
+		}
+		return nil
+	}
+	if t.outputFormat == "svg" {
+		// SVG is also written per-page (out-{p}.svg). Stream the
+		// first page back so single-file callers still get a
+		// usable artifact; multi-page callers can stitch the rest
+		// from the workdir before it's cleaned up.
+		f, err := os.Open(filepath.Join(workDir, "out-1.svg"))
+		if err != nil {
+			return fmt.Errorf("open typst svg output: %w", err)
+		}
+		defer f.Close()
+		if _, err := io.Copy(w, f); err != nil {
+			return fmt.Errorf("copy typst svg output: %w", err)
+		}
+		phaseEnd("stream_svg", streamStart)
+		if timing {
+			_ = phaseStart
+		}
+		return nil
+	}
 	f, err := os.Open(outputPath)
 	if err != nil {
 		return fmt.Errorf("open typst output: %w", err)
@@ -177,13 +247,22 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 //
 // The Typst CLI signature is `typst compile [OPTIONS] <INPUT>
 // [OUTPUT]`. The output path is a positional argument, not `-o`.
+// When outputPath ends in `.svg` or `.png`, the matching
+// --format flag is appended. For multi-page outputs the caller
+// must include `{p}` in the output path; typst will refuse to
+// export more than one page per file otherwise.
 func runTypstCompile(binPath, workDir, mainPath, outputPath string) error {
 	args := []string{
 		"compile",
 		"--root", workDir,
-		mainPath,
-		outputPath,
 	}
+	switch strings.ToLower(filepath.Ext(outputPath)) {
+	case ".svg":
+		args = append(args, "--format", "svg")
+	case ".png":
+		args = append(args, "--format", "png")
+	}
+	args = append(args, mainPath, outputPath)
 
 	cmd := exec.Command(binPath, args...)
 	cmd.Dir = workDir

@@ -79,6 +79,22 @@ func (e *ExportService) SetRegistry(reg *render.Registry) {
 	e.registry = reg
 }
 
+// SetOutputFormat switches the registry's underlying typst renderer
+// between PDF (default) and native SVG output. Empty string resets
+// to PDF. The format applies to subsequent Render / Export calls
+// until changed again.
+func (e *ExportService) SetOutputFormat(format string) {
+	if e.registry == nil {
+		return
+	}
+	e.registry.SetOutputFormat(format)
+}
+
+// Registry returns the wired typst Registry, or nil when SetRegistry
+// has not been called. Used by the tune CLI to switch output formats
+// based on --out extension.
+func (e *ExportService) Registry() *render.Registry { return e.registry }
+
 // SetDataDir records the on-disk root used to resolve image
 // paths during bulk export. The single-record export paths
 // (ExportSoldierPDF, ExportSoldierPDFWithoutImages) take a

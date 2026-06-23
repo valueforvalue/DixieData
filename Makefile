@@ -12,7 +12,7 @@ LOGDIR := build/log
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
-        stress goldmaster tune tune-smoke tune-snapshots render-round tpl css audit clean log-clean bump release-github
+        stress goldmaster tune tune-smoke tune-snapshots render-round render-svg tpl css audit clean log-clean bump release-github
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -86,7 +86,11 @@ goldmaster: ## Gold-master suite
 # across invocations unless source files change.
 tune:
 	@mkdir -p tools/tune/bin
+ifeq ($(OS),Windows_NT)
+	cd tools/tune && go build -o bin/dixiedata-tune.exe .
+else
 	cd tools/tune && go build -o bin/dixiedata-tune .
+endif
 
 # Run dixiedata-tune against the live archive (.dixiedata/dixiedata.db).
 # Smoke test only -- no byte comparison (the live DB changes over
@@ -114,6 +118,18 @@ render-round:
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
 	pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round 1
+
+# Native-SVG previews alongside the PDFs. ROUND picks the round
+# number (default: latest). ONLY restricts to a single surface
+# (saves disk + wall-clock when iterating on one layout). IDS is
+# a comma-separated list of record IDs for bulk renders. See
+# scripts/render-round.ps1 for the same -Only / -RecordIDs flags.
+render-svg:
+	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
+	cd tools/tune && go build -o bin/dixiedata-tune.exe .
+	ROUND?=$$(ls -1 docs/renderings/single-soldier-landscape/round-*.pdf 2>/dev/null | sed 's/.*round-//;s/\.pdf//' | sort -V | tail -1); \
+	  echo "rendering round $${ROUND:-4}"; \
+	  /c/Users/value/bin/render-svg.sh all $${ROUND:-4}
 
 # --- Asset generation ---
 
