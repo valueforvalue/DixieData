@@ -162,6 +162,25 @@ func (r *Registry) Render(ctx context.Context, ps PrintSettings, recordType stri
 	return r.typst.Render(ctx, tpl, data, w)
 }
 
+// RenderWithFormat dispatches to the typst renderer with an explicit
+// output format override. "" or "pdf" selects PDF; "svg" selects
+// native typst SVG output. The renderer state is restored after the
+// call so concurrent callers sharing the registry are unaffected.
+func (r *Registry) RenderWithFormat(ctx context.Context, ps PrintSettings, recordType string, data map[string]any, w io.Writer, format string) error {
+	prev := r.typst.outputFormat
+	r.typst.SetOutputFormat(format)
+	err := r.Render(ctx, ps, recordType, data, w)
+	r.typst.outputFormat = prev
+	return err
+}
+
+// SetOutputFormat switches the registry's underlying typst renderer
+// to PDF ("pdf" or "") or native SVG ("svg") output. The format is
+// sticky: subsequent Render calls honour it until changed again.
+func (r *Registry) SetOutputFormat(format string) {
+	r.typst.SetOutputFormat(format)
+}
+
 // templateMetadataPattern matches the metadata block at the top of a
 // .typ file. The block is a series of Typst comments with the shape
 //

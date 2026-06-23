@@ -395,6 +395,29 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 	}
 	defer r.Close()
 
+	// SVG output is inferred from --out extension. The tune tool
+	// has historically only produced PDFs; adding native SVG
+	// output by extension keeps callers (and tests) backwards-
+	// compatible while opening the door to web-friendly previews.
+	formatExt := strings.ToLower(filepath.Ext(rf.out))
+	switch formatExt {
+	case ".svg":
+		r.SetOutputFormat("svg")
+	case ".png":
+		r.SetOutputFormat("png")
+	default:
+		r.SetOutputFormat("pdf")
+	}
+
+	// For multi-page SVG/PNG output we need access to pages 2..N
+	// after the render returns; the renderer's TYPST_KEEP_WORKDIR
+	// hook moves the workdir under our chosen directory instead
+	// of cleaning it up.
+	workdir := setupSvgWorkdir(formatExt)
+	if workdir != "" && strings.TrimSpace(os.Getenv("TYPST_KEEP_WORKDIR")) == workdir {
+		defer os.RemoveAll(workdir)
+	}
+
 	ctx := context.Background()
 	start := time.Now()
 	var (
@@ -474,6 +497,18 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 		}
 	}
 
+	// Multi-page SVG/PNG: copy pages 2..N from the renderer's
+	// preserved workdir next to --out. The first page is already
+	// in --out (streamed by Render). Page 1 in the workdir is
+	// the same content; we only copy pages 2..N as siblings.
+	if formatExt == ".svg" || formatExt == ".png" {
+		copied, err := copyExtraPages(workdir, rf.out, formatExt)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+		}
+		fmt.Fprintf(os.Stderr, "%d extra pages copied to %s-N.<ext>\n", copied, strings.TrimSuffix(rf.out, formatExt))
+	}
+
 	dur := time.Since(start)
 	bytesOut, _ = fileSize(rf.out)
 
@@ -540,6 +575,21 @@ func doAnniversary(args []string, dbPath, typstPath, templatesDir, dataDir strin
 	}
 	defer r.Close()
 
+	// SVG output is inferred from --out extension. See doRender for
+	// the same hook; this keeps the tune subcommands aligned.
+	formatExt := strings.ToLower(filepath.Ext(*out))
+	switch formatExt {
+	case ".svg":
+		r.SetOutputFormat("svg")
+	default:
+		r.SetOutputFormat("pdf")
+	}
+
+	workdir := setupSvgWorkdir(formatExt)
+	if workdir != "" && strings.TrimSpace(os.Getenv("TYPST_KEEP_WORKDIR")) == workdir {
+		defer os.RemoveAll(workdir)
+	}
+
 	start := time.Now()
 	opts := render.PDFOptions{
 		Orientation:     *orientation,
@@ -548,6 +598,10 @@ func doAnniversary(args []string, dbPath, typstPath, templatesDir, dataDir strin
 	if err := r.RenderAnniversary(context.Background(), *month, opts, mustCreate(*out)); err != nil {
 		os.Remove(*out)
 		return err
+	}
+	if workdir != "" {
+		copied, _ := copyExtraPages(workdir, *out, formatExt)
+		fmt.Fprintf(os.Stderr, "%d extra pages copied alongside %s\n", copied, *out)
 	}
 	dur := time.Since(start)
 	size, _ := fileSize(*out)
@@ -587,6 +641,19 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 	}
 	defer r.Close()
 
+	switch strings.ToLower(filepath.Ext(*out)) {
+	case ".svg":
+		r.SetOutputFormat("svg")
+	default:
+		r.SetOutputFormat("pdf")
+	}
+
+	formatExt := strings.ToLower(filepath.Ext(*out))
+	workdir := setupSvgWorkdir(formatExt)
+	if workdir != "" && strings.TrimSpace(os.Getenv("TYPST_KEEP_WORKDIR")) == workdir {
+		defer os.RemoveAll(workdir)
+	}
+
 	start := time.Now()
 	opts := render.PDFOptions{
 		Orientation:     *orientation,
@@ -595,6 +662,10 @@ func doInsights(args []string, dbPath, typstPath, templatesDir, dataDir string) 
 	if err := r.RenderInsights(context.Background(), opts, mustCreate(*out)); err != nil {
 		os.Remove(*out)
 		return err
+	}
+	if workdir != "" {
+		copied, _ := copyExtraPages(workdir, *out, formatExt)
+		fmt.Fprintf(os.Stderr, "%d extra pages copied alongside %s\n", copied, *out)
 	}
 	dur := time.Since(start)
 	size, _ := fileSize(*out)
@@ -947,4 +1018,96 @@ func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// setupSvgWorkdir prepares the renderer's TYPST_KEEP_WORKDIR hook
+// for SVG/PNG output so the caller can access pages 2..N after
+// the render returns. The returned workdir path is preserved for
+// the lifetime of the calling function via the deferred cleanup
+// the caller registers; we only return the empty string when the
+// output format is PDF (no workdir needed) or the caller already
+// supplied a keep-workdir via env.
+func setupSvgWorkdir(formatExt string) string {
+	if formatExt != ".svg" && formatExt != ".png" {
+		return ""
+	}
+	if existing := strings.TrimSpace(os.Getenv("TYPST_KEEP_WORKDIR")); existing != "" {
+		return existing
+	}
+	workdir, err := os.MkdirTemp("", "dixiedata-tune-svg-")
+	if err != nil {
+		return ""
+	}
+	os.Setenv("TYPST_KEEP_WORKDIR", workdir)
+	return workdir
+}
+
+// copyExtraPages walks the renderer-preserved workdir for SVG/PNG
+// outputs and copies pages 2..N next to the user-requested --out.
+// typst emits files named out-1.<ext>, out-2.<ext>, ... when the
+// output path uses the {p} page-template. Page 1 is already at
+// --out (streamed by Render) so we skip it; the rest land as
+// {--out-stem}-{p}.{ext} siblings so callers can preview or
+// distribute them individually.
+//
+// Returns the number of extra pages copied. Empty workdir or a
+// missing workdir is not an error: it just means the render was
+// single-page and --out is the only artifact.
+func copyExtraPages(workdir, outPath, ext string) (int, error) {
+	if workdir == "" {
+		return 0, nil
+	}
+	outerEntries, err := os.ReadDir(workdir)
+	if err != nil {
+		return 0, nil // workdir missing: nothing to do
+	}
+	// Find the renamed workdir (random basename from MkdirTemp)
+	// the renderer uses. TYPST_KEEP_WORKDIR is the parent; the
+	// inner basename is generated by the renderer, not us.
+	var inner string
+	for _, e := range outerEntries {
+		if e.IsDir() {
+			inner = filepath.Join(workdir, e.Name())
+			break
+		}
+	}
+	if inner == "" {
+		return 0, nil
+	}
+	// Now iterate the inner workdir: typst writes out-{p}.<ext>
+	// files there when the output path uses the {p} template.
+	innerEntries, err := os.ReadDir(inner)
+	if err != nil {
+		return 0, nil
+	}
+	stem := strings.TrimSuffix(outPath, ext)
+	prefix := "out-"
+	suffix := ext
+	copied := 0
+	for _, e := range innerEntries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) {
+			continue
+		}
+		pageStr := strings.TrimSuffix(strings.TrimPrefix(name, prefix), suffix)
+		// Skip page 1 (rendered as "out-1.ext"; the same content
+		// is already streamed to --out by Render).
+		if pageStr == "1" {
+			continue
+		}
+		src := filepath.Join(inner, name)
+		dst := fmt.Sprintf("%s-%s%s", stem, pageStr, suffix)
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return copied, fmt.Errorf("read %s: %w", src, err)
+		}
+		if err := os.WriteFile(dst, data, 0o644); err != nil {
+			return copied, fmt.Errorf("write %s: %w", dst, err)
+		}
+		copied++
+	}
+	return copied, nil
 }

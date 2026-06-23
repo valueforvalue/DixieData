@@ -98,6 +98,20 @@ func (b *BulkRenderer) SetRegistry(reg *render.Registry) {
 	b.export.SetRegistry(reg)
 }
 
+// SetOutputFormat switches subsequent RenderSingle / RenderBulk
+// calls between PDF (default) and native SVG output. The format
+// applies to every typst-backed export until changed again.
+func (b *BulkRenderer) SetOutputFormat(format string) {
+	b.export.SetOutputFormat(format)
+}
+
+// Registry returns the underlying typst Registry, or nil when no
+// Registry has been wired via SetRegistry. Useful for callers that
+// need to flip output formats at runtime.
+func (b *BulkRenderer) Registry() *render.Registry {
+	return b.export.Registry()
+}
+
 // DBPath returns the SQLite path the renderer was opened with.
 // Used by tests to discover the path-based data dir.
 func (b *BulkRenderer) DBPath() string { return b.dbPath }
