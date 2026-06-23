@@ -25,26 +25,12 @@
 #let calendar = data.at("calendar", default: (:))
 
 #let is-landscape = detect-landscape(opts)
-#let page-dict = page-params(is-landscape, branding, opts)
-// Override the shared header and footer: branding text goes
-// top-left in a small font (the user asked for it not to be
-// centered / prominent); footer is smaller and uses the
-// muted-text colour (less prominent than the 8pt secondary
-// the shared helper uses).
-#set page(..page-dict,
-  header: align(left, text(
-    size: 7pt,
-    fill: theme.palette.text_secondary,
-  )[#branding.at("archive_title", default: "DixieData Archive")]),
-  footer: if not opts.at("printerFriendly", default: false) {
-    align(center, text(
-      size: 6pt,
-      fill: theme.palette.text_muted,
-    )[#branding.at("footer_text", default: "")])
-  } else {
-    none
-  },
-)
+// Use the shared page chrome (header with rule, footer with
+// rule) so anniversary matches the rest of the landscape
+// surfaces' framing. The previous override dropped the
+// horizontal rules; the user wants anniversary to use the
+// same visual frame as the record-card landscape PDFs.
+#set page(..page-params(is-landscape, branding, opts))
 #set text(font: "Arial", size: 9pt, fill: theme.palette.text_primary)
 #set par(leading: 0.45em)
 
@@ -115,7 +101,19 @@
 // tighter spacing to the body so the user-requested closeness is
 // preserved. The horizontal rule under the title uses the same
 // color as the day text (theme.palette.accent) and spans the
-// full margin width.
+// full margin width. The gap above the title matches the gap
+// below the title's bottom rule (`v(0.1em)` each) so the title
+// is visually centered between the page header rule and the
+// title's own rule, with equal small breathing room on both
+// sides.
+// Title: centered (overrides the global page header alignment).
+// The horizontal rule under the title uses the same color as
+// the day text (theme.palette.accent) and spans the full margin
+// width. The title sits flush between the page header rule and
+// the title's own rule, with no leading on either side, so the
+// two rules form a tight horizontal frame around the title text.
+// A small `v(0.1em)` after the title's rule reserves breathing
+// room before the body content (Day 1, Day 2, ...) starts.
 #align(center)[
   #text(
     size: 16pt,
@@ -128,7 +126,7 @@
 // width (which is page width minus the 0.63in left/right
 // margins set by page-params).
 #line(length: 100%, stroke: 0.6pt + theme.palette.accent)
-#v(0.4em)
+#v(0.1em)
 
 #if days.len() == 0 [
   #set text(size: 8pt)
