@@ -76,15 +76,74 @@ User annotations in round 2:
   `templates/`. Tracked separately; not part of this
   surface's iteration.
 
+Image needs to start a little bit lower
 
+DXD-00001 - Soldier needs to move up closer to the soldiers name
 
-Line under J. Morris's Civil War Research Archive needs to be moved slighly below the text
+Identity & Vital Details
+First Name William
+Middle Name Pickney
+Last Name Looney
+Birth Date Unknown
+Death Date May 12, 1909
+Buried In Battle Creek Cemetery, Eolian, Stephens County,
+Texas, USA
+Service & Archive Details
+Record Type Soldier
+Rank In Pvt.
+Rank Out Pvt.
+Unit Co. I, 4th TN Cav. Rgmnt., C.S.A.
+Pension State Texas
+Pension ID P5399
+Application ID A6510
+Confederate Home Status N/A
+Confederate Home Name N/A
 
-William Pickney Looney needs to move down nearly on top of the DXD-00001 - Soldier 
+all of this data needs to move up closer to DXD-00001
 
-DXD-00001 - Soldier needs to move a little closer to Identity & Vital Details
+## Round 5 (in progress)
 
-and section headers such as Identity & Vital Details need to move down a little closer to their date.
+Visual sign-off: render-ONE for SURFACE=single-soldier-landscape
+at round-5 captured the round-4 template state. Two structural
+problems were visible:
 
+1. **Empty space between display-id and "Identity & Vital Details"**.
+   Round 4 added a 2-column title row (title-block + image) but
+   typst's grid cell alignment is `center + horizon` by default,
+   so the title text was vertically centered in the 40mm-tall
+   image cell. Half the image height (~50pt) became empty space
+   below the display-id before the body grid started.
 
-Once William Pickney Looney is positioned correctly the top of the image file needs to start at the same height as the text William Pickney Looney rests if an imaginary line was drawn across the page
+2. **Image too small to read**. The 40mm-tall panel clipped a
+   805x2000 portrait-orientation source to a narrow strip. The
+   form text was unreadable.
+
+Round 5 fixes:
+
+- **Reverted the title-row refactor** (`render-record-card` for
+  landscape). The title block now spans the full page width and
+  the body grid contains the image in its right column, top-
+  aligned via `#align(top)[...]`. The image's top edge sits at
+  the same Y as the "Identity & Vital Details" header on the
+  left, which closes the ~50pt gap.
+- **Bumped `image_panel_height` 40mm -> 60mm** in
+  `templates/common/theme.typ`. The form photo is now readable
+  at the cost of a taller right column. Records section
+  appears below the image rather than mid-page.
+
+User-asked-for changes still open:
+
+- **Image top at "William Pickney Looney" Y** (round-3 ask).
+  Currently the image top is at the "Identity & Vital Details"
+  Y. Reaching the title's Y would require either:
+  (a) a 3-column title row that survives typst's grid centering
+      (round-4's failed attempt), or
+  (b) floating the image up via `place(top + right, dy: -Npt)`,
+      or
+  (c) a more invasive restructure that floats the image over
+      the right half of the title block.
+  Defer until the user weighs in.
+- **Empty space in right column under Records**. The records
+  section is short (one findagrave link for this record); the
+  right column ends well before the left column does. Acceptable
+  for sparse records; revisit if user finds it distracting.

@@ -501,10 +501,15 @@
 // page, while portrait uses a different layout (see
 // render-portrait-card) where the column proportions can be
 // inverted.
-#let render-landscape-card(s, opts, service-show-all: false, household-show-all: false) = {
-  // The image is rendered in the title row (above) so its
-  // top edge aligns with the title text. The body grid below
-  // is just the left/right sections without an image.
+#let render-landscape-card(s, opts, image-panel, service-show-all: false, household-show-all: false) = {
+  // Landscape body grid (round 5): 2 columns. Left = the full
+  // vertical stack of identity + service + household sections.
+  // Right = the image panel at the top followed by the records
+  // section. Round 5 pins the right column to top alignment so
+  // the image sits at the top of the cell, not vertically
+  // centered (typst grid default). Without this, the image
+  // would float to the middle of the right column because the
+  // records section is shorter than the left column.
   grid(
     columns: (1fr, 0.6cm, 1fr),
     [
@@ -517,7 +522,10 @@
     [],
     [
       #set text(size: theme.type-scale.body.size, fill: theme.palette.text_primary)
-      #render-records-section(s)
+      #align(top)[
+        #if image-panel != none [#image-panel #v(theme.geometry.section_gap)]
+        #render-records-section(s)
+      ]
     ],
   )
 }
@@ -589,22 +597,23 @@
   let image-panel = render-image-panel(opts, s)
 
   if is-landscape {
-    // Title row: 2 columns. Title on the left, image on the
-    // right. The image top aligns with the title text.
-    grid(
-      columns: (1fr, 0.6cm, 1fr),
-      [
-        #render-title-block(s, align-title: align-title)
-      ],
-      [],
-      [
-        #if image-panel != none [#image-panel]
-      ],
-    )
+    // Landscape layout (round 5 revert): the title block spans
+    // the full page width above the body grid. The body grid
+    // is 2-column: left = identity + service + household,
+    // right = image at the top + records below. The image
+    // top sits at the same Y as the "Identity & Vital Details"
+    // header on the left, which is closer to the round-3 user
+    // ask ("imaginary line across the page at the title's Y")
+    // than the round-4 title-row refactor (which produced a
+    // ~50pt gap between the title and the first section
+    // because typst's grid cells vertically center content by
+    // default and the 40mm image-panel height dominated the
+    // title row's height).
+    render-title-block(s, align-title: align-title)
 
     let service-show-all = variant == "widow" or variant == "spouse"
     let household-show-all = variant == "widow" or variant == "spouse"
-    render-landscape-card(s, opts, service-show-all: service-show-all, household-show-all: household-show-all)
+    render-landscape-card(s, opts, image-panel, service-show-all: service-show-all, household-show-all: household-show-all)
     render-biography-page(s)
   } else {
     render-title-block(s, align-title: align-title)
