@@ -103,6 +103,50 @@
   else [#title-case(r)]
 }
 
+// render-link turns a URL into a clickable 'Click to view' anchor.
+// In the PDF, the text is a clickable hyperlink annotation; the
+// URL itself is hidden from the visible text. Returns nothing
+// when the value is blank or missing, and returns plain text
+// when the value doesn't look like a URL (so non-URL details
+// like "Died of pneumonia, Rock Island Barracks, IL." still
+// render as text rather than getting a misleading link).
+//
+// Usage:
+//   #render-link("https://example.com/foo")
+//   #render-link(r.at("details", default: ""))
+//
+// URL detection is a simple scheme check: the value must start
+// with `http://` or `https://` after trimming. Anything else
+// (free text, bare slugs, ancestry.com without scheme) is
+// rendered as plain text.
+//
+// Typst's `#link(url, [text])` creates the clickable annotation.
+// Typst has a hard limit on URL length (~4096 chars) so we
+// guard against absurdly long values. Anything over 4000 chars
+// falls through to plain text, which matches the old
+// `text(size: 8pt)[#value]` behavior for that case.
+#let render-link(url) = {
+  if url == none or url == "" or (type(url) == str and url.trim() == "") {
+    return
+  }
+  let s = url.trim()
+  if not (s.starts-with("http://") or s.starts-with("https://")) {
+    // not a URL, render as plain text
+    return text(size: 8pt, s)
+  }
+  if s.len() > 4000 {
+    // typst refuses to encode very long URL annotations; fall
+    // back to plain text so the document still renders
+    return text(size: 8pt, s)
+  }
+  link(
+    s,
+    text(
+      fill: theme.palette.link,
+    )[#underline[Click to view]]
+  )
+}
+
 // --- field-row primitive ---
 
 // visible: when false, hide the row entirely. fpdf always shows
@@ -299,7 +343,7 @@
       #block(width: 100%)[
         *#r.at("record_type", default: "")* (App: #r.at("app_id", default: ""))
         #if r.at("details", default: "") != "" [
-          #linebreak() #box(width: 100%)[#text(size: 8pt)[#r.at("details", default: "")]]
+          #linebreak() #v(0.1em) #render-link(r.at("details", default: ""))
         ]
       ]
       #v(0.2em)

@@ -15,7 +15,7 @@
   text_primary:   rgb("#22303d"),
   text_secondary: rgb("#445260"),
   text_muted:     rgb("#71808e"),
-  link:           rgb("#30577a"),
+  link:           rgb("#4A90E2"),
   danger:         rgb("#54211d"),
   divider:        rgb("#8d7440"),
   panel_fill:     rgb("#fff8e7"),
