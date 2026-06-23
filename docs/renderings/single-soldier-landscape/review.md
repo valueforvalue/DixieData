@@ -75,3 +75,16 @@ User annotations in round 2:
 - **Issue #72** (terminology): 5 conflicts remain in
   `templates/`. Tracked separately; not part of this
   surface's iteration.
+
+
+
+Line under J. Morris's Civil War Research Archive needs to be moved slighly below the text
+
+William Pickney Looney needs to move down nearly on top of the DXD-00001 - Soldier 
+
+DXD-00001 - Soldier needs to move a little closer to Identity & Vital Details
+
+and section headers such as Identity & Vital Details need to move down a little closer to their date.
+
+
+Once William Pickney Looney is positioned correctly the top of the image file needs to start at the same height as the text William Pickney Looney rests if an imaginary line was drawn across the page
