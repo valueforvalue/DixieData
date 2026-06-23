@@ -260,3 +260,60 @@ If the user wants regression coverage for the no-image
 branch, add a fixture with a no-image record and a snapshot
 case for it. This is a future-test-improvement, not a
 round-22 deliverable.
+
+## Round 23-24 (clickable links, signed off)
+
+The records section's `details` field was rendered as raw text
+(URL strings printed in 8pt body). Two things needed to
+change:
+
+1. The URL should be hidden in the visible text but still
+   clickable in the PDF. Anchor text "Click to view" replaces
+   the URL.
+2. The anchor text should be visually distinct from the rest
+   of the body text. Soft blue (`#4A90E2`) + underline.
+
+`templates/common/record_card.typ` gained a `#let render-link(url)`
+helper. It wraps typst's `#link(url, [text])` with the styled
+"Click to view" anchor and returns nothing on empty input.
+Non-URL values (e.g. `"Died of pneumonia, Rock Island
+Barracks, IL."`) and very long values (>4000 chars) fall
+through to plain text, which preserves the old behavior for
+those cases and avoids typst's URL-length limit.
+
+`templates/common/theme.typ` got `palette.link` set to
+`rgb("#4A90E2")`. The slot was already defined but unused;
+the old value (`#30577a`, dark navy) is replaced with the
+soft blue the user asked for.
+
+`render-records-section` was updated to call `#render-link(...)`
+on each record's `details` value instead of dumping it as
+text. Because every record-card surface (soldier / widow /
+spouse / linked-person / bulk) calls the same
+`render-records-section`, a single edit covers all of them.
+Anniversary and analytics_summary don't render records
+URLs, so no changes are needed there.
+
+Round 23 caught a typst compile error ("URL is too long") on
+a test fixture with a 5KB Details string. Round 24 fixed it
+by guarding against URLs over 4000 chars and rendering them
+as plain text. The fixture's Details (`"Filed in 1880.
+https://example.com/record."`) doesn't start with `http://`
+so it falls through to plain text either way; the long-URL
+guard is just future-proofing.
+
+Snapshots are byte-stable: the in-process fixture records
+have empty Details, so render-link is never called, and
+the byte-equivalent fallback for non-URL values matches
+the old `text(size: 8pt)[#value]` rendering exactly.
+
+Round-24 visual confirmations (live DB):
+
+- Elbert Dixon Anderson (soldier, no image, 1 URL): "Click
+  to view" in soft blue + underline, URL hidden.
+- Mary Jane Carter (widow, with image, 3 URLs): all three
+  records show "Click to view".
+- Ellen E Walker (widow, no image, 1 URL): "Click to view"
+  in soft blue + underline.
+- Willoughby Randolph Fletcher (bulk row 1, 2 URLs): both
+  records show "Click to view".
