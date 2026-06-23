@@ -502,8 +502,14 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	if !strings.Contains(text, "Biography") || !strings.Contains(text, "Landscape biography should appear in single-record export.") {
 		t.Fatalf("landscape pdf should use biography content")
 	}
-	if !strings.Contains(text, "Full Biography") {
-		t.Fatalf("landscape pdf should append a full biography page")
+	// The 'Full Biography' subtitle (display_id • entry_type •
+	// Full Biography) was removed in round 30 per user request;
+	// the appendix page now shows just the soldier's name and
+	// the Biography section. The page is still emitted (see the
+	// pageCount check below); we just don't assert on the
+	// subtitle text anymore.
+	if strings.Contains(text, "Full Biography") {
+		t.Fatalf("biography page should not include the 'Full Biography' subtitle (removed in round 30)")
 	}
 	pageCount := len(regexp.MustCompile(`/Type/Page[^s]\b`).FindAll(data, -1))
 	if pageCount < 2 {
@@ -1541,10 +1547,17 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		// compresses text streams so substring matching on raw
 		// bytes is unreliable.
 		pdfText := extractPDFText(t, pdfPath)
-		for _, needle := range []string{"JPG biography should match PDF renderer.", "Full Biography"} {
+		for _, needle := range []string{"JPG biography should match PDF renderer."} {
 			if !strings.Contains(pdfText, needle) {
 				t.Fatalf("JPG source PDF missing %q", needle)
 			}
+		}
+		// 'Full Biography' subtitle was removed in round 30 per
+		// user request; the appendix page no longer carries that
+		// metadata preamble. We assert the biography content
+		// itself (above) but not the subtitle.
+		if strings.Contains(pdfText, "Full Biography") {
+			t.Fatalf("JPG source PDF should not include the 'Full Biography' subtitle (removed in round 30)")
 		}
 		// Captions are intentionally not rendered under images in
 		// the printable archive; verify the JPG caption is absent.

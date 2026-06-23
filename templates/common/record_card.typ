@@ -378,7 +378,14 @@
 
 // render-biography-page appends a dedicated page with the
 // biography if the record has one. Matches the fpdf path's
-// shouldAppendSingleRecordBiographyPage behavior.
+// shouldAppendSingleRecordBiographyPage behavior. The page
+// layout is just the soldier's name (large, serif) and the
+// biography text below a 'Biography' section header; the
+// `display_id • entry_type • Full Biography` subtitle that
+// was rendered between the name and the section header is
+// dropped per user request (round 30) so the appendix reads
+// as a clean "Full Biography" page without the metadata
+// preamble.
 #let render-biography-page(s) = {
   let biography = s.at("biography", default: "")
   if biography != none and biography.trim() != "" [
@@ -391,8 +398,6 @@
       #compose-name(s)
       #if s.at("suffix", default: "") != "" [, #s.at("suffix")]
     ]
-    #v(0.2em)
-    #text(size: 10pt, fill: theme.palette.text_secondary, [#s.at("display_id", default: "") #h(0.4em) "•" #h(0.4em) #entry-type-label(s.at("entry_type", default: "")) #h(0.4em) "•" #h(0.4em) "Full Biography"])
     #v(0.8em)
     #text(size: 9pt, weight: "bold", fill: theme.palette.accent)[Biography]
     #v(0.4em)
