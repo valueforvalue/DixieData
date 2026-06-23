@@ -319,11 +319,28 @@
   let spouse-name = s.at("spouse_name", default: "")
   if show-all or (spouse-soldier-id != none and spouse-soldier-id > 0) {
     // Build the linked-value as a single string so the field-row
-    // doesn't close over variables from the if-block scope.
+    // doesn't close over variables from the if-block scope. The
+    // linked spouse is referenced by the user-facing display_id
+    // (DXD-XXXXX) populated by the export service in
+    // internal/archive/export_service.go (the
+    // `linked_spouse_display_id` field on models.Soldier). If
+    // the field is missing — e.g. snapshot fixtures that don't
+    // round-trip through ExportSoldierPDF — we fall back to the
+    // legacy 'DB ID N' rendering so the field still shows
+    // something rather than going blank.
+    let linked-display-id = s.at("linked_spouse_display_id", default: "")
     let linked-value = if spouse-name.trim() != "" [
-      #(spouse-name + " (DB ID " + str(spouse-soldier-id) + ")")
+      #if linked-display-id != "" [
+        #(spouse-name + " (" + linked-display-id + ")")
+      ] else [
+        #(spouse-name + " (DB ID " + str(spouse-soldier-id) + ")")
+      ]
     ] else [
-      #("DB ID " + str(spouse-soldier-id))
+      #if linked-display-id != "" [
+        #linked-display-id
+      ] else [
+        #("DB ID " + str(spouse-soldier-id))
+      ]
     ]
     field-row("Linked Spouse Record", linked-value, hide-if-blank: not show-all)
   }

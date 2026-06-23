@@ -329,6 +329,21 @@ func (e *ExportService) exportSingleRecordViaRegistry(outputPath string, soldier
 	}
 	defer f.Close()
 	soldierCopy := soldier
+	// Look up the linked spouse's display_id so the typst
+	// template can render the spouse reference using the
+	// user-facing DXD-XXXXX identifier instead of the internal
+	// SQL primary key. The lookup is cheap (single row by id)
+	// and only runs for widow / wife / spouse / linked_person
+	// variants that have a non-zero SpouseSoldierID. The result
+	// is folded into the soldier payload as a new JSON field
+	// (`linked_spouse_display_id`) so the template can read it
+	// via `s.at("linked_spouse_display_id", default: "")`
+	// without changing the function signature.
+	if e.soldier != nil && soldierCopy.SpouseSoldierID > 0 {
+		if linked, err := e.soldier.GetByID(soldierCopy.SpouseSoldierID); err == nil && linked != nil {
+			soldierCopy.LinkedSpouseDisplayID = strings.TrimSpace(linked.DisplayID)
+		}
+	}
 	// Normalize options for the typst data payload. The template
 	// reads `opts.at("orientation", default: "L")` and a missing
 	// default case (when the key exists with an empty value) is

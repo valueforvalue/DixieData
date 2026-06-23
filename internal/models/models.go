@@ -53,6 +53,17 @@ type Soldier struct {
 	SearchMatchSnippet    string   `json:"-"`
 	SpouseDisplayID       string   `json:"-"`
 	BackLinkURL           string   `json:"-"`
+	// LinkedSpouseDisplayID is set by the typst payload path
+	// (internal/archive/export_service.go) when the soldier has
+	// a SpouseSoldierID. The typst template uses it to render
+	// the linked spouse reference as the user-facing DXD-XXXXX
+	// identifier instead of the internal SQL primary key. The
+	// `json:"-"` tag means this field is never serialized by
+	// the default JSON encoder; the export service manually
+	// injects it into the typst data payload via the registry
+	// (see the registry's typed-soldier passthrough in
+	// pkg/render).
+	LinkedSpouseDisplayID string   `json:"linked_spouse_display_id,omitempty"`
 	BackLinkLabel         string   `json:"-"`
 	RecordCount           int      `json:"-"`
 	ImageCount            int      `json:"-"`
