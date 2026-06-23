@@ -45,7 +45,7 @@
   // typst number is smaller because typst's text is rendered with a
   // slightly larger effective line height and we want to keep the
   // right column from overflowing the page.
-  image_panel_height: 40mm,
+  image_panel_height: 60mm,
 )
 
 #let branding = (
