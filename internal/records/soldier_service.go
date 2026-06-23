@@ -23,7 +23,7 @@ const (
 	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.soldier_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.soldier_id = soldiers.id)`
 	recordSelectColumns      = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
-	imageSelectColumns       = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
+	imageSelectColumns       = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary, compressed_at, original_bytes, compressed_bytes`
 )
 
 type SoldierService struct {
@@ -244,7 +244,7 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 	defer imgRows.Close()
 	for imgRows.Next() {
 		var img models.Image
-		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
+		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary, &img.CompressedAt, &img.OriginalBytes, &img.CompressedBytes); err != nil {
 			return nil, err
 		}
 		soldier.Images = append(soldier.Images, img)
@@ -291,7 +291,7 @@ func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, erro
 	defer imgRows.Close()
 	for imgRows.Next() {
 		var img models.Image
-		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
+		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary, &img.CompressedAt, &img.OriginalBytes, &img.CompressedBytes); err != nil {
 			return nil, err
 		}
 		soldier.Images = append(soldier.Images, img)
@@ -434,7 +434,7 @@ func (s *SoldierService) SetPrimaryImage(soldierID, imageID int64) error {
 func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
 	row := s.db.Conn().QueryRow(`SELECT `+imageSelectColumns+` FROM images WHERE id = ?`, imageID)
 	var image models.Image
-	if err := row.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
+	if err := row.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary, &image.CompressedAt, &image.OriginalBytes, &image.CompressedBytes); err != nil {
 		return nil, err
 	}
 	return &image, nil

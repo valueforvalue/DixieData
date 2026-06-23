@@ -168,6 +168,9 @@ func ImageFromModel(input models.Image) Image {
 		FilePath:           input.FilePath,
 		Caption:            input.Caption,
 		IsPrimary:          input.IsPrimary,
+		CompressedAt:       input.CompressedAt,
+		OriginalBytes:      input.OriginalBytes,
+		CompressedBytes:    input.CompressedBytes,
 		ResolvedPath:       input.ResolvedPath,
 	}
 }
@@ -639,6 +642,16 @@ func OrphanedImagesFromDomain(inputs []archive.OrphanedImage) []OrphanedImage {
 	items := make([]OrphanedImage, 0, len(inputs))
 	for _, input := range inputs {
 		items = append(items, OrphanedImage(input))
+	}
+	return items
+}
+
+// CompressibleImagesFromDomain maps archive.CompressibleImage into the
+// viewmodel layer for templates.
+func CompressibleImagesFromDomain(inputs []archive.CompressibleImage) []CompressibleImage {
+	items := make([]CompressibleImage, 0, len(inputs))
+	for _, input := range inputs {
+		items = append(items, CompressibleImage(input))
 	}
 	return items
 }

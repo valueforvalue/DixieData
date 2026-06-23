@@ -47,6 +47,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/settings/updates/health/bootstrap", a.handleUpdateBootstrapHealth)
 	mux.HandleFunc("/settings/images/orphans/scan", a.handleScanImageOrphans)
 	mux.HandleFunc("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
+	mux.HandleFunc("/settings/images/compress/scan", a.handleScanCompressibleImages)
+	mux.HandleFunc("/settings/images/compress/run", a.handleRunImageCompression)
 	mux.HandleFunc("/settings/quality/scan", a.handleScanDataQuality)
 	mux.HandleFunc("/settings/quality/apply", a.handleApplyDataQuality)
 	mux.HandleFunc("/export/json", a.handleExportJSON)
