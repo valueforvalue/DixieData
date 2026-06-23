@@ -9,6 +9,8 @@
 #   pwsh -File scripts/render-round.ps1 -Round 5 -Only single-soldier-landscape
 #   pwsh -File scripts/render-round.ps1 -Round 5 -RecordIDs 1,2,3
 #   pwsh -File scripts/render-round.ps1 -Round 5 -KeepRounds 0   # disable auto-prune
+#   pwsh -File scripts/render-round.ps1 -Round 5 -Record 21        # soldier ID 21
+#   pwsh -File scripts/render-round.ps1 -Round 5 -Record 72        # widow ID 72
 #
 # The script must be re-runnable: it overwrites the target PDF for
 # the requested round. It does NOT touch pre-iteration.pdf from a
@@ -28,6 +30,14 @@
 #                     renders when the ID list is short enough that
 #                     a full bulk render would be wasteful; pass
 #                     "all" to force the bulk surfaces to render.
+# -Record <id>        override the soldier record ID (default 1) or
+#                     widow record ID (default 61) used for the
+#                     single-* surfaces. Useful for iterating on a
+#                     specific record (e.g. one with no image, long
+#                     data, or unusual values). Ignored for bulk-*,
+#                     anniversary, and insights surfaces, which use
+#                     their own ID list via -RecordIDs or render
+#                     the full archive.
 # -KeepRounds <N>     keep the most recent N rounds of artifacts
 #                     (PDF + SVG + PNG) before rendering the new one.
 #                     Default 1: the previous round only. Set to 0
@@ -37,6 +47,7 @@ param(
     [int]$Round = 1,
     [string]$Only = "",
     [string]$RecordIDs = "",
+    [int64]$Record = 0,
     [int]$KeepRounds = 1
 )
 
@@ -52,9 +63,18 @@ if (-not (Test-Path $tune)) { throw "dixiedata-tune not built; run 'make tune'" 
 if (-not (Test-Path $db)) { throw "no .dixiedata/ archive" }
 
 # Pick representative record IDs from the live DB. Hard-coded so the
-# round is reproducible. Use the first soldier, first widow.
-$soldierID = 1
-$widowID = 61
+# round is reproducible. Use the first soldier, first widow. The
+# -Record flag overrides both with a single ID, which is convenient
+# for iterating on a specific record (e.g. one with no image, long
+# data, or unusual values).
+if ($Record -gt 0) {
+    $soldierID = $Record
+    $widowID = $Record
+    Write-Host "Overriding record IDs from -Record $Record (soldier and widow surfaces both use this ID)"
+} else {
+    $soldierID = 1
+    $widowID = 61
+}
 
 # Output filename for this round.
 $outName = if ($Round -eq 1) { "pre-iteration.pdf" } else { "round-$Round.pdf" }
