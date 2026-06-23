@@ -23,6 +23,12 @@
 #let branding = data.at("branding", default: (:))
 #let month = data.at("month", default: 0)
 #let calendar = data.at("calendar", default: (:))
+// Map of soldier id (as string) -> Find a Grave URL. Populated
+// by the Go-side `firstFindAGraveLinks` helper in
+// internal/archive/export_service.go. An empty map means every
+// soldier lacks a FaG record and every entry renders as plain
+// text, matching the pre-link behavior.
+#let soldier-links = data.at("soldier_links", default: (:))
 
 #let is-landscape = detect-landscape(opts)
 // Use the shared page chrome (header with rule, footer with
@@ -128,6 +134,43 @@
 #line(length: 100%, stroke: 0.6pt + theme.palette.accent)
 #v(0.1em)
 
+// render-anniversary-entry emits a single bullet line for one
+// soldier. If a Find a Grave URL is available in the
+// `soldier_links` map (keyed by soldier id as string), the
+// entire entry is wrapped in a clickable link styled in
+// soft blue + underline (matching the records-section link
+// in the record card). Soldiers without a FaG link render as
+// plain text, matching the pre-link behavior. The bullet `-`
+// stays inside the link so the clickable region includes it.
+#let render-anniversary-entry(s, soldier-links) = {
+  let sid = str(s.at("id", default: 0))
+  let url = soldier-links.at(sid, default: "")
+  let entry-content = {
+    let name = soldier-name(s)
+    if name != "" [
+      #name
+    ] else [
+      #s.at("display_id", default: "")
+    ]
+    let did = s.at("display_id", default: "")
+    let yr = soldier-death-year(s)
+    if yr != "" [
+      (#did, #yr)
+    ] else [
+      (#did)
+    ]
+  }
+  if url != "" and (url.starts-with("http://") or url.starts-with("https://")) {
+    if url.len() <= 4000 [
+      - #link(url, text(fill: theme.palette.link, underline[#entry-content]))
+    ] else [
+      - #entry-content
+    ]
+  } else [
+    - #entry-content
+  ]
+}
+
 #if days.len() == 0 [
   #set text(size: 8pt)
   No soldiers are recorded for this month.
@@ -174,19 +217,14 @@
       #for dec in decade-keys [
         #text(size: 6.5pt, fill: theme.palette.text_secondary, style: "italic")[#dec]
         #for s in by-decade.at(dec) [
-          - #let name = soldier-name(s)
-            #if name != "" [
-              #name
-            ] else [
-              #s.at("display_id", default: "")
-            ]
-            #let did = s.at("display_id", default: "")
-            #let yr = soldier-death-year(s)
-            #if yr != "" [
-              (#did, #yr)
-            ] else [
-              (#did)
-            ]
+          #render-anniversary-entry(s, soldier-links)
+          // Spacing between consecutive entries in the same decade
+          // group. typst's default bullet line spacing is tight at
+          // 7pt; the user asked for slightly more breathing room
+          // between names so two soldiers in the same decade
+          // (e.g. Day 4's 1910s/1920s) don't render as a single
+          // visual block. 0.15em ≈ 1pt at 7pt body size.
+          #v(0.15em)
         ]
         #v(0.05em)
       ]

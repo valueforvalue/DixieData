@@ -380,14 +380,82 @@ func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month in
 	}
 	defer f.Close()
 	normalizedOptions := options.Normalize("P", false)
+	// Build a map from soldier ID (as string, matching the JSON
+	// shape typst will see) to the first Find a Grave URL for
+	// that soldier. The anniversary template uses this to make
+	// each entry's anchor text clickable when a FaG record
+	// exists; soldiers without a FaG record render as plain
+	// text, matching the pre-link behavior. The first record
+	// (lowest id) is taken because that is the one the user
+	// attached the canonical memorial link to; later FaG
+	// records (e.g. virtual-cemetery links or duplicate
+	// memorials) are ignored.
+	links, err := e.firstFindAGraveLinks(calendar)
+	if err != nil {
+		return fmt.Errorf("build anniversary links: %w", err)
+	}
 	data := map[string]any{
-		"options":  normalizedOptions,
-		"settings": settings,
-		"month":    month,
-		"calendar": calendar,
-		"branding": e.archiveBranding(options.PrinterFriendly),
+		"options":       normalizedOptions,
+		"settings":      settings,
+		"month":         month,
+		"calendar":      calendar,
+		"soldier_links": links,
+		"branding":      e.archiveBranding(options.PrinterFriendly),
 	}
 	return e.registry.Render(context.Background(), settings, "soldier", data, f)
+}
+
+// firstFindAGraveLinks queries the records table once for every
+// soldier in the calendar and returns a map keyed by soldier ID
+// (as string) pointing to the first record of type 'Find a Grave'
+// (substring match, case-insensitive) whose details starts with
+// 'http'. Soldiers with no such record are omitted; the template
+// falls back to plain text in that case. One bulk query is much
+// cheaper than N per-soldier queries when the calendar has
+// dozens of entries.
+func (e *ExportService) firstFindAGraveLinks(calendar map[int][]models.Soldier) (map[string]string, error) {
+	// Collect unique soldier IDs.
+	ids := make(map[int64]struct{})
+	for _, soldiers := range calendar {
+		for _, s := range soldiers {
+			ids[s.ID] = struct{}{}
+		}
+	}
+	if len(ids) == 0 {
+		return map[string]string{}, nil
+	}
+	// Build the IN clause placeholder list.
+	placeholders := make([]string, 0, len(ids))
+	args := make([]any, 0, len(ids))
+	for id := range ids {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+	q := `SELECT soldier_id, details FROM records
+	      WHERE LOWER(record_type) LIKE '%find a grave%'
+	        AND (details LIKE 'http://%' OR details LIKE 'https://%')
+	        AND soldier_id IN (` + strings.Join(placeholders, ",") + `)
+	      ORDER BY soldier_id, id`
+	rows, err := e.db.Conn().Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]string)
+	for rows.Next() {
+		var sid int64
+		var details string
+		if err := rows.Scan(&sid, &details); err != nil {
+			return nil, err
+		}
+		// First row per soldier_id wins; ORDER BY id ASC guarantees
+		// the earliest-inserted FaG record is selected.
+		key := strconv.FormatInt(sid, 10)
+		if _, ok := out[key]; !ok {
+			out[key] = details
+		}
+	}
+	return out, rows.Err()
 }
 
 // exportAnalyticsViaRegistry renders the analytics summary via
