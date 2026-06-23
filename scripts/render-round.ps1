@@ -8,6 +8,7 @@
 #   pwsh -File scripts/render-round.ps1 -Round 2              # writes round-2.pdf
 #   pwsh -File scripts/render-round.ps1 -Round 5 -Only single-soldier-landscape
 #   pwsh -File scripts/render-round.ps1 -Round 5 -RecordIDs 1,2,3
+#   pwsh -File scripts/render-round.ps1 -Round 5 -KeepRounds 0   # disable auto-prune
 #
 # The script must be re-runnable: it overwrites the target PDF for
 # the requested round. It does NOT touch pre-iteration.pdf from a
@@ -27,10 +28,16 @@
 #                     renders when the ID list is short enough that
 #                     a full bulk render would be wasteful; pass
 #                     "all" to force the bulk surfaces to render.
+# -KeepRounds <N>     keep the most recent N rounds of artifacts
+#                     (PDF + SVG + PNG) before rendering the new one.
+#                     Default 1: the previous round only. Set to 0
+#                     to disable pruning, or to a higher N when
+#                     comparing across multiple iterations.
 param(
     [int]$Round = 1,
     [string]$Only = "",
-    [string]$RecordIDs = ""
+    [string]$RecordIDs = "",
+    [int]$KeepRounds = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -154,6 +161,40 @@ if ($RecordIDs -ne "") {
 }
 if ($Only -ne "") {
     Write-Host "Restricting to surface: $Only"
+}
+if ($KeepRounds -gt 0 -and $Round -gt 1) {
+    # Prune iteration artifacts older than $KeepRounds before
+    # writing the new round. Snapshots in
+    # internal/exportcontract/testdata/ are git-tracked and
+    # unaffected by this step. pre-iteration.pdf is preserved
+    # because it documents the pre-iteration baseline (round 0).
+    $surfaces = @(
+        "single-soldier-landscape", "single-soldier-portrait",
+        "single-widow-landscape", "single-widow-portrait",
+        "bulk-sorted", "bulk-grouped-pension-state",
+        "bulk-grouped-burial-location",
+        "anniversary", "insights"
+    )
+    $cutoff = $Round - $KeepRounds - 1
+    foreach ($s in $surfaces) {
+        $sdir = Join-Path $repoRoot "docs/renderings/$s"
+        if (-not (Test-Path $sdir)) { continue }
+        Get-ChildItem -Path $sdir -Filter "round-*.pdf" -File | ForEach-Object {
+            if ($_.Name -match "round-(\d+)\.pdf$") {
+                $n = [int]$Matches[1]
+                if ($n -lt $cutoff) {
+                    # Delete matching SVG/PNG siblings too.
+                    $stem = $_.BaseName
+                    Remove-Item -Force -ErrorAction SilentlyContinue $_.FullName
+                    Get-ChildItem -Path $sdir -Filter ("$stem-*.svg") -File |
+                        Remove-Item -Force -ErrorAction SilentlyContinue
+                    Get-ChildItem -Path $sdir -Filter ("$stem.png") -File |
+                        Remove-Item -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+    }
+    Write-Host "Pruned iteration artifacts older than round $cutoff (KeepRounds=$KeepRounds)."
 }
 
 function Should-Render {

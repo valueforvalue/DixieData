@@ -12,7 +12,7 @@ LOGDIR := build/log
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
-        stress goldmaster tune tune-smoke tune-snapshots render-round render-svg tpl css audit clean log-clean bump release-github
+        stress goldmaster tune tune-smoke tune-snapshots render-round render-round-ONE update-snapshots-ONE render-svg tpl css audit clean log-clean bump release-github
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -118,6 +118,73 @@ render-round:
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
 	pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round 1
+
+# Render a single surface for one round. Use this when iterating
+# on a layout so disk + wall-clock don't scale with the full
+# surface set. ROUND defaults to one greater than the highest
+# round-<N>.pdf already on disk for this surface. The script
+# auto-prunes rounds older than KeepRounds (default 1) so only
+# the previous round stays behind for diffing.
+#
+# Example:
+#   make render-round-ONE SURFACE=single-soldier-landscape ROUND=5
+#   make render-round-ONE SURFACE=bulk-sorted ROUND=6 KEEP=2
+render-round-ONE:
+	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
+	@if [ -z "$(SURFACE)" ]; then echo "SURFACE is required, e.g. SURFACE=single-soldier-landscape" >&2; exit 2; fi
+	cd tools/tune && go build -o bin/dixiedata-tune.exe .
+	@SURFACE=$(SURFACE); ROUND=$(ROUND); KEEP=$(KEEP); \
+	  if [ -z "$$ROUND" ]; then \
+	    ROUND=$$(ls -1 docs/renderings/$$SURFACE/round-*.pdf 2>/dev/null | sed 's/.*round-//;s/\.pdf//' | sort -V | tail -1); \
+	    ROUND=$$(( $${ROUND:-0} + 1 )); \
+	  fi; \
+	  if [ -z "$$KEEP" ]; then KEEP=1; fi; \
+	  echo "rendering $$SURFACE round $$ROUND (keep=$$KEEP)"; \
+	  pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round $$ROUND -Only $$SURFACE -KeepRounds $$KEEP
+
+# Regenerate the byte-stable snapshot fixture(s) for a single
+# surface, then verify the regen matches what the export
+# pipeline produces today. Snapshots live in
+# internal/exportcontract/testdata/{snapshots,snapshots-cli}/
+# and are tracked in git, so this is the right place to commit
+# layout-driven byte drift alongside the template change.
+#
+# SURFACE→SNAPSHOT map:
+#   single-soldier-landscape         soldier-landscape
+#   single-soldier-portrait          soldier-portrait
+#   single-widow-landscape           widow-landscape
+#   single-widow-portrait            widow-portrait
+#   bulk-sorted                      bulk-landscape
+#   bulk-grouped-pension-state       grouped-by-pension-state
+#   bulk-grouped-burial-location     (no snapshot — single-template change;
+#                                    run `make tune-snapshots` to regen all
+#                                    22 fixtures at once)
+#   anniversary, insights            (no snapshot — same as above)
+#
+# Example:
+#   make update-snapshots-ONE SURFACE=single-soldier-landscape
+update-snapshots-ONE:
+	@if [ -z "$(SURFACE)" ]; then echo "SURFACE is required, e.g. SURFACE=single-soldier-landscape" >&2; exit 2; fi
+	@bash -c 'set -e; \
+	  case "$(SURFACE)" in \
+	    single-soldier-landscape) SNAP=soldier-landscape ;; \
+	    single-soldier-portrait)  SNAP=soldier-portrait ;; \
+	    single-widow-landscape)   SNAP=widow-landscape ;; \
+	    single-widow-portrait)    SNAP=widow-portrait ;; \
+	    bulk-sorted)              SNAP=bulk-landscape ;; \
+	    bulk-grouped-pension-state) SNAP=grouped-by-pension-state ;; \
+	    bulk-grouped-burial-location|anniversary|insights) \
+	      echo "no per-surface snapshot for $(SURFACE); run \`make tune-snapshots\` to regen all 22"; exit 1 ;; \
+	    *) echo "unknown surface: $(SURFACE)" >&2; exit 2 ;; \
+	  esac; \
+	  echo "updating snapshots for $$SNAP (in-process + CLI)"; \
+	  echo "--- in-process ---"; \
+	  UPDATE_SNAPSHOTS=1 go test -count=1 -run "TestArchiveContractSnapshots/$$SNAP" ./internal/exportcontract/ -timeout 120s; \
+	  echo "--- CLI ---"; \
+	  UPDATE_SNAPSHOTS=1 go test -count=1 -run "TestCLIContractSnapshots/$$SNAP" ./internal/exportcontract/ -timeout 120s; \
+	  echo "--- verify (no UPDATE_SNAPSHOTS) ---"; \
+	  go test -count=1 -run "TestArchiveContractSnapshots/$$SNAP" ./internal/exportcontract/ -timeout 120s; \
+	  go test -count=1 -run "TestCLIContractSnapshots/$$SNAP" ./internal/exportcontract/ -timeout 120s'
 
 # Native-SVG previews alongside the PDFs. ROUND picks the round
 # number (default: latest). ONLY restricts to a single surface
