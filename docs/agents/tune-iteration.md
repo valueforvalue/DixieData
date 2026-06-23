@@ -40,7 +40,13 @@ make tune
 # 2. Render the surface you are iterating on. ROUND defaults to one
 #    greater than the highest existing round-N.pdf for that surface.
 #    KEEP=N preserves N rounds before the new one (default 1).
+#    RECORD=<id> overrides the default record (1 for soldier, 61 for
+#    widow) for single-* surfaces, useful for iterating on a record
+#    with no image, long data, or other layout edge cases.
 make render-round-ONE SURFACE=single-soldier-landscape
+# Or, for a specific record (e.g. Elbert Dixon Anderson, DXD-00019,
+# a no-image record):
+make render-round-ONE SURFACE=single-soldier-landscape RECORD=21
 
 # 3. Open the PDF (and the SVG if you want a vector preview):
 start "" docs/renderings/single-soldier-landscape/round-N.pdf
@@ -89,6 +95,10 @@ handles both, plus a PNG preview, in one call:
 # Render PDF + native SVG + 150 DPI PNG preview, all into
 # docs/renderings/<surface>/round-N.{pdf,svg,png}:
 /c/Users/value/bin/render-svg.sh single-soldier-landscape N
+
+# Render a specific record (overrides the default 1 for soldier,
+# 61 for widow). Useful for no-image, long-data, or edge cases:
+/c/Users/value/bin/render-svg.sh single-soldier-landscape N -r 21
 
 # Limit bulk surfaces to specific record IDs (saves ~99% disk):
 /c/Users/value/bin/render-svg.sh bulk-sorted N -i 1,2,3,4,5

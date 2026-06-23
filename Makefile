@@ -129,18 +129,34 @@ render-round:
 # Example:
 #   make render-round-ONE SURFACE=single-soldier-landscape ROUND=5
 #   make render-round-ONE SURFACE=bulk-sorted ROUND=6 KEEP=2
+#
+# Override the record ID for single-* surfaces (the default
+# is record 1 for soldier, record 61 for widow). Useful for
+# iterating on a record that has no image, long data, or any
+# other layout edge case. The ID is the SQLite primary key
+# in the `soldiers` table.
+#
+#   make render-round-ONE SURFACE=single-soldier-landscape RECORD=21
+#   make render-round-ONE SURFACE=single-soldier-portrait  RECORD=21
+#   make render-round-ONE SURFACE=single-widow-landscape   RECORD=72
+#
+# RECORD is ignored for bulk-* / anniversary / insights surfaces.
 render-round-ONE:
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	@if [ -z "$(SURFACE)" ]; then echo "SURFACE is required, e.g. SURFACE=single-soldier-landscape" >&2; exit 2; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
-	@SURFACE=$(SURFACE); ROUND=$(ROUND); KEEP=$(KEEP); \
+	@SURFACE=$(SURFACE); ROUND=$(ROUND); KEEP=$(KEEP); RECORD=$(RECORD); \
 	  if [ -z "$$ROUND" ]; then \
 	    ROUND=$$(ls -1 docs/renderings/$$SURFACE/round-*.pdf 2>/dev/null | sed 's/.*round-//;s/\.pdf//' | sort -V | tail -1); \
 	    ROUND=$$(( $${ROUND:-0} + 1 )); \
 	  fi; \
 	  if [ -z "$$KEEP" ]; then KEEP=1; fi; \
 	  echo "rendering $$SURFACE round $$ROUND (keep=$$KEEP)"; \
-	  pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round $$ROUND -Only $$SURFACE -KeepRounds $$KEEP
+	  if [ -n "$$RECORD" ]; then \
+	    pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round $$ROUND -Only $$SURFACE -KeepRounds $$KEEP -Record $$RECORD; \
+	  else \
+	    pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round $$ROUND -Only $$SURFACE -KeepRounds $$KEEP; \
+	  fi
 
 # Regenerate the byte-stable snapshot fixture(s) for a single
 # surface, then verify the regen matches what the export
