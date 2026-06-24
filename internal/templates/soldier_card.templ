@@ -157,10 +157,11 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				</div>
 				<div data-ui-id={ uiids.PanelSoldiersSearchBasic } data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
 					@SurfaceBadge(uiids.PanelSoldiersSearchBasic)
-					<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
-						value={ query }
-						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
-						class="field-input" aria-label="q"/>
+					<form hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms from:input[name='q']" class="contents">
+						<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
+							value={ query }
+							class="field-input" aria-label="q"/>
+					</form>
 					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
 						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
 					</div>
