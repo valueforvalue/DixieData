@@ -22,78 +22,91 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.
 				</div>
 			</div>
-			<form id="browse-filters" hx-get="/browse/results" hx-target="#browse-results" class="grid gap-4 rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)] p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-6">
-				<input type="hidden" name="page" value={ fmt.Sprintf("%d", state.Page) } data-browse-page-input/>
-				<div>
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="scope">Scope</label>
-					<select name="scope" data-browse-filter-input class="field-input mt-2" id="scope">
-						<option value="all" if state.Scope == "all" { selected }>All Records</option>
-						<option value="recently_added" if state.Scope == "recently_added" { selected }>Recently Added</option>
-						<option value="last_import" if state.Scope == "last_import" { selected }>Last Import</option>
-					</select>
-				</div>
-				<div>
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="sort">Sort</label>
-					<select name="sort" data-browse-filter-input class="field-input mt-2" id="sort">
-						<option value="display_id_asc" if state.Sort == "display_id_asc" { selected }>Display ID Ascending</option>
-						<option value="display_id_desc" if state.Sort == "display_id_desc" { selected }>Display ID Descending</option>
-						<option value="name_asc" if state.Sort == "name_asc" { selected }>Name</option>
-						<option value="last_edited_desc" if state.Sort == "last_edited_desc" { selected }>Last Edited</option>
-						<option value="created_desc" if state.Sort == "created_desc" { selected }>Created</option>
-					</select>
-				</div>
-				<div>
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="page_size">Page Size</label>
-					<select name="page_size" data-browse-filter-input class="field-input mt-2" id="page_size">
-						for _, option := range []int{25, 50, 100, 150, 200, 250} {
-							<option value={ fmt.Sprintf("%d", option) } if option == state.PageSize { selected }>{ fmt.Sprintf("%d", option) }</option>
-						}
-					</select>
-				</div>
-				<div>
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="entry_type">Entry Type</label>
-					<select name="entry_type" data-browse-filter-input class="field-input mt-2" id="entry_type">
-						<option value="" if state.EntryType == "" { selected }>All</option>
-						<option value="soldier" if state.EntryType == "soldier" { selected }>Soldier</option>
-						<option value="linked_person" if state.EntryType == "linked_person" { selected }>Person Record</option>
-						<option value="wife" if state.EntryType == "wife" { selected }>Wife</option>
-						<option value="widow" if state.EntryType == "widow" { selected }>Widow</option>
-					</select>
-				</div>
-				<div>
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="pension_state">Pension State</label>
-					<input type="text" name="pension_state" value={ state.PensionState } list="browse-pension-state-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any" id="pension_state"/>
-				</div>
-				<div>
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="review_status">Review Status</label>
-					<select name="review_status" data-browse-filter-input class="field-input mt-2" id="review_status">
-						<option value="" if state.ReviewStatus == "" { selected }>All</option>
-						<option value="clean" if state.ReviewStatus == "clean" { selected }>Clean Only</option>
-						<option value="review" if state.ReviewStatus == "review" { selected }>Needs Review</option>
-					</select>
-				</div>
-				<div class="md:col-span-2 xl:col-span-2">
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="unit">Unit</label>
-					<input type="text" name="unit" value={ state.Unit } list="browse-unit-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any unit" id="unit"/>
-				</div>
-				<div class="md:col-span-2 xl:col-span-2">
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="buried_in">Buried In</label>
-					<input type="text" name="buried_in" value={ state.BuriedIn } list="browse-buried-in-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any cemetery" id="buried_in"/>
-				</div>
-				<div class="md:col-span-2 xl:col-span-2">
-					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="confederate_home_status">Confederate Home Status</label>
-					<select name="confederate_home_status" data-browse-filter-input class="field-input mt-2" id="confederate_home_status">
-						<option value="" if state.ConfederateHomeStatus == "" { selected }>All</option>
-						for _, status := range confederateHomeStatuses() {
-							<option value={ status } if state.ConfederateHomeStatus == status { selected }>{ status }</option>
-						}
-					</select>
-				</div>
-				<div class="md:col-span-2 xl:col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-					<button type="submit" class="primary-button w-full sm:w-auto">Apply Filters</button>
-					<button type="button" data-browse-reset data-browse-reset-path="/browse" class="ghost-link w-full px-4 py-2 font-semibold sm:w-auto">Reset Browse</button>
-					<p class="text-xs text-slate-500">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p>
-				</div>
+			<form id="browse-filters" hx-get="/browse/results" hx-target="#browse-results" data-browse-filters-form class="rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)]">
+				<details class="group" data-browse-filters-details>
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
+						<span class="flex items-center gap-2">
+							<span class="text-sm font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Filters</span>
+							<span data-browse-filters-count class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.85)] px-2 py-0.5 text-xs font-semibold text-[#5a3b1f]">0 active</span>
+						</span>
+						<span class="text-xs text-slate-500 group-open:hidden">Show</span>
+						<span class="hidden text-xs text-slate-500 group-open:inline">Hide</span>
+					</summary>
+					<div class="grid gap-4 border-t border-[rgba(141,116,64,0.24)] p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-6">
+					<input type="hidden" name="page" value={ fmt.Sprintf("%d", state.Page) } data-browse-page-input/>
+					<div>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="scope">Scope</label>
+						<select name="scope" data-browse-filter-input class="field-input mt-2" id="scope">
+							<option value="all" if state.Scope == "all" { selected }>All Records</option>
+							<option value="recently_added" if state.Scope == "recently_added" { selected }>Recently Added</option>
+							<option value="last_import" if state.Scope == "last_import" { selected }>Last Import</option>
+						</select>
+					</div>
+					<div>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="sort">Sort</label>
+						<select name="sort" data-browse-filter-input class="field-input mt-2" id="sort">
+							<option value="display_id_asc" if state.Sort == "display_id_asc" { selected }>Display ID Ascending</option>
+							<option value="display_id_desc" if state.Sort == "display_id_desc" { selected }>Display ID Descending</option>
+							<option value="name_asc" if state.Sort == "name_asc" { selected }>Name</option>
+							<option value="last_edited_desc" if state.Sort == "last_edited_desc" { selected }>Last Edited</option>
+							<option value="created_desc" if state.Sort == "created_desc" { selected }>Created</option>
+						</select>
+					</div>
+					<div>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="page_size">Page Size</label>
+						<select name="page_size" data-browse-filter-input class="field-input mt-2" id="page_size">
+							for _, option := range []int{25, 50, 100, 150, 200, 250} {
+								<option value={ fmt.Sprintf("%d", option) } if option == state.PageSize { selected }>{ fmt.Sprintf("%d", option) }</option>
+							}
+						</select>
+					</div>
+					<div>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="entry_type">Entry Type</label>
+						<select name="entry_type" data-browse-filter-input class="field-input mt-2" id="entry_type">
+							<option value="" if state.EntryType == "" { selected }>All</option>
+							<option value="soldier" if state.EntryType == "soldier" { selected }>Soldier</option>
+							<option value="linked_person" if state.EntryType == "linked_person" { selected }>Person Record</option>
+							<option value="wife" if state.EntryType == "wife" { selected }>Wife</option>
+							<option value="widow" if state.EntryType == "widow" { selected }>Widow</option>
+						</select>
+					</div>
+					<div>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="pension_state">Pension State</label>
+						<input type="text" name="pension_state" value={ state.PensionState } list="browse-pension-state-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any" id="pension_state"/>
+					</div>
+					<div>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="review_status">Review Status</label>
+						<select name="review_status" data-browse-filter-input class="field-input mt-2" id="review_status">
+							<option value="" if state.ReviewStatus == "" { selected }>All</option>
+							<option value="clean" if state.ReviewStatus == "clean" { selected }>Clean Only</option>
+							<option value="review" if state.ReviewStatus == "review" { selected }>Needs Review</option>
+						</select>
+					</div>
+					<div class="md:col-span-2 xl:col-span-2">
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="unit">Unit</label>
+						<input type="text" name="unit" value={ state.Unit } list="browse-unit-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any unit" id="unit"/>
+					</div>
+					<div class="md:col-span-2 xl:col-span-2">
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="buried_in">Buried In</label>
+						<input type="text" name="buried_in" value={ state.BuriedIn } list="browse-buried-in-suggestions" data-browse-filter-input class="field-input mt-2" placeholder="Any cemetery" id="buried_in"/>
+					</div>
+					<div class="md:col-span-2 xl:col-span-2">
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="confederate_home_status">Confederate Home Status</label>
+						<select name="confederate_home_status" data-browse-filter-input class="field-input mt-2" id="confederate_home_status">
+							<option value="" if state.ConfederateHomeStatus == "" { selected }>All</option>
+							for _, status := range confederateHomeStatuses() {
+								<option value={ status } if state.ConfederateHomeStatus == status { selected }>{ status }</option>
+							}
+						</select>
+					</div>
+					<div class="md:col-span-2 xl:col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+						<button type="submit" class="primary-button w-full sm:w-auto">Apply Filters</button>
+						<button type="button" data-browse-reset data-browse-reset-path="/browse" class="ghost-link w-full px-4 py-2 font-semibold sm:w-auto">Reset Browse</button>
+						<p class="text-xs text-slate-500">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p>
+					</div>
+					</div>
+				</details>
+			</form>
 				<div class="md:col-span-2 xl:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4">
 					<details class="group">
 						<summary class="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
@@ -123,7 +136,6 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 				@SuggestionDatalist("browse-unit-suggestions", suggestions.Unit)
 				@SuggestionDatalist("browse-buried-in-suggestions", suggestions.BuriedIn)
 				@SuggestionDatalist("browse-pension-state-suggestions", suggestions.PensionState)
-			</form>
 			<div id="browse-results" data-ui-id={ uiids.PanelBrowseResults } class="relative">
 				@SurfaceBadge(uiids.PanelBrowseResults)
 				@BrowseResults(records, state)
