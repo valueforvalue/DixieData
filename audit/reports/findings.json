@@ -28,13 +28,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 23,
+    "count": 15,
     "sample": [
-      {
-        "tag": "input",
-        "name": "q",
-        "type": "text"
-      },
       {
         "tag": "input",
         "name": "display_id",
@@ -53,6 +48,11 @@
       {
         "tag": "input",
         "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
         "type": "text"
       }
     ]
@@ -788,7 +788,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 59,
+    "count": 56,
     "sample": [
       {
         "tag": "select",
@@ -811,9 +811,9 @@
         "type": "select-one"
       },
       {
-        "tag": "input",
-        "name": "pension_state",
-        "type": "text"
+        "tag": "select",
+        "name": "review_status",
+        "type": "select-one"
       }
     ]
   },
@@ -827,6 +827,16 @@
     "item_count": 8,
     "nav_width": 886,
     "item_width_avg": 111
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "table-rows",
+    "severity": "info",
+    "rows": 50,
+    "page_height": 4369
   },
   {
     "label": "desktop_review-queue",
@@ -908,13 +918,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 2,
+    "count": 1,
     "sample": [
-      {
-        "tag": "input",
-        "name": "source_url",
-        "type": "url"
-      },
       {
         "tag": "input",
         "name": "confirmation_word",
@@ -1096,13 +1101,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 29,
+    "count": 20,
     "sample": [
-      {
-        "tag": "textarea",
-        "name": "findagrave_source",
-        "type": "textarea"
-      },
       {
         "tag": "input",
         "name": "display_id",
@@ -1115,12 +1115,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
+        "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
-        "name": "first_name",
+        "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -1310,7 +1315,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 28,
+    "count": 20,
     "sample": [
       {
         "tag": "input",
@@ -1324,17 +1329,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
-        "type": "text"
-      },
-      {
-        "tag": "input",
         "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
         "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -1524,7 +1529,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 31,
+    "count": 23,
     "sample": [
       {
         "tag": "input",
@@ -1538,17 +1543,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
-        "type": "text"
-      },
-      {
-        "tag": "input",
         "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
         "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -1593,13 +1598,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 23,
+    "count": 15,
     "sample": [
-      {
-        "tag": "input",
-        "name": "q",
-        "type": "text"
-      },
       {
         "tag": "input",
         "name": "display_id",
@@ -1618,6 +1618,11 @@
       {
         "tag": "input",
         "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
         "type": "text"
       }
     ]
@@ -2312,7 +2317,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 59,
+    "count": 56,
     "sample": [
       {
         "tag": "select",
@@ -2335,9 +2340,9 @@
         "type": "select-one"
       },
       {
-        "tag": "input",
-        "name": "pension_state",
-        "type": "text"
+        "tag": "select",
+        "name": "review_status",
+        "type": "select-one"
       }
     ]
   },
@@ -2351,6 +2356,16 @@
     "item_count": 8,
     "nav_width": 801,
     "item_width_avg": 100
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "table-rows",
+    "severity": "info",
+    "rows": 50,
+    "page_height": 6064
   },
   {
     "label": "tablet_review-queue",
@@ -2432,13 +2447,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 2,
+    "count": 1,
     "sample": [
-      {
-        "tag": "input",
-        "name": "source_url",
-        "type": "url"
-      },
       {
         "tag": "input",
         "name": "confirmation_word",
@@ -2620,13 +2630,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 29,
+    "count": 20,
     "sample": [
-      {
-        "tag": "textarea",
-        "name": "findagrave_source",
-        "type": "textarea"
-      },
       {
         "tag": "input",
         "name": "display_id",
@@ -2639,12 +2644,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
+        "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
-        "name": "first_name",
+        "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -2880,7 +2890,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 28,
+    "count": 20,
     "sample": [
       {
         "tag": "input",
@@ -2894,17 +2904,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
-        "type": "text"
-      },
-      {
-        "tag": "input",
         "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
         "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -3140,7 +3150,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 31,
+    "count": 23,
     "sample": [
       {
         "tag": "input",
@@ -3154,17 +3164,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
-        "type": "text"
-      },
-      {
-        "tag": "input",
         "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
         "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -3209,13 +3219,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 23,
+    "count": 15,
     "sample": [
-      {
-        "tag": "input",
-        "name": "q",
-        "type": "text"
-      },
       {
         "tag": "input",
         "name": "display_id",
@@ -3234,6 +3239,11 @@
       {
         "tag": "input",
         "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
         "type": "text"
       }
     ]
@@ -3947,7 +3957,7 @@
       {
         "tag": "tr",
         "id": null,
-        "cls": null,
+        "cls": "",
         "right": 868,
         "width": 854
       },
@@ -3961,7 +3971,7 @@
       {
         "tag": "tbody",
         "id": null,
-        "cls": null,
+        "cls": "",
         "right": 868,
         "width": 854
       }
@@ -3974,7 +3984,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 59,
+    "count": 56,
     "sample": [
       {
         "tag": "select",
@@ -3997,9 +4007,9 @@
         "type": "select-one"
       },
       {
-        "tag": "input",
-        "name": "pension_state",
-        "type": "text"
+        "tag": "select",
+        "name": "review_status",
+        "type": "select-one"
       }
     ]
   },
@@ -4013,6 +4023,16 @@
     "item_count": 8,
     "nav_width": 324,
     "item_width_avg": 41
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "table-rows",
+    "severity": "info",
+    "rows": 50,
+    "page_height": 6792
   },
   {
     "label": "mobile_review-queue",
@@ -4094,13 +4114,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 2,
+    "count": 1,
     "sample": [
-      {
-        "tag": "input",
-        "name": "source_url",
-        "type": "url"
-      },
       {
         "tag": "input",
         "name": "confirmation_word",
@@ -4282,13 +4297,8 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 29,
+    "count": 20,
     "sample": [
-      {
-        "tag": "textarea",
-        "name": "findagrave_source",
-        "type": "textarea"
-      },
       {
         "tag": "input",
         "name": "display_id",
@@ -4301,12 +4311,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
+        "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
-        "name": "first_name",
+        "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -4496,7 +4511,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 28,
+    "count": 20,
     "sample": [
       {
         "tag": "input",
@@ -4510,17 +4525,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
-        "type": "text"
-      },
-      {
-        "tag": "input",
         "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
         "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
@@ -4710,7 +4725,7 @@
     "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
-    "count": 31,
+    "count": 23,
     "sample": [
       {
         "tag": "input",
@@ -4724,17 +4739,17 @@
       },
       {
         "tag": "input",
-        "name": "prefix",
-        "type": "text"
-      },
-      {
-        "tag": "input",
         "name": "first_name",
         "type": "text"
       },
       {
         "tag": "input",
         "name": "middle_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "last_name",
         "type": "text"
       }
     ]
