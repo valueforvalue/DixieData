@@ -1,0 +1,892 @@
+[
+  {
+    "label": "desktop_camaraderie",
+    "viewport": "desktop",
+    "path": "/soldiers/47/camaraderie",
+    "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
+    "status": 200,
+    "load_ms": 1298,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_timeline",
+    "viewport": "desktop",
+    "path": "/soldiers/47/timeline",
+    "url": "http://127.0.0.1:8765/soldiers/47/timeline",
+    "status": 200,
+    "load_ms": 928,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_research-log",
+    "viewport": "desktop",
+    "path": "/soldiers/47/research-log",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-log",
+    "status": 200,
+    "load_ms": 935,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_conflict-ledger",
+    "viewport": "desktop",
+    "path": "/soldiers/47/conflict-ledger",
+    "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
+    "status": 200,
+    "load_ms": 977,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_research-pack-state",
+    "viewport": "desktop",
+    "path": "/soldiers/47/research-pack/state",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
+    "status": 200,
+    "load_ms": 1108,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_research-pack-county",
+    "viewport": "desktop",
+    "path": "/soldiers/47/research-pack/county",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
+    "status": 200,
+    "load_ms": 1133,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_compare",
+    "viewport": "desktop",
+    "path": "/compare?id1=47&id2=35",
+    "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
+    "status": 200,
+    "load_ms": 1022,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_research-collections",
+    "viewport": "desktop",
+    "path": "/research-collections",
+    "url": "http://127.0.0.1:8765/research-collections",
+    "status": 200,
+    "load_ms": 900,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_search-advanced",
+    "viewport": "desktop",
+    "path": "/soldiers/search/advanced?q=test",
+    "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
+    "status": 200,
+    "load_ms": 5780,
+    "axe_violations": [
+      {
+        "id": "document-title",
+        "impact": "serious",
+        "help": "Documents must have <title> element to aid in navigation",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/document-title?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "html"
+          ]
+        ]
+      },
+      {
+        "id": "html-has-lang",
+        "impact": "serious",
+        "help": "<html> element must have a lang attribute",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/html-has-lang?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "html"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": []
+  },
+  {
+    "label": "desktop_soldier-detail-b",
+    "viewport": "desktop",
+    "path": "/soldiers/35",
+    "url": "http://127.0.0.1:8765/soldiers/35",
+    "status": 200,
+    "load_ms": 1098,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "tablet_camaraderie",
+    "viewport": "tablet",
+    "path": "/soldiers/47/camaraderie",
+    "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
+    "status": 200,
+    "load_ms": 1214,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_timeline",
+    "viewport": "tablet",
+    "path": "/soldiers/47/timeline",
+    "url": "http://127.0.0.1:8765/soldiers/47/timeline",
+    "status": 200,
+    "load_ms": 941,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_research-log",
+    "viewport": "tablet",
+    "path": "/soldiers/47/research-log",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-log",
+    "status": 200,
+    "load_ms": 926,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_conflict-ledger",
+    "viewport": "tablet",
+    "path": "/soldiers/47/conflict-ledger",
+    "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
+    "status": 200,
+    "load_ms": 898,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_research-pack-state",
+    "viewport": "tablet",
+    "path": "/soldiers/47/research-pack/state",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
+    "status": 200,
+    "load_ms": 1091,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_research-pack-county",
+    "viewport": "tablet",
+    "path": "/soldiers/47/research-pack/county",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
+    "status": 200,
+    "load_ms": 1072,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_compare",
+    "viewport": "tablet",
+    "path": "/compare?id1=47&id2=35",
+    "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
+    "status": 200,
+    "load_ms": 1045,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_research-collections",
+    "viewport": "tablet",
+    "path": "/research-collections",
+    "url": "http://127.0.0.1:8765/research-collections",
+    "status": 200,
+    "load_ms": 899,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_search-advanced",
+    "viewport": "tablet",
+    "path": "/soldiers/search/advanced?q=test",
+    "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
+    "status": 200,
+    "load_ms": 5790,
+    "axe_violations": [
+      {
+        "id": "document-title",
+        "impact": "serious",
+        "help": "Documents must have <title> element to aid in navigation",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/document-title?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "html"
+          ]
+        ]
+      },
+      {
+        "id": "html-has-lang",
+        "impact": "serious",
+        "help": "<html> element must have a lang attribute",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/html-has-lang?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "html"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": []
+  },
+  {
+    "label": "tablet_soldier-detail-b",
+    "viewport": "tablet",
+    "path": "/soldiers/35",
+    "url": "http://127.0.0.1:8765/soldiers/35",
+    "status": 200,
+    "load_ms": 1118,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 20,
+        "sample": [
+          {
+            "tag": "form",
+            "id": null,
+            "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
+            "right": 1045,
+            "width": 384
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "flex items-start justify-between gap-3",
+            "right": 1028,
+            "width": 350
+          },
+          {
+            "tag": "details",
+            "id": null,
+            "cls": "relative",
+            "right": 1028,
+            "width": 32
+          },
+          {
+            "tag": "summary",
+            "id": null,
+            "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
+            "right": 1028,
+            "width": 32
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+            "right": 1028,
+            "width": 288
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "mobile_camaraderie",
+    "viewport": "mobile",
+    "path": "/soldiers/47/camaraderie",
+    "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
+    "status": 200,
+    "load_ms": 1254,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_timeline",
+    "viewport": "mobile",
+    "path": "/soldiers/47/timeline",
+    "url": "http://127.0.0.1:8765/soldiers/47/timeline",
+    "status": 200,
+    "load_ms": 976,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_research-log",
+    "viewport": "mobile",
+    "path": "/soldiers/47/research-log",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-log",
+    "status": 200,
+    "load_ms": 917,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_conflict-ledger",
+    "viewport": "mobile",
+    "path": "/soldiers/47/conflict-ledger",
+    "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
+    "status": 200,
+    "load_ms": 883,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_research-pack-state",
+    "viewport": "mobile",
+    "path": "/soldiers/47/research-pack/state",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
+    "status": 200,
+    "load_ms": 1124,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_research-pack-county",
+    "viewport": "mobile",
+    "path": "/soldiers/47/research-pack/county",
+    "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
+    "status": 200,
+    "load_ms": 1128,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_compare",
+    "viewport": "mobile",
+    "path": "/compare?id1=47&id2=35",
+    "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
+    "status": 200,
+    "load_ms": 996,
+    "axe_violations": [
+      {
+        "id": "scrollable-region-focusable",
+        "impact": "serious",
+        "help": "Scrollable region must have keyboard access",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/scrollable-region-focusable?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            ".overflow-x-auto"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 44,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "min-w-[38rem]",
+            "right": 644,
+            "width": 608
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border",
+            "right": 644,
+            "width": 608
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "",
+            "right": 453,
+            "width": 175
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b ",
+            "right": 644,
+            "width": 608
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_research-collections",
+    "viewport": "mobile",
+    "path": "/research-collections",
+    "url": "http://127.0.0.1:8765/research-collections",
+    "status": 200,
+    "load_ms": 886,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_search-advanced",
+    "viewport": "mobile",
+    "path": "/soldiers/search/advanced?q=test",
+    "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
+    "status": 200,
+    "load_ms": 5779,
+    "axe_violations": [
+      {
+        "id": "document-title",
+        "impact": "serious",
+        "help": "Documents must have <title> element to aid in navigation",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/document-title?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "html"
+          ]
+        ]
+      },
+      {
+        "id": "html-has-lang",
+        "impact": "serious",
+        "help": "<html> element must have a lang attribute",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/html-has-lang?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "html"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": []
+  },
+  {
+    "label": "mobile_soldier-detail-b",
+    "viewport": "mobile",
+    "path": "/soldiers/35",
+    "url": "http://127.0.0.1:8765/soldiers/35",
+    "status": 200,
+    "load_ms": 1085,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  }
+]
