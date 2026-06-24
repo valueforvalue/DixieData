@@ -174,11 +174,11 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Display ID</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-display_id">Display ID</label>
 						<input type="text" name="display_id" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Entry Type</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-entry_type">Entry Type</label>
 						<select name="entry_type" class="field-input">
 							<option value="">All</option>
 							<option value="soldier">Soldier</option>
@@ -188,47 +188,47 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Source Record Type</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-record_type">Source Record Type</label>
 						<input type="text" name="record_type" list="advanced-record-type-suggestions" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">First Name</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-first_name">First Name</label>
 						<input type="text" name="first_name" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Middle Name</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-middle_name">Middle Name</label>
 						<input type="text" name="middle_name" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Last Name</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-last_name">Last Name</label>
 						<input type="text" name="last_name" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-maiden_name">Maiden Name</label>
 						<input type="text" name="maiden_name" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Relationship to Soldier</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-relationship_label">Relationship to Soldier</label>
 						<input type="text" name="relationship_label" list="advanced-relationship-label-suggestions" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Rank In</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-rank_in">Rank In</label>
 						<input type="text" name="rank_in" list="advanced-rank-in-suggestions" class="field-input"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-rank_out">Rank Out</label>
 						<input type="text" name="rank_out" list="advanced-rank-out-suggestions" class="field-input"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
-						<label class="block text-sm text-slate-500 mb-1">Unit</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-unit">Unit</label>
 						<input type="text" name="unit" list="advanced-unit-suggestions" class="field-input"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
-						<label class="block text-sm text-slate-500 mb-1">Pension State</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-pension_state">Pension State</label>
 						<input type="text" name="pension_state" list="advanced-pension-state-suggestions" class="field-input" placeholder="Any state"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-confederate_home_status">Confederate Home Status</label>
 						<select name="confederate_home_status" class="field-input">
 							<option value="">Any status</option>
 							for _, status := range confederateHomeStatuses() {
@@ -237,15 +237,15 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-confederate_home_name">Confederate Home Name</label>
 						<input type="text" name="confederate_home_name" list="advanced-confederate-home-name-suggestions" class="field-input"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
-						<label class="block text-sm text-slate-500 mb-1">Buried In</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-buried_in">Buried In</label>
 						<input type="text" name="buried_in" list="advanced-buried-in-suggestions" class="field-input"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
-						<label class="block text-sm text-slate-500 mb-1">Status</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-review_status">Status</label>
 						<select name="review_status" class="field-input">
 							<option value="">All Person Records</option>
 							<option value="clean">Clean Person Records Only</option>
@@ -253,27 +253,27 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						</select>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Birth Year</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-birth_year">Birth Year</label>
 						<input type="text" name="birth_year" class="field-input" placeholder="1838"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Birth Year Through</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-birth_year_to">Birth Year Through</label>
 						<input type="text" name="birth_year_to" class="field-input" placeholder="1845"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Year</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-death_year">Death Year</label>
 						<input type="text" name="death_year" class="field-input" placeholder="1864"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Year Through</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-death_year_to">Death Year Through</label>
 						<input type="text" name="death_year_to" class="field-input" placeholder="1865"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-birth_date">Birth Date</label>
 						<input type="text" name="birth_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 					</div>
 					<div>
-						<label class="block text-sm text-slate-500 mb-1">Death Date</label>
+						<label class="block text-sm text-slate-500 mb-1" for="sc-death_date">Death Date</label>
 						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 					</div>
 					<div class="responsive-span-2 col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

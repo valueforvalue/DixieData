@@ -54,7 +54,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<div class="mt-4 space-y-3">
 					<p class="text-sm text-slate-600">Paste Find a Grave memorial HTML to prefill this form, then verify every field manually before saving.</p>
 					<form hx-post="/soldiers/scrape-findagrave" hx-target="#entry-form-shell" hx-swap="outerHTML" class="space-y-3">
-						<label class="block text-sm text-slate-500">Find a Grave HTML Source</label>
+						<label class="block text-sm text-slate-500" for="ef-findagrave_source">Find a Grave HTML Source</label>
 						<textarea name="findagrave_source" rows="4" class="field-input min-h-24" placeholder="Paste Find a Grave memorial HTML here">{ scrape.Input }</textarea>
 						<div class="flex flex-wrap items-center gap-3">
 							<button type="submit" class="secondary-button">Fetch Data</button>
@@ -178,13 +178,13 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Display ID</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-display_id">Display ID</label>
 							<input type="text" name="display_id" value={ s.DisplayID }
 								readonly
 								class={ displayIDInputClass(isEdit) }/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Person Record Type</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-entry_type">Person Record Type</label>
 							<select name="entry_type" data-entry-type-select class="field-input">
 								for _, entryType := range entryTypes() {
 									<option value={ entryType.Value } if entryType.Value == normalizedEntryType(s) { selected }>{ entryType.Label }</option>
@@ -193,7 +193,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							<p class="mt-2 text-xs text-slate-500">Use <strong class="text-slate-700">Person Record</strong> &mdash; non-spouse people such as relatives, executors, witnesses, or caregivers who should stay anchored to a soldier record.</p>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Prefix</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-prefix">Prefix</label>
 							<input type="text" name="prefix" value={ s.Prefix }
 								list="prefix-suggestions"
 								class="field-input" placeholder="Capt."/>
@@ -203,22 +203,22 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							</label>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">First Name</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-first_name">First Name</label>
 							<input type="text" name="first_name" value={ s.FirstName }
 								class="field-input"/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Middle Name</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-middle_name">Middle Name</label>
 							<input type="text" name="middle_name" value={ s.MiddleName }
 								class="field-input"/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Last Name</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-last_name">Last Name</label>
 							<input type="text" name="last_name" value={ s.LastName }
 								class="field-input"/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Suffix</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-suffix">Suffix</label>
 							<input type="text" name="suffix" value={ s.Suffix }
 								list="suffix-suggestions"
 								class="field-input" placeholder="Jr."/>
@@ -230,7 +230,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							</div>
 							<div class="responsive-two-col grid gap-4">
 								<div class="responsive-span-2 col-span-2">
-									<label class="block text-sm text-slate-500 mb-1">Linked Soldier</label>
+									<label class="block text-sm text-slate-500 mb-1" for="ef-spouse_soldier_id">Linked Soldier</label>
 									<select name="spouse_soldier_id" class="field-input">
 										<option value="">Select a soldier</option>
 										for _, candidate := range spouseCandidates {
@@ -239,13 +239,13 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									</select>
 								</div>
 								<div data-linked-person-field class="responsive-span-2 col-span-2">
-									<label class="block text-sm text-slate-500 mb-1">Relationship to Soldier</label>
+									<label class="block text-sm text-slate-500 mb-1" for="ef-relationship_label">Relationship to Soldier</label>
 									<input type="text" name="relationship_label" value={ s.RelationshipLabel }
 										list="relationship-label-suggestions"
 										class="field-input" placeholder="Brother, Daughter, Executor, Witness"/>
 								</div>
 								<div data-spouse-only-field class="responsive-span-2 col-span-2">
-									<label class="block text-sm text-slate-500 mb-1">Maiden Name</label>
+									<label class="block text-sm text-slate-500 mb-1" for="ef-maiden_name">Maiden Name</label>
 									<input type="text" name="maiden_name" value={ s.MaidenName }
 										class="field-input"/>
 								</div>
@@ -260,31 +260,31 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div data-soldier-only-field>
-							<label class="block text-sm text-slate-500 mb-1">Rank In</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-rank_in">Rank In</label>
 							<input type="text" name="rank_in" value={ s.RankIn }
 								list="rank-in-suggestions"
 								class="field-input"/>
 						</div>
 						<div data-soldier-only-field>
-							<label class="block text-sm text-slate-500 mb-1">Rank Out</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-rank_out">Rank Out</label>
 							<input type="text" name="rank_out" value={ rankOutValue(s) }
 								list="rank-out-suggestions"
 								class="field-input"/>
 						</div>
 						<div data-soldier-only-field class="responsive-span-2 col-span-2">
-							<label class="block text-sm text-slate-500 mb-1">Unit</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-unit">Unit</label>
 							<input type="text" name="unit" value={ s.Unit }
 								list="unit-suggestions"
 								class="field-input"/>
 						</div>
 						<div data-soldier-only-field class="responsive-span-2 col-span-2">
-							<label class="block text-sm text-slate-500 mb-1">Pension State</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-pension_state">Pension State</label>
 							<input type="text" name="pension_state" value={ selectedPensionState(s) } list="pension-state-suggestions" class="field-input"/>
 						</div>
 						<div class="responsive-span-2 col-span-2 rounded-2xl border border-slate-200 bg-white/70 p-4">
 							<div class="grid gap-4 md:grid-cols-2">
 								<div>
-									<label class="block text-sm text-slate-500 mb-1">Confederate Home Status</label>
+									<label class="block text-sm text-slate-500 mb-1" for="ef-confederate_home_status">Confederate Home Status</label>
 									<select name="confederate_home_status" class="field-input" data-confederate-home-status>
 										for _, status := range confederateHomeStatuses() {
 											<option value={ status } if status == selectedConfederateHomeStatus(s) { selected }>{ status }</option>
@@ -292,7 +292,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									</select>
 								</div>
 								<div data-confederate-home-name-field>
-									<label class="block text-sm text-slate-500 mb-1">Confederate Home Name</label>
+									<label class="block text-sm text-slate-500 mb-1" for="ef-confederate_home_name">Confederate Home Name</label>
 									<input type="text" name="confederate_home_name" value={ s.ConfederateHomeName }
 										list="confederate-home-name-suggestions"
 										class="field-input" placeholder="Texas Confederate Home"/>
@@ -300,12 +300,12 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							</div>
 						</div>
 						<div data-soldier-or-widow-field>
-							<label class="block text-sm text-slate-500 mb-1">Pension ID</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-pension_id">Pension ID</label>
 							<input type="text" name="pension_id" value={ s.PensionID }
 								class="field-input" placeholder="P12345"/>
 						</div>
 						<div data-soldier-or-widow-field>
-							<label class="block text-sm text-slate-500 mb-1">Application ID</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-application_id">Application ID</label>
 							<input type="text" name="application_id" value={ s.ApplicationID }
 								class="field-input" placeholder="A12345"/>
 						</div>
@@ -318,22 +318,22 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					</div>
 					<div class="responsive-two-col grid gap-4">
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Birth Date</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-birth_date">Birth Date</label>
 							<input type="text" name="birth_date" value={ s.BirthDate }
 								class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Death Date</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-death_date">Death Date</label>
 							<input type="text" name="death_date" value={ s.DeathDate }
 								class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Birth Info</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-birth_info">Birth Info</label>
 							<input type="text" name="birth_info" value={ s.BirthInfo }
 								class="field-input"/>
 						</div>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Buried In</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-buried_in">Buried In</label>
 							<input type="text" name="buried_in" value={ s.BuriedIn }
 								list="buried-in-suggestions"
 								class="field-input"/>
@@ -369,7 +369,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					</div>
 					<div class="space-y-4">
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Biography</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-biography">Biography</label>
 							<textarea name="biography" rows="5"
 								class="field-input min-h-36"
 								data-live-count-input
@@ -388,7 +388,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 								<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
 							</summary>
 							<div class="border-t border-[rgba(141,116,64,0.18)] px-4 py-4">
-								<label class="block text-sm text-slate-500 mb-1">PDF Excerpt Override</label>
+								<label class="block text-sm text-slate-500 mb-1" for="ef-pdf_excerpt_override">PDF Excerpt Override</label>
 								<textarea
 									name="pdf_excerpt_override"
 									rows="4"
@@ -405,7 +405,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							</div>
 						</details>
 						<div>
-							<label class="block text-sm text-slate-500 mb-1">Internal Notes</label>
+							<label class="block text-sm text-slate-500 mb-1" for="ef-notes">Internal Notes</label>
 							<textarea name="notes" rows="4"
 								class="field-input min-h-32">{ s.Notes }</textarea>
 							<p class="mt-2 text-xs text-slate-500">Quick reference: type <code>[[DISPLAY-ID]]</code> to link another record in internal notes, for example <code>[[STC38-00007]]</code>.</p>
@@ -646,15 +646,15 @@ templ RecordInputRow(record viewmodel.SourceRecord) {
 		</div>
 		<div class="responsive-two-col grid gap-4">
 			<div>
-				<label class="mb-1 block text-sm text-slate-500">Source Record Type</label>
+				<label class="mb-1 block text-sm text-slate-500" for="ef-record_type">Source Record Type</label>
 				<input type="text" name="record_type" value={ record.SourceRecordType } list="record-type-suggestions" class="field-input"/>
 			</div>
 			<div>
-				<label class="mb-1 block text-sm text-slate-500">App / Source Record Number</label>
+				<label class="mb-1 block text-sm text-slate-500" for="ef-record_app_id">App / Source Record Number</label>
 				<input type="text" name="record_app_id" value={ record.AppID } class="field-input"/>
 			</div>
 			<div class="responsive-span-2 col-span-2">
-				<label class="mb-1 block text-sm text-slate-500">Details</label>
+				<label class="mb-1 block text-sm text-slate-500" for="ef-record_details">Details</label>
 				<textarea name="record_details" rows="3" class="field-input min-h-24">{ record.Details }</textarea>
 			</div>
 		</div>
@@ -692,19 +692,19 @@ templ InitialSetupView(form viewmodel.InitialSetupForm) {
 				}
 				<form method="post" action="/setup" class="responsive-two-col grid gap-4">
 					<div>
-						<label class="mb-1 block text-sm text-slate-500">First name</label>
+						<label class="mb-1 block text-sm text-slate-500" for="ef-first_name">First name</label>
 						<input type="text" name="first_name" value={ form.FirstName } class="field-input" autocomplete="given-name"/>
 					</div>
 					<div>
-						<label class="mb-1 block text-sm text-slate-500">Middle name</label>
+						<label class="mb-1 block text-sm text-slate-500" for="ef-middle_name">Middle name</label>
 						<input type="text" name="middle_name" value={ form.MiddleName } class="field-input" autocomplete="additional-name"/>
 					</div>
 					<div>
-						<label class="mb-1 block text-sm text-slate-500">Last name</label>
+						<label class="mb-1 block text-sm text-slate-500" for="ef-last_name">Last name</label>
 						<input type="text" name="last_name" value={ form.LastName } class="field-input" autocomplete="family-name"/>
 					</div>
 					<div>
-						<label class="mb-1 block text-sm text-slate-500">Birth year</label>
+						<label class="mb-1 block text-sm text-slate-500" for="ef-birth_year">Birth year</label>
 						<input type="text" name="birth_year" value={ form.BirthYear } inputmode="numeric" maxlength="4" class="field-input" autocomplete="bday-year"/>
 					</div>
 					if form.PrefixPreview != "" {
@@ -780,7 +780,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 				</div>
 				<form hx-post="/settings/initialize" hx-target="this" hx-swap="none" class="space-y-4">
 					<div>
-						<label class="mb-1 block text-sm text-slate-500">Type { confirmationWord } to confirm</label>
+						<label class="mb-1 block text-sm text-slate-500" for="ef-confirmation_word">Type { confirmationWord } to confirm</label>
 						<input type="text" name="confirmation_word" class="field-input" autocomplete="off" spellcheck="false"/>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -855,7 +855,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 		}
 		<form hx-post="/settings/updates/source" hx-target="#settings-update-panel" hx-swap="outerHTML" class="space-y-4">
 			<div>
-				<label class="mb-1 block text-sm text-slate-500">Update source URL</label>
+				<label class="mb-1 block text-sm text-slate-500" for="ef-source_url">Update source URL</label>
 				<input type="url" name="source_url" value={ state.SourceURL } placeholder="Leave blank to use the default GitHub latest release feed" class="field-input" autocomplete="off" spellcheck="false"/>
 			</div>
 			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
