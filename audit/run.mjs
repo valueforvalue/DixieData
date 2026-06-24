@@ -31,7 +31,7 @@ const VIEWPORTS = [
 const ROUTES = [
   { label: 'home', path: '/', waitFor: '[data-ui-id="page.calendar"]' },
   { label: 'calendar', path: '/calendar', waitFor: '[data-ui-id="page.calendar"]' },
-  { label: 'search', path: '/soldiers', waitFor: 'form input[name="q"]' },
+  { label: 'search', path: '/soldiers', waitFor: 'input[name="q"]' },
   { label: 'browse', path: '/browse', waitFor: '[data-ui-id="page.browse"]' },
   { label: 'review-queue', path: '/review-queue', waitFor: 'main' },
   { label: 'insights', path: '/insights', waitFor: 'main' },
