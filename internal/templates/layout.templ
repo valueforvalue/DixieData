@@ -265,7 +265,7 @@ templ Layout(title string) {
 				position: sticky;
 				top: 1rem;
 				z-index: 40;
-				width: min(96vw, 72rem);
+				width: min(calc(100vw - 2rem), 72rem);
 				margin: 0 auto 1.5rem;
 			}
 			.top-brand-title {
@@ -289,7 +289,7 @@ templ Layout(title string) {
 				}
 				.top-shell {
 					top: 0.8rem;
-					width: min(97vw, 72rem);
+					width: min(calc(100vw - 2rem), 72rem);
 					margin-bottom: 1.15rem;
 					padding: 1rem 1.1rem;
 					border-radius: 1.45rem;
@@ -313,7 +313,7 @@ templ Layout(title string) {
 			}
 			html[data-layout-mode="split-screen"] .top-shell {
 				top: 0.55rem;
-				width: min(98vw, 70rem);
+				width: min(calc(100vw - 2rem), 70rem);
 				margin-bottom: 1rem;
 				padding: 0.9rem 1rem;
 				border-radius: 1.35rem;

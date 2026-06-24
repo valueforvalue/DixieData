@@ -3185,83 +3185,11 @@
     "path": "/",
     "viewport": "mobile",
     "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_home",
-    "path": "/",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_home",
-    "path": "/",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
-  },
-  {
-    "label": "mobile_home",
-    "path": "/",
-    "viewport": "mobile",
-    "kind": "visual",
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_calendar",
-    "path": "/calendar",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_calendar",
-    "path": "/calendar",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_calendar",
-    "path": "/calendar",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_calendar",
@@ -3271,44 +3199,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_search",
-    "path": "/soldiers",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_search",
-    "path": "/soldiers",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_search",
-    "path": "/soldiers",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_search",
@@ -3354,8 +3246,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_browse",
@@ -4034,35 +3926,10 @@
     "path": "/browse",
     "viewport": "mobile",
     "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_browse",
-    "path": "/browse",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_browse",
-    "path": "/browse",
-    "viewport": "mobile",
-    "kind": "visual",
     "id": "overflow-x",
     "severity": "high",
-    "count": 310,
+    "count": 309,
     "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      },
       {
         "tag": "table",
         "id": null,
@@ -4090,6 +3957,13 @@
         "cls": "px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs",
         "right": 486,
         "width": 97
+      },
+      {
+        "tag": "tbody",
+        "id": null,
+        "cls": null,
+        "right": 868,
+        "width": 854
       }
     ]
   },
@@ -4137,44 +4011,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_review-queue",
-    "path": "/review-queue",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_review-queue",
-    "path": "/review-queue",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_review-queue",
-    "path": "/review-queue",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_review-queue",
@@ -4184,8 +4022,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_insights",
@@ -4197,42 +4035,6 @@
     "help": "Select element must have an accessible name",
     "target": [
       ".rounded-lg"
-    ]
-  },
-  {
-    "label": "mobile_insights",
-    "path": "/insights",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_insights",
-    "path": "/insights",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_insights",
-    "path": "/insights",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
     ]
   },
   {
@@ -4259,44 +4061,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_share",
-    "path": "/share",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_share",
-    "path": "/share",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_share",
-    "path": "/share",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_share",
@@ -4306,8 +4072,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_settings",
@@ -4319,42 +4085,6 @@
     "help": "Form elements must have labels",
     "target": [
       "input[name=\"confirmation_word\"]"
-    ]
-  },
-  {
-    "label": "mobile_settings",
-    "path": "/settings",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_settings",
-    "path": "/settings",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_settings",
-    "path": "/settings",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
     ]
   },
   {
@@ -4386,8 +4116,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_soldier-new",
@@ -4550,42 +4280,6 @@
     "path": "/soldiers/new",
     "viewport": "mobile",
     "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-new",
-    "path": "/soldiers/new",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-new",
-    "path": "/soldiers/new",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
-  },
-  {
-    "label": "mobile_soldier-new",
-    "path": "/soldiers/new",
-    "viewport": "mobile",
-    "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
     "count": 29,
@@ -4625,44 +4319,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_soldier-47",
-    "path": "/soldiers/47",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-47",
-    "path": "/soldiers/47",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-47",
-    "path": "/soldiers/47",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_soldier-47",
@@ -4672,8 +4330,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_soldier-47-edit",
@@ -4829,42 +4487,6 @@
     "help": "Select element must have an accessible name",
     "target": [
       "select[name=\"confederate_home_status\"]"
-    ]
-  },
-  {
-    "label": "mobile_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
     ]
   },
   {
@@ -4911,44 +4533,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_soldier-35",
-    "path": "/soldiers/35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-35",
-    "path": "/soldiers/35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-35",
-    "path": "/soldiers/35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_soldier-35",
@@ -4958,8 +4544,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_soldier-35-edit",
@@ -5122,42 +4708,6 @@
     "path": "/soldiers/35/edit",
     "viewport": "mobile",
     "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "document scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > viewport=390"
-  },
-  {
-    "label": "mobile_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
-  },
-  {
-    "label": "mobile_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "mobile",
-    "kind": "visual",
     "id": "unlabeled-input",
     "severity": "medium",
     "count": 31,
@@ -5197,7 +4747,7 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   }
 ]
