@@ -23,8 +23,10 @@ func TestGoogleManagedCalendarRoutesRequireConnection(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s status=%d body=%q", path, rec.Code, rec.Body.String())
 		}
-		if !strings.Contains(strings.ToLower(rec.Body.String()), "failed") {
-			t.Fatalf("%s expected failure message, got %q", path, rec.Body.String())
+		toastHeader := rec.Header().Get("X-DixieData-Toast")
+		toastType := rec.Header().Get("X-DixieData-Toast-Type")
+		if !strings.Contains(strings.ToLower(toastHeader), "failed") || toastType != "error" {
+			t.Fatalf("%s expected error toast, got toast=%q type=%q body=%q", path, toastHeader, toastType, rec.Body.String())
 		}
 	}
 }

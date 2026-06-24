@@ -102,19 +102,19 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						<p class="mt-2 text-sm text-slate-500">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
 					</div>
 					<div class="flex flex-col gap-3">
-						<button hx-post="/export/json" hx-target="#share-status" class="primary-button justify-start text-left">
+						<button hx-post="/export/json" hx-target="this" hx-swap="none" class="primary-button justify-start text-left">
 							<div class="font-bold">Export JSON</div>
 							<div class="text-xs text-slate-300">Full hierarchical export with version metadata</div>
 						</button>
-						<button hx-post="/export/csv" hx-target="#share-status" class="secondary-button justify-start text-left">
+						<button hx-post="/export/csv" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export Excel (.xlsx)</div>
 							<div class="text-xs text-slate-500">Formatted workbook with typed dates, linked spouse data, and spreadsheet-friendly sheets</div>
 						</button>
-						<button hx-post="/export/ical" hx-target="#share-status" class="secondary-button justify-start text-left">
+						<button hx-post="/export/ical" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export iCalendar</div>
 							<div class="text-xs text-slate-500">ICS anniversary export with embedded app and schema versions</div>
 						</button>
-						<button hx-post="/export/static-archive" hx-target="#share-status" class="secondary-button justify-start text-left">
+						<button hx-post="/export/static-archive" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export Static Web Archive</div>
 							<div class="text-xs text-slate-500">Standalone static archive with images, live search, and expandable person record cards</div>
 						</button>
@@ -122,11 +122,11 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<div class="font-bold">Full Database Printable PDF Export</div>
 							<div class="text-xs text-slate-500">Landscape printable PDF export with one branded record page per entry, configurable scope, filtering, sorting, grouping, and optional manual record selection</div>
 						</button>
-						<button hx-post="/export/backup" hx-target="#share-status" class="primary-button justify-start text-left">
+						<button hx-post="/export/backup" hx-target="this" hx-swap="none" class="primary-button justify-start text-left">
 							<div class="font-bold">Export Backup (.ddbak)</div>
 							<div class="text-xs text-slate-300">Replacement backup archive with manifest, DB snapshot, and all images</div>
 						</button>
-						<button hx-post="/export/shared-archive" hx-target="#share-status" class="secondary-button justify-start text-left">
+						<button hx-post="/export/shared-archive" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
 							<div class="font-bold">Export Shared Archive (.ddshare)</div>
 							<div class="text-xs text-slate-500">Shared archive for sharing person records into another DixieData local archive</div>
 						</button>
@@ -163,7 +163,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Replace Local Archive</p>
 							<p class="mt-2 text-sm text-[#6f2c26]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
 							<div class="mt-4">
-								<button hx-post="/import/backup" hx-target="#share-status" hx-confirm="Load a backup archive and replace the current local archive?" class="danger-button justify-start text-left">
+								<button hx-post="/import/backup" hx-target="this" hx-swap="none" hx-confirm="Load a backup archive and replace the current local archive?" class="danger-button justify-start text-left">
 									<div class="font-bold">Load Backup (.ddbak)</div>
 									<div class="text-xs text-[#f6ddd6]">Restore a backup archive and replace the current local archive (legacy .zip backups still supported)</div>
 								</button>
@@ -181,11 +181,11 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-						<button hx-post="/export/feedback-log" hx-target="#share-status" class="secondary-button w-full justify-start text-left sm:w-auto">
+						<button hx-post="/export/feedback-log" hx-target="this" hx-swap="none" class="secondary-button w-full justify-start text-left sm:w-auto">
 							<div class="font-bold">Export Feedback Log</div>
 							<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
 						</button>
-						<button hx-post="/export/bug-report" hx-target="#share-status" class="secondary-button w-full justify-start text-left sm:w-auto">
+						<button hx-post="/export/bug-report" hx-target="this" hx-swap="none" class="secondary-button w-full justify-start text-left sm:w-auto">
 							<div class="font-bold">Export Bug Report Bundle</div>
 							<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
 						</button>
@@ -196,7 +196,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 			<div id="share-print-config-modal" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
 					@SurfaceBadge(uiids.OverlayPrintConfigModal)
-					<form id="share-print-config-form" hx-post="/export/database-pdf" hx-target="#share-status" data-pdf-pref-scope="archive" class="space-y-6">
+					<form id="share-print-config-form" hx-post="/export/database-pdf" hx-target="this" hx-swap="none" data-pdf-pref-scope="archive" class="space-y-6">
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
@@ -440,14 +440,14 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 								</div>
 							</div>
 							<div class="flex flex-wrap gap-3">
-								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID) } hx-target="#share-status" class="secondary-button">
+								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID) } hx-target="this" hx-swap="none" class="secondary-button">
 									Keep Local
 								</button>
-								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID) } hx-target="#share-status" class="primary-button">
+								<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID) } hx-target="this" hx-swap="none" class="primary-button">
 									Keep Incoming
 								</button>
 								if conflict.ConflictType == "display-id-collision" {
-									<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID) } hx-target="#share-status" class="secondary-button">
+									<button data-merge-review-action hx-post={ fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID) } hx-target="this" hx-swap="none" class="secondary-button">
 										Keep Both
 									</button>
 								}
@@ -476,19 +476,19 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</div>
 				<div class="responsive-two-col grid gap-4">
 					<div class="col-span-2 flex flex-wrap gap-3">
-						<button type="button" hx-post="/integrations/google/connect" hx-target="#google-status" class="primary-button">Connect Google Account</button>
-						<button type="button" hx-post="/integrations/google/disconnect" hx-target="#google-status" class="secondary-button">Disconnect</button>
+						<button type="button" hx-post="/integrations/google/connect" hx-target="this" hx-swap="none" class="primary-button">Connect Google Account</button>
+						<button type="button" hx-post="/integrations/google/disconnect" hx-target="this" hx-swap="none" class="secondary-button">Disconnect</button>
 					</div>
 					<div class="col-span-2 flex flex-wrap gap-3">
-						<button type="button" hx-post="/integrations/google/backup" hx-target="#google-status" class="primary-button">Upload Backup to Google Drive</button>
-						<button type="button" hx-post="/integrations/google/sheets/export" hx-target="#google-status" class="secondary-button">Export CSV to Google Sheets</button>
+						<button type="button" hx-post="/integrations/google/backup" hx-target="this" hx-swap="none" class="primary-button">Upload Backup to Google Drive</button>
+						<button type="button" hx-post="/integrations/google/sheets/export" hx-target="this" hx-swap="none" class="secondary-button">Export CSV to Google Sheets</button>
 					</div>
 					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
 						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-							<button type="button" hx-post="/integrations/google/calendar/use-managed" hx-target="#google-status" data-progress-label="Configuring DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Use Calendar</button>
-							<button type="button" hx-post="/integrations/google/calendar/sync-managed" hx-target="#google-status" data-progress-label="Syncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Sync</button>
-							<button type="button" hx-post="/integrations/google/calendar/unsync-managed" hx-target="#google-status" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Unsync</button>
+							<button type="button" hx-post="/integrations/google/calendar/use-managed" hx-target="this" hx-swap="none" data-progress-label="Configuring DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Use Calendar</button>
+							<button type="button" hx-post="/integrations/google/calendar/sync-managed" hx-target="this" hx-swap="none" data-progress-label="Syncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Sync</button>
+							<button type="button" hx-post="/integrations/google/calendar/unsync-managed" hx-target="this" hx-swap="none" hx-confirm="Remove all Google Calendar events previously created by DixieData?" data-progress-label="Unsyncing DixieData Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Unsync</button>
 							<button type="button" data-google-calendar-preferences-open class="secondary-button">Preferences</button>
 						</div>
 						<p class="text-xs text-slate-500">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p>
@@ -496,9 +496,9 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-2">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
 						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-							<button type="button" hx-post="/integrations/google/calendar/use-test" hx-target="#google-status" data-progress-label="Configuring DixieData Test Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Use Test</button>
-							<button type="button" hx-post="/integrations/google/calendar/sync-test" hx-target="#google-status" data-progress-label="Running DixieData Test Sync..." data-busy-group="google-calendar-actions" class="secondary-button">Test Sync</button>
-							<button type="button" hx-post="/integrations/google/calendar/unsync-test" hx-target="#google-status" data-progress-label="Removing DixieData Test events..." data-busy-group="google-calendar-actions" class="secondary-button">Test Unsync</button>
+							<button type="button" hx-post="/integrations/google/calendar/use-test" hx-target="this" hx-swap="none" data-progress-label="Configuring DixieData Test Calendar..." data-busy-group="google-calendar-actions" class="secondary-button">Use Test</button>
+							<button type="button" hx-post="/integrations/google/calendar/sync-test" hx-target="this" hx-swap="none" data-progress-label="Running DixieData Test Sync..." data-busy-group="google-calendar-actions" class="secondary-button">Test Sync</button>
+							<button type="button" hx-post="/integrations/google/calendar/unsync-test" hx-target="this" hx-swap="none" data-progress-label="Removing DixieData Test events..." data-busy-group="google-calendar-actions" class="secondary-button">Test Unsync</button>
 						</div>
 					</div>
 				</div>
@@ -545,7 +545,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</div>
 						<button type="button" data-google-calendar-preferences-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
 					</div>
-					<form class="mt-6 space-y-5" hx-post="/integrations/google/calendar/preferences/save" hx-target="#google-status">
+					<form class="mt-6 space-y-5" hx-post="/integrations/google/calendar/preferences/save" hx-target="this" hx-swap="none">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-3">
 							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Title format</p>
 							<label class="flex items-start gap-3 text-sm text-slate-700">

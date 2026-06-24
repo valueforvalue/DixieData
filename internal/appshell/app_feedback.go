@@ -122,7 +122,8 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Feedback log export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("Feedback log ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Feedback log saved to %s", path))
 }
 
 func appendFeedbackEntry(dataDir string, entry feedbackEntry) (string, error) {
