@@ -5,7 +5,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1059,
+    "load_ms": 1034,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -25,7 +25,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 904,
+    "load_ms": 900,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -45,7 +45,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5846,
+    "load_ms": 5844,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -65,7 +65,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 2063,
+    "load_ms": 1997,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -118,7 +118,7 @@
         "id": "table-rows",
         "severity": "info",
         "rows": 50,
-        "page_height": 4369
+        "page_height": 4339
       }
     ]
   },
@@ -128,7 +128,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 802,
+    "load_ms": 769,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -148,7 +148,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1054,
+    "load_ms": 1079,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -168,7 +168,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1097,
+    "load_ms": 1084,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -188,7 +188,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 980,
+    "load_ms": 1001,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -208,11 +208,24 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1146,
+    "load_ms": 1108,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Delete saved local draft",
+            "w": 148,
+            "h": 22
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -228,11 +241,36 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 1106,
+    "load_ms": 1066,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 3,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Download Selected Images",
+            "w": 172,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Delete Selected Images",
+            "w": 151,
+            "h": 22
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -248,11 +286,24 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1095,
+    "load_ms": 1070,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -268,11 +319,36 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1028,
+    "load_ms": 993,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 3,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Download Selected Images",
+            "w": 172,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Delete Selected Images",
+            "w": 151,
+            "h": 22
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -288,11 +364,24 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1083,
+    "load_ms": 1091,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -308,7 +397,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1024,
+    "load_ms": 1027,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -328,7 +417,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 908,
+    "load_ms": 922,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -348,7 +437,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5825,
+    "load_ms": 5812,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -368,7 +457,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 2000,
+    "load_ms": 1987,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -384,7 +473,7 @@
         "id": "table-rows",
         "severity": "info",
         "rows": 50,
-        "page_height": 6064
+        "page_height": 6044
       }
     ]
   },
@@ -394,7 +483,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 801,
+    "load_ms": 774,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -414,7 +503,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1065,
+    "load_ms": 1066,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -434,7 +523,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1050,
+    "load_ms": 1043,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -454,7 +543,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 932,
+    "load_ms": 958,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -474,7 +563,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1045,
+    "load_ms": 1066,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -494,7 +583,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 985,
+    "load_ms": 987,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -508,35 +597,35 @@
             "tag": "form",
             "id": null,
             "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-            "right": 1045,
+            "right": 1050,
             "width": 384
           },
           {
             "tag": "div",
             "id": null,
             "cls": "flex items-start justify-between gap-3",
-            "right": 1028,
+            "right": 1033,
             "width": 350
           },
           {
             "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-            "right": 1028,
+            "right": 1033,
             "width": 32
           },
           {
             "tag": "div",
             "id": null,
             "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-            "right": 1028,
+            "right": 1033,
             "width": 350
           },
           {
             "tag": "div",
             "id": null,
             "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-            "right": 1028,
+            "right": 1033,
             "width": 169
           }
         ]
@@ -556,7 +645,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1156,
+    "load_ms": 1050,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -576,7 +665,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 956,
+    "load_ms": 981,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -590,35 +679,35 @@
             "tag": "form",
             "id": null,
             "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-            "right": 1045,
+            "right": 1050,
             "width": 384
           },
           {
             "tag": "div",
             "id": null,
             "cls": "flex items-start justify-between gap-3",
-            "right": 1028,
+            "right": 1033,
             "width": 350
           },
           {
             "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-            "right": 1028,
+            "right": 1033,
             "width": 32
           },
           {
             "tag": "div",
             "id": null,
             "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-            "right": 1028,
+            "right": 1033,
             "width": 350
           },
           {
             "tag": "div",
             "id": null,
             "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-            "right": 1028,
+            "right": 1033,
             "width": 169
           }
         ]
@@ -638,7 +727,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1059,
+    "load_ms": 1062,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -658,7 +747,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 985,
+    "load_ms": 996,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -667,8 +756,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -678,7 +767,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 926,
+    "load_ms": 900,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -687,8 +776,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -698,7 +787,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5811,
+    "load_ms": 5790,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -707,8 +796,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -718,7 +807,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1714,
+    "load_ms": 1669,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -769,14 +858,14 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       },
       {
         "id": "table-rows",
         "severity": "info",
         "rows": 50,
-        "page_height": 6792
+        "page_height": 6662
       }
     ]
   },
@@ -786,7 +875,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 729,
+    "load_ms": 725,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -795,8 +884,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -805,86 +894,6 @@
     "viewport": "mobile",
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
-    "status": 200,
-    "load_ms": 973,
-    "isFragment": false,
-    "fragment_reason": null,
-    "axe_violations": [],
-    "visual_issues": [
-      {
-        "id": "nav-density",
-        "severity": "info",
-        "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
-      }
-    ]
-  },
-  {
-    "label": "mobile_share",
-    "viewport": "mobile",
-    "path": "/share",
-    "url": "http://127.0.0.1:8765/share",
-    "status": 200,
-    "load_ms": 1058,
-    "isFragment": false,
-    "fragment_reason": null,
-    "axe_violations": [],
-    "visual_issues": [
-      {
-        "id": "nav-density",
-        "severity": "info",
-        "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
-      }
-    ]
-  },
-  {
-    "label": "mobile_settings",
-    "viewport": "mobile",
-    "path": "/settings",
-    "url": "http://127.0.0.1:8765/settings",
-    "status": 200,
-    "load_ms": 931,
-    "isFragment": false,
-    "fragment_reason": null,
-    "axe_violations": [],
-    "visual_issues": [
-      {
-        "id": "nav-density",
-        "severity": "info",
-        "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
-      }
-    ]
-  },
-  {
-    "label": "mobile_soldier-new",
-    "viewport": "mobile",
-    "path": "/soldiers/new",
-    "url": "http://127.0.0.1:8765/soldiers/new",
-    "status": 200,
-    "load_ms": 1025,
-    "isFragment": false,
-    "fragment_reason": null,
-    "axe_violations": [],
-    "visual_issues": [
-      {
-        "id": "nav-density",
-        "severity": "info",
-        "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
-      }
-    ]
-  },
-  {
-    "label": "mobile_soldier-47",
-    "viewport": "mobile",
-    "path": "/soldiers/47",
-    "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
     "load_ms": 936,
     "isFragment": false,
@@ -895,8 +904,88 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_share",
+    "viewport": "mobile",
+    "path": "/share",
+    "url": "http://127.0.0.1:8765/share",
+    "status": 200,
+    "load_ms": 986,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_settings",
+    "viewport": "mobile",
+    "path": "/settings",
+    "url": "http://127.0.0.1:8765/settings",
+    "status": 200,
+    "load_ms": 885,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "viewport": "mobile",
+    "path": "/soldiers/new",
+    "url": "http://127.0.0.1:8765/soldiers/new",
+    "status": 200,
+    "load_ms": 1018,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47",
+    "viewport": "mobile",
+    "path": "/soldiers/47",
+    "url": "http://127.0.0.1:8765/soldiers/47",
+    "status": 200,
+    "load_ms": 969,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -906,7 +995,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 979,
+    "load_ms": 1034,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -915,8 +1004,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -926,7 +1015,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 953,
+    "load_ms": 904,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -935,8 +1024,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -946,7 +1035,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1017,
+    "load_ms": 976,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -955,8 +1044,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   }

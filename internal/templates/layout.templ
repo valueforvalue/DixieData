@@ -77,10 +77,7 @@ templ Layout(title string) {
 				border-color: #a88a46;
 				box-shadow: 0 0 0 3px rgba(168, 138, 70, 0.2);
 			}
-			.primary-button,
-			.secondary-button,
-			.danger-button,
-			.pill-link {
+			:where(.primary-button, .secondary-button, .danger-button, .pill-link) {
 				display: inline-flex;
 				align-items: center;
 				justify-content: center;
@@ -426,11 +423,11 @@ templ Layout(title string) {
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			<div class="app-shell">
 				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
-				<div>
-					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Local Archive</p>
-					<p class="top-brand-title gold mt-1 leading-none">DixieData</p>
+				<div class="flex items-center gap-3">
+					<p class="top-brand-title gold leading-none">DixieData</p>
+					<button type="button" data-top-nav-toggle aria-label="Open navigation menu" aria-expanded="false" aria-controls="top-nav-drawer" class="secondary-button md:hidden">Menu</button>
 				</div>
-				<nav class="flex flex-wrap items-center gap-2">
+				<nav class="hidden flex-wrap items-center gap-2 md:flex">
 					<a href="/calendar" class="pill-link top-nav-link">Calendar</a>
 					<a href="/soldiers" class="pill-link top-nav-link">Search/Quick View</a>
 					<a href="/browse" class="pill-link top-nav-link">Browse</a>
@@ -441,6 +438,22 @@ templ Layout(title string) {
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
 				</nav>
 			</header>
+			<div id="top-nav-drawer" data-top-nav-drawer role="dialog" aria-modal="true" aria-label="Site navigation" class="fixed inset-x-0 top-0 z-[60] hidden max-h-[100dvh] overflow-y-auto border-b border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.98)] shadow-[0_24px_60px_rgba(15,23,42,0.45)] backdrop-blur md:hidden">
+				<nav class="mx-auto flex max-w-[78rem] flex-col gap-1 px-4 py-4">
+					<div class="mb-3 flex items-center justify-between gap-3">
+						<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Navigate</p>
+						<button type="button" data-top-nav-close aria-label="Close navigation menu" class="secondary-button">Close</button>
+					</div>
+					<a href="/calendar" class="pill-link justify-start">Calendar</a>
+					<a href="/soldiers" class="pill-link justify-start">Search/Quick View</a>
+					<a href="/browse" class="pill-link justify-start">Browse</a>
+					<a href="/review-queue" class="pill-link justify-start">Review Queue</a>
+					<a href="/insights" class="pill-link justify-start">Insights</a>
+					<a href="/share" class="pill-link justify-start">Share</a>
+					<a href="/settings" class="pill-link justify-start">Settings</a>
+					<a href="/soldiers/new" class="primary-button justify-start">Add Person Record</a>
+				</nav>
+			</div>
 			<main>
 				{ children... }
 			</main>
