@@ -488,7 +488,7 @@ templ Layout(title string) {
 				</div>
 			</div>
 			<div id="feedback-modal" data-feedback-modal data-ui-id={ uiids.OverlayFeedbackModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
-				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
 					@SurfaceBadge(uiids.OverlayFeedbackModal)
 					<form id="feedback-form" hx-post="/feedback/submit" hx-target="this" hx-swap="none" class="space-y-6">
 						<input type="hidden" name="page_path" value="" data-feedback-page-path/>
@@ -521,7 +521,7 @@ templ Layout(title string) {
 						</label>
 						<label class="block text-sm text-slate-700">
 							Message
-							<textarea name="message" rows="6" class="field-input mt-2 min-h-32" placeholder="What happened, what you expected, or what feature would help?" required></textarea>
+							<textarea name="message" rows="4" class="field-input mt-2 min-h-32" placeholder="What happened, what you expected, or what feature would help?" required></textarea>
 						</label>
 						<p class="text-xs leading-6 text-slate-500">Use Share → Support &amp; Diagnostics to export the feedback log for email attachments.</p>
 						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">

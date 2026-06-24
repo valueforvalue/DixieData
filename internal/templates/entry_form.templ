@@ -345,72 +345,76 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 				<section data-ui-id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormRecords)
-					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
-							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
+					<details>
+						<summary class="mb-4 flex cursor-pointer list-none flex-wrap items-start justify-between gap-3">
+							<div>
+								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+								<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
+							</div>
+							<button type="button" data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto">+ Add Source Record</button>
+						</summary>
+						<div data-record-list class="space-y-3">
+							for _, record := range formRecords(s.SourceRecords) {
+								@RecordInputRow(record)
+							}
 						</div>
-						<button type="button" data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto">+ Add Source Record</button>
-					</div>
-					<div data-record-list class="space-y-3">
-						for _, record := range formRecords(s.SourceRecords) {
-							@RecordInputRow(record)
-						}
-					</div>
-					<template data-record-template>
-						@RecordInputRow(viewmodel.SourceRecord{})
-					</template>
-					<p class="mt-2 text-xs text-slate-500">Source records shown here are saved with the person record and appear in the detail view and PDF exports.</p>
+						<template data-record-template>
+							@RecordInputRow(viewmodel.SourceRecord{})
+						</template>
+						<p class="mt-2 text-xs text-slate-500">Source records shown here are saved with the person record and appear in the detail view and PDF exports.</p>
+					</details>
 				</section>
 				<section class="rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
-					<div class="mb-4">
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Biography & Internal Notes</p>
-						<p class="mt-2 text-sm text-slate-600">Biography is the public-facing narrative for this person record. Internal notes stay available for research context and workflow details.</p>
-					</div>
-					<div class="space-y-4">
-						<div>
-							<label class="block text-sm text-slate-500 mb-1" for="ef-biography">Biography</label>
-							<textarea name="biography" rows="5"
-								class="field-input min-h-36"
-								data-live-count-input
-								data-live-count-target="biography">{ s.Biography }</textarea>
-							<div class="mt-2 flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-								<p>Use biography for narrative attached to person record itself.</p>
-								<p data-live-count-display="biography" class="font-medium text-slate-600">0 chars</p>
-							</div>
-						</div>
-						<details class="overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)]">
-							<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
-								<div>
-									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Advanced PDF Excerpt Override</p>
-									<p class="mt-1 text-sm text-slate-600">Optional. Override default export excerpt when biography needs tighter PDF copy.</p>
-								</div>
-								<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
-							</summary>
-							<div class="border-t border-[rgba(141,116,64,0.18)] px-4 py-4">
-								<label class="block text-sm text-slate-500 mb-1" for="ef-pdf_excerpt_override">PDF Excerpt Override</label>
-								<textarea
-									name="pdf_excerpt_override"
-									rows="4"
-									class="field-input min-h-32"
+					<details>
+						<summary class="mb-4 cursor-pointer list-none">
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Biography & Internal Notes</p>
+							<p class="mt-2 text-sm text-slate-600">Biography is the public-facing narrative for this person record. Internal notes stay available for research context and workflow details.</p>
+						</summary>
+						<div class="space-y-4">
+							<div>
+								<label class="block text-sm text-slate-500 mb-1" for="ef-biography">Biography</label>
+								<textarea name="biography" rows="5"
+									class="field-input min-h-36"
 									data-live-count-input
-									data-live-count-target="pdf-excerpt"
-									data-live-count-budget={ fmt.Sprintf("%d", pdfExcerptBudget()) }
-								>{ s.PDFExcerptOverride }</textarea>
-								<div class="mt-2 flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
-									<p class="text-slate-500">Target { fmt.Sprintf("%d", pdfExcerptBudget()) } chars for default record-page fit. Leave blank -> export uses biography automatically.</p>
-									<p data-live-count-display="pdf-excerpt" class="font-medium text-slate-600">0 / { fmt.Sprintf("%d", pdfExcerptBudget()) }</p>
+									data-live-count-target="biography">{ s.Biography }</textarea>
+								<div class="mt-2 flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+									<p>Use biography for narrative attached to person record itself.</p>
+									<p data-live-count-display="biography" class="font-medium text-slate-600">0 chars</p>
 								</div>
-								<p data-live-count-status="pdf-excerpt" class="mt-2 text-xs text-slate-500">Within export-fit target.</p>
 							</div>
-						</details>
-						<div>
-							<label class="block text-sm text-slate-500 mb-1" for="ef-notes">Internal Notes</label>
-							<textarea name="notes" rows="4"
-								class="field-input min-h-32">{ s.Notes }</textarea>
-							<p class="mt-2 text-xs text-slate-500">Quick reference: type <code>[[DISPLAY-ID]]</code> to link another record in internal notes, for example <code>[[STC38-00007]]</code>.</p>
+							<details class="overflow-hidden rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)]">
+								<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
+									<div>
+										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Advanced PDF Excerpt Override</p>
+										<p class="mt-1 text-sm text-slate-600">Optional. Override default export excerpt when biography needs tighter PDF copy.</p>
+									</div>
+									<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Optional</span>
+								</summary>
+								<div class="border-t border-[rgba(141,116,64,0.18)] px-4 py-4">
+									<label class="block text-sm text-slate-500 mb-1" for="ef-pdf_excerpt_override">PDF Excerpt Override</label>
+									<textarea
+										name="pdf_excerpt_override"
+										rows="4"
+										class="field-input min-h-32"
+										data-live-count-input
+										data-live-count-target="pdf-excerpt"
+										data-live-count-budget={ fmt.Sprintf("%d", pdfExcerptBudget()) }
+									>{ s.PDFExcerptOverride }</textarea>
+									<div class="mt-2 flex flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+										<p class="text-slate-500">Target { fmt.Sprintf("%d", pdfExcerptBudget()) } chars for default record-page fit. Leave blank -> export uses biography automatically.</p>
+										<p data-live-count-display="pdf-excerpt" class="font-medium text-slate-600">0 / { fmt.Sprintf("%d", pdfExcerptBudget()) }</p>
+									</div>
+									<p data-live-count-status="pdf-excerpt" class="mt-2 text-xs text-slate-500">Within export-fit target.</p>
+								</div>
+							</details>
+							<div>
+								<label class="block text-sm text-slate-500 mb-1" for="ef-notes">Internal Notes</label>
+								<textarea name="notes" rows="4"
+									class="field-input min-h-32">{ s.Notes }</textarea>
+								<p class="mt-2 text-xs text-slate-500">Quick reference: type <code>[[DISPLAY-ID]]</code> to link another record in internal notes, for example <code>[[STC38-00007]]</code>.</p>
+							</div>
 						</div>
-					</div>
+					</details>
 				</section>
 				<section data-ui-id={ uiids.PanelSoldierFormImages } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormImages)
