@@ -11,6 +11,8 @@ func (a *App) setupRoutes() {
 
 	mux.HandleFunc("/app.js", a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("/app.css", a.handleFrontendAsset("app.css", "text/css; charset=utf-8"))
+	mux.HandleFunc("/htmx.min.js", a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8"))
+	mux.HandleFunc("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
 	mux.HandleFunc("/recovery", a.handleRecovery)
 	mux.HandleFunc("/", a.handleCalendar)
 	mux.HandleFunc("/calendar", a.handleCalendar)
