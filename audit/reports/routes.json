@@ -5,7 +5,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1018,
+    "load_ms": 1014,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -23,7 +23,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 864,
+    "load_ms": 876,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -41,7 +41,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5761,
+    "load_ms": 5857,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -91,7 +91,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1746,
+    "load_ms": 1915,
     "axe_violations": [
       {
         "id": "label",
@@ -209,7 +209,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 734,
+    "load_ms": 783,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -227,7 +227,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 975,
+    "load_ms": 1080,
     "axe_violations": [
       {
         "id": "select-name",
@@ -270,7 +270,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 990,
+    "load_ms": 1088,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -288,7 +288,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 910,
+    "load_ms": 1002,
     "axe_violations": [
       {
         "id": "label",
@@ -336,7 +336,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1011,
+    "load_ms": 1062,
     "axe_violations": [
       {
         "id": "label",
@@ -429,7 +429,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 961,
+    "load_ms": 1082,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -447,7 +447,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 994,
+    "load_ms": 1139,
     "axe_violations": [
       {
         "id": "label",
@@ -540,7 +540,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 930,
+    "load_ms": 1012,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -558,7 +558,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1005,
+    "load_ms": 1069,
     "axe_violations": [
       {
         "id": "label",
@@ -651,7 +651,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 957,
+    "load_ms": 1033,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -669,7 +669,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 870,
+    "load_ms": 916,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -687,7 +687,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5771,
+    "load_ms": 5844,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -737,7 +737,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1679,
+    "load_ms": 1887,
     "axe_violations": [
       {
         "id": "label",
@@ -818,7 +818,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 704,
+    "load_ms": 752,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -836,7 +836,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 974,
+    "load_ms": 1058,
     "axe_violations": [
       {
         "id": "select-name",
@@ -879,7 +879,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 944,
+    "load_ms": 1043,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -897,7 +897,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 851,
+    "load_ms": 956,
     "axe_violations": [
       {
         "id": "label",
@@ -945,7 +945,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 931,
+    "load_ms": 1022,
     "axe_violations": [
       {
         "id": "label",
@@ -1038,7 +1038,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 923,
+    "load_ms": 994,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1098,7 +1098,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 940,
+    "load_ms": 1021,
     "axe_violations": [
       {
         "id": "label",
@@ -1191,7 +1191,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 893,
+    "load_ms": 948,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1251,7 +1251,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 929,
+    "load_ms": 1033,
     "axe_violations": [
       {
         "id": "label",
@@ -1344,39 +1344,15 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 956,
+    "load_ms": 998,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1386,39 +1362,15 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 844,
+    "load_ms": 903,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1428,33 +1380,9 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5745,
+    "load_ms": 5814,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "unlabeled-input",
         "severity": "medium",
@@ -1491,8 +1419,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1502,7 +1430,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1384,
+    "load_ms": 1463,
     "axe_violations": [
       {
         "id": "label",
@@ -1537,27 +1465,10 @@
     ],
     "visual_issues": [
       {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
         "id": "overflow-x",
         "severity": "high",
-        "count": 310,
+        "count": 309,
         "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          },
           {
             "tag": "table",
             "id": null,
@@ -1585,6 +1496,13 @@
             "cls": "px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs",
             "right": 486,
             "width": 97
+          },
+          {
+            "tag": "tbody",
+            "id": null,
+            "cls": null,
+            "right": 868,
+            "width": 854
           }
         ]
       },
@@ -1624,8 +1542,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1635,39 +1553,15 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 726,
+    "load_ms": 728,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1677,7 +1571,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 938,
+    "load_ms": 989,
     "axe_violations": [
       {
         "id": "select-name",
@@ -1694,30 +1588,6 @@
     ],
     "visual_issues": [
       {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
-      {
         "id": "unlabeled-input",
         "severity": "medium",
         "count": 1,
@@ -1733,8 +1603,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1744,39 +1614,15 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 949,
+    "load_ms": 1024,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1786,7 +1632,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 840,
+    "load_ms": 890,
     "axe_violations": [
       {
         "id": "label",
@@ -1802,30 +1648,6 @@
       }
     ],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "unlabeled-input",
         "severity": "medium",
@@ -1847,8 +1669,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1858,7 +1680,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 975,
+    "load_ms": 987,
     "axe_violations": [
       {
         "id": "label",
@@ -1905,30 +1727,6 @@
     ],
     "visual_issues": [
       {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
-      {
         "id": "unlabeled-input",
         "severity": "medium",
         "count": 29,
@@ -1964,8 +1762,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -1975,39 +1773,15 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 935,
+    "load_ms": 990,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -2017,7 +1791,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 944,
+    "load_ms": 992,
     "axe_violations": [
       {
         "id": "label",
@@ -2063,30 +1837,6 @@
       }
     ],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "unlabeled-input",
         "severity": "medium",
@@ -2123,8 +1873,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -2138,35 +1888,11 @@
     "axe_violations": [],
     "visual_issues": [
       {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
-      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -2176,7 +1902,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 971,
+    "load_ms": 981,
     "axe_violations": [
       {
         "id": "label",
@@ -2223,30 +1949,6 @@
     ],
     "visual_issues": [
       {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "document scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > viewport=390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
-      {
         "id": "unlabeled-input",
         "severity": "medium",
         "count": 31,
@@ -2282,8 +1984,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   }
