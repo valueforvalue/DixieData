@@ -91,25 +91,8 @@
     "label": "desktop_search-advanced",
     "path": "/soldiers/search/advanced?q=test",
     "viewport": "desktop",
-    "kind": "a11y",
-    "id": "document-title",
-    "impact": "serious",
-    "help": "Documents must have <title> element to aid in navigation",
-    "target": [
-      "html"
-    ]
-  },
-  {
-    "label": "desktop_search-advanced",
-    "path": "/soldiers/search/advanced?q=test",
-    "viewport": "desktop",
-    "kind": "a11y",
-    "id": "html-has-lang",
-    "impact": "serious",
-    "help": "<html> element must have a lang attribute",
-    "target": [
-      "html"
-    ]
+    "kind": "axe-skipped",
+    "reason": "fragment detected: no <html> tag in body"
   },
   {
     "label": "desktop_soldier-detail-b",
@@ -214,25 +197,8 @@
     "label": "tablet_search-advanced",
     "path": "/soldiers/search/advanced?q=test",
     "viewport": "tablet",
-    "kind": "a11y",
-    "id": "document-title",
-    "impact": "serious",
-    "help": "Documents must have <title> element to aid in navigation",
-    "target": [
-      "html"
-    ]
-  },
-  {
-    "label": "tablet_search-advanced",
-    "path": "/soldiers/search/advanced?q=test",
-    "viewport": "tablet",
-    "kind": "a11y",
-    "id": "html-has-lang",
-    "impact": "serious",
-    "help": "<html> element must have a lang attribute",
-    "target": [
-      "html"
-    ]
+    "kind": "axe-skipped",
+    "reason": "fragment detected: no <html> tag in body"
   },
   {
     "label": "tablet_soldier-detail-b",
@@ -296,83 +262,11 @@
     "path": "/soldiers/47/camaraderie",
     "viewport": "mobile",
     "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_camaraderie",
-    "path": "/soldiers/47/camaraderie",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_camaraderie",
-    "path": "/soldiers/47/camaraderie",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
-  },
-  {
-    "label": "mobile_camaraderie",
-    "path": "/soldiers/47/camaraderie",
-    "viewport": "mobile",
-    "kind": "visual",
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_timeline",
-    "path": "/soldiers/47/timeline",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_timeline",
-    "path": "/soldiers/47/timeline",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_timeline",
-    "path": "/soldiers/47/timeline",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_timeline",
@@ -382,44 +276,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_research-log",
-    "path": "/soldiers/47/research-log",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-log",
-    "path": "/soldiers/47/research-log",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-log",
-    "path": "/soldiers/47/research-log",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_research-log",
@@ -429,44 +287,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_conflict-ledger",
-    "path": "/soldiers/47/conflict-ledger",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_conflict-ledger",
-    "path": "/soldiers/47/conflict-ledger",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_conflict-ledger",
-    "path": "/soldiers/47/conflict-ledger",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_conflict-ledger",
@@ -476,44 +298,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_research-pack-state",
-    "path": "/soldiers/47/research-pack/state",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-pack-state",
-    "path": "/soldiers/47/research-pack/state",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-pack-state",
-    "path": "/soldiers/47/research-pack/state",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_research-pack-state",
@@ -523,44 +309,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_research-pack-county",
-    "path": "/soldiers/47/research-pack/county",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-pack-county",
-    "path": "/soldiers/47/research-pack/county",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-pack-county",
-    "path": "/soldiers/47/research-pack/county",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_research-pack-county",
@@ -570,8 +320,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_compare",
@@ -590,35 +340,10 @@
     "path": "/compare?id1=47&id2=35",
     "viewport": "mobile",
     "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_compare",
-    "path": "/compare?id1=47&id2=35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_compare",
-    "path": "/compare?id1=47&id2=35",
-    "viewport": "mobile",
-    "kind": "visual",
     "id": "overflow-x",
     "severity": "high",
-    "count": 44,
+    "count": 43,
     "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      },
       {
         "tag": "div",
         "id": null,
@@ -657,44 +382,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
-  },
-  {
-    "label": "mobile_research-collections",
-    "path": "/research-collections",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-collections",
-    "path": "/research-collections",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_research-collections",
-    "path": "/research-collections",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_research-collections",
@@ -704,68 +393,15 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   },
   {
     "label": "mobile_search-advanced",
     "path": "/soldiers/search/advanced?q=test",
     "viewport": "mobile",
-    "kind": "a11y",
-    "id": "document-title",
-    "impact": "serious",
-    "help": "Documents must have <title> element to aid in navigation",
-    "target": [
-      "html"
-    ]
-  },
-  {
-    "label": "mobile_search-advanced",
-    "path": "/soldiers/search/advanced?q=test",
-    "viewport": "mobile",
-    "kind": "a11y",
-    "id": "html-has-lang",
-    "impact": "serious",
-    "help": "<html> element must have a lang attribute",
-    "target": [
-      "html"
-    ]
-  },
-  {
-    "label": "mobile_soldier-detail-b",
-    "path": "/soldiers/35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll",
-    "severity": "high",
-    "detail": "scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_soldier-detail-b",
-    "path": "/soldiers/35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "h-scroll-body",
-    "severity": "high",
-    "detail": "body scrollWidth=396 > 390"
-  },
-  {
-    "label": "mobile_soldier-detail-b",
-    "path": "/soldiers/35",
-    "viewport": "mobile",
-    "kind": "visual",
-    "id": "overflow-x",
-    "severity": "high",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "header",
-        "id": null,
-        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-        "right": 396,
-        "width": 382
-      }
-    ]
+    "kind": "axe-skipped",
+    "reason": "fragment detected: no <html> tag in body"
   },
   {
     "label": "mobile_soldier-detail-b",
@@ -775,7 +411,7 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 348,
-    "item_width_avg": 44
+    "nav_width": 324,
+    "item_width_avg": 41
   }
 ]

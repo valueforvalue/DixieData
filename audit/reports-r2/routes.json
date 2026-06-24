@@ -5,7 +5,9 @@
     "path": "/soldiers/47/camaraderie",
     "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
     "status": 200,
-    "load_ms": 1298,
+    "load_ms": 1275,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -23,7 +25,9 @@
     "path": "/soldiers/47/timeline",
     "url": "http://127.0.0.1:8765/soldiers/47/timeline",
     "status": 200,
-    "load_ms": 928,
+    "load_ms": 916,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -42,6 +46,8 @@
     "url": "http://127.0.0.1:8765/soldiers/47/research-log",
     "status": 200,
     "load_ms": 935,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -59,7 +65,9 @@
     "path": "/soldiers/47/conflict-ledger",
     "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
     "status": 200,
-    "load_ms": 977,
+    "load_ms": 936,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -77,7 +85,9 @@
     "path": "/soldiers/47/research-pack/state",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
     "status": 200,
-    "load_ms": 1108,
+    "load_ms": 1086,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -95,7 +105,9 @@
     "path": "/soldiers/47/research-pack/county",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
     "status": 200,
-    "load_ms": 1133,
+    "load_ms": 1105,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -113,7 +125,9 @@
     "path": "/compare?id1=47&id2=35",
     "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
     "status": 200,
-    "load_ms": 1022,
+    "load_ms": 1040,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -131,7 +145,9 @@
     "path": "/research-collections",
     "url": "http://127.0.0.1:8765/research-collections",
     "status": 200,
-    "load_ms": 900,
+    "load_ms": 936,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -149,33 +165,10 @@
     "path": "/soldiers/search/advanced?q=test",
     "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
     "status": 200,
-    "load_ms": 5780,
-    "axe_violations": [
-      {
-        "id": "document-title",
-        "impact": "serious",
-        "help": "Documents must have <title> element to aid in navigation",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/document-title?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "html"
-          ]
-        ]
-      },
-      {
-        "id": "html-has-lang",
-        "impact": "serious",
-        "help": "<html> element must have a lang attribute",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/html-has-lang?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "html"
-          ]
-        ]
-      }
-    ],
+    "load_ms": 5577,
+    "isFragment": true,
+    "fragment_reason": "fragment detected: no <html> tag in body",
+    "axe_violations": [],
     "visual_issues": []
   },
   {
@@ -184,7 +177,9 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1098,
+    "load_ms": 1127,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -202,7 +197,9 @@
     "path": "/soldiers/47/camaraderie",
     "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
     "status": 200,
-    "load_ms": 1214,
+    "load_ms": 1235,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -220,7 +217,9 @@
     "path": "/soldiers/47/timeline",
     "url": "http://127.0.0.1:8765/soldiers/47/timeline",
     "status": 200,
-    "load_ms": 941,
+    "load_ms": 973,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -238,7 +237,9 @@
     "path": "/soldiers/47/research-log",
     "url": "http://127.0.0.1:8765/soldiers/47/research-log",
     "status": 200,
-    "load_ms": 926,
+    "load_ms": 918,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -256,7 +257,9 @@
     "path": "/soldiers/47/conflict-ledger",
     "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
     "status": 200,
-    "load_ms": 898,
+    "load_ms": 892,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -274,7 +277,9 @@
     "path": "/soldiers/47/research-pack/state",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
     "status": 200,
-    "load_ms": 1091,
+    "load_ms": 1084,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -292,7 +297,9 @@
     "path": "/soldiers/47/research-pack/county",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
     "status": 200,
-    "load_ms": 1072,
+    "load_ms": 1134,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -310,7 +317,9 @@
     "path": "/compare?id1=47&id2=35",
     "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
     "status": 200,
-    "load_ms": 1045,
+    "load_ms": 1014,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -328,7 +337,9 @@
     "path": "/research-collections",
     "url": "http://127.0.0.1:8765/research-collections",
     "status": 200,
-    "load_ms": 899,
+    "load_ms": 908,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -346,33 +357,10 @@
     "path": "/soldiers/search/advanced?q=test",
     "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
     "status": 200,
-    "load_ms": 5790,
-    "axe_violations": [
-      {
-        "id": "document-title",
-        "impact": "serious",
-        "help": "Documents must have <title> element to aid in navigation",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/document-title?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "html"
-          ]
-        ]
-      },
-      {
-        "id": "html-has-lang",
-        "impact": "serious",
-        "help": "<html> element must have a lang attribute",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/html-has-lang?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "html"
-          ]
-        ]
-      }
-    ],
+    "load_ms": 5570,
+    "isFragment": true,
+    "fragment_reason": "fragment detected: no <html> tag in body",
+    "axe_violations": [],
     "visual_issues": []
   },
   {
@@ -381,7 +369,9 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1118,
+    "load_ms": 1079,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -441,39 +431,17 @@
     "path": "/soldiers/47/camaraderie",
     "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
     "status": 200,
-    "load_ms": 1254,
+    "load_ms": 1184,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -483,39 +451,17 @@
     "path": "/soldiers/47/timeline",
     "url": "http://127.0.0.1:8765/soldiers/47/timeline",
     "status": 200,
-    "load_ms": 976,
+    "load_ms": 929,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -525,39 +471,17 @@
     "path": "/soldiers/47/research-log",
     "url": "http://127.0.0.1:8765/soldiers/47/research-log",
     "status": 200,
-    "load_ms": 917,
+    "load_ms": 902,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -567,39 +491,17 @@
     "path": "/soldiers/47/conflict-ledger",
     "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
     "status": 200,
-    "load_ms": 883,
+    "load_ms": 865,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -609,39 +511,17 @@
     "path": "/soldiers/47/research-pack/state",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
     "status": 200,
-    "load_ms": 1124,
+    "load_ms": 1060,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -651,39 +531,17 @@
     "path": "/soldiers/47/research-pack/county",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
     "status": 200,
-    "load_ms": 1128,
+    "load_ms": 1097,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -693,7 +551,9 @@
     "path": "/compare?id1=47&id2=35",
     "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
     "status": 200,
-    "load_ms": 996,
+    "load_ms": 950,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "scrollable-region-focusable",
@@ -710,27 +570,10 @@
     ],
     "visual_issues": [
       {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
         "id": "overflow-x",
         "severity": "high",
-        "count": 44,
+        "count": 43,
         "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          },
           {
             "tag": "div",
             "id": null,
@@ -765,8 +608,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -776,39 +619,17 @@
     "path": "/research-collections",
     "url": "http://127.0.0.1:8765/research-collections",
     "status": 200,
-    "load_ms": 886,
+    "load_ms": 904,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   },
@@ -818,33 +639,10 @@
     "path": "/soldiers/search/advanced?q=test",
     "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
     "status": 200,
-    "load_ms": 5779,
-    "axe_violations": [
-      {
-        "id": "document-title",
-        "impact": "serious",
-        "help": "Documents must have <title> element to aid in navigation",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/document-title?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "html"
-          ]
-        ]
-      },
-      {
-        "id": "html-has-lang",
-        "impact": "serious",
-        "help": "<html> element must have a lang attribute",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/html-has-lang?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "html"
-          ]
-        ]
-      }
-    ],
+    "load_ms": 5577,
+    "isFragment": true,
+    "fragment_reason": "fragment detected: no <html> tag in body",
+    "axe_violations": [],
     "visual_issues": []
   },
   {
@@ -853,39 +651,17 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1085,
+    "load_ms": 1075,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "h-scroll",
-        "severity": "high",
-        "detail": "scrollWidth=396 > 390"
-      },
-      {
-        "id": "h-scroll-body",
-        "severity": "high",
-        "detail": "body scrollWidth=396 > 390"
-      },
-      {
-        "id": "overflow-x",
-        "severity": "high",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "header",
-            "id": null,
-            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
-            "right": 396,
-            "width": 382
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 348,
-        "item_width_avg": 44
+        "nav_width": 324,
+        "item_width_avg": 41
       }
     ]
   }

@@ -5,7 +5,9 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1014,
+    "load_ms": 1001,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -23,7 +25,9 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 876,
+    "load_ms": 879,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -41,19 +45,16 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5857,
+    "load_ms": 5851,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 23,
+        "count": 15,
         "sample": [
-          {
-            "tag": "input",
-            "name": "q",
-            "type": "text"
-          },
           {
             "tag": "input",
             "name": "display_id",
@@ -73,6 +74,11 @@
             "tag": "input",
             "name": "first_name",
             "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
           }
         ]
       },
@@ -91,7 +97,9 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1915,
+    "load_ms": 1883,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -165,7 +173,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 59,
+        "count": 56,
         "sample": [
           {
             "tag": "select",
@@ -188,9 +196,9 @@
             "type": "select-one"
           },
           {
-            "tag": "input",
-            "name": "pension_state",
-            "type": "text"
+            "tag": "select",
+            "name": "review_status",
+            "type": "select-one"
           }
         ]
       },
@@ -200,6 +208,12 @@
         "item_count": 8,
         "nav_width": 886,
         "item_width_avg": 111
+      },
+      {
+        "id": "table-rows",
+        "severity": "info",
+        "rows": 50,
+        "page_height": 4369
       }
     ]
   },
@@ -209,7 +223,9 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 783,
+    "load_ms": 797,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -227,7 +243,9 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1080,
+    "load_ms": 1050,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "select-name",
@@ -270,7 +288,9 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1088,
+    "load_ms": 1090,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -288,7 +308,9 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 1002,
+    "load_ms": 1000,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -307,13 +329,8 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 2,
+        "count": 1,
         "sample": [
-          {
-            "tag": "input",
-            "name": "source_url",
-            "type": "url"
-          },
           {
             "tag": "input",
             "name": "confirmation_word",
@@ -336,7 +353,9 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1062,
+    "load_ms": 1087,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -385,13 +404,8 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 29,
+        "count": 20,
         "sample": [
-          {
-            "tag": "textarea",
-            "name": "findagrave_source",
-            "type": "textarea"
-          },
           {
             "tag": "input",
             "name": "display_id",
@@ -404,12 +418,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
+            "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
-            "name": "first_name",
+            "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -429,7 +448,9 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 1082,
+    "load_ms": 1026,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -447,7 +468,9 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1139,
+    "load_ms": 1106,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -496,7 +519,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 28,
+        "count": 20,
         "sample": [
           {
             "tag": "input",
@@ -510,17 +533,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
-            "type": "text"
-          },
-          {
-            "tag": "input",
             "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
             "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -540,7 +563,9 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1012,
+    "load_ms": 988,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -558,7 +583,9 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1069,
+    "load_ms": 1084,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -607,7 +634,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 31,
+        "count": 23,
         "sample": [
           {
             "tag": "input",
@@ -621,17 +648,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
-            "type": "text"
-          },
-          {
-            "tag": "input",
             "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
             "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -651,7 +678,9 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1033,
+    "load_ms": 1015,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -669,7 +698,9 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 916,
+    "load_ms": 873,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -687,19 +718,16 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5844,
+    "load_ms": 5843,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 23,
+        "count": 15,
         "sample": [
-          {
-            "tag": "input",
-            "name": "q",
-            "type": "text"
-          },
           {
             "tag": "input",
             "name": "display_id",
@@ -719,6 +747,11 @@
             "tag": "input",
             "name": "first_name",
             "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
           }
         ]
       },
@@ -737,7 +770,9 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1887,
+    "load_ms": 1858,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -774,7 +809,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 59,
+        "count": 56,
         "sample": [
           {
             "tag": "select",
@@ -797,9 +832,9 @@
             "type": "select-one"
           },
           {
-            "tag": "input",
-            "name": "pension_state",
-            "type": "text"
+            "tag": "select",
+            "name": "review_status",
+            "type": "select-one"
           }
         ]
       },
@@ -809,6 +844,12 @@
         "item_count": 8,
         "nav_width": 801,
         "item_width_avg": 100
+      },
+      {
+        "id": "table-rows",
+        "severity": "info",
+        "rows": 50,
+        "page_height": 6064
       }
     ]
   },
@@ -818,7 +859,9 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 752,
+    "load_ms": 778,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -836,7 +879,9 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1058,
+    "load_ms": 1027,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "select-name",
@@ -879,7 +924,9 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1043,
+    "load_ms": 1046,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -897,7 +944,9 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 956,
+    "load_ms": 935,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -916,13 +965,8 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 2,
+        "count": 1,
         "sample": [
-          {
-            "tag": "input",
-            "name": "source_url",
-            "type": "url"
-          },
           {
             "tag": "input",
             "name": "confirmation_word",
@@ -945,7 +989,9 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1022,
+    "load_ms": 1015,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -994,13 +1040,8 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 29,
+        "count": 20,
         "sample": [
-          {
-            "tag": "textarea",
-            "name": "findagrave_source",
-            "type": "textarea"
-          },
           {
             "tag": "input",
             "name": "display_id",
@@ -1013,12 +1054,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
+            "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
-            "name": "first_name",
+            "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -1038,7 +1084,9 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 994,
+    "load_ms": 1024,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1098,7 +1146,9 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1021,
+    "load_ms": 1003,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1147,7 +1197,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 28,
+        "count": 20,
         "sample": [
           {
             "tag": "input",
@@ -1161,17 +1211,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
-            "type": "text"
-          },
-          {
-            "tag": "input",
             "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
             "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -1191,7 +1241,9 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 948,
+    "load_ms": 956,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1251,7 +1303,9 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1033,
+    "load_ms": 1013,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1300,7 +1354,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 31,
+        "count": 23,
         "sample": [
           {
             "tag": "input",
@@ -1314,17 +1368,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
-            "type": "text"
-          },
-          {
-            "tag": "input",
             "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
             "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -1344,7 +1398,9 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 998,
+    "load_ms": 987,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1362,7 +1418,9 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 903,
+    "load_ms": 884,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1380,19 +1438,16 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5814,
+    "load_ms": 5823,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 23,
+        "count": 15,
         "sample": [
-          {
-            "tag": "input",
-            "name": "q",
-            "type": "text"
-          },
           {
             "tag": "input",
             "name": "display_id",
@@ -1412,6 +1467,11 @@
             "tag": "input",
             "name": "first_name",
             "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
           }
         ]
       },
@@ -1430,7 +1490,9 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1463,
+    "load_ms": 1443,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1486,7 +1548,7 @@
           {
             "tag": "tr",
             "id": null,
-            "cls": null,
+            "cls": "",
             "right": 868,
             "width": 854
           },
@@ -1500,7 +1562,7 @@
           {
             "tag": "tbody",
             "id": null,
-            "cls": null,
+            "cls": "",
             "right": 868,
             "width": 854
           }
@@ -1509,7 +1571,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 59,
+        "count": 56,
         "sample": [
           {
             "tag": "select",
@@ -1532,9 +1594,9 @@
             "type": "select-one"
           },
           {
-            "tag": "input",
-            "name": "pension_state",
-            "type": "text"
+            "tag": "select",
+            "name": "review_status",
+            "type": "select-one"
           }
         ]
       },
@@ -1544,6 +1606,12 @@
         "item_count": 8,
         "nav_width": 324,
         "item_width_avg": 41
+      },
+      {
+        "id": "table-rows",
+        "severity": "info",
+        "rows": 50,
+        "page_height": 6792
       }
     ]
   },
@@ -1553,7 +1621,9 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 728,
+    "load_ms": 773,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1571,7 +1641,9 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 989,
+    "load_ms": 992,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "select-name",
@@ -1614,7 +1686,9 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1024,
+    "load_ms": 1003,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1632,7 +1706,9 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 890,
+    "load_ms": 861,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1651,13 +1727,8 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 2,
+        "count": 1,
         "sample": [
-          {
-            "tag": "input",
-            "name": "source_url",
-            "type": "url"
-          },
           {
             "tag": "input",
             "name": "confirmation_word",
@@ -1680,7 +1751,9 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 987,
+    "load_ms": 1039,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1729,13 +1802,8 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 29,
+        "count": 20,
         "sample": [
-          {
-            "tag": "textarea",
-            "name": "findagrave_source",
-            "type": "textarea"
-          },
           {
             "tag": "input",
             "name": "display_id",
@@ -1748,12 +1816,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
+            "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
-            "name": "first_name",
+            "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -1774,6 +1847,8 @@
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
     "load_ms": 990,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1791,7 +1866,9 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 992,
+    "load_ms": 987,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1840,7 +1917,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 28,
+        "count": 20,
         "sample": [
           {
             "tag": "input",
@@ -1854,17 +1931,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
-            "type": "text"
-          },
-          {
-            "tag": "input",
             "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
             "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
@@ -1884,7 +1961,9 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 904,
+    "load_ms": 925,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
@@ -1903,6 +1982,8 @@
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
     "load_ms": 981,
+    "isFragment": false,
+    "fragment_reason": null,
     "axe_violations": [
       {
         "id": "label",
@@ -1951,7 +2032,7 @@
       {
         "id": "unlabeled-input",
         "severity": "medium",
-        "count": 31,
+        "count": 23,
         "sample": [
           {
             "tag": "input",
@@ -1965,17 +2046,17 @@
           },
           {
             "tag": "input",
-            "name": "prefix",
-            "type": "text"
-          },
-          {
-            "tag": "input",
             "name": "first_name",
             "type": "text"
           },
           {
             "tag": "input",
             "name": "middle_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "last_name",
             "type": "text"
           }
         ]
