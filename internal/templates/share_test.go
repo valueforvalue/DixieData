@@ -22,7 +22,7 @@ func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 		"Single-record portrait",
 		"Single-record landscape",
 		"Full database printable PDF",
-		"Full Database Printable PDF Export",
+		"Full Database Printable PDF",
 		"Preview Memorial JSON Import (.json)",
 		"dry-run analysis",
 	} {

@@ -45,7 +45,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 				<div>
 					<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Page Size</label>
 					<select name="page_size" data-browse-filter-input class="field-input mt-2">
-						for _, option := range []int{50, 100, 150, 200, 250} {
+						for _, option := range []int{25, 50, 100, 150, 200, 250} {
 							<option value={ fmt.Sprintf("%d", option) } if option == state.PageSize { selected }>{ fmt.Sprintf("%d", option) }</option>
 						}
 					</select>
@@ -95,15 +95,19 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					<p class="text-xs text-slate-500">Browse remembers the last scope and filters on this machine. Use Reset Browse to clear them.</p>
 				</div>
 				<div class="md:col-span-2 xl:col-span-6 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 p-4">
-					<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Columns</div>
-					<div class="mt-3 flex flex-wrap gap-3 text-sm text-slate-700">
-						for _, column := range browseColumnOptions() {
-							<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.24)] bg-white px-3 py-2">
-								<input type="checkbox" value={ column.Key } data-browse-column-toggle checked class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
-								<span>{ column.Label }</span>
-							</label>
-						}
-					</div>
+					<details class="group">
+						<summary class="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+							<span class="inline-block transition-transform group-open:rotate-90">▶</span> Columns
+						</summary>
+						<div class="mt-3 flex flex-wrap gap-3 text-sm text-slate-700">
+							for _, column := range browseColumnOptions() {
+								<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.24)] bg-white px-3 py-2">
+									<input type="checkbox" value={ column.Key } data-browse-column-toggle checked class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
+									<span>{ column.Label }</span>
+								</label>
+							}
+						</div>
+					</details>
 					<div class="mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
 						<div class="space-y-1 text-sm text-slate-600">
 							<p class="font-semibold text-[#22303d]">Use the Select checkboxes to build a working set across pages, then open the printable export picker with that selection already loaded.</p>
