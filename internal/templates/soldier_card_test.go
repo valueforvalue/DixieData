@@ -61,8 +61,8 @@ func TestSoldierListUsesResponsiveContractForSearchControls(t *testing.T) {
 		`grid grid-cols-1 gap-2 sm:flex sm:flex-wrap`,
 		`flex w-full items-center justify-between rounded-xl`,
 		`flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center`,
-		`<label class="block text-sm text-slate-500 mb-1">Buried In</label>`,
-		`<label class="block text-sm text-slate-500 mb-1">Status</label>`,
+		`<label class="block text-sm text-slate-500 mb-1" for="sc-buried_in">Buried In</label>`,
+		`<label class="block text-sm text-slate-500 mb-1" for="sc-review_status">Status</label>`,
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("search/quick view surface missing responsive control contract %s", needle)
