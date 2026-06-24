@@ -805,12 +805,12 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
 				</div>
 				<form hx-post="/settings/quality/scan" hx-target="#settings-quality-results" class="space-y-4">
-					<div class="responsive-two-col grid gap-4">
-						<label class="inline-flex items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-white/70 px-4 py-3 text-sm text-slate-700">
+					<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
+						<label class="inline-flex items-center gap-2">
 							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 							<span><strong>High-Confidence</strong> (recommended)</span>
 						</label>
-						<label class="inline-flex items-center gap-2 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-white/70 px-4 py-3 text-sm text-slate-700">
+						<label class="inline-flex items-center gap-2">
 							<input type="radio" name="quality_mode" value="advanced" class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 							<span><strong>Advanced</strong> (broader checks)</span>
 						</label>

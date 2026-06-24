@@ -102,33 +102,33 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						<p class="mt-2 text-sm text-slate-500">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
 					</div>
 					<div class="flex flex-col gap-3">
-						<button hx-post="/export/json" hx-target="this" hx-swap="none" class="primary-button justify-start text-left">
-							<div class="font-bold">Export JSON</div>
-							<div class="text-xs text-slate-300">Full hierarchical export with version metadata</div>
+						<button hx-post="/export/json" hx-target="this" hx-swap="none" class="primary-button justify-between text-left">
+							<span class="font-bold">Export JSON</span>
+							<span class="text-xs text-slate-300">Hierarchical w/ version metadata</span>
 						</button>
-						<button hx-post="/export/csv" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
-							<div class="font-bold">Export Excel (.xlsx)</div>
-							<div class="text-xs text-slate-500">Formatted workbook with typed dates, linked spouse data, and spreadsheet-friendly sheets</div>
+						<button hx-post="/export/csv" hx-target="this" hx-swap="none" class="secondary-button justify-between text-left">
+							<span class="font-bold">Export Excel (.xlsx)</span>
+							<span class="text-xs text-slate-500">Typed dates, linked spouse data</span>
 						</button>
-						<button hx-post="/export/ical" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
-							<div class="font-bold">Export iCalendar</div>
-							<div class="text-xs text-slate-500">ICS anniversary export with embedded app and schema versions</div>
+						<button hx-post="/export/ical" hx-target="this" hx-swap="none" class="secondary-button justify-between text-left">
+							<span class="font-bold">Export iCalendar</span>
+							<span class="text-xs text-slate-500">ICS w/ app and schema versions</span>
 						</button>
-						<button hx-post="/export/static-archive" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
-							<div class="font-bold">Export Static Web Archive</div>
-							<div class="text-xs text-slate-500">Standalone static archive with images, live search, and expandable person record cards</div>
+						<button hx-post="/export/static-archive" hx-target="this" hx-swap="none" class="secondary-button justify-between text-left">
+							<span class="font-bold">Export Static Web Archive</span>
+							<span class="text-xs text-slate-500">Standalone, live search, expandable cards</span>
 						</button>
-						<button type="button" data-print-config-open class="secondary-button justify-start text-left">
-							<div class="font-bold">Full Database Printable PDF Export</div>
-							<div class="text-xs text-slate-500">Landscape printable PDF export with one branded record page per entry, configurable scope, filtering, sorting, grouping, and optional manual record selection</div>
+						<button type="button" data-print-config-open class="secondary-button justify-between text-left">
+							<span class="font-bold">Full Database Printable PDF</span>
+							<span class="text-xs text-slate-500">Landscape, configurable scope/sort/group</span>
 						</button>
-						<button hx-post="/export/backup" hx-target="this" hx-swap="none" class="primary-button justify-start text-left">
-							<div class="font-bold">Export Backup (.ddbak)</div>
-							<div class="text-xs text-slate-300">Replacement backup archive with manifest, DB snapshot, and all images</div>
+						<button hx-post="/export/backup" hx-target="this" hx-swap="none" class="primary-button justify-between text-left">
+							<span class="font-bold">Export Backup (.ddbak)</span>
+							<span class="text-xs text-slate-300">Manifest, DB, all images</span>
 						</button>
-						<button hx-post="/export/shared-archive" hx-target="this" hx-swap="none" class="secondary-button justify-start text-left">
-							<div class="font-bold">Export Shared Archive (.ddshare)</div>
-							<div class="text-xs text-slate-500">Shared archive for sharing person records into another DixieData local archive</div>
+						<button hx-post="/export/shared-archive" hx-target="this" hx-swap="none" class="secondary-button justify-between text-left">
+							<span class="font-bold">Export Shared Archive (.ddshare)</span>
+							<span class="text-xs text-slate-500">For sharing into another DixieData</span>
 						</button>
 					</div>
 				</section>

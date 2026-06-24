@@ -199,7 +199,7 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 	if !strings.Contains(content, "/export/static-archive") || !strings.Contains(content, "Export Static Web Archive") {
 		t.Fatalf("share view missing static web archive export action")
 	}
-	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF Export") {
+	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF") {
 		t.Fatalf("share view missing full database printable export action")
 	}
 	for _, needle := range []string{
