@@ -20,10 +20,10 @@ func (a *App) handleGoogleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.google.Connect(r.Context()); err != nil {
-		fmt.Fprintf(w, "Google connect failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google connect failed: %v", err), "error")
 		return
 	}
-	fmt.Fprint(w, "Google account connected.")
+	setToastHeader(w, "Google account connected.")
 }
 
 func (a *App) handleGoogleDisconnect(w http.ResponseWriter, r *http.Request) {
@@ -32,10 +32,10 @@ func (a *App) handleGoogleDisconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.google.Disconnect(); err != nil {
-		fmt.Fprintf(w, "Google disconnect failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google disconnect failed: %v", err), "error")
 		return
 	}
-	fmt.Fprint(w, "Google account disconnected.")
+	setToastHeader(w, "Google account disconnected.")
 }
 
 func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +46,7 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 
 	tempDir, err := os.MkdirTemp("", "dixiedata-drive-backup-*")
 	if err != nil {
-		fmt.Fprintf(w, "Google Drive upload failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Drive upload failed: %v", err), "error")
 		return
 	}
 	defer os.RemoveAll(tempDir)
@@ -54,19 +54,15 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 	backupPath := filepath.Join(tempDir, backupArchiveName(time.Now()))
 	manifest, err := a.backup.Export(backupPath, a.dataDir)
 	if err != nil {
-		fmt.Fprintf(w, "Google Drive upload failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Drive upload failed: %v", err), "error")
 		return
 	}
 	uploaded, err := a.google.UploadBackup(r.Context(), backupPath)
 	if err != nil {
-		fmt.Fprintf(w, "Google Drive upload failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Drive upload failed: %v", err), "error")
 		return
 	}
-	fmt.Fprint(w, externalLinkMarkup(
-		fmt.Sprintf("Backup uploaded to Google Drive (%d soldiers, %d images):", manifest.Soldiers, manifest.Images),
-		uploaded.WebViewLink,
-		uploaded.Name,
-	))
+	setToastHeader(w, fmt.Sprintf("Backup uploaded to Google Drive (%d soldiers, %d images): %s", manifest.Soldiers, manifest.Images, uploaded.WebViewLink))
 }
 
 func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
@@ -77,27 +73,23 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 
 	tempDir, err := os.MkdirTemp("", "dixiedata-google-sheets-*")
 	if err != nil {
-		fmt.Fprintf(w, "Google Sheets export failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Sheets export failed: %v", err), "error")
 		return
 	}
 	defer os.RemoveAll(tempDir)
 
 	csvPath := filepath.Join(tempDir, "dixiedata-export.csv")
 	if err := a.export.ExportCSV(csvPath); err != nil {
-		fmt.Fprintf(w, "Google Sheets export failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Sheets export failed: %v", err), "error")
 		return
 	}
 
 	uploaded, err := a.google.UploadCSVAsSheet(r.Context(), csvPath, "DixieData Export")
 	if err != nil {
-		fmt.Fprintf(w, "Google Sheets export failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Sheets export failed: %v", err), "error")
 		return
 	}
-	fmt.Fprint(w, externalLinkMarkup(
-		"Google Sheet ready:",
-		uploaded.WebViewLink,
-		uploaded.Name,
-	))
+	setToastHeader(w, fmt.Sprintf("Google Sheet ready: %s", uploaded.WebViewLink))
 }
 
 func (a *App) handleGoogleCalendarUseManaged(w http.ResponseWriter, r *http.Request) {
@@ -107,14 +99,14 @@ func (a *App) handleGoogleCalendarUseManaged(w http.ResponseWriter, r *http.Requ
 	}
 	calendarID, created, err := a.google.UseManagedCalendar(r.Context())
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar setup failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar setup failed: %v", err), "error")
 		return
 	}
 	if created {
-		fmt.Fprintf(w, "Managed DixieData calendar created and selected (%s).", calendarID)
+		setToastHeader(w, fmt.Sprintf("Managed DixieData calendar created and selected (%s).", calendarID))
 		return
 	}
-	fmt.Fprintf(w, "Managed DixieData calendar selected (%s).", calendarID)
+	setToastHeader(w, fmt.Sprintf("Managed DixieData calendar selected (%s).", calendarID))
 }
 
 func (a *App) handleGoogleCalendarPreferencesSave(w http.ResponseWriter, r *http.Request) {
@@ -124,15 +116,15 @@ func (a *App) handleGoogleCalendarPreferencesSave(w http.ResponseWriter, r *http
 	}
 	preferences, err := parseCalendarEventPreferencesForm(r)
 	if err != nil {
-		fmt.Fprintf(w, "Calendar preference save failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Calendar preference save failed: %v", err), "error")
 		return
 	}
 	saved, err := a.google.SaveManagedEventPreferences(preferences)
 	if err != nil {
-		fmt.Fprintf(w, "Calendar preference save failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Calendar preference save failed: %v", err), "error")
 		return
 	}
-	fmt.Fprintf(w, "Calendar preferences saved. Title preset: %s. Start time: %s. Sync DixieData Calendar to apply changes globally.", saved.TitlePreset, saved.StartTime)
+	setToastHeader(w, fmt.Sprintf("Calendar preferences saved. Title preset: %s. Start time: %s. Sync DixieData Calendar to apply changes globally.", saved.TitlePreset, saved.StartTime))
 }
 
 func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Request) {
@@ -141,17 +133,17 @@ func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if _, _, err := a.google.UseManagedCalendar(r.Context()); err != nil {
-		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar sync failed: %v", err), "error")
 		return
 	}
 	settings, _, _, _, err := a.google.LoadEffectiveSettings()
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar sync failed: %v", err), "error")
 		return
 	}
 	soldiers, err := a.listAllSoldiers()
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar sync failed: %v", err), "error")
 		return
 	}
 	if strings.TrimSpace(r.FormValue("confirm_sync")) != "1" {
@@ -165,10 +157,10 @@ func (a *App) handleGoogleCalendarSyncManaged(w http.ResponseWriter, r *http.Req
 	}
 	result, err := a.google.SyncCalendar(r.Context(), settings, soldiers)
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar sync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar sync failed: %v", err), "error")
 		return
 	}
-	fmt.Fprintf(w, "DixieData Calendar synced: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped)
+	setToastHeader(w, fmt.Sprintf("DixieData Calendar synced: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped))
 }
 
 func (a *App) handleGoogleCalendarUnsyncManaged(w http.ResponseWriter, r *http.Request) {
@@ -178,10 +170,10 @@ func (a *App) handleGoogleCalendarUnsyncManaged(w http.ResponseWriter, r *http.R
 	}
 	result, err := a.google.UnsyncCalendar(r.Context())
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar unsync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar unsync failed: %v", err), "error")
 		return
 	}
-	fmt.Fprintf(w, "DixieData Calendar unsynced: %d event(s) removed.", result.Deleted)
+	setToastHeader(w, fmt.Sprintf("DixieData Calendar unsynced: %d event(s) removed.", result.Deleted))
 }
 
 func (a *App) handleGoogleCalendarUseTest(w http.ResponseWriter, r *http.Request) {
@@ -191,14 +183,14 @@ func (a *App) handleGoogleCalendarUseTest(w http.ResponseWriter, r *http.Request
 	}
 	calendarID, created, err := a.google.UseTestCalendar(r.Context())
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar test setup failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar test setup failed: %v", err), "error")
 		return
 	}
 	if created {
-		fmt.Fprintf(w, "DixieData Test calendar created and selected (%s).", calendarID)
+		setToastHeader(w, fmt.Sprintf("DixieData Test calendar created and selected (%s).", calendarID))
 		return
 	}
-	fmt.Fprintf(w, "DixieData Test calendar selected (%s).", calendarID)
+	setToastHeader(w, fmt.Sprintf("DixieData Test calendar selected (%s).", calendarID))
 }
 
 func (a *App) handleGoogleCalendarSyncTest(w http.ResponseWriter, r *http.Request) {
@@ -208,10 +200,10 @@ func (a *App) handleGoogleCalendarSyncTest(w http.ResponseWriter, r *http.Reques
 	}
 	result, err := a.google.SyncTestCalendar(r.Context())
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar test sync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar test sync failed: %v", err), "error")
 		return
 	}
-	fmt.Fprintf(w, "DixieData Test sync complete: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped)
+	setToastHeader(w, fmt.Sprintf("DixieData Test sync complete: %d created, %d updated, %d deleted, %d skipped.", result.Created, result.Updated, result.Deleted, result.Skipped))
 }
 
 func (a *App) handleGoogleCalendarUnsyncTest(w http.ResponseWriter, r *http.Request) {
@@ -221,8 +213,8 @@ func (a *App) handleGoogleCalendarUnsyncTest(w http.ResponseWriter, r *http.Requ
 	}
 	result, err := a.google.UnsyncTestCalendar(r.Context())
 	if err != nil {
-		fmt.Fprintf(w, "Google Calendar test unsync failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Google Calendar test unsync failed: %v", err), "error")
 		return
 	}
-	fmt.Fprintf(w, "DixieData Test unsynced: %d event(s) removed.", result.Deleted)
+	setToastHeader(w, fmt.Sprintf("DixieData Test unsynced: %d event(s) removed.", result.Deleted))
 }

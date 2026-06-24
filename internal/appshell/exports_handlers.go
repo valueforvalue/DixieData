@@ -9,6 +9,7 @@ package appshell
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -44,7 +45,7 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Export failed: %v", err)
 		return
 	}
-	fmt.Fprintf(w, "✓ Exported to %s", path)
+	setToastHeader(w, fmt.Sprintf("JSON saved to %s", path))
 }
 
 func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +77,8 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Analytics export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("Analytics report ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Analytics PDF saved to %s", path))
 }
 
 func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +100,8 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("Excel workbook ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Excel workbook saved to %s", path))
 }
 
 func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +128,8 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "iCalendar export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("iCalendar ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("iCalendar saved to %s", path))
 }
 
 func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) {
@@ -152,7 +156,8 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		fmt.Fprintf(w, "Static web archive export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("Static web archive ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Static web archive saved to %s", path))
 }
 
 func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
@@ -165,12 +170,23 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	message, err := a.ExportFullDatabasePDF(settings)
-	if err != nil {
+	settings = settings.Normalize()
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: printableArchivePDFName(settings),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		fmt.Fprint(w, "Printable PDF export cancelled.")
+		return
+	}
+	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
 		fmt.Fprintf(w, "Printable PDF export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, message)
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Printable PDF saved to %s", path))
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
@@ -251,7 +267,7 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Backup export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Backup ready (%d soldiers, %d images):", manifest.Soldiers, manifest.Images), path))
+	setToastHeader(w, fmt.Sprintf("Backup saved to %s (%d soldiers, %d images)", path, manifest.Soldiers, manifest.Images))
 }
 
 func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +292,7 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		fmt.Fprintf(w, "Shared archive export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Shared archive ready (%d soldiers, %d images):", manifest.Soldiers, manifest.Images), path))
+	setToastHeader(w, fmt.Sprintf("Shared archive saved to %s (%d soldiers, %d images)", path, manifest.Soldiers, manifest.Images))
 }
 
 func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
@@ -301,5 +317,6 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Bug report export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup(fmt.Sprintf("Bug report bundle ready (%d soldiers, %d images, %d scratch pads):", manifest.Soldiers, manifest.Images, manifest.Scratchpads), path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Bug report bundle saved to %s (%d soldiers, %d images, %d scratch pads)", path, manifest.Soldiers, manifest.Images, manifest.Scratchpads))
 }

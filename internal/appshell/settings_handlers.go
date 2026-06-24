@@ -128,8 +128,8 @@ func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.initializeLocalData(); err != nil {
-		fmt.Fprintf(w, "Initialization failed: %v", err)
+		setToastHeaderWithType(w, fmt.Sprintf("Initialization failed: %v", err), "error")
 		return
 	}
-	fmt.Fprint(w, "Local archive reset. A fresh database and folder tree were created.")
+	setToastHeader(w, "Local archive reset. A fresh database and folder tree were created.")
 }

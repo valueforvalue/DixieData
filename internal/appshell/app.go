@@ -427,7 +427,8 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		fmt.Fprintf(w, "PDF export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("PDF ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
 }
 
 func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, id int64) {
@@ -456,7 +457,8 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		fmt.Fprintf(w, "PDF export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("PDF without images ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
 }
 
 func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64) {
@@ -496,11 +498,12 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	label := "JPG ready:"
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(paths[0]))
 	if len(paths) > 1 {
-		label = fmt.Sprintf("JPG ready (%d pages; first page shown):", len(paths))
+		setToastHeader(w, fmt.Sprintf("JPG saved (%d pages, first page opened): %s", len(paths), paths[0]))
+		return
 	}
-	fmt.Fprint(w, exportLinkMarkup(label, paths[0]))
+	setToastHeader(w, fmt.Sprintf("JPG saved to %s", paths[0]))
 }
 
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
@@ -539,7 +542,8 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		fmt.Fprintf(w, "Monthly PDF export failed: %v", err)
 		return
 	}
-	fmt.Fprint(w, exportLinkMarkup("Monthly PDF ready:", path))
+	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	setToastHeader(w, fmt.Sprintf("Monthly PDF saved to %s", path))
 }
 
 func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
@@ -766,15 +770,15 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 	imported, importErr := a.importImagePaths(*soldier, paths)
 	if importErr != nil {
 		if imported > 0 {
-			fmt.Fprintf(w, "Imported %d image(s), but some files failed: %v", imported, importErr)
+			setToastHeaderWithType(w, fmt.Sprintf("Imported %d image(s), but some files failed: %v", imported, importErr), "error")
 			return
 		}
-		fmt.Fprintf(w, "Image import failed: %v", importErr)
+		setToastHeaderWithType(w, fmt.Sprintf("Image import failed: %v", importErr), "error")
 		return
 	}
 
 	w.Header().Set("X-DixieData-Redirect", imageImportRedirectPath(id, r.URL.Query().Get("return")))
-	fmt.Fprintf(w, "Imported %d image(s).", imported)
+	setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))
 }
 
 func imageImportRedirectPath(id int64, returnTarget string) string {
