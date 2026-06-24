@@ -92,7 +92,7 @@
     "id": "table-rows",
     "severity": "info",
     "rows": 50,
-    "page_height": 4339
+    "page_height": 4111
   },
   {
     "label": "desktop_review-queue",
@@ -354,7 +354,7 @@
     "id": "table-rows",
     "severity": "info",
     "rows": 50,
-    "page_height": 6044
+    "page_height": 5519
   },
   {
     "label": "tablet_review-queue",
@@ -645,7 +645,7 @@
     "id": "table-rows",
     "severity": "info",
     "rows": 50,
-    "page_height": 6662
+    "page_height": 5803
   },
   {
     "label": "mobile_review-queue",
