@@ -164,7 +164,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 					</div>
 				}
 				<div class="mt-6 overflow-hidden rounded-3xl border border-[rgba(141,116,64,0.35)] bg-white/72">
-					<div class="overflow-x-auto">
+					<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Field comparison table, scrollable horizontally to view both records">
 						<div class="min-w-[38rem]">
 							<div class="grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[rgba(141,116,64,0.2)] bg-[rgba(246,241,228,0.88)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 								<div>Field</div>
@@ -183,6 +183,41 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 										<div class="font-semibold">{ field.Label }</div>
 										<div>{ field.LeftValue }</div>
 										<div>{ field.RightValue }</div>
+									</div>
+								}
+							}
+						</div>
+					</div>
+					<div class="md:hidden">
+						<div class="space-y-3 p-4">
+							for _, field := range comparison.Fields {
+								if field.Highlighted {
+									<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(141,116,64,0.12)] p-3">
+										<div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ field.Label }</div>
+										<div class="mt-2 flex items-start gap-3">
+											<div class="min-w-0 flex-1">
+												<div class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{ comparison.LeftPersonRecord.DisplayID }</div>
+												<div class="mt-1 text-sm text-[#22303d]">{ field.LeftValue }</div>
+											</div>
+											<div class="min-w-0 flex-1">
+												<div class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{ comparison.RightPersonRecord.DisplayID }</div>
+												<div class="mt-1 text-sm text-[#22303d]">{ field.RightValue }</div>
+											</div>
+										</div>
+									</div>
+								} else {
+									<div class="rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/72 p-3">
+										<div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{ field.Label }</div>
+										<div class="mt-2 flex items-start gap-3">
+											<div class="min-w-0 flex-1">
+												<div class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{ comparison.LeftPersonRecord.DisplayID }</div>
+												<div class="mt-1 text-sm text-[#22303d]">{ field.LeftValue }</div>
+											</div>
+											<div class="min-w-0 flex-1">
+												<div class="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{ comparison.RightPersonRecord.DisplayID }</div>
+												<div class="mt-1 text-sm text-[#22303d]">{ field.RightValue }</div>
+											</div>
+										</div>
 									</div>
 								}
 							}
