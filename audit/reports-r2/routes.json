@@ -5,7 +5,7 @@
     "path": "/soldiers/47/camaraderie",
     "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
     "status": 200,
-    "load_ms": 1286,
+    "load_ms": 1280,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -25,7 +25,7 @@
     "path": "/soldiers/47/timeline",
     "url": "http://127.0.0.1:8765/soldiers/47/timeline",
     "status": 200,
-    "load_ms": 924,
+    "load_ms": 933,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -85,7 +85,7 @@
     "path": "/soldiers/47/research-pack/state",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
     "status": 200,
-    "load_ms": 1132,
+    "load_ms": 1018,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -105,7 +105,7 @@
     "path": "/soldiers/47/research-pack/county",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
     "status": 200,
-    "load_ms": 1101,
+    "load_ms": 1040,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -125,7 +125,7 @@
     "path": "/compare?id1=47&id2=35",
     "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
     "status": 200,
-    "load_ms": 1020,
+    "load_ms": 973,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -145,7 +145,7 @@
     "path": "/research-collections",
     "url": "http://127.0.0.1:8765/research-collections",
     "status": 200,
-    "load_ms": 919,
+    "load_ms": 877,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -165,7 +165,7 @@
     "path": "/soldiers/search/advanced?q=test",
     "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
     "status": 200,
-    "load_ms": 5557,
+    "load_ms": 5553,
     "isFragment": true,
     "fragment_reason": "fragment detected: no <html> tag in body",
     "axe_violations": [],
@@ -177,11 +177,36 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1118,
+    "load_ms": 1071,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 3,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Download Selected Images",
+            "w": 172,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Delete Selected Images",
+            "w": 151,
+            "h": 22
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -197,7 +222,7 @@
     "path": "/soldiers/47/camaraderie",
     "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
     "status": 200,
-    "load_ms": 1227,
+    "load_ms": 1196,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -217,7 +242,7 @@
     "path": "/soldiers/47/timeline",
     "url": "http://127.0.0.1:8765/soldiers/47/timeline",
     "status": 200,
-    "load_ms": 941,
+    "load_ms": 925,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -237,7 +262,7 @@
     "path": "/soldiers/47/research-log",
     "url": "http://127.0.0.1:8765/soldiers/47/research-log",
     "status": 200,
-    "load_ms": 913,
+    "load_ms": 897,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -257,7 +282,7 @@
     "path": "/soldiers/47/conflict-ledger",
     "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
     "status": 200,
-    "load_ms": 877,
+    "load_ms": 817,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -277,7 +302,7 @@
     "path": "/soldiers/47/research-pack/state",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
     "status": 200,
-    "load_ms": 1093,
+    "load_ms": 1027,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -297,7 +322,7 @@
     "path": "/soldiers/47/research-pack/county",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
     "status": 200,
-    "load_ms": 1093,
+    "load_ms": 1021,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -317,7 +342,7 @@
     "path": "/compare?id1=47&id2=35",
     "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
     "status": 200,
-    "load_ms": 1031,
+    "load_ms": 948,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -337,7 +362,7 @@
     "path": "/research-collections",
     "url": "http://127.0.0.1:8765/research-collections",
     "status": 200,
-    "load_ms": 889,
+    "load_ms": 850,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -357,7 +382,7 @@
     "path": "/soldiers/search/advanced?q=test",
     "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
     "status": 200,
-    "load_ms": 5561,
+    "load_ms": 5548,
     "isFragment": true,
     "fragment_reason": "fragment detected: no <html> tag in body",
     "axe_violations": [],
@@ -369,7 +394,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1089,
+    "load_ms": 1038,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -383,35 +408,35 @@
             "tag": "form",
             "id": null,
             "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-            "right": 1045,
+            "right": 1050,
             "width": 384
           },
           {
             "tag": "div",
             "id": null,
             "cls": "flex items-start justify-between gap-3",
-            "right": 1028,
+            "right": 1033,
             "width": 350
           },
           {
             "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-            "right": 1028,
+            "right": 1033,
             "width": 32
           },
           {
             "tag": "div",
             "id": null,
             "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-            "right": 1028,
+            "right": 1033,
             "width": 350
           },
           {
             "tag": "div",
             "id": null,
             "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-            "right": 1028,
+            "right": 1033,
             "width": 169
           }
         ]
@@ -431,7 +456,7 @@
     "path": "/soldiers/47/camaraderie",
     "url": "http://127.0.0.1:8765/soldiers/47/camaraderie",
     "status": 200,
-    "load_ms": 1226,
+    "load_ms": 1152,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -440,8 +465,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -451,7 +476,7 @@
     "path": "/soldiers/47/timeline",
     "url": "http://127.0.0.1:8765/soldiers/47/timeline",
     "status": 200,
-    "load_ms": 937,
+    "load_ms": 918,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -460,8 +485,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -471,7 +496,7 @@
     "path": "/soldiers/47/research-log",
     "url": "http://127.0.0.1:8765/soldiers/47/research-log",
     "status": 200,
-    "load_ms": 919,
+    "load_ms": 895,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -480,8 +505,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -491,7 +516,7 @@
     "path": "/soldiers/47/conflict-ledger",
     "url": "http://127.0.0.1:8765/soldiers/47/conflict-ledger",
     "status": 200,
-    "load_ms": 892,
+    "load_ms": 827,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -500,8 +525,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -511,7 +536,7 @@
     "path": "/soldiers/47/research-pack/state",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/state",
     "status": 200,
-    "load_ms": 1038,
+    "load_ms": 976,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -520,8 +545,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -531,7 +556,7 @@
     "path": "/soldiers/47/research-pack/county",
     "url": "http://127.0.0.1:8765/soldiers/47/research-pack/county",
     "status": 200,
-    "load_ms": 1097,
+    "load_ms": 998,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -540,8 +565,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -551,23 +576,10 @@
     "path": "/compare?id1=47&id2=35",
     "url": "http://127.0.0.1:8765/compare?id1=47&id2=35",
     "status": 200,
-    "load_ms": 979,
+    "load_ms": 1011,
     "isFragment": false,
     "fragment_reason": null,
-    "axe_violations": [
-      {
-        "id": "scrollable-region-focusable",
-        "impact": "serious",
-        "help": "Scrollable region must have keyboard access",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/scrollable-region-focusable?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            ".overflow-x-auto"
-          ]
-        ]
-      }
-    ],
+    "axe_violations": [],
     "visual_issues": [
       {
         "id": "overflow-x",
@@ -608,8 +620,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -619,7 +631,7 @@
     "path": "/research-collections",
     "url": "http://127.0.0.1:8765/research-collections",
     "status": 200,
-    "load_ms": 885,
+    "load_ms": 840,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -628,8 +640,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   },
@@ -639,7 +651,7 @@
     "path": "/soldiers/search/advanced?q=test",
     "url": "http://127.0.0.1:8765/soldiers/search/advanced?q=test",
     "status": 200,
-    "load_ms": 5558,
+    "load_ms": 5542,
     "isFragment": true,
     "fragment_reason": "fragment detected: no <html> tag in body",
     "axe_violations": [],
@@ -651,7 +663,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1077,
+    "load_ms": 960,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -660,8 +672,8 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 324,
-        "item_width_avg": 41
+        "nav_width": 0,
+        "item_width_avg": 0
       }
     ]
   }

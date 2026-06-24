@@ -99,6 +99,35 @@
     "path": "/soldiers/35",
     "viewport": "desktop",
     "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 3,
+    "sample": [
+      {
+        "tag": "button",
+        "text": "Add Images From Computer",
+        "w": 179,
+        "h": 22
+      },
+      {
+        "tag": "button",
+        "text": "Download Selected Images",
+        "w": 172,
+        "h": 22
+      },
+      {
+        "tag": "button",
+        "text": "Delete Selected Images",
+        "w": 151,
+        "h": 22
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-detail-b",
+    "path": "/soldiers/35",
+    "viewport": "desktop",
+    "kind": "visual",
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
@@ -213,35 +242,35 @@
         "tag": "form",
         "id": null,
         "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-        "right": 1045,
+        "right": 1050,
         "width": 384
       },
       {
         "tag": "div",
         "id": null,
         "cls": "flex items-start justify-between gap-3",
-        "right": 1028,
+        "right": 1033,
         "width": 350
       },
       {
         "tag": "button",
         "id": null,
         "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-        "right": 1028,
+        "right": 1033,
         "width": 32
       },
       {
         "tag": "div",
         "id": null,
         "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-        "right": 1028,
+        "right": 1033,
         "width": 350
       },
       {
         "tag": "div",
         "id": null,
         "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-        "right": 1028,
+        "right": 1033,
         "width": 169
       }
     ]
@@ -265,8 +294,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_timeline",
@@ -276,8 +305,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_research-log",
@@ -287,8 +316,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_conflict-ledger",
@@ -298,8 +327,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_research-pack-state",
@@ -309,8 +338,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_research-pack-county",
@@ -320,20 +349,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
-  },
-  {
-    "label": "mobile_compare",
-    "path": "/compare?id1=47&id2=35",
-    "viewport": "mobile",
-    "kind": "a11y",
-    "id": "scrollable-region-focusable",
-    "impact": "serious",
-    "help": "Scrollable region must have keyboard access",
-    "target": [
-      ".overflow-x-auto"
-    ]
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_compare",
@@ -382,8 +399,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_research-collections",
@@ -393,8 +410,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   },
   {
     "label": "mobile_search-advanced",
@@ -411,7 +428,7 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 324,
-    "item_width_avg": 41
+    "nav_width": 0,
+    "item_width_avg": 0
   }
 ]
