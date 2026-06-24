@@ -1,0 +1,2290 @@
+[
+  {
+    "label": "desktop_home",
+    "viewport": "desktop",
+    "path": "/",
+    "url": "http://127.0.0.1:8765/",
+    "status": 200,
+    "load_ms": 1018,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_calendar",
+    "viewport": "desktop",
+    "path": "/calendar",
+    "url": "http://127.0.0.1:8765/calendar",
+    "status": 200,
+    "load_ms": 864,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_search",
+    "viewport": "desktop",
+    "path": "/soldiers",
+    "url": "http://127.0.0.1:8765/soldiers",
+    "status": 200,
+    "load_ms": 5761,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 23,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "q",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "record_type",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "viewport": "desktop",
+    "path": "/browse",
+    "url": "http://127.0.0.1:8765/browse",
+    "status": 200,
+    "load_ms": 1746,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 50,
+        "sample": [
+          [
+            "input[data-browse-label=\"DXD-00001\"]"
+          ],
+          [
+            "input[value=\"2\"]"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 6,
+        "sample": [
+          [
+            "select[name=\"scope\"]"
+          ],
+          [
+            "select[name=\"sort\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 19,
+        "sample": [
+          {
+            "tag": "a",
+            "text": "Jasper Gray Turner A",
+            "w": 142,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Edward Allen Tate C",
+            "w": 134,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Thomas Clay Reed G",
+            "w": 140,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Robert Isaac Harper H",
+            "w": 147,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Robert Davis Reed J",
+            "w": 136,
+            "h": 16
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 59,
+        "sample": [
+          {
+            "tag": "select",
+            "name": "scope",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "sort",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "page_size",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "pension_state",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_review-queue",
+    "viewport": "desktop",
+    "path": "/review-queue",
+    "url": "http://127.0.0.1:8765/review-queue",
+    "status": 200,
+    "load_ms": 734,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_insights",
+    "viewport": "desktop",
+    "path": "/insights",
+    "url": "http://127.0.0.1:8765/insights",
+    "status": 200,
+    "load_ms": 975,
+    "axe_violations": [
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            ".rounded-lg"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "select",
+            "name": "orientation",
+            "type": "select-one"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_share",
+    "viewport": "desktop",
+    "path": "/share",
+    "url": "http://127.0.0.1:8765/share",
+    "status": 200,
+    "load_ms": 990,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_settings",
+    "viewport": "desktop",
+    "path": "/settings",
+    "url": "http://127.0.0.1:8765/settings",
+    "status": 200,
+    "load_ms": 910,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "input[name=\"confirmation_word\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 2,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "source_url",
+            "type": "url"
+          },
+          {
+            "tag": "input",
+            "name": "confirmation_word",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "viewport": "desktop",
+    "path": "/soldiers/new",
+    "url": "http://127.0.0.1:8765/soldiers/new",
+    "status": 200,
+    "load_ms": 1011,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            ".bg-slate-100"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 29,
+        "sample": [
+          {
+            "tag": "textarea",
+            "name": "findagrave_source",
+            "type": "textarea"
+          },
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47",
+    "viewport": "desktop",
+    "path": "/soldiers/47",
+    "url": "http://127.0.0.1:8765/soldiers/47",
+    "status": 200,
+    "load_ms": 961,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "viewport": "desktop",
+    "path": "/soldiers/47/edit",
+    "url": "http://127.0.0.1:8765/soldiers/47/edit",
+    "status": 200,
+    "load_ms": 994,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            "input[name=\"display_id\"]"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 28,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-35",
+    "viewport": "desktop",
+    "path": "/soldiers/35",
+    "url": "http://127.0.0.1:8765/soldiers/35",
+    "status": 200,
+    "load_ms": 930,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "viewport": "desktop",
+    "path": "/soldiers/35/edit",
+    "url": "http://127.0.0.1:8765/soldiers/35/edit",
+    "status": 200,
+    "load_ms": 1005,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            "input[name=\"display_id\"]"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 31,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "tablet_home",
+    "viewport": "tablet",
+    "path": "/",
+    "url": "http://127.0.0.1:8765/",
+    "status": 200,
+    "load_ms": 957,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_calendar",
+    "viewport": "tablet",
+    "path": "/calendar",
+    "url": "http://127.0.0.1:8765/calendar",
+    "status": 200,
+    "load_ms": 870,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_search",
+    "viewport": "tablet",
+    "path": "/soldiers",
+    "url": "http://127.0.0.1:8765/soldiers",
+    "status": 200,
+    "load_ms": 5771,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 23,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "q",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "record_type",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "viewport": "tablet",
+    "path": "/browse",
+    "url": "http://127.0.0.1:8765/browse",
+    "status": 200,
+    "load_ms": 1679,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 50,
+        "sample": [
+          [
+            "input[data-browse-label=\"DXD-00001\"]"
+          ],
+          [
+            "input[value=\"2\"]"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 6,
+        "sample": [
+          [
+            "select[name=\"scope\"]"
+          ],
+          [
+            "select[name=\"sort\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 59,
+        "sample": [
+          {
+            "tag": "select",
+            "name": "scope",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "sort",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "page_size",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "pension_state",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_review-queue",
+    "viewport": "tablet",
+    "path": "/review-queue",
+    "url": "http://127.0.0.1:8765/review-queue",
+    "status": 200,
+    "load_ms": 704,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_insights",
+    "viewport": "tablet",
+    "path": "/insights",
+    "url": "http://127.0.0.1:8765/insights",
+    "status": 200,
+    "load_ms": 974,
+    "axe_violations": [
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            ".rounded-lg"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "select",
+            "name": "orientation",
+            "type": "select-one"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_share",
+    "viewport": "tablet",
+    "path": "/share",
+    "url": "http://127.0.0.1:8765/share",
+    "status": 200,
+    "load_ms": 944,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_settings",
+    "viewport": "tablet",
+    "path": "/settings",
+    "url": "http://127.0.0.1:8765/settings",
+    "status": 200,
+    "load_ms": 851,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "input[name=\"confirmation_word\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 2,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "source_url",
+            "type": "url"
+          },
+          {
+            "tag": "input",
+            "name": "confirmation_word",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "viewport": "tablet",
+    "path": "/soldiers/new",
+    "url": "http://127.0.0.1:8765/soldiers/new",
+    "status": 200,
+    "load_ms": 931,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            ".bg-slate-100"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 29,
+        "sample": [
+          {
+            "tag": "textarea",
+            "name": "findagrave_source",
+            "type": "textarea"
+          },
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-47",
+    "viewport": "tablet",
+    "path": "/soldiers/47",
+    "url": "http://127.0.0.1:8765/soldiers/47",
+    "status": 200,
+    "load_ms": 923,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 20,
+        "sample": [
+          {
+            "tag": "form",
+            "id": null,
+            "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
+            "right": 1045,
+            "width": 384
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "flex items-start justify-between gap-3",
+            "right": 1028,
+            "width": 350
+          },
+          {
+            "tag": "details",
+            "id": null,
+            "cls": "relative",
+            "right": 1028,
+            "width": 32
+          },
+          {
+            "tag": "summary",
+            "id": null,
+            "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
+            "right": 1028,
+            "width": 32
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+            "right": 1028,
+            "width": 288
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "viewport": "tablet",
+    "path": "/soldiers/47/edit",
+    "url": "http://127.0.0.1:8765/soldiers/47/edit",
+    "status": 200,
+    "load_ms": 940,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            "input[name=\"display_id\"]"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 28,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-35",
+    "viewport": "tablet",
+    "path": "/soldiers/35",
+    "url": "http://127.0.0.1:8765/soldiers/35",
+    "status": 200,
+    "load_ms": 893,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 20,
+        "sample": [
+          {
+            "tag": "form",
+            "id": null,
+            "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
+            "right": 1045,
+            "width": 384
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "flex items-start justify-between gap-3",
+            "right": 1028,
+            "width": 350
+          },
+          {
+            "tag": "details",
+            "id": null,
+            "cls": "relative",
+            "right": 1028,
+            "width": 32
+          },
+          {
+            "tag": "summary",
+            "id": null,
+            "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
+            "right": 1028,
+            "width": 32
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+            "right": 1028,
+            "width": 288
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "viewport": "tablet",
+    "path": "/soldiers/35/edit",
+    "url": "http://127.0.0.1:8765/soldiers/35/edit",
+    "status": 200,
+    "load_ms": 929,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            "input[name=\"display_id\"]"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 31,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 801,
+        "item_width_avg": 100
+      }
+    ]
+  },
+  {
+    "label": "mobile_home",
+    "viewport": "mobile",
+    "path": "/",
+    "url": "http://127.0.0.1:8765/",
+    "status": 200,
+    "load_ms": 956,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_calendar",
+    "viewport": "mobile",
+    "path": "/calendar",
+    "url": "http://127.0.0.1:8765/calendar",
+    "status": 200,
+    "load_ms": 844,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_search",
+    "viewport": "mobile",
+    "path": "/soldiers",
+    "url": "http://127.0.0.1:8765/soldiers",
+    "status": 200,
+    "load_ms": 5745,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 23,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "q",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "record_type",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "viewport": "mobile",
+    "path": "/browse",
+    "url": "http://127.0.0.1:8765/browse",
+    "status": 200,
+    "load_ms": 1384,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 50,
+        "sample": [
+          [
+            "input[data-browse-label=\"DXD-00001\"]"
+          ],
+          [
+            "input[value=\"2\"]"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 6,
+        "sample": [
+          [
+            "select[name=\"scope\"]"
+          ],
+          [
+            "select[name=\"sort\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 310,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          },
+          {
+            "tag": "table",
+            "id": null,
+            "cls": "min-w-full border-collapse text-sm",
+            "right": 868,
+            "width": 854
+          },
+          {
+            "tag": "thead",
+            "id": null,
+            "cls": "bg-[rgba(36,48,61,0.92)] text-left text-[#f2ede1]",
+            "right": 868,
+            "width": 854
+          },
+          {
+            "tag": "tr",
+            "id": null,
+            "cls": null,
+            "right": 868,
+            "width": 854
+          },
+          {
+            "tag": "th",
+            "id": null,
+            "cls": "px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs",
+            "right": 486,
+            "width": 97
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 59,
+        "sample": [
+          {
+            "tag": "select",
+            "name": "scope",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "sort",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "page_size",
+            "type": "select-one"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "pension_state",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_review-queue",
+    "viewport": "mobile",
+    "path": "/review-queue",
+    "url": "http://127.0.0.1:8765/review-queue",
+    "status": 200,
+    "load_ms": 726,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_insights",
+    "viewport": "mobile",
+    "path": "/insights",
+    "url": "http://127.0.0.1:8765/insights",
+    "status": 200,
+    "load_ms": 938,
+    "axe_violations": [
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            ".rounded-lg"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "select",
+            "name": "orientation",
+            "type": "select-one"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_share",
+    "viewport": "mobile",
+    "path": "/share",
+    "url": "http://127.0.0.1:8765/share",
+    "status": 200,
+    "load_ms": 949,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_settings",
+    "viewport": "mobile",
+    "path": "/settings",
+    "url": "http://127.0.0.1:8765/settings",
+    "status": 200,
+    "load_ms": 840,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "input[name=\"confirmation_word\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 2,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "source_url",
+            "type": "url"
+          },
+          {
+            "tag": "input",
+            "name": "confirmation_word",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "viewport": "mobile",
+    "path": "/soldiers/new",
+    "url": "http://127.0.0.1:8765/soldiers/new",
+    "status": 200,
+    "load_ms": 975,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            ".bg-slate-100"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 29,
+        "sample": [
+          {
+            "tag": "textarea",
+            "name": "findagrave_source",
+            "type": "textarea"
+          },
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47",
+    "viewport": "mobile",
+    "path": "/soldiers/47",
+    "url": "http://127.0.0.1:8765/soldiers/47",
+    "status": 200,
+    "load_ms": 935,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "viewport": "mobile",
+    "path": "/soldiers/47/edit",
+    "url": "http://127.0.0.1:8765/soldiers/47/edit",
+    "status": 200,
+    "load_ms": 944,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            "input[name=\"display_id\"]"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 28,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-35",
+    "viewport": "mobile",
+    "path": "/soldiers/35",
+    "url": "http://127.0.0.1:8765/soldiers/35",
+    "status": 200,
+    "load_ms": 904,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "viewport": "mobile",
+    "path": "/soldiers/35/edit",
+    "url": "http://127.0.0.1:8765/soldiers/35/edit",
+    "status": 200,
+    "load_ms": 971,
+    "axe_violations": [
+      {
+        "id": "label",
+        "impact": "critical",
+        "help": "Form elements must have labels",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/label?application=playwright",
+        "nodes": 10,
+        "sample": [
+          [
+            "input[name=\"display_id\"]"
+          ],
+          [
+            "input[name=\"first_name\"]"
+          ]
+        ]
+      },
+      {
+        "id": "nested-interactive",
+        "impact": "serious",
+        "help": "Interactive controls must not be nested",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "details > .items-start"
+          ]
+        ]
+      },
+      {
+        "id": "select-name",
+        "impact": "critical",
+        "help": "Select element must have an accessible name",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/select-name?application=playwright",
+        "nodes": 2,
+        "sample": [
+          [
+            "select[name=\"entry_type\"]"
+          ],
+          [
+            "select[name=\"confederate_home_status\"]"
+          ]
+        ]
+      }
+    ],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "document scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > viewport=390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "unlabeled-input",
+        "severity": "medium",
+        "count": 31,
+        "sample": [
+          {
+            "tag": "input",
+            "name": "display_id",
+            "type": "text"
+          },
+          {
+            "tag": "select",
+            "name": "entry_type",
+            "type": "select-one"
+          },
+          {
+            "tag": "input",
+            "name": "prefix",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "first_name",
+            "type": "text"
+          },
+          {
+            "tag": "input",
+            "name": "middle_name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  }
+]

@@ -1,0 +1,5203 @@
+[
+  {
+    "label": "desktop_home",
+    "path": "/",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_calendar",
+    "path": "/calendar",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_search",
+    "path": "/soldiers",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 23,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "q",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "record_type",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "desktop_search",
+    "path": "/soldiers",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00001\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"2\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"3\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"4\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"5\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"6\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"7\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"8\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"9\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"10\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"11\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"12\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"13\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"14\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"15\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"16\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"17\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"18\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"19\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"20\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"21\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"22\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"23\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"24\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00025\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"26\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"27\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"28\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"29\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"30\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"31\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"32\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"33\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"34\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"35\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"36\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"37\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"38\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"39\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"40\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"41\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"42\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"43\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"44\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"45\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"46\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"47\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"48\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"49\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00050\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"scope\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"sort\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"page_size\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"review_status\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 19,
+    "sample": [
+      {
+        "tag": "a",
+        "text": "Jasper Gray Turner A",
+        "w": 142,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Edward Allen Tate C",
+        "w": 134,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Thomas Clay Reed G",
+        "w": 140,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Robert Isaac Harper H",
+        "w": 147,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Robert Davis Reed J",
+        "w": 136,
+        "h": 16
+      }
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 59,
+    "sample": [
+      {
+        "tag": "select",
+        "name": "scope",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "sort",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "page_size",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "pension_state",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_review-queue",
+    "path": "/review-queue",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_insights",
+    "path": "/insights",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      ".rounded-lg"
+    ]
+  },
+  {
+    "label": "desktop_insights",
+    "path": "/insights",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "select",
+        "name": "orientation",
+        "type": "select-one"
+      }
+    ]
+  },
+  {
+    "label": "desktop_insights",
+    "path": "/insights",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_share",
+    "path": "/share",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_settings",
+    "path": "/settings",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"confirmation_word\"]"
+    ]
+  },
+  {
+    "label": "desktop_settings",
+    "path": "/settings",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 2,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "source_url",
+        "type": "url"
+      },
+      {
+        "tag": "input",
+        "name": "confirmation_word",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "desktop_settings",
+    "path": "/settings",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      ".bg-slate-100"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 29,
+    "sample": [
+      {
+        "tag": "textarea",
+        "name": "findagrave_source",
+        "type": "textarea"
+      },
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"display_id\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 28,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"display_id\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 31,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "tablet_home",
+    "path": "/",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_calendar",
+    "path": "/calendar",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_search",
+    "path": "/soldiers",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 23,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "q",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "record_type",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "tablet_search",
+    "path": "/soldiers",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00001\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"2\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"3\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"4\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"5\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"6\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"7\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"8\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"9\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"10\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"11\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"12\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"13\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"14\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"15\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"16\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"17\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"18\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"19\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"20\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"21\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"22\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"23\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"24\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00025\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"26\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"27\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"28\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"29\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"30\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"31\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"32\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"33\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"34\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"35\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"36\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"37\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"38\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"39\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"40\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"41\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"42\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"43\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"44\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"45\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"46\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"47\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"48\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"49\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00050\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"scope\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"sort\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"page_size\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"review_status\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 59,
+    "sample": [
+      {
+        "tag": "select",
+        "name": "scope",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "sort",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "page_size",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "pension_state",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "tablet_browse",
+    "path": "/browse",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_review-queue",
+    "path": "/review-queue",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_insights",
+    "path": "/insights",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      ".rounded-lg"
+    ]
+  },
+  {
+    "label": "tablet_insights",
+    "path": "/insights",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "select",
+        "name": "orientation",
+        "type": "select-one"
+      }
+    ]
+  },
+  {
+    "label": "tablet_insights",
+    "path": "/insights",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_share",
+    "path": "/share",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_settings",
+    "path": "/settings",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"confirmation_word\"]"
+    ]
+  },
+  {
+    "label": "tablet_settings",
+    "path": "/settings",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 2,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "source_url",
+        "type": "url"
+      },
+      {
+        "tag": "input",
+        "name": "confirmation_word",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "tablet_settings",
+    "path": "/settings",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      ".bg-slate-100"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 29,
+    "sample": [
+      {
+        "tag": "textarea",
+        "name": "findagrave_source",
+        "type": "textarea"
+      },
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 20,
+    "sample": [
+      {
+        "tag": "form",
+        "id": null,
+        "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
+        "right": 1045,
+        "width": 384
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "flex items-start justify-between gap-3",
+        "right": 1028,
+        "width": 350
+      },
+      {
+        "tag": "details",
+        "id": null,
+        "cls": "relative",
+        "right": 1028,
+        "width": 32
+      },
+      {
+        "tag": "summary",
+        "id": null,
+        "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
+        "right": 1028,
+        "width": 32
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+        "right": 1028,
+        "width": 288
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"display_id\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 28,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 20,
+    "sample": [
+      {
+        "tag": "form",
+        "id": null,
+        "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
+        "right": 1045,
+        "width": 384
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "flex items-start justify-between gap-3",
+        "right": 1028,
+        "width": 350
+      },
+      {
+        "tag": "details",
+        "id": null,
+        "cls": "relative",
+        "right": 1028,
+        "width": 32
+      },
+      {
+        "tag": "summary",
+        "id": null,
+        "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
+        "right": 1028,
+        "width": 32
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+        "right": 1028,
+        "width": 288
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"display_id\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 31,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "tablet_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 801,
+    "item_width_avg": 100
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 23,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "q",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "record_type",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00001\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"2\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"3\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"4\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"5\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"6\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"7\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"8\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"9\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"10\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"11\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"12\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"13\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"14\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"15\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"16\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"17\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"18\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"19\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"20\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"21\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"22\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"23\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"24\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00025\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"26\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"27\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"28\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"29\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"30\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"31\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"32\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"33\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"34\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"35\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"36\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"37\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"38\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"39\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"40\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"41\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"42\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"43\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"44\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"45\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"46\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"47\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"48\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[value=\"49\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[data-browse-label=\"DXD-00050\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"scope\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"sort\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"page_size\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"review_status\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 310,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      },
+      {
+        "tag": "table",
+        "id": null,
+        "cls": "min-w-full border-collapse text-sm",
+        "right": 868,
+        "width": 854
+      },
+      {
+        "tag": "thead",
+        "id": null,
+        "cls": "bg-[rgba(36,48,61,0.92)] text-left text-[#f2ede1]",
+        "right": 868,
+        "width": 854
+      },
+      {
+        "tag": "tr",
+        "id": null,
+        "cls": null,
+        "right": 868,
+        "width": 854
+      },
+      {
+        "tag": "th",
+        "id": null,
+        "cls": "px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs",
+        "right": 486,
+        "width": 97
+      }
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 59,
+    "sample": [
+      {
+        "tag": "select",
+        "name": "scope",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "sort",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "page_size",
+        "type": "select-one"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "pension_state",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      ".rounded-lg"
+    ]
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "select",
+        "name": "orientation",
+        "type": "select-one"
+      }
+    ]
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"confirmation_word\"]"
+    ]
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 2,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "source_url",
+        "type": "url"
+      },
+      {
+        "tag": "input",
+        "name": "confirmation_word",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      ".bg-slate-100"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 29,
+    "sample": [
+      {
+        "tag": "textarea",
+        "name": "findagrave_source",
+        "type": "textarea"
+      },
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"display_id\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 28,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"display_id\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"first_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"middle_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"last_name\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_in\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"rank_out\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"unit\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"pension_state\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"birth_info\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "label",
+    "impact": "critical",
+    "help": "Form elements must have labels",
+    "target": [
+      "input[name=\"buried_in\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "nested-interactive",
+    "impact": "serious",
+    "help": "Interactive controls must not be nested",
+    "target": [
+      "details > .items-start"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"entry_type\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "select-name",
+    "impact": "critical",
+    "help": "Select element must have an accessible name",
+    "target": [
+      "select[name=\"confederate_home_status\"]"
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "document scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > viewport=390"
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "unlabeled-input",
+    "severity": "medium",
+    "count": 31,
+    "sample": [
+      {
+        "tag": "input",
+        "name": "display_id",
+        "type": "text"
+      },
+      {
+        "tag": "select",
+        "name": "entry_type",
+        "type": "select-one"
+      },
+      {
+        "tag": "input",
+        "name": "prefix",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "first_name",
+        "type": "text"
+      },
+      {
+        "tag": "input",
+        "name": "middle_name",
+        "type": "text"
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 348,
+    "item_width_avg": 44
+  }
+]
