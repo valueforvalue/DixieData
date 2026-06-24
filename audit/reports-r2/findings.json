@@ -207,7 +207,7 @@
     "kind": "visual",
     "id": "overflow-x",
     "severity": "high",
-    "count": 20,
+    "count": 14,
     "sample": [
       {
         "tag": "form",
@@ -224,14 +224,7 @@
         "width": 350
       },
       {
-        "tag": "details",
-        "id": null,
-        "cls": "relative",
-        "right": 1028,
-        "width": 32
-      },
-      {
-        "tag": "summary",
+        "tag": "button",
         "id": null,
         "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
         "right": 1028,
@@ -240,9 +233,16 @@
       {
         "tag": "div",
         "id": null,
-        "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+        "cls": "mt-3 grid gap-3 sm:grid-cols-2",
         "right": 1028,
-        "width": 288
+        "width": 350
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
+        "right": 1028,
+        "width": 169
       }
     ]
   },
