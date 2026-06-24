@@ -345,14 +345,15 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 				<section data-ui-id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					@SurfaceBadge(uiids.PanelSoldierFormRecords)
+					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
+						</div>
+						<button type="button" data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto">+ Add Source Record</button>
+					</div>
 					<details>
-						<summary class="mb-4 flex cursor-pointer list-none flex-wrap items-start justify-between gap-3">
-							<div>
-								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
-								<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
-							</div>
-							<button type="button" data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto">+ Add Source Record</button>
-						</summary>
+						<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Show / hide source records</summary>
 						<div data-record-list class="space-y-3">
 							for _, record := range formRecords(s.SourceRecords) {
 								@RecordInputRow(record)
