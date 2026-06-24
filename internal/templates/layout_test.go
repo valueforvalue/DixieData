@@ -67,7 +67,7 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, `data-feedback-open`) || !strings.Contains(content, `data-feedback-modal`) {
 		t.Fatalf("layout should include global feedback controls")
 	}
-	if !strings.Contains(content, `floating-nav-panel`) || !strings.Contains(content, `max-w-[min(100vw-2rem`) {
+	if !strings.Contains(content, `floating-nav-panel`) || !strings.Contains(content, `max-w-[calc(100vw-2rem)]`) {
 		t.Fatalf("layout should keep floating menu viewport-bounded")
 	}
 	if !strings.Contains(content, `.top-shell {`) || !strings.Contains(content, `position: sticky;`) || !strings.Contains(content, `class="top-shell flex`) || !strings.Contains(content, `class="app-shell"`) {
