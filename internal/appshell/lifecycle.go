@@ -252,6 +252,9 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "/app.css":
 			a.handleFrontendAsset("app.css", "text/css; charset=utf-8").ServeHTTP(w, r)
 			return
+		case "/htmx.min.js":
+			a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
+			return
 		}
 		renderStartupPlaceholder(w, r)
 		return

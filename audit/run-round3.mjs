@@ -200,7 +200,9 @@ async function testBrowseFilterFlow(page, flowResults) {
   await page.waitForTimeout(200);
 
   // Verify the filter drawer has the right form fields and the active-count
-  // badge updates when filters change.
+  // badge updates when filters change. (Filters save draft state on change
+  // but require an explicit Apply Filters click to actually submit — see
+  // TestBrowseFilterChangeSavesDraftWithoutAutoApplyingIt.)
   await page.goto(`${BASE}/browse`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(300);
 
@@ -210,7 +212,6 @@ async function testBrowseFilterFlow(page, flowResults) {
   });
   await page.waitForTimeout(200);
 
-  // Count filter inputs (excluding the hidden page input and submit button).
   const inputCount = await page.evaluate(() => {
     return document.querySelectorAll('form#browse-filters [data-browse-filter-input]').length;
   });
@@ -351,6 +352,21 @@ async function testFeedbackModalFlow(page, flowResults) {
   });
 
   console.log(`  feedback flow: ${flowResults.slice(-1)[0].name}=${flowResults.slice(-1)[0].passed ? 'PASS' : 'FAIL'}`);
+
+  // Verify htmx is actually loaded on every page. This guards against
+  // a future regression where index.html drops the htmx script tag.
+  await page.goto(`${BASE}/calendar`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(300);
+  const htmx = await page.evaluate(() => ({
+    loaded: typeof window.htmx !== 'undefined',
+    version: typeof window.htmx !== 'undefined' ? window.htmx.version : null,
+  }));
+  flowResults.push({
+    name: 'htmx-library-loaded',
+    passed: htmx.loaded && typeof htmx.version === 'string',
+    details: htmx,
+  });
+  console.log(`  htmx flow: ${flowResults.slice(-1)[0].name}=${flowResults.slice(-1)[0].passed ? 'PASS' : 'FAIL'}`);
 }
 
 function renderFlowSummary(routes, findings, flows) {

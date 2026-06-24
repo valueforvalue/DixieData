@@ -2,7 +2,7 @@
 
 Routes audited: **24** (12 unique paths × 2 viewports)
 Findings: **32**
-Interactive flows: **9** (9 passed, 0 failed)
+Interactive flows: **10** (10 passed, 0 failed)
 
 ## A11y violations by severity
 - Critical: 0
@@ -30,3 +30,4 @@ Interactive flows: **9** (9 passed, 0 failed)
 | compare-differences-pills-present | ✓ PASS |
 | browse-compare-selection-enabled | ✓ PASS |
 | feedback-modal-opens-and-closes | ✓ PASS |
+| htmx-library-loaded | ✓ PASS |

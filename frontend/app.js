@@ -3349,6 +3349,16 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    // htmx is loaded but its auto-handling of hx-* attributes is disabled
+    // by removing those attributes from the DOM at boot. The app's own
+    // request() / queueRequest() / triggerInputRequest handlers own all
+    // network round-trips and preventDefault on submit to avoid
+    // duplicate fetches. window.htmx is still defined (third-party code
+    // can check for it). See audit/reports/SLICES.md for context.
+    document.querySelectorAll("[hx-get], [hx-post], [hx-put], [hx-delete], [hx-trigger]").forEach((el) => {
+      ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-target", "hx-swap", "hx-confirm", "hx-include"].forEach((attr) => el.removeAttribute(attr));
+    });
+
     ensureResponsiveLayoutWatcher();
     applyResponsiveLayout(document);
     initializeTabs();
