@@ -805,16 +805,6 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 			</div>
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
-					<h3 class="text-xl gold font-bold">Compress Stored Images</h3>
-					<p class="mt-2 text-sm text-slate-600">Re-encode stored images to JPEG quality 85 to recover disk space. Originals move to temp trash for 30-day retention. Already-compressed images are skipped automatically. Run scan + compress after restoring a backup.</p>
-				</div>
-				<form hx-post="/settings/images/compress/scan" hx-target="#settings-compress-results" class="space-y-4">
-					<button type="submit" class="secondary-button w-full sm:w-auto">Scan for Compressible Images</button>
-				</form>
-				<div id="settings-compress-results" class="space-y-3"></div>
-			</div>
-			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				<div>
 					<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
 				</div>
@@ -974,36 +964,6 @@ templ SettingsOrphanCleanupResult(moved int, trashRoot string) {
 			No orphaned images were moved.
 		} else {
 			Moved <strong>{ fmt.Sprintf("%d", moved) }</strong> orphaned image file(s) to <code>{ trashRoot }</code>.
-		}
-	</div>
-}
-
-templ SettingsCompressibleImages(candidates []viewmodel.CompressibleImage) {
-	if len(candidates) == 0 {
-		<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">All stored images are already compressed.</div>
-	} else {
-		<form hx-post="/settings/images/compress/run" hx-target="#settings-compress-results" class="space-y-3">
-			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
-				Found <strong>{ fmt.Sprintf("%d", len(candidates)) }</strong> image(s) that have not been compressed yet.
-			</div>
-			<button type="submit" class="secondary-button w-full sm:w-auto">Compress All Uncompressed Images</button>
-		</form>
-	}
-}
-
-templ SettingsCompressionResult(compressed, skipped int, originalBytes, finalBytes int64, errors []string) {
-	<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600 space-y-2">
-		<div>Compressed <strong>{ fmt.Sprintf("%d", compressed) }</strong> image(s). Skipped <strong>{ fmt.Sprintf("%d", skipped) }</strong>.</div>
-		<div>Bytes saved: <strong>{ fmt.Sprintf("%d", originalBytes-finalBytes) }</strong> ({ originalBytes } → { finalBytes }).</div>
-		if len(errors) > 0 {
-			<details class="mt-2">
-				<summary class="cursor-pointer text-xs text-amber-700">{ fmt.Sprintf("%d error(s)", len(errors)) }</summary>
-				<ul class="mt-1 text-xs text-slate-600 space-y-1">
-					for _, e := range errors {
-						<li>{ e }</li>
-					}
-				</ul>
-			</details>
 		}
 	</div>
 }

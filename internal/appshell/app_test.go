@@ -1417,11 +1417,7 @@ func TestRotateImageFileClockwise(t *testing.T) {
 		t.Fatalf("writeJPEGFixture: %v", err)
 	}
 
-	app := &App{
-		compress: archive.NewCompressService(dbForRotate(t)),
-	}
-
-	if err := app.rotateImageFile(path, true); err != nil {
+	if err := rotateImageFile(path, true); err != nil {
 		t.Fatalf("rotateImageFile: %v", err)
 	}
 
@@ -1432,20 +1428,6 @@ func TestRotateImageFileClockwise(t *testing.T) {
 	if width != 3 || height != 2 {
 		t.Fatalf("dimensions = %dx%d, want 3x2", width, height)
 	}
-}
-
-// dbForRotate opens a throwaway DB so the rotate test can construct an
-// App with a CompressService. The DB is only used for RecordCompression
-// side-effects.
-func dbForRotate(t *testing.T) *db.DB {
-	t.Helper()
-	dir := t.TempDir()
-	d, err := db.Open(dir)
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	t.Cleanup(func() { d.Close() })
-	return d
 }
 
 func TestImageImportRedirectPath(t *testing.T) {
