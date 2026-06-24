@@ -5,7 +5,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1001,
+    "load_ms": 1019,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -25,7 +25,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 879,
+    "load_ms": 844,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -45,7 +45,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5851,
+    "load_ms": 5849,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -97,7 +97,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1883,
+    "load_ms": 1905,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -223,7 +223,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 797,
+    "load_ms": 775,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -243,7 +243,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1050,
+    "load_ms": 1112,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -288,7 +288,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1090,
+    "load_ms": 1063,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -308,7 +308,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 1000,
+    "load_ms": 989,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -353,7 +353,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1087,
+    "load_ms": 1068,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -369,18 +369,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -448,7 +436,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 1026,
+    "load_ms": 1039,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -468,7 +456,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1106,
+    "load_ms": 1079,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -484,18 +472,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -563,7 +539,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 988,
+    "load_ms": 1035,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -583,7 +559,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1084,
+    "load_ms": 1083,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -599,18 +575,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -678,7 +642,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1015,
+    "load_ms": 1007,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -698,7 +662,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 873,
+    "load_ms": 876,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -718,7 +682,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5843,
+    "load_ms": 5840,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -770,7 +734,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1858,
+    "load_ms": 1883,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -859,7 +823,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 778,
+    "load_ms": 749,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -879,7 +843,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1027,
+    "load_ms": 1060,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -924,7 +888,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1046,
+    "load_ms": 1055,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -944,7 +908,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 935,
+    "load_ms": 918,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -989,7 +953,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1015,
+    "load_ms": 1041,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1005,18 +969,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -1084,7 +1036,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 1024,
+    "load_ms": 984,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1092,7 +1044,7 @@
       {
         "id": "overflow-x",
         "severity": "high",
-        "count": 20,
+        "count": 14,
         "sample": [
           {
             "tag": "form",
@@ -1109,14 +1061,7 @@
             "width": 350
           },
           {
-            "tag": "details",
-            "id": null,
-            "cls": "relative",
-            "right": 1028,
-            "width": 32
-          },
-          {
-            "tag": "summary",
+            "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
             "right": 1028,
@@ -1125,9 +1070,16 @@
           {
             "tag": "div",
             "id": null,
-            "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+            "cls": "mt-3 grid gap-3 sm:grid-cols-2",
             "right": 1028,
-            "width": 288
+            "width": 350
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
+            "right": 1028,
+            "width": 169
           }
         ]
       },
@@ -1146,7 +1098,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1003,
+    "load_ms": 1005,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1162,18 +1114,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -1241,7 +1181,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 956,
+    "load_ms": 979,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1249,7 +1189,7 @@
       {
         "id": "overflow-x",
         "severity": "high",
-        "count": 20,
+        "count": 14,
         "sample": [
           {
             "tag": "form",
@@ -1266,14 +1206,7 @@
             "width": 350
           },
           {
-            "tag": "details",
-            "id": null,
-            "cls": "relative",
-            "right": 1028,
-            "width": 32
-          },
-          {
-            "tag": "summary",
+            "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
             "right": 1028,
@@ -1282,9 +1215,16 @@
           {
             "tag": "div",
             "id": null,
-            "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+            "cls": "mt-3 grid gap-3 sm:grid-cols-2",
             "right": 1028,
-            "width": 288
+            "width": 350
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
+            "right": 1028,
+            "width": 169
           }
         ]
       },
@@ -1303,7 +1243,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1013,
+    "load_ms": 1030,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1319,18 +1259,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -1398,7 +1326,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 987,
+    "load_ms": 998,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1418,7 +1346,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 884,
+    "load_ms": 864,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1438,7 +1366,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 5823,
+    "load_ms": 5831,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1490,7 +1418,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 1443,
+    "load_ms": 1489,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1621,7 +1549,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 773,
+    "load_ms": 739,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1641,7 +1569,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 992,
+    "load_ms": 986,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1686,7 +1614,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1003,
+    "load_ms": 1022,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1706,7 +1634,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 861,
+    "load_ms": 900,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1751,7 +1679,7 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1039,
+    "load_ms": 1022,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1767,18 +1695,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -1846,7 +1762,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 990,
+    "load_ms": 981,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1866,7 +1782,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 987,
+    "load_ms": 977,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1882,18 +1798,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },
@@ -1961,7 +1865,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 925,
+    "load_ms": 911,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1981,7 +1885,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 981,
+    "load_ms": 1022,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [
@@ -1997,18 +1901,6 @@
           ],
           [
             "input[name=\"first_name\"]"
-          ]
-        ]
-      },
-      {
-        "id": "nested-interactive",
-        "impact": "serious",
-        "help": "Interactive controls must not be nested",
-        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/nested-interactive?application=playwright",
-        "nodes": 1,
-        "sample": [
-          [
-            "details > .items-start"
           ]
         ]
       },

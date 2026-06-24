@@ -1063,18 +1063,6 @@
     "path": "/soldiers/new",
     "viewport": "desktop",
     "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
-    ]
-  },
-  {
-    "label": "desktop_soldier-new",
-    "path": "/soldiers/new",
-    "viewport": "desktop",
-    "kind": "a11y",
     "id": "select-name",
     "impact": "critical",
     "help": "Select element must have an accessible name",
@@ -1277,18 +1265,6 @@
     "path": "/soldiers/47/edit",
     "viewport": "desktop",
     "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
-    ]
-  },
-  {
-    "label": "desktop_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "desktop",
-    "kind": "a11y",
     "id": "select-name",
     "impact": "critical",
     "help": "Select element must have an accessible name",
@@ -1484,18 +1460,6 @@
     "help": "Form elements must have labels",
     "target": [
       "input[name=\"buried_in\"]"
-    ]
-  },
-  {
-    "label": "desktop_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "desktop",
-    "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
     ]
   },
   {
@@ -2592,18 +2556,6 @@
     "path": "/soldiers/new",
     "viewport": "tablet",
     "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
-    ]
-  },
-  {
-    "label": "tablet_soldier-new",
-    "path": "/soldiers/new",
-    "viewport": "tablet",
-    "kind": "a11y",
     "id": "select-name",
     "impact": "critical",
     "help": "Select element must have an accessible name",
@@ -2677,7 +2629,7 @@
     "kind": "visual",
     "id": "overflow-x",
     "severity": "high",
-    "count": 20,
+    "count": 14,
     "sample": [
       {
         "tag": "form",
@@ -2694,14 +2646,7 @@
         "width": 350
       },
       {
-        "tag": "details",
-        "id": null,
-        "cls": "relative",
-        "right": 1028,
-        "width": 32
-      },
-      {
-        "tag": "summary",
+        "tag": "button",
         "id": null,
         "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
         "right": 1028,
@@ -2710,9 +2655,16 @@
       {
         "tag": "div",
         "id": null,
-        "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+        "cls": "mt-3 grid gap-3 sm:grid-cols-2",
         "right": 1028,
-        "width": 288
+        "width": 350
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
+        "right": 1028,
+        "width": 169
       }
     ]
   },
@@ -2852,18 +2804,6 @@
     "path": "/soldiers/47/edit",
     "viewport": "tablet",
     "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
-    ]
-  },
-  {
-    "label": "tablet_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "tablet",
-    "kind": "a11y",
     "id": "select-name",
     "impact": "critical",
     "help": "Select element must have an accessible name",
@@ -2937,7 +2877,7 @@
     "kind": "visual",
     "id": "overflow-x",
     "severity": "high",
-    "count": 20,
+    "count": 14,
     "sample": [
       {
         "tag": "form",
@@ -2954,14 +2894,7 @@
         "width": 350
       },
       {
-        "tag": "details",
-        "id": null,
-        "cls": "relative",
-        "right": 1028,
-        "width": 32
-      },
-      {
-        "tag": "summary",
+        "tag": "button",
         "id": null,
         "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
         "right": 1028,
@@ -2970,9 +2903,16 @@
       {
         "tag": "div",
         "id": null,
-        "cls": "absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)",
+        "cls": "mt-3 grid gap-3 sm:grid-cols-2",
         "right": 1028,
-        "width": 288
+        "width": 350
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
+        "right": 1028,
+        "width": 169
       }
     ]
   },
@@ -3105,18 +3045,6 @@
     "help": "Form elements must have labels",
     "target": [
       "input[name=\"buried_in\"]"
-    ]
-  },
-  {
-    "label": "tablet_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "tablet",
-    "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
     ]
   },
   {
@@ -4259,18 +4187,6 @@
     "path": "/soldiers/new",
     "viewport": "mobile",
     "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
-    ]
-  },
-  {
-    "label": "mobile_soldier-new",
-    "path": "/soldiers/new",
-    "viewport": "mobile",
-    "kind": "a11y",
     "id": "select-name",
     "impact": "critical",
     "help": "Select element must have an accessible name",
@@ -4473,18 +4389,6 @@
     "path": "/soldiers/47/edit",
     "viewport": "mobile",
     "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
-    ]
-  },
-  {
-    "label": "mobile_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "mobile",
-    "kind": "a11y",
     "id": "select-name",
     "impact": "critical",
     "help": "Select element must have an accessible name",
@@ -4680,18 +4584,6 @@
     "help": "Form elements must have labels",
     "target": [
       "input[name=\"buried_in\"]"
-    ]
-  },
-  {
-    "label": "mobile_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "mobile",
-    "kind": "a11y",
-    "id": "nested-interactive",
-    "impact": "serious",
-    "help": "Interactive controls must not be nested",
-    "target": [
-      "details > .items-start"
     ]
   },
   {
