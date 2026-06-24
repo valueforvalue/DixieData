@@ -2210,6 +2210,77 @@
     });
   }
 
+  // Top-nav hamburger drawer (visible below 768px). Mirrors the desktop
+  // nav but stacks vertically and traps focus while open.
+  function initializeTopNav() {
+    const drawer = document.querySelector("[data-top-nav-drawer]");
+    const toggle = document.querySelector("[data-top-nav-toggle]");
+    const close = document.querySelector("[data-top-nav-close]");
+    if (!(drawer instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    let lastFocus = null;
+
+    function open() {
+      if (!drawer.classList.contains("hidden")) {
+        return;
+      }
+      lastFocus = document.activeElement;
+      drawer.classList.remove("hidden");
+      toggle.setAttribute("aria-expanded", "true");
+      // Move focus to the close button so keyboard users can dismiss.
+      if (close instanceof HTMLButtonElement) {
+        close.focus();
+      }
+      document.addEventListener("keydown", handleKey);
+    }
+
+    function dismiss() {
+      if (drawer.classList.contains("hidden")) {
+        return;
+      }
+      drawer.classList.add("hidden");
+      toggle.setAttribute("aria-expanded", "false");
+      document.removeEventListener("keydown", handleKey);
+      if (lastFocus instanceof HTMLElement) {
+        lastFocus.focus();
+      } else {
+        toggle.focus();
+      }
+    }
+
+    function handleKey(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        dismiss();
+      }
+    }
+
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (drawer.classList.contains("hidden")) {
+        open();
+      } else {
+        dismiss();
+      }
+    });
+
+    if (close instanceof HTMLButtonElement) {
+      close.addEventListener("click", (event) => {
+        event.preventDefault();
+        dismiss();
+      });
+    }
+
+    // Click on a nav link closes the drawer (the destination route
+    // replaces the page so the drawer would normally disappear anyway,
+    // but explicitly closing avoids a flash on htmx swaps).
+    drawer.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => dismiss());
+    });
+  }
+
   function setSectionEnabled(section, enabled) {
     if (!(section instanceof HTMLElement)) {
       return;
@@ -3216,6 +3287,7 @@
     initializeEntryTypeForms();
     initializeLiveCounts(document);
     initializeFloatingNav();
+    initializeTopNav();
     applyCalendarAnniversaryDensity();
     syncPrintScopeState();
     applyPrintRecordFilter();
