@@ -1,0 +1,470 @@
+[
+  {
+    "label": "desktop_home",
+    "path": "/",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_calendar",
+    "path": "/calendar",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_search",
+    "path": "/soldiers",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 19,
+    "sample": [
+      {
+        "tag": "a",
+        "text": "Jasper Gray Turner A",
+        "w": 142,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Edward Allen Tate C",
+        "w": 134,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Thomas Clay Reed G",
+        "w": 140,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Robert Isaac Harper H",
+        "w": 147,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "Robert Davis Reed J",
+        "w": 136,
+        "h": 16
+      }
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_browse",
+    "path": "/browse",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "table-rows",
+    "severity": "info",
+    "rows": 50,
+    "page_height": 4121
+  },
+  {
+    "label": "desktop_review-queue",
+    "path": "/review-queue",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_insights",
+    "path": "/insights",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_share",
+    "path": "/share",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_settings",
+    "path": "/settings",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "button",
+        "text": "Delete saved local draft",
+        "w": 148,
+        "h": 22
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_compare",
+    "path": "/compare?id1=47&id2=35",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 3,
+    "sample": [
+      {
+        "tag": "button",
+        "text": "Add Images From Computer",
+        "w": 179,
+        "h": 22
+      },
+      {
+        "tag": "button",
+        "text": "Download Selected Images",
+        "w": 172,
+        "h": 22
+      },
+      {
+        "tag": "button",
+        "text": "Delete Selected Images",
+        "w": 151,
+        "h": 22
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "button",
+        "text": "Add Images From Computer",
+        "w": 179,
+        "h": 22
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "small-tap-target",
+    "severity": "medium",
+    "count": 50,
+    "sample": [
+      {
+        "tag": "a",
+        "text": "View →",
+        "w": 42,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "View →",
+        "w": 42,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "View →",
+        "w": 42,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "View →",
+        "w": 42,
+        "h": 16
+      },
+      {
+        "tag": "a",
+        "text": "View →",
+        "w": 42,
+        "h": 16
+      }
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "table-rows",
+    "severity": "info",
+    "rows": 50,
+    "page_height": 11373
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_compare",
+    "path": "/compare?id1=47&id2=35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 43,
+    "sample": [
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "min-w-[38rem]",
+        "right": 644,
+        "width": 608
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border",
+        "right": 644,
+        "width": 608
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "",
+        "right": 453,
+        "width": 175
+      },
+      {
+        "tag": "div",
+        "id": null,
+        "cls": "grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b ",
+        "right": 644,
+        "width": 608
+      }
+    ]
+  },
+  {
+    "label": "mobile_compare",
+    "path": "/compare?id1=47&id2=35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 0,
+    "item_width_avg": 0
+  }
+]

@@ -1,0 +1,630 @@
+[
+  {
+    "label": "desktop_home",
+    "viewport": "desktop",
+    "path": "/",
+    "status": 200,
+    "load_ms": 987,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_calendar",
+    "viewport": "desktop",
+    "path": "/calendar",
+    "status": 200,
+    "load_ms": 868,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_search",
+    "viewport": "desktop",
+    "path": "/soldiers",
+    "status": 200,
+    "load_ms": 814,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_browse",
+    "viewport": "desktop",
+    "path": "/browse",
+    "status": 200,
+    "load_ms": 1587,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 19,
+        "sample": [
+          {
+            "tag": "a",
+            "text": "Jasper Gray Turner A",
+            "w": 142,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Edward Allen Tate C",
+            "w": 134,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Thomas Clay Reed G",
+            "w": 140,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Robert Isaac Harper H",
+            "w": 147,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "Robert Davis Reed J",
+            "w": 136,
+            "h": 16
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      },
+      {
+        "id": "table-rows",
+        "severity": "info",
+        "rows": 50,
+        "page_height": 4121
+      }
+    ]
+  },
+  {
+    "label": "desktop_review-queue",
+    "viewport": "desktop",
+    "path": "/review-queue",
+    "status": 200,
+    "load_ms": 727,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_insights",
+    "viewport": "desktop",
+    "path": "/insights",
+    "status": 200,
+    "load_ms": 885,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_share",
+    "viewport": "desktop",
+    "path": "/share",
+    "status": 200,
+    "load_ms": 892,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_settings",
+    "viewport": "desktop",
+    "path": "/settings",
+    "status": 200,
+    "load_ms": 846,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-new",
+    "viewport": "desktop",
+    "path": "/soldiers/new",
+    "status": 200,
+    "load_ms": 928,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Delete saved local draft",
+            "w": 148,
+            "h": 22
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_compare",
+    "viewport": "desktop",
+    "path": "/compare?id1=47&id2=35",
+    "status": 200,
+    "load_ms": 820,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47",
+    "viewport": "desktop",
+    "path": "/soldiers/47",
+    "status": 200,
+    "load_ms": 885,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 3,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Download Selected Images",
+            "w": 172,
+            "h": 22
+          },
+          {
+            "tag": "button",
+            "text": "Delete Selected Images",
+            "w": 151,
+            "h": 22
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "desktop_soldier-47-edit",
+    "viewport": "desktop",
+    "path": "/soldiers/47/edit",
+    "status": 200,
+    "load_ms": 890,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "button",
+            "text": "Add Images From Computer",
+            "w": 179,
+            "h": 22
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 886,
+        "item_width_avg": 111
+      }
+    ]
+  },
+  {
+    "label": "mobile_home",
+    "viewport": "mobile",
+    "path": "/",
+    "status": 200,
+    "load_ms": 908,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_calendar",
+    "viewport": "mobile",
+    "path": "/calendar",
+    "status": 200,
+    "load_ms": 771,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_search",
+    "viewport": "mobile",
+    "path": "/soldiers",
+    "status": 200,
+    "load_ms": 727,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_browse",
+    "viewport": "mobile",
+    "path": "/browse",
+    "status": 200,
+    "load_ms": 1805,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "small-tap-target",
+        "severity": "medium",
+        "count": 50,
+        "sample": [
+          {
+            "tag": "a",
+            "text": "View →",
+            "w": 42,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "View →",
+            "w": 42,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "View →",
+            "w": 42,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "View →",
+            "w": 42,
+            "h": 16
+          },
+          {
+            "tag": "a",
+            "text": "View →",
+            "w": 42,
+            "h": 16
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      },
+      {
+        "id": "table-rows",
+        "severity": "info",
+        "rows": 50,
+        "page_height": 11373
+      }
+    ]
+  },
+  {
+    "label": "mobile_review-queue",
+    "viewport": "mobile",
+    "path": "/review-queue",
+    "status": 200,
+    "load_ms": 694,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_insights",
+    "viewport": "mobile",
+    "path": "/insights",
+    "status": 200,
+    "load_ms": 837,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_share",
+    "viewport": "mobile",
+    "path": "/share",
+    "status": 200,
+    "load_ms": 828,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_settings",
+    "viewport": "mobile",
+    "path": "/settings",
+    "status": 200,
+    "load_ms": 757,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "viewport": "mobile",
+    "path": "/soldiers/new",
+    "status": 200,
+    "load_ms": 847,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_compare",
+    "viewport": "mobile",
+    "path": "/compare?id1=47&id2=35",
+    "status": 200,
+    "load_ms": 822,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 43,
+        "sample": [
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "min-w-[38rem]",
+            "right": 644,
+            "width": 608
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border",
+            "right": 644,
+            "width": 608
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "",
+            "right": 453,
+            "width": 175
+          },
+          {
+            "tag": "div",
+            "id": null,
+            "cls": "grid grid-cols-[minmax(10rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b ",
+            "right": 644,
+            "width": 608
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47",
+    "viewport": "mobile",
+    "path": "/soldiers/47",
+    "status": 200,
+    "load_ms": 844,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "viewport": "mobile",
+    "path": "/soldiers/47/edit",
+    "status": 200,
+    "load_ms": 840,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 0,
+        "item_width_avg": 0
+      }
+    ]
+  }
+]
