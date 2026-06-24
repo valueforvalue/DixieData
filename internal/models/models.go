@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Soldier struct {
@@ -155,17 +154,14 @@ type Record struct {
 }
 
 type Image struct {
-	ID              int64      `json:"id"`
-	SyncID          string     `json:"sync_id"`
-	SoldierID       int64      `json:"soldier_id"`
-	SoldierSyncID   string     `json:"soldier_sync_id"`
-	FileName        string     `json:"file_name"`
-	FilePath        string     `json:"file_path"`
-	Caption         string     `json:"caption"`
-	IsPrimary       bool       `json:"is_primary"`
-	CompressedAt    *time.Time `json:"compressed_at,omitempty"`
-	OriginalBytes   int64      `json:"original_bytes"`
-	CompressedBytes int64      `json:"compressed_bytes"`
+	ID            int64  `json:"id"`
+	SyncID        string `json:"sync_id"`
+	SoldierID     int64  `json:"soldier_id"`
+	SoldierSyncID string `json:"soldier_sync_id"`
+	FileName      string `json:"file_name"`
+	FilePath      string `json:"file_path"`
+	Caption       string `json:"caption"`
+	IsPrimary     bool   `json:"is_primary"`
 	// ResolvedPath is the absolute path on the user's filesystem.
 	// It is set by the appshell before each export so the renderer
 	// does not have to know where the data dir lives. We DO

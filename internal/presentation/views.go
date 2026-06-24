@@ -139,14 +139,6 @@ func SettingsOrphanCleanupResult(moved int, trashRoot string) templ.Component {
 	return templates.SettingsOrphanCleanupResult(moved, trashRoot)
 }
 
-func SettingsCompressibleImages(candidates []archive.CompressibleImage) templ.Component {
-	return templates.SettingsCompressibleImages(viewmodel.CompressibleImagesFromDomain(candidates))
-}
-
-func SettingsCompressionResult(report archive.CompressionReport) templ.Component {
-	return templates.SettingsCompressionResult(report.Compressed, report.Skipped, report.OriginalBytes, report.FinalBytes, report.Errors)
-}
-
 func SettingsQualityScanResults(result records.DataQualityScanResult) templ.Component {
 	return templates.SettingsQualityScanResults(viewmodel.DataQualityScanResultFromDomain(result))
 }

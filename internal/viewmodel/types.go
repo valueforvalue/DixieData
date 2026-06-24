@@ -1,7 +1,5 @@
 package viewmodel
 
-import "time"
-
 type PersonRecord struct {
 	ID                    int64
 	DisplayID             string
@@ -75,16 +73,7 @@ type Image struct {
 	FilePath           string
 	Caption            string
 	IsPrimary          bool
-	CompressedAt       *time.Time
-	OriginalBytes      int64
-	CompressedBytes    int64
 	ResolvedPath       string
-}
-
-type CompressibleImage struct {
-	RelativePath string
-	Size         int64
-	ModifiedAt   string
 }
 
 type ArchiveCounts struct {

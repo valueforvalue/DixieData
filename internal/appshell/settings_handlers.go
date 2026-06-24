@@ -114,69 +114,6 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 	presentation.SettingsOrphanCleanupResult(moved, trashRoot).Render(r.Context(), w)
 }
 
-func (a *App) handleScanCompressibleImages(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	candidates, err := a.compress.DiscoverUncompressed(a.dataDir)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	presentation.SettingsCompressibleImages(candidates).Render(r.Context(), w)
-}
-
-func (a *App) handleRunImageCompression(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
-		return
-	}
-	candidates, err := a.compress.DiscoverUncompressed(a.dataDir)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if len(candidates) == 0 {
-		fmt.Fprint(w, "No images need compression.")
-		return
-	}
-	relPaths := make([]string, len(candidates))
-	for i, c := range candidates {
-		relPaths[i] = c.RelativePath
-	}
-	report, _ := a.compress.CompressParallel(a.dataDir, relPaths, 4, nil)
-	// CompressParallel always returns nil error; per-file failures are
-	// surfaced via report.Errors. Matches handleCleanupImageOrphans shape.
-	setToastHeader(w, fmt.Sprintf("Compressed %d image(s); saved %s (errors: %d).",
-		report.Compressed, formatBytes(report.OriginalBytes-report.FinalBytes), len(report.Errors)))
-	presentation.SettingsCompressionResult(report).Render(r.Context(), w)
-}
-
-// formatBytes converts a byte count to a human-readable string (e.g.
-// 1.5 MB, 832 KB). Used by the compress-result toast.
-func formatBytes(n int64) string {
-	const (
-		kb = 1024
-		mb = kb * 1024
-		gb = mb * 1024
-	)
-	switch {
-	case n >= gb:
-		return fmt.Sprintf("%.1f GB", float64(n)/float64(gb))
-	case n >= mb:
-		return fmt.Sprintf("%.1f MB", float64(n)/float64(mb))
-	case n >= kb:
-		return fmt.Sprintf("%.1f KB", float64(n)/float64(kb))
-	default:
-		return fmt.Sprintf("%d B", n)
-	}
-}
-
 func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

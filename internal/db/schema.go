@@ -84,10 +84,7 @@ CREATE TABLE IF NOT EXISTS images (
     file_name    TEXT,
     file_path    TEXT,
     caption      TEXT,
-    is_primary   BOOLEAN DEFAULT 0,
-    compressed_at DATETIME,
-    original_bytes INTEGER DEFAULT 0,
-    compressed_bytes INTEGER DEFAULT 0
+    is_primary   BOOLEAN DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS merge_review_sessions (
@@ -339,9 +336,6 @@ func applySchema(db *DB) error {
 		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
 		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`},
 		{table: "images", column: "is_primary", sql: `ALTER TABLE images ADD COLUMN is_primary BOOLEAN DEFAULT 0`},
-		{table: "images", column: "compressed_at", sql: `ALTER TABLE images ADD COLUMN compressed_at DATETIME`},
-		{table: "images", column: "original_bytes", sql: `ALTER TABLE images ADD COLUMN original_bytes INTEGER DEFAULT 0`},
-		{table: "images", column: "compressed_bytes", sql: `ALTER TABLE images ADD COLUMN compressed_bytes INTEGER DEFAULT 0`},
 	} {
 		exists, err := columnExists(tx, migration.table, migration.column)
 		if err != nil {
