@@ -10,6 +10,9 @@ import (
 )
 
 func TestLegacyBombMigratesToCurrentSchema(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test ./tests/stress/...`")
+	}
 	backupPath := filepath.Join(t.TempDir(), "legacy-bomb.ddbak")
 	createLegacyBackupZip(t, backupPath)
 
@@ -41,6 +44,9 @@ func TestLegacyBombMigratesToCurrentSchema(t *testing.T) {
 }
 
 func TestModernBackupPreservesPrefixAndSuffixAcrossImport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test ./tests/stress/...`")
+	}
 	sourceDB, soldierSvc, backupSvc, dataDir := newStressServices(t)
 	defer sourceDB.Close()
 

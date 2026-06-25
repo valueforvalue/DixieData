@@ -7,6 +7,9 @@ import (
 )
 
 func TestGenerateGarbageDatabase(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test ./tests/stress/...`")
+	}
 	dataDir := t.TempDir()
 	summary, err := GenerateGarbageDatabase(dataDir, 24)
 	if err != nil {

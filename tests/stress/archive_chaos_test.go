@@ -14,6 +14,9 @@ import (
 )
 
 func TestCorruptBackupImportRejectsPoisonArchives(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test ./tests/stress/...`")
+	}
 	database, _, backupSvc, _ := newStressServices(t)
 	defer database.Close()
 
@@ -95,6 +98,9 @@ func TestCorruptBackupImportRejectsPoisonArchives(t *testing.T) {
 }
 
 func TestCorruptSharedImportRejectsPoisonArchives(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test ./tests/stress/...`")
+	}
 	database, _, backupSvc, dataDir := newStressServices(t)
 	defer database.Close()
 
