@@ -84,7 +84,7 @@ goldmaster: ## Gold-master suite
 # Build the standalone tool. Output binary lives at
 # tools/tune/bin/dixiedata-tune (Windows: .exe suffix). Cached
 # across invocations unless source files change.
-tune:
+tune: ## Run the Tune iteration harness
 	@mkdir -p tools/tune/bin
 ifeq ($(OS),Windows_NT)
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
@@ -96,7 +96,7 @@ endif
 # Smoke test only -- no byte comparison (the live DB changes over
 # time). Verifies the tool opens the archive, renders, and exits 0.
 # Useful for surfacing layout overflow / edge cases on real data.
-tune-smoke:
+tune-smoke: ## Run Tune smoke tests only
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	cd tools/tune && go build -o bin/dixiedata-tune .
 	tools/tune/bin/dixiedata-tune --db .dixiedata render --template bulk_soldier --mode bulk --out "$(PWD)/build/log/tune-smoke.pdf"
@@ -104,7 +104,7 @@ tune-smoke:
 
 # Regenerate the byte-identical PDF snapshots that pin tune's
 # output against internal/archive's output. Requires typst in PATH.
-tune-snapshots:
+tune-snapshots: ## Update Tune snapshot fixtures (export-contract)
 	UPDATE_SNAPSHOTS=1 go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s
 	@echo "snapshots regenerated; rerun without UPDATE_SNAPSHOTS=1 to verify byte-stability"
 	go test -count=1 ./internal/exportcontract/ -run 'TestArchiveContractSnapshots|TestCLIContractSnapshots' -timeout 600s
@@ -114,7 +114,7 @@ tune-snapshots:
 # Iteration loop (issue #69 follow-up): user annotates
 # docs/renderings/<surface>/review.md; agent makes code changes;
 # rerun with ROUND=2+ to capture successive states.
-render-round:
+render-round: ## Render the audit round (default: round 4)
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
 	pwsh -NoLogo -NoProfile -File scripts/render-round.ps1 -Round 1
@@ -141,7 +141,7 @@ render-round:
 #   make render-round-ONE SURFACE=single-widow-landscape   RECORD=72
 #
 # RECORD is ignored for bulk-* / anniversary / insights surfaces.
-render-round-ONE:
+render-round-ONE: ## Render a single round for a single surface (SURFACE=... ROUND=N)
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	@if [ -z "$(SURFACE)" ]; then echo "SURFACE is required, e.g. SURFACE=single-soldier-landscape" >&2; exit 2; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
@@ -179,7 +179,7 @@ render-round-ONE:
 #
 # Example:
 #   make update-snapshots-ONE SURFACE=single-soldier-landscape
-update-snapshots-ONE:
+update-snapshots-ONE: ## Update audit snapshots for a single round (SURFACE=... ROUND=N)
 	@if [ -z "$(SURFACE)" ]; then echo "SURFACE is required, e.g. SURFACE=single-soldier-landscape" >&2; exit 2; fi
 	@bash -c 'set -e; \
 	  case "$(SURFACE)" in \
@@ -207,7 +207,7 @@ update-snapshots-ONE:
 # (saves disk + wall-clock when iterating on one layout). IDS is
 # a comma-separated list of record IDs for bulk renders. See
 # scripts/render-round.ps1 for the same -Only / -RecordIDs flags.
-render-svg:
+render-svg: ## Render SVG previews via render-svg.sh (issue #14)
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
 	ROUND?=$$(ls -1 docs/renderings/single-soldier-landscape/round-*.pdf 2>/dev/null | sed 's/.*round-//;s/\.pdf//' | sort -V | tail -1); \
