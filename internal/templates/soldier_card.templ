@@ -42,15 +42,24 @@ templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 					<p class="text-xs text-slate-400 mt-1">d. { deathDate(s) }</p>
 				}
 				if highlighted {
-					<div class="mt-3 flex flex-wrap gap-2 text-xs">
-						<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-[rgba(36,48,61,0.08)] px-2.5 py-1 text-[#22303d]">{ entryBadgeLabel(s) }</span>
+					<dl class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+						<div class="inline-flex items-baseline gap-1">
+							<dt class="font-semibold uppercase tracking-[0.18em] text-slate-400">Entry</dt>
+							<dd>{ entryBadgeLabel(s) }</dd>
+						</div>
 						if strings.TrimSpace(s.DeathDate) != "" {
-							<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-[rgba(197,171,104,0.18)] px-2.5 py-1 text-[#22303d]">Death: { deathDate(s) }</span>
+							<div class="inline-flex items-baseline gap-1">
+								<dt class="font-semibold uppercase tracking-[0.18em] text-slate-400">d.</dt>
+								<dd>{ deathDate(s) }</dd>
+							</div>
 						}
 						if strings.TrimSpace(s.BuriedIn) != "" {
-							<span class="rounded-full border border-[rgba(141,116,64,0.55)] bg-[rgba(36,48,61,0.08)] px-2.5 py-1 text-[#22303d]">Buried In: { s.BuriedIn }</span>
+							<div class="inline-flex items-baseline gap-1">
+								<dt class="font-semibold uppercase tracking-[0.18em] text-slate-400">Buried in</dt>
+								<dd>{ s.BuriedIn }</dd>
+							</div>
 						}
-					</div>
+					</dl>
 				}
 			</div>
 			<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", s.ID)) }
