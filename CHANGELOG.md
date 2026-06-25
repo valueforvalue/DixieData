@@ -11,6 +11,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- `internal/templates/components/button.templ` — Button primitive
+  for issue #74 Phase 1.1. `templ Button(label, kind, extraClass,
+  attrs)` renders the legacy class strings (primary-button,
+  secondary-button, ghost-link, danger-button) byte-stably; unknown
+  kind values fall back to secondary. Layout template swaps the
+  three floating-dock buttons (Scratch Pad, Feedback, Menu) to
+  `@components.Button` as the proof-of-concept migration. Seven
+  golden-snapshot tests in `button_test.go` cover all four kinds,
+  extra-class merging, attr pass-through, and the unknown-kind
+  fallback.
+
 ### Fixed
 
 - CI: `.github/workflows/test.yml` "Restore Typst binary for render

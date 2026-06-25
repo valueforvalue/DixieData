@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/uiver"
 )
@@ -86,9 +87,9 @@ templ layoutV1(title string) {
 			<div class="floating-dock fixed inset-x-0 bottom-0 z-40">
 				<div class="floating-dock-inner flex items-center justify-end gap-3 pl-4 pr-0 py-3 sm:pl-6 sm:pr-0">
 					<p data-floating-scratchpad-status class="mr-auto text-xs text-slate-300" aria-live="polite"></p>
-					<button type="button" data-scratchpad-open class="secondary-button floating-dock-button">Scratch Pad</button>
-					<button type="button" data-feedback-open class="secondary-button floating-dock-button">Feedback</button>
-					<button type="button" data-floating-nav-toggle class="primary-button floating-dock-button">Menu</button>
+					@components.Button("Scratch Pad", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-scratchpad-open": ""})
+					@components.Button("Feedback", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-feedback-open": ""})
+					@components.Button("Menu", components.ButtonPrimary, "floating-dock-button", templ.Attributes{"data-floating-nav-toggle": ""})
 				</div>
 				<div data-floating-nav-panel data-ui-id={ uiids.OverlayFloatingMenu } class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
 					@SurfaceBadge(uiids.OverlayFloatingMenu)
