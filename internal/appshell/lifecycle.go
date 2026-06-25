@@ -95,6 +95,10 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.dataDir = appdata.DefaultDir()
 	a.restorePoints = update.NewRestorePointManager(a.dataDir)
+	// Replace the placeholder Registry from NewApp() with one wired
+	// to the on-disk JSONL log so background jobs survive webview
+	// reloads and app restarts.
+	a.jobs = openJobsRegistry(a.dataDir)
 	var err error
 	a.quotes, err = loadQuotes(embeddedQuotes)
 	if err != nil {
