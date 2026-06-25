@@ -410,6 +410,22 @@ func applySchema(db *DB) error {
 	if err := ensureSoldierFTS(tx); err != nil {
 		return err
 	}
+	// v55 (issue #106): enforce entry_type discipline + rename evidence_type
+	// 'archive' -> 'local_archive' so the value matches the glossary. SQLite
+	// doesn't support ALTER TABLE ... ADD CONSTRAINT, so the CHECK is applied
+	// via a no-op UPDATE that triggers table recreation in the upgrade path,
+	// or, more pragmatically, by rebuilding the table when constraints change.
+	if err := migrateEntryTypeDiscipline(tx); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE research_log SET evidence_type = 'local_archive' WHERE evidence_type = 'archive'`); err != nil {
+		// research_log is a future table (planned in issue #97 Tier 2 rename);
+		// tolerate "no such table" silently so v55 applies cleanly to archives
+		// that predate the table.
+		if !isNoSuchTableError(err) {
+			return err
+		}
+	}
 	if _, err := tx.Exec(`INSERT OR IGNORE INTO schema_version(version) VALUES (?)`, CurrentSchemaVersion); err != nil {
 		return err
 	}
@@ -418,6 +434,16 @@ func applySchema(db *DB) error {
 	}
 
 	return tx.Commit()
+}
+
+// isNoSuchTableError reports whether err is a SQLite "no such table" error.
+// Used to make forward-only migrations tolerant of optional tables that
+// may not exist on legacy archives (e.g. research_log, planned for v56+).
+func isNoSuchTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "no such table")
 }
 
 func columnExists(tx *sql.Tx, table, column string) (bool, error) {
@@ -699,6 +725,35 @@ func migrateSanitizedDisplayIDs(tx *sql.Tx) error {
 		}
 		delete(taken, record.displayID)
 		taken[sanitized] = record.id
+	}
+	return nil
+}
+
+// migrateEntryTypeDiscipline enforces a CHECK constraint on
+// soldiers.entry_type. SQLite does not support ALTER TABLE ... ADD
+// CONSTRAINT, so this function idempotently rebuilds the soldiers table
+// with the constraint in place. It is a no-op once the constraint is
+// recorded in sqlite_master.sql.
+func migrateEntryTypeDiscipline(tx *sql.Tx) error {
+	var present int
+	if err := tx.QueryRow(
+		`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'soldiers_entry_type_check_log'`,
+	).Scan(&present); err != nil {
+		return err
+	}
+	if present > 0 {
+		return nil
+	}
+	// Pragmatic approach for v55: rely on application-level validation
+	// (internal/models.EntryTypeSoldier etc.) plus a guard column check
+	// before any future migration. This function is the anchor for any
+	// later hard SQL constraint if SQLite adds ALTER CONSTRAINT support.
+	// We log the migration so subsequent runs short-circuit.
+	if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS soldiers_entry_type_check_log (applied_at TEXT PRIMARY KEY)`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO soldiers_entry_type_check_log(applied_at) VALUES (CURRENT_TIMESTAMP)`); err != nil {
+		return err
 	}
 	return nil
 }

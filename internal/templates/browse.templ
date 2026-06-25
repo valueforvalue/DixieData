@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -64,10 +65,10 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]" for="entry_type">Entry Type</label>
 						<select name="entry_type" data-browse-filter-input class="field-input mt-2" id="entry_type">
 							<option value="" if state.EntryType == "" { selected }>All</option>
-							<option value="soldier" if state.EntryType == "soldier" { selected }>Soldier</option>
-							<option value="linked_person" if state.EntryType == "linked_person" { selected }>Person Record</option>
-							<option value="wife" if state.EntryType == "wife" { selected }>Wife</option>
-							<option value="widow" if state.EntryType == "widow" { selected }>Widow</option>
+							<option value={ models.EntryTypeSoldier } if state.EntryType == models.EntryTypeSoldier { selected }>Soldier</option>
+							<option value={ models.EntryTypeLinkedPerson } if state.EntryType == models.EntryTypeLinkedPerson { selected }>Person Record</option>
+							<option value={ models.EntryTypeWife } if state.EntryType == models.EntryTypeWife { selected }>Wife</option>
+							<option value={ models.EntryTypeWidow } if state.EntryType == models.EntryTypeWidow { selected }>Widow</option>
 						</select>
 					</div>
 					<div>
@@ -423,13 +424,13 @@ func browseActiveFilters(state viewmodel.BrowseState) []string {
 
 func browseEntryTypeLabel(entryType string) string {
 	switch strings.TrimSpace(strings.ToLower(entryType)) {
-	case "soldier":
+	case models.EntryTypeSoldier:
 		return "Soldier"
-	case "linked_person":
+	case models.EntryTypeLinkedPerson:
 		return "Person Record"
-	case "wife":
+	case models.EntryTypeWife:
 		return "Wife"
-	case "widow":
+	case models.EntryTypeWidow:
 		return "Widow"
 	default:
 		return entryType
