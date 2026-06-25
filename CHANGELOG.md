@@ -59,6 +59,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   tracked (was a runtime artifact slipping through the gitignore filter).
 - 6 release zips older than the last two tags removed from `release/`
   (cleaned by the extended `token-clean.ps1`).
+- Performance fixes from the 2026-06-24 sweep (issue #107): the quick-search
+  form now carries `hx-sync="this:replace"` so each new keystroke aborts the
+  in-flight XHR (no more out-of-order responses); `BrowsePage` runs the
+  count + paginated select in a single CTE so every browse filter change
+  costs one round-trip instead of two. `FormSuggestions` caching,
+  `BrowseResults` hx-boost partial, and the FTS snippet column were already
+  shipped before this batch landed; `RecentSummary` projection (7.2) and
+  feedback retention setting (7.13) are deferred to a future pass.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
