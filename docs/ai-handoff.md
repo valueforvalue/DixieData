@@ -1,5 +1,14 @@
 # DixieData AI Handoff
 
+> **Vocabulary.** DixieData uses a strict glossary (see [`CONTEXT.md`](../CONTEXT.md)):
+> **Person Record**, **Source Record**, **Claim**, **Finding**, **Local Archive**,
+> **Shared Archive**, **Backup Archive**, **Static Archive**, **Restore Point**.
+> This document uses those terms in prose. URLs, table names, and code identifiers
+> below (`/soldiers`, `soldiers_fts`, `soldier_card.templ`, `internal/archive/`)
+> are **historical** and preserved for backward compatibility — they refer to
+> Person Records and the Local Archive respectively. A Tier 2 rename (issue #97)
+> will update URLs and types in a future 7-PR change.
+
 ## Project snapshot
 
 - **App:** DixieData
@@ -10,7 +19,7 @@
 - **Frontend:** server-rendered Templ HTML, Tailwind CDN styling, custom `frontend\app.js`
 - **Primary repo entry points:** `main.go`, `internal\appshell\app.go`, `internal\appshell\app_facades.go`
 
-DixieData is a desktop archive manager for Civil War / Confederate research person records. The app stores soldiers plus spouse records, supporting notes, source records, images, scratch pads, printable reports, portable exports, mergeable shared archives, analytics, duplicate review, and Google integrations.
+DixieData is a desktop Local Archive manager for Civil War / Confederate research Person Records. The app stores Person Records (including Soldier, Wife, and Widow subtypes) along with Source Records, notes, images, scratch pads, printable reports, portable exports, mergeable Shared Archives, analytics, duplicate review, and Google integrations.
 
 Recent v1.1 hardening highlights:
 
@@ -94,7 +103,7 @@ Routes are registered in `internal\appshell\app.go`.
 ### Main pages
 
 - `/calendar` - landing page, archive counts, rotating quote, month navigation
-- `/soldiers` - browse archive
+- `/soldiers` - browse Local Archive (URL preserved; semantically Person Records)
 - `/soldiers/new` - create record
 - `/soldiers/{id}` - detail
 - `/soldiers/{id}/edit` - edit
