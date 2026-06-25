@@ -84,5 +84,6 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/scratchpad/open", a.handleScratchpadOpen)
 	mux.HandleFunc("/media/", a.handleMedia)
 
-	a.mux = mux
+	a.muxRaw = mux
+	a.mux = recoverMiddleware(mux)
 }

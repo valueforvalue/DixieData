@@ -63,7 +63,8 @@ type App struct {
 	updater                 updaterFacade
 	restorePoints           *update.RestorePointManager
 	quotes                  []models.Quote
-	mux                     *http.ServeMux
+	mux                     http.Handler
+	muxRaw                  *http.ServeMux
 	startupErr              error
 	setupRequired           bool
 	pendingLaunchStateClear bool
