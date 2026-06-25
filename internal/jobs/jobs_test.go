@@ -101,6 +101,34 @@ func TestRegistryCancelMissingJobReturnsErrNotFound(t *testing.T) {
 	}
 }
 
+func TestSetResultPathUpdatesJobSnapshot(t *testing.T) {
+	reg := New()
+	id := reg.Start("unit", func(ctx context.Context, p *Progress) error { return nil })
+	reg.SetResultPath(id, "/tmp/example.zip")
+	snap, _ := reg.Get(id)
+	if snap.ResultPath != "/tmp/example.zip" {
+		t.Fatalf("ResultPath = %q, want /tmp/example.zip", snap.ResultPath)
+	}
+}
+
+func TestSetResultPathUnknownJobIsNoop(t *testing.T) {
+	reg := New()
+	reg.SetResultPath("missing", "/tmp/whatever.zip")
+}
+
+func TestDisplayLabelMapsKnownKinds(t *testing.T) {
+	cases := map[string]string{
+		"static_archive": "Static web archive",
+		"database_pdf":   "Printable archive PDF",
+		"unknown_kind":   "unknown_kind",
+	}
+	for kind, want := range cases {
+		if got := (Job{Kind: kind}).DisplayLabel(); got != want {
+			t.Fatalf("DisplayLabel(%q) = %q, want %q", kind, got, want)
+		}
+	}
+}
+
 func TestRegistryCancelTerminalJobReturnsErrAlreadyTerminal(t *testing.T) {
 	reg := New()
 	id := reg.Start("unit", func(ctx context.Context, p *Progress) error {
