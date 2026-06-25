@@ -27,7 +27,7 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 			OtherPersonRecordID: 18,
 			OtherDisplayID:      "JCM87-00018",
 		}},
-	}}, 1, 1, 50).Render(context.Background(), &buf)
+	}}, viewmodel.ArchiveCounts{SoldierCount: 25, SpouseRecordCount: 3}, 1, 1, 50).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestReviewQueueViewUsesSharedSummaryFormatting(t *testing.T) {
 			NeedsReview:          true,
 			ReviewReason:         "Potential duplicate from JCM87 import",
 		},
-	}}, 1, 1, 50).Render(context.Background(), &buf)
+	}}, viewmodel.ArchiveCounts{SoldierCount: 25, SpouseRecordCount: 3}, 1, 1, 50).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

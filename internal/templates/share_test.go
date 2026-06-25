@@ -11,7 +11,7 @@ import (
 
 func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, nil).Render(context.Background(), &buf)
+	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 
 func TestShareViewKeepsResponsiveImportLayoutContract(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, nil).Render(context.Background(), &buf)
+	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

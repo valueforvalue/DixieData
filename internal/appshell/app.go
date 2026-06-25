@@ -302,7 +302,12 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	status.DriftUpdated = drift.Updated
 	status.DriftRemoved = drift.Removed
 	status.OutOfSync = drift.OutOfSync
-	presentation.ShareView(status, conflicts, exportRecords).Render(r.Context(), w)
+	domainCounts, err := a.soldiers.ArchiveCounts()
+	if err != nil {
+		respondInternal(w, r, "Could not load archive counts.", err)
+		return
+	}
+	presentation.ShareView(status, conflicts, exportRecords, domainCounts).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) {

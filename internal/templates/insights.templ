@@ -6,14 +6,18 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
+templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.ArchiveCounts) {
 	@Layout("Insights") {
 		<div data-ui-id={ uiids.PageInsights } class="mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageInsights)
+			if counts.TotalRecords() == 0 {
+				@partials.EmptyStateCard("insights", counts)
+			}
 			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Local Archive Insights</h2>

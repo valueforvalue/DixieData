@@ -35,7 +35,12 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load review findings.", err)
 		return
 	}
-	presentation.ReviewQueueView(soldiers, findings, page, total, 50).Render(r.Context(), w)
+	domainCounts, err := a.soldiers.ArchiveCounts()
+	if err != nil {
+		respondInternal(w, r, "Could not load archive counts.", err)
+		return
+	}
+	presentation.ReviewQueueView(soldiers, findings, domainCounts, page, total, 50).Render(r.Context(), w)
 }
 
 func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
