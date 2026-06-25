@@ -539,19 +539,22 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 	recordArgs := recordSearchLikeArgs(query)
 
 	var total int
-	err := conn.QueryRow(`
+	if err := db.WithBusyRetry(3, func() error {
+		return conn.QueryRow(`
 		SELECT COUNT(*) FROM (
 			SELECT soldier_id AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
 			UNION
 			SELECT soldier_id AS id FROM records WHERE `+recordSearchLikeClause()+`
 		) matches
 	`, append([]interface{}{matchQuery}, recordArgs...)...).Scan(&total)
-	if err != nil {
+	}); err != nil {
 		return nil, 0, err
 	}
 
 	rowArgs := append(append([]interface{}{matchQuery}, recordArgs...), pageSize, offset)
-	rows, err := conn.Query(`
+	var rows *sql.Rows
+	if err := db.WithBusyRetry(3, func() error {
+		r, qErr := conn.Query(`
 		WITH matches AS (
 			SELECT soldier_id,
 				COALESCE(snippet(soldiers_fts, 19, '', '', '...', 12), '') AS biography_snippet,
@@ -572,7 +575,12 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 		ORDER BY MIN(score), last_name, first_name
 		LIMIT ? OFFSET ?
 	`, rowArgs...)
-	if err != nil {
+		if qErr != nil {
+			return qErr
+		}
+		rows = r
+		return nil
+	}); err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -898,16 +906,25 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	conn := s.db.Conn()
 
 	var total int
-	if err := conn.QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause, args...).Scan(&total); err != nil {
+	if err := db.WithBusyRetry(3, func() error {
+		return conn.QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause, args...).Scan(&total)
+	}); err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	rows, err := conn.Query(
-		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
-		append(args, pageSize, offset)...,
-	)
-	if err != nil {
+	var rows *sql.Rows
+	if err := db.WithBusyRetry(3, func() error {
+		r, qErr := conn.Query(
+			"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
+			append(args, pageSize, offset)...,
+		)
+		if qErr != nil {
+			return qErr
+		}
+		rows = r
+		return nil
+	}); err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -919,12 +936,21 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error) {
 	conn := s.db.Conn()
 	var total int
-	if err := conn.QueryRow(`SELECT COUNT(*) FROM soldiers`).Scan(&total); err != nil {
+	if err := db.WithBusyRetry(3, func() error {
+		return conn.QueryRow(`SELECT COUNT(*) FROM soldiers`).Scan(&total)
+	}); err != nil {
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	rows, err := conn.Query(`SELECT `+soldierListSelectColumns+` FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
-	if err != nil {
+	var rows *sql.Rows
+	if err := db.WithBusyRetry(3, func() error {
+		r, qErr := conn.Query(`SELECT `+soldierListSelectColumns+` FROM soldiers ORDER BY last_name, first_name LIMIT ? OFFSET ?`, pageSize, offset)
+		if qErr != nil {
+			return qErr
+		}
+		rows = r
+		return nil
+	}); err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -957,15 +983,24 @@ func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize in
 	whereClause := fmt.Sprintf("LOWER(TRIM(entry_type)) IN (%s)", placeholders)
 	conn := s.db.Conn()
 	var total int
-	if err := conn.QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause, args...).Scan(&total); err != nil {
+	if err := db.WithBusyRetry(3, func() error {
+		return conn.QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause, args...).Scan(&total)
+	}); err != nil {
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	rows, err := conn.Query(
-		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
-		append(args, pageSize, offset)...,
-	)
-	if err != nil {
+	var rows *sql.Rows
+	if err := db.WithBusyRetry(3, func() error {
+		r, qErr := conn.Query(
+			"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE "+whereClause+" ORDER BY last_name, first_name LIMIT ? OFFSET ?",
+			append(args, pageSize, offset)...,
+		)
+		if qErr != nil {
+			return qErr
+		}
+		rows = r
+		return nil
+	}); err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
