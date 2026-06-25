@@ -1779,10 +1779,15 @@ func (a *App) findTemplatesDir() (string, error) {
 	for _, dir := range a.findTypstSearchDirs() {
 		candidate := filepath.Join(dir, "templates")
 		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
-			return candidate, nil
+			// Verify it's the typst templates dir, not the Go
+			// html/template dir at internal/templates. The sentinel
+			// soldier_landscape.typ only exists in the typst tree.
+			if _, err := os.Stat(filepath.Join(candidate, "soldier_landscape.typ")); err == nil {
+				return candidate, nil
+			}
 		}
 	}
-	return "", fmt.Errorf("templates directory not found")
+	return "", fmt.Errorf("typst templates directory not found (expected templates/soldier_landscape.typ)")
 }
 
 // findTypstSearchDirs returns the directories to search for
