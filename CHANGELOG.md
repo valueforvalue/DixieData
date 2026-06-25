@@ -112,7 +112,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   so the JSONL file stops growing unbounded on long-running
   desktop sessions; the prune is best-effort, leaves corrupt
   lines in place, and ships without a settings UI toggle (the
-  retention window is hard-coded for now).
+  retention window is hard-coded for now). Issue #119 slims
+  `RecentByIDs` from 45 to 38 columns by dropping the correlated
+  record/image count subqueries and the long-form fields the
+  recent-search view never renders; a smoke benchmark tracks the
+  new path.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
