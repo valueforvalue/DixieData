@@ -66,6 +66,7 @@ type App struct {
 	mux                     http.Handler
 	muxRaw                  *http.ServeMux
 	saveFileDialogOverride  func(opts any) (string, error)
+	inFlight               sync.Map // map[string]struct{} — dedupes in-flight native dialog calls
 	startupErr              error
 	setupRequired           bool
 	pendingLaunchStateClear bool
@@ -538,6 +539,20 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF options=%+v", options))
 	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF pre-dialog ctx_nil=%v frontend=%v",
 		a.ctx == nil, ctxHasFrontend(a.ctx)))
+
+	// Reject rapid duplicate POSTs before we hit the native dialog.
+	// A double-click queues two dialog requests on the Wails main
+	// window message loop; both block on the UI thread and the
+	// WebView2 frontend crashes. Returning a quick 429 lets the
+	// user see a toast and prevents the second click from racing
+	// with the first.
+	dupKey := fmt.Sprintf("cal-pdf|%d|%s|%s", month, options.Orientation, monthPDFName(month, options))
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		LogDebugEvent(r, "handleCalendarPDF duplicate request rejected")
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		return
+	}
+	defer a.inFlight.Delete(dupKey)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),
