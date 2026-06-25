@@ -9,10 +9,16 @@ export pipeline. The binary is invoked by `internal/render` (via
 | File | Target platform |
 |---|---|
 | `typst-windows.exe` | Windows x86_64 |
-| `typst-macos` | macOS Apple Silicon (aarch64) |
-| `typst-linux` | Linux x86_64 (musl) |
+| `typst-macos` | macOS Apple Silicon (aarch64) — *see gap below* |
+| `typst-linux` | Linux x86_64 (musl) — *see gap below* |
 | `LICENSE`, `NOTICE` | Apache-2.0 license from the Typst upstream |
 | `README.md` | This file |
+
+**Current gap:** as of 2026-06-24 only `typst-windows.exe` is present in this directory.
+macOS and Linux binaries are tracked in `bin/MANIFEST.md` (added with issue #109) and will
+land here once the Typst bootstrap script can run on each platform. Until then, builds for
+those targets must install Typst system-wide and the build script will fall back to the
+system `typst` binary.
 
 ## Version
 
