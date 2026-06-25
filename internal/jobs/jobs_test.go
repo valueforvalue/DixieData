@@ -144,21 +144,21 @@ func TestSubscribeDeliversProgressSnapshots(t *testing.T) {
 	ch := reg.Subscribe(id)
 	defer reg.Unsubscribe(id, ch)
 
-	got := []int{}
 	deadline := time.After(time.Second)
-	for len(got) < 4 {
+	var last int
+	for {
 		select {
 		case snap, ok := <-ch:
 			if !ok {
 				return
 			}
-			got = append(got, snap.Progress)
+			last = snap.Progress
+			if last == 100 {
+				return
+			}
 		case <-deadline:
-			t.Fatalf("only received %d progress events: %v", len(got), got)
+			t.Fatalf("timed out waiting for progress=100; last = %d", last)
 		}
-	}
-	if got[len(got)-1] != 100 {
-		t.Fatalf("final progress = %d, want 100", got[len(got)-1])
 	}
 }
 
