@@ -25,7 +25,7 @@ The current release line is **v1.2.54**.
 | Styling | Local bundled Tailwind CSS (`frontend\app.css`) + app-specific CSS in templates |
 | Client interactivity | `frontend\app.js` |
 | Search | SQLite FTS5 + fallback `LIKE` |
-| PDF generation | `github.com/go-pdf/fpdf` |
+| PDF generation | Typst CLI (`bin\typst-windows.exe`, vendored) + `internal\archive\pdf_layout.go` templates |
 | Spreadsheet export | `github.com/xuri/excelize/v2` |
 
 ## 3. Runtime architecture
@@ -259,6 +259,13 @@ The Share page centralizes portability features.
 ## 6.7 Printable PDF exports
 
 The app includes branded PDF outputs with consistent header/footer styling.
+
+> **Note:** PDF generation migrated from `github.com/go-pdf/fpdf` to a Typst-based
+> renderer (the `Typst` CLI is vendored at `bin\typst-windows.exe` and driven by
+> `internal\archive\pdf_layout.go`). Typst was chosen for better Unicode handling,
+> CSS-like layout ergonomics, and a smaller per-platform binary footprint. The
+> fpdf path was removed in slice 7; see `docs\PRD.md` and the CHANGELOG for
+> migration history.
 
 ### Full database printable PDF
 
