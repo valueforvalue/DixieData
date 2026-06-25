@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
 const (
@@ -121,21 +122,80 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 	conn := s.db.Conn()
 
 	var total int
-	if err := conn.QueryRow(`SELECT COUNT(*) FROM soldiers`+whereClause, args...).Scan(&total); err != nil {
-		return nil, 0, request, err
-	}
-
-	rows, err := conn.Query(
-		fmt.Sprintf(`SELECT %s FROM soldiers%s ORDER BY %s LIMIT ? OFFSET ?`, soldierListSelectColumns, whereClause, orderBy),
-		append(args, request.PageSize, offset)...,
+	// Combine the COUNT and the paginated SELECT into a single CTE so
+	// every browse filter change costs one round-trip instead of two.
+	// The window function COUNT(*) OVER () returns the same value for
+	// every row in the filtered set. Audit issue #107 (7.12).
+	//
+	// The CTE materialises the filtered set with the spouse-link subquery
+	// resolved against the soldiers table. The outer SELECT re-uses the
+	// CTE columns directly (no soldiers. qualifier) so SQLite resolves
+	// every column against the CTE rowset.
+	query := fmt.Sprintf(
+		`WITH filtered AS (
+			SELECT %s, COUNT(*) OVER () AS total_count
+			FROM soldiers%s
+		)
+		SELECT *
+		FROM filtered
+		ORDER BY %s
+		LIMIT ? OFFSET ?`,
+		soldierListSelectColumns, whereClause, orderBy,
 	)
+	rows, err := conn.Query(query, append(args, request.PageSize, offset)...)
 	if err != nil {
 		return nil, 0, request, err
 	}
 	defer rows.Close()
 
-	soldiers, err := scanListSoldiers(rows)
-	return soldiers, total, request, err
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, 0, request, err
+	}
+	totalIdx := -1
+	for i, name := range columns {
+		if name == "total_count" {
+			totalIdx = i
+			break
+		}
+	}
+	if totalIdx < 0 {
+		return nil, 0, request, fmt.Errorf("browse CTE missing total_count column")
+	}
+
+	scanCols := len(columns) - 1
+	var soldiers []models.Soldier
+	for rows.Next() {
+		var s models.Soldier
+		dests := make([]interface{}, scanCols)
+		for i := 0; i < scanCols; i++ {
+			dests[i] = scanHolder(soldierListScanDest(&s), i)
+		}
+		if err := rows.Scan(append(dests, &total)...); err != nil {
+			return nil, 0, request, err
+		}
+		hydrateLegacyDeathParts(&s)
+		s.PensionState = pensionstate.Normalize(s.PensionState)
+		normalizeConfederateHomeFields(&s)
+		soldiers = append(soldiers, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, request, err
+	}
+	if soldiers == nil {
+		soldiers = []models.Soldier{}
+	}
+	return soldiers, total, request, nil
+}
+
+// scanHolder returns a pointer-shaped holder for the i-th destination in
+// the soldier list scan dest slice. SQLite hands us a generic dest array
+// because the CTE adds a trailing total_count column.
+func scanHolder(dests []interface{}, i int) interface{} {
+	if i >= len(dests) {
+		return new(interface{})
+	}
+	return dests[i]
 }
 
 func browseOrderClause(sort string) string {
