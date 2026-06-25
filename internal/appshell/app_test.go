@@ -179,8 +179,9 @@ func TestHandleRecoveryRendersRestorePointPrompt(t *testing.T) {
 
 func TestAppServeHTTPMethodOverride(t *testing.T) {
 	app := NewApp()
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(r.Method))
 	})
 
@@ -200,8 +201,9 @@ func TestAppServeHTTPMethodOverride(t *testing.T) {
 
 func TestAppServeHTTPMethodOverrideFromFormValue(t *testing.T) {
 	app := NewApp()
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/override", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(r.Method))
 	})
 
@@ -952,8 +954,9 @@ func TestAppServeHTTPClearsPendingLaunchStateAfterHealthyCalendarResponse(t *tes
 	app := NewApp()
 	app.restorePoints = manager
 	app.pendingLaunchStateClear = true
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
@@ -990,8 +993,9 @@ func TestAppServeHTTPPreservesPendingLaunchStateWhenCalendarFails(t *testing.T) 
 	app := NewApp()
 	app.restorePoints = manager
 	app.pendingLaunchStateClear = true
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "calendar failed", http.StatusInternalServerError)
 	})
 
@@ -1017,8 +1021,9 @@ func TestAppServeHTTPPreservesPendingLaunchStateWhenCalendarFails(t *testing.T) 
 func TestAppServeHTTPFailsClosedWhenPendingLaunchStateCannotClear(t *testing.T) {
 	app := NewApp()
 	app.pendingLaunchStateClear = true
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/calendar", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
@@ -1048,8 +1053,9 @@ func TestAppServeHTTPClearsPendingLaunchStateAfterTrustedBrowseResponse(t *testi
 	app := NewApp()
 	app.restorePoints = manager
 	app.pendingLaunchStateClear = true
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/browse", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/browse", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("browse"))
 	})
@@ -1079,8 +1085,9 @@ func TestAppServeHTTPDoesNotClearPendingLaunchStateForAssetResponse(t *testing.T
 	app := NewApp()
 	app.restorePoints = manager
 	app.pendingLaunchStateClear = true
-	app.mux = http.NewServeMux()
-	app.mux.HandleFunc("/app.js", func(w http.ResponseWriter, r *http.Request) {
+	app.muxRaw = http.NewServeMux()
+	app.mux = app.muxRaw
+	app.muxRaw.HandleFunc("/app.js", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("asset"))
 	})
