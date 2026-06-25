@@ -536,6 +536,8 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF calendar days=%d", len(calendar)))
 	options := parsePDFOptionsRequest(r, "P", false)
 	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF options=%+v", options))
+	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF pre-dialog ctx_nil=%v frontend=%v",
+		a.ctx == nil, ctxHasFrontend(a.ctx)))
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),

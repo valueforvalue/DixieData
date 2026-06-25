@@ -34,6 +34,11 @@ func wailsHasFrontend(ctx context.Context) bool {
 	return ctx.Value("frontend") != nil
 }
 
+// ctxHasFrontend is a package-internal alias used by handler
+// logging. Exported to runtime_test.go so tests can probe the
+// state of a.ctx at known points.
+var ctxHasFrontend = wailsHasFrontend
+
 // SaveFileDialog wraps wailsruntime.SaveFileDialog and returns a
 // clear error instead of os.Exit when the frontend is unavailable.
 // Cancel-by-user is still signalled via ("", errUserCancelled)
