@@ -22,10 +22,15 @@
 package jobs
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -123,6 +128,27 @@ type Registry struct {
 	jobs        map[string]*Job
 	concurrency int
 	sem         chan struct{}
+
+	// logMu guards logWriter + logCloser. logWriter is appended to
+	// on every job state change so the Registry survives a webview
+	// reload or app restart. nil disables persistence.
+	logMu     sync.Mutex
+	logWriter io.Writer
+	logCloser io.Closer
+}
+
+// persistedSnapshot is the on-disk shape of a job record. Stable across
+// releases; do not rename fields without a migration.
+type persistedSnapshot struct {
+	ID          string    `json:"id"`
+	Kind        string    `json:"kind"`
+	Status      string    `json:"status"`
+	Progress    int       `json:"progress"`
+	Message     string    `json:"message,omitempty"`
+	StartedAt   time.Time `json:"started_at,omitempty"`
+	FinishedAt  time.Time `json:"finished_at,omitempty"`
+	Error       string    `json:"error,omitempty"`
+	ResultPath  string    `json:"result_path,omitempty"`
 }
 
 // New returns a Registry sized to DefaultConcurrency workers. Callers
@@ -144,11 +170,103 @@ func NewWithConcurrency(n int) *Registry {
 	}
 }
 
+// NewFromLog rehydrates a Registry from a JSONL stream previously
+// produced by SetLogWriter. Jobs that were StatusRunning when the
+// previous process exited are flipped to StatusInterrupted so the UI
+// can show an honest 'lost when the app restarted' state instead of
+// pretending the worker is still alive.
+//
+// The returned Registry is in-memory only and will not write back to
+// the reader; call SetLogWriter after NewFromLog if you want the
+// rehydrated entries to be re-appended to a new log.
+func NewFromLog(reader io.Reader) (*Registry, error) {
+	reg := NewWithConcurrency(DefaultConcurrency)
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	lineNo := 0
+	for scanner.Scan() {
+		lineNo++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var snap persistedSnapshot
+		if err := json.Unmarshal([]byte(line), &snap); err != nil {
+			return nil, fmt.Errorf("jobs: parse JSONL line %d: %w", lineNo, err)
+		}
+		status := snap.Status
+		if status == StatusQueued || status == StatusRunning {
+			status = StatusInterrupted
+		}
+		job := &Job{
+			ID:         snap.ID,
+			Kind:       snap.Kind,
+			Status:     status,
+			Progress:   snap.Progress,
+			Message:    snap.Message,
+			StartedAt:  snap.StartedAt,
+			FinishedAt: snap.FinishedAt,
+			Error:      snap.Error,
+			ResultPath: snap.ResultPath,
+		}
+		if status == StatusDone {
+			job.Progress = 100
+		}
+		reg.jobs[snap.ID] = job
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("jobs: read JSONL: %w", err)
+	}
+	return reg, nil
+}
+
 // Concurrency returns the configured worker pool size. Useful for tests
 // and for the /jobs/{id} status page header if we ever want to expose
 // saturation to the UI.
 func (r *Registry) Concurrency() int {
 	return r.concurrency
+}
+
+// SetLogWriter attaches a JSONL writer that receives one line per job
+// state change. The Registry takes ownership of closer and will close
+// it when the writer is replaced or the Registry shuts down. Pass
+// nil to disable persistence. Safe to call once at startup; concurrent
+// calls are serialised.
+func (r *Registry) SetLogWriter(w io.Writer, closer io.Closer) {
+	r.logMu.Lock()
+	defer r.logMu.Unlock()
+	if r.logCloser != nil {
+		_ = r.logCloser.Close()
+	}
+	r.logWriter = w
+	r.logCloser = closer
+}
+
+// appendSnapshot writes one JSONL line for the given job snapshot.
+// No-op when no log writer is attached.
+func (r *Registry) appendSnapshot(j Job) {
+	r.logMu.Lock()
+	w := r.logWriter
+	r.logMu.Unlock()
+	if w == nil {
+		return
+	}
+	payload, err := json.Marshal(persistedSnapshot{
+		ID:         j.ID,
+		Kind:       j.Kind,
+		Status:     j.Status,
+		Progress:   j.Progress,
+		Message:    j.Message,
+		StartedAt:  j.StartedAt,
+		FinishedAt: j.FinishedAt,
+		Error:      j.Error,
+		ResultPath: j.ResultPath,
+	})
+	if err != nil {
+		return
+	}
+	payload = append(payload, '\n')
+	_, _ = w.Write(payload)
 }
 
 // Start queues a job of the given kind and immediately launches a
@@ -172,8 +290,8 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 	job.mu.Unlock()
 
 	// Acquire a worker slot before launching the goroutine. If the pool
-	// is saturated the semaphore blocks until another worker exits, so
-	// the job stays in StatusQueued (set at registration) until then.
+// is saturated the semaphore blocks until another worker exits, so
+// the job stays in StatusQueued (set at registration) until then.
 	go func() {
 		r.sem <- struct{}{}
 		defer func() { <-r.sem }()
@@ -183,12 +301,16 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 		if job.cancelled {
 			job.Status = StatusCancelled
 			job.FinishedAt = time.Now()
+			snap := cloneJob(job)
 			job.mu.Unlock()
+			r.appendSnapshot(snap)
 			cancel()
 			return
 		}
 		job.Status = StatusRunning
+		snap := cloneJob(job)
 		job.mu.Unlock()
+		r.appendSnapshot(snap)
 
 		err := worker(ctx, &Progress{job: job})
 
@@ -203,11 +325,31 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 			job.Status = StatusDone
 			job.Progress = 100
 		}
+		snap = cloneJob(job)
 		job.mu.Unlock()
+		r.appendSnapshot(snap)
 		cancel()
 	}()
 
 	return id
+}
+
+// cloneJob returns a value-copy of the given Job without taking its
+// mutex. Callers must hold job.mu (or otherwise guarantee the Job is
+// not being mutated). Used inside the Start goroutine where we
+// already hold the lock and need to snapshot without re-locking.
+func cloneJob(j *Job) Job {
+	return Job{
+		ID:         j.ID,
+		Kind:       j.Kind,
+		Status:     j.Status,
+		Progress:   j.Progress,
+		Message:    j.Message,
+		StartedAt:  j.StartedAt,
+		FinishedAt: j.FinishedAt,
+		Error:      j.Error,
+		ResultPath: j.ResultPath,
+	}
 }
 
 // Get returns the snapshot for an ID and whether it exists.
@@ -245,7 +387,8 @@ func (j Job) DisplayLabel() string {
 // SetResultPath records the saved artifact path for the given job. Safe
 // to call from inside the worker or after it has completed. Workers that
 // know where they wrote their output use this so the /jobs/{id}/artifact
-// endpoint can stream the file back to the user.
+// endpoint can stream the file back to the user. The change is also
+// appended to the JSONL log if one is attached.
 func (r *Registry) SetResultPath(id, path string) {
 	r.mu.Lock()
 	job, ok := r.jobs[id]
@@ -255,7 +398,9 @@ func (r *Registry) SetResultPath(id, path string) {
 	}
 	job.mu.Lock()
 	job.ResultPath = path
+	snap := cloneJob(job)
 	job.mu.Unlock()
+	r.appendSnapshot(snap)
 }
 
 func (r *Registry) Cancel(id string) error {
