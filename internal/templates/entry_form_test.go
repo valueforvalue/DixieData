@@ -763,7 +763,7 @@ func TestSearchResultsPaginationUsesNavLandmark(t *testing.T) {
 	}
 	content := buf.String()
 	for _, needle := range []string{
-		`<nav aria-label="Search results pagination">`,
+		`<nav aria-label="Search results pagination"`,
 		`aria-current="page"`,
 	} {
 		if !strings.Contains(content, needle) {
