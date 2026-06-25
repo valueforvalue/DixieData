@@ -61,6 +61,7 @@ type Job struct {
 	mu          sync.Mutex
 	cancelled   bool
 	cancelCause context.CancelFunc
+	registry    *Registry // set at registration so Progress can broadcast
 }
 
 // Progress is passed to a worker so it can update its job without holding
@@ -70,6 +71,8 @@ type Progress struct {
 }
 
 // Set updates progress (0-100) and an optional human-readable message.
+// The update is broadcast to any subscribers on the parent job
+// (see Subscribe) so SSE clients see real-time progress.
 func (p *Progress) Set(percent int, message string) {
 	if p == nil || p.job == nil {
 		return
@@ -86,6 +89,8 @@ func (p *Progress) Set(percent int, message string) {
 	if message != "" {
 		p.job.Message = message
 	}
+	snap := cloneJob(p.job)
+	p.job.registry.broadcast(p.job.ID, snap)
 }
 
 // Cancelled reports whether the job was cancelled. Workers should check
@@ -135,6 +140,14 @@ type Registry struct {
 	logMu     sync.Mutex
 	logWriter io.Writer
 	logCloser io.Closer
+
+	// subMu guards subscribers. Each subscriber is a buffered chan
+	// that receives a Job snapshot on every Progress.Set so the
+	// /jobs/{id}/stream SSE handler can push updates in real time.
+	// Slow subscribers are dropped (non-blocking send) so a wedged
+	// client cannot back up the worker.
+	subMu        sync.Mutex
+	subscribers  map[string]map[chan Job]struct{}
 }
 
 // persistedSnapshot is the on-disk shape of a job record. Stable across
@@ -167,6 +180,7 @@ func NewWithConcurrency(n int) *Registry {
 		jobs:        map[string]*Job{},
 		concurrency: n,
 		sem:         make(chan struct{}, n),
+		subscribers: map[string]map[chan Job]struct{}{},
 	}
 }
 
@@ -208,6 +222,7 @@ func NewFromLog(reader io.Reader) (*Registry, error) {
 			FinishedAt: snap.FinishedAt,
 			Error:      snap.Error,
 			ResultPath: snap.ResultPath,
+			registry:   reg,
 		}
 		if status == StatusDone {
 			job.Progress = 100
@@ -279,6 +294,7 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 		Kind:      kind,
 		Status:    StatusQueued,
 		StartedAt: time.Now(),
+		registry:  r,
 	}
 	r.mu.Lock()
 	r.jobs[id] = job
@@ -304,6 +320,7 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 			snap := cloneJob(job)
 			job.mu.Unlock()
 			r.appendSnapshot(snap)
+			r.broadcast(id, snap)
 			cancel()
 			return
 		}
@@ -311,6 +328,7 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 		snap := cloneJob(job)
 		job.mu.Unlock()
 		r.appendSnapshot(snap)
+		r.broadcast(id, snap)
 
 		err := worker(ctx, &Progress{job: job})
 
@@ -328,6 +346,7 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 		snap = cloneJob(job)
 		job.mu.Unlock()
 		r.appendSnapshot(snap)
+		r.broadcast(id, snap)
 		cancel()
 	}()
 
@@ -401,6 +420,81 @@ func (r *Registry) SetResultPath(id, path string) {
 	snap := cloneJob(job)
 	job.mu.Unlock()
 	r.appendSnapshot(snap)
+	r.broadcast(id, snap)
+}
+
+// Subscribe registers a buffered channel as a listener for snapshot
+// updates on the given job. Returns nil if the job is unknown so
+// callers can pass user input without a separate existence check.
+// The buffer size keeps one or two slow events in flight without
+// blocking the broadcaster; a wedged subscriber is silently dropped
+// to protect the worker.
+//
+// Callers MUST call Unsubscribe(id, ch) when they stop reading so the
+// registry can garbage-collect the channel.
+func (r *Registry) Subscribe(id string) chan Job {
+	ch := make(chan Job, 8)
+	r.subMu.Lock()
+	if r.subscribers == nil {
+		r.subMu.Unlock()
+		return ch
+	}
+	subs, ok := r.subscribers[id]
+	if !ok {
+		subs = map[chan Job]struct{}{}
+		r.subscribers[id] = subs
+	}
+	subs[ch] = struct{}{}
+	r.subMu.Unlock()
+
+	// Push the current snapshot immediately so subscribers don't have
+	// to wait for the next Progress.Set to see something.
+	if snap, ok := r.Get(id); ok {
+		select {
+		case ch <- snap:
+		default:
+		}
+	}
+	return ch
+}
+
+// Unsubscribe removes a previously-registered channel and closes it.
+// Safe to call with an unknown id or channel; no-op in those cases.
+func (r *Registry) Unsubscribe(id string, ch chan Job) {
+	r.subMu.Lock()
+	if subs, ok := r.subscribers[id]; ok {
+		delete(subs, ch)
+		if len(subs) == 0 {
+			delete(r.subscribers, id)
+		}
+	}
+	r.subMu.Unlock()
+	select {
+	case _, ok := <-ch:
+		// drain any pending snapshot so the close doesn't race a send
+		_ = ok
+	default:
+	}
+	close(ch)
+}
+
+// broadcast sends a snapshot to every subscriber for the given job.
+// The send is non-blocking; a slow subscriber is skipped this round
+// rather than backing up the worker goroutine.
+func (r *Registry) broadcast(id string, snap Job) {
+	r.subMu.Lock()
+	subs := r.subscribers[id]
+	chans := make([]chan Job, 0, len(subs))
+	for ch := range subs {
+		chans = append(chans, ch)
+	}
+	r.subMu.Unlock()
+	for _, ch := range chans {
+		select {
+		case ch <- snap:
+		default:
+		}
+	}
 }
 
 func (r *Registry) Cancel(id string) error {
