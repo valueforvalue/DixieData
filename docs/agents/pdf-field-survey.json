@@ -1,0 +1,650 @@
+{
+  "$schema": "https://docs.google.com/forms/schemas/v1/form-metadata-v1.json",
+  "metadata": {
+    "title": "DixieData PDF Export Field Requirements Survey",
+    "description": "Help us decide which data fields belong in each type of PDF export produced by DixieData. The application currently generates 6 distinct PDF types. Your answers will shape which fields appear, in what order, and which sections are visible. Estimated time: 15–25 minutes. There are no wrong answers — if a field does not apply to a particular PDF type, choose 'Not applicable' or skip the row.",
+    "contact": "Jeremy Morris",
+    "repo": "DixieData",
+    "export_inventory_source": [
+      "internal/archive/export_service.go",
+      "templates/*.typ",
+      "templates/common/record_card.typ",
+      "internal/db/schema.go",
+      "internal/models/models.go"
+    ],
+    "version": "1.0.0",
+    "generated_at": "2026-06-21"
+  },
+  "preamble": {
+    "intro_questions": [
+      {
+        "id": "q_intro_role",
+        "type": "SHORT_ANSWER",
+        "title": "Your name (optional)",
+        "required": false
+      },
+      {
+        "id": "q_intro_role_type",
+        "type": "MULTIPLE_CHOICE",
+        "title": "How would you describe your relationship to the data?",
+        "options": [
+          "Family historian / genealogist",
+          "Archivist / librarian",
+          "Reenactor / living historian",
+          "Society officer / administrator",
+          "Other (please specify)"
+        ],
+        "required": true
+      },
+      {
+        "id": "q_intro_familiarity",
+        "type": "LINEAR_SCALE",
+        "title": "How familiar are you with the current DixieData PDF exports?",
+        "scale_min": 1,
+        "scale_max": 5,
+        "scale_min_label": "Never used one",
+        "scale_max_label": "I have produced every export type",
+        "required": true
+      },
+      {
+        "id": "q_intro_use_cases",
+        "type": "CHECKBOX",
+        "title": "Which PDF export types have you used or expect to use? (Select all that apply)",
+        "options": [
+          "Single Record PDF (one person)",
+          "Full Database Printable PDF (archive-wide)",
+          "Monthly Anniversary PDF (calendar)",
+          "Archive Summary / Insights PDF",
+          "Biography Appendix PDF",
+          "None yet"
+        ],
+        "required": true
+      }
+    ]
+  },
+  "pdf_export_sections": [
+    {
+      "section_id": "sec_single_record",
+      "section_title": "1. Single Record PDF (Soldier / Widow / Wife / Person Record)",
+      "section_description": "Generated from the soldier detail page. One person per export. Available in landscape (full biography on page 2) or portrait (compact, with biography excerpt). May include images or printer-friendly (no images).",
+      "ui_button_label": "Export Record (PDF / JPG)",
+      "source_files": [
+        "templates/soldier_landscape.typ",
+        "templates/soldier_portrait.typ",
+        "templates/widow_landscape.typ",
+        "templates/widow_portrait.typ",
+        "templates/spouse_landscape.typ",
+        "templates/spouse_portrait.typ",
+        "templates/common/record_card.typ"
+      ],
+      "questions": [
+        {
+          "id": "q_single_title",
+          "type": "MESSAGE",
+          "title": "Section A — Title Block (top of page 1)",
+          "help": "The header that identifies the record. Already includes display ID and entry type label (Soldier / Widow / Wife / Person Record)."
+        },
+        {
+          "id": "q_single_title_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which title-block fields should the Single Record PDF always show?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Person's full name (prefix + first + middle + last + suffix)",
+            "Display ID (stable public identifier)",
+            "Entry type label (Soldier / Widow / Wife / Person Record)",
+            "Spouse name (when applicable)",
+            "Pension ID",
+            "Application ID"
+          ]
+        },
+        {
+          "id": "q_single_identity",
+          "type": "MESSAGE",
+          "title": "Section B — Identity & Vital Details"
+        },
+        {
+          "id": "q_single_identity_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which Identity & Vital Details fields should appear?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Prefix (e.g. Pvt., Capt.)",
+            "First Name",
+            "Middle Name",
+            "Last Name",
+            "Suffix (e.g. Jr., Sr.)",
+            "Birth Date",
+            "Death Date",
+            "Birth Info (free-text fallback when birth date unknown)",
+            "Burial Location",
+            "Maiden Name (for widows / wives)"
+          ]
+        },
+        {
+          "id": "q_single_service",
+          "type": "MESSAGE",
+          "title": "Section C — Service & Archive Details"
+        },
+        {
+          "id": "q_single_service_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which Service & Archive Details fields should appear?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Record Type label (always shown)",
+            "Rank (single field, if present)",
+            "Rank In (rank at enlistment)",
+            "Rank Out (rank at discharge / death)",
+            "Unit",
+            "Pension State",
+            "Pension ID",
+            "Application ID",
+            "Confederate Home Status",
+            "Confederate Home Name"
+          ]
+        },
+        {
+          "id": "q_single_household",
+          "type": "MESSAGE",
+          "title": "Section D — Household & Context"
+        },
+        {
+          "id": "q_single_household_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which Household & Context fields should appear?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Spouse (name)",
+            "Linked Spouse Record (cross-reference to spouse's own record)",
+            "Maiden Name",
+            "Relationship Label (free-text note about relationship)"
+          ]
+        },
+        {
+          "id": "q_single_records",
+          "type": "MESSAGE",
+          "title": "Section E — Records (linked child records)"
+        },
+        {
+          "id": "q_single_records_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which sub-fields of each linked record should appear?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Record Type (per child row)",
+            "App ID (per child row, in parentheses)",
+            "Details body text (per child row)"
+          ]
+        },
+        {
+          "id": "q_single_images",
+          "type": "MESSAGE",
+          "title": "Section F — Images"
+        },
+        {
+          "id": "q_single_images_include",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Should images appear in the Single Record PDF by default?",
+          "options": [
+            "Always include when available",
+            "Off by default; user opts in",
+            "Never include (text only)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_single_images_captions",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Captions are currently suppressed in the printable layout. Should captions appear?",
+          "options": [
+            "Yes — show captions under each image",
+            "No — keep captions suppressed",
+            "Show only the primary image's caption"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_single_biography",
+          "type": "MESSAGE",
+          "title": "Section G — Biography"
+        },
+        {
+          "id": "q_single_biography_behavior",
+          "type": "MULTIPLE_CHOICE",
+          "title": "How should the biography appear in the Single Record PDF?",
+          "options": [
+            "Inline portrait layout (excerpt only, on page 1)",
+            "Full biography on dedicated page 2 (landscape default)",
+            "Always full biography, regardless of orientation",
+            "Always excerpt only, no full biography page"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_single_biography_preference",
+          "type": "MESSAGE",
+          "title": "Field note: The PDF currently prefers `pdf_excerpt_override` if present, else falls back to `biography`. Should this behavior change?"
+        },
+        {
+          "id": "q_single_biography_override",
+          "type": "MULTIPLE_CHOICE",
+          "title": "When both the excerpt override and full biography exist, which should the PDF show?",
+          "options": [
+            "Show excerpt override only (current behavior)",
+            "Show full biography only",
+            "Show excerpt override AND full biography",
+            "Let the user choose at export time"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_single_open",
+          "type": "PARAGRAPH",
+          "title": "Anything else that should appear in the Single Record PDF that we did not list?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "section_id": "sec_bulk_printable",
+      "section_title": "2. Full Database Printable PDF (Archive-wide)",
+      "section_description": "Generated from the Share page. One record per page, landscape by default, configurable scope (all / filtered / manually selected), with optional sorting and grouping. Essentially the Single Record card repeated for every person in scope.",
+      "ui_button_label": "Full Database Printable PDF Export",
+      "source_files": [
+        "templates/bulk_soldier.typ",
+        "templates/group_divider.typ",
+        "templates/common/record_card.typ"
+      ],
+      "questions": [
+        {
+          "id": "q_bulk_field_parity",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Should the Bulk Printable PDF show exactly the same fields per record as the Single Record PDF?",
+          "options": [
+            "Yes — mirror the Single Record PDF exactly",
+            "No — let users configure Bulk fields independently (show fewer fields per page)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_bulk_minimum_fields",
+          "type": "CHECKBOX",
+          "title": "If fewer fields per page, which fields are essential in the Bulk Printable PDF? (Select all that apply)",
+          "options": [
+            "Name (prefix + first + middle + last + suffix)",
+            "Display ID",
+            "Entry type label (Soldier / Widow / Wife / Person Record)",
+            "Birth and death dates",
+            "Burial Location",
+            "Rank In and Rank Out",
+            "Unit",
+            "Pension State",
+            "Pension ID",
+            "Application ID",
+            "Confederate Home Status",
+            "Confederate Home Name",
+            "Linked Spouse Record",
+            "Maiden Name",
+            "Biography (full)",
+            "Biography excerpt only",
+            "All linked child records"
+          ],
+          "required": false
+        },
+        {
+          "id": "q_bulk_grouping",
+          "type": "MESSAGE",
+          "title": "Section — Grouping (optional group divider pages between sections)"
+        },
+        {
+          "id": "q_bulk_grouping_axes",
+          "type": "CHECKBOX",
+          "title": "Which grouping axes should the Bulk PDF allow? (Select all that apply)",
+          "options": [
+            "Unit",
+            "Pension State",
+            "Confederate Home Status",
+            "Burial Location",
+            "Entry Type (Soldier / Widow / Wife / Person Record)",
+            "Birth decade",
+            "Death decade",
+            "No grouping (single sorted list)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_bulk_sorting",
+          "type": "CHECKBOX",
+          "title": "Which sorting orders should be available?",
+          "options": [
+            "Alphabetical by last name",
+            "Alphabetical by full name",
+            "Chronological by birth year",
+            "Chronological by death year",
+            "By Display ID",
+            "By Unit then last name",
+            "By Pension State then last name"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_bulk_images",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Should the Bulk PDF ever include images?",
+          "options": [
+            "Yes — always include when available",
+            "No — text-only by default",
+            "User opt-in at export time"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_bulk_full_bio",
+          "type": "MULTIPLE_CHOICE",
+          "title": "How should biographies appear in the Bulk PDF?",
+          "options": [
+            "Excerpt only (compact, one page per person)",
+            "Full biography on page 2 (mirror Single Record landscape behavior)",
+            "User opt-in via Full Biography Page toggle (current behavior)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_bulk_open",
+          "type": "PARAGRAPH",
+          "title": "Anything else for the Bulk Printable PDF?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "section_id": "sec_anniversary",
+      "section_title": "3. Monthly Anniversary PDF (Calendar)",
+      "section_description": "Generated from the Calendar page. One calendar month per export, listing every person whose birth or death anniversary falls on each day.",
+      "ui_button_label": "Export Month PDF",
+      "source_files": [
+        "templates/anniversary.typ",
+        "internal/records/anniversary_service.go"
+      ],
+      "questions": [
+        {
+          "id": "q_anniv_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which fields should appear next to each person's name on an anniversary day?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Display name (full name)",
+            "Display ID",
+            "Entry type label (Soldier / Widow / Wife / Person Record)",
+            "Birth year (so the user can tell the century)",
+            "Death year (so the user can tell the century)",
+            "Burial Location",
+            "Unit",
+            "Pension State",
+            "Linked Spouse Record"
+          ]
+        },
+        {
+          "id": "q_anniv_sectioning",
+          "type": "MULTIPLE_CHOICE",
+          "title": "How should the anniversary list be organized?",
+          "options": [
+            "One section per day-of-month (current)",
+            "Separate Birth Anniversaries and Death Anniversaries sections per day",
+            "Separate sections per entry type within each day",
+            "Single chronological list with date headers"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_anniv_year_filter",
+          "type": "PARAGRAPH",
+          "title": "Should the anniversary PDF allow filtering by year range (e.g. only 19th-century anniversaries)? If yes, describe the default range.",
+          "required": false
+        },
+        {
+          "id": "q_anniv_open",
+          "type": "PARAGRAPH",
+          "title": "Anything else for the Anniversary PDF?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "section_id": "sec_analytics",
+      "section_title": "4. Archive Summary / Insights PDF",
+      "section_description": "Generated from the Insights page. Aggregate statistics about the whole archive — record counts, top cemeteries, Confederate Home participation, pension distribution, unit representation, and chronological overview.",
+      "ui_button_label": "Export Analytics Report",
+      "source_files": [
+        "templates/analytics_summary.typ",
+        "internal/records/analytics_service.go"
+      ],
+      "questions": [
+        {
+          "id": "q_analytics_record_types",
+          "type": "CHECKBOX",
+          "title": "The 'Record Types' section currently shows Soldiers / Spouses (Wives & Widows) / Linked People counts. Should these be split?",
+          "options": [
+            "Keep as-is (current 3 buckets)",
+            "Split Spouses into separate Wife and Widow counts",
+            "Split Soldiers into Officers vs. Enlisted",
+            "Add a 'Total records (soldiers + all linked persons)' headline"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_analytics_top_n",
+          "type": "MESSAGE",
+          "title": "Several sections show 'top N' lists. What N should each use?"
+        },
+        {
+          "id": "q_analytics_top_cemeteries",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Top Cemeteries — how many entries?",
+          "options": ["5", "10 (current)", "15", "20", "All"],
+          "required": true
+        },
+        {
+          "id": "q_analytics_top_homes",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Most frequent Confederate Home names — how many entries?",
+          "options": ["3", "5 (current)", "10", "All"],
+          "required": true
+        },
+        {
+          "id": "q_analytics_top_units",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Unit Representation — how many entries?",
+          "options": ["3", "5 (current)", "10", "20", "All"],
+          "required": true
+        },
+        {
+          "id": "q_analytics_pension_states",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Pension Distribution — show every state, or only states with members?",
+          "options": [
+            "Every state with at least one record (current)",
+            "All U.S. states (with zeros)",
+            "Only states with more than N members (configurable)"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_analytics_decades",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Chronological Overview — birth and death decades. Which granularity?",
+          "options": [
+            "Decades (current)",
+            "Half-decades (5-year buckets)",
+            "Quarter-centuries (25-year buckets)",
+            "By century"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_analytics_extra_sections",
+          "type": "CHECKBOX",
+          "title": "Which additional analytics sections (if any) should the Archive Summary PDF include?",
+          "options": [
+            "Duplicate audit status summary",
+            "Research task backlog (open / closed counts)",
+            "Records per Unit breakdown (already implied by Unit Representation but expanded)",
+            "Records per Confederate Home expanded view",
+            "Records per Burial Location expanded view",
+            "Records added / edited per year",
+            "Average biography length per entry type",
+            "None — current sections are sufficient"
+          ],
+          "required": false
+        },
+        {
+          "id": "q_analytics_open",
+          "type": "PARAGRAPH",
+          "title": "Anything else for the Analytics Summary PDF?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "section_id": "sec_biography_appendix",
+      "section_title": "5. Biography Appendix PDF",
+      "section_description": "A dedicated full-biography page that can be appended to a Single Record PDF or Bulk Printable PDF. One biography per page.",
+      "ui_button_label": "Not currently exposed in UI (template exists)",
+      "source_files": [
+        "templates/biography_appendix.typ"
+      ],
+      "questions": [
+        {
+          "id": "q_bio_appx_fields",
+          "type": "CHECKBOX_GRID",
+          "title": "Which contextual fields should appear at the top of each biography page?",
+          "rows_columns_required": 2,
+          "rows": ["Include", "Exclude"],
+          "columns": [
+            "Full name",
+            "Display ID",
+            "Entry type label",
+            "Birth Date",
+            "Death Date",
+            "Burial Location",
+            "Unit",
+            "Pension State",
+            "Linked Spouse Record"
+          ]
+        },
+        {
+          "id": "q_bio_appx_default",
+          "type": "MULTIPLE_CHOICE",
+          "title": "Should the Biography Appendix be appended by default when biographies exist?",
+          "options": [
+            "Yes — append when a biography is non-empty",
+            "No — opt-in only"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_bio_appx_open",
+          "type": "PARAGRAPH",
+          "title": "Anything else for the Biography Appendix?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "section_id": "sec_global_preferences",
+      "section_title": "6. Global Preferences (apply to every PDF type)",
+      "section_description": "Cross-cutting concerns: privacy, metadata, footer, ordering.",
+      "questions": [
+        {
+          "id": "q_global_footer",
+          "type": "CHECKBOX",
+          "title": "What should appear in the page footer of every PDF?",
+          "options": [
+            "Archive name (configurable)",
+            "Generated-on date",
+            "Page N of M",
+            "Display ID of the current record (on Bulk PDF pages)",
+            "Last-edited-at timestamp",
+            "Last-edited-by user",
+            "No footer"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_global_section_order",
+          "type": "RANKING",
+          "title": "On the Single Record PDF, rank the order of these sections (top = first visible). Drag to reorder, or 1 = first, 2 = second, etc.",
+          "options": [
+            "Title block (name + display ID)",
+            "Identity & Vital Details",
+            "Service & Archive Details",
+            "Household & Context",
+            "Records (linked child records)",
+            "Biography",
+            "Images"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_global_privacy",
+          "type": "CHECKBOX",
+          "title": "Are there any fields that should NEVER appear in a public-facing PDF? (Select all that apply)",
+          "options": [
+            "Notes (internal-only text field)",
+            "Scratch pad cache",
+            "Review flags (needs_review, review_reason)",
+            "Last-edited-by user",
+            "Import batch ID",
+            "Sync ID",
+            "None — current privacy model is sufficient"
+          ],
+          "required": true
+        },
+        {
+          "id": "q_global_unmapped",
+          "type": "PARAGRAPH",
+          "title": "The DB also contains these fields that are NOT currently rendered in any PDF. Should any of them appear in future exports? (List field names and which PDF type)",
+          "help": "Currently unmapped: rank (single), maiden_name on soldier entry_type, relationship_label, added_by, last_edited_by, last_edited_fields, last_edited_at, import_batch_id, sync_id, scratchpad_cache.",
+          "required": false
+        },
+        {
+          "id": "q_global_priority",
+          "type": "MESSAGE",
+          "title": "Final question"
+        },
+        {
+          "id": "q_global_priority_field",
+          "type": "PARAGRAPH",
+          "title": "If we can only fix or add ONE field behavior in the next PDF release, what should it be?",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "apps_script_hints": {
+    "import_function_name": "buildGoogleFormFromSurveyJson",
+    "notes": [
+      "Each top-level key under pdf_export_sections becomes a Form Section (Page Break before it).",
+      "Each `questions` array becomes the section's items, in order.",
+      "Question type mappings to Google Forms ItemType:",
+      "  SHORT_ANSWER  -> TEXT",
+      "  PARAGRAPH     -> PARAGRAPH_TEXT",
+      "  MULTIPLE_CHOICE -> MULTIPLE_CHOICE",
+      "  CHECKBOX      -> CHECKBOX",
+      "  CHECKBOX_GRID -> use CHECKBOX with each column as an option, prefixed with the row label (Include/Exclude)",
+      "  LINEAR_SCALE  -> SCALE",
+      "  RANKING       -> use MULTIPLE_CHOICE with ranked options, or write a custom Apps Script ranking widget",
+      "  MESSAGE       -> SECTION_HEADER (no input, instructional only)",
+      "Title block of each Form section should be section_title. section_description goes in the section description field.",
+      "Required = true maps to RequiredQuestion; required = false leaves it optional.",
+      "Help text in `help` key goes in the question description."
+    ]
+  }
+}
