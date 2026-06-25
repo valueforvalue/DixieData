@@ -434,7 +434,6 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		respondInternal(w, r, "Could not write the Person Record PDF.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
 }
 
@@ -464,7 +463,6 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		respondInternal(w, r, "Could not write the text-only Person Record PDF.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
 }
 
@@ -505,7 +503,6 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(paths[0]))
 	if len(paths) > 1 {
 		setToastHeader(w, fmt.Sprintf("JPG saved (%d pages, first page opened): %s", len(paths), paths[0]))
 		return
@@ -549,7 +546,6 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		respondInternal(w, r, "Could not write the monthly PDF.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Monthly PDF saved to %s", path))
 }
 

@@ -122,7 +122,6 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the feedback log.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Feedback log saved to %s", path))
 }
 
