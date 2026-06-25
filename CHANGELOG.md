@@ -63,6 +63,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
   as it was.
+- Accessibility audit findings from the 2026-06-24 sweep (issue #99):
+  quick-search input gets a meaningful `aria-label` (no longer `q`);
+  search results pagination lives inside an `aria-label`-ed `<nav>`
+  landmark with `aria-current="page"`; image thumbnails fall back to
+  `Image for Person Record {DisplayID}` alt text when the caption is
+  blank and strip HTML from non-blank captions; the browse results
+  table declares `scope="col"` on every header; the disabled `Compare
+  Selected` button is `aria-describedby` the manual-comparison help text;
+  the feedback message `<textarea>` declares `aria-required="true"`
+  alongside `required`; the feedback / print-config / google-preferences
+  modals declare `role="dialog"` + `aria-modal="true"` and are
+  `aria-labelledby` their `<h3>` heading; `lang="en"` on the root
+  `<html>` carries a comment marker for the future i18n pass.
 
 ### Removed
 
