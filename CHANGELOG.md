@@ -67,6 +67,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `BrowseResults` hx-boost partial, and the FTS snippet column were already
   shipped before this batch landed; `RecentSummary` projection (7.2) and
   feedback retention setting (7.13) are deferred to a future pass.
+- Background-job pattern for long exports (issue #100): adds an
+  in-process job registry (`internal/jobs`) and a new `/jobs/{id}`
+  status page. The share page's Static Archive and Printable PDF
+  exports accept `?async=1` and now run as background jobs that
+  the user can poll and cancel from a dedicated progress page
+  instead of blocking the HTTP goroutine for minutes.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
