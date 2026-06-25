@@ -41,6 +41,9 @@ func newStressApp(t *testing.T) *App {
 }
 
 func TestStressBridgeConcurrentSearchAndSave(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test -run TestStress ./internal/appshell/`")
+	}
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
 	defer server.Close()

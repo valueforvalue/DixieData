@@ -23,7 +23,7 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 	page := parsePage(r.URL.Query().Get("page"))
 	soldiers, total, err := a.soldiers.ReviewQueue(page, 50)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load the review queue.", err)
 		return
 	}
 	soldierIDs := make([]int64, 0, len(soldiers))
@@ -32,7 +32,7 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 	}
 	findings, err := a.audit.FindingsForPersonRecords(soldierIDs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load review findings.", err)
 		return
 	}
 	presentation.ReviewQueueView(soldiers, findings, page, total, 50).Render(r.Context(), w)
@@ -44,12 +44,12 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the bulk action form.", err)
 		return
 	}
 	selected, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Could not parse selected record ids.", err)
 		return
 	}
 	if len(selected) == 0 {
@@ -62,11 +62,11 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 	case "ignore":
 		for _, soldierID := range selected {
 			if err := a.soldiers.MarkReviewResolved(soldierID); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, fmt.Sprintf("Could not resolve review status for record %d.", soldierID), err)
 				return
 			}
 			if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, fmt.Sprintf("Could not resolve findings for record %d.", soldierID), err)
 				return
 			}
 		}
@@ -74,17 +74,17 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 	case "delete":
 		for _, soldierID := range selected {
 			if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, fmt.Sprintf("Could not resolve findings for record %d.", soldierID), err)
 				return
 			}
 			if err := a.soldiers.Delete(soldierID); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, fmt.Sprintf("Could not delete record %d.", soldierID), err)
 				return
 			}
 		}
 		setToastHeaderWithType(w, fmt.Sprintf("Deleted %d review queue record(s).", len(selected)), "success")
 	default:
-		http.Error(w, "invalid bulk action", http.StatusBadRequest)
+		respondValidation(w, r, "Unknown bulk action. Use ignore or delete.", nil)
 		return
 	}
 	w.Header().Set("X-DixieData-Redirect", "/review-queue")
@@ -104,7 +104,7 @@ func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) 
 	}
 	conflictID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil || conflictID < 1 {
-		http.Error(w, "invalid merge review id", http.StatusBadRequest)
+		respondValidation(w, r, "Invalid merge review id.", err)
 		return
 	}
 	var decision string
@@ -122,7 +122,7 @@ func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := a.backup.ResolveMergeConflict(conflictID, decision, a.dataDir); err != nil {
-		fmt.Fprintf(w, "Merge review update failed: %v", err)
+		respondInternal(w, r, "Merge review decision could not be applied.", err)
 		return
 	}
 	w.Header().Set("X-DixieData-Redirect", "/export")
@@ -136,11 +136,11 @@ func (a *App) handleResolveReviewStatus(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	if err := a.audit.ResolveFindingsForPersonRecord(id); err != nil {
-		fmt.Fprintf(w, "Review queue update failed: %v", err)
+		respondInternal(w, r, fmt.Sprintf("Could not resolve findings for record %d.", id), err)
 		return
 	}
 	if err := a.soldiers.MarkReviewResolved(id); err != nil {
-		fmt.Fprintf(w, "Review queue update failed: %v", err)
+		respondInternal(w, r, fmt.Sprintf("Could not mark record %d as resolved.", id), err)
 		return
 	}
 	setToastHeader(w, "Success: review item resolved.")
@@ -158,7 +158,7 @@ func (a *App) handleFlagReviewStatus(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the review flag form.", err)
 		return
 	}
 	reason := strings.TrimSpace(r.FormValue("review_reason"))
@@ -169,7 +169,7 @@ func (a *App) handleFlagReviewStatus(w http.ResponseWriter, r *http.Request, id 
 	}
 	if err := a.soldiers.SetReviewStatus(id, true, reason); err != nil {
 		setToastHeaderWithType(w, "Review queue update failed.", "error")
-		fmt.Fprintf(w, "Review queue update failed: %v", err)
+		respondInternal(w, r, fmt.Sprintf("Could not flag record %d for review.", id), err)
 		return
 	}
 	setToastHeader(w, "Success: record added to the review queue.")
@@ -196,7 +196,7 @@ func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := a.audit.ResolveFinding(findingID); err != nil {
-			fmt.Fprintf(w, "Duplicate audit resolution failed: %v", err)
+			respondInternal(w, r, fmt.Sprintf("Could not resolve duplicate audit finding %d.", findingID), err)
 			return
 		}
 		setToastHeader(w, "Success: duplicate pair resolved.")
@@ -210,7 +210,7 @@ func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
 	}
 	comparison, err := a.audit.Comparison(findingID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Duplicate audit comparison %d not found.", findingID), err)
 		return
 	}
 	presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
@@ -223,16 +223,16 @@ func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
 	}
 	id1, id2, err := compareIDsFromRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Could not parse comparison record ids.", err)
 		return
 	}
 	comparison, err := a.soldiers.ManualComparison(id1, id2)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "record not found", http.StatusNotFound)
+			respondNotFound(w, r, "One of the selected records no longer exists.", err)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondInternal(w, r, "Could not build the comparison view.", err)
 		return
 	}
 	if fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from"); err == nil && fromID > 0 {

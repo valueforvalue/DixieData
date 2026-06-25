@@ -45,7 +45,7 @@ func (a *App) handleSoldierByDisplayID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, fmt.Sprintf("Could not look up Display ID %s.", displayID), err)
 		return
 	}
 
@@ -58,7 +58,7 @@ func (a *App) handleFeedbackSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse feedback form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the feedback form.", err)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (a *App) handleFeedbackSubmit(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := appendFeedbackEntry(a.dataDir, entry); err != nil {
 		setToastHeaderWithType(w, "Feedback could not be saved.", "error")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not save feedback to the local log.", err)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, "No feedback has been saved yet.")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not read the feedback log.", err)
 		return
 	}
 
@@ -114,12 +114,12 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Feedback log export cancelled.")
+		respondError(w, r, KindValidation, "Feedback log export cancelled.", nil)
 		return
 	}
 
 	if err := copyFeedbackLog(sourcePath, path); err != nil {
-		fmt.Fprintf(w, "Feedback log export failed: %v", err)
+		respondInternal(w, r, "Could not write the feedback log.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))

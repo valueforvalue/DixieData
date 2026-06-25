@@ -1,0 +1,82 @@
+[
+  {
+    "name": "hamburger-opens-drawer",
+    "passed": true,
+    "details": {
+      "initialHidden": true,
+      "afterOpen": true,
+      "drawerHasLinks": true,
+      "ariaExpanded": "true"
+    }
+  },
+  {
+    "name": "hamburger-esc-closes",
+    "passed": true,
+    "details": {
+      "afterEsc": true
+    }
+  },
+  {
+    "name": "hamburger-focus-returns",
+    "passed": true,
+    "details": {
+      "focusBackToToggle": true
+    }
+  },
+  {
+    "name": "browse-filter-applies",
+    "passed": true,
+    "details": {
+      "detailsOpen": true,
+      "inputCount": 9,
+      "badgeAfterSelect": "1 active"
+    }
+  },
+  {
+    "name": "browse-filter-persists-from-url",
+    "passed": true,
+    "details": {
+      "persistedFilter": {
+        "size": "25"
+      }
+    }
+  },
+  {
+    "name": "compare-region-keyboard-accessible",
+    "passed": true,
+    "details": {
+      "scrollableTabindex": "0"
+    }
+  },
+  {
+    "name": "compare-differences-pills-present",
+    "passed": true,
+    "details": {
+      "differencesPills": 8
+    }
+  },
+  {
+    "name": "browse-compare-selection-enabled",
+    "passed": true,
+    "details": {
+      "checkboxCount": 50,
+      "printBtnFound": true
+    }
+  },
+  {
+    "name": "feedback-modal-opens-and-closes",
+    "passed": true,
+    "details": {
+      "modalOpen": true,
+      "modalClosed": true
+    }
+  },
+  {
+    "name": "htmx-library-loaded",
+    "passed": true,
+    "details": {
+      "loaded": true,
+      "version": "2.0.10"
+    }
+  }
+]

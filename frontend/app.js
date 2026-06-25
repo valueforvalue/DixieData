@@ -2210,6 +2210,146 @@
     });
   }
 
+  // Browse filter drawer. Counts active filters and updates the badge
+  // above the disclosure element. Persists open/closed preference in
+  // localStorage so the drawer stays collapsed/expanded across visits.
+  function initializeBrowseFilterDrawer() {
+    const form = document.querySelector("[data-browse-filters-form]");
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const details = form.querySelector("[data-browse-filters-details]");
+    const countNode = form.querySelector("[data-browse-filters-count]");
+    if (!(details instanceof HTMLDetailsElement) || !(countNode instanceof HTMLElement)) {
+      return;
+    }
+
+    const storageKey = "dixiedata.browse.filters.open";
+
+    // Restore open/closed preference.
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored === "true") {
+        details.open = true;
+      } else if (stored === "false") {
+        details.open = false;
+      }
+    } catch (error) {
+      // Ignore storage errors.
+    }
+
+    // Count of filters that differ from the default state. The default for
+    // each input is recorded the first time we see it; subsequent counts
+    // compare against that baseline so users who pick the default option
+    // for a non-empty default (e.g. sort) don't get a phantom badge.
+    function updateCount() {
+      const inputs = form.querySelectorAll("[data-browse-filter-input]");
+      let active = 0;
+      inputs.forEach((input) => {
+        if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement)) {
+          return;
+        }
+        const value = (input.value || "").trim();
+        // A filter is "active" if it's non-empty AND not the default scope/sort/page_size.
+        if (!value) {
+          return;
+        }
+        const name = input.getAttribute("name");
+        if (name === "scope" && value === "all") return;
+        if (name === "sort" && value === "display_id_asc") return;
+        if (name === "page_size" && value === "100") return;
+        active += 1;
+      });
+      countNode.textContent = active === 0 ? "0 active" : `${active} active`;
+    }
+
+    updateCount();
+
+    // Update count when any filter changes.
+    form.addEventListener("change", () => updateCount());
+    form.addEventListener("input", () => updateCount());
+
+    // Persist open/closed preference when toggled.
+    details.addEventListener("toggle", () => {
+      try {
+        window.localStorage.setItem(storageKey, details.open ? "true" : "false");
+      } catch (error) {
+        // Ignore storage errors.
+      }
+    });
+  }
+
+// Top-nav hamburger drawer (visible below 768px). Mirrors the desktop
+  // nav but stacks vertically and traps focus while open.
+  function initializeTopNav() {
+    const drawer = document.querySelector("[data-top-nav-drawer]");
+    const toggle = document.querySelector("[data-top-nav-toggle]");
+    const close = document.querySelector("[data-top-nav-close]");
+    if (!(drawer instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    let lastFocus = null;
+
+    function open() {
+      if (!drawer.classList.contains("hidden")) {
+        return;
+      }
+      lastFocus = document.activeElement;
+      drawer.classList.remove("hidden");
+      toggle.setAttribute("aria-expanded", "true");
+      // Move focus to the close button so keyboard users can dismiss.
+      if (close instanceof HTMLButtonElement) {
+        close.focus();
+      }
+      document.addEventListener("keydown", handleKey);
+    }
+
+    function dismiss() {
+      if (drawer.classList.contains("hidden")) {
+        return;
+      }
+      drawer.classList.add("hidden");
+      toggle.setAttribute("aria-expanded", "false");
+      document.removeEventListener("keydown", handleKey);
+      if (lastFocus instanceof HTMLElement) {
+        lastFocus.focus();
+      } else {
+        toggle.focus();
+      }
+    }
+
+    function handleKey(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        dismiss();
+      }
+    }
+
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (drawer.classList.contains("hidden")) {
+        open();
+      } else {
+        dismiss();
+      }
+    });
+
+    if (close instanceof HTMLButtonElement) {
+      close.addEventListener("click", (event) => {
+        event.preventDefault();
+        dismiss();
+      });
+    }
+
+    // Click on a nav link closes the drawer (the destination route
+    // replaces the page so the drawer would normally disappear anyway,
+    // but explicitly closing avoids a flash on htmx swaps).
+    drawer.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => dismiss());
+    });
+  }
+
   function setSectionEnabled(section, enabled) {
     if (!(section instanceof HTMLElement)) {
       return;
@@ -3209,6 +3349,16 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    // htmx is loaded but its auto-handling of hx-* attributes is disabled
+    // by removing those attributes from the DOM at boot. The app's own
+    // request() / queueRequest() / triggerInputRequest handlers own all
+    // network round-trips and preventDefault on submit to avoid
+    // duplicate fetches. window.htmx is still defined (third-party code
+    // can check for it). See audit/reports/SLICES.md for context.
+    document.querySelectorAll("[hx-get], [hx-post], [hx-put], [hx-delete], [hx-trigger]").forEach((el) => {
+      ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-target", "hx-swap", "hx-confirm", "hx-include"].forEach((attr) => el.removeAttribute(attr));
+    });
+
     ensureResponsiveLayoutWatcher();
     applyResponsiveLayout(document);
     initializeTabs();
@@ -3216,6 +3366,8 @@
     initializeEntryTypeForms();
     initializeLiveCounts(document);
     initializeFloatingNav();
+    initializeTopNav();
+    initializeBrowseFilterDrawer();
     applyCalendarAnniversaryDensity();
     syncPrintScopeState();
     applyPrintRecordFilter();

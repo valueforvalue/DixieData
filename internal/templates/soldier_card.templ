@@ -157,10 +157,11 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				</div>
 				<div data-ui-id={ uiids.PanelSoldiersSearchBasic } data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
 					@SurfaceBadge(uiids.PanelSoldiersSearchBasic)
-					<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
-						value={ query }
-						hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms"
-						class="field-input"/>
+					<form hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms from:input[name='q']" class="contents">
+						<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
+							value={ query }
+							class="field-input" aria-label="q"/>
+					</form>
 					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
 						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
 					</div>
@@ -175,11 +176,11 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-display_id">Display ID</label>
-						<input type="text" name="display_id" class="field-input"/>
+						<input type="text" name="display_id" class="field-input" id="sc-display_id"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-entry_type">Entry Type</label>
-						<select name="entry_type" class="field-input">
+						<select name="entry_type" class="field-input" id="sc-entry_type">
 							<option value="">All</option>
 							<option value="soldier">Soldier</option>
 							<option value="linked_person">Person Record</option>
@@ -189,47 +190,47 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-record_type">Source Record Type</label>
-						<input type="text" name="record_type" list="advanced-record-type-suggestions" class="field-input"/>
+						<input type="text" name="record_type" list="advanced-record-type-suggestions" class="field-input" id="sc-record_type"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-first_name">First Name</label>
-						<input type="text" name="first_name" class="field-input"/>
+						<input type="text" name="first_name" class="field-input" id="sc-first_name"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-middle_name">Middle Name</label>
-						<input type="text" name="middle_name" class="field-input"/>
+						<input type="text" name="middle_name" class="field-input" id="sc-middle_name"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-last_name">Last Name</label>
-						<input type="text" name="last_name" class="field-input"/>
+						<input type="text" name="last_name" class="field-input" id="sc-last_name"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-maiden_name">Maiden Name</label>
-						<input type="text" name="maiden_name" class="field-input"/>
+						<input type="text" name="maiden_name" class="field-input" id="sc-maiden_name"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-relationship_label">Relationship to Soldier</label>
-						<input type="text" name="relationship_label" list="advanced-relationship-label-suggestions" class="field-input"/>
+						<input type="text" name="relationship_label" list="advanced-relationship-label-suggestions" class="field-input" id="sc-relationship_label"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-rank_in">Rank In</label>
-						<input type="text" name="rank_in" list="advanced-rank-in-suggestions" class="field-input"/>
+						<input type="text" name="rank_in" list="advanced-rank-in-suggestions" class="field-input" id="sc-rank_in"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-rank_out">Rank Out</label>
-						<input type="text" name="rank_out" list="advanced-rank-out-suggestions" class="field-input"/>
+						<input type="text" name="rank_out" list="advanced-rank-out-suggestions" class="field-input" id="sc-rank_out"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1" for="sc-unit">Unit</label>
-						<input type="text" name="unit" list="advanced-unit-suggestions" class="field-input"/>
+						<input type="text" name="unit" list="advanced-unit-suggestions" class="field-input" id="sc-unit"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1" for="sc-pension_state">Pension State</label>
-						<input type="text" name="pension_state" list="advanced-pension-state-suggestions" class="field-input" placeholder="Any state"/>
+						<input type="text" name="pension_state" list="advanced-pension-state-suggestions" class="field-input" placeholder="Any state" id="sc-pension_state"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-confederate_home_status">Confederate Home Status</label>
-						<select name="confederate_home_status" class="field-input">
+						<select name="confederate_home_status" class="field-input" id="sc-confederate_home_status">
 							<option value="">Any status</option>
 							for _, status := range confederateHomeStatuses() {
 								<option value={ status }>{ status }</option>
@@ -238,15 +239,15 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-confederate_home_name">Confederate Home Name</label>
-						<input type="text" name="confederate_home_name" list="advanced-confederate-home-name-suggestions" class="field-input"/>
+						<input type="text" name="confederate_home_name" list="advanced-confederate-home-name-suggestions" class="field-input" id="sc-confederate_home_name"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1" for="sc-buried_in">Buried In</label>
-						<input type="text" name="buried_in" list="advanced-buried-in-suggestions" class="field-input"/>
+						<input type="text" name="buried_in" list="advanced-buried-in-suggestions" class="field-input" id="sc-buried_in"/>
 					</div>
 					<div class="responsive-span-2 col-span-2">
 						<label class="block text-sm text-slate-500 mb-1" for="sc-review_status">Status</label>
-						<select name="review_status" class="field-input">
+						<select name="review_status" class="field-input" id="sc-review_status">
 							<option value="">All Person Records</option>
 							<option value="clean">Clean Person Records Only</option>
 							<option value="review">Review Queue Only</option>
@@ -254,27 +255,27 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-birth_year">Birth Year</label>
-						<input type="text" name="birth_year" class="field-input" placeholder="1838"/>
+						<input type="text" name="birth_year" class="field-input" placeholder="1838" id="sc-birth_year"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-birth_year_to">Birth Year Through</label>
-						<input type="text" name="birth_year_to" class="field-input" placeholder="1845"/>
+						<input type="text" name="birth_year_to" class="field-input" placeholder="1845" id="sc-birth_year_to"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-death_year">Death Year</label>
-						<input type="text" name="death_year" class="field-input" placeholder="1864"/>
+						<input type="text" name="death_year" class="field-input" placeholder="1864" id="sc-death_year"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-death_year_to">Death Year Through</label>
-						<input type="text" name="death_year_to" class="field-input" placeholder="1865"/>
+						<input type="text" name="death_year_to" class="field-input" placeholder="1865" id="sc-death_year_to"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-birth_date">Birth Date</label>
-						<input type="text" name="birth_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
+						<input type="text" name="birth_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886" id="sc-birth_date"/>
 					</div>
 					<div>
 						<label class="block text-sm text-slate-500 mb-1" for="sc-death_date">Death Date</label>
-						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886"/>
+						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886" id="sc-death_date"/>
 					</div>
 					<div class="responsive-span-2 col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
 						<button type="submit" class="primary-button">Run Advanced Search</button>
@@ -332,15 +333,13 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							<form hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="this" hx-swap="none" data-pdf-pref-scope="soldier" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 								<div class="flex items-start justify-between gap-3">
 									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Single Record Export</p>
-									<details class="relative">
-										<summary class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</summary>
-										<div data-popout-panel class="absolute right-0 z-10 mt-2 w-72 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white p-4 text-xs leading-5 text-slate-600 shadow-[0_18px_32px_rgba(23,33,43,0.14)]">
-											<p class="font-semibold text-[#22303d]">Which single-record report should I use?</p>
-											<p class="mt-2"><strong>Portrait PDF/JPG</strong> keeps the image with the biography excerpt/override and uses a more compact single-record layout when it fits.</p>
-											<p class="mt-2"><strong>Landscape PDF/JPG</strong> keeps page 1 concise and always renders the full biography on page 2 when a biography exists.</p>
-											<p class="mt-2"><strong>JPG export</strong> mirrors the generated PDF pages.</p>
-										</div>
-									</details>
+									<button type="button" popovertarget="single-record-export-help" class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</button>
+								</div>
+								<div id="single-record-export-help" data-popout-panel popover class="w-72 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white p-4 text-xs leading-5 text-slate-600 shadow-[0_18px_32px_rgba(23,33,43,0.14)]">
+									<p class="font-semibold text-[#22303d]">Which single-record report should I use?</p>
+									<p class="mt-2"><strong>Portrait PDF/JPG</strong> keeps the image with the biography excerpt/override and uses a more compact single-record layout when it fits.</p>
+									<p class="mt-2"><strong>Landscape PDF/JPG</strong> keeps page 1 concise and always renders the full biography on page 2 when a biography exists.</p>
+									<p class="mt-2"><strong>JPG export</strong> mirrors the generated PDF pages.</p>
 								</div>
 								<div class="mt-3 grid gap-3 sm:grid-cols-2">
 									<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">

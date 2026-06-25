@@ -151,6 +151,12 @@ type PersonRecordSearch struct {
 	DeathYearTo           string
 	DeathMonth            string
 	DeathDay              string
+	// IsArchiveEmpty and TotalRecordCount are populated by the handler
+	// from models.ArchiveCounts so the search results template can show
+	// a Setup card on first-run / truly-empty archives without needing
+	// a separate API call. See issue #98 from the 2026-06-24 audit.
+	IsArchiveEmpty    bool
+	TotalRecordCount  int
 }
 
 type BrowseState struct {

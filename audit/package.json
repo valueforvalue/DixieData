@@ -1,0 +1,8 @@
+{
+  "name": "dixiedata-audit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "audit": "node audit/run.mjs"
+  }
+}

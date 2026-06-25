@@ -24,7 +24,7 @@ func (a *App) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		current, settingsErr := a.updater.Settings()
 		if settingsErr != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondValidation(w, r, "Could not save the update source.", err)
 			return
 		}
 		current.NoticeKind = "error"

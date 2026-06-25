@@ -20,7 +20,7 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot) {
 				</div>
 				<div class="flex flex-col items-stretch gap-3 xl:items-end">
 					<form hx-post="/insights/report/pdf" hx-target="this" hx-swap="none" data-pdf-pref-scope="insights" class="flex flex-col items-stretch gap-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
-						<select name="orientation" data-pdf-pref-key="orientation" class="w-full rounded-lg border border-[rgba(141,116,64,0.35)] bg-white px-2 py-1 text-sm text-slate-700 sm:w-auto">
+						<select name="orientation" data-pdf-pref-key="orientation" aria-label="PDF orientation" class="w-full rounded-lg border border-[rgba(141,116,64,0.35)] bg-white px-2 py-1 text-sm text-slate-700 sm:w-auto">
 							<option value="P" selected>Portrait</option>
 							<option value="L">Landscape</option>
 						</select>

@@ -32,12 +32,12 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 	month := int(time.Now().Month())
 	summary, err := a.calendar.GetMonthSummary(month)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		respondInternal(w, r, "Could not load the current month calendar.", err)
 		return
 	}
 	counts, err := a.soldiers.ArchiveCounts()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		respondInternal(w, r, "Could not load archive counts for the calendar.", err)
 		return
 	}
 	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
@@ -68,7 +68,7 @@ func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		a.setupRequired = false
 		if err := a.reloadServices(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			respondInternal(w, r, "Identity saved but services could not be reloaded.", err)
 			return
 		}
 		http.Redirect(w, r, "/calendar", http.StatusSeeOther)
@@ -111,17 +111,17 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 	}
 	month, err := parseBoundedInt(parts[0], "month", 1, 12)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
 	summary, err := a.calendar.GetMonthSummary(month)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		respondInternal(w, r, "Could not load the month calendar.", err)
 		return
 	}
 	counts, err := a.soldiers.ArchiveCounts()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		respondInternal(w, r, "Could not load archive counts for the calendar.", err)
 		return
 	}
 	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
@@ -130,12 +130,12 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleCalendarGrid(w http.ResponseWriter, r *http.Request, monthValue string) {
 	month, err := parseBoundedInt(monthValue, "month", 1, 12)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
 	summary, err := a.calendar.GetMonthSummary(month)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load the month calendar grid.", err)
 		return
 	}
 	presentation.CalendarGrid(month, summary).Render(r.Context(), w)
@@ -144,23 +144,23 @@ func (a *App) handleCalendarGrid(w http.ResponseWriter, r *http.Request, monthVa
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/anniversary/"), "/")
 	if len(parts) < 2 {
-		http.Error(w, "bad request", 400)
+		respondValidation(w, r, "Anniversary route requires a month and day.", nil)
 		return
 	}
 	month, err := parseBoundedInt(parts[0], "month", 1, 12)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
 	day, err := parseBoundedInt(parts[1], "day", 0, 31)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid day.", err)
 		return
 	}
 	if len(parts) == 2 && r.Method == http.MethodGet {
 		editID, err := parseOptionalInt64(r.URL.Query().Get("edit"), "edit")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondValidation(w, r, "Invalid edit id.", err)
 			return
 		}
 		a.renderCalendarDayDetail(w, r, month, day, editID, "", "", "", "", "", "", http.StatusOK)
@@ -173,7 +173,7 @@ func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 4 && parts[2] == "items" {
 		itemID, err := parseOptionalInt64(parts[3], "item_id")
 		if err != nil || itemID <= 0 {
-			http.Error(w, "invalid item_id", http.StatusBadRequest)
+			respondValidation(w, r, "Invalid item id.", err)
 			return
 		}
 		switch r.Method {
