@@ -32,11 +32,12 @@ import (
 
 // Status values.
 const (
-	StatusQueued    = "queued"
-	StatusRunning   = "running"
-	StatusDone      = "done"
-	StatusError     = "error"
-	StatusCancelled = "cancelled"
+	StatusQueued       = "queued"
+	StatusRunning      = "running"
+	StatusDone         = "done"
+	StatusError        = "error"
+	StatusCancelled    = "cancelled"
+	StatusInterrupted  = "interrupted"
 )
 
 // Job is the registry-side view of a background job. Worker code should
