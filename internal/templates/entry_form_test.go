@@ -749,6 +749,29 @@ func TestSearchResultsShowsRecentAccessBanner(t *testing.T) {
 	}
 }
 
+func TestSearchResultsPaginationUsesNavLandmark(t *testing.T) {
+	var buf bytes.Buffer
+	// 75 results at pageSize 50 -> two pages, so both prev/next fire.
+	err := SearchResults([]viewmodel.Soldier{{
+		ID:        7,
+		DisplayID: "PENSION-4242",
+		FirstName: "Nathan",
+		LastName:  "Forrest",
+	}}, viewmodel.SoldierSearch{Mode: "basic", Query: "Forrest"}, 1, 75, 50).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, needle := range []string{
+		`<nav aria-label="Search results pagination">`,
+		`aria-current="page"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("search pagination missing %s", needle)
+		}
+	}
+}
+
 func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{{
