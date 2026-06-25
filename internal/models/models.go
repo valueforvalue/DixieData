@@ -111,6 +111,12 @@ type SoldierSearch struct {
 	DeathYearTo           string
 	DeathMonth            string
 	DeathDay              string
+	// IsArchiveEmpty and TotalRecordCount are populated by the handler
+	// from ArchiveCounts so the search results template can show a
+	// Setup card on first-run / truly-empty archives. See audit
+	// issue #98 from the 2026-06-24 sweep.
+	IsArchiveEmpty   bool
+	TotalRecordCount int
 }
 
 type SoldierFormSuggestions struct {

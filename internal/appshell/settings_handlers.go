@@ -12,6 +12,7 @@ package appshell
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -25,7 +26,7 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	settings, err := a.updater.Settings()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load update settings.", err)
 		return
 	}
 	presentation.SettingsView(initializeDataConfirmationWord, settings).Render(r.Context(), w)
@@ -38,7 +39,7 @@ func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
 	}
 	orphans, err := a.images.DiscoverOrphans(a.dataDir)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not scan for orphaned images.", err)
 		return
 	}
 	presentation.SettingsOrphanedImages(orphans).Render(r.Context(), w)
@@ -50,13 +51,13 @@ func (a *App) handleScanDataQuality(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the data quality form.", err)
 		return
 	}
 	mode := strings.TrimSpace(r.FormValue("quality_mode"))
 	result, err := a.soldiers.RunDataQualityScan(mode)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Data quality scan failed.", err)
 		return
 	}
 	presentation.SettingsQualityScanResults(result).Render(r.Context(), w)
@@ -68,12 +69,12 @@ func (a *App) handleApplyDataQuality(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the apply-data-quality form.", err)
 		return
 	}
 	selected, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Could not parse selected finding ids.", err)
 		return
 	}
 	if len(selected) == 0 {
@@ -83,7 +84,7 @@ func (a *App) handleApplyDataQuality(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := a.soldiers.ApplyDataQualityFindingsToReviewQueue(selected)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not move selected records to the Review Queue.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Moved %d record(s) to Review Queue (%d already queued).", result.Flagged, result.AlreadyInQueue))
@@ -96,7 +97,7 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the orphan cleanup form.", err)
 		return
 	}
 	relativePaths := make([]string, 0, len(r.Form["orphan_path"]))
@@ -107,7 +108,7 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 	}
 	moved, trashRoot, err := a.images.MoveOrphansToTrash(a.dataDir, relativePaths)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not move the selected image orphans to temp trash.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Moved %d orphaned image(s) into temp trash for 30-day retention.", moved))
@@ -120,7 +121,7 @@ func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the initialise form.", err)
 		return
 	}
 	if strings.TrimSpace(r.FormValue("confirmation_word")) != initializeDataConfirmationWord {
@@ -128,7 +129,8 @@ func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.initializeLocalData(); err != nil {
-		setToastHeaderWithType(w, fmt.Sprintf("Initialization failed: %v", err), "error")
+		setToastHeaderWithType(w, "Initialisation failed. The local archive was not changed.", "error")
+		slog.Error("appshell: initialise local data", "audit", "respond-error", "err", err.Error())
 		return
 	}
 	setToastHeader(w, "Local archive reset. A fresh database and folder tree were created.")

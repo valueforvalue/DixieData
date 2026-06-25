@@ -39,17 +39,19 @@ templ Layout(title string) {
 			})();
 		</script>
 		<link rel="stylesheet" href="/app.css"/>
+		<script defer src="/htmx.min.js"></script>
 		<script defer src="/app.js"></script>
+		<!-- CSS moved to frontend/tailwind.css by PR1. -->
 	</head>
 		<body class="min-h-screen" data-debug-ui-ids={ uiDebugValue() } data-layout-mode="relaxed" data-layout-mode-preference="auto">
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			<div class="app-shell">
 				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
-				<div>
-					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Local Archive</p>
-					<p class="top-brand-title gold mt-1 leading-none">DixieData</p>
+				<div class="flex items-center gap-3">
+					<p class="top-brand-title gold leading-none">DixieData</p>
+					<button type="button" data-top-nav-toggle aria-label="Open navigation menu" aria-expanded="false" aria-controls="top-nav-drawer" class="secondary-button md:hidden">Menu</button>
 				</div>
-				<nav class="flex flex-wrap items-center gap-2">
+				<nav class="hidden flex-wrap items-center gap-2 md:flex">
 					<a href="/calendar" class="pill-link top-nav-link">Calendar</a>
 					<a href="/soldiers" class="pill-link top-nav-link">Search/Quick View</a>
 					<a href="/browse" class="pill-link top-nav-link">Browse</a>
@@ -60,17 +62,33 @@ templ Layout(title string) {
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
 				</nav>
 			</header>
+			<div id="top-nav-drawer" data-top-nav-drawer role="dialog" aria-modal="true" aria-label="Site navigation" class="fixed inset-x-0 top-0 z-[60] hidden max-h-[100dvh] overflow-y-auto border-b border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.98)] shadow-[0_24px_60px_rgba(15,23,42,0.45)] backdrop-blur md:hidden">
+				<nav class="mx-auto flex max-w-[78rem] flex-col gap-1 px-4 py-4">
+					<div class="mb-3 flex items-center justify-between gap-3">
+						<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Navigate</p>
+						<button type="button" data-top-nav-close aria-label="Close navigation menu" class="secondary-button">Close</button>
+					</div>
+					<a href="/calendar" class="pill-link justify-start">Calendar</a>
+					<a href="/soldiers" class="pill-link justify-start">Search/Quick View</a>
+					<a href="/browse" class="pill-link justify-start">Browse</a>
+					<a href="/review-queue" class="pill-link justify-start">Review Queue</a>
+					<a href="/insights" class="pill-link justify-start">Insights</a>
+					<a href="/share" class="pill-link justify-start">Share</a>
+					<a href="/settings" class="pill-link justify-start">Settings</a>
+					<a href="/soldiers/new" class="primary-button justify-start">Add Person Record</a>
+				</nav>
+			</div>
 			<main>
 				{ children... }
 			</main>
-			<div class="floating-dock fixed bottom-6 right-6 z-40">
-				<div class="floating-dock-inner flex items-center gap-3">
+			<div class="floating-dock fixed inset-x-0 bottom-0 z-40 border-t border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.96)] shadow-[0_-12px_30px_rgba(15,23,42,0.18)] backdrop-blur">
+				<div class="floating-dock-inner mx-auto flex max-w-[78rem] items-center justify-end gap-3 px-4 py-3 sm:px-6">
+					<p data-floating-scratchpad-status class="mr-auto text-xs text-slate-300" aria-live="polite"></p>
 					<button type="button" data-scratchpad-open class="secondary-button floating-dock-button">Scratch Pad</button>
 					<button type="button" data-feedback-open class="secondary-button floating-dock-button">Feedback</button>
 					<button type="button" data-floating-nav-toggle class="primary-button floating-dock-button">Menu</button>
 				</div>
-				<p data-floating-scratchpad-status class="mt-2 max-w-xs text-right text-xs text-slate-600" aria-live="polite"></p>
-				<div data-floating-nav-panel data-ui-id={ uiids.OverlayFloatingMenu } class="floating-nav-panel relative mt-3 hidden w-full max-w-[min(100vw-2rem,24rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)]">
+				<div data-floating-nav-panel data-ui-id={ uiids.OverlayFloatingMenu } class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
 					@SurfaceBadge(uiids.OverlayFloatingMenu)
 					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Quick Navigation</p>
 					<nav class="mt-3 flex flex-col gap-2">
