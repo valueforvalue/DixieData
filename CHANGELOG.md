@@ -13,6 +13,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- `internal/templates/components/card.templ` — Card primitive for
+  issue #74 Phase 1.2. `templ Card(extraClass) { ... }` wraps the
+  child content in `<div class="card ...">`. extraClass accepts the
+  compound classes existing call sites use (`rounded-3xl p-6`,
+  `rounded-2xl p-5 space-y-4`, etc.) so the byte-stable class string
+  preserves every existing layout hook. Three golden-snapshot tests
+  in `card_test.go` cover the default class, extra-class append,
+  and child-content passthrough.
 - `internal/templates/components/button.templ` — Button primitive
   for issue #74 Phase 1.1. `templ Button(label, kind, extraClass,
   attrs)` renders the legacy class strings (primary-button,
