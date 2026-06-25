@@ -10,6 +10,9 @@ import (
 )
 
 func TestFindAGraveMalformedHTMLCases(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test ./tests/stress/...`")
+	}
 	t.Parallel()
 
 	cases := []string{

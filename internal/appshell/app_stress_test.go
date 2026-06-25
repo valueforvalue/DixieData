@@ -118,6 +118,9 @@ func TestStressBridgeConcurrentSearchAndSave(t *testing.T) {
 }
 
 func TestStressFilesystemChaosGracefulFailure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test -run TestStress ./internal/appshell/`")
+	}
 	app := newStressApp(t)
 
 	created, err := app.soldiers.Create(models.Soldier{
@@ -160,6 +163,9 @@ func TestStressFilesystemChaosGracefulFailure(t *testing.T) {
 }
 
 func TestStressAppLoggingToFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("stress test: run via `make stress` or `go test -run TestStress ./internal/appshell/`")
+	}
 	logPath := filepath.Join(t.TempDir(), "stress_test.log")
 	t.Setenv("DIXIEDATA_STRESS_LOG", logPath)
 	t.Setenv("DIXIEDATA_DATA_DIR", filepath.Join(t.TempDir(), ".dixiedata"))
