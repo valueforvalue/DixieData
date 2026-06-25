@@ -582,7 +582,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
 					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">
-						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this person record?" hx-target="body" class="danger-button">Delete Person Record</button>
+						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this Person Record? It will also remove every Source Record attached to it, every image file, the spouse link, the scratch pad, and any research tasks. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover." hx-target="body" class="danger-button">Delete Person Record</button>
 					</div>
 				</div>
 				if len(s.SourceRecords) > 0 {

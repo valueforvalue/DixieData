@@ -953,7 +953,7 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 					</div>
 				}
 			</div>
-			<button type="submit" class="danger-button">Move Listed Files to Temp Trash</button>
+			<button type="submit" class="danger-button" hx-confirm="Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.">Move Listed Files to Temp Trash</button>
 		</form>
 	}
 }
@@ -997,7 +997,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 					</div>
 				</details>
 			}
-			<button type="submit" class="primary-button w-full sm:w-auto">Move Selected to Review Queue</button>
+			<button type="submit" class="primary-button w-full sm:w-auto" hx-confirm="Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.">Move Selected to Review Queue</button>
 		</form>
 	}
 }
