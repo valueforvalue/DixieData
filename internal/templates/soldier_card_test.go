@@ -94,6 +94,49 @@ func TestSoldierListSearchInputHasMeaningfulAriaLabel(t *testing.T) {
 	}
 }
 
+func TestSoldierDetailImageAltUsesFallbackForBlankCaption(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:        17,
+		DisplayID: "JCM87-00017",
+		FirstName: "Blank",
+		LastName:  "Caption",
+		Images: []viewmodel.Image{
+			{ID: 1, FilePath: "images/a.png"},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if !strings.Contains(content, `alt="Image for Person Record JCM87-00017"`) {
+		t.Fatalf("blank-caption image should fall back to Person Record alt text; got:\n%s", content)
+	}
+}
+
+func TestSoldierDetailImageAltStripsHTMLFromCaption(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.Soldier{
+		ID:        18,
+		DisplayID: "JCM87-00018",
+		FirstName: "Markup",
+		LastName:  "Caption",
+		Images: []viewmodel.Image{
+			{ID: 2, FilePath: "images/b.png", Caption: `Found at <a href="x">Smithville</a>`},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if strings.Contains(content, `alt="Found at <a`) {
+		t.Fatalf("image alt should not contain raw HTML from caption")
+	}
+	if !strings.Contains(content, `alt="Found at Smithville"`) {
+		t.Fatalf("image alt should strip HTML and keep caption text")
+	}
+}
+
 func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
