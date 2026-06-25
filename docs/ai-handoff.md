@@ -209,6 +209,16 @@ It is responsible for:
 - tab switching
 - image viewer
 - scratch pad launcher
+
+### Server-side routes that look like pages but are not
+
+Three routes are registered in `internal/appshell/routes.go` but are **not user-navigable pages**. They exist because the Wails WebView traps `target="_blank"` and certain desktop behaviors must be triggered through the Go HTTP layer. Do not delete them while cleaning up routes:
+
+- **`/open-link`** — `handleOpenLink`. Accepts a `?url=...` query and asks the desktop shell to open the URL in the system browser. Triggered by elements with the `data-open-link` attribute. Required for any external link in Templ output.
+- **`/scratchpad/open`** — `handleScratchpadOpen`. Accepts `?soldier_id=...` and brings the record's scratch pad window to the foreground (or opens it). Called by the floating Scratch Pad button.
+- **`/feedback/submit`** — `handleFeedbackSubmit`. Accepts a form POST from the global Feedback modal and appends to `.dixiedata/feedback.jsonl`. Returns a minimal JSON ack for the modal to consume.
+
+All three respond within a single request lifecycle and do not render HTML.
 - record-row add/remove
 - print-config modal
 - text context menu
