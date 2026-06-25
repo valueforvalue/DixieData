@@ -567,19 +567,159 @@ The Restore Point and the previously safe app build are preserved together until
 - set a primary image for cleaner exports and display behavior
 - use Insights and duplicate audit periodically on large archives
 
+## 20.1 Browse page (`/browse`)
+
+A separate browsing view with paging, sortable columns, and a built-in **compare-selection** mode (check rows, then click **Compare** to open `/compare?id1=...&id2=...`). Useful for medium-to-large Local Archives where the `/soldiers` Quick Search list becomes unwieldy. The mobile breakpoint collapses rows to card view.
+
+## 20.2 Per-Person Record research views
+
+Every Person Record detail page (`/soldiers/{id}`) exposes three research views accessible from the record header:
+
+- **Unit Camaraderie** (`/soldiers/{id}/camaraderie`) — list of soldiers who served in the same unit, with shared service dates. Helps find candidates for cross-references and spouse links.
+- **Service Timeline** (`/soldiers/{id}/timeline`) — chronological list of dated events (enlistment, muster, transfer, discharge, pension application). Pulls from structured fields plus any dated notes.
+- **Conflict Ledger** (`/soldiers/{id}/conflict-ledger`) — items currently flagged for review against this Person Record (merge conflicts, suspected duplicates, low-confidence scraped data).
+
+## 20.3 Research collections
+
+`/research-collections` lets you group related Person Records into named collections (a regiment, a family, an investigation). Each collection has its own page at `/research-collections/{id}` showing its Person Records and any collection-level notes. Useful for tracking multi-arc investigations.
+
+## 20.4 Research log + research pack
+
+- **Research Log** (`/soldiers/{id}/research-log`) — append-only task list scoped to a Person Record. Create tasks (`Research Task Create`), resolve tasks (`Research Task Resolve`), and the log survives across sessions.
+- **Research Pack** (`/soldiers/{id}/research-pack/{state|county}`) — a pre-formatted PDF/HTML bundle (state-level or county-level) you can take into a library or archive. It includes the Person Record fields plus the relevant Source Record excerpts and conflict ledger items.
+
+## 20.5 Recent searches
+
+`/soldiers/search/recent` shows the last 25 Quick Searches you've run this session and across sessions. Click any entry to re-run it.
+
+## 20.6 Per-month anniversary PDF
+
+The Calendar page (`/calendar/`) renders the current month. Each month footer exposes **Export this month as PDF**, which produces a single-page printable of all anniversaries falling in that month (births, deaths, muster dates). Use it for monthly newsletter inserts or just-in-time planning.
+
+## 20.7 Individual Person Record exports
+
+From the Person Record detail page header, you can export:
+
+- **PDF** — single-record printable, same template as the database PDF export but scoped to one Person Record. Useful for archival printouts and sharing one record without exposing the whole Local Archive.
+- **JPG** — flattened single-record image suitable for thumbnails, social posts, or quick visual reference.
+
+## 20.8 Memorial JSON import
+
+The Share page exposes a **Memorial JSON Import** flow separate from the Shared Archive path. It accepts a structured JSON document describing one or more Person Records (often exported from a third-party memorial platform) and lets you preview the parsed fields before confirming the import. Routes:
+
+- `POST /import/memorial-json/preview` — parse and show field-by-field preview.
+- `POST /import/memorial-json/confirm` — commit the previewed records.
+
+This path does not run the merge-review flow (it is a fresh import, not a merge), so review each preview carefully before confirming.
+
+## 20.9 Data Quality Scan
+
+`/settings/quality/scan` runs a one-pass audit over the Local Archive flagging:
+
+- Person Records with missing required fields (pension state, unit, etc.)
+- Source Records pointing to images that no longer exist
+- duplicate Display IDs (always a bug; never expected)
+- scratch pad notes orphaned by deleted Person Records
+
+After the scan completes, `/settings/quality/apply` lets you apply automated fixes (e.g. normalize pension state values, drop orphan scratch pad entries). The apply step is reversible via the most recent `.ddbak`.
+
+## 20.10 Software Updates panel
+
+`/settings/updates/*` exposes the in-place update flow:
+
+- `POST /settings/updates/source` — switch between release channels (stable, pre-release).
+- `POST /settings/updates/check` — fetch the latest available update metadata.
+- `POST /settings/updates/apply` — trigger the update. This **creates a Restore Point** (§19 Troubleshooting) before applying.
+- `POST /settings/updates/health/bootstrap` — internal heartbeat used by the update handoff. Not user-callable.
+
+If an update fails, the recovery screen (§19) takes over on the next launch.
+
+## 20.11 Global Feedback modal
+
+A floating dock button (bottom-right) opens the **Feedback** modal. You can submit free-form feedback that is appended to a feedback log file in `.dixiedata/feedback.jsonl`. Use **Export Feedback Log** (`/export/feedback-log`) to download the full log for sharing with support or for your own records.
+
+## 20.12 Printable PDF grouping options
+
+The database printable PDF export (Settings → Export → Printable Database PDF) supports three grouping dimensions, selected at export time:
+
+- **Buried-in** — group by cemetery/location. Useful for cemetery-tour planning.
+- **Confederate Home** — group by admission state and home name. Useful for home-history research.
+- **Pension state** — group by the state that granted the pension. Useful for state-level archival handoffs.
+
+Each grouping produces a separate section in the printed output with a divider page.
+
+## 20.13 Floating dock and server-side routes
+
+The floating dock at the bottom of every page exposes quick links (Calendar, Browse, Review Queue, etc.). Two non-page routes work in the background:
+
+- **`/open-link`** (`handleOpenLink`) — server-side external link launcher. Clicking a `data-open-link` element asks the desktop shell to open the URL in the system browser. Required because the Wails WebView otherwise traps `target="_blank"`.
+- **`/scratchpad/open`** (`handleScratchpadOpen`) — server-side scratch pad editor launcher. Pops the record's scratch pad window to the foreground.
+
+These are not pages — they return immediately and trigger desktop-side behavior. They are listed here so future agents do not delete them while cleaning up routes.
+
 ## 21. Quick reference
 
 ### Best pages for common tasks
 
 | Task | Best page |
 | --- | --- |
-| Add a new person | Add Person Record |
-| Search Local Archive text | Browse / Quick Search |
-| Structured filtering | Advanced Search |
-| Review flagged records | Review Queue |
-| Merge shared data | Share Archive |
-| Run duplicate scan | Insights |
-| Clean orphaned files | Settings |
-| Export a printable report | Share Archive / Insights |
+| Add a new person | Add Person Record (`/soldiers/new`) |
+| Search Local Archive text | Browse / Quick Search (`/soldiers`) |
+| Structured filtering | Advanced Search (`/soldiers/search/advanced`) |
+| Re-run a previous search | Recent Searches (`/soldiers/search/recent`) |
+| Page through all records | Browse (`/browse`) |
+| Side-by-side record compare | Compare (`/compare`) |
+| Review flagged records | Review Queue (`/review-queue`) |
+| Bulk ignore / delete queue items | Review Queue Bulk (`/review-queue/bulk`) |
+| Merge shared data | Share Archive (`/share`) |
+| Preview a memorial JSON import | Share Archive → Memorial JSON Import |
+| Run duplicate scan | Insights (`/insights`) |
+| Duplicate drilldown | Insights Drilldown (`/insights/drilldown`) |
+| Per-Person Record research | `/soldiers/{id}/{camaraderie,timeline,conflict-ledger}` |
+| Research collections | `/research-collections` |
+| Research log / research pack | `/soldiers/{id}/{research-log,research-pack/{state,county}}` |
+| Calendar + anniversaries | Calendar (`/calendar`) |
+| Per-month anniversary PDF | Calendar month footer |
+| Clean orphaned files | Settings → Image Maintenance |
+| Run data quality scan | Settings → Data Quality |
+| In-place update | Settings → Updates |
+| Initialize local data | Settings → Initialize Data (destructive; see §16.1) |
+| Export printable PDF | Share Archive / Insights |
+| Export single-record PDF/JPG | Person Record detail header |
+| Send feedback | Floating dock → Feedback |
+| Export feedback log | `/export/feedback-log` |
+| Recovery screen (after failed update) | `/recovery` |
+
+### All registered routes (from `internal/appshell/routes.go`)
+
+Static assets: `/app.js`, `/app.css`, `/htmx.min.js`, `/index.html`, `/media/`
+
+Calendar: `/`, `/calendar`, `/calendar/`, `/anniversary/`
+
+Person Records: `/soldiers`, `/soldiers/{id}`, `/soldiers/display/{display_id}`, `/soldiers/new`, `/soldiers/scrape-findagrave`
+
+Search: `/soldiers/search`, `/soldiers/search/recent`, `/soldiers/search/advanced`
+
+Browse + Compare: `/browse`, `/browse/results`, `/compare`
+
+Review: `/review-queue`, `/review-queue/bulk`, `/review-queue/compare/{id}`, `/merge-review/{id}`
+
+Research: `/soldiers/{id}/camaraderie`, `/soldiers/{id}/timeline`, `/soldiers/{id}/conflict-ledger`, `/soldiers/{id}/research-log`, `/soldiers/{id}/research-pack/{state|county}`, `/research-collections`, `/research-collections/{id}`
+
+Insights: `/insights`, `/insights/drilldown`, `/insights/audit/duplicates`, `/insights/report/pdf`
+
+Share: `/share`, `/import/backup`, `/import/shared-archive`, `/import/memorial-json/preview`, `/import/memorial-json/confirm`
+
+Exports: `/export/json`, `/export/csv`, `/export/ical`, `/export/static-archive`, `/export/database-pdf`, `/export/backup`, `/export/shared-archive`, `/export/bug-report`, `/export/feedback-log`
+
+Settings: `/settings`, `/settings/initialize`, `/settings/updates/source`, `/settings/updates/check`, `/settings/updates/apply`, `/settings/updates/health/bootstrap`, `/settings/images/orphans/scan`, `/settings/images/orphans/cleanup`, `/settings/quality/scan`, `/settings/quality/apply`
+
+Google integrations: `/integrations/google/{connect,disconnect,backup,sheets/export}`, `/integrations/google/calendar/{use-managed,preferences/save,sync-managed,unsync-managed,use-test,sync-test,unsync-test}`
+
+Images: `/images/screenshot`, `/images/rotate`
+
+Background: `/open-link`, `/scratchpad/open`, `/feedback/submit`
+
+Meta: `/version`, `/setup`, `/recovery`
 
 This manual is the operator guide. For implementation details, see `docs\implementation-and-features.md`.
