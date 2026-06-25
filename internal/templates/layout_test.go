@@ -75,6 +75,16 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 		t.Fatalf("layout should render the header as a floating top bar")
 	}
 
+	// Mobile hamburger drawer is dead UI on a Wails desktop app; it
+	// must not be rendered. The inline top-nav (md+) and the floating
+	// dock quick-nav panel stay.
+	if strings.Contains(content, "data-top-nav-toggle") {
+		t.Fatalf("layout should not render the mobile hamburger toggle")
+	}
+	if strings.Contains(content, "data-top-nav-drawer") {
+		t.Fatalf("layout should not render the mobile hamburger drawer")
+	}
+
 	// CSS rules that used to live inline in the layout (pre-PR1) were
 	// extracted to frontend/tailwind.css and compiled into app.css.
 	// The Tailwind minifier drops quotes from attribute selectors, so
