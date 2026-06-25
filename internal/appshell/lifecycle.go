@@ -243,6 +243,7 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 // --- ServeHTTP ---
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	LogRequest(r, 0)
+	LogDebugEvent(r, fmt.Sprintf("Referer=%q", r.Header.Get("Referer")))
 	defer func() {
 		if pv := recover(); pv != nil {
 			path := LogCrash(r, pv)
