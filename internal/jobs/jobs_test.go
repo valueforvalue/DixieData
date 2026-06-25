@@ -146,3 +146,82 @@ func TestRegistryCancelTerminalJobReturnsErrAlreadyTerminal(t *testing.T) {
 		t.Fatalf("cancel done = %v, want ErrAlreadyTerminal", err)
 	}
 }
+
+// TestRegistryWorkerPoolBoundedConcurrency fires N+1 jobs through a
+// registry sized to N workers and asserts the (N+1)th stays queued
+// until a slot frees. Each worker blocks on a release channel so the
+// test fully controls when workers make progress.
+func TestRegistryWorkerPoolBoundedConcurrency(t *testing.T) {
+	const poolSize = 2
+	reg := NewWithConcurrency(poolSize)
+
+	release := make(chan struct{})
+	started := make(chan string, poolSize+1)
+
+	hold := func(label string) func(ctx context.Context, p *Progress) error {
+		return func(ctx context.Context, p *Progress) error {
+			started <- label
+			<-release
+			return nil
+		}
+	}
+
+	id1 := reg.Start("unit", hold("a"))
+	id2 := reg.Start("unit", hold("b"))
+	id3 := reg.Start("unit", hold("c"))
+
+	// Wait for the first two workers to start.
+	got := map[string]bool{}
+	for len(got) < poolSize {
+		select {
+		case label := <-started:
+			got[label] = true
+		case <-time.After(time.Second):
+			t.Fatalf("only %d of %d workers started: %v", len(got), poolSize, got)
+		}
+	}
+
+	// The third job must stay queued while the pool is full.
+	third, _ := reg.Get(id3)
+	if third.Status != StatusQueued {
+		t.Fatalf("third job status = %s, want queued", third.Status)
+	}
+
+	// Release one worker; the third should start.
+	closeOne := func() {
+		select {
+		case release <- struct{}{}:
+		default:
+		}
+	}
+	closeOne()
+	select {
+	case label := <-started:
+		if label != "c" {
+			t.Fatalf("third worker started as %q, want c", label)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("third worker never started after a slot freed")
+	}
+
+	// Drain the remaining two.
+	closeOne()
+	closeOne()
+
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		allDone := true
+		for _, id := range []string{id1, id2, id3} {
+			snap, _ := reg.Get(id)
+			if snap.Status != StatusDone {
+				allDone = false
+				break
+			}
+		}
+		if allDone {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("workers never reached done after release")
+}
