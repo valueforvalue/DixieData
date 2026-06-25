@@ -78,6 +78,22 @@ func TestSoldierListUsesResponsiveContractForSearchControls(t *testing.T) {
 	}
 }
 
+func TestSoldierListSearchInputHasMeaningfulAriaLabel(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierList(nil, 1, 0, "", viewmodel.SoldierFormSuggestions{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	if !strings.Contains(content, `aria-label="Quick search across the Local Archive"`) {
+		t.Fatalf("search input should have a meaningful aria-label, not a single-letter abbreviation")
+	}
+	if strings.Contains(content, `aria-label="q"`) {
+		t.Fatalf("search input must not use aria-label=\"q\"; screen readers read it literally as the letter cue")
+	}
+}
+
 func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
