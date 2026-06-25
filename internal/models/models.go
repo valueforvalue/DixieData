@@ -376,3 +376,21 @@ type InitialSetupForm struct {
 	PrefixPreview string
 	ErrorMessage  string
 }
+
+// PersonRecord is the umbrella domain type that supersedes the legacy
+// `Soldier` name. The Soldier subtype remains valid per the glossary
+// (a Person Record may be a Soldier, Wife, Widow, or Linked Person);
+// the type alias keeps one source of truth at the model layer while
+// letting new code reference PersonRecord and old code keep compiling.
+//
+// The rename is staged across seven PRs (see issue #97). PR1 introduces
+// the alias and updates documentation only — no field or route changes.
+// PR2 writes the migration ADR. PR3-7 land the structural rename in
+// stages with compatibility shims removed one release cycle later.
+type PersonRecord = Soldier
+
+// PersonRecordSearch mirrors PersonRecord for search-result types.
+type PersonRecordSearch = SoldierSearch
+
+// PersonRecordFormSuggestions mirrors the form-suggestions type.
+type PersonRecordFormSuggestions = SoldierFormSuggestions
