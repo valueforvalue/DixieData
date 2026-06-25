@@ -641,7 +641,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
 											</div>
 										</div>
-										<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ img.Caption }
+										<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ imageAltText(img.Caption, s.DisplayID) }
 											class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
 										<div class="text-sm gold font-medium">{ img.Caption }</div>
 										<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
@@ -1090,6 +1090,45 @@ func imageURL(filePath string) templ.SafeURL {
 		return templ.SafeURL("file:///" + strings.TrimPrefix(cleaned, "/"))
 	}
 	return templ.SafeURL("/media/" + strings.TrimPrefix(cleaned, "/"))
+}
+
+// imageAltText returns the alt text for an image thumbnail. It strips
+// HTML tags so the alt text never contains raw markup, and falls back
+// to a Person-Record-scoped identifier so the image is never silently
+// exposed to assistive tech with an empty alt.
+func imageAltText(caption, displayID string) string {
+	trimmed := strings.TrimSpace(stripImageTags(caption))
+	if trimmed != "" {
+		return trimmed
+	}
+	if id := strings.TrimSpace(displayID); id != "" {
+		return "Image for Person Record " + id
+	}
+	return "Image attached to Person Record"
+}
+
+// stripImageTags removes HTML angle-bracket markup so an image caption
+// pasted from another source never lands in an alt attribute as raw
+// markup. Intentionally simple: anything between < and > is dropped,
+// then interior whitespace is collapsed.
+func stripImageTags(value string) string {
+	if !strings.ContainsAny(value, "<>") {
+		return value
+	}
+	var b strings.Builder
+	b.Grow(len(value))
+	inTag := false
+	for _, r := range value {
+		switch {
+		case r == '<':
+			inTag = true
+		case r == '>':
+			inTag = false
+		case !inTag:
+			b.WriteRune(r)
+		}
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func primaryImageBadgeClass(isPrimary bool) string {
