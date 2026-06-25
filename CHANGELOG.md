@@ -13,6 +13,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Design tokens wired into `tailwind.config.js` `theme.extend`:
+  `gold`, `sepia-500`, `sepia-300`, `parchment`, `parchment-soft`,
+  `ink`, `ink-muted`, `ink-faint`, `bg-amber-50`, `bg-slate-200`,
+  `review-red`, `review-red-tint`, `success-green`, `error-red`,
+  `radius.surface`, `radius.dialog`, `shadow.card`, `shadow.modal`,
+  `motion.fast`, `motion.med`. Tailwind generates the utility
+  classes; no existing CSS or template literal is migrated yet —
+  that follows in per-component-class PRs (PR2a/PR2b/...) so each
+  pixel shift is reviewed in isolation. Hex literal migration
+  follows the locked names from ADR-0003.
 - ADR-0003 design system tokens: `docs/adr/0003-design-system-tokens.md`
   locks the color, radius, shadow, motion, and typography vocabulary
   for the #74 Phase 1 component primitives. The companion
