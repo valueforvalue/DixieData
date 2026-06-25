@@ -299,15 +299,21 @@ function Restore-DixieDataTypstBinary {
         Write-Host "Downloading Typst $expectedVersion..."
         Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
 
-        & "$env:SystemRoot\System32\tar.exe" -xzf $archivePath -C $tempDir
+        # Upstream typst-windows zip is a real .zip (multi-entry), not a single-
+        # entry gzip stream. System32 tar's -xzf chokes on it. Expand-Archive
+        # is pwsh-native and handles multi-entry zips cleanly.
+        Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to extract $assetName"
         }
 
-        $extractedExe = Join-Path $tempDir "typst-windows.exe"
-        if (-not (Test-Path $extractedExe)) {
-            throw "Extracted archive did not contain typst-windows.exe"
+        # Upstream archive layout: typst-x86_64-pc-windows-msvc/typst.exe
+        # (asset name carries the triple, so the nested dir matches).
+        $nestedExe = Get-ChildItem -Path $tempDir -Recurse -Filter "typst.exe" | Select-Object -First 1
+        if (-not $nestedExe) {
+            throw "Extracted archive did not contain typst.exe (nested under asset name dir)"
         }
+        $extractedExe = $nestedExe.FullName
 
         $expectedHash = Get-DixieDataTypstExpectedHash
         if (-not (Test-DixieDataSha256 -Path $extractedExe -ExpectedHash $expectedHash)) {
