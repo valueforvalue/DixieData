@@ -9,6 +9,24 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
+// TestShareModalsAreNativeDialogs asserts the print-config and
+// google-calendar-preferences modals use the native <dialog>
+// element so focus trapping, ESC-to-close, and inert background
+// come from the browser instead of a custom div overlay.
+func TestShareModalsAreNativeDialogs(t *testing.T) {
+	var buf bytes.Buffer
+	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, id := range []string{"share-print-config-modal", "google-calendar-preferences-modal"} {
+		needle := `<dialog id="` + id + `"`
+		if !strings.Contains(content, needle) {
+			t.Fatalf("ShareView should render %s as a native <dialog>; got:\n%s", id, content)
+		}
+	}
+}
+
 func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)

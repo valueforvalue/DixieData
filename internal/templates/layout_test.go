@@ -152,6 +152,28 @@ func TestLayoutDialogsAreLabelledByTheirHeading(t *testing.T) {
 	}
 }
 
+// TestLayoutFeedbackModalIsNativeDialog asserts the feedback modal
+// uses the native <dialog> element so the browser handles focus
+// trapping, ESC-to-close, and inert background for free. A custom
+// <div role="dialog"> overlay (the pre-issue-117 implementation)
+// leaked Tab focus into background controls.
+func TestLayoutFeedbackModalIsNativeDialog(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if !strings.Contains(content, `<dialog id="feedback-modal"`) {
+		t.Fatalf("feedback modal should render as a native <dialog> element")
+	}
+	if strings.Contains(content, `role="dialog"`) && strings.Contains(content, `id="feedback-modal"`) {
+		// The role attribute was used on the old div overlay; the native
+		// dialog already exposes role=dialog implicitly so the
+		// redundant explicit role should be gone.
+		t.Fatalf("feedback modal should not carry an explicit role='dialog' alongside the native element")
+	}
+}
+
 // readCompiledAppCSS loads frontend/app.css (gitignored build output).
 // If the file does not exist (e.g. fresh clone without a CSS rebuild)
 // the test fails with a clear message rather than panic-reading nil.

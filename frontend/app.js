@@ -3046,9 +3046,11 @@
     syncPrintScopeState();
     applyPrintRecordFilter();
     applyPrintBuriedFilter();
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-    modal.setAttribute("aria-hidden", "false");
+    if (typeof modal.showModal === "function") {
+      modal.showModal();
+    } else {
+      modal.setAttribute("open", "");
+    }
   }
 
   function closePrintConfigModal() {
@@ -3056,9 +3058,11 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-    modal.setAttribute("aria-hidden", "true");
+    if (typeof modal.close === "function") {
+      modal.close();
+    } else {
+      modal.removeAttribute("open");
+    }
   }
 
   function openGoogleCalendarPreferencesModal() {
@@ -3067,9 +3071,11 @@
       return;
     }
     syncGoogleCalendarPreview();
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-    modal.setAttribute("aria-hidden", "false");
+    if (typeof modal.showModal === "function") {
+      modal.showModal();
+    } else {
+      modal.setAttribute("open", "");
+    }
   }
 
   function closeGoogleCalendarPreferencesModal() {
@@ -3077,9 +3083,11 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-    modal.setAttribute("aria-hidden", "true");
+    if (typeof modal.close === "function") {
+      modal.close();
+    } else {
+      modal.removeAttribute("open");
+    }
   }
 
   function syncGoogleCalendarPreview() {
@@ -3115,9 +3123,11 @@
         pathField.value = `${window.location.pathname || ""}${window.location.search || ""}`;
       }
     }
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-    modal.setAttribute("aria-hidden", "false");
+    if (typeof modal.showModal === "function") {
+      modal.showModal();
+    } else {
+      modal.setAttribute("open", "");
+    }
   }
 
   function closeFeedbackModal() {
@@ -3125,9 +3135,11 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-    modal.setAttribute("aria-hidden", "true");
+    if (typeof modal.close === "function") {
+      modal.close();
+    } else {
+      modal.removeAttribute("open");
+    }
     const form = feedbackForm();
     if (form instanceof HTMLFormElement) {
       form.reset();

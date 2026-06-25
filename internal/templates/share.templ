@@ -199,7 +199,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</section>
 				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"></div>
 			</div>
-			<div id="share-print-config-modal" role="dialog" aria-modal="true" aria-labelledby="share-print-config-modal-heading" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+			<dialog id="share-print-config-modal" aria-labelledby="share-print-config-modal-heading" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
 					@SurfaceBadge(uiids.OverlayPrintConfigModal)
 					<form id="share-print-config-form" hx-post="/export/database-pdf?async=1" hx-on::after-request="if(event.detail.xhr.status === 303){window.location = event.detail.xhr.getResponseHeader('Location')}" data-pdf-pref-scope="archive" data-async-job-redirect="true" class="space-y-6">
@@ -388,7 +388,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</div>
 					</form>
 				</div>
-			</div>
+			</dialog>
 			if len(conflicts) > 0 {
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
@@ -575,7 +575,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>
 			</div>
-			<div id="google-calendar-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal data-ui-id={ uiids.OverlayGoogleCalendarPrefs } class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+			<dialog id="google-calendar-preferences-modal" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal data-ui-id={ uiids.OverlayGoogleCalendarPrefs } class="fixed inset-0 z-[95] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 						<div>
@@ -651,7 +651,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</div>
 					</form>
 				</div>
-			</div>
+			</dialog>
 		</div>
 	}
 }
