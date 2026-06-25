@@ -61,7 +61,6 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Query:  q,
 		Browse: r.URL.Query().Get("browse") == "1",
 	}
-	search = a.attachArchiveCounts(search)
 	if strings.TrimSpace(q) == "" && !search.Browse {
 		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
 		return
@@ -156,8 +155,7 @@ func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load recent person records.", err)
 		return
 	}
-	recentSearch := a.attachArchiveCounts(models.SoldierSearch{Mode: "basic", Recent: true})
-	presentation.SearchResults(soldiers, recentSearch, 1, len(soldiers), 10).Render(r.Context(), w)
+	presentation.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)
 }
 
 func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +193,6 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		DeathDay:              r.URL.Query().Get("death_day"),
 	}
 	page := parsePage(r.URL.Query().Get("page"))
-	search = a.attachArchiveCounts(search)
 	if !hasAdvancedSearchInput(search) {
 		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
 		return
