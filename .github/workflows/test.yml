@@ -42,6 +42,18 @@ jobs:
           go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
         timeout-minutes: 5
 
+      - name: Restore Typst binary for render tests
+        shell: pwsh
+        run: |
+          # Tests under internal/archive and pkg/render shell out to
+          # the typst binary at bin/typst-windows.exe. The build
+          # workflow restores it as part of make debug, but the test
+          # workflow skips the build step. Restore it explicitly so
+          # the export tests can run.
+          . ./scripts/build-common.ps1
+          Restore-DixieDataTypstBinary
+        timeout-minutes: 5
+
       - name: Go test (short)
         shell: pwsh
         run: |
