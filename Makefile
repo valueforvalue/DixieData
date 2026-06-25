@@ -208,11 +208,15 @@ update-snapshots-ONE: ## Update audit snapshots for a single round (SURFACE=... 
 # a comma-separated list of record IDs for bulk renders. See
 # scripts/render-round.ps1 for the same -Only / -RecordIDs flags.
 render-svg: ## Render SVG previews via render-svg.sh (issue #14)
+ifneq ($(wildcard /c/Users/value/bin/render-svg.sh),)
 	@if [ ! -d .dixiedata ]; then echo "no .dixiedata/ directory; run the appshell once first"; exit 1; fi
 	cd tools/tune && go build -o bin/dixiedata-tune.exe .
 	ROUND?=$$(ls -1 docs/renderings/single-soldier-landscape/round-*.pdf 2>/dev/null | sed 's/.*round-//;s/\.pdf//' | sort -V | tail -1); \
 	  echo "rendering round $${ROUND:-4}"; \
 	  /c/Users/value/bin/render-svg.sh all $${ROUND:-4}
+else
+	@echo "render-svg: /c/Users/value/bin/render-svg.sh not installed on this machine (local-only target, skipping)"
+endif
 
 # --- Asset generation ---
 
