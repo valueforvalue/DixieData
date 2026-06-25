@@ -367,6 +367,45 @@ func TestSoldierCardShowsReviewBadge(t *testing.T) {
 	}
 }
 
+func TestSoldierCardHighlightedPlainMeta(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierCard(viewmodel.Soldier{
+		ID:        42,
+		DisplayID: "JCM87-00042",
+		EntryType: "soldier",
+		FirstName: "John",
+		LastName:  "Carter",
+		DeathDate: "1864-04-12",
+		BuriedIn:  "Memphis, Tennessee",
+	}, true).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	// Plain meta must be present.
+	for _, needle := range []string{
+		"Soldier",
+		"1864-04-12",
+		"Memphis, Tennessee",
+		"<dl",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("highlighted soldier card missing plain meta %s", needle)
+		}
+	}
+	// Highlighted-pill class strings must NOT be present.
+	for _, forbidden := range []string{
+		`rounded-full border-[rgba(141,116,64,0.55)]`,
+		`Death: `,
+		`Buried In: `,
+	} {
+		if strings.Contains(content, forbidden) {
+			t.Fatalf("highlighted soldier card should not render pill row; found %s", forbidden)
+		}
+	}
+}
+
 func TestSoldierDetailItalicizesMaidenNameAndLinksInternalReferences(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
