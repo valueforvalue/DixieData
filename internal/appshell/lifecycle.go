@@ -242,9 +242,11 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 
 // --- ServeHTTP ---
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, 0)
 	defer func() {
 		if pv := recover(); pv != nil {
 			path := LogCrash(r, pv)
+			LogRequest(r, http.StatusInternalServerError)
 			// http.Error sets headers + writes a plain error body.
 			// If the inner handler already wrote headers this is a
 			// best-effort 500 response.

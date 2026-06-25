@@ -12,6 +12,61 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 )
 
+// requestLog is a synchronous, non-deferred file used to record
+// every request that reaches ServeHTTP. Survives os.Exit crashes
+// (writes are flushed before LogCrash returns). The user's
+// reported 'crash without warning' produces no crash.log entry,
+// which suggests either a native crash (segfault) or an early
+// os.Exit before our recover middleware runs. A request log
+// surfaces the latter case because we'll see the last request
+// that was in flight.
+var (
+	requestLogOnce sync.Once
+	requestLogPath string
+	requestLogFile *os.File
+	requestLogMu   sync.Mutex
+)
+
+func resolveRequestLogPath() string {
+	requestLogOnce.Do(func() {
+		dir := appdata.DefaultDir()
+		if dir == "" || os.MkdirAll(dir, 0o755) != nil {
+			dir = filepath.Join(os.TempDir(), "dixiedata-crash")
+			_ = os.MkdirAll(dir, 0o755)
+		}
+		requestLogPath = filepath.Join(dir, "request.log")
+	})
+	return requestLogPath
+}
+
+// LogRequest records a single line per request, synchronously.
+// Format: <RFC3339Nano> <method> <url> <status-or-pending>.
+// Used to leave breadcrumbs before a crash so we know what the
+// last in-flight request was.
+func LogRequest(r *http.Request, status int) {
+	if r == nil {
+		return
+	}
+	path := resolveRequestLogPath()
+	requestLogMu.Lock()
+	defer requestLogMu.Unlock()
+	if requestLogFile == nil {
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return
+		}
+		requestLogFile = f
+	}
+	line := fmt.Sprintf("%s %s %s %d\n",
+		time.Now().UTC().Format(time.RFC3339Nano),
+		r.Method,
+		r.URL.String(),
+		status,
+	)
+	_, _ = requestLogFile.WriteString(line)
+	_ = requestLogFile.Sync()
+}
+
 // crashLogOnce ensures we compute the crash-log path lazily, on first
 // panic, so the App's dataDir has been set by startup() before we try
 // to open a file there. Tests that trigger panics before startup will
