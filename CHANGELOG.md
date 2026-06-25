@@ -107,7 +107,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   pattern: they stay synchronous because each runs in well under
   a second on a 1000-record archive; only the two exports flagged
   as blockers in the audit (`/export/database-pdf` and
-  `/export/static-archive`) accept `?async=1`.
+  `/export/static-archive`) accept `?async=1`. Issue #121 adds a
+  startup prune of the feedback log (default 365-day retention)
+  so the JSONL file stops growing unbounded on long-running
+  desktop sessions; the prune is best-effort, leaves corrupt
+  lines in place, and ships without a settings UI toggle (the
+  retention window is hard-coded for now).
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
