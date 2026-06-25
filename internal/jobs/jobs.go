@@ -110,15 +110,44 @@ func (j *Job) Snapshot() Job {
 	}
 }
 
+// DefaultConcurrency caps the number of jobs running in parallel when a
+// caller uses New(). Two is enough to keep the desktop app responsive
+// while letting the user kick off a backup export alongside a printable
+// PDF without burning memory on a giant worker fan-out.
+const DefaultConcurrency = 2
+
 // Registry holds the live jobs for a process.
 type Registry struct {
-	mu   sync.Mutex
-	jobs map[string]*Job
+	mu          sync.Mutex
+	jobs        map[string]*Job
+	concurrency int
+	sem         chan struct{}
 }
 
-// New returns an empty Registry.
+// New returns a Registry sized to DefaultConcurrency workers. Callers
+// that need a different pool size should use NewWithConcurrency.
 func New() *Registry {
-	return &Registry{jobs: map[string]*Job{}}
+	return NewWithConcurrency(DefaultConcurrency)
+}
+
+// NewWithConcurrency returns a Registry that allows at most n jobs to
+// run in parallel. n <= 0 falls back to DefaultConcurrency.
+func NewWithConcurrency(n int) *Registry {
+	if n < 1 {
+		n = DefaultConcurrency
+	}
+	return &Registry{
+		jobs:        map[string]*Job{},
+		concurrency: n,
+		sem:         make(chan struct{}, n),
+	}
+}
+
+// Concurrency returns the configured worker pool size. Useful for tests
+// and for the /jobs/{id} status page header if we ever want to expose
+// saturation to the UI.
+func (r *Registry) Concurrency() int {
+	return r.concurrency
 }
 
 // Start queues a job of the given kind and immediately launches a
@@ -141,8 +170,22 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 	job.cancelCause = cancel
 	job.mu.Unlock()
 
+	// Acquire a worker slot before launching the goroutine. If the pool
+	// is saturated the semaphore blocks until another worker exits, so
+	// the job stays in StatusQueued (set at registration) until then.
 	go func() {
+		r.sem <- struct{}{}
+		defer func() { <-r.sem }()
+
 		job.mu.Lock()
+		// Honour a cancellation that arrived while we were queued.
+		if job.cancelled {
+			job.Status = StatusCancelled
+			job.FinishedAt = time.Now()
+			job.mu.Unlock()
+			cancel()
+			return
+		}
 		job.Status = StatusRunning
 		job.mu.Unlock()
 
