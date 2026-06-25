@@ -160,6 +160,60 @@ async function main() {
     await context.close();
   }
 
+  // Extra capture: search results page with a real query so we can audit
+  // the highlighted SoldierCard layout (pill row removed in issue #116).
+  // Uses a seeded last name so the result list is non-empty.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    const label = 'desktop_search_results';
+    const path = '/soldiers';
+    const url = `${BASE}${path}`;
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await page.waitForSelector('input[name="q"]', { timeout: 5000 });
+      await page.fill('input[name="q"]', 'Carter');
+      // HTMX keyup trigger uses a 300ms debounce.
+      await page.waitForTimeout(900);
+      await page.waitForSelector('#soldier-list [data-preview-open]', { timeout: 5000 }).catch(() => null);
+      const shot = join(SHOTS, `${label}.png`);
+      await page.screenshot({ path: shot, fullPage: true });
+      const axeResults = await runAxe(page);
+      const visual = await detectVisualIssues(page);
+      allRoutes.push({
+        label,
+        viewport: 'desktop',
+        path,
+        url,
+        status: 200,
+        load_ms: 0,
+        isFragment: axeResults.skipped,
+        fragment_reason: axeResults.reason,
+        axe_violations: (axeResults.violations || []).map((v) => ({
+          id: v.id, impact: v.impact, help: v.help, helpUrl: v.helpUrl,
+          nodes: v.nodes.length, sample: v.nodes.slice(0, 2).map((n) => n.target),
+        })),
+        visual_issues: visual,
+      });
+      if (axeResults.skipped) {
+        allFindings.push({ label, path, viewport: 'desktop', kind: 'axe-skipped', reason: axeResults.reason });
+      } else {
+        allFindings.push(...axeResults.violations.flatMap((v) =>
+          v.nodes.map((n) => ({
+            label, path, viewport: 'desktop', kind: 'a11y',
+            id: v.id, impact: v.impact, help: v.help, target: n.target,
+          }))
+        ));
+      }
+      allFindings.push(...visual.map((v) => ({ label, path, viewport: 'desktop', kind: 'visual', ...v })));
+      console.log(`\nExtra capture: ${label} -> ${url}`);
+    } catch (e) {
+      allFindings.push({ label, path, viewport: 'desktop', kind: 'crash', error: e.message });
+      console.log(`Extra capture FAILED: ${e.message}`);
+    }
+    await ctx.close();
+  }
+
   await browser.close();
 
   await writeFile(join(REPORTS, 'routes.json'), JSON.stringify(allRoutes, null, 2));
