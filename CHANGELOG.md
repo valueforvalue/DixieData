@@ -101,6 +101,13 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the existing `/jobs/{id}/status` htmx polling endpoint stays
   as the primary visible path, and a future change can swap the
   page over to `EventSource` when the audit harness asks for it.
+  Issue #126 makes the call on whether the fast exports
+  (`/export/json`, `/export/csv`, `/export/ical`,
+  `/export/backup`) should migrate to the background-jobs
+  pattern: they stay synchronous because each runs in well under
+  a second on a 1000-record archive; only the two exports flagged
+  as blockers in the audit (`/export/database-pdf` and
+  `/export/static-archive`) accept `?async=1`.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
