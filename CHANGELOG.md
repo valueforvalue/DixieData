@@ -13,6 +13,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Implementation plan for the remaining open work of issue #74 (UI/UX
+  revamp): `.rpiv/artifacts/plans/2026-06-25_74-ui-revamp.md`. Six
+  phases, ~22 PRs sequenced behind `?ui=v2`; Phase 0 (htmx load in
+  web-mode `index.html`, ADR-0003 design tokens, `?ui=v2` flag, and
+  `make ui-diff` harness) detailed for immediate execution.
 - Test, build, and audit GitHub Actions workflows (`.github/workflows/test.yml`,
   `build.yml`, `audit.yml`). Test runs `go test -short` on every push; build
   verifies the Wails binary builds and embeds no absolute source paths (the
