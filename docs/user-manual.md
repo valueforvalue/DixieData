@@ -2,11 +2,28 @@
 
 ## 1. Introduction
 
-DixieData is a desktop research archive for managing Civil War person records, source records, notes, images, exports, and collaboration files. It is designed for researchers who need a local-first archive with structured person records, printable outputs, and merge workflows.
+DixieData is a desktop research **Local Archive** for managing Civil War Person Records, Source Records, notes, images, exports, and collaboration files. It is designed for researchers who need a local-first archive with structured Person Records, printable outputs, and merge workflows.
 
 This manual explains how to use the application day to day.
 
 The current release line is **v1.2.54**.
+
+## 1.1 Glossary
+
+DixieData has a strict vocabulary. Throughout this manual:
+
+- **Person Record** — primary archive entry for one person (soldier, wife, widow). Not "record", "soldier record", "archive entry", or "profile".
+- **Display ID** — canonical user-facing identifier for a Person Record (e.g. `DXD-00047`). Not "record ID" or "person ID".
+- **Local Archive** — live working collection of Person Records, Source Records, notes, images, and review state on one machine.
+- **Shared Archive** — merge-oriented archive package exchanged between DixieData users.
+- **Backup Archive** — full replacement archive snapshot used for restore and safekeeping.
+- **Restore Point** — automatic pre-update recovery bundle that preserves a recoverable Local Archive state and the previously safe app build for rollback.
+- **Static Archive** — read-only browser-viewable archive export.
+- **Source Record** — attached evidence item that documents or supports a Person Record, such as a pension or application record.
+- **Claim** — assertion about a person that is extracted from a Source Record.
+- **Finding** — a Claim that has cleared review and is endorsed as a research conclusion.
+
+Full glossary lives in [`CONTEXT.md`](../CONTEXT.md). When the manual says "the archive" without qualification it means the Local Archive.
 
 ## 2. First launch
 
@@ -24,11 +41,11 @@ Example generated IDs:
 - `STC38-00001`
 - `JCM87-00025`
 
-After setup, the app opens the main archive.
+After setup, the app opens the Local Archive.
 
 ## 3. Understanding the main sections
 
-The app is organized around several major pages.
+The app is organized around several major pages (each operates on the Local Archive unless otherwise noted):
 
 ### Calendar
 
@@ -39,11 +56,11 @@ The landing page shows:
 - the total number of **Wives & Widows**
 - a rotating quote panel
 
-Use this page for quick archive awareness and date-based browsing.
+Use this page for quick Local Archive awareness and date-based browsing.
 
 ### Browse Person Records
 
-This is the main archive browsing area. From here you can:
+This is the main Local Archive browsing area. From here you can:
 
 - browse person records
 - run quick searches
@@ -102,7 +119,7 @@ DixieData supports:
 - **Wife**
 - **Widow**
 
-Spouse records are stored in the same archive and can be linked to a soldier record.
+Spouse Person Records are stored in the same Local Archive and can be linked to a Soldier Person Record.
 
 ### Common fields
 
@@ -155,10 +172,12 @@ The form will autofill available fields.
 After parsing, DixieData may show:
 
 - warning messages
-- spouse memorial findings
+- spouse memorial Claims (see §1.1 Glossary)
 - a confidence score
 
 If the scrape confidence is low, the saved record may automatically enter the Review Queue. Always verify scraped data before saving.
+
+Claims extracted from a Find a Grave scrape become Finding entries only after they clear review. See the Glossary (§1.1) for the Claim → Finding distinction.
 
 ## 6. Editing a record
 
@@ -217,7 +236,7 @@ Use it for:
 
 Scratch Pad text is searchable through the app’s global search.
 
-## 9. Searching the archive
+## 9. Searching the Local Archive
 
 ## 9.1 Quick search
 
@@ -232,7 +251,7 @@ Quick search looks across major record text, including:
 
 The result cards show the field that matched.
 
-The quick-search index uses SQLite **FTS5** plus the person-record scratch-pad store, so scratch-pad text participates in the same local-archive-wide search experience.
+The Quick Search index uses SQLite **FTS5** plus the Person Record scratch-pad store, so Scratch Pad text participates in Quick Search results. **Advanced Search filters on entry type, review state, and Person Record fields but does not match Scratch Pad content** — use Quick Search when you need to find a scratch note.
 
 ## 9.2 Advanced search
 
@@ -282,7 +301,7 @@ If DixieData detects a suspected duplicate pair, you can open a side-by-side com
 
 ## 11. Duplicate audit
 
-From **Insights**, click **Audit Now** to run the duplicate scan across the local archive.
+From **Insights**, click **Audit Now** to run the duplicate scan across the Local Archive.
 
 The audit checks for:
 
@@ -296,7 +315,7 @@ Resolved pairs stay resolved and are not endlessly re-flagged.
 
 ## 12. Insights dashboard
 
-The **Insights** page gives a high-level local archive summary.
+The **Insights** page gives a high-level Local Archive summary.
 
 Available cards include:
 
@@ -321,7 +340,7 @@ The Share page is the archive’s portability and collaboration workspace.
 
 ### Export JSON
 
-Creates a structured full-archive JSON export.
+Creates a structured full-Local-Archive JSON export (a Backup Archive).
 
 ### Export Excel
 
@@ -333,11 +352,11 @@ Creates an `.ics` anniversary calendar export.
 
 ### Export Static Web Archive
 
-Creates a standalone browser-viewable archive export.
+Creates a standalone browser-viewable archive export (a Static Archive).
 
 ### Full Database Printable PDF
 
-Creates a branded printable PDF for the full archive or for the currently selected record set.
+Creates a branded printable PDF for the full Local Archive or for the currently selected Person Record set.
 
 Available sort options:
 
@@ -358,7 +377,7 @@ Creates a full replacement backup.
 
 ### Export Shared Archive (`.ddshare`)
 
-Creates a mergeable archive for another DixieData user.
+Creates a mergeable archive (a Shared Archive) for another DixieData user.
 
 ### Export Bug Report Bundle
 
@@ -368,13 +387,13 @@ Creates a support/troubleshooting bundle.
 
 ### Load Backup (`.ddbak`)
 
-This **replaces** the current local archive with the backup.
+This **replaces** the current Local Archive with the Backup Archive.
 
-Use this when you want to restore a full archive state.
+Use this when you want to restore a full Local Archive state.
 
 ### Import Shared Archive (`.ddshare`)
 
-This **merges** incoming records into the current local archive.
+This **merges** incoming Person Records from the Shared Archive into the current Local Archive.
 
 Use this for collaboration and record sharing.
 
@@ -444,9 +463,9 @@ Use this area to:
 
 This cleanup is designed to be safe. Files are staged before permanent removal.
 
-## 17. Static archive output
+## 17. Static Archive output
 
-The static archive export can be opened in a browser without running DixieData.
+The Static Archive export can be opened in a browser without running DixieData.
 
 It includes:
 
@@ -454,7 +473,7 @@ It includes:
 - `archive_data.js`
 - copied image files
 
-Use it when you want to share a read-only archive snapshot.
+Use it when you want to share a read-only Local Archive snapshot.
 
 ## 18. Backup strategy recommendations
 
@@ -482,7 +501,7 @@ The loading screen should now refresh automatically while the app finishes start
 
 ### Search is not finding expected scratch pad text
 
-- confirm the record’s scratch pad window was closed after editing so the latest text saved back to the archive
+- confirm the record’s scratch pad window was closed after editing so the latest text saved back to the Local Archive
 - retry the search after the updated text is indexed
 
 ### A record is wrongly flagged as a duplicate
@@ -490,7 +509,7 @@ The loading screen should now refresh automatically while the app finishes start
 - open the comparison from the Review Queue
 - mark the match resolved if it is not a true duplicate
 
-### I imported a shared archive and got conflicts
+### I imported a Shared Archive and got conflicts
 
 - open the Share page
 - review the merge-review items
@@ -517,7 +536,7 @@ The loading screen should now refresh automatically while the app finishes start
 | Task | Best page |
 | --- | --- |
 | Add a new person | Add Person Record |
-| Search archive text | Browse / Quick Search |
+| Search Local Archive text | Browse / Quick Search |
 | Structured filtering | Advanced Search |
 | Review flagged records | Review Queue |
 | Merge shared data | Share Archive |
