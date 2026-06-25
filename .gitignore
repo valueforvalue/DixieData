@@ -55,7 +55,6 @@ coverage.out
 
 # Project secrets + telemetry
 google-oauth-defaults.json
-google-oauth-defaults.example.json
 feedback.jsonl
 
 # Releases + test artifacts

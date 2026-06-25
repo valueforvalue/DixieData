@@ -373,7 +373,7 @@ function Invoke-DixieDataBuild {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Root,
-        [string[]]$WailsArguments = @("build", "-clean"),
+        [string[]]$WailsArguments = @("build", "-clean", "-trimpath"),
         [switch]$AllowExampleOAuthDefaults
     )
 

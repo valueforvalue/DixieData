@@ -2,7 +2,8 @@
   "name": "dixiedata",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -c tailwind.config.js -i ./frontend/tailwind.css -o ./frontend/app.css --minify"
+    "build:css": "tailwindcss -c tailwind.config.js -i ./frontend/tailwind.css -o ./frontend/app.css --minify",
+    "audit": "node audit/run.mjs"
   },
   "devDependencies": {
     "tailwindcss": "3.4.17"
