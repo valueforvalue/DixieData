@@ -9,7 +9,6 @@ package appshell
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -77,7 +76,6 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the insights PDF.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Analytics PDF saved to %s", path))
 }
 
@@ -100,7 +98,6 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the Excel workbook.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Excel workbook saved to %s", path))
 }
 
@@ -128,7 +125,6 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the iCalendar file.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("iCalendar saved to %s", path))
 }
 
@@ -156,7 +152,6 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		respondInternal(w, r, "Could not write the static web archive.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Static web archive saved to %s", path))
 }
 
@@ -185,7 +180,6 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the printable PDF.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Printable PDF saved to %s", path))
 }
 
@@ -317,6 +311,5 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the bug report bundle.", err)
 		return
 	}
-	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Bug report bundle saved to %s (%d soldiers, %d images, %d scratch pads)", path, manifest.Soldiers, manifest.Images, manifest.Scratchpads))
 }
