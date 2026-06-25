@@ -76,6 +76,42 @@ function Get-DixieDataPdfiumVersion {
     return "chromium/7857"
 }
 
+function Get-DixieDataPdfiumExpectedHash {
+    # Pinned hash of the canonical pdfium.dll from upstream tag chromium/7857.
+    # Verified 2026-06-24. To upgrade: bump Get-DixieDataPdfiumVersion, download
+    # the new archive, extract bin\pdfium.dll, replace this string with its
+    # `certutil -hashfile ... SHA256` value, update bin\MANIFEST.md.
+    return "ebddbc781afbffb6f76c8e674e5900665a8676e778a91c4130b9afcb4a8a812a"
+}
+
+function Get-DixieDataTypstVersion {
+    return "v0.15.0"
+}
+
+function Get-DixieDataTypstAssetName {
+    return "typst-x86_64-pc-windows-msvc.zip"
+}
+
+function Get-DixieDataTypstExpectedHash {
+    # Pinned hash of typst-windows.exe from upstream release v0.15.0.
+    # Verified 2026-06-24 against the binary shipped in bin/.
+    # To upgrade: bump Get-DixieDataTypstVersion, download + extract the
+    # new typst-x86_64-pc-windows-msvc.zip, replace this string with the
+    # `certutil -hashfile typst-windows.exe SHA256` value, update bin\MANIFEST.md.
+    return "b561e8bbcccb0caaa665831d9fe08136eb47761b8ea5c2d8209ad64e76db5963"
+}
+
+function Test-DixieDataSha256 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedHash
+    )
+    $actual = (certutil -hashfile $Path SHA256 2>$null | Select-String -Pattern '^[0-9a-fA-F]{64}$').Line
+    return ($actual -eq $expectedHash.ToLower())
+}
+
 function Get-DixieDataPdfiumAssetName {
     return "pdfium-win-x64.tgz"
 }
@@ -214,6 +250,71 @@ function Restore-DixieDataPdfiumBinary {
         }
 
         Copy-Item $extractedDll $dllPath -Force
+
+        # Verify SHA256 against the pinned hash. A mismatch means the
+        # upstream tag was renamed or replaced — fail loud rather than
+        # ship a silently-different binary.
+        $expectedHash = Get-DixieDataPdfiumExpectedHash
+        if (-not (Test-DixieDataSha256 -Path $dllPath -ExpectedHash $expectedHash)) {
+            Remove-Item $dllPath -Force -ErrorAction SilentlyContinue
+            throw "PDFium SHA256 mismatch for $dllPath. Upstream tag $expectedVersion may have been replaced. Update Get-DixieDataPdfiumVersion + Get-DixieDataPdfiumExpectedHash in scripts/build-common.ps1."
+        }
+
+        Set-Content -Path $markerPath -Value $expectedVersion -Encoding ASCII
+    } finally {
+        if (Test-Path $tempDir) {
+            Remove-Item $tempDir -Recurse -Force
+        }
+    }
+}
+
+function Restore-DixieDataTypstBinary {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    # If a vendored binary already exists in bin/, prefer it (offline / dev flow).
+    # Otherwise download the pinned upstream release and verify SHA256 before
+    # installing into bin/. A version marker prevents redundant re-downloads.
+    $binDir = Join-Path $Root "bin"
+    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+
+    $targetPath = Join-Path $binDir "typst-windows.exe"
+    $markerPath = Join-Path $binDir ".typst.version"
+    $expectedVersion = Get-DixieDataTypstVersion
+    $currentVersion = if (Test-Path $markerPath) { (Get-Content -Path $markerPath -Raw).Trim() } else { "" }
+    if ((Test-Path $targetPath) -and $currentVersion -eq $expectedVersion) {
+        return
+    }
+
+    $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("DixieData-typst-" + [guid]::NewGuid().ToString())
+    New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+    try {
+        $assetName = Get-DixieDataTypstAssetName
+        $archivePath = Join-Path $tempDir $assetName
+        $downloadUrl = "https://github.com/typst/typst/releases/download/$expectedVersion/$assetName"
+
+        Write-Host "Downloading Typst $expectedVersion..."
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+
+        & "$env:SystemRoot\System32\tar.exe" -xzf $archivePath -C $tempDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to extract $assetName"
+        }
+
+        $extractedExe = Join-Path $tempDir "typst-windows.exe"
+        if (-not (Test-Path $extractedExe)) {
+            throw "Extracted archive did not contain typst-windows.exe"
+        }
+
+        $expectedHash = Get-DixieDataTypstExpectedHash
+        if (-not (Test-DixieDataSha256 -Path $extractedExe -ExpectedHash $expectedHash)) {
+            throw "Typst SHA256 mismatch. Upstream tag $expectedVersion may have been replaced. Update Get-DixieDataTypstVersion + Get-DixieDataTypstExpectedHash in scripts/build-common.ps1."
+        }
+
+        Copy-Item $extractedExe $targetPath -Force
         Set-Content -Path $markerPath -Value $expectedVersion -Encoding ASCII
     } finally {
         if (Test-Path $tempDir) {
@@ -410,6 +511,7 @@ function Invoke-DixieDataBuild {
         }
 
         Restore-DixieDataPdfiumBinary -Root $Root
+        Restore-DixieDataTypstBinary -Root $Root
         Restore-DixieDataTypstAssets -Root $Root
     } finally {
         Remove-DixieDataPreservedOAuthDefaults -PreservedPath $preservedOAuth

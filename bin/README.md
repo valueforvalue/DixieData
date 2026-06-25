@@ -4,6 +4,9 @@ This directory contains the Typst compiler binary used by the PDF/HTML
 export pipeline. The binary is invoked by `internal/render` (via
 `go-typst` or direct shell-out) to compile `.typ` templates to PDF.
 
+For the authoritative list of every binary the build pipeline expects
+(version, source, SHA256, upgrade procedure), see [`MANIFEST.md`](MANIFEST.md).
+
 ## Files
 
 | File | Target platform |
