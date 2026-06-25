@@ -231,6 +231,12 @@ css: ## Rebuild Tailwind bundle
 # --- Maintenance ---
 
 audit: ## Re-run token-saver audit (scripts/token-audit.ps1)
+
+# UI v1 vs v2 side-by-side screenshot diff (issue #74 Phase 0 PR4).
+# Requires the dixiedata-web server to be running; see audit/README.md
+# for the boot + seed steps. Output: audit/reports/ui-diff/.
+ui-diff: ## Capture v1 vs v2 side-by-side screenshots (issue #74)
+	node scripts/ui-diff.mjs
 	$(PWSH) -File scripts/token-audit.ps1
 
 clean: ## Remove generated artifacts (scripts/token-clean.ps1)
