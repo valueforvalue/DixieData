@@ -1,0 +1,37 @@
+# Test workflow — runs the short test suite on every push and PR.
+# Pinned to Windows because the Wails app and stress harnesses are
+# Windows-first (see Makefile); expand to a matrix later if needed.
+
+name: test
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Go test (short)
+        shell: pwsh
+        run: |
+          go test ./... -short -count=1
+        timeout-minutes: 15
+
+      - name: Bump-verify (no version drift)
+        if: hashFiles('internal/versioninfo/versioninfo.go') != ''
+        shell: pwsh
+        run: |
+          pwsh -File scripts/bump-version.ps1 -VerifyOnly
