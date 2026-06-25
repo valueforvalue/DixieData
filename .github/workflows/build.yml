@@ -50,12 +50,18 @@ jobs:
         run: |
           $bin = Get-ChildItem build/bin/*.exe | Select-Object -First 1
           $matches = & "$env:SystemRoot\System32\findstr.exe" /S /L /C:'C:\Users' $bin.FullName
+          # findstr.exe exits 1 when no match is found, which PowerShell
+          # would otherwise propagate as the script's exit code and
+          # fail the build. Explicit exit 0 in the success branch fixes
+          # that. (Branching on $LASTEXITCODE first would misclassify
+          # the case where findstr genuinely matched nothing.)
           if ($matches) {
             Write-Host "FAIL: binary embeds absolute C:\Users paths:" -ForegroundColor Red
             $matches | ForEach-Object { Write-Host "  $_" }
             exit 1
           }
           Write-Host "OK: no absolute paths embedded"
+          exit 0
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
