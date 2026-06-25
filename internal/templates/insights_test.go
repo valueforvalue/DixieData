@@ -29,7 +29,7 @@ func TestInsightsViewRendersAnalyticsCards(t *testing.T) {
 			LastRunAt:           "2026-05-16 15:00:00",
 			SimilarityThreshold: 2,
 		},
-	}).Render(context.Background(), &buf)
+	}, viewmodel.ArchiveCounts{SoldierCount: 12, SpouseRecordCount: 4}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

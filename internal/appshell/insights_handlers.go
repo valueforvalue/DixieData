@@ -26,7 +26,12 @@ func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not build the insights snapshot.", err)
 		return
 	}
-	presentation.InsightsView(snapshot).Render(r.Context(), w)
+	counts := models.ArchiveCounts{
+		TotalSoldiers:     snapshot.RecordTypes.TotalSoldiers,
+		TotalWivesWidows:  snapshot.RecordTypes.TotalWivesWidows,
+		TotalLinkedPeople: snapshot.RecordTypes.TotalLinkedPeople,
+	}
+	presentation.InsightsView(snapshot, counts).Render(r.Context(), w)
 }
 
 func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {

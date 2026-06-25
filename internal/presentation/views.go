@@ -79,11 +79,12 @@ func ResearchPackView(pack records.ResearchPack) templ.Component {
 	return templates.ResearchPackView(viewmodel.ResearchPackFromDomain(pack))
 }
 
-func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict, exportRecords []models.Soldier) templ.Component {
+func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict, exportRecords []models.Soldier, counts models.ArchiveCounts) templ.Component {
 	return templates.ShareView(
 		viewmodel.GoogleStatusFromModel(status),
 		viewmodel.MergeReviewConflictsFromModels(conflicts),
 		viewmodel.ExportRecordOptionsFromModels(exportRecords),
+		viewmodelCountsFromModels(counts),
 	)
 }
 
@@ -95,12 +96,12 @@ func ResearchCollectionDetailView(detail records.ResearchCollectionDetail) templ
 	return templates.ResearchCollectionDetailView(viewmodel.ResearchCollectionDetailFromDomain(detail))
 }
 
-func ReviewQueueView(soldiers []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary, page, total, pageSize int) templ.Component {
-	return templates.ReviewQueueView(viewmodel.ReviewQueueEntriesFromDomain(soldiers, findings), page, total, pageSize)
+func ReviewQueueView(soldiers []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary, counts models.ArchiveCounts, page, total, pageSize int) templ.Component {
+	return templates.ReviewQueueView(viewmodel.ReviewQueueEntriesFromDomain(soldiers, findings), viewmodelCountsFromModels(counts), page, total, pageSize)
 }
 
-func InsightsView(snapshot records.AnalyticsSnapshot) templ.Component {
-	return templates.InsightsView(viewmodel.AnalyticsSnapshotFromDomain(snapshot))
+func InsightsView(snapshot records.AnalyticsSnapshot, counts models.ArchiveCounts) templ.Component {
+	return templates.InsightsView(viewmodel.AnalyticsSnapshotFromDomain(snapshot), viewmodelCountsFromModels(counts))
 }
 
 func InsightsDrilldownView(title, description string, soldiers []models.Soldier, search models.SoldierSearch, page, total, pageSize int, scope, value string) templ.Component {
@@ -161,4 +162,17 @@ func EntryFormWithError(soldier models.Soldier, spouseCandidates []models.Soldie
 
 func EntryFormFragment(soldier models.Soldier, spouseCandidates []models.Soldier, suggestions models.SoldierFormSuggestions, scrape models.FindAGraveScrapeState, isEdit bool, errorMessage string) templ.Component {
 	return templates.EntryFormFragment(viewmodel.PersonRecordFromModel(soldier), viewmodel.PersonRecordsFromModels(spouseCandidates), viewmodel.PersonRecordFormSuggestionsFromModel(suggestions), viewmodel.FindAGraveScrapeStateFromModel(scrape), isEdit, errorMessage)
+}
+
+// viewmodelCountsFromModels translates models.ArchiveCounts to the
+// viewmodel-shaped counts struct the templates consume. Mirrors the
+// pattern used for every other domain-to-viewmodel conversion in this
+// file. Lives here (not in mappers.go) because the templates use the
+// viewmodel type directly and this is the only place that needs both.
+func viewmodelCountsFromModels(counts models.ArchiveCounts) viewmodel.ArchiveCounts {
+	return viewmodel.ArchiveCounts{
+		SoldierCount:      counts.TotalSoldiers,
+		SpouseRecordCount: counts.TotalWivesWidows,
+		PersonRecordCount: counts.TotalLinkedPeople,
+	}
 }

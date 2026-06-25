@@ -181,7 +181,7 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 		DisplayID:   "ABC-00001",
 		DisplayName: "John Carter",
 		EntryType:   "soldier",
-	}}).Render(context.Background(), &buf)
+	}}, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 			Reason:            "Shared record changed notes.",
 			IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
 		},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -294,7 +294,7 @@ func TestShareViewUsesManagedGoogleCalendarActions(t *testing.T) {
 		DriftAdded:        2,
 		DriftUpdated:      1,
 		DriftRemoved:      3,
-	}, nil, nil).Render(context.Background(), &buf)
+	}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -394,7 +394,7 @@ func TestShareViewMergeReviewUsesSharedSummaryFormatting(t *testing.T) {
 				EntryType:            "wife",
 			},
 		},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -630,7 +630,7 @@ func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 			FirstName: "Shared",
 			LastName:  "Version",
 		},
-	}}, nil).Render(context.Background(), &buf)
+	}}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -766,7 +766,7 @@ func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 			FirstName: "Andrew",
 			LastName:  "Morris",
 		},
-	}}, nil).Render(context.Background(), &buf)
+	}}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

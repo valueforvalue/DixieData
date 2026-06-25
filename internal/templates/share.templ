@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
@@ -85,10 +86,13 @@ func exportHasUnknownValue(records []viewmodel.ExportRecordOption, valueFor func
 	return false
 }
 
-templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption) {
+templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts) {
 	@Layout("Share") {
 		<div data-ui-id={ uiids.PageExport } class="relative mx-auto max-w-6xl space-y-6">
 			@SurfaceBadge(uiids.PageExport)
+			if counts.TotalRecords() == 0 {
+				@partials.EmptyStateCard("share", counts)
+			}
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
 				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>

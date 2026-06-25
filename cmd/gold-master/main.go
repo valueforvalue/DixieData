@@ -331,7 +331,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 
 	renderStart := time.Now()
 	var rendered bytes.Buffer
-	if err := presentation.InsightsView(snapshot).Render(context.Background(), &rendered); err != nil {
+	if err := presentation.InsightsView(snapshot, models.ArchiveCounts{}).Render(context.Background(), &rendered); err != nil {
 		return report{}, err
 	}
 	renderDuration := time.Since(renderStart)
