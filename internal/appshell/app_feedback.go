@@ -155,6 +155,78 @@ func copyFeedbackLog(sourcePath, destinationPath string) error {
 	return os.WriteFile(destinationPath, data, 0o644)
 }
 
+// defaultFeedbackRetentionDays is the default prune window when no
+// settings file specifies otherwise. Older entries are dropped on
+// startup so the feedback log does not grow without bound on a
+// long-running desktop session. Issue #121.
+const defaultFeedbackRetentionDays = 365
+
+// pruneFeedbackLogOnStartup rewrites the feedback JSONL so it only
+// contains entries newer than the retention window. Best-effort: a
+// missing or unreadable log is fine, a corrupt log is left alone
+// rather than silently dropped, and a successful prune is silent on
+// the happy path.
+func pruneFeedbackLogOnStartup(dataDir string) {
+	if dataDir == "" {
+		return
+	}
+	path := appdata.FeedbackLogPath(dataDir)
+	pruneFeedbackLogAtPath(path, defaultFeedbackRetentionDays)
+}
+
+// pruneFeedbackLogAtPath is the testable form of the startup prune.
+// retentionDays=0 means 'keep everything'. retentionDays<0 keeps
+// nothing (matches the empty-keep edge case for tests).
+func pruneFeedbackLogAtPath(path string, retentionDays int) {
+	if retentionDays == 0 {
+		return
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	kept := make([][]byte, 0, 16)
+	for _, line := range strings.Split(string(raw), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		var entry feedbackEntry
+		if err := json.Unmarshal([]byte(trimmed), &entry); err != nil {
+			// Skip the malformed line. We never silently delete
+			// something we could not parse.
+			continue
+		}
+		if retentionDays < 0 {
+			continue
+		}
+		ts, err := time.Parse(time.RFC3339, entry.SubmittedAt)
+		if err != nil {
+			kept = append(kept, []byte(trimmed))
+			continue
+		}
+		if ts.After(cutoff) {
+			kept = append(kept, []byte(trimmed))
+		}
+	}
+	out := strings.Join(byteSlicesToStrings(kept), "\n")
+	if out != "" {
+		out += "\n"
+	}
+	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "feedback: prune %s failed: %v\n", path, err)
+	}
+}
+
+func byteSlicesToStrings(in [][]byte) []string {
+	out := make([]string, len(in))
+	for i, b := range in {
+		out[i] = string(b)
+	}
+	return out
+}
+
 func feedbackExportName(now time.Time) string {
 	return fmt.Sprintf("DixieData-feedback-log-%s.jsonl", now.Format("20060102-150405"))
 }
