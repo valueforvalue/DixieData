@@ -295,6 +295,13 @@ Common reasons:
 - bulk ignore multiple selected items
 - bulk delete multiple selected items
 
+### Bulk delete and Ignore — semantics and recovery
+
+- **Bulk delete** removes the selected Person Records (and any Source Records only they reference) from the Local Archive. **This cannot be undone within the app.** DixieData does not stage deleted records in temp_trash. **Recovery path:** restore the most recent `.ddbak` you exported before the bulk delete (see §18 Backup strategy).
+- **Ignore** marks the selected items as reviewed and resolved. The Person Records stay in the Local Archive; they just move out of the Review Queue. **Ignore is not destructive** and does not need a backup.
+
+**Before running bulk delete**, export a `.ddbak` (§13.1) so you can roll back if you selected the wrong rows.
+
 ### Duplicate comparison
 
 If DixieData detects a suspected duplicate pair, you can open a side-by-side comparison to inspect the triggering fields.
@@ -387,7 +394,9 @@ Creates a support/troubleshooting bundle.
 
 ### Load Backup (`.ddbak`)
 
-This **replaces** the current Local Archive with the Backup Archive.
+This **replaces** the current Local Archive with the Backup Archive. The current Local Archive is **not** preserved unless you have already exported a fresh `.ddbak`. There is no automatic undo.
+
+**Recovery path:** before loading any backup, export a fresh `.ddbak` from §13.1 (Export options). If the backup you loaded turns out to be wrong, load the fresh `.ddbak` you just exported.
 
 Use this when you want to restore a full Local Archive state.
 
@@ -443,15 +452,25 @@ Depending on your configuration, you can:
 
 This fully rebuilds the local `.dixiedata` workspace.
 
+**This cannot be undone.** Before clicking Initialize:
+
+1. Export a fresh `.ddbak` (§13.1 Export options) and save it somewhere outside `.dixiedata/`.
+2. Verify the `.ddbak` file is non-zero in size and you can open it in a file manager.
+3. Note your Google sync state (Settings → Google) — it will be cleared and you will need to reconnect afterward.
+
 Use with caution. It removes local:
 
-- soldiers
-- records
+- Person Records (all subtypes)
+- Source Records
 - images
 - backups
 - Google sync state
+- scratch pads
+- review queue
 
 You must type the confirmation word before proceeding.
+
+**Recovery path:** if you exported a `.ddbak` first, load it via §13.2 Load Backup after Initialize completes. Otherwise the Local Archive is gone.
 
 ## 16.2 Image Maintenance
 
@@ -462,6 +481,10 @@ Use this area to:
 3. move listed files into temp trash
 
 This cleanup is designed to be safe. Files are staged before permanent removal.
+
+**Retention window:** files moved into temp trash stay in `<data-dir>/temp_trash/images/<timestamp>/` for **30 days**, then are permanently removed by a scheduled cleanup pass. To recover a deleted image within that window, copy the file back to its original location under `<data-dir>/images/` before the 30-day window expires.
+
+**Recovery path:** if a real (non-orphan) image was moved to trash by mistake, copy the file back from `<data-dir>/temp_trash/images/<timestamp>/<file>` to `<data-dir>/images/<record>/<file>` within 30 days. After 30 days the file is permanently deleted.
 
 ## 17. Static Archive output
 
@@ -483,6 +506,8 @@ Recommended routine:
 2. Keep one or more dated copies outside the app folder
 3. Use `.ddshare` only for collaboration/merging, not as your only backup
 
+**Before any destructive action** — Initialize Data (§16.1), Load Backup (§13.2), or Bulk Delete on the Review Queue (§10) — export a fresh `.ddbak` first via §13.1 Export options. None of those operations are reversible within the app; only a recent `.ddbak` lets you roll back.
+
 ## 19. Troubleshooting
 
 ### The app says it is still starting up
@@ -498,6 +523,19 @@ The loading screen should now refresh automatically while the app finishes start
 - use the recovery screen to restore the previous build and Local Archive state
 - keep the app open until DixieData relaunches itself after the rollback
 - if the recovery screen does not appear, restart the app once to re-check the retained restore point
+
+### If an update fails: full recovery walkthrough
+
+When DixieData starts an in-place update, it **first creates a Restore Point**. The Restore Point captures both the previously safe app build and the Local Archive state immediately before the update begins. If the update fails or hangs, the app falls back to the recovery screen on the next launch.
+
+Steps:
+
+1. The recovery screen appears automatically. If it does not, launch DixieData once more to trigger it.
+2. Click **Restore previous build and Local Archive**. This rolls back both the app binary and the Local Archive in one step.
+3. Keep DixieData open. The app relaunches itself after the rollback completes; do not close it mid-rollback.
+4. After the app reopens, verify the version number under **Settings → Version** matches the previously safe release line.
+
+The Restore Point and the previously safe app build are preserved together until the rollback succeeds. If the rollback itself fails, both are still on disk and the next launch will re-prompt the recovery screen. The detailed mechanism is documented in [`docs/implementation-and-features.md` §8.2](../implementation-and-features.md).
 
 ### Search is not finding expected scratch pad text
 
