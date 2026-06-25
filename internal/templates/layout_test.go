@@ -129,6 +129,29 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	}
 }
 
+func TestLayoutDialogsAreLabelledByTheirHeading(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, pair := range []struct {
+		dialog, heading, aria string
+	}{
+		{`id="feedback-modal"`, `id="feedback-modal-heading"`, `aria-labelledby="feedback-modal-heading"`},
+	} {
+		if !strings.Contains(content, pair.dialog) {
+			t.Fatalf("layout missing dialog root %s", pair.dialog)
+		}
+		if !strings.Contains(content, pair.heading) {
+			t.Fatalf("layout missing heading id %s", pair.heading)
+		}
+		if !strings.Contains(content, pair.aria) {
+			t.Fatalf("dialog %s should be aria-labelledby %s", pair.dialog, pair.aria)
+		}
+	}
+}
+
 // readCompiledAppCSS loads frontend/app.css (gitignored build output).
 // If the file does not exist (e.g. fresh clone without a CSS rebuild)
 // the test fails with a clear message rather than panic-reading nil.

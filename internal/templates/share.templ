@@ -197,14 +197,14 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</section>
 				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"></div>
 			</div>
-			<div id="share-print-config-modal" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+			<div id="share-print-config-modal" role="dialog" aria-modal="true" aria-labelledby="share-print-config-modal-heading" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
 					@SurfaceBadge(uiids.OverlayPrintConfigModal)
 					<form id="share-print-config-form" hx-post="/export/database-pdf" hx-target="this" hx-swap="none" data-pdf-pref-scope="archive" class="space-y-6">
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
-								<h3 class="mt-2 text-xl gold font-bold">Configure the archive layout</h3>
+								<h3 id="share-print-config-modal-heading" class="mt-2 text-xl gold font-bold">Configure the archive layout</h3>
 								<p class="mt-2 text-sm text-slate-600">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p>
 								<details class="mt-3 inline-block">
 									<summary class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</summary>
@@ -573,12 +573,12 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>
 			</div>
-			<div data-google-calendar-preferences-modal data-ui-id={ uiids.OverlayGoogleCalendarPrefs } class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+			<div id="google-calendar-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal data-ui-id={ uiids.OverlayGoogleCalendarPrefs } class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">DixieData Calendar</p>
-							<h3 class="mt-2 text-xl gold font-bold">Managed event preferences</h3>
+							<h3 id="google-calendar-preferences-modal-heading" class="mt-2 text-xl gold font-bold">Managed event preferences</h3>
 							<p class="mt-2 text-sm text-slate-600">Save one global preference profile. Changes apply on the next managed sync and overwrite DixieData-owned event formatting.</p>
 						</div>
 						<button type="button" data-google-calendar-preferences-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
