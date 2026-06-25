@@ -89,7 +89,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   snippets, not a CASE rewrite, because SQLite's `snippet()` returns
   non-empty text for any FTS match in a row regardless of which
   column actually matched) so the next reader does not refactor it
-  into a regression.
+  into a regression. Issue #118 adds the same alt-text sanitisation
+  the SoldierCard thumbnail already has (issue #99) to the image
+  preview modal so pasted HTML in captions never lands in an alt
+  attribute.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
