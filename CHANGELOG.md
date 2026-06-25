@@ -1,28 +1,228 @@
 # Changelog
 
-## Unreleased
+All notable changes to DixieData are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/) and the project adheres to
+[Semantic Versioning](https://semver.org/) — DixieData uses `v1.2.N` where
+N is `CurrentSchemaVersion` from `internal/versioninfo/versioninfo.go`.
 
-- Extracted PDF-layout types and standalone PDF rendering helpers from `internal/archive/export_service.go` into a new `internal/archive/pdf_layout.go` (PR1 of the God-class reduction tracked in issue #42). `export_service.go` shrinks from 4,510 to 3,108 LOC. Pure file move; no public API or behavior change.
-- Extracted static-archive types, the 1,142-LOC `staticArchiveIndexHTML` template, and the static-archive helper functions (record builders, image path helpers, archive copy/zip helpers) from `internal/archive/export_service.go` into a new `internal/archive/static_archive.go` (PR2 of the God-class reduction tracked in issue #42). `export_service.go` shrinks from 3,108 to 1,610 LOC. Pure file move; no public API or behavior change. The `*ExportService` methods `StaticArchiveFileName` and `ExportStaticArchive` continue to call into the moved helpers via same-package access.
-- Started PR3 of the God-class reduction tracked in issue #42 by extracting `App.setupRoutes()` from `internal/appshell/app.go` into a new `internal/appshell/routes.go`. The 79-line route registration table now lives in its own file. `app.go` shrinks from 4,334 to 4,255 LOC. All 72 registered routes preserved.
-- Continued PR3 of #42 by extracting the App HTTP server lifecycle from `internal/appshell/app.go` into a new `internal/appshell/lifecycle.go`: `bufferedResponseWriter` (type + 4 methods), `NewApp` constructor, `WithFrontendAssets` builder, `Startup`/`Shutdown`/`startup`/`shutdown` lifecycle methods, `ServeHTTP` entry point, and the `handleFrontendAsset` / `readFrontendAsset` helpers. `app.go` shrinks from 4,255 to 3,995 LOC. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the 11 Google integration HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/google_handlers.go`: `handleGoogleConnect`, `handleGoogleDisconnect`, `handleGoogleBackup`, `handleGoogleSheetsExport`, `handleGoogleCalendarUseManaged`, `handleGoogleCalendarPreferencesSave`, `handleGoogleCalendarSyncManaged`, `handleGoogleCalendarUnsyncManaged`, `handleGoogleCalendarUseTest`, `handleGoogleCalendarSyncTest`, `handleGoogleCalendarUnsyncTest`. `app.go` shrinks from 3,995 to 3,782 LOC. Routes unchanged (registered in routes.go). Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the calendar and anniversary HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/calendar_handlers.go`: `handleCalendar`, `handleInitialSetup`, `handleVersion`, `handleCalendarMonth`, `handleCalendarGrid`, `handleAnniversary`. `app.go` shrinks from 3,782 to 3,613 LOC. `handleCalendarPDF` (a per-month PDF export) stays in app.go for now and is registered as `/calendar/.../pdf` — it will move in a later step. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the backup and shared-archive import handlers and the memorial-JSON preview helpers from `internal/appshell/app.go` into a new `internal/appshell/imports_handlers.go`: `handleImportBackup`, `handleImportSharedArchive`, `handlePreviewMemorialJSONImport`, `handleConfirmMemorialJSONImport`, `rememberMemorialPreview`, `consumeMemorialPreview`. `app.go` shrinks from 3,613 to 3,435 LOC. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the 10 export HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/exports_handlers.go`: `handleLegacyExportRedirect`, `handleExportJSON`, `handleExportInsightsPDF`, `handleExportCSV`, `handleExportICalendar`, `handleExportStaticArchive`, `handleExportDatabasePDF`, `handleExportBackup`, `handleExportSharedArchive`, `handleExportBugReport`. `app.go` shrinks from 3,435 to 3,115 LOC. `handleExportFeedbackLog` was already in `app_feedback.go`; the rest are thin wrappers around the `a.export` facade plus `handleExportDatabasePDF` which builds `PrintSettings` before dispatching. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the 6 settings HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/settings_handlers.go`: `handleSettings`, `handleScanImageOrphans`, `handleScanDataQuality`, `handleApplyDataQuality`, `handleCleanupImageOrphans`, `handleSettingsInitialize`. `app.go` shrinks from 3,115 to 2,999 LOC. The settings/update* handlers (`handleUpdateSource`, `handleCheckForUpdates`, `handleApplyLatestUpdate`) were already in `app_update.go` from a prior refactor. `handleUpdateBootstrapHealth` stays in `app.go` for now (registered as `/settings/updates/health/bootstrap`) and may move to `app_update.go` in a future cleanup. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the 3 insights HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/insights_handlers.go`: `handleInsights`, `handleInsightsDrilldown`, `handleRunDuplicateAudit`. `app.go` shrinks from 2,999 to 2,875 LOC. The export-side counterpart `handleExportInsightsPDF` (registered as `/insights/report/pdf`) lives in `exports_handlers.go` from step 6. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the 7 per-soldier research HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/research_handlers.go`: `handleUnitCamaraderie`, `handleServiceTimeline`, `handleResearchLog`, `handleResearchTaskCreate`, `handleResearchTaskResolve`, `handleConflictLedger`, `handleResearchPack`. `app.go` shrinks from 2,875 to 2,760 LOC. `handleResearchLog` dispatches to `handleResearchTaskCreate` and `handleResearchTaskResolve` via same-package method calls. Pure file move; no public API or behavior change.
-- Continued PR3 of #42 by extracting the 12 core soldiers CRUD HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/soldiers_handlers.go`: `handleSoldiers`, `handleSearch`, `handleBrowse`, `handleBrowseResults`, `handleRecentSearch`, `handleAdvancedSearch`, `handleNewSoldier`, `handleScrapeFindAGrave`, `handleCreateSoldier`, `handleSoldierByID`, `handleEditSoldier`, `handleUpdateSoldier`, plus the `handleShare` redirect handler. `app.go` shrinks from 2,760 to 2,343 LOC. The soldier-image CRUD (download/import/delete/set-primary), the soldier PDF/JPG export handlers, the `parseSoldierForm` + `newSoldierDefaults` + Find-a-Grave helpers, and `imageImportRedirectPath` remain in `app.go` for now and will move in a future cleanup commit. Pure file move; no public API or behavior change.
-- Completed PR3 of #42 (issue #42) by extracting the 7 review-queue and merge-review HTTP handlers from `internal/appshell/app.go` into a new `internal/appshell/reviews_handlers.go`: `handleReviewQueue`, `handleReviewQueueBulk`, `handleMergeReviewConflict`, `handleResolveReviewStatus`, `handleFlagReviewStatus`, `handleReviewQueueCompare`, `handleCompare`. `app.go` shrinks from 2,343 to 2,116 LOC. This is the final PR3 step. **Cumulative across PR1+PR2+PR3: `app.go` 4,334 -> 2,116 LOC (-51%); 10 new domain files created (`routes.go`, `lifecycle.go`, `google_handlers.go`, `calendar_handlers.go`, `imports_handlers.go`, `exports_handlers.go`, `settings_handlers.go`, `insights_handlers.go`, `research_handlers.go`, `soldiers_handlers.go`, `reviews_handlers.go` — 11 new files, all in `internal/appshell/`). All 72 registered routes preserved. No public API or behavior change. All 17 test packages pass.**
-- Added `Makefile` as the preferred entry point for build, test, asset generation, and release tasks. Each target routes through the underlying PowerShell scripts with verbose output captured to `build\log\<target>.log` and `pipefail` so script failures propagate. See `make help`.
-- Added `scripts/bump-version.ps1` (`make bump`) — strict increment of `CurrentSchemaVersion` in `internal/versioninfo/versioninfo.go`. Refuses bumps greater than `+1` without `-Force`, and refuses any bump without a paired `docs\migrations\v{N+1}.md` note. Protects the local update feature, which depends on schema migrations.
-- Added `scripts/release-github.ps1` (`make release-github`) — tag + push + draft GitHub release via `gh` CLI. Five safety gates before any mutation (clean tree, committed bump, archive present, tag absent locally + on origin, `gh` authenticated). Draft means not auto-published; reviewer runs `gh release edit v{VER} --draft=false` to publish.
-- Added `docs\RELEASING.md` — release process documentation: migration notes, bump discipline, tag + draft-release workflow, rollback guidance.
-- Untracked 23 generated files (`*_templ.go`, `frontend/wailsjs/*`) from git index; preserved on disk, regenerated by `make tpl` and `wails build`.
-- Hardened ignore files (`.gitignore`, `.agentignore`, `.aiderignore`, `.cursorignore`) with canonical GOTH/Wails patterns plus `build\log\` for captured build output.
+Release dates are the commit date of the tagged release. Internal refactors
+that do not change user-visible behavior live under `### Maintenance` so
+the Added / Changed / Fixed / Removed lists stay scannable.
 
-## v1.2.22 - Minor Release
+## [Unreleased]
+
+### Added
+
+- Test, build, and audit GitHub Actions workflows (`.github/workflows/test.yml`,
+  `build.yml`, `audit.yml`). Test runs `go test -short` on every push; build
+  verifies the Wails binary builds and embeds no absolute source paths (the
+  `-trimpath` flag); audit runs the UI/UX harness weekly and on PRs touching
+  templates or frontend.
+- `scripts/bump-version.ps1 -VerifyOnly` — non-mutating validation pass that
+  fails the build if `versioninfo.go`, user-manual, implementation-and-features,
+  ai-handoff, or CHANGELOG disagree on the current version.
+- Reproducible Typst + PDFium bootstrap (`scripts/build-common.ps1`): downloads
+  pinned releases, verifies SHA256, refuses to install on mismatch. A fresh
+  clone can build without manually vendoring binaries.
+- `bin/MANIFEST.md` — authoritative list of every native binary the build
+  pipeline expects, with version, source URL, pinned SHA256, and an upgrade
+  procedure.
+- `scripts/token-clean.ps1` sweep extensions — removes untracked `*.exe` from
+  repo root and release zips older than the last two tags.
+
+### Changed
+
+- Implementation stack reference (`docs/implementation-and-features.md`) now
+  lists the Typst CLI as the PDF renderer (the `go-pdf/fpdf` path was retired
+  in slice 7). Section 6.7 carries a migration note.
+- User-manual, implementation-and-features, and ai-handoff now agree on the
+  current release line (`v1.2.54`); the version source of truth is
+  `internal/versioninfo/versioninfo.go`.
+- `Makefile` `render-svg` target guards on the local `render-svg.sh` script
+  and exits 0 with a skip message on machines where the script is absent
+  (was a hard failure before).
+- 7 previously undocumented `Makefile` targets (`tune`, `tune-smoke`,
+  `tune-snapshots`, `render-round`, `render-round-ONE`, `update-snapshots-ONE`,
+  `render-svg`) now print descriptions in `make help`.
+- Stress test files (`internal/appshell/app_stress_test.go`,
+  `tests/stress/*.go`) honour `testing.Short()` — `make test` skips them,
+  `make stress` still runs them.
+- `wails build` in `scripts/build-common.ps1` passes `-trimpath` so
+  distributed binaries do not embed absolute source paths.
+
+### Fixed
+
+- `.gitignore` no longer ignores `google-oauth-defaults.example.json` (the
+  example is intentionally tracked; the entry made contributors think their
+  edits to the example were being saved).
+- `tests/goldmaster/playwright/test-results/.last-run.json` is no longer
+  tracked (was a runtime artifact slipping through the gitignore filter).
+- 6 release zips older than the last two tags removed from `release/`
+  (cleaned by the extended `token-clean.ps1`).
+
+### Removed
+
+- `audit/package.json` (deps merged into root `package.json`; the `audit`
+  npm script now lives there too).
+
+### Maintenance
+
+- `audit/reports-r3/audit-v3.md` narrative summary written, matching the
+  structure of round 1 / round 2 reports.
+- `AGENTS.md` expanded with a glossary index pointing at `CONTEXT.md` and an
+  11-row file map of the codebase entry points.
+- `bin/README.md` documents the current typst platform gap (Windows shipped,
+  macOS / Linux land with the bootstrap follow-up).
+- Cumulative PR1+PR2+PR3 of issue #42 (God-class reduction) completed:
+  `internal/appshell/app.go` shrank from 4,334 to 2,116 LOC across the
+  PRs below; 11 new domain files created under `internal/appshell/`.
+  All 72 registered routes preserved; all 17 test packages pass.
+  - PR1: extracted `internal/archive/pdf_layout.go` and
+    `internal/archive/static_archive.go` from `export_service.go`
+    (4,510 → 1,610 LOC).
+  - PR2: split `internal/appshell/app.go` into 10 new files
+    (`routes.go`, `lifecycle.go`, `google_handlers.go`, `calendar_handlers.go`,
+    `imports_handlers.go`, `exports_handlers.go`, `settings_handlers.go`,
+    `insights_handlers.go`, `research_handlers.go`, `soldiers_handlers.go`,
+    `reviews_handlers.go`). Each PR step was a pure file move with no public
+    API or behavior change.
+- `Makefile` added as the preferred entry point for build / test / asset
+  generation / release tasks; every target routes through PowerShell with
+  verbose output captured to `build/log/<target>.log` and `pipefail` so
+  failures propagate.
+- `scripts/bump-version.ps1` (`make bump`) — strict schema-version increment
+  with paired-migration-note enforcement.
+- `scripts/release-github.ps1` (`make release-github`) — tag + push + draft
+  GitHub release with five safety gates before any mutation.
+- `docs/RELEASING.md` — release-process documentation.
+- Generated `*_templ.go` and `frontend/wailsjs/*` untracked from the index
+  (regenerated by `make tpl` and `wails build`).
+- `.gitignore`, `.agentignore`, `.aiderignore`, `.cursorignore` hardened with
+  canonical GOTH/Wails patterns plus `build/log/` for captured build output.
+
+## v1.2.54 - 2026-06-08
+
+### Fixed
+
+- Hardened calendar sync UX and popout layout.
+
+## v1.2.53 - 2026-06-08
+
+### Added
+
+- Managed calendar event preferences and a dry-run sync mode.
+
+## v1.2.52 - 2026-06-08
+
+### Changed
+
+- Enforced Chicago timezone for calendar sync and iCal export.
+- Synced calendar events stay at the user's local morning hour.
+
+## v1.2.51 - 2026-06-08
+
+### Fixed
+
+- Google Calendar reminder payload format.
+
+## v1.2.50 - 2026-06-08
+
+### Added
+
+- Google calendar timezone fallback coverage.
+
+### Fixed
+
+- Google Calendar sync timezone requirement.
+
+## v1.2.49 - 2026-06-08
+
+### Fixed
+
+- Bumped release line forward; broadened server-side post-update trust clear
+  and hardened launch-state clearing.
+- Fixed UI freeze on the intro screen caused by a `setBusyGroupState`
+  ReferenceError.
+- Hardened startup bootstrap and bundled OAuth defaults in release zips.
+
+### Added
+
+- Pre-update backup and managed Google calendars.
+- Settings data-quality scan workflow.
+- Previewed memorial JSON import workflow.
+
+## v1.2.45 - 2026-06-07
+
+### Fixed
+
+- Stabilized search hydration.
+- Added landscape biography pages and safer draft delete.
+- Shipped export layout help.
+- Made edit drafts version-aware.
+- Clarified stale draft review copy.
+- Tightened compressed quick-action buttons.
+
+## v1.2.37 - 2026-06-01
+
+### Fixed
+
+- Fixed calendar alignment.
+
+## v1.2.36 - 2026-05-31
+
+### Fixed
+
+- Fixed release build import.
+- Fixed browse filters.
+
+## v1.2.35 - 2026-05-31
+
+### Fixed
+
+- Fixed printable export modal viewport.
+
+## v1.2.34 - 2026-05-31
+
+### Fixed
+
+- Fixed normalized pension-state filtering.
+
+## v1.2.33 - 2026-05-31
+
+### Fixed
+
+- Fixed split-screen layouts.
+
+## v1.2.32 - 2026-05-31
+
+### Changed
+
+- Polished calendar and browse workflows.
+
+## v1.2.31 - 2026-05-31
+
+### Added
+
+- Calendar items and display fixes.
+
+## v1.2.29 - 2026-05-30
+
+### Maintenance
+
+- Bumped release line forward.
+
+## v1.2.28 - 2026-05-30
+
+### Added
+
+- Restore points for in-place updates.
+- Single-record JPG export polish.
+- Made scratchpads database-backed.
+- Browse and startup improvements.
+- Linked-person records renamed to person records.
+- Shared import memory and software updates.
+
+## v1.2.22 - 2025 (date not captured at tag) - Minor Release
 
 - Added the generic linked-person workflow across entry creation, presentation, import/export paths, and legacy backup restore.
 - Added clickable internal `[[DISPLAY-ID]]` links, global feedback capture/export, and maiden-name italics across live and exported views.
@@ -58,12 +258,3 @@
 - Carried the release line forward to `v1.1.17` so the runtime metadata, Wails title, exported artifacts, and docs stay aligned.
 
 ## v1.1.16 - Gold Master
-
-- Synced the production version line to `v1.1.16` so the schema version, runtime metadata, and Wails title all report the same release.
-- Added Smart Back behavior that preserves browse context when returning from record detail and edit surfaces.
-- Expanded archive search with FTS5-backed quick search, scratch-pad indexing, recent-record defaults, and advanced filters for entry type and review state.
-- Hardened spouse and entry-type workflows across create, edit, detail, export, and review flows.
-- Added persistent image rotation controls, native image import, and sharded image storage for better large-archive scaling.
-- Added gold-master validation tooling for outputs, stress coverage, and archive portability auditing.
-- Converted `.ddshare` archives into merge-ready record packages with referenced-image bundling and receiver-namespace ID regeneration.
-- Preserved `.ddbak` as the full replacement backup format with schema-aware manifest metadata.
