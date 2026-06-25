@@ -420,7 +420,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	}
 	options := parsePDFOptionsRequest(r, "L", true)
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFName(*soldier, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -434,7 +434,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		respondInternal(w, r, "Could not write the Person Record PDF.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
 }
 
@@ -450,7 +450,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFNameNoImages(*soldier),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -464,7 +464,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		respondInternal(w, r, "Could not write the text-only Person Record PDF.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
 }
 
@@ -488,7 +488,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 	}
 	options := parsePDFOptionsRequest(r, "L", true)
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierJPGName(*soldier, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "JPEG image", Pattern: "*.jpg"},
@@ -505,7 +505,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(paths[0]))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(paths[0]))
 	if len(paths) > 1 {
 		setToastHeader(w, fmt.Sprintf("JPG saved (%d pages, first page opened): %s", len(paths), paths[0]))
 		return
@@ -535,7 +535,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	}
 	options := parsePDFOptionsRequest(r, "P", false)
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -549,7 +549,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		respondInternal(w, r, "Could not write the monthly PDF.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Monthly PDF saved to %s", path))
 }
 
@@ -580,7 +580,7 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: imageScreenshotName(payload.FileName),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PNG image", Pattern: "*.png"},
@@ -737,7 +737,7 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	parentDir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+	parentDir, err := a.OpenDirectoryDialog( runtime.OpenDialogOptions{
 		Title: "Choose where to copy the record images",
 	})
 	if err != nil || parentDir == "" {
@@ -764,7 +764,7 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+	paths, err := a.OpenMultipleFilesDialog( runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
 		},

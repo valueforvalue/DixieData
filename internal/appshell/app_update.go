@@ -8,7 +8,6 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/update"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func (a *App) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +77,7 @@ func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		time.Sleep(750 * time.Millisecond)
 		if a.ctx != nil {
-			runtime.Quit(a.ctx)
+			a.Quit()
 		}
 	}()
 }

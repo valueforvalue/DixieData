@@ -107,7 +107,7 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: feedbackExportName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Feedback log", Pattern: "*.jsonl"},
@@ -122,7 +122,7 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the feedback log.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Feedback log saved to %s", path))
 }
 
