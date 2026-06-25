@@ -23,7 +23,7 @@ func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 	}
 	snapshot, err := a.analytics.Snapshot()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not build the insights snapshot.", err)
 		return
 	}
 	presentation.InsightsView(snapshot).Render(r.Context(), w)
@@ -40,7 +40,7 @@ func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
 
 	title, description, search, useGroupedSpouseQuery, err := insightDrilldownConfig(scope, value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid insights drilldown scope.", err)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
 		soldiers, total, err = a.soldiers.AdvancedSearch(search, page, 50)
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondInternal(w, r, "Could not run the insights drilldown search.", err)
 		return
 	}
 	presentation.InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w)
@@ -132,7 +132,7 @@ func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
 	result, err := a.audit.RunDuplicateAudit()
 	if err != nil {
 		setToastHeaderWithType(w, "Duplicate audit failed.", "error")
-		fmt.Fprintf(w, "Duplicate audit failed: %v", err)
+		respondInternal(w, r, "Duplicate audit failed.", err)
 		return
 	}
 	message := fmt.Sprintf("Success: scanned %d records and found %d candidate duplicate pairs (%d suppressed by prior resolutions).", result.ScannedRecords, result.FindingsDiscovered, result.FindingsSuppressed)

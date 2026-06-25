@@ -1030,7 +1030,7 @@ func TestAppServeHTTPFailsClosedWhenPendingLaunchStateCannotClear(t *testing.T) 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusInternalServerError, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), "restore point manager unavailable") {
+	if !strings.Contains(rec.Body.String(), "Could not clear the pending launch state") {
 		t.Fatalf("body=%q", rec.Body.String())
 	}
 }

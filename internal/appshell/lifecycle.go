@@ -280,7 +280,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.mux.ServeHTTP(buffered, r)
 		if buffered.statusCode >= http.StatusOK && buffered.statusCode < http.StatusMultipleChoices {
 			if err := a.clearPendingLaunchState(); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, "Could not clear the pending launch state after update.", err)
 				return
 			}
 		}
