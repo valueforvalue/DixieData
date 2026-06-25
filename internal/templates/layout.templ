@@ -9,6 +9,10 @@ import (
 
 templ Layout(title string) {
 	<!DOCTYPE html>
+	// lang is hard-coded to "en" for now. DixieData may be used by
+	// researchers working with Spanish / French / German Civil War
+	// materials; full UI localisation is tracked separately and will
+	// surface the lang attribute from a user preference when it lands.
 	<html lang="en">
 	<head>
 		<meta charset="UTF-8"/>
