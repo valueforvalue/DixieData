@@ -121,12 +121,6 @@ templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
 				if day == 0 {
 					<div class="min-h-[90px] xl:min-h-[115px] border-r border-b border-[rgba(141,116,64,0.3)] bg-[rgba(36,48,61,0.08)]"></div>
 				} else {
-					if summary, ok := calendar[day]; ok && hasCalendarMarkers(summary) {
-						// summary is captured for aria-label; the visible block below still
-						// looks it up itself so the screen-reader text and the visual markers
-						// stay in sync.
-						_ = summary
-					}
 					<button
 						type="button"
 						class={ calendarDayClass(month, day) }
