@@ -72,7 +72,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   status page. The share page's Static Archive and Printable PDF
   exports accept `?async=1` and now run as background jobs that
   the user can poll and cancel from a dedicated progress page
-  instead of blocking the HTTP goroutine for minutes.
+  instead of blocking the HTTP goroutine for minutes. Issue #125
+  closes out the visible part of the flow: completed exports now
+  expose a `/jobs/{id}/artifact` endpoint that streams the saved
+  file back with a `Content-Disposition: attachment` header, and
+  the status page renders an `Open {kind}` pill-link instead of
+  the previous text-only `Saved to …` line.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
