@@ -38,11 +38,11 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprintf(w, "Export cancelled.")
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportJSON(path); err != nil {
-		fmt.Fprintf(w, "Export failed: %v", err)
+		respondInternal(w, r, "Could not write the JSON export.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("JSON saved to %s", path))
@@ -54,12 +54,12 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the export form.", err)
 		return
 	}
 	snapshot, err := a.analytics.Snapshot()
 	if err != nil {
-		fmt.Fprintf(w, "Analytics export failed: %v", err)
+		respondInternal(w, r, "Could not build the insights snapshot.", err)
 		return
 	}
 	options := parsePDFOptionsRequest(r, "P", false)
@@ -74,7 +74,7 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.export.ExportAnalyticsSummaryPDF(path, snapshot, options); err != nil {
-		fmt.Fprintf(w, "Analytics export failed: %v", err)
+		respondInternal(w, r, "Could not write the insights PDF.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -93,11 +93,11 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprintf(w, "Export cancelled.")
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportExcel(path); err != nil {
-		fmt.Fprintf(w, "Export failed: %v", err)
+		respondInternal(w, r, "Could not write the Excel workbook.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -116,16 +116,16 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "iCalendar export cancelled.")
+		respondError(w, r, KindValidation, "iCalendar export cancelled.", nil)
 		return
 	}
 	preferences, err := a.google.ManagedEventPreferences()
 	if err != nil {
-		fmt.Fprintf(w, "iCalendar export failed: %v", err)
+		respondInternal(w, r, "Could not load Google Calendar preferences.", err)
 		return
 	}
 	if err := a.export.ExportICalendar(path, preferences); err != nil {
-		fmt.Fprintf(w, "iCalendar export failed: %v", err)
+		respondInternal(w, r, "Could not write the iCalendar file.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -149,11 +149,11 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Static web archive export cancelled.")
+		respondError(w, r, KindValidation, "Static web archive export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportStaticArchive(path, a.dataDir); err != nil {
-		fmt.Fprintf(w, "Static web archive export failed: %v", err)
+		respondInternal(w, r, "Could not write the static web archive.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -167,7 +167,7 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 	}
 	settings, err := parsePrintSettingsRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Print settings could not be read.", err)
 		return
 	}
 	settings = settings.Normalize()
@@ -178,11 +178,11 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Printable PDF export cancelled.")
+		respondError(w, r, KindValidation, "Printable PDF export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
-		fmt.Fprintf(w, "Printable PDF export failed: %v", err)
+		respondInternal(w, r, "Could not write the printable PDF.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -258,13 +258,13 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Backup export cancelled.")
+		respondError(w, r, KindValidation, "Backup export cancelled.", nil)
 		return
 	}
 
 	manifest, err := a.backup.Export(path, a.dataDir)
 	if err != nil {
-		fmt.Fprintf(w, "Backup export failed: %v", err)
+		respondInternal(w, r, "Could not write the backup archive.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Backup saved to %s (%d soldiers, %d images)", path, manifest.Soldiers, manifest.Images))
@@ -283,13 +283,13 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Shared archive export cancelled.")
+		respondError(w, r, KindValidation, "Shared archive export cancelled.", nil)
 		return
 	}
 
 	manifest, err := a.backup.ExportShared(path, a.dataDir)
 	if err != nil {
-		fmt.Fprintf(w, "Shared archive export failed: %v", err)
+		respondInternal(w, r, "Could not write the shared archive.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Shared archive saved to %s (%d soldiers, %d images)", path, manifest.Soldiers, manifest.Images))
@@ -308,13 +308,13 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Bug report export cancelled.")
+		respondError(w, r, KindValidation, "Bug report export cancelled.", nil)
 		return
 	}
 
 	manifest, err := a.diagnostics.Export(path, a.dataDir)
 	if err != nil {
-		fmt.Fprintf(w, "Bug report export failed: %v", err)
+		respondInternal(w, r, "Could not write the bug report bundle.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))

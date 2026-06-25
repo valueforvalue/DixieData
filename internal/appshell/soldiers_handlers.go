@@ -24,6 +24,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +43,7 @@ func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
 	}
 	suggestions, err := a.soldiers.FormSuggestions()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load browse suggestions.", err)
 		return
 	}
 	presentation.SoldierList(nil, page, 0, "", suggestions).Render(r.Context(), w)
@@ -60,6 +61,7 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Query:  q,
 		Browse: r.URL.Query().Get("browse") == "1",
 	}
+	search = a.attachArchiveCounts(search)
 	if strings.TrimSpace(q) == "" && !search.Browse {
 		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
 		return
@@ -154,7 +156,8 @@ func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	presentation.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)
+	recentSearch := a.attachArchiveCounts(models.SoldierSearch{Mode: "basic", Recent: true})
+	presentation.SearchResults(soldiers, recentSearch, 1, len(soldiers), 10).Render(r.Context(), w)
 }
 
 func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
@@ -192,6 +195,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		DeathDay:              r.URL.Query().Get("death_day"),
 	}
 	page := parsePage(r.URL.Query().Get("page"))
+	search = a.attachArchiveCounts(search)
 	if !hasAdvancedSearchInput(search) {
 		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
 		return
@@ -441,4 +445,18 @@ func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", id), http.StatusSeeOther)
+}
+
+// attachArchiveCounts fills the IsArchiveEmpty and TotalRecordCount fields
+// on a SoldierSearch so the search results template can render the first-
+
+// run Setup card. If the count query fails, the search proceeds with the
+// empty state populated as best-effort. Tracking: issue #98 from the
+// 2026-06-24 audit.
+func (a *App) attachArchiveCounts(search models.SoldierSearch) models.SoldierSearch {
+	counts, err := a.soldiers.ArchiveCounts()
+	if err != nil {
+		return viewmodel.WithArchiveCounts(search, models.ArchiveCounts{})
+	}
+	return viewmodel.WithArchiveCounts(search, counts)
 }

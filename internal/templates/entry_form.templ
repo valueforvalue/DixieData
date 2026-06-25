@@ -1070,7 +1070,9 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 			</div>
 		}
 	if len(soldiers) == 0 {
-		if search.Recent {
+		if search.IsArchiveEmpty {
+			@emptyArchiveSetupCard(search)
+		} else if search.Recent {
 			<p class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">No recent person records yet. Open a detail page and it will appear here.</p>
 		} else if !hasActiveSearch(search) {
 			<div data-recent-records-empty class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">
@@ -1296,4 +1298,35 @@ func previewText(value string, limit int) string {
 		candidate = strings.TrimSpace(candidate[:lastBreak])
 	}
 	return candidate + "..."
+}
+
+// emptyArchiveSetupCard renders the first-run Setup CTA when the Local
+// Archive contains zero Person Records. The card offers three actions:
+// add first Person Record, load a .ddbak backup, or initialise the app.
+// Tracking: issue #98 from the 2026-06-24 audit.
+templ emptyArchiveSetupCard(search viewmodel.PersonRecordSearch) {
+	<section data-empty-archive-setup aria-labelledby="empty-archive-setup-heading" class="rounded-3xl border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.85)] p-6 shadow-sm">
+		<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Welcome to DixieData</p>
+		<h2 id="empty-archive-setup-heading" class="mt-2 text-2xl font-bold text-[#22303d]">Start your Local Archive</h2>
+		<p class="mt-2 text-sm leading-6 text-slate-600">
+			Your Local Archive is empty. Add your first Person Record, load a backup archive, or initialise the app to begin.
+		</p>
+		<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+			<a href="/soldiers/new" class="primary-button justify-between text-left sm:w-auto">
+				<span class="font-bold">Add first Person Record</span>
+				<span class="text-xs text-[#f6ddd6]">Begin a new research entry</span>
+			</a>
+			<a href="/share#import-shared-or-backup" class="secondary-button justify-between text-left sm:w-auto">
+				<span class="font-bold">Load a .ddbak backup</span>
+				<span class="text-xs text-slate-500">Restore a previous Local Archive</span>
+			</a>
+			<a href="/settings/initialize" class="secondary-button justify-between text-left sm:w-auto">
+				<span class="font-bold">Initialise the app</span>
+				<span class="text-xs text-slate-500">Configure identity and review paths</span>
+			</a>
+		</div>
+		<p class="mt-4 text-xs text-slate-500">
+			Local Archives hold Person Records, Source Records, scratch pads, images, and research logs. They never leave your machine unless you choose to export them.
+		</p>
+	</section>
 }
