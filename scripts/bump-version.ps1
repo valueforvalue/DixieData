@@ -24,7 +24,8 @@
 
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [switch]$VerifyOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,6 +46,61 @@ if (-not $match.Success) {
 $current = [int]$match.Groups[1].Value
 $next = $current + 1
 $delta = $next - $current
+
+# VerifyOnly: non-mutating validation pass. Returns 0 on pass, 1 on fail.
+# Checks:
+#   1. If versioninfo.go bumped relative to HEAD, paired docs/migrations/v{new}.md exists
+#   2. user-manual / implementation-and-features / ai-handoff reference current app version
+#   3. CHANGELOG.md has a section header for the current app version
+if ($VerifyOnly) {
+    $errors = @()
+    $headContent = & git show "HEAD:internal/versioninfo/versioninfo.go" 2>$null
+    $headVersion = $current
+    if ($headContent) {
+        $hm = [regex]::Match($headContent, 'CurrentSchemaVersion\s*=\s*(\d+)')
+        if ($hm.Success) { $headVersion = [int]$hm.Groups[1].Value }
+    }
+    if ($current -ne $headVersion) {
+        $expectedMigration = Join-Path $migrationsDir ("v{0}.md" -f $current)
+        if (-not (Test-Path $expectedMigration)) {
+            $errors += "versioninfo.go bumped $headVersion -> $current but missing $expectedMigration"
+        }
+    }
+
+    $appVer = "1.2.$current"
+    $docFiles = @(
+        "docs\user-manual.md",
+        "docs\implementation-and-features.md",
+        "docs\ai-handoff.md"
+    )
+    foreach ($d in $docFiles) {
+        $abs = Join-Path $root $d
+        if (-not (Test-Path $abs)) { continue }
+        $c = Get-Content -Path $abs -Raw
+        if ($c -notmatch [regex]::Escape($appVer)) {
+            $errors += "$d does not reference $appVer"
+        }
+    }
+
+    $changelogPath = Join-Path $root "CHANGELOG.md"
+    if (Test-Path $changelogPath) {
+        $cl = Get-Content -Path $changelogPath -Raw
+        $verHeader = "## \[?${appVer}\]?"
+        $hasUnreleased = $cl -match "##\s*\[?Unreleased\]?"
+        $hasVersion = $cl -match $verHeader
+        if (-not $hasVersion -and -not $hasUnreleased) {
+            $errors += "CHANGELOG.md has no '## ${appVer}' and no '[Unreleased]' section"
+        }
+    }
+
+    if ($errors.Count -gt 0) {
+        Write-Host "VERIFY FAIL:" -ForegroundColor Red
+        foreach ($e in $errors) { Write-Host "  - $e" -ForegroundColor Red }
+        exit 1
+    }
+    Write-Host "VERIFY OK: schema $current, docs reference $appVer, discipline intact" -ForegroundColor Green
+    exit 0
+}
 
 if ($delta -ne 1 -and -not $Force) {
     throw "Refusing to bump by $delta (current=$current, next=$next). " +
@@ -76,6 +132,14 @@ $newContent = $content -replace "CurrentSchemaVersion\s*=\s*\d+", "CurrentSchema
 Set-Content -Path $versionInfoPath -Value $newContent -NoNewline
 
 $appVersion = "v1.2.{0}" -f $next
+
+if ($VerifyOnly) {
+    Write-Host "VERIFY OK: CurrentSchemaVersion would go $current -> $next" -ForegroundColor Green
+    Write-Host "  paired migration note: $migrationPath"
+    Write-Host "  app version: $appVersion"
+    exit 0
+}
+
 Write-Host ""
 Write-Host "Bumped CurrentSchemaVersion: $current -> $next" -ForegroundColor Green
 Write-Host "App version: $appVersion"

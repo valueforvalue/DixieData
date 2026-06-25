@@ -1,0 +1,88 @@
+# Audit workflow — runs the UI/UX audit harness against the dev server.
+# Weekly cron + manual dispatch. Cheap (Ubuntu, no Wails build required)
+# because dixiedata-web runs as a Linux binary and the audit scripts
+# target the dev server.
+
+name: audit
+
+on:
+  schedule:
+    # Mondays 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'internal/templates/**'
+      - 'frontend/**'
+      - 'audit/**'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Build dixiedata-web + seed-data
+        run: |
+          mkdir -p build/bin
+          go build -o build/bin/dixiedata-web ./cmd/dixiedata-web
+          go build -o build/bin/seed-data ./cmd/seed-data
+
+      - name: Seed sample archive (50 soldiers)
+        run: |
+          mkdir -p .scratch/webmode
+          ./build/bin/seed-data -data-dir .scratch/webmode -soldiers 50 -reset
+
+      - name: Start dev server
+        run: |
+          ./build/bin/dixiedata-web -scratch-dir .scratch/webmode &
+          # Poll for readiness up to 30s instead of fixed sleep
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/ > /dev/null; then
+              echo "Server ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start within 30s"
+          exit 1
+
+      - name: Run audit harness
+        run: |
+          mkdir -p audit/reports-ci
+          node audit/run.mjs --output-dir audit/reports-ci 2>&1 | tee audit/reports-ci/round1.log
+          node audit/run-round2.mjs --output-dir audit/reports-ci 2>&1 | tee audit/reports-ci/round2.log
+          node audit/run-round3.mjs --output-dir audit/reports-ci 2>&1 | tee audit/reports-ci/round3.log
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-reports
+          path: |
+            audit/reports-ci/
+            audit/reports/
+            audit/reports-r2/
+            audit/reports-r3/
+          retention-days: 30

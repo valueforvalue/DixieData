@@ -1,0 +1,66 @@
+# Build workflow — verifies the Wails build path on every push and PR.
+# Produces build/bin/*.exe + verifies it embeds no absolute source paths
+# (the -trimpath flag from issue #110 is what enforces that).
+
+name: build
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install Wails
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+          wails doctor
+
+      - name: Generate Typst + PDFium binaries
+        shell: pwsh
+        run: |
+          # Restore-DixieDataTypstBinary + Restore-DixieDataPdfiumBinary are
+          # invoked by scripts/build-debug.ps1 → Invoke-DixieDataBuild.
+          # No need to invoke them explicitly here.
+          echo "Binaries restored during build."
+
+      - name: Build (make debug)
+        shell: pwsh
+        run: |
+          pwsh -File scripts/build-debug.ps1
+        timeout-minutes: 25
+
+      - name: Verify -trimpath (no absolute paths in binary)
+        if: hashFiles('build/bin/*.exe') != ''
+        shell: pwsh
+        run: |
+          $bin = Get-ChildItem build/bin/*.exe | Select-Object -First 1
+          $matches = & "$env:SystemRoot\System32\findstr.exe" /S /L /C:'C:\Users' $bin.FullName
+          if ($matches) {
+            Write-Host "FAIL: binary embeds absolute C:\Users paths:" -ForegroundColor Red
+            $matches | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          }
+          Write-Host "OK: no absolute paths embedded"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dixiedata-debug
+          path: build/bin/*.exe
+          if-no-files-found: error
+          retention-days: 7
