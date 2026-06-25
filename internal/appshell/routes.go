@@ -4,7 +4,11 @@
 // route table is the single point that maps URL patterns to handler methods.
 package appshell
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/valueforvalue/DixieData/internal/uiver"
+)
 
 func (a *App) setupRoutes() {
 	mux := http.NewServeMux()
@@ -86,5 +90,8 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/media/", a.handleMedia)
 
 	a.muxRaw = mux
-	a.mux = recoverMiddleware(mux)
+	// uiver.Middleware reads ?ui=v2 and stores it on the request context so
+	// templates can dispatch via uiver.IsV2(ctx). recovery wraps it last so
+	// a panic during UI-version dispatch still hits the crash log.
+	a.mux = recoverMiddleware(uiver.Middleware(mux))
 }
