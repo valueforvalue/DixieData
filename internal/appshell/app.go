@@ -14,6 +14,7 @@ import (
 	"image/png"
 	"io"
 	"io/fs"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -131,11 +132,11 @@ func (a *App) handleUpdateBootstrapHealth(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if a.restorePoints == nil {
-		http.Error(w, "restore point manager unavailable", http.StatusServiceUnavailable)
+		respondUnavailable(w, r, "Restore point manager unavailable. Update bootstrap cannot run.", nil)
 		return
 	}
 	if err := a.clearPendingLaunchState(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not clear the pending launch state.", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -278,22 +279,22 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	}
 	status, err := a.google.Status()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load Google integration status.", err)
 		return
 	}
 	conflicts, err := a.backup.PendingMergeConflicts()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load pending merge conflicts.", err)
 		return
 	}
 	exportRecords, err := a.listAllSoldiers()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not enumerate person records for export.", err)
 		return
 	}
 	drift, err := a.google.CalendarDriftStatus(exportRecords)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not compute Google Calendar drift.", err)
 		return
 	}
 	status.LastSyncedAt = drift.LastSyncedAt
@@ -309,23 +310,23 @@ func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) 
 	case http.MethodGet:
 		fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from")
 		if err != nil {
-			http.Error(w, "invalid from id", http.StatusBadRequest)
+			respondValidation(w, r, "Invalid from id.", err)
 			return
 		}
 		hub, err := a.soldiers.ResearchCollectionsHub(fromID)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondInternal(w, r, "Could not load research collections.", err)
 			return
 		}
 		presentation.ResearchCollectionsHubView(*hub).Render(r.Context(), w)
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "failed to parse form", http.StatusBadRequest)
+			respondValidation(w, r, "Could not read the collection form.", err)
 			return
 		}
 		if err := a.soldiers.CreateResearchCollection(r.FormValue("name"), r.FormValue("description")); err != nil {
 			setToastHeaderWithType(w, "Collection could not be created.", "error")
-			fmt.Fprintf(w, "Collection could not be created: %v", err)
+			respondInternal(w, r, "Could not create the research collection.", err)
 			return
 		}
 		redirectTo := "/research-collections"
@@ -349,22 +350,22 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 	parts := strings.Split(path, "/")
 	collectionID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		http.Error(w, "invalid collection id", http.StatusBadRequest)
+		respondValidation(w, r, "Invalid collection id.", err)
 		return
 	}
 	if len(parts) == 2 && parts[1] == "add" && r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "failed to parse form", http.StatusBadRequest)
+			respondValidation(w, r, "Could not read the add-to-collection form.", err)
 			return
 		}
 		soldierID, err := parseOptionalInt64(r.FormValue("soldier_id"), "soldier_id")
 		if err != nil || soldierID < 1 {
-			http.Error(w, "invalid soldier id", http.StatusBadRequest)
+			respondValidation(w, r, "Invalid person record id.", err)
 			return
 		}
 		if err := a.soldiers.AddPersonRecordToResearchCollection(collectionID, soldierID); err != nil {
 			setToastHeaderWithType(w, "Record could not be added to the collection.", "error")
-			fmt.Fprintf(w, "Record could not be added to the collection: %v", err)
+			respondInternal(w, r, "Could not add the record to the research collection.", err)
 			return
 		}
 		redirectTo := fmt.Sprintf("/research-collections/%d", collectionID)
@@ -379,12 +380,12 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 	if len(parts) == 1 && r.Method == http.MethodGet {
 		fromID, err := parseOptionalInt64(r.URL.Query().Get("from"), "from")
 		if err != nil {
-			http.Error(w, "invalid from id", http.StatusBadRequest)
+			respondValidation(w, r, "Invalid from id.", err)
 			return
 		}
 		detail, err := a.soldiers.ResearchCollectionDetail(collectionID, fromID)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondInternal(w, r, "Could not load the research collection detail.", err)
 			return
 		}
 		presentation.ResearchCollectionDetailView(*detail).Render(r.Context(), w)
@@ -399,13 +400,13 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the PDF export form.", err)
 		return
 	}
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 	for i := range soldier.Images {
@@ -420,11 +421,11 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "PDF export cancelled.")
+		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportSoldierPDF(path, *soldier, options); err != nil {
-		fmt.Fprintf(w, "PDF export failed: %v", err)
+		respondInternal(w, r, "Could not write the Person Record PDF.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -439,7 +440,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 
@@ -450,11 +451,11 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "PDF export cancelled.")
+		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportSoldierPDFWithoutImages(path, *soldier); err != nil {
-		fmt.Fprintf(w, "PDF export failed: %v", err)
+		respondInternal(w, r, "Could not write the text-only Person Record PDF.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -467,13 +468,13 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the JPG export form.", err)
 		return
 	}
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 	for i := range soldier.Images {
@@ -488,13 +489,13 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "JPG export cancelled.")
+		respondError(w, r, KindValidation, "JPG export cancelled.", nil)
 		return
 	}
 
 	paths, err := a.export.ExportSoldierJPG(path, *soldier, options)
 	if err != nil {
-		fmt.Fprintf(w, "JPG export failed: %v", err)
+		respondInternal(w, r, "Could not write the JPG export.", err)
 		return
 	}
 
@@ -512,18 +513,18 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the calendar PDF form.", err)
 		return
 	}
 
 	month, err := parseBoundedInt(monthValue, "month", 1, 12)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
 	calendar, err := a.anniversary.GetMonthCalendar(month)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load the monthly calendar.", err)
 		return
 	}
 	options := parsePDFOptionsRequest(r, "P", false)
@@ -535,11 +536,11 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Monthly PDF export cancelled.")
+		respondError(w, r, KindValidation, "Monthly PDF export cancelled.", nil)
 		return
 	}
 	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options); err != nil {
-		fmt.Fprintf(w, "Monthly PDF export failed: %v", err)
+		respondInternal(w, r, "Could not write the monthly PDF.", err)
 		return
 	}
 	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
@@ -557,19 +558,19 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 		FileName  string `json:"fileName"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid screenshot payload", http.StatusBadRequest)
+		respondValidation(w, r, "Invalid screenshot payload.", err)
 		return
 	}
 
 	imageData := strings.TrimSpace(payload.ImageData)
 	if !strings.HasPrefix(imageData, "data:image/png;base64,") {
-		http.Error(w, "invalid screenshot image", http.StatusBadRequest)
+		respondValidation(w, r, "Screenshot must be a PNG data URL.", nil)
 		return
 	}
 
 	data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(imageData, "data:image/png;base64,"))
 	if err != nil {
-		http.Error(w, "invalid screenshot image", http.StatusBadRequest)
+		respondValidation(w, r, "Could not decode the screenshot image data.", err)
 		return
 	}
 
@@ -580,11 +581,11 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Screenshot cancelled.")
+		respondError(w, r, KindValidation, "Screenshot cancelled.", nil)
 		return
 	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
-		fmt.Fprintf(w, "Screenshot failed: %v", err)
+		respondInternal(w, r, "Could not write the screenshot.", err)
 		return
 	}
 	fmt.Fprintf(w, "✓ Saved screenshot to %s", path)
@@ -603,17 +604,17 @@ func (a *App) handleImageRotate(w http.ResponseWriter, r *http.Request) {
 
 	var req imageRotateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid rotate request", http.StatusBadRequest)
+		respondValidation(w, r, "Invalid rotate request.", err)
 		return
 	}
 	if req.ImageID < 1 {
-		http.Error(w, "invalid image id", http.StatusBadRequest)
+		respondValidation(w, r, "Invalid image id.", nil)
 		return
 	}
 
 	imageRecord, err := a.soldiers.GetImageByID(req.ImageID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Image %d not found.", req.ImageID), err)
 		return
 	}
 	imagePath := filepath.Join(a.dataDir, filepath.FromSlash(imageRecord.FilePath))
@@ -623,11 +624,11 @@ func (a *App) handleImageRotate(w http.ResponseWriter, r *http.Request) {
 	case "ccw":
 		err = rotateImageFile(imagePath, false)
 	default:
-		http.Error(w, "invalid rotate direction", http.StatusBadRequest)
+		respondValidation(w, r, "Invalid rotate direction. Use cw or ccw.", nil)
 		return
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondInternal(w, r, "Could not rotate the image.", err)
 		return
 	}
 
@@ -706,27 +707,27 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the image download form.", err)
 		return
 	}
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 	if len(soldier.Images) == 0 {
-		fmt.Fprint(w, "No images are attached to this record.")
+		respondError(w, r, KindValidation, "No images are attached to this record.", nil)
 		return
 	}
 
 	selected, err := selectedSoldierImages(*soldier, r.Form["image_ids"], a.dataDir)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Could not parse selected image ids.", err)
 		return
 	}
 	if len(selected) == 0 {
-		fmt.Fprint(w, "Select at least one image to download.")
+		respondError(w, r, KindValidation, "Select at least one image to download.", nil)
 		return
 	}
 
@@ -734,12 +735,12 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 		Title: "Choose where to copy the record images",
 	})
 	if err != nil || parentDir == "" {
-		fmt.Fprint(w, "Download cancelled.")
+		respondError(w, r, KindValidation, "Download cancelled.", nil)
 		return
 	}
 	destinationDir := filepath.Join(parentDir, imageExportFolderName(*soldier))
 	if err := a.export.ExportImages(destinationDir, selected); err != nil {
-		fmt.Fprintf(w, "Download failed: %v", err)
+		respondInternal(w, r, "Could not copy the images to the chosen folder.", err)
 		return
 	}
 	fmt.Fprintf(w, "✓ Copied %d image(s) to %s", len(selected), destinationDir)
@@ -753,7 +754,7 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 
@@ -763,17 +764,19 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		},
 	})
 	if err != nil || len(paths) == 0 {
-		fmt.Fprint(w, "Image import cancelled.")
+		respondError(w, r, KindValidation, "Image import cancelled.", nil)
 		return
 	}
 
 	imported, importErr := a.importImagePaths(*soldier, paths)
 	if importErr != nil {
 		if imported > 0 {
-			setToastHeaderWithType(w, fmt.Sprintf("Imported %d image(s), but some files failed: %v", imported, importErr), "error")
+			setToastHeaderWithType(w, fmt.Sprintf("Imported %d image(s); some files failed.", imported), "warning")
+			slog.Error("appshell: partial image import", "audit", "respond-error", "person_record_id", id, "imported", imported, "err", importErr.Error())
 			return
 		}
-		setToastHeaderWithType(w, fmt.Sprintf("Image import failed: %v", importErr), "error")
+		setToastHeaderWithType(w, "Image import failed.", "error")
+		slog.Error("appshell: image import", "audit", "respond-error", "person_record_id", id, "err", importErr.Error())
 		return
 	}
 
@@ -796,28 +799,28 @@ func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the image delete form.", err)
 		return
 	}
 
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 	selected, err := selectedSoldierImages(*soldier, r.Form["image_ids"], a.dataDir)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Could not parse selected image ids.", err)
 		return
 	}
 	if len(selected) == 0 {
-		fmt.Fprint(w, "Select at least one image to delete.")
+		respondError(w, r, KindValidation, "Select at least one image to delete.", nil)
 		return
 	}
 
 	for _, image := range selected {
 		if err := os.Remove(image.FilePath); err != nil && !os.IsNotExist(err) {
-			fmt.Fprintf(w, "Delete failed: %v", err)
+			respondInternal(w, r, fmt.Sprintf("Could not delete image file %s.", image.FilePath), err)
 			return
 		}
 	}
@@ -827,7 +830,7 @@ func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, 
 		imageIDs = append(imageIDs, image.ID)
 	}
 	if err := a.soldiers.DeleteImages(id, imageIDs); err != nil {
-		fmt.Fprintf(w, "Delete failed: %v", err)
+		respondInternal(w, r, "Could not remove the image records from the database.", err)
 		return
 	}
 
@@ -841,15 +844,15 @@ func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if _, err := a.soldiers.GetByID(id); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 	if err := a.soldiers.SetPrimaryImage(id, imageID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "image not found", http.StatusNotFound)
+			respondNotFound(w, r, fmt.Sprintf("Image %d not found.", imageID), err)
 			return
 		}
-		fmt.Fprintf(w, "Primary image update failed: %v", err)
+		respondInternal(w, r, "Could not update the primary image.", err)
 		return
 	}
 	setToastHeader(w, "Primary image updated.")
@@ -1002,7 +1005,7 @@ func parseOptionalInt64(value, field string) (int64, error) {
 
 func (a *App) handleCreateCalendarItem(w http.ResponseWriter, r *http.Request, month, day int) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the calendar item form.", err)
 		return
 	}
 	input := records.CalendarItemInput{
@@ -1016,7 +1019,7 @@ func (a *App) handleCreateCalendarItem(w http.ResponseWriter, r *http.Request, m
 			a.renderCalendarDayDetail(w, r, month, day, 0, input.ItemType, input.Title, input.Notes, err.Error(), "", "", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not create the calendar item.", err)
 		return
 	}
 	w.Header().Set("X-DixieData-Refresh-Calendar-Month", strconv.Itoa(month))
@@ -1025,7 +1028,7 @@ func (a *App) handleCreateCalendarItem(w http.ResponseWriter, r *http.Request, m
 
 func (a *App) handleUpdateCalendarItem(w http.ResponseWriter, r *http.Request, month, day int, itemID int64) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the calendar item form.", err)
 		return
 	}
 	input := records.CalendarItemInput{
@@ -1037,13 +1040,13 @@ func (a *App) handleUpdateCalendarItem(w http.ResponseWriter, r *http.Request, m
 	if err != nil {
 		switch {
 		case errors.Is(err, records.ErrCalendarItemNotFound):
-			http.Error(w, err.Error(), http.StatusNotFound)
+			respondNotFound(w, r, fmt.Sprintf("Calendar item %d not found.", itemID), err)
 			return
 		case calendarValidationError(err):
 			a.renderCalendarDayDetail(w, r, month, day, itemID, input.ItemType, input.Title, input.Notes, err.Error(), "", "", http.StatusBadRequest)
 			return
 		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			respondInternal(w, r, "Could not update the calendar item.", err)
 			return
 		}
 	}
@@ -1055,13 +1058,13 @@ func (a *App) handleDeleteCalendarItem(w http.ResponseWriter, r *http.Request, m
 	if err := a.calendar.DeleteCalendarItem(itemID); err != nil {
 		switch {
 		case errors.Is(err, records.ErrCalendarItemNotFound):
-			http.Error(w, err.Error(), http.StatusNotFound)
+			respondNotFound(w, r, fmt.Sprintf("Calendar item %d not found.", itemID), err)
 			return
 		case calendarValidationError(err):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondValidation(w, r, "Calendar item validation failed.", err)
 			return
 		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			respondInternal(w, r, "Could not delete the calendar item.", err)
 			return
 		}
 	}
@@ -1073,10 +1076,10 @@ func (a *App) renderCalendarDayDetail(w http.ResponseWriter, r *http.Request, mo
 	detail, err := a.calendar.GetDay(month, day)
 	if err != nil {
 		if calendarValidationError(err) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondValidation(w, r, "Invalid calendar date.", err)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load the calendar day detail.", err)
 		return
 	}
 	if editingID > 0 && strings.TrimSpace(itemType) == "" && strings.TrimSpace(title) == "" && strings.TrimSpace(notes) == "" {
@@ -1133,12 +1136,12 @@ func (a *App) renderEntryForm(w http.ResponseWriter, r *http.Request, soldier mo
 func (a *App) renderEntryFormWithScrapeState(w http.ResponseWriter, r *http.Request, soldier models.Soldier, isEdit bool, errorMessage string, scrape models.FindAGraveScrapeState, statusCode int, fragmentOnly bool) {
 	candidates, err := a.soldiers.MarriageCandidates()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load marriage candidates for the entry form.", err)
 		return
 	}
 	suggestions, err := a.soldiers.FormSuggestions()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load browse suggestions for the entry form.", err)
 		return
 	}
 	w.WriteHeader(statusCode)
@@ -1503,16 +1506,16 @@ func (a *App) handleOpenLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the open-link form.", err)
 		return
 	}
 	target, err := normalizeChromeOpenTarget(r.FormValue("target"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid link target.", err)
 		return
 	}
 	if err := openLinkTarget(target); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not open the link in Chrome.", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -1524,21 +1527,21 @@ func (a *App) handleScratchpadOpen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the scratch pad form.", err)
 		return
 	}
 	if a.scratchpads == nil {
-		http.Error(w, "scratch pad service unavailable", http.StatusServiceUnavailable)
+		respondUnavailable(w, r, "Scratch pad service is not running. Restart DixieData to recover.", nil)
 		return
 	}
 	displayID := strings.TrimSpace(r.FormValue("display_id"))
 	if displayID == "" {
-		http.Error(w, "A Display ID is required before opening the scratch pad.", http.StatusBadRequest)
+		respondValidation(w, r, "A Display ID is required before opening the scratch pad.", nil)
 		return
 	}
 	seed := r.FormValue("scratchpad_seed")
 	if err := a.scratchpads.Open(displayID, seed); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not open the scratch pad.", err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -1572,7 +1575,7 @@ func (a *App) handleMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not access the media file.", err)
 		return
 	}
 

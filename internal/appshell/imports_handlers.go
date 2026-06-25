@@ -28,7 +28,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Backup import cancelled.")
+		respondError(w, r, KindValidation, "Backup import cancelled.", nil)
 		return
 	}
 
@@ -37,13 +37,13 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	if a.database != nil {
 		complete, err := a.database.SystemConfig("user_identity_complete")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			respondInternal(w, r, "Could not read system configuration.", err)
 			return
 		}
 		if strings.TrimSpace(complete) == "1" {
 			localIdentity, err = a.database.UserIdentity()
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, "Could not load the local identity.", err)
 				return
 			}
 			preserveLocalIdentity = true
@@ -58,14 +58,14 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	manifest, err := a.backup.ImportWithLocalIdentity(path, a.dataDir, localIdentity, preserveLocalIdentity)
 	if err != nil {
 		if reopenErr := a.reopenDatabase(); reopenErr != nil {
-			http.Error(w, fmt.Sprintf("backup import failed: %v (and reopen failed: %v)", err, reopenErr), http.StatusInternalServerError)
+			respondInternal(w, r, "Backup import failed and the database could not be reopened. Restart DixieData to recover.", fmt.Errorf("import: %w; reopen: %w", err, reopenErr))
 			return
 		}
-		fmt.Fprintf(w, "Backup import failed: %v", err)
+		respondInternal(w, r, "Backup import failed.", err)
 		return
 	}
 	if err := a.reopenDatabase(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Backup imported but the database could not be reopened.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Success: %d records imported from backup.", manifest.Soldiers))
@@ -84,13 +84,13 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Shared backup import cancelled.")
+		respondError(w, r, KindValidation, "Shared archive import cancelled.", nil)
 		return
 	}
 
 	summary, err := a.backup.ImportSharedBackup(path, a.dataDir)
 	if err != nil {
-		fmt.Fprintf(w, "Shared backup import failed: %v", err)
+		respondInternal(w, r, "Shared archive import failed.", err)
 		return
 	}
 	if summary.PendingConflicts > 0 {
@@ -117,17 +117,17 @@ func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		},
 	})
 	if err != nil || path == "" {
-		fmt.Fprint(w, "Memorial JSON import preview cancelled.")
+		respondError(w, r, KindValidation, "Memorial JSON import preview cancelled.", nil)
 		return
 	}
 	preview, err := a.soldiers.PreviewMemorialArchive(path)
 	if err != nil {
-		fmt.Fprintf(w, "Memorial JSON preview failed: %v", err)
+		respondInternal(w, r, "Memorial JSON preview failed.", err)
 		return
 	}
 	token, err := a.rememberMemorialPreview(path)
 	if err != nil {
-		fmt.Fprintf(w, "Memorial JSON preview failed: %v", err)
+		respondInternal(w, r, "Memorial JSON preview failed.", err)
 		return
 	}
 	fmt.Fprint(w, memorialImportPreviewMarkup(preview, token))
@@ -139,23 +139,23 @@ func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the import confirmation form.", err)
 		return
 	}
 	token := strings.TrimSpace(r.FormValue("preview_token"))
 	path, ok := a.consumeMemorialPreview(token)
 	if !ok {
-		http.Error(w, "import preview expired. Run preview again.", http.StatusBadRequest)
+		respondValidation(w, r, "Import preview expired. Run preview again.", nil)
 		return
 	}
 	summary, err := a.soldiers.ImportMemorialArchive(path)
 	if err != nil {
-		fmt.Fprintf(w, "Memorial JSON import failed: %v", err)
+		respondInternal(w, r, "Memorial JSON import failed.", err)
 		return
 	}
 	logPath, logErr := writeMemorialImportErrorLog(summary)
 	if logErr != nil {
-		fmt.Fprintf(w, "Memorial JSON import failed while writing error log: %v", logErr)
+		respondInternal(w, r, "Memorial JSON import completed but the error log could not be written.", logErr)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed.", summary.Created, summary.Skipped, summary.Failed))
