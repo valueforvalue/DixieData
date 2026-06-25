@@ -99,6 +99,7 @@ func (a *App) startup(ctx context.Context) {
 	// to the on-disk JSONL log so background jobs survive webview
 	// reloads and app restarts.
 	a.jobs = openJobsRegistry(a.dataDir)
+	pruneFeedbackLogOnStartup(a.dataDir)
 	var err error
 	a.quotes, err = loadQuotes(embeddedQuotes)
 	if err != nil {
