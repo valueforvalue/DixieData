@@ -242,6 +242,17 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 
 // --- ServeHTTP ---
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if pv := recover(); pv != nil {
+			path := LogCrash(r, pv)
+			// http.Error sets headers + writes a plain error body.
+			// If the inner handler already wrote headers this is a
+			// best-effort 500 response.
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Internal server error. See %s for details.\n", path)
+		}
+	}()
 	if a.mux == nil {
 		// During startup, serve bootstrap frontend assets directly so the initial
 		// index page can keep executing client bootstrap logic while routes warm up.
