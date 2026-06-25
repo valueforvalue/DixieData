@@ -348,49 +348,6 @@
       grid-column: span 1 / span 1;
     }
   }
-  @media (max-width: 780px) {
-    .top-shell {
-      top: 0.75rem;
-      margin-bottom: 1.25rem;
-      padding: 0.9rem 1rem;
-      border-radius: 1.35rem;
-    }
-    .top-shell nav {
-      width: 100%;
-      justify-content: flex-start;
-    }
-    .top-nav-link,
-    .top-nav-primary {
-      padding: 0.36rem 0.66rem;
-      font-size: 0.71rem;
-    }
-    .floating-dock {
-      left: 1rem;
-      right: 1rem;
-      bottom: 1rem;
-    }
-    .floating-dock-inner {
-      width: 100%;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.4rem;
-    }
-    .floating-dock-inner > button,
-    .floating-dock-inner > a {
-      width: auto;
-      flex: 0 1 auto;
-    }
-    .floating-dock-button {
-      padding: 0.34rem 0.68rem;
-      font-size: 0.7rem;
-      box-shadow: 0 8px 16px rgba(23, 33, 43, 0.16);
-    }
-    .floating-nav-panel {
-      min-width: 0;
-    }
-  }
 }
 
 /* Visually hidden but exposed to assistive technology. Used by the
