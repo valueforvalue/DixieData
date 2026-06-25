@@ -21,7 +21,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
 			{DisplayName: "Legacy backup archive", Pattern: "*.zip"},
@@ -78,7 +78,7 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
 		},
@@ -111,7 +111,7 @@ func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Memorial archive JSON", Pattern: "*.json"},
 		},

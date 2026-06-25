@@ -31,7 +31,7 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-export.json",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "JSON", Pattern: "*.json"},
@@ -63,7 +63,7 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	options := parsePDFOptionsRequest(r, "P", false)
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: pdfReportName("dixiedata-archive-insights", options, false),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF", Pattern: "*.pdf"},
@@ -77,7 +77,7 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the insights PDF.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Analytics PDF saved to %s", path))
 }
 
@@ -86,7 +86,7 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-export.xlsx",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Excel workbook", Pattern: "*.xlsx"},
@@ -100,7 +100,7 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the Excel workbook.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Excel workbook saved to %s", path))
 }
 
@@ -109,7 +109,7 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-anniversaries.ics",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "iCalendar", Pattern: "*.ics"},
@@ -128,7 +128,7 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the iCalendar file.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("iCalendar saved to %s", path))
 }
 
@@ -142,7 +142,7 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 	if suggested, err := a.export.StaticArchiveFileName(time.Now()); err == nil {
 		defaultName = suggested
 	}
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: defaultName,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "ZIP archive", Pattern: "*.zip"},
@@ -156,7 +156,7 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		respondInternal(w, r, "Could not write the static web archive.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Static web archive saved to %s", path))
 }
 
@@ -171,7 +171,7 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	settings = settings.Normalize()
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: printableArchivePDFName(settings),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -185,13 +185,13 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the printable PDF.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Printable PDF saved to %s", path))
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
 	settings = settings.Normalize()
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: printableArchivePDFName(settings),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
@@ -251,7 +251,7 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: backupArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
@@ -276,7 +276,7 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: sharedArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
@@ -301,7 +301,7 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: archive.DiagnosticsBundleName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Bug report bundle", Pattern: "*.zip"},
@@ -317,6 +317,6 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not write the bug report bundle.", err)
 		return
 	}
-	runtime.BrowserOpenURL(a.ctx, "file://"+filepath.ToSlash(path))
+	a.BrowserOpenURL( "file://"+filepath.ToSlash(path))
 	setToastHeader(w, fmt.Sprintf("Bug report bundle saved to %s (%d soldiers, %d images, %d scratch pads)", path, manifest.Soldiers, manifest.Images, manifest.Scratchpads))
 }
