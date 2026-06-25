@@ -7,6 +7,7 @@
 package appshell
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/pkg/exportbridge"
 )
 
@@ -148,11 +150,29 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, KindValidation, "Static web archive export cancelled.", nil)
 		return
 	}
+	if r.URL.Query().Get("async") == "1" {
+		a.enqueueStaticArchive(r.Context(), path, w)
+		return
+	}
 	if err := a.export.ExportStaticArchive(path, a.dataDir); err != nil {
 		respondInternal(w, r, "Could not write the static web archive.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Static web archive saved to %s", path))
+}
+
+// enqueueStaticArchive kicks off a background Static Archive export and
+// responds with a 302 to the /jobs/{id} status page. Workers use the
+// registry's cooperative cancellation to honour user clicks.
+func (a *App) enqueueStaticArchive(parent context.Context, path string, w http.ResponseWriter) {
+	jobID := a.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(5, "Gathering images")
+		err := a.export.ExportStaticArchive(path, a.dataDir)
+		p.Set(100, "Done")
+		return err
+	})
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
@@ -176,11 +196,28 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Printable PDF export cancelled.", nil)
 		return
 	}
+	if r.URL.Query().Get("async") == "1" {
+		a.enqueueDatabasePDF(r.Context(), path, settings, w)
+		return
+	}
 	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
 		respondInternal(w, r, "Could not write the printable PDF.", err)
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Printable PDF saved to %s", path))
+}
+
+// enqueueDatabasePDF kicks off a background Printable Archive PDF export
+// and responds with a 302 to the /jobs/{id} status page.
+func (a *App) enqueueDatabasePDF(parent context.Context, path string, settings archive.PrintSettings, w http.ResponseWriter) {
+	jobID := a.jobs.Start("database_pdf", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(5, "Building archive")
+		err := a.export.ExportFullDatabasePDF(path, settings)
+		p.Set(100, "Done")
+		return err
+	})
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {

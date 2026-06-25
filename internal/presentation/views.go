@@ -3,6 +3,7 @@ package presentation
 import (
 	"github.com/a-h/templ"
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/templates"
@@ -12,6 +13,10 @@ import (
 
 func Calendar(month int, summary map[int]records.CalendarDaySummary, counts models.ArchiveCounts, quote models.Quote) templ.Component {
 	return templates.Calendar(month, viewmodel.CalendarDaySummariesFromDomain(summary), viewmodel.ArchiveCountsFromModel(counts), viewmodel.QuoteFromModel(quote))
+}
+
+func JobStatusFragment(job jobs.Job) templ.Component {
+	return templates.JobStatusFragment(job)
 }
 
 func CalendarGrid(month int, summary map[int]records.CalendarDaySummary) templ.Component {

@@ -35,6 +35,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/findagrave"
 	"github.com/valueforvalue/DixieData/internal/integrations"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/presentation"
@@ -77,6 +78,7 @@ type App struct {
 	frontendAssets          fs.FS
 	previewMu               sync.Mutex
 	memorialPreview         map[string]string
+	jobs                    *jobs.Registry
 }
 
 func shouldAttemptPostUpdateHealthClear(r *http.Request) bool {
@@ -1694,6 +1696,7 @@ func (a *App) reloadServices() error {
 	a.images = archive.NewImageService(a.database)
 	a.export = archive.NewExportService(a.database, soldierSvc)
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
+	a.jobs = jobs.New()
 
 	// Wire the Typst-backed Registry into the export service. Per
 	// slice 7, the appshell uses Typst exclusively; if the binary
