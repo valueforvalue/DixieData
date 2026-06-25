@@ -13,6 +13,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- `?ui=v2` query-string feature flag: `internal/uiver/uiver.go` exposes
+  `Middleware` (reads `?ui=v2` and stores a boolean on the request
+  context) and `IsV2(ctx)`. `internal/appshell/routes.go` wraps the
+  mux with `recoverMiddleware(uiver.Middleware(mux))`. The Wails
+  desktop build never sends `?ui=v2`, so production behavior is
+  unchanged; future component-primitive refactors (#74 Phase 1) can
+  branch on `IsV2(ctx)` and ship behind the flag without forcing a
+  binary rollback. The `Layout()` template wrapper dispatches to a
+  new `LayoutV2()` stub (currently a minimal passthrough shell) so
+  end-to-end verification is possible in web-mode audits. New
+  `internal/uiver/uiver_test.go` exercises five cases: default
+  context, explicit v2 context, no query param, `?ui=v2`, and
+  rejection of any other value (`v1`, `V2`, `v2x`, `true`, `1`).
 - Design tokens wired into `tailwind.config.js` `theme.extend`:
   `gold`, `sepia-500`, `sepia-300`, `parchment`, `parchment-soft`,
   `ink`, `ink-muted`, `ink-faint`, `bg-amber-50`, `bg-slate-200`,
