@@ -1064,10 +1064,10 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 		if len(soldiers) > 0 {
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3">
 				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
-					<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
+					<p id="search-compare-selection-status" class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
+					<p id="search-compare-selection-help" data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
 				</div>
-				<button type="button" data-compare-selected data-compare-group="search-compare" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
+				<button type="button" data-compare-selected data-compare-group="search-compare" aria-describedby="search-compare-selection-help" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
 			</div>
 		}
 	if len(soldiers) == 0 {

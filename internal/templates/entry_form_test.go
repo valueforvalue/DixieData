@@ -667,6 +667,26 @@ func TestSearchResultsShowMatchSnippet(t *testing.T) {
 	}
 }
 
+func TestSearchResultsCompareButtonDescribedByHelp(t *testing.T) {
+	var buf bytes.Buffer
+	err := SearchResults([]viewmodel.Soldier{{
+		ID:        7,
+		DisplayID: "PENSION-4242",
+		FirstName: "Nathan",
+		LastName:  "Forrest",
+	}}, viewmodel.SoldierSearch{Mode: "basic", Query: "Forrest"}, 1, 1, 50).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	if !strings.Contains(content, `id="search-compare-selection-help"`) {
+		t.Fatalf("Compare Selected status paragraph should have an id for aria-describedby")
+	}
+	if !strings.Contains(content, `aria-describedby="search-compare-selection-help"`) {
+		t.Fatalf("Compare Selected button should be aria-describedby the help text")
+	}
+}
+
 func TestSearchPreviewContentShowsResearchOnlyDetails(t *testing.T) {
 	var buf bytes.Buffer
 	err := SearchPreviewContent(viewmodel.Soldier{
