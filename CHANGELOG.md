@@ -13,6 +13,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- ADR-0003 design system tokens: `docs/adr/0003-design-system-tokens.md`
+  locks the color, radius, shadow, motion, and typography vocabulary
+  for the #74 Phase 1 component primitives. The companion
+  `docs/adr/0003-design-system-tokens-reference.md` lists every token
+  name + canonical value + intended use. Subsequent component
+  extractions reference these names instead of inventing new ones.
 - Implementation plan for the remaining open work of issue #74 (UI/UX
   revamp): `.rpiv/artifacts/plans/2026-06-25_74-ui-revamp.md`. Six
   phases, ~22 PRs sequenced behind `?ui=v2`; Phase 0 (htmx load in
