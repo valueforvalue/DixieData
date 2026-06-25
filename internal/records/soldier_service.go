@@ -553,6 +553,19 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 
 	rowArgs := append(append([]interface{}{matchQuery}, recordArgs...), pageSize, offset)
 	var rows *sql.Rows
+	// The snippet picker is MAX-of-three-snippets, not a CASE WHEN.
+	// Why this matters: SQLite's snippet() function returns non-empty
+	// text for any FTS match in the same row, regardless of which
+	// column the match actually landed in. Calling snippet(fts, 20,
+	// ...) on a row that matched only the biography column returns
+	// the start of the biography text, not the empty string a
+	// reader of the SQL might expect. The downstream label picker
+	// below uses snippetContainsQuery() to detect which snippet
+	// actually contains the user's query; replacing MAX with a
+	// `CASE WHEN biography_snippet != '' THEN biography_snippet
+	// END` would pick the biography snippet for a notes-only match
+	// and label the result "Biography" — wrong, and a regression
+	// from the current behaviour. Audit issue #107 finding 7.11.
 	if err := db.WithBusyRetry(3, func() error {
 		r, qErr := conn.Query(`
 		WITH matches AS (
