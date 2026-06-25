@@ -65,6 +65,7 @@ type App struct {
 	quotes                  []models.Quote
 	mux                     http.Handler
 	muxRaw                  *http.ServeMux
+	saveFileDialogOverride  func(opts any) (string, error)
 	startupErr              error
 	setupRequired           bool
 	pendingLaunchStateClear bool
