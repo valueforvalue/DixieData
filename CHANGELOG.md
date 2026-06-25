@@ -77,7 +77,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   expose a `/jobs/{id}/artifact` endpoint that streams the saved
   file back with a `Content-Disposition: attachment` header, and
   the status page renders an `Open {kind}` pill-link instead of
-  the previous text-only `Saved to …` line.
+  the previous text-only `Saved to …` line. Issue #122 caps
+  concurrent workers with a semaphore (default 2, override via the
+  `DIXIEDATA_JOBS_CONCURRENCY` env var); saturated submissions
+  stay in `queued` until a slot frees.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
