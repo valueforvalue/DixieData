@@ -11,6 +11,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- CI: `.github/workflows/test.yml` "Restore Typst binary for render
+  tests" step called `Restore-DixieDataTypstBinary` without the
+  mandatory `-Root` parameter, causing the Windows runner to fail
+  before `go test` could run on `internal/archive` and `pkg/render`.
+  Resolve `$root` via `Get-DixieDataRoot` (already exported from
+  `scripts/build-common.ps1`) and pass it through.
+
 ### Added
 
 - `make ui-diff` target for v1-vs-v2 visual regression (issue #74
