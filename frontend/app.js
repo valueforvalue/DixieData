@@ -1288,8 +1288,9 @@
       setImageViewerStatus("Image preview failed. The stored file may be empty or invalid.");
     };
     image.setAttribute("src", url);
-    image.setAttribute("alt", caption || fileName || "Archive image");
-    text.textContent = caption || fileName || "Archive image";
+    const altText = sanitiseImageAltText(caption, fileName);
+    image.setAttribute("alt", altText);
+    text.textContent = altText;
     file.textContent = fileName || "";
     setImageViewerStatus("");
     viewer.classList.remove("hidden");
@@ -1299,6 +1300,34 @@
       resetImageViewerTransform();
     }
   }
+
+  // sanitiseImageAltText returns a safe alt-text string for the image
+  // preview modal. Captions pasted from another source may contain
+  // HTML markup; raw markup must never reach the alt attribute because
+  // screen readers may interpret it inconsistently. Mirrors the
+  // imageAltText helper used in the templ SoldierCard so both
+  // surfaces behave the same way. Audit issue #118.
+  function sanitiseImageAltText(caption, fileName) {
+    const stripped = sanitiseImageAltText.stripHtml(String(caption || ""));
+    const cleaned = stripped.replace(/\s+/g, " ").trim();
+    if (cleaned) {
+      return cleaned;
+    }
+    const file = String(fileName || "").trim();
+    if (file) {
+      return file;
+    }
+    return "Archive image";
+  }
+  sanitiseImageAltText.stripHtml = function stripHtml(value) {
+    if (!value || value.indexOf("<") === -1) {
+      return value;
+    }
+    // Drop everything between < and > including the contents of
+    // <script>, <style>, etc. Browser .textContent would keep the
+    // inner text of those tags which is not what we want here.
+    return value.replace(/<[^>]*>/g, "");
+  };
 
   function closeImageViewer() {
     const { viewer } = imageViewerElements();
