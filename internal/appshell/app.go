@@ -512,6 +512,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 }
 
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
+	LogDebugEvent(r, "handleCalendarPDF ENTER")
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -526,12 +527,15 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
+	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF month=%d form=%v", month, r.Form))
 	calendar, err := a.anniversary.GetMonthCalendar(month)
 	if err != nil {
 		respondInternal(w, r, "Could not load the monthly calendar.", err)
 		return
 	}
+	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF calendar days=%d", len(calendar)))
 	options := parsePDFOptionsRequest(r, "P", false)
+	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF options=%+v", options))
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),
@@ -540,14 +544,19 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		},
 	})
 	if err != nil || path == "" {
+		LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF dialog cancelled err=%v path=%q", err, path))
 		respondError(w, r, KindValidation, "Monthly PDF export cancelled.", nil)
 		return
 	}
+	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
 	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options); err != nil {
+		LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF export err=%v", err))
 		respondInternal(w, r, "Could not write the monthly PDF.", err)
 		return
 	}
+	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF export OK path=%q", path))
 	setToastHeader(w, fmt.Sprintf("Monthly PDF saved to %s", path))
+	LogDebugEvent(r, "handleCalendarPDF EXIT")
 }
 
 func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
