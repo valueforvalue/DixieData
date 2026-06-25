@@ -67,6 +67,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   before `go test` could run on `internal/archive` and `pkg/render`.
   Resolve `$root` via `Get-DixieDataRoot` (already exported from
   `scripts/build-common.ps1`) and pass it through.
+- CI: `nextGoogleAnniversaryDate` in both
+  `internal/integrations/google_service.go` and
+  `internal/archive/compat.go` built the anniversary `candidate`
+  in `time.Local`. On UTC CI runners this produced a UTC midnight
+  time that shifted to the previous calendar day when downstream
+  callers converted to a non-UTC location (e.g. America/Chicago),
+  surfacing as `start.DateTime = "2027-05-12T..."` instead of
+  `"2027-05-13T..."` in the Google Calendar event. The Google
+  Calendar test (`TestGoogleCalendarEventBuildsYearlyTimedEvent
+  WithReminders`) failed on CI for this reason even though it
+  passes locally where `time.Local = America/Chicago`. Added an
+  explicit `location *time.Location` parameter so callers (and
+  tests) build the candidate in the same location that will format
+  the final event. Both function copies and three call sites
+  (two production, three test) updated. Verified green under both
+  `TZ=America/Chicago` (local) and `TZ=UTC` (CI).
 - CI: `Restore-DixieDataTypstBinary` in `scripts/build-common.ps1`
   checked `$LASTEXITCODE -ne 0` after `Expand-Archive`, but
   `Expand-Archive` and `Invoke-WebRequest` are native pwsh cmdlets
