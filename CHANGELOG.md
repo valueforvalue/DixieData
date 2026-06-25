@@ -13,6 +13,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Phase 1 component primitives (issue #74) continued:
+  - **Field** (`internal/templates/components/field.templ`) —
+    `templ Field(kind, attrs)` wraps `<input>` / `<textarea>` /
+    `<select>` with the `.field-input` class. The primitive owns
+    the class attribute so callers cannot double-emit it; callers
+    who pass their own class string in attrs are silently ignored.
+    Five golden-snapshot tests cover input default, input+class,
+    input+type, textarea body, select with children.
+  - **Pill** (`internal/templates/components/pill.templ`) —
+    `templ Pill(label, href, extraClass, attrs)` renders an
+    `<a class="pill-link" href="...">label</a>`. Three tests cover
+    the default snapshot, extra-class append, and hx-* / aria-*
+    pass-through (the browse pager uses these extensively).
+  - **Toast** (`internal/templates/components/toast.templ`) —
+    `templ Toast(kind, message)` documents the expected `toast-card`
+    + `data-toast-kind` contract for future server-rendered toasts.
+    The current toast rendering lives in `frontend/app.js`; this
+    primitive is a contract, not a migration. One test asserts the
+    class + data attribute + body content.
+  - **EmptyState** (`internal/templates/components/empty_state.templ`)
+    — `templ EmptyState(title, body, extraClass)` renders
+    `<div class="empty-state" data-empty-state="true">` with title
+    + body. The `data-empty-state` hook doubles as the audit
+    harness signal so every migration lights up in round-3 reports.
+    Companion CSS rule added to `frontend/tailwind.css`:
+    `.empty-state` (1.2rem radius, sepia dashed border, parchment
+    surface). Two tests cover default + extra-class.
 - `internal/templates/components/card.templ` — Card primitive for
   issue #74 Phase 1.2. `templ Card(extraClass) { ... }` wraps the
   child content in `<div class="card ...">`. extraClass accepts the
