@@ -96,7 +96,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (feedback / print-config / google-preferences) to native
   `<dialog>` elements so focus trapping, ESC-to-close, and
   inert-background come from the browser instead of a custom
-  div overlay.
+  div overlay. Issue #124 adds `/jobs/{id}/stream` so the
+  registry can push Server-Sent Events to clients in real time;
+  the existing `/jobs/{id}/status` htmx polling endpoint stays
+  as the primary visible path, and a future change can swap the
+  page over to `EventSource` when the audit harness asks for it.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
