@@ -51,7 +51,8 @@ jobs:
           # workflow skips the build step. Restore it explicitly so
           # the export tests can run.
           . ./scripts/build-common.ps1
-          Restore-DixieDataTypstBinary
+          $root = Get-DixieDataRoot
+          Restore-DixieDataTypstBinary -Root $root
         timeout-minutes: 5
 
       - name: Go test (short)
