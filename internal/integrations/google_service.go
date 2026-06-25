@@ -1266,7 +1266,7 @@ func googleCalendarEventWithTimeZone(soldier models.Soldier, timeZone string, pr
 	preferences = models.NormalizeCalendarEventPreferences(preferences)
 	timeZone = normalizeGoogleCalendarTimeZone(timeZone)
 	location := googleCalendarLocation(timeZone)
-	start := nextGoogleAnniversaryDate(soldier, time.Now().In(location)).In(location)
+	start := nextGoogleAnniversaryDate(soldier, time.Now().In(location), location).In(location)
 	hour, minute, ok := models.CalendarTimeComponents(preferences.StartTime)
 	if !ok {
 		hour, minute = 9, 0
@@ -1338,11 +1338,21 @@ func googleManagedEventReminders(preferences models.CalendarEventPreferences) *g
 	}
 }
 
-func nextGoogleAnniversaryDate(soldier models.Soldier, now time.Time) time.Time {
-	base := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+func nextGoogleAnniversaryDate(soldier models.Soldier, now time.Time, location *time.Location) time.Time {
+	// Build base + candidate in the caller's location, not time.Local.
+	// Otherwise CI runners (UTC) would build candidate=2027-05-13 00:00 UTC,
+	// then a downstream .In(Chicago) call shifts it to 2027-05-12 19:00 -05:00,
+	// surfacing as a wrong calendar day in the Google Calendar event.
+	// The caller passes the same location it will use to format the event,
+	// so the candidate's Year/Month/Day are guaranteed to match the
+	// calendar day the user sees.
+	if location == nil {
+		location = time.Local
+	}
+	base := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
 	for i := 0; i < 8; i++ {
 		year := now.Year() + i
-		candidate := time.Date(year, time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, time.Local)
+		candidate := time.Date(year, time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, location)
 		if candidate.Month() != time.Month(soldier.DeathMonth) || candidate.Day() != soldier.DeathDay {
 			continue
 		}
@@ -1350,7 +1360,7 @@ func nextGoogleAnniversaryDate(soldier models.Soldier, now time.Time) time.Time 
 			return candidate
 		}
 	}
-	return time.Date(now.Year(), time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, time.Local)
+	return time.Date(now.Year(), time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, location)
 }
 
 func googleSoldierDisplayName(soldier models.Soldier) string {

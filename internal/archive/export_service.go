@@ -965,7 +965,7 @@ func (e *ExportService) ExportICalendar(outputPath string, preferences models.Ca
 		if soldier.DeathMonth < 1 || soldier.DeathDay < 1 {
 			continue
 		}
-		start := nextGoogleAnniversaryDate(soldier, now.In(location))
+		start := nextGoogleAnniversaryDate(soldier, now.In(location), location)
 		hour, minute, ok := models.CalendarTimeComponents(preferences.StartTime)
 		if !ok {
 			hour, minute = 9, 0

@@ -51,7 +51,7 @@ func TestGoogleCalendarEventBuildsYearlyTimedEventWithReminders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadLocation: %v", err)
 	}
-	expectedDate := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 5, DeathDay: 13}, time.Now().In(location)).Format("2006-01-02")
+	expectedDate := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 5, DeathDay: 13}, time.Now().In(location), location).Format("2006-01-02")
 	if event.Start == nil || event.Start.DateTime == "" || !strings.HasPrefix(event.Start.DateTime, expectedDate+"T09:00:00") {
 		t.Fatalf("start = %#v", event.Start)
 	}

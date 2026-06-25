@@ -1741,11 +1741,11 @@ func TestExportService_ExportICalendar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadLocation: %v", err)
 	}
-	expectedStart := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now().In(location)).Format("20060102") + "T090000"
+	expectedStart := nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now().In(location), location).Format("20060102") + "T090000"
 	if !strings.Contains(text, "DTSTART;TZID="+buildinfo.CalendarTimeZone+":"+expectedStart) {
 		t.Fatalf("ics missing start date: %q", text)
 	}
-	if !strings.Contains(text, "DTEND;TZID="+buildinfo.CalendarTimeZone+":"+nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now().In(location)).Format("20060102")+"T100000") {
+	if !strings.Contains(text, "DTEND;TZID="+buildinfo.CalendarTimeZone+":"+nextGoogleAnniversaryDate(models.Soldier{DeathMonth: 4, DeathDay: 9}, time.Now().In(location), location).Format("20060102")+"T100000") {
 		t.Fatalf("ics missing end date: %q", text)
 	}
 	if !strings.Contains(text, "RRULE:FREQ=YEARLY") {

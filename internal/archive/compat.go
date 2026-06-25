@@ -51,11 +51,18 @@ func isGeneratedDisplayID(displayID string) bool {
 	return ok
 }
 
-func nextGoogleAnniversaryDate(soldier models.Soldier, now time.Time) time.Time {
-	base := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+func nextGoogleAnniversaryDate(soldier models.Soldier, now time.Time, location *time.Location) time.Time {
+	// Build base + candidate in the caller's location, not time.Local.
+	// Same rationale as the integrations copy: UTC CI runners would
+	// otherwise shift the candidate's calendar day when the caller
+	// subsequently converts to a non-UTC location.
+	if location == nil {
+		location = time.Local
+	}
+	base := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
 	for i := 0; i < 8; i++ {
 		year := now.Year() + i
-		candidate := time.Date(year, time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, time.Local)
+		candidate := time.Date(year, time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, location)
 		if candidate.Month() != time.Month(soldier.DeathMonth) || candidate.Day() != soldier.DeathDay {
 			continue
 		}
@@ -63,7 +70,7 @@ func nextGoogleAnniversaryDate(soldier models.Soldier, now time.Time) time.Time 
 			return candidate
 		}
 	}
-	return time.Date(now.Year(), time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, time.Local)
+	return time.Date(now.Year(), time.Month(soldier.DeathMonth), soldier.DeathDay, 0, 0, 0, 0, location)
 }
 
 func scanSoldier(row *sql.Row) (*models.Soldier, error) {
