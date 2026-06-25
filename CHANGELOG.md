@@ -80,7 +80,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the previous text-only `Saved to …` line. Issue #122 caps
   concurrent workers with a semaphore (default 2, override via the
   `DIXIEDATA_JOBS_CONCURRENCY` env var); saturated submissions
-  stay in `queued` until a slot frees.
+  stay in `queued` until a slot frees. Issue #123 wires the
+  registry to a JSONL log in `dataDir/jobs.jsonl` so completed
+  exports survive a webview reload or app restart; jobs that were
+  `running` when the previous process exited are flagged
+  `interrupted` so the status page is honest about lost work.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
