@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
 )
@@ -60,6 +61,15 @@ func TestHandleJobArtifactStreamsResultFile(t *testing.T) {
 		app.jobs.SetResultPath(id, artifactPath)
 		return nil
 	})
+	// Wait for the worker to finish so ResultPath is populated.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := app.jobs.Get(id)
+		if snap.Status == jobs.StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/artifact", nil)
 	rec := httptest.NewRecorder()
 	app.handleJobStatus(rec, req)
@@ -92,6 +102,14 @@ func TestHandleJobArtifactMissingFileReturns500(t *testing.T) {
 		app.jobs.SetResultPath(id, "/nonexistent/path/that/does/not/exist.zip")
 		return nil
 	})
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := app.jobs.Get(id)
+		if snap.Status == jobs.StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/artifact", nil)
 	rec := httptest.NewRecorder()
 	app.handleJobStatus(rec, req)
