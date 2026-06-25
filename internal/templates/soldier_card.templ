@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
@@ -182,10 +183,10 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<label class="block text-sm text-slate-500 mb-1" for="sc-entry_type">Entry Type</label>
 						<select name="entry_type" class="field-input" id="sc-entry_type">
 							<option value="">All</option>
-							<option value="soldier">Soldier</option>
-							<option value="linked_person">Person Record</option>
-							<option value="wife">Wife</option>
-							<option value="widow">Widow</option>
+							<option value={ models.EntryTypeSoldier }>Soldier</option>
+							<option value={ models.EntryTypeLinkedPerson }>Person Record</option>
+							<option value={ models.EntryTypeWife }>Wife</option>
+							<option value={ models.EntryTypeWidow }>Widow</option>
 						</select>
 					</div>
 					<div>
@@ -765,11 +766,11 @@ func searchSummary(search viewmodel.PersonRecordSearch) string {
 	}
 	if search.EntryType != "" {
 		switch strings.ToLower(strings.TrimSpace(search.EntryType)) {
-		case "linked_person":
+		case models.EntryTypeLinkedPerson:
 			parts = append(parts, "Entry type Person Record")
-		case "wife":
+		case models.EntryTypeWife:
 			parts = append(parts, "Entry type Wife")
-		case "widow":
+		case models.EntryTypeWidow:
 			parts = append(parts, "Entry type Widow")
 		default:
 			parts = append(parts, "Entry type Soldier")
@@ -869,7 +870,7 @@ func soldierFullName(s viewmodel.PersonRecord) string {
 }
 
 func isSoldierEntry(s viewmodel.PersonRecord) bool {
-	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == "soldier"
+	return strings.TrimSpace(s.EntryType) == "" || s.EntryType == models.EntryTypeSoldier
 }
 
 func soldierHasCamaraderie(s viewmodel.PersonRecord) bool {
@@ -927,16 +928,16 @@ func soldierBirthInfoResearchPackLabels(value string) (string, string) {
 }
 
 func isWidowEntry(s viewmodel.PersonRecord) bool {
-	return s.EntryType == "widow"
+	return s.EntryType == models.EntryTypeWidow
 }
 
 func entryBadgeLabel(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
-	case "wife":
+	case models.EntryTypeWife:
 		return "Wife"
-	case "widow":
+	case models.EntryTypeWidow:
 		return "Widow"
-	case "linked_person":
+	case models.EntryTypeLinkedPerson:
 		return "Person Record"
 	default:
 		return "Soldier"
@@ -995,28 +996,28 @@ func relationshipLabel(s viewmodel.PersonRecord) string {
 }
 
 func familyRelationshipLabel(s viewmodel.PersonRecord) string {
-	if s.EntryType == "linked_person" {
+	if s.EntryType == models.EntryTypeLinkedPerson {
 		return "Relationship to Soldier"
 	}
 	return "Married To"
 }
 
 func familyRelationshipValue(s viewmodel.PersonRecord) string {
-	if s.EntryType == "linked_person" {
+	if s.EntryType == models.EntryTypeLinkedPerson {
 		return emptyDetail(s.RelationshipLabel)
 	}
 	return emptyDetail(s.SpouseName)
 }
 
 func linkedSoldierActionLabel(s viewmodel.PersonRecord) string {
-	if s.EntryType == "linked_person" {
+	if s.EntryType == models.EntryTypeLinkedPerson {
 		return "View Linked Soldier"
 	}
 	return "View Husband"
 }
 
 func personRecordCompareActionLabel(s viewmodel.PersonRecord) string {
-	if s.EntryType == "linked_person" {
+	if s.EntryType == models.EntryTypeLinkedPerson {
 		return "Compare Person Records"
 	}
 	return "Compare Family Person Records"

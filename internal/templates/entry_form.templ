@@ -5,6 +5,7 @@ import (
 	"strings"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
@@ -606,19 +607,19 @@ type entryTypeOption struct {
 
 func entryTypes() []entryTypeOption {
 	return []entryTypeOption{
-		{Value: "soldier", Label: "Soldier"},
-		{Value: "linked_person", Label: "Person Record"},
-		{Value: "wife", Label: "Wife"},
-		{Value: "widow", Label: "Widow"},
+		{Value: models.EntryTypeSoldier, Label: "Soldier"},
+		{Value: models.EntryTypeLinkedPerson, Label: "Person Record"},
+		{Value: models.EntryTypeWife, Label: "Wife"},
+		{Value: models.EntryTypeWidow, Label: "Widow"},
 	}
 }
 
 func normalizedEntryType(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
-	case "wife", "widow", "linked_person":
+	case models.EntryTypeWife, models.EntryTypeWidow, models.EntryTypeLinkedPerson:
 		return s.EntryType
 	default:
-		return "soldier"
+		return models.EntryTypeSoldier
 	}
 }
 
@@ -1274,7 +1275,7 @@ func normalizedConfederateHomeStatus(value string) string {
 }
 
 func previewCompareLabel(s viewmodel.PersonRecord) string {
-	if s.EntryType == "linked_person" {
+	if s.EntryType == models.EntryTypeLinkedPerson {
 		return "Compare Person Records"
 	}
 	return "Compare Family Person Records"
