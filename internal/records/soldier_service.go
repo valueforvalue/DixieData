@@ -1021,6 +1021,13 @@ func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize in
 	return soldiers, total, err
 }
 
+// recentSelectColumns is the column subset used by RecentByIDs. It
+// drops the heavy record/image count subqueries and the long-form
+// fields (biography, notes, pdf_excerpt_override, last_edited_fields,
+// sync_id, audit timestamps) that the recent-search view never
+// renders. Audit issue #119 (finding 7.2).
+const recentSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+
 func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, error) {
 	if limit < 1 {
 		limit = 10
@@ -1037,14 +1044,14 @@ func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, 
 		args = append(args, id)
 	}
 	rows, err := s.db.Conn().Query(
-		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE id IN ("+placeholders+")",
+		"SELECT "+recentSelectColumns+" FROM soldiers WHERE id IN ("+placeholders+")",
 		args...,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	soldiers, err := scanListSoldiers(rows)
+	soldiers, err := scanRecentSoldiers(rows)
 	if err != nil {
 		return nil, err
 	}
@@ -2111,6 +2118,116 @@ func soldierListScanDest(s *models.Soldier) []interface{} {
 	dest := soldierScanDest(s)
 	dest = append(dest, &s.SpouseDisplayID, &s.RecordCount, &s.ImageCount)
 	return dest
+}
+
+// scanRecentSoldiers scans a query that returned the recentSelectColumns
+// subset (drops the heavy record/image count subqueries and the
+// long-form fields biography, notes, and pdf_excerpt_override).
+// Biography / Notes / PDFExcerptOverride / SpouseDisplayID /
+// RecordCount / ImageCount stay at their zero values because the
+// recent-search view never renders them. Audit issue #119
+// (finding 7.2).
+func scanRecentSoldiers(rows *sql.Rows) ([]models.Soldier, error) {
+	var soldiers []models.Soldier
+	for rows.Next() {
+		var s models.Soldier
+		if err := rows.Scan(recentScanDest(&s)...); err != nil {
+			return nil, err
+		}
+		hydrateLegacyDeathParts(&s)
+		s.PensionState = pensionstate.Normalize(s.PensionState)
+		normalizeConfederateHomeFields(&s)
+		soldiers = append(soldiers, s)
+	}
+	if soldiers == nil {
+		soldiers = []models.Soldier{}
+	}
+	return soldiers, rows.Err()
+}
+
+// recentScanDest mirrors soldierScanDest but skips the biography /
+// notes / pdf_excerpt_override / spouse_display_id / record_count /
+// image_count destinations. The recent-search view never reads them
+// so the values stay at their model zero.
+func recentScanDest(s *models.Soldier) []interface{} {
+	var (
+		displayID            sql.NullString
+		syncID               sql.NullString
+		entryType            sql.NullString
+		spouseSoldierID      sql.NullInt64
+		relationshipLabel    sql.NullString
+		maidenName           sql.NullString
+		pensionID            sql.NullString
+		applicationID        sql.NullString
+		prefix               sql.NullString
+		showPrefixBeforeName sql.NullBool
+		firstName            sql.NullString
+		middleName           sql.NullString
+		lastName             sql.NullString
+		suffix               sql.NullString
+		rank                 sql.NullString
+		rankIn               sql.NullString
+		rankOut              sql.NullString
+		unit                 sql.NullString
+		pensionState         sql.NullString
+		confederateHomeStatus sql.NullString
+		confederateHomeName  sql.NullString
+		deathYear            sql.NullInt64
+		deathMonth           sql.NullInt64
+		deathDay             sql.NullInt64
+		birthDate            sql.NullString
+		deathDate            sql.NullString
+		birthInfo            sql.NullString
+		buriedIn             sql.NullString
+		reviewReason         sql.NullString
+		addedBy              sql.NullString
+		lastEditedBy         sql.NullString
+		lastEditedFields     sql.NullString
+		lastEditedAt         sql.NullString
+		createdAt            sql.NullString
+		updatedAt            sql.NullString
+	)
+
+	return []interface{}{
+		&s.ID,
+		nullStringDest(&s.DisplayID, &displayID),
+		nullStringDest(&s.SyncID, &syncID),
+		nullStringDest(&s.EntryType, &entryType),
+		nullInt64Dest(&s.SpouseSoldierID, &spouseSoldierID),
+		nullStringDest(&s.RelationshipLabel, &relationshipLabel),
+		nullStringDest(&s.MaidenName, &maidenName),
+		&s.IsGenerated,
+		nullStringDest(&s.PensionID, &pensionID),
+		nullStringDest(&s.ApplicationID, &applicationID),
+		nullStringDest(&s.Prefix, &prefix),
+		nullBoolDest(&s.ShowPrefixBeforeName, &showPrefixBeforeName),
+		nullStringDest(&s.FirstName, &firstName),
+		nullStringDest(&s.MiddleName, &middleName),
+		nullStringDest(&s.LastName, &lastName),
+		nullStringDest(&s.Suffix, &suffix),
+		nullStringDest(&s.Rank, &rank),
+		nullStringDest(&s.RankIn, &rankIn),
+		nullStringDest(&s.RankOut, &rankOut),
+		nullStringDest(&s.Unit, &unit),
+		nullStringDest(&s.PensionState, &pensionState),
+		nullStringDest(&s.ConfederateHomeStatus, &confederateHomeStatus),
+		nullStringDest(&s.ConfederateHomeName, &confederateHomeName),
+		nullIntDest(&s.DeathYear, &deathYear),
+		nullIntDest(&s.DeathMonth, &deathMonth),
+		nullIntDest(&s.DeathDay, &deathDay),
+		nullStringDest(&s.BirthDate, &birthDate),
+		nullStringDest(&s.DeathDate, &deathDate),
+		nullStringDest(&s.BirthInfo, &birthInfo),
+		nullStringDest(&s.BuriedIn, &buriedIn),
+		&s.NeedsReview,
+		nullStringDest(&s.ReviewReason, &reviewReason),
+		nullStringDest(&s.AddedBy, &addedBy),
+		nullStringDest(&s.LastEditedBy, &lastEditedBy),
+		nullStringDest(&s.LastEditedFields, &lastEditedFields),
+		nullStringDest(&s.LastEditedAt, &lastEditedAt),
+		nullStringDest(&s.CreatedAt, &createdAt),
+		nullStringDest(&s.UpdatedAt, &updatedAt),
+	}
 }
 
 func normalizeSoldierEntry(tx *sql.Tx, soldier *models.Soldier) error {
