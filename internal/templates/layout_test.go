@@ -68,6 +68,9 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, `data-feedback-open`) || !strings.Contains(content, `data-feedback-modal`) {
 		t.Fatalf("layout should include global feedback controls")
 	}
+	if !strings.Contains(content, `aria-required="true"`) {
+		t.Fatalf("feedback textarea should carry aria-required alongside required for assistive tech")
+	}
 	if !strings.Contains(content, `floating-nav-panel`) || !strings.Contains(content, `max-w-[calc(100vw-2rem)]`) {
 		t.Fatalf("layout should keep floating menu viewport-bounded")
 	}
