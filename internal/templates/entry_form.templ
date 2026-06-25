@@ -1106,16 +1106,16 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 		}
 	}
 	if hasActiveSearch(search) {
-		<div class="mt-4 text-sm text-slate-500">
+		<nav aria-label="Search results pagination" class="mt-4 text-sm text-slate-500">
 			{ searchSummary(search) } | { fmt.Sprintf("%d", total) } matches
-			| Page { fmt.Sprintf("%d", page) }
+			| <span aria-current="page">Page { fmt.Sprintf("%d", page) }</span>
 			if page > 1 {
-				<a href={ pageHref(search, page-1) } hx-get={ pageRequestURL(search, page-1) } hx-target="#soldier-list" class="ml-2 pill-link">← Prev</a>
+				<a href={ pageHref(search, page-1) } hx-get={ pageRequestURL(search, page-1) } hx-target="#soldier-list" rel="prev" class="ml-2 pill-link">← Prev</a>
 			}
 			if page*pageSize < total {
-				<a href={ pageHref(search, page+1) } hx-get={ pageRequestURL(search, page+1) } hx-target="#soldier-list" class="ml-2 pill-link">Next →</a>
+				<a href={ pageHref(search, page+1) } hx-get={ pageRequestURL(search, page+1) } hx-target="#soldier-list" rel="next" class="ml-2 pill-link">Next →</a>
 			}
-		</div>
+		</nav>
 	}
 }
 
