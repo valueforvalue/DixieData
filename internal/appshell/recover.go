@@ -67,6 +67,33 @@ func LogRequest(r *http.Request, status int) {
 	_ = requestLogFile.Sync()
 }
 
+// LogDebugEvent writes a tagged line to request.log for crash
+// diagnosis. Tag prefix keeps it greppable and removable. Safe
+// to call from inside handler code; writes are synchronous.
+func LogDebugEvent(r *http.Request, msg string) {
+	if r == nil {
+		return
+	}
+	path := resolveRequestLogPath()
+	requestLogMu.Lock()
+	defer requestLogMu.Unlock()
+	if requestLogFile == nil {
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return
+		}
+		requestLogFile = f
+	}
+	line := fmt.Sprintf("%s [DEBUG] %s %s %s\n",
+		time.Now().UTC().Format(time.RFC3339Nano),
+		r.Method,
+		r.URL.String(),
+		msg,
+	)
+	_, _ = requestLogFile.WriteString(line)
+	_ = requestLogFile.Sync()
+}
+
 // crashLogOnce ensures we compute the crash-log path lazily, on first
 // panic, so the App's dataDir has been set by startup() before we try
 // to open a file there. Tests that trigger panics before startup will
