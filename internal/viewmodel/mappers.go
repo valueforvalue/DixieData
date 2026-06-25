@@ -278,6 +278,8 @@ func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch 
 		DeathYearTo:           input.DeathYearTo,
 		DeathMonth:            input.DeathMonth,
 		DeathDay:              input.DeathDay,
+		IsArchiveEmpty:        input.IsArchiveEmpty,
+		TotalRecordCount:      input.TotalRecordCount,
 	}
 }
 
@@ -705,4 +707,18 @@ func CalendarFromModels(input map[int][]models.Soldier) map[int][]PersonRecord {
 		calendar[day] = PersonRecordsFromModels(personRecords)
 	}
 	return calendar
+}
+
+// (intentionally left blank — superseded by WithArchiveCounts on
+// PersonRecordSearch; left as a marker so audit #98 progress is visible
+// in the file.)
+
+// WithArchiveCounts attaches archive-level counts to a model SoldierSearch
+// so the search results template can render the first-run Setup card
+// without an extra API call. Returns the same struct for chaining.
+// Tracking: issue #98 from the 2026-06-24 audit.
+func WithArchiveCounts(s models.SoldierSearch, counts models.ArchiveCounts) models.SoldierSearch {
+	s.IsArchiveEmpty = counts.TotalRecords() == 0
+	s.TotalRecordCount = counts.TotalRecords()
+	return s
 }
