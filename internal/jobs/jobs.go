@@ -185,6 +185,35 @@ var (
 	ErrAlreadyTerminal = errors.New("job is already in a terminal state")
 )
 
+// DisplayLabel returns a friendly display label for the job's Kind. The
+// template uses it both for the page heading and for the artifact link.
+func (j Job) DisplayLabel() string {
+	switch j.Kind {
+	case "static_archive":
+		return "Static web archive"
+	case "database_pdf":
+		return "Printable archive PDF"
+	default:
+		return j.Kind
+	}
+}
+
+// SetResultPath records the saved artifact path for the given job. Safe
+// to call from inside the worker or after it has completed. Workers that
+// know where they wrote their output use this so the /jobs/{id}/artifact
+// endpoint can stream the file back to the user.
+func (r *Registry) SetResultPath(id, path string) {
+	r.mu.Lock()
+	job, ok := r.jobs[id]
+	r.mu.Unlock()
+	if !ok {
+		return
+	}
+	job.mu.Lock()
+	job.ResultPath = path
+	job.mu.Unlock()
+}
+
 func (r *Registry) Cancel(id string) error {
 	r.mu.Lock()
 	job, ok := r.jobs[id]

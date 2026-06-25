@@ -165,9 +165,13 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 // responds with a 302 to the /jobs/{id} status page. Workers use the
 // registry's cooperative cancellation to honour user clicks.
 func (a *App) enqueueStaticArchive(parent context.Context, path string, w http.ResponseWriter) {
-	jobID := a.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+	var jobID string
+	jobID = a.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Gathering images")
 		err := a.export.ExportStaticArchive(path, a.dataDir)
+		if err == nil {
+			a.jobs.SetResultPath(jobID, path)
+		}
 		p.Set(100, "Done")
 		return err
 	})
@@ -210,9 +214,13 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 // enqueueDatabasePDF kicks off a background Printable Archive PDF export
 // and responds with a 302 to the /jobs/{id} status page.
 func (a *App) enqueueDatabasePDF(parent context.Context, path string, settings archive.PrintSettings, w http.ResponseWriter) {
-	jobID := a.jobs.Start("database_pdf", func(ctx context.Context, p *jobs.Progress) error {
+	var jobID string
+	jobID = a.jobs.Start("database_pdf", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Building archive")
 		err := a.export.ExportFullDatabasePDF(path, settings)
+		if err == nil {
+			a.jobs.SetResultPath(jobID, path)
+		}
 		p.Set(100, "Done")
 		return err
 	})
