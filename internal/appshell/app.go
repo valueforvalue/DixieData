@@ -1696,7 +1696,7 @@ func (a *App) reloadServices() error {
 	a.images = archive.NewImageService(a.database)
 	a.export = archive.NewExportService(a.database, soldierSvc)
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
-	a.jobs = jobs.New()
+	a.jobs = jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
 
 	// Wire the Typst-backed Registry into the export service. Per
 	// slice 7, the appshell uses Typst exclusively; if the binary
@@ -2281,4 +2281,25 @@ func isAllowedImageFile(name string) bool {
 	default:
 		return false
 	}
+}
+
+// jobsConcurrencyFromEnv reads the optional DIXIEDATA_JOBS_CONCURRENCY
+// environment variable and falls back to jobs.DefaultConcurrency when it
+// is unset, empty, or not a positive integer. Clamps to a sane upper
+// bound (16) so a typo or runaway script cannot exhaust the host.
+func jobsConcurrencyFromEnv() int {
+	const envKey = "DIXIEDATA_JOBS_CONCURRENCY"
+	const upperBound = 16
+	raw := strings.TrimSpace(os.Getenv(envKey))
+	if raw == "" {
+		return jobs.DefaultConcurrency
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return jobs.DefaultConcurrency
+	}
+	if n > upperBound {
+		n = upperBound
+	}
+	return n
 }
