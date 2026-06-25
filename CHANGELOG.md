@@ -85,6 +85,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   exports survive a webview reload or app restart; jobs that were
   `running` when the previous process exited are flagged
   `interrupted` so the status page is honest about lost work.
+  Issue #120 documents the FTS snippet picker (it uses MAX-of-three
+  snippets, not a CASE rewrite, because SQLite's `snippet()` returns
+  non-empty text for any FTS match in a row regardless of which
+  column actually matched) so the next reader does not refactor it
+  into a regression.
 - Search results no longer render the highlighted `SoldierCard` pill row
   (entry-type / death-date / burial-place). The same data now appears as
   a small plain `<dl>` inside the card. The `Needs Review` pill row stays
