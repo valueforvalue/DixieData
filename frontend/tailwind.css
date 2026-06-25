@@ -385,3 +385,18 @@
     }
   }
 }
+
+/* Visually hidden but exposed to assistive technology. Used by the
+   calendar count markers and any other element that needs a screen-
+   reader-only label without a visible label. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
