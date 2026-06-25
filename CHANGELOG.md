@@ -13,6 +13,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- `make ui-diff` target for v1-vs-v2 visual regression (issue #74
+  Phase 0 PR4). `scripts/ui-diff.mjs` boots Playwright against the
+  running `dixiedata-web` server, walks four routes (`/`,
+  `/soldiers`, `/browse`, `/settings`) at desktop (1280×800) and
+  mobile (390×844) viewports, captures both `?ui=v2`-off (v1) and
+  `?ui=v2`-on (v2) screenshots per surface, and writes a JSON
+  summary to `audit/reports/ui-diff/summary.json`. Reuses
+  `audit/harness.mjs` helpers (`detectVisualIssues`) so v1 vs v2
+  visual heuristic diff lands in the same shape as the existing
+  audit reports. Connection-refused failures exit with code 2 and
+  a friendly pointer to `audit/README.md` instead of a stack
+  trace. Eight PNGs (~3.7 MB) captured on first end-to-end run.
 - `?ui=v2` query-string feature flag: `internal/uiver/uiver.go` exposes
   `Middleware` (reads `?ui=v2` and stores a boolean on the request
   context) and `IsV2(ctx)`. `internal/appshell/routes.go` wraps the
