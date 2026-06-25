@@ -59,6 +59,7 @@ Every responsive release slice should clear this path before closeout:
 | `page.export` | page | Share / export page |
 | `panel.export.actions` | panel | Export/import actions panel |
 | `panel.export.google` | panel | Google integration panel |
+| `panel.job.status` | panel | Background-job status page panel |
 | `page.insights` | page | Archive insights dashboard |
 | `panel.insights.overview` | panel | Overview card |
 | `panel.insights.cemeteries` | panel | Top cemeteries card |

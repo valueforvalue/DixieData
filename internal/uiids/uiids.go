@@ -33,6 +33,7 @@ const (
 	PanelSoldierFormImages      = "panel.soldier.form.images"
 	PageExport                  = "page.export"
 	PanelExportActions          = "panel.export.actions"
+	PanelJobStatus              = "panel.job.status"
 	PanelExportGoogle           = "panel.export.google"
 	PageInsights                = "page.insights"
 	PanelInsightsOverview       = "panel.insights.overview"
@@ -95,6 +96,7 @@ var Registry = []Surface{
 	{ID: PanelSoldierFormRecords, Kind: "panel", Description: "Records editor section inside the soldier form."},
 	{ID: PanelSoldierFormImages, Kind: "panel", Description: "Image upload section inside the soldier form."},
 	{ID: PageExport, Kind: "page", Description: "Export page."},
+	{ID: PanelJobStatus, Kind: "panel", Description: "Background-job status page panel."},
 	{ID: PanelExportActions, Kind: "panel", Description: "Main export and import actions panel."},
 	{ID: PanelExportGoogle, Kind: "panel", Description: "Google integration panel on the export page."},
 	{ID: PageInsights, Kind: "page", Description: "Archive insights dashboard page."},
