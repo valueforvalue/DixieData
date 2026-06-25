@@ -39,6 +39,9 @@ func wailsHasFrontend(ctx context.Context) bool {
 // Cancel-by-user is still signalled via ("", errUserCancelled)
 // below.
 func (a *App) SaveFileDialog(opts wailsruntime.SaveDialogOptions) (string, error) {
+	if a.saveFileDialogOverride != nil {
+		return a.saveFileDialogOverride(opts)
+	}
 	if !wailsHasFrontend(a.ctx) {
 		return "", errWailsFrontendUnavailable
 	}
