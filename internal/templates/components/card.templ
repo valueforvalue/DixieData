@@ -1,0 +1,33 @@
+package components
+
+// Card wraps a section of content in the v2 .card surface.
+//
+// Like Button, the rendered HTML is locked to match the legacy
+// `<div class="card ...">...</div>` form so every site that swaps a
+// hand-rolled class string for @Card keeps its existing snapshot
+// tests green. `extraClass` accepts the same compound classes the
+// legacy sites use (`rounded-3xl p-6`, `rounded-2xl p-5 space-y-4`,
+// etc.); it is appended after the kind class with a single space
+// (or omitted entirely when empty).
+//
+// Callers pass child content via the standard templ children
+// mechanism — @Card("...") { <p>...</p> } — so the primitive does
+// not need to model every existing element type (div / aside /
+// details). When a site needs a non-<div> element, keep the
+// element locally; this primitive covers the common <div> case
+// plus the extraClass composition that 90% of existing sites share.
+templ Card(extraClass string) {
+	<div class={ cardClass(extraClass) }>
+		{ children... }
+	</div>
+}
+
+// cardClass returns the class string for the card surface.
+// Kept in lockstep with frontend/tailwind.css so the snapshot tests
+// stay byte-stable against the v1 surface.
+func cardClass(extraClass string) string {
+	if extraClass == "" {
+		return "card"
+	}
+	return "card " + extraClass
+}
