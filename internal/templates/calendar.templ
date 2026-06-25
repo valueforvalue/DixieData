@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -82,6 +83,9 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 				}
 			</div>
 			<div class="calendar-layout grid gap-8 items-start">
+				if counts.TotalRecords() == 0 {
+					@partials.EmptyStateCard("calendar", counts)
+				}
 				@CalendarGrid(month, calendar)
 				<div id="details-pane" data-ui-id={ uiids.PanelCalendarDetails } class="relative card min-h-[300px] rounded-2xl p-6">
 					@SurfaceBadge(uiids.PanelCalendarDetails)

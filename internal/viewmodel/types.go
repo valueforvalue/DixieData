@@ -82,6 +82,13 @@ type ArchiveCounts struct {
 	PersonRecordCount int
 }
 
+// TotalRecords returns the sum of all Person Record subtypes. Mirrors
+// models.ArchiveCounts.TotalRecords so the empty-state partial can
+// decide whether the Local Archive is truly empty (issue #98).
+func (c ArchiveCounts) TotalRecords() int {
+	return c.SoldierCount + c.SpouseRecordCount + c.PersonRecordCount
+}
+
 type Quote struct {
 	Author  string
 	Text    string
