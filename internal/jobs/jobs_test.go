@@ -130,6 +130,43 @@ func TestDisplayLabelMapsKnownKinds(t *testing.T) {
 	}
 }
 
+func TestSubscribeDeliversProgressSnapshots(t *testing.T) {
+	reg := New()
+	var id string
+	id = reg.Start("unit", func(ctx context.Context, p *Progress) error {
+		for _, step := range []int{25, 50, 75, 100} {
+			p.Set(step, "step")
+			time.Sleep(2 * time.Millisecond)
+		}
+		return nil
+	})
+
+	ch := reg.Subscribe(id)
+	defer reg.Unsubscribe(id, ch)
+
+	got := []int{}
+	deadline := time.After(time.Second)
+	for len(got) < 4 {
+		select {
+		case snap, ok := <-ch:
+			if !ok {
+				return
+			}
+			got = append(got, snap.Progress)
+		case <-deadline:
+			t.Fatalf("only received %d progress events: %v", len(got), got)
+		}
+	}
+	if got[len(got)-1] != 100 {
+		t.Fatalf("final progress = %d, want 100", got[len(got)-1])
+	}
+}
+
+func TestSubscribeOnUnknownJobIsNoop(t *testing.T) {
+	reg := New()
+	reg.Subscribe("missing")
+}
+
 func TestRegistryCancelTerminalJobReturnsErrAlreadyTerminal(t *testing.T) {
 	reg := New()
 	id := reg.Start("unit", func(ctx context.Context, p *Progress) error {
