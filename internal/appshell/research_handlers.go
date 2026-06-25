@@ -23,11 +23,11 @@ func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id i
 	}
 	graph, err := a.soldiers.UnitCamaraderieGraph(id)
 	if err != nil {
-		status := http.StatusBadRequest
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
-			status = http.StatusNotFound
+			respondNotFound(w, r, fmt.Sprintf("Unit camaraderie for person record %d is unavailable.", id), err)
+			return
 		}
-		http.Error(w, err.Error(), status)
+		respondInternal(w, r, "Could not build the unit camaraderie graph.", err)
 		return
 	}
 	presentation.UnitCamaraderieView(*graph).Render(r.Context(), w)
@@ -40,11 +40,11 @@ func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id i
 	}
 	timeline, err := a.soldiers.ServiceTimeline(id)
 	if err != nil {
-		status := http.StatusBadRequest
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
-			status = http.StatusNotFound
+			respondNotFound(w, r, fmt.Sprintf("Service timeline for person record %d is unavailable.", id), err)
+			return
 		}
-		http.Error(w, err.Error(), status)
+		respondInternal(w, r, "Could not build the service timeline.", err)
 		return
 	}
 	presentation.ServiceTimelineView(*timeline).Render(r.Context(), w)
@@ -54,7 +54,7 @@ func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64
 	if len(parts) == 1 && r.Method == http.MethodGet {
 		log, err := a.soldiers.ResearchLog(id)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			respondNotFound(w, r, fmt.Sprintf("Research log for person record %d not found.", id), err)
 			return
 		}
 		presentation.ResearchLogView(*log).Render(r.Context(), w)
@@ -67,7 +67,7 @@ func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64
 	if len(parts) == 4 && parts[1] == "tasks" && parts[3] == "resolve" && r.Method == http.MethodPost {
 		taskID, err := strconv.ParseInt(parts[2], 10, 64)
 		if err != nil {
-			http.Error(w, "invalid research task id", http.StatusBadRequest)
+			respondValidation(w, r, "Invalid research task id.", err)
 			return
 		}
 		a.handleResearchTaskResolve(w, r, id, taskID)
@@ -78,7 +78,7 @@ func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64
 
 func (a *App) handleResearchTaskCreate(w http.ResponseWriter, r *http.Request, id int64) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the research task form.", err)
 		return
 	}
 	title := strings.TrimSpace(r.FormValue("title"))
@@ -86,7 +86,7 @@ func (a *App) handleResearchTaskCreate(w http.ResponseWriter, r *http.Request, i
 	evidenceType := strings.TrimSpace(r.FormValue("evidence_type"))
 	if err := a.soldiers.AddResearchTask(id, title, notes, evidenceType); err != nil {
 		setToastHeaderWithType(w, "Research task could not be saved.", "error")
-		fmt.Fprintf(w, "Research task could not be saved: %v", err)
+		respondInternal(w, r, fmt.Sprintf("Could not save research task for record %d.", id), err)
 		return
 	}
 	setToastHeader(w, "Success: research task added.")
@@ -97,7 +97,7 @@ func (a *App) handleResearchTaskCreate(w http.ResponseWriter, r *http.Request, i
 func (a *App) handleResearchTaskResolve(w http.ResponseWriter, r *http.Request, id, taskID int64) {
 	if err := a.soldiers.ResolveResearchTask(id, taskID); err != nil {
 		setToastHeaderWithType(w, "Research task could not be resolved.", "error")
-		fmt.Fprintf(w, "Research task could not be resolved: %v", err)
+		respondInternal(w, r, fmt.Sprintf("Could not resolve research task %d for record %d.", taskID, id), err)
 		return
 	}
 	setToastHeader(w, "Success: research task resolved.")
@@ -112,7 +112,7 @@ func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id in
 	}
 	ledger, err := a.backup.ConflictLedger(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondNotFound(w, r, fmt.Sprintf("Conflict ledger for person record %d not found.", id), err)
 		return
 	}
 	presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w)
@@ -125,7 +125,11 @@ func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int6
 	}
 	pack, err := a.soldiers.ResearchPackForPersonRecord(id, scope)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			respondNotFound(w, r, fmt.Sprintf("Research pack for person record %d not found.", id), err)
+			return
+		}
+		respondInternal(w, r, "Could not build the research pack.", err)
 		return
 	}
 	presentation.ResearchPackView(*pack).Render(r.Context(), w)
