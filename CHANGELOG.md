@@ -59,11 +59,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   tracked (was a runtime artifact slipping through the gitignore filter).
 - 6 release zips older than the last two tags removed from `release/`
   (cleaned by the extended `token-clean.ps1`).
+- Search results no longer render the highlighted `SoldierCard` pill row
+  (entry-type / death-date / burial-place). The same data now appears as
+  a small plain `<dl>` inside the card. The `Needs Review` pill row stays
+  as it was.
 
 ### Removed
 
 - `audit/package.json` (deps merged into root `package.json`; the `audit`
   npm script now lives there too).
+- Sub-768px hamburger drawer from the top nav (`data-top-nav-toggle`,
+  `#top-nav-drawer`, `initializeTopNav` handler, and the
+  `@media (max-width: 780px)` block in `frontend/tailwind.css`). DixieData
+  is a Wails desktop app; the drawer was dead UI. The split-screen
+  breakpoints (`max-width: 1040px`, `1100px`, `900px`) and content-template
+  `md:hidden` / `md:flex` toggles stay (16" monitor split-screen layout).
 
 ### Maintenance
 
