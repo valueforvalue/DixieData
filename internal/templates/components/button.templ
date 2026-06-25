@@ -1,0 +1,86 @@
+// Package components holds the v2 design-system primitives for issue #74
+// Phase 1. Every component wraps a single visual pattern that used to be
+// expressed as raw CSS classes in the templates; the primitive gives
+// every site a typed entry point, a golden-snapshot regression net, and
+// a single place to evolve behavior (hover, focus, motion tokens).
+//
+// Byte-stability rule (mirrors the PR1 extraction precedent): the
+// rendered HTML of every primitive must match the legacy class-string
+// output it replaces, so existing snapshot tests pass unchanged.
+package components
+
+// ButtonKind enumerates the visual variants. Strings instead of an int
+// enum so the call site reads naturally: Button("Save", ButtonPrimary, nil).
+type ButtonKind string
+
+const (
+	ButtonPrimary   ButtonKind = "primary"
+	ButtonSecondary ButtonKind = "secondary"
+	ButtonGhost     ButtonKind = "ghost"
+	ButtonDanger    ButtonKind = "danger"
+)
+
+// Button renders a <button> with the v2 class set for the chosen kind.
+// `attrs` may include type="submit", name, value, hx-* attributes,
+// aria-*, data-*. Defaults to type="button" (matches the legacy inline
+// class on every existing call site except form submits). The class
+// string is locked to match the legacy inline form so existing callers
+// swap in with zero visual change.
+templ Button(label string, kind ButtonKind, extraClass string, attrs templ.Attributes) {
+	<button
+		if buttonTypeAttr(attrs) != "" {
+			type={ buttonTypeAttr(attrs) }
+		} else {
+			type="button"
+		}
+		class={ buttonClass(kind, extraClass) }
+		{ attrs... }
+	>
+		{ label }
+	</button>
+}
+
+// buttonTypeAttr returns the explicit type from attrs or "" so the
+// template can branch. Templ's expression syntax requires typed strings,
+// so we wrap the map lookup here instead of inlining `attrs["type"]`.
+func buttonTypeAttr(attrs templ.Attributes) string {
+	if attrs == nil {
+		return ""
+	}
+	v, ok := attrs["type"]
+	if !ok {
+		return ""
+	}
+	s, _ := v.(string)
+	return s
+}
+
+// buttonClass returns the legacy class string for the chosen kind,
+// optionally merged with caller-supplied extra classes. Kept in
+// lockstep with frontend/tailwind.css so the snapshot tests stay
+// byte-stable against the v1 surface. Many existing call sites pass
+// combined classes (e.g. "secondary-button floating-dock-button"),
+// so the primitive accepts the extra class string and concatenates
+// after the kind class with a single space separator (or empty if
+// the caller passes "").
+func buttonClass(kind ButtonKind, extraClass string) string {
+	var base string
+	switch string(kind) {
+	case string(ButtonPrimary):
+		base = "primary-button"
+	case string(ButtonSecondary):
+		base = "secondary-button"
+	case string(ButtonGhost):
+		base = "ghost-link"
+	case string(ButtonDanger):
+		base = "danger-button"
+	default:
+		// Unknown kind falls back to secondary so a typo in the call
+		// site still produces a usable button instead of a CSS-less one.
+		base = "secondary-button"
+	}
+	if extraClass == "" {
+		return base
+	}
+	return base + " " + extraClass
+}
