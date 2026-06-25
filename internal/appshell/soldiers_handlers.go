@@ -69,7 +69,7 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(q) == "" && search.Browse {
 		soldiers, total, err := a.soldiers.List(page, 50)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			respondInternal(w, r, "Could not list person records.", err)
 			return
 		}
 		presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
@@ -77,7 +77,7 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	soldiers, total, err := a.soldiers.SearchPage(q, page, 50)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		respondInternal(w, r, "Search failed.", err)
 		return
 	}
 	presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
@@ -91,12 +91,12 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	request := parseBrowseRequest(r.URL.Query())
 	suggestions, err := a.soldiers.FormSuggestions()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load browse suggestions.", err)
 		return
 	}
 	soldiers, total, normalized, err := a.soldiers.BrowsePage(request)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not run the browse query.", err)
 		return
 	}
 	presentation.BrowseView(soldiers, normalized, total, suggestions).Render(r.Context(), w)
@@ -109,7 +109,7 @@ func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
 	}
 	soldiers, total, normalized, err := a.soldiers.BrowsePage(parseBrowseRequest(r.URL.Query()))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not run the browse query.", err)
 		return
 	}
 	presentation.BrowseResults(soldiers, normalized, total).Render(r.Context(), w)
@@ -148,12 +148,12 @@ func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	ids, err := parseCSVInt64s(r.URL.Query().Get("ids"))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Invalid recent-search id list.", err)
 		return
 	}
 	soldiers, err := a.soldiers.RecentByIDs(ids, 10)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not load recent person records.", err)
 		return
 	}
 	recentSearch := a.attachArchiveCounts(models.SoldierSearch{Mode: "basic", Recent: true})
@@ -203,7 +203,7 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 
 	soldiers, total, err := a.soldiers.AdvancedSearch(search, page, 50)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondValidation(w, r, "Advanced search failed.", err)
 		return
 	}
 
@@ -245,7 +245,7 @@ func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
 	}
 	defaults, err := a.newSoldierDefaults()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not build the new-record defaults.", err)
 		return
 	}
 	a.renderEntryForm(w, r, defaults, false, "", http.StatusOK)
@@ -257,13 +257,13 @@ func (a *App) handleScrapeFindAGrave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		respondValidation(w, r, "Could not read the Find-a-Grave scrape form.", err)
 		return
 	}
 
 	defaults, err := a.newSoldierDefaults()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondInternal(w, r, "Could not build the new-record defaults.", err)
 		return
 	}
 
@@ -391,11 +391,11 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		soldier, err := a.soldiers.GetByID(id)
 		if err != nil {
-			http.Error(w, err.Error(), 404)
+			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 			return
 		}
 		if err := a.attachDetailBackLink(soldier, strings.TrimSpace(r.URL.Query().Get("from"))); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondValidation(w, r, "Invalid 'from' parameter for the back link.", err)
 			return
 		}
 		presentation.SoldierDetail(*soldier).Render(r.Context(), w)
@@ -403,7 +403,7 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		a.handleUpdateSoldier(w, r, id)
 	case http.MethodDelete:
 		if err := a.soldiers.Delete(id); err != nil {
-			http.Error(w, err.Error(), 500)
+			respondInternal(w, r, fmt.Sprintf("Could not delete person record %d.", id), err)
 			return
 		}
 		http.Redirect(w, r, "/soldiers", http.StatusSeeOther)
@@ -419,7 +419,7 @@ func (a *App) handleEditSoldier(w http.ResponseWriter, r *http.Request, id int64
 	}
 	soldier, err := a.soldiers.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), 404)
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
 	a.renderEntryForm(w, r, *soldier, true, "", http.StatusOK)
