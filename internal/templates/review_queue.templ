@@ -28,8 +28,8 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, page, total, pageSiz
 								<span>Select all on this page</span>
 							</label>
 							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-								<button type="submit" name="bulk_action" value="ignore" class="secondary-button w-full sm:w-auto">Ignore Selected</button>
-								<button type="submit" name="bulk_action" value="delete" class="danger-button w-full sm:w-auto">Delete Selected</button>
+								<button type="submit" name="bulk_action" value="ignore" class="secondary-button w-full sm:w-auto" hx-confirm={ bulkIgnoreConfirmMessage(len(entries)) }>Ignore Selected</button>
+								<button type="submit" name="bulk_action" value="delete" class="danger-button w-full sm:w-auto" hx-confirm={ bulkDeleteConfirmMessage(len(entries)) }>Delete Selected</button>
 							</div>
 						</div>
 						for _, entry := range entries {
@@ -266,4 +266,27 @@ func comparisonDifferenceCount(comparison viewmodel.DuplicateAuditComparison) in
 
 func comparisonMatchingCount(comparison viewmodel.DuplicateAuditComparison) int {
 	return len(comparison.Fields) - comparisonDifferenceCount(comparison)
+}
+
+// bulkDeleteConfirmMessage returns the browser confirm prompt for the
+// review-queue bulk-delete button. Lists the page count and the cascade
+// consequences (Source Records, images, spouse links, scratch pads).
+// The actual selected count may be smaller if the user did not select
+// all rows on the page; the prompt names the page maximum so the user
+// understands the worst-case.
+func bulkDeleteConfirmMessage(pageCount int) string {
+	if pageCount == 1 {
+		return "Delete the selected Person Record? It will also remove its Source Records, attached images, spouse link, and scratch pad. This cannot be undone from within the app; restore from your most recent .ddbak if needed."
+	}
+	return fmt.Sprintf("Delete up to %d selected Person Records? Each will lose its Source Records, attached images, spouse link, and scratch pad. This cannot be undone from within the app; restore from your most recent .ddbak if needed.", pageCount)
+}
+
+// bulkIgnoreConfirmMessage is a soft prompt — Ignore is non-destructive
+// (Person Records stay in the Local Archive, they just leave the queue)
+// but the count is still surfaced so a user does not ignore the wrong page.
+func bulkIgnoreConfirmMessage(pageCount int) string {
+	if pageCount == 1 {
+		return "Mark the selected Person Record as resolved and remove it from the Review Queue? Person Records stay in your Local Archive."
+	}
+	return fmt.Sprintf("Mark up to %d selected Person Records as resolved and remove them from the Review Queue? Person Records stay in your Local Archive.", pageCount)
 }

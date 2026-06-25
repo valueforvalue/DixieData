@@ -113,7 +113,7 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 								</button>
 								<button
 									hx-delete={ fmt.Sprintf("/anniversary/%d/%d/items/%d", day.Month, day.Day, item.ID) }
-									hx-confirm={ fmt.Sprintf("Delete %s?", item.Title) }
+									hx-confirm={ fmt.Sprintf("Delete '%s'? It will stop appearing on %s each year and any research-note link will be removed.", item.Title, calendarDayHeading(day.Month, day.Day)) }
 									hx-target="#details-pane"
 									hx-swap="innerHTML"
 									class="danger-button px-3 py-2"
