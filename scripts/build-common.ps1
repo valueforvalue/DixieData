@@ -301,9 +301,12 @@ function Restore-DixieDataTypstBinary {
 
         # Upstream typst-windows zip is a real .zip (multi-entry), not a single-
         # entry gzip stream. System32 tar's -xzf chokes on it. Expand-Archive
-        # is pwsh-native and handles multi-entry zips cleanly.
+        # is pwsh-native and handles multi-entry zips cleanly. The earlier
+        # Invoke-WebRequest is also a native cmdlet, so $LASTEXITCODE is not
+        # reliably set in this function's scope; check $? (success-of-last-
+        # command, always defined) instead.
         Expand-Archive -Path $archivePath -DestinationPath $tempDir -Force
-        if ($LASTEXITCODE -ne 0) {
+        if (-not $?) {
             throw "Failed to extract $assetName"
         }
 

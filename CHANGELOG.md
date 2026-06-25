@@ -67,6 +67,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   before `go test` could run on `internal/archive` and `pkg/render`.
   Resolve `$root` via `Get-DixieDataRoot` (already exported from
   `scripts/build-common.ps1`) and pass it through.
+- CI: `Restore-DixieDataTypstBinary` in `scripts/build-common.ps1`
+  checked `$LASTEXITCODE -ne 0` after `Expand-Archive`, but
+  `Expand-Archive` and `Invoke-WebRequest` are native pwsh cmdlets
+  and do not set `$LASTEXITCODE`. In script scopes where no prior
+  external command ran (the GitHub Actions test workflow is one),
+  the read of `$LASTEXITCODE` threw `The variable '$LASTEXITCODE'
+  cannot be retrieved because it has not been set` and failed
+  CI. Switched to `$?` (success-of-last-command automatic variable,
+  always defined) — the canonical pwsh idiom for catching cmdlet
+  failures. Other `$LASTEXITCODE` checks in the file follow
+  `& <external.exe>` calls (tar, npm, templ, wails) and remain
+  correct.
 
 ### Added
 
