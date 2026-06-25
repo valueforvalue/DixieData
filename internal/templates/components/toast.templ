@@ -1,0 +1,23 @@
+package components
+
+// Toast is the Phase 1.5 primitive for the toast surface.
+//
+// The current toast rendering lives in frontend/app.js (see
+// `setToastHeader` / `renderToast` around line 2475). JS injects
+// `<div class="toast-card" data-toast-kind="...">...</div>` markup
+// into the toast region declared in internal/templates/layout.templ:67.
+//
+// This templ primitive is intentionally minimal: it documents the
+// expected class string and provides a single place to evolve the
+// toast surface if/when templ-driven toast rendering replaces the
+// JS path. No call sites migrate today; the JS renderer is the
+// single point of change for now.
+//
+// Future use: when handlers need to return a server-rendered toast
+// (e.g. for non-JS clients or hx-swap="none" success paths), they
+// can call @components.Toast directly.
+templ Toast(kind string, message string) {
+	<div class="toast-card" data-toast-kind={ kind }>
+		<p>{ message }</p>
+	</div>
+}

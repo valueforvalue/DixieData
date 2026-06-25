@@ -1,0 +1,30 @@
+package components
+
+// EmptyState renders the v2 empty-list surface. Existing call sites
+// render hand-rolled `<p class="rounded-2xl ...">No results ...</p>`
+// markup; the primitive gives every site a single token to swap to.
+//
+// The `data-empty-state` attribute doubles as a hook for the audit
+// harness (`detectVisualIssues` already records empty-state-visible
+// findings), so every migration automatically reports in the
+// round-3 audit summary.
+//
+// extraClass accepts the same compound-class pattern as Button /
+// Card / Pill / Field so sites that need additional spacing can
+// pass it through.
+templ EmptyState(title string, body string, extraClass string) {
+	<div class={ emptyStateClass(extraClass) } data-empty-state="true">
+		<p class="text-sm font-semibold text-slate-700">{ title }</p>
+		<p class="mt-1 text-sm text-slate-500">{ body }</p>
+	</div>
+}
+
+// emptyStateClass returns the empty-state class string. The base
+// .empty-state class lives in frontend/tailwind.css (added in
+// Phase 1.6 alongside this primitive).
+func emptyStateClass(extraClass string) string {
+	if extraClass == "" {
+		return "empty-state"
+	}
+	return "empty-state " + extraClass
+}

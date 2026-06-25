@@ -1,0 +1,139 @@
+package components
+
+// Field wraps an <input>, <textarea>, or <select> with the v2
+// .field-input class. Callers pick the kind (text / textarea / select)
+// and supply attrs (name, value, placeholder, id, list, hx-* etc.).
+//
+// Like Button and Card, the rendered HTML is locked to the legacy
+// inline form (`<input class="field-input" ...>`) so existing
+// snapshot tests pass unchanged. The primitive owns the class
+// attribute; callers should NOT pass their own "class" in attrs —
+// any extra classes must be folded into the class string by the
+// caller before invocation (the field helper rejects class attrs).
+templ Field(kind FieldKind, attrs templ.Attributes) {
+	if kind == FieldTextarea {
+		<textarea class={ fieldClass(attrs) } if fieldTypeAttr(attrs) != "" { type={ fieldTypeAttr(attrs) } } { fieldAttrsExcludingClass(attrs)... }>{ fieldValue(attrs) }</textarea>
+	} else if kind == FieldSelect {
+		<select class={ fieldClass(attrs) } { fieldAttrsExcludingClass(attrs)... }>{ children... }</select>
+	} else {
+		<input class={ fieldClass(attrs) } if fieldTypeAttr(attrs) != "" { type={ fieldTypeAttr(attrs) } } { fieldAttrsExcludingClass(attrs)... }/>
+	}
+}
+
+// fieldAttrsExcludingClass returns attrs with the "class" key removed.
+// Templ's spread `{ attrs... }` emits every key verbatim, so callers
+// who put "class" in their attrs would otherwise produce a duplicate
+// class attribute. We strip it here so the primitive owns class
+// composition and the call site just provides extra tokens via the
+// class string itself.
+func fieldAttrsExcludingClass(attrs templ.Attributes) templ.Attributes {
+	if attrs == nil {
+		return nil
+	}
+	out := make(templ.Attributes, len(attrs))
+	for k, v := range attrs {
+		if k == "class" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// FieldKind enumerates the supported input element types.
+type FieldKind string
+
+const (
+	FieldInput    FieldKind = "input"
+	FieldTextarea FieldKind = "textarea"
+	FieldSelect   FieldKind = "select"
+)
+
+// fieldClass returns "field-input" plus any extra classes the caller
+// merged into attrs["class"] (split on whitespace). The legacy pattern
+// was a single combined class string like "field-input mt-2 min-h-24";
+// preserving that ordering keeps the snapshot bytes identical.
+func fieldClass(attrs templ.Attributes) string {
+	extra := fieldClassExtra(attrs)
+	if extra == "" {
+		return "field-input"
+	}
+	return "field-input " + extra
+}
+
+// fieldClassExtra pulls any non-"field-input" tokens out of attrs["class"].
+// Many existing call sites pack extra spacing into the class attribute;
+// we keep those tokens so callers can move over without losing layout
+// hooks (mt-2, min-h-24, etc.).
+func fieldClassExtra(attrs templ.Attributes) string {
+	v, ok := attrs["class"]
+	if !ok {
+		return ""
+	}
+	s, _ := v.(string)
+	if s == "" {
+		return ""
+	}
+	out := ""
+	for _, tok := range splitFields(s) {
+		if tok == "field-input" {
+			continue
+		}
+		if out == "" {
+			out = tok
+		} else {
+			out += " " + tok
+		}
+	}
+	return out
+}
+
+// fieldTypeAttr returns attrs["type"] or "" so the template can branch
+// on whether the caller supplied an explicit type. Mirrors the same
+// dance Button uses for its type attribute.
+func fieldTypeAttr(attrs templ.Attributes) string {
+	if attrs == nil {
+		return ""
+	}
+	v, ok := attrs["type"]
+	if !ok {
+		return ""
+	}
+	s, _ := v.(string)
+	return s
+}
+
+// fieldValue returns attrs["value"] as a string so the textarea body
+// can render its initial value. Templ requires typed strings.
+func fieldValue(attrs templ.Attributes) string {
+	if attrs == nil {
+		return ""
+	}
+	v, ok := attrs["value"]
+	if !ok {
+		return ""
+	}
+	s, _ := v.(string)
+	return s
+}
+
+// splitFields breaks a class string on whitespace, skipping empties.
+// Cheap hand-rolled split to avoid pulling in strings.Fields.
+func splitFields(s string) []string {
+	out := make([]string, 0, 4)
+	cur := ""
+	for _, r := range s {
+		if r == ' ' || r == '\t' || r == '\n' {
+			if cur != "" {
+				out = append(out, cur)
+				cur = ""
+			}
+			continue
+		}
+		cur += string(r)
+	}
+	if cur != "" {
+		out = append(out, cur)
+	}
+	return out
+}

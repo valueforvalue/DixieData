@@ -1,0 +1,43 @@
+package components
+
+// Pill wraps an anchor with the v2 .pill-link class. Existing call
+// sites render <a href="..." hx-... class="pill-link">label</a> for
+// navigation links, pager items, and filter chips; the primitive
+// locks the rendered HTML byte-stably so every site that swaps a
+// legacy class string for @Pill keeps its existing snapshot tests
+// green.
+//
+// extraClass accepts compound classes call sites already pass
+// (`pill-link w-full sm:w-auto`, `pill-link justify-start`, etc.).
+// Like Field, the primitive owns the class attribute; callers should
+// NOT pass their own "class" in attrs.
+templ Pill(label string, href string, extraClass string, attrs templ.Attributes) {
+	<a href={ templ.SafeURL(href) } class={ pillClass(extraClass) } { pillAttrsExcludingClass(attrs)... }>
+		{ label }
+	</a>
+}
+
+// pillClass returns "pill-link" plus any caller-supplied extra class.
+// Mirrors the Button/Card pattern.
+func pillClass(extraClass string) string {
+	if extraClass == "" {
+		return "pill-link"
+	}
+	return "pill-link " + extraClass
+}
+
+// pillAttrsExcludingClass strips "class" from the spread attrs so the
+// primitive owns the class attribute (see Field for the same rationale).
+func pillAttrsExcludingClass(attrs templ.Attributes) templ.Attributes {
+	if attrs == nil {
+		return nil
+	}
+	out := make(templ.Attributes, len(attrs))
+	for k, v := range attrs {
+		if k == "class" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
