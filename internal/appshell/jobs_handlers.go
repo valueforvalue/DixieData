@@ -8,6 +8,8 @@ package appshell
 import (
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
@@ -36,6 +38,12 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.renderJobStatus(w, r, id, true)
+	case "artifact":
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.streamJobArtifact(w, r, id)
 	case "cancel":
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -71,4 +79,48 @@ func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
 	default:
 		respondInternal(w, r, "Could not cancel the export job.", err)
 	}
+}
+
+// streamJobArtifact streams the saved file at job.ResultPath back to the
+// browser with a Content-Disposition header so the file downloads or
+// opens in the user's default app. The endpoint is only meaningful when
+// the job is in the done state with a populated ResultPath; otherwise
+// respond with 404 or 409 to make the failure mode clear.
+func (a *App) streamJobArtifact(w http.ResponseWriter, r *http.Request, id string) {
+	job, ok := a.jobs.Get(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if job.ResultPath == "" {
+		http.Error(w, "export has no artifact yet", http.StatusConflict)
+		return
+	}
+	path := strings.TrimSpace(job.ResultPath)
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "export artifact is missing on disk", http.StatusGone)
+			return
+		}
+		respondInternal(w, r, "Could not open the export artifact.", err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", formatContentLength(info.Size()))
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(path)+"\"")
+	http.ServeFile(w, r, path)
+}
+
+func formatContentLength(n int64) string {
+	const digits = "0123456789"
+	if n == 0 {
+		return "0"
+	}
+	buf := make([]byte, 0, 20)
+	for n > 0 {
+		buf = append([]byte{digits[n%10]}, buf...)
+		n /= 10
+	}
+	return string(buf)
 }
