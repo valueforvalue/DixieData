@@ -5,7 +5,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1038,
+    "load_ms": 1134,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -25,7 +25,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 904,
+    "load_ms": 978,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -45,7 +45,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 792,
+    "load_ms": 782,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -56,6 +56,12 @@
         "item_count": 8,
         "nav_width": 886,
         "item_width_avg": 111
+      },
+      {
+        "id": "empty-state-visible",
+        "severity": "info",
+        "tag": "div",
+        "snippet": "Start typing to searchYour recently opened person records will appear here autom"
       }
     ]
   },
@@ -65,7 +71,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 2157,
+    "load_ms": 1843,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -118,7 +124,7 @@
         "id": "table-rows",
         "severity": "info",
         "rows": 50,
-        "page_height": 4121
+        "page_height": 4123
       }
     ]
   },
@@ -128,7 +134,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 779,
+    "load_ms": 731,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -148,7 +154,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1100,
+    "load_ms": 985,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -168,7 +174,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1110,
+    "load_ms": 1033,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -188,7 +194,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 985,
+    "load_ms": 927,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -208,24 +214,24 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1177,
+    "load_ms": 1059,
     "isFragment": false,
     "fragment_reason": null,
-    "axe_violations": [],
-    "visual_issues": [
+    "axe_violations": [
       {
-        "id": "small-tap-target",
-        "severity": "medium",
-        "count": 1,
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright",
+        "nodes": 1,
         "sample": [
-          {
-            "tag": "button",
-            "text": "Delete saved local draft",
-            "w": 148,
-            "h": 22
-          }
+          [
+            "#ef-display_id"
+          ]
         ]
-      },
+      }
+    ],
+    "visual_issues": [
       {
         "id": "nav-density",
         "severity": "info",
@@ -241,36 +247,11 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 1081,
+    "load_ms": 1006,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "small-tap-target",
-        "severity": "medium",
-        "count": 3,
-        "sample": [
-          {
-            "tag": "button",
-            "text": "Add Images From Computer",
-            "w": 179,
-            "h": 22
-          },
-          {
-            "tag": "button",
-            "text": "Download Selected Images",
-            "w": 172,
-            "h": 22
-          },
-          {
-            "tag": "button",
-            "text": "Delete Selected Images",
-            "w": 151,
-            "h": 22
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -286,24 +267,11 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1127,
+    "load_ms": 1021,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "small-tap-target",
-        "severity": "medium",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "button",
-            "text": "Add Images From Computer",
-            "w": 179,
-            "h": 22
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -319,36 +287,11 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 1034,
+    "load_ms": 941,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "small-tap-target",
-        "severity": "medium",
-        "count": 3,
-        "sample": [
-          {
-            "tag": "button",
-            "text": "Add Images From Computer",
-            "w": 179,
-            "h": 22
-          },
-          {
-            "tag": "button",
-            "text": "Download Selected Images",
-            "w": 172,
-            "h": 22
-          },
-          {
-            "tag": "button",
-            "text": "Delete Selected Images",
-            "w": 151,
-            "h": 22
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -364,24 +307,11 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1123,
+    "load_ms": 1015,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
-      {
-        "id": "small-tap-target",
-        "severity": "medium",
-        "count": 1,
-        "sample": [
-          {
-            "tag": "button",
-            "text": "Add Images From Computer",
-            "w": 179,
-            "h": 22
-          }
-        ]
-      },
       {
         "id": "nav-density",
         "severity": "info",
@@ -397,7 +327,7 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1027,
+    "load_ms": 1072,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -417,7 +347,7 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 927,
+    "load_ms": 946,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -437,7 +367,7 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 821,
+    "load_ms": 775,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -448,6 +378,12 @@
         "item_count": 8,
         "nav_width": 801,
         "item_width_avg": 100
+      },
+      {
+        "id": "empty-state-visible",
+        "severity": "info",
+        "tag": "div",
+        "snippet": "Start typing to searchYour recently opened person records will appear here autom"
       }
     ]
   },
@@ -457,7 +393,7 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 2127,
+    "load_ms": 1824,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -483,7 +419,7 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 765,
+    "load_ms": 726,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -503,7 +439,7 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 1104,
+    "load_ms": 980,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -523,7 +459,7 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1035,
+    "load_ms": 949,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -543,7 +479,7 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 948,
+    "load_ms": 851,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -563,10 +499,23 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1096,
+    "load_ms": 961,
     "isFragment": false,
     "fragment_reason": null,
-    "axe_violations": [],
+    "axe_violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "#ef-display_id"
+          ]
+        ]
+      }
+    ],
     "visual_issues": [
       {
         "id": "nav-density",
@@ -583,7 +532,7 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 1017,
+    "load_ms": 945,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -597,35 +546,35 @@
             "tag": "form",
             "id": null,
             "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-            "right": 1050,
+            "right": 1045,
             "width": 384
           },
           {
             "tag": "div",
             "id": null,
             "cls": "flex items-start justify-between gap-3",
-            "right": 1033,
+            "right": 1028,
             "width": 350
           },
           {
             "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-            "right": 1033,
+            "right": 1028,
             "width": 32
           },
           {
             "tag": "div",
             "id": null,
             "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-            "right": 1033,
+            "right": 1028,
             "width": 350
           },
           {
             "tag": "div",
             "id": null,
             "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-            "right": 1033,
+            "right": 1028,
             "width": 169
           }
         ]
@@ -645,7 +594,7 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1096,
+    "load_ms": 948,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -665,7 +614,7 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 974,
+    "load_ms": 886,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -679,35 +628,35 @@
             "tag": "form",
             "id": null,
             "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-            "right": 1050,
+            "right": 1045,
             "width": 384
           },
           {
             "tag": "div",
             "id": null,
             "cls": "flex items-start justify-between gap-3",
-            "right": 1033,
+            "right": 1028,
             "width": 350
           },
           {
             "tag": "button",
             "id": null,
             "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-            "right": 1033,
+            "right": 1028,
             "width": 32
           },
           {
             "tag": "div",
             "id": null,
             "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-            "right": 1033,
+            "right": 1028,
             "width": 350
           },
           {
             "tag": "div",
             "id": null,
             "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-            "right": 1033,
+            "right": 1028,
             "width": 169
           }
         ]
@@ -727,7 +676,7 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 1092,
+    "load_ms": 996,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -747,17 +696,41 @@
     "path": "/",
     "url": "http://127.0.0.1:8765/",
     "status": 200,
-    "load_ms": 1010,
+    "load_ms": 1066,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -767,17 +740,41 @@
     "path": "/calendar",
     "url": "http://127.0.0.1:8765/calendar",
     "status": 200,
-    "load_ms": 890,
+    "load_ms": 954,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -787,17 +784,47 @@
     "path": "/soldiers",
     "url": "http://127.0.0.1:8765/soldiers",
     "status": 200,
-    "load_ms": 777,
+    "load_ms": 755,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
+      },
+      {
+        "id": "empty-state-visible",
+        "severity": "info",
+        "tag": "div",
+        "snippet": "Start typing to searchYour recently opened person records will appear here autom"
       }
     ]
   },
@@ -807,11 +834,35 @@
     "path": "/browse",
     "url": "http://127.0.0.1:8765/browse",
     "status": 200,
-    "load_ms": 2477,
+    "load_ms": 2430,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
       {
         "id": "small-tap-target",
         "severity": "medium",
@@ -853,14 +904,14 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       },
       {
         "id": "table-rows",
         "severity": "info",
         "rows": 50,
-        "page_height": 11373
+        "page_height": 11483
       }
     ]
   },
@@ -870,17 +921,41 @@
     "path": "/review-queue",
     "url": "http://127.0.0.1:8765/review-queue",
     "status": 200,
-    "load_ms": 763,
+    "load_ms": 720,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -890,17 +965,41 @@
     "path": "/insights",
     "url": "http://127.0.0.1:8765/insights",
     "status": 200,
-    "load_ms": 977,
+    "load_ms": 952,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -910,17 +1009,41 @@
     "path": "/share",
     "url": "http://127.0.0.1:8765/share",
     "status": 200,
-    "load_ms": 1015,
+    "load_ms": 975,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -930,17 +1053,41 @@
     "path": "/settings",
     "url": "http://127.0.0.1:8765/settings",
     "status": 200,
-    "load_ms": 870,
+    "load_ms": 838,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -950,17 +1097,54 @@
     "path": "/soldiers/new",
     "url": "http://127.0.0.1:8765/soldiers/new",
     "status": 200,
-    "load_ms": 1057,
+    "load_ms": 1008,
     "isFragment": false,
     "fragment_reason": null,
-    "axe_violations": [],
+    "axe_violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.12/color-contrast?application=playwright",
+        "nodes": 1,
+        "sample": [
+          [
+            "#ef-display_id"
+          ]
+        ]
+      }
+    ],
     "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
       {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -970,17 +1154,41 @@
     "path": "/soldiers/47",
     "url": "http://127.0.0.1:8765/soldiers/47",
     "status": 200,
-    "load_ms": 965,
+    "load_ms": 961,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -990,17 +1198,41 @@
     "path": "/soldiers/47/edit",
     "url": "http://127.0.0.1:8765/soldiers/47/edit",
     "status": 200,
-    "load_ms": 1008,
+    "load_ms": 974,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -1010,17 +1242,41 @@
     "path": "/soldiers/35",
     "url": "http://127.0.0.1:8765/soldiers/35",
     "status": 200,
-    "load_ms": 933,
+    "load_ms": 926,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
     "visual_issues": [
       {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 348,
+        "item_width_avg": 44
       }
     ]
   },
@@ -1030,7 +1286,51 @@
     "path": "/soldiers/35/edit",
     "url": "http://127.0.0.1:8765/soldiers/35/edit",
     "status": 200,
-    "load_ms": 974,
+    "load_ms": 955,
+    "isFragment": false,
+    "fragment_reason": null,
+    "axe_violations": [],
+    "visual_issues": [
+      {
+        "id": "h-scroll",
+        "severity": "high",
+        "detail": "scrollWidth=396 > 390"
+      },
+      {
+        "id": "h-scroll-body",
+        "severity": "high",
+        "detail": "body scrollWidth=396 > 390"
+      },
+      {
+        "id": "overflow-x",
+        "severity": "high",
+        "count": 1,
+        "sample": [
+          {
+            "tag": "header",
+            "id": null,
+            "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+            "right": 396,
+            "width": 382
+          }
+        ]
+      },
+      {
+        "id": "nav-density",
+        "severity": "info",
+        "item_count": 8,
+        "nav_width": 348,
+        "item_width_avg": 44
+      }
+    ]
+  },
+  {
+    "label": "desktop_search_results",
+    "viewport": "desktop",
+    "path": "/soldiers",
+    "url": "http://127.0.0.1:8765/soldiers",
+    "status": 200,
+    "load_ms": 0,
     "isFragment": false,
     "fragment_reason": null,
     "axe_violations": [],
@@ -1039,8 +1339,14 @@
         "id": "nav-density",
         "severity": "info",
         "item_count": 8,
-        "nav_width": 0,
-        "item_width_avg": 0
+        "nav_width": 886,
+        "item_width_avg": 111
+      },
+      {
+        "id": "empty-state-visible",
+        "severity": "info",
+        "tag": "div",
+        "snippet": "Start typing to searchYour recently opened person records will appear here autom"
       }
     ]
   }

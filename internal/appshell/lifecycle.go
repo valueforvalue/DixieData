@@ -22,7 +22,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
-	"github.com/valueforvalue/DixieData/internal/uiver"
 )
 
 
@@ -342,6 +341,6 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// Inject debug-mode flag into the request context so templates can
 	// render the Debug Console button without needing the App struct.
-	ctx := uiver.WithDebugMode(r.Context(), a.debugMode.Load())
+	ctx := debug.WithDebugMode(r.Context(), a.debugMode.Load())
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }

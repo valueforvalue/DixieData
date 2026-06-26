@@ -33,6 +33,16 @@
     "item_width_avg": 111
   },
   {
+    "label": "desktop_search",
+    "path": "/soldiers",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "empty-state-visible",
+    "severity": "info",
+    "tag": "div",
+    "snippet": "Start typing to searchYour recently opened person records will appear here autom"
+  },
+  {
     "label": "desktop_browse",
     "path": "/browse",
     "viewport": "desktop",
@@ -92,7 +102,7 @@
     "id": "table-rows",
     "severity": "info",
     "rows": 50,
-    "page_height": 4121
+    "page_height": 4123
   },
   {
     "label": "desktop_review-queue",
@@ -142,17 +152,12 @@
     "label": "desktop_soldier-new",
     "path": "/soldiers/new",
     "viewport": "desktop",
-    "kind": "visual",
-    "id": "small-tap-target",
-    "severity": "medium",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "button",
-        "text": "Delete saved local draft",
-        "w": 148,
-        "h": 22
-      }
+    "kind": "a11y",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "target": [
+      "#ef-display_id"
     ]
   },
   {
@@ -171,57 +176,11 @@
     "path": "/soldiers/47",
     "viewport": "desktop",
     "kind": "visual",
-    "id": "small-tap-target",
-    "severity": "medium",
-    "count": 3,
-    "sample": [
-      {
-        "tag": "button",
-        "text": "Add Images From Computer",
-        "w": 179,
-        "h": 22
-      },
-      {
-        "tag": "button",
-        "text": "Download Selected Images",
-        "w": 172,
-        "h": 22
-      },
-      {
-        "tag": "button",
-        "text": "Delete Selected Images",
-        "w": 151,
-        "h": 22
-      }
-    ]
-  },
-  {
-    "label": "desktop_soldier-47",
-    "path": "/soldiers/47",
-    "viewport": "desktop",
-    "kind": "visual",
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
     "nav_width": 886,
     "item_width_avg": 111
-  },
-  {
-    "label": "desktop_soldier-47-edit",
-    "path": "/soldiers/47/edit",
-    "viewport": "desktop",
-    "kind": "visual",
-    "id": "small-tap-target",
-    "severity": "medium",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "button",
-        "text": "Add Images From Computer",
-        "w": 179,
-        "h": 22
-      }
-    ]
   },
   {
     "label": "desktop_soldier-47-edit",
@@ -239,57 +198,11 @@
     "path": "/soldiers/35",
     "viewport": "desktop",
     "kind": "visual",
-    "id": "small-tap-target",
-    "severity": "medium",
-    "count": 3,
-    "sample": [
-      {
-        "tag": "button",
-        "text": "Add Images From Computer",
-        "w": 179,
-        "h": 22
-      },
-      {
-        "tag": "button",
-        "text": "Download Selected Images",
-        "w": 172,
-        "h": 22
-      },
-      {
-        "tag": "button",
-        "text": "Delete Selected Images",
-        "w": 151,
-        "h": 22
-      }
-    ]
-  },
-  {
-    "label": "desktop_soldier-35",
-    "path": "/soldiers/35",
-    "viewport": "desktop",
-    "kind": "visual",
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
     "nav_width": 886,
     "item_width_avg": 111
-  },
-  {
-    "label": "desktop_soldier-35-edit",
-    "path": "/soldiers/35/edit",
-    "viewport": "desktop",
-    "kind": "visual",
-    "id": "small-tap-target",
-    "severity": "medium",
-    "count": 1,
-    "sample": [
-      {
-        "tag": "button",
-        "text": "Add Images From Computer",
-        "w": 179,
-        "h": 22
-      }
-    ]
   },
   {
     "label": "desktop_soldier-35-edit",
@@ -334,6 +247,16 @@
     "item_count": 8,
     "nav_width": 801,
     "item_width_avg": 100
+  },
+  {
+    "label": "tablet_search",
+    "path": "/soldiers",
+    "viewport": "tablet",
+    "kind": "visual",
+    "id": "empty-state-visible",
+    "severity": "info",
+    "tag": "div",
+    "snippet": "Start typing to searchYour recently opened person records will appear here autom"
   },
   {
     "label": "tablet_browse",
@@ -404,6 +327,18 @@
     "label": "tablet_soldier-new",
     "path": "/soldiers/new",
     "viewport": "tablet",
+    "kind": "a11y",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "target": [
+      "#ef-display_id"
+    ]
+  },
+  {
+    "label": "tablet_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "tablet",
     "kind": "visual",
     "id": "nav-density",
     "severity": "info",
@@ -424,35 +359,35 @@
         "tag": "form",
         "id": null,
         "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-        "right": 1050,
+        "right": 1045,
         "width": 384
       },
       {
         "tag": "div",
         "id": null,
         "cls": "flex items-start justify-between gap-3",
-        "right": 1033,
+        "right": 1028,
         "width": 350
       },
       {
         "tag": "button",
         "id": null,
         "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-        "right": 1033,
+        "right": 1028,
         "width": 32
       },
       {
         "tag": "div",
         "id": null,
         "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-        "right": 1033,
+        "right": 1028,
         "width": 350
       },
       {
         "tag": "div",
         "id": null,
         "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-        "right": 1033,
+        "right": 1028,
         "width": 169
       }
     ]
@@ -492,35 +427,35 @@
         "tag": "form",
         "id": null,
         "cls": "absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border bor",
-        "right": 1050,
+        "right": 1045,
         "width": 384
       },
       {
         "tag": "div",
         "id": null,
         "cls": "flex items-start justify-between gap-3",
-        "right": 1033,
+        "right": 1028,
         "width": 350
       },
       {
         "tag": "button",
         "id": null,
         "cls": "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bord",
-        "right": 1033,
+        "right": 1028,
         "width": 32
       },
       {
         "tag": "div",
         "id": null,
         "cls": "mt-3 grid gap-3 sm:grid-cols-2",
-        "right": 1033,
+        "right": 1028,
         "width": 350
       },
       {
         "tag": "div",
         "id": null,
         "cls": "rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/70 px-3 py-3 text-sm t",
-        "right": 1033,
+        "right": 1028,
         "width": 169
       }
     ]
@@ -552,11 +487,83 @@
     "path": "/",
     "viewport": "mobile",
     "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
+  },
+  {
+    "label": "mobile_home",
+    "path": "/",
+    "viewport": "mobile",
+    "kind": "visual",
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_calendar",
+    "path": "/calendar",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_calendar",
@@ -566,8 +573,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_search",
@@ -577,8 +620,54 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_search",
+    "path": "/soldiers",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "empty-state-visible",
+    "severity": "info",
+    "tag": "div",
+    "snippet": "Start typing to searchYour recently opened person records will appear here autom"
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_browse",
+    "path": "/browse",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_browse",
@@ -629,8 +718,8 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
   },
   {
     "label": "mobile_browse",
@@ -640,7 +729,43 @@
     "id": "table-rows",
     "severity": "info",
     "rows": 50,
-    "page_height": 11373
+    "page_height": 11483
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_review-queue",
+    "path": "/review-queue",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_review-queue",
@@ -650,8 +775,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_insights",
+    "path": "/insights",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_insights",
@@ -661,8 +822,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_share",
+    "path": "/share",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_share",
@@ -672,8 +869,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_settings",
+    "path": "/settings",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_settings",
@@ -683,8 +916,56 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "a11y",
+    "id": "color-contrast",
+    "impact": "serious",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "target": [
+      "#ef-display_id"
+    ]
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-new",
+    "path": "/soldiers/new",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_soldier-new",
@@ -694,8 +975,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-47",
+    "path": "/soldiers/47",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_soldier-47",
@@ -705,8 +1022,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-47-edit",
+    "path": "/soldiers/47/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_soldier-47-edit",
@@ -716,8 +1069,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-35",
+    "path": "/soldiers/35",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_soldier-35",
@@ -727,8 +1116,44 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll",
+    "severity": "high",
+    "detail": "scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "h-scroll-body",
+    "severity": "high",
+    "detail": "body scrollWidth=396 > 390"
+  },
+  {
+    "label": "mobile_soldier-35-edit",
+    "path": "/soldiers/35/edit",
+    "viewport": "mobile",
+    "kind": "visual",
+    "id": "overflow-x",
+    "severity": "high",
+    "count": 1,
+    "sample": [
+      {
+        "tag": "header",
+        "id": null,
+        "cls": "top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] bor",
+        "right": 396,
+        "width": 382
+      }
+    ]
   },
   {
     "label": "mobile_soldier-35-edit",
@@ -738,7 +1163,28 @@
     "id": "nav-density",
     "severity": "info",
     "item_count": 8,
-    "nav_width": 0,
-    "item_width_avg": 0
+    "nav_width": 348,
+    "item_width_avg": 44
+  },
+  {
+    "label": "desktop_search_results",
+    "path": "/soldiers",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "nav-density",
+    "severity": "info",
+    "item_count": 8,
+    "nav_width": 886,
+    "item_width_avg": 111
+  },
+  {
+    "label": "desktop_search_results",
+    "path": "/soldiers",
+    "viewport": "desktop",
+    "kind": "visual",
+    "id": "empty-state-visible",
+    "severity": "info",
+    "tag": "div",
+    "snippet": "Start typing to searchYour recently opened person records will appear here autom"
   }
 ]

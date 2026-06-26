@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/valueforvalue/DixieData/internal/debug"
-	"github.com/valueforvalue/DixieData/internal/uiver"
 )
 
 func (a *App) setupRoutes() {
@@ -103,10 +102,7 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/debug/open-folder", a.handleDebugOpenFolder)
 
 	a.muxRaw = mux
-	// uiver.Middleware reads ?ui=v2 and stores it on the request context so
-	// templates can dispatch via uiver.IsV2(ctx). recovery wraps it last so
-	// a panic during UI-version dispatch still hits the crash log.
 	// debug.Middleware is OUTERMOST so the request_id it generates is on
 	// the context before recover runs (the crash log line carries it).
-	a.mux = debug.Middleware(recoverMiddleware(uiver.Middleware(mux)))
+	a.mux = debug.Middleware(recoverMiddleware(mux))
 }

@@ -7,7 +7,7 @@ import (
 
 // DebugConsole renders the Debug Console panel — a fixed-bottom slide-up
 // that shows the in-memory ring buffer tail. Returns empty string when
-// debug mode is off (caller should check uiver.IsDebugMode(ctx) before
+// debug mode is off (caller should check debug.IsDebugMode(ctx) before
 // invoking).
 templ DebugConsole(entries []debug.Entry, total uint64, logPath string) {
 	<div id="debug-console-panel" class="fixed inset-x-0 bottom-0 z-50 max-h-[60vh] overflow-hidden rounded-t-lg border border-slate-300 bg-white shadow-2xl">
