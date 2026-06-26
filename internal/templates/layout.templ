@@ -220,6 +220,16 @@ templ LayoutV2(title string) {
 				{ children... }
 			</main>
 		</div>
+		if uiver.IsDebugMode(ctx) {
+			<button type="button"
+				class="fixed bottom-4 right-4 z-50 rounded bg-amber-500 px-3 py-1 text-xs font-semibold text-white shadow-lg hover:bg-amber-600"
+				hx-get="/debug/console"
+				hx-target="body"
+				hx-swap="beforeend"
+				data-debug-button>
+				🐞 Debug
+			</button>
+		}
 	</body>
 	</html>
 }
