@@ -64,6 +64,9 @@ func (a *App) OpenDirectoryDialog(opts wailsruntime.OpenDialogOptions) (string, 
 
 // OpenFileDialog wraps wailsruntime.OpenFileDialog.
 func (a *App) OpenFileDialog(opts wailsruntime.OpenDialogOptions) (string, error) {
+	if a.openFileDialogOverride != nil {
+		return a.openFileDialogOverride(opts)
+	}
 	if !wailsHasFrontend(a.ctx) {
 		return "", errWailsFrontendUnavailable
 	}

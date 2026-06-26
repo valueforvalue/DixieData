@@ -69,6 +69,12 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Success: %d records imported from backup.", manifest.Soldiers))
+	// Send the user to the home page so every panel reflects the
+	// restored archive instead of the pre-import state they were
+	// looking at. Without this redirect the user stays on /share —
+	// which keeps showing the pre-import merge review, counts, and
+	// recent records — and concludes the restore "didn't happen".
+	w.Header().Set("X-DixieData-Redirect", "/")
 	fmt.Fprintf(w, "Backup loaded: %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images)
 }
 

@@ -69,6 +69,7 @@ type App struct {
 	mux                     http.Handler
 	muxRaw                  *http.ServeMux
 	saveFileDialogOverride  func(opts any) (string, error)
+	openFileDialogOverride  func(opts any) (string, error)
 	inFlight               sync.Map // map[string]struct{} — dedupes in-flight native dialog calls
 	startupErr              error
 	setupRequired           bool
