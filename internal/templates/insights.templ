@@ -34,7 +34,9 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 							<input type="checkbox" name="printer_friendly" value="1" data-pdf-pref-key="printerFriendly" class="h-4 w-4 accent-[#8d7440]"/>
 							<span>Printer-friendly</span>
 						</label>
-						@components.Button("Export Analytics Report", components.ButtonPrimary, "w-full sm:w-auto", nil)
+						@components.Button("Export Analytics Report", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+							"type": "submit",
+						})
 					</form>
 				</div>
 			</div>
