@@ -13,6 +13,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `calendar.templ` (Export Month PDF)
+  and `jobs.templ` (Cancel x2) — these three sites were missed by
+  the original grep pass that scoped to `class="primary-button"`
+  with anchor instead of `<button` opening tag. Caught by the
+  final verification sweep.
 - Button primitive adopted in `share.templ` at all 33 sites:
   Export JSON/CSV/iCal/Static/Backup/Shared cards (ButtonContent
   variant for rich `<span>` children), Print config dialog

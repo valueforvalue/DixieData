@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"github.com/valueforvalue/DixieData/internal/jobs"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
@@ -52,7 +53,7 @@ templ JobStatusView(job jobs.Job) {
 				}
 				if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
 					<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/cancel") } class="flex justify-end">
-						<button type="submit" class="secondary-button">Cancel</button>
+						@components.Button("Cancel", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 					</form>
 				}
 			</div>
@@ -103,7 +104,7 @@ templ JobStatusFragment(job jobs.Job) {
 		}
 		if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
 			<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/cancel") } class="flex justify-end">
-				<button type="submit" class="secondary-button">Cancel</button>
+				@components.Button("Cancel", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 			</form>
 		}
 	</div>
