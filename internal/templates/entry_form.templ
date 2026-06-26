@@ -1126,7 +1126,7 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 		for _, s := range soldiers {
 			<div class="mb-3 flex items-start gap-3">
 				<div class="mt-4 flex shrink-0 flex-col gap-2">
-					<label class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.28)] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+					<label class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select data-compare-label={ s.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 						Compare
 					</label>
