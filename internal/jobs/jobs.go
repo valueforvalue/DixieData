@@ -258,12 +258,14 @@ func (r *Registry) SetLogWriter(w io.Writer, closer io.Closer) {
 }
 
 // appendSnapshot writes one JSONL line for the given job snapshot.
-// No-op when no log writer is attached.
+// No-op when no log writer is attached. The Write call runs under
+// logMu so concurrent state-change events from the worker goroutine
+// (Progress.Set, SetResultPath) cannot interleave bytes in the JSONL
+// log. The writer itself is not assumed to be safe for concurrent use.
 func (r *Registry) appendSnapshot(j Job) {
 	r.logMu.Lock()
-	w := r.logWriter
-	r.logMu.Unlock()
-	if w == nil {
+	defer r.logMu.Unlock()
+	if r.logWriter == nil {
 		return
 	}
 	payload, err := json.Marshal(persistedSnapshot{
@@ -281,7 +283,7 @@ func (r *Registry) appendSnapshot(j Job) {
 		return
 	}
 	payload = append(payload, '\n')
-	_, _ = w.Write(payload)
+	_, _ = r.logWriter.Write(payload)
 }
 
 // Start queues a job of the given kind and immediately launches a
@@ -425,7 +427,9 @@ func (r *Registry) SetResultPath(id, path string) {
 
 // Subscribe registers a buffered channel as a listener for snapshot
 // updates on the given job. Returns nil if the job is unknown so
-// callers can pass user input without a separate existence check.
+// callers can pass user input without a separate existence check
+// without leaking an orphan subscriber entry.
+//
 // The buffer size keeps one or two slow events in flight without
 // blocking the broadcaster; a wedged subscriber is silently dropped
 // to protect the worker.
@@ -433,6 +437,12 @@ func (r *Registry) SetResultPath(id, path string) {
 // Callers MUST call Unsubscribe(id, ch) when they stop reading so the
 // registry can garbage-collect the channel.
 func (r *Registry) Subscribe(id string) chan Job {
+	r.mu.Lock()
+	_, exists := r.jobs[id]
+	r.mu.Unlock()
+	if !exists {
+		return nil
+	}
 	ch := make(chan Job, 8)
 	r.subMu.Lock()
 	if r.subscribers == nil {

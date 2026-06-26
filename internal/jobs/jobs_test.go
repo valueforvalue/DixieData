@@ -130,6 +130,19 @@ func TestDisplayLabelMapsKnownKinds(t *testing.T) {
 	}
 }
 
+// WJ-2 (appendSnapshot fd race) was considered for a regression
+// test but the available buffer wrappers (bytes.Buffer + our own
+// mutex) hide the race from Go's race detector on this platform
+// (no cgo). Documenting the limitation here so future runs can
+// re-attempt with CGO_ENABLED=1 and an os.File-backed writer.
+
+
+// concurrentByteBuffer is a bytes.Buffer guarded by a mutex.
+// os.File provides its own internal locking, but tests use
+// bytes.Buffer for in-memory speed; without this wrapper, the
+// race detector fires regardless of whether appendSnapshot
+// serialises its writes.
+
 func TestSubscribeDeliversProgressSnapshots(t *testing.T) {
 	reg := New()
 	var id string
@@ -164,7 +177,10 @@ func TestSubscribeDeliversProgressSnapshots(t *testing.T) {
 
 func TestSubscribeOnUnknownJobIsNoop(t *testing.T) {
 	reg := New()
-	reg.Subscribe("missing")
+	ch := reg.Subscribe("missing")
+	if ch != nil {
+		t.Fatalf("Subscribe on unknown id should return nil, got channel %v", ch)
+	}
 }
 
 func TestRegistryCancelTerminalJobReturnsErrAlreadyTerminal(t *testing.T) {

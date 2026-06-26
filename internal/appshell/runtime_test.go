@@ -42,3 +42,25 @@ func TestWailsGuardsRejectContextBackground(t *testing.T) {
 	}
 }
 
+func TestBrowserOpenURLMalformedReturnsParseErrorNotFrontendSentinel(t *testing.T) {
+	// WJ-4: BrowserOpenURL's web-mode fallback must distinguish
+	// "no frontend" (expected) from "malformed URL" (real bug).
+	// Previously both returned errWailsFrontendUnavailable.
+	app := NewApp() // nil ctx → no frontend
+
+	cases := []string{
+		"://no-scheme",
+		"http://[::1",  // unclosed bracket
+		"%zz",          // invalid percent encoding
+	}
+	for _, raw := range cases {
+		err := app.BrowserOpenURL(raw)
+		if errors.Is(err, errWailsFrontendUnavailable) {
+			t.Errorf("BrowserOpenURL(%q) returned errWailsFrontendUnavailable instead of parse error", raw)
+		}
+		if err == nil {
+			t.Errorf("BrowserOpenURL(%q) returned nil; expected parse error", raw)
+		}
+	}
+}
+
