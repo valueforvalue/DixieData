@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 )
@@ -79,7 +80,9 @@ func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsMani
 		if err := addBackupImages(zipWriter, filepath.Join(dataDir, "scratchpads")); err != nil {
 			return err
 		}
-		return addBackupImages(zipWriter, filepath.Join(dataDir, "logs"))
+		// Merge logs are app-level diagnostics, not archive data;
+		// they live under .dixiedata-logs/ alongside the data dir.
+		return addBackupImages(zipWriter, appdata.LogsDir(dataDir))
 	}); err != nil {
 		return DiagnosticsManifest{}, err
 	}
@@ -100,7 +103,7 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 	if err != nil {
 		return DiagnosticsManifest{}, err
 	}
-	logFiles, err := countFilesUnder(filepath.Join(dataDir, "logs"))
+	logFiles, err := countFilesUnder(appdata.LogsDir(dataDir))
 	if err != nil {
 		return DiagnosticsManifest{}, err
 	}

@@ -116,8 +116,26 @@ func ScratchpadPaths(dataDir, displayID string) (string, string) {
 	return filepath.Join(base, safeDisplayID+".txt"), filepath.Join(base, safeDisplayID+".json")
 }
 
+// LogsRoot returns the root directory DixieData uses for app-level
+// logs and feedback archives. It is a sibling of the data directory,
+// not a child, so .ddbak restore (which renames the entire data
+// directory) never needs the log file to release its Windows file
+// handle. For dataDir = ".../DixieData/.dixiedata" it returns
+// ".../DixieData/.dixiedata-logs". The folder starts with a dot so
+// it sorts with the data folder in directory listings and is
+// hidden by default in file explorers.
+func LogsRoot(dataDir string) string {
+	return filepath.Join(filepath.Dir(dataDir), folderName+"-logs")
+}
+
+// LogsDir returns the directory that holds the JSONL log files. As
+// of the layout change that splits app state from archive state,
+// this is LogsRoot(dataDir), not dataDir/logs. The data directory
+// is renamed atomically during restore; logs must live outside it
+// or the rename fails on Windows with "Access is denied" while the
+// log file handle is open.
 func LogsDir(dataDir string) string {
-	return filepath.Join(dataDir, "logs")
+	return LogsRoot(dataDir)
 }
 
 func FeedbackLogPath(dataDir string) string {

@@ -63,13 +63,21 @@ func TestScratchpadPathsUseSanitizedDisplayID(t *testing.T) {
 }
 
 func TestFeedbackLogPathUsesLogsDirectory(t *testing.T) {
-	if got := FeedbackLogPath(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata\logs\feedback-log.jsonl` {
+	// App logs and feedback archives live in .dixiedata-logs/, a
+	// SIBLING of the data directory, not a child. This split is
+	// what makes .ddbak restore atomic on Windows: the restore
+	// code path renames the entire .dixiedata directory to a
+	// -previous-* sibling and renames a staged directory in its
+	// place, which fails on Windows while any file handle inside
+	// .dixiedata is still open. Logs being outside the data dir
+	// means the rename never touches them.
+	if got := FeedbackLogPath(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata-logs\feedback-log.jsonl` {
 		t.Fatalf("FeedbackLogPath=%q", got)
 	}
-	if got := FeedbackLogArchiveDir(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata\logs\feedback-history` {
+	if got := FeedbackLogArchiveDir(`C:\repo\.dixiedata`); got != `C:\repo\.dixiedata-logs\feedback-history` {
 		t.Fatalf("FeedbackLogArchiveDir=%q", got)
 	}
-	if got := FeedbackLogArchiveVersionDir(`C:\repo\.dixiedata`, `v1.2.37 / prior`); got != `C:\repo\.dixiedata\logs\feedback-history\v1-2-37-prior` {
+	if got := FeedbackLogArchiveVersionDir(`C:\repo\.dixiedata`, `v1.2.37 / prior`); got != `C:\repo\.dixiedata-logs\feedback-history\v1-2-37-prior` {
 		t.Fatalf("FeedbackLogArchiveVersionDir=%q", got)
 	}
 }
