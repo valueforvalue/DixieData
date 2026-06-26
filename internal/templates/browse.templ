@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -165,7 +166,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 		</div>
 		@BrowsePager(state)
 		if len(records) == 0 {
-			<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-4 text-sm text-slate-500">No person records matched the current browse scope and filters.</p>
+			@components.EmptyState("No person records matched", "Adjust the browse scope or filters and try again.", "")
 		} else {
 			<div class="md:hidden space-y-3">
 				for _, record := range records {

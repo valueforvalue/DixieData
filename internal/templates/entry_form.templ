@@ -7,6 +7,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -1074,17 +1075,17 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 		if search.IsArchiveEmpty {
 			@emptyArchiveSetupCard(search)
 		} else if search.Recent {
-			<p class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">No recent person records yet. Open a detail page and it will appear here.</p>
+			@components.EmptyState("No recent person records yet", "Open a detail page and it will appear here.", "")
 		} else if !hasActiveSearch(search) {
-			<div data-recent-records-empty class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/72 px-4 py-3 text-sm text-slate-500">
-				Start typing to search the local archive. Your recently opened person records will appear here automatically.
+			<div data-recent-records-empty>
+				@components.EmptyState("Start typing to search", "Your recently opened person records will appear here automatically.", "")
 			</div>
 		} else if hasActiveSearch(search) && search.Mode == "advanced" {
-			<p class="text-slate-500 text-sm">No person records matched the advanced filters.</p>
+			@components.EmptyState("No person records matched", "Adjust the advanced filters and try again.", "")
 		} else if hasActiveSearch(search) && search.Query != "" {
-			<p class="text-slate-500 text-sm">No results found for "{ search.Query }".</p>
+			@components.EmptyState("No results found", fmt.Sprintf("Nothing in the local archive matches %q yet.", search.Query), "")
 		} else if hasActiveSearch(search) {
-			<p class="text-slate-500 text-sm">No person records found in browse mode.</p>
+			@components.EmptyState("No person records in browse mode", "Adjust the browse filters and try again.", "")
 		}
 	} else {
 		for _, s := range soldiers {

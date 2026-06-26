@@ -13,6 +13,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- EmptyState primitive adopted at six sites (issue #74 Phase 1.6
+  migration): `/soldiers` (advanced filters, browse mode, quick
+  search query, recent records, initial-state prompt) and
+  `/browse` (no-results under active filter). Each call replaced a
+  hand-rolled `<p class="rounded-2xl ...">` with
+  `@components.EmptyState(title, body, "")`. The primitive emits
+  `<div class="empty-state" data-empty-state="true">` so the audit
+  harness picks up every migrated surface automatically. Existing
+  entry-form + browse snapshot tests pass unchanged. Visually
+  verified at 1280×800 — browse empty state renders with sepia
+  dashed border + parchment surface (see
+  `audit/screenshots/empty-state-browse.png`).
 - Phase 1 component primitives (issue #74) continued:
   - **Field** (`internal/templates/components/field.templ`) —
     `templ Field(kind, attrs)` wraps `<input>` / `<textarea>` /
