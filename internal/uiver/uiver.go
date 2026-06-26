@@ -38,3 +38,23 @@ func Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+// DebugKey is the unexported context key for the debug-mode flag.
+// Separate type from Key so callers can't confuse v2-UI opt-in with
+// debug mode.
+type DebugKey struct{}
+
+// WithDebugMode returns a child context carrying the debug-mode flag.
+func WithDebugMode(ctx context.Context, enabled bool) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, DebugKey{}, enabled)
+}
+
+// IsDebugMode reports whether the current request context had
+// debug-mode enabled by the appshell wiring.
+func IsDebugMode(ctx context.Context) bool {
+	v, _ := ctx.Value(DebugKey{}).(bool)
+	return v
+}

@@ -19,7 +19,10 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
+	"github.com/valueforvalue/DixieData/internal/uiver"
 )
 
 
@@ -87,14 +90,37 @@ func (a *App) Shutdown(ctx context.Context) {
 }
 
 func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	a.dataDir = appdata.DefaultDir()
+
+	// Configure structured logging AFTER dataDir is resolved so the log
+	// file lands in the correct location.
+	logPath := appdata.AppLogPath(a.dataDir)
+	if err := debug.Configure(debug.Config{
+		LogPath:       logPath,
+		RingSize:      500,
+		AppName:       buildinfo.AppName,
+		AppVersion:    buildinfo.AppVersion,
+		BuildIdentity: buildinfo.BuildIdentity(),
+	}); err != nil {
+		fmt.Printf("warning: failed to configure debug logging: %v\n", err)
+	}
+
 	if err := configureStressLogging(); err != nil {
 		a.startupErr = fmt.Errorf("failed to configure stress logging: %w", err)
 		a.setupRoutes()
 		return
 	}
-	a.ctx = ctx
-	a.dataDir = appdata.DefaultDir()
 	a.restorePoints = update.NewRestorePointManager(a.dataDir)
+	// Load local settings + apply DebugMode. Settings takes effect on
+	// the next slog call (debug.SetDebugMode raises/lowers the level
+	// floor).
+	if settings, err := records.LoadLocalSettings(a.dataDir); err == nil {
+		a.debugMode.Store(settings.DebugMode)
+		debug.SetDebugMode(settings.DebugMode)
+	} else {
+		fmt.Printf("warning: could not load local settings: %v\n", err)
+	}
 	// Replace the placeholder Registry from NewApp() with one wired
 	// to the on-disk JSONL log so background jobs survive webview
 	// reloads and app restarts.
@@ -192,6 +218,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	_ = debug.Flush()
+	_ = debug.Close()
 	if a.database != nil {
 		a.database.Close()
 	}
@@ -247,12 +275,15 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 
 // --- ServeHTTP ---
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, 0)
-	LogDebugEvent(r, fmt.Sprintf("Referer=%q", r.Header.Get("Referer")))
+	debug.FromContext(r.Context()).Debug("request received",
+		"component", "http",
+		"method", r.Method,
+		"path", r.URL.Path,
+		"referer", r.Header.Get("Referer"),
+	)
 	defer func() {
 		if pv := recover(); pv != nil {
 			path := LogCrash(r, pv)
-			LogRequest(r, http.StatusInternalServerError)
 			// http.Error sets headers + writes a plain error body.
 			// If the inner handler already wrote headers this is a
 			// best-effort 500 response.
@@ -270,6 +301,9 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		case "/app.css":
 			a.handleFrontendAsset("app.css", "text/css; charset=utf-8").ServeHTTP(w, r)
+			return
+		case "/debug.js":
+			a.handleFrontendAsset("debug.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
 			return
 		case "/htmx.min.js":
 			a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8").ServeHTTP(w, r)
@@ -306,5 +340,8 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		buffered.FlushTo(w)
 		return
 	}
-	a.mux.ServeHTTP(w, r)
+	// Inject debug-mode flag into the request context so templates can
+	// render the Debug Console button without needing the App struct.
+	ctx := uiver.WithDebugMode(r.Context(), a.debugMode.Load())
+	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }

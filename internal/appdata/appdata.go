@@ -124,6 +124,12 @@ func FeedbackLogPath(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "feedback-log.jsonl")
 }
 
+// AppLogPath is the JSONL log written by the internal/debug package.
+// One line per slog entry, schema_version field present on every line.
+func AppLogPath(dataDir string) string {
+	return filepath.Join(LogsDir(dataDir), "app.log.jsonl")
+}
+
 func FeedbackLogArchiveDir(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "feedback-history")
 }
