@@ -66,11 +66,17 @@ func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
 			presentation.InitialSetupView(form).Render(r.Context(), w)
 			return
 		}
-		a.setupRequired = false
+		// Order matters: reloadServices re-checks the DB identity state
+		// and may re-set setupRequired if it disagrees with our local
+		// write. Only clear the flag AFTER reload succeeds — otherwise
+		// a reload failure would leave the user in an inconsistent
+		// state where /setup redirects away (flag clear) but downstream
+		// features return 500s (services not loaded).
 		if err := a.reloadServices(); err != nil {
 			respondInternal(w, r, "Identity saved but services could not be reloaded.", err)
 			return
 		}
+		a.setupRequired = false
 		http.Redirect(w, r, "/calendar", http.StatusSeeOther)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

@@ -151,7 +151,7 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if r.URL.Query().Get("async") == "1" {
-		a.enqueueStaticArchive(r.Context(), path, w)
+		a.enqueueStaticArchive(path, w)
 		return
 	}
 	if err := a.export.ExportStaticArchive(path, a.dataDir); err != nil {
@@ -164,7 +164,7 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 // enqueueStaticArchive kicks off a background Static Archive export and
 // responds with a 302 to the /jobs/{id} status page. Workers use the
 // registry's cooperative cancellation to honour user clicks.
-func (a *App) enqueueStaticArchive(parent context.Context, path string, w http.ResponseWriter) {
+func (a *App) enqueueStaticArchive(path string, w http.ResponseWriter) {
 	var jobID string
 	jobID = a.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Gathering images")
@@ -189,19 +189,13 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		respondValidation(w, r, "Print settings could not be read.", err)
 		return
 	}
-	settings = settings.Normalize()
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
-		DefaultFilename: printableArchivePDFName(settings),
-		Filters: []runtime.FileFilter{
-			{DisplayName: "PDF document", Pattern: "*.pdf"},
-		},
-	})
+	path, err := a.exportFullDatabasePDFPath(settings)
 	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Printable PDF export cancelled.", nil)
+		respondError(w, r, KindValidation, "Printable PDF export cancelled.", err)
 		return
 	}
 	if r.URL.Query().Get("async") == "1" {
-		a.enqueueDatabasePDF(r.Context(), path, settings, w)
+		a.enqueueDatabasePDF(path, settings, w)
 		return
 	}
 	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
@@ -213,7 +207,7 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 
 // enqueueDatabasePDF kicks off a background Printable Archive PDF export
 // and responds with a 302 to the /jobs/{id} status page.
-func (a *App) enqueueDatabasePDF(parent context.Context, path string, settings archive.PrintSettings, w http.ResponseWriter) {
+func (a *App) enqueueDatabasePDF(path string, settings archive.PrintSettings, w http.ResponseWriter) {
 	var jobID string
 	jobID = a.jobs.Start("database_pdf", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Building archive")
@@ -229,6 +223,25 @@ func (a *App) enqueueDatabasePDF(parent context.Context, path string, settings a
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
+	path, err := a.exportFullDatabasePDFPath(settings)
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "Printable PDF export cancelled.", nil
+	}
+	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
+		return "", err
+	}
+	return exportLinkMarkup("Printable PDF ready:", path), nil
+}
+
+// exportFullDatabasePDFPath normalizes settings and prompts for a
+// destination via the SaveFileDialog. Returns ("", nil) when the
+// user cancels the dialog. Used by both handleExportDatabasePDF
+// (HTTP) and ExportFullDatabasePDF (Wails binding) so the
+// SaveFileDialog block stays in one place.
+func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string, error) {
 	settings = settings.Normalize()
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: printableArchivePDFName(settings),
@@ -236,13 +249,10 @@ func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, err
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
 		},
 	})
-	if err != nil || path == "" {
-		return "Printable PDF export cancelled.", nil
-	}
-	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
+	if err != nil {
 		return "", err
 	}
-	return exportLinkMarkup("Printable PDF ready:", path), nil
+	return path, nil
 }
 
 func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
