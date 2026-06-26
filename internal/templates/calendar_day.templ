@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -179,7 +180,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 				@CalendarItemFormFields(day.Form)
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<span class="text-xs uppercase tracking-[0.18em] text-[#5a6a78]">Editing in place</span>
-					<button class="primary-button px-5 py-2">Save Changes</button>
+					@components.Button("Save Changes", components.ButtonPrimary, "px-5 py-2", nil)
 				</div>
 			</form>
 		} else {
@@ -192,7 +193,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 				@CalendarItemFormFields(day.Form)
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<span class="text-xs uppercase tracking-[0.18em] text-[#5a6a78]">Appears on this date every year</span>
-					<button class="primary-button px-5 py-2">Add Item</button>
+					@components.Button("Add Item", components.ButtonPrimary, "px-5 py-2", nil)
 				</div>
 			</form>
 		}
