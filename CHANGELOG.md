@@ -13,6 +13,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `insights.templ` at five sites
+  (Export Analytics Report, Audit Now, Back to Insights, Compare
+  Selected, Quick View). `insights.templ` now has zero raw button
+  class strings.
 - Button primitive adopted in `research_collections.templ` at two
   sites (Create Collection, Add Current Person Record). The
   Compare Person Records anchor is left for the Pill migration.
