@@ -84,6 +84,7 @@ Every responsive release slice should clear this path before closeout:
 | `panel.settings.layout` | panel | Responsive layout controls |
 | `panel.settings.initialize` | panel | Initialize Data panel |
 | `panel.settings.updates` | panel | Software Updates panel |
+| `panel.settings.debug` | panel | Debug mode toggle |
 | `overlay.floating.menu` | overlay | Floating quick-navigation menu |
 | `overlay.feedback.modal` | overlay | Global feedback modal |
 | `overlay.print-config.modal` | overlay | Printable export settings modal |
