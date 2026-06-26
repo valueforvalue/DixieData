@@ -1,0 +1,95 @@
+package presentation
+
+import (
+	"fmt"
+	"github.com/valueforvalue/DixieData/internal/debug"
+)
+
+// DebugConsole renders the Debug Console panel — a fixed-bottom slide-up
+// that shows the in-memory ring buffer tail. Returns empty string when
+// debug mode is off (caller should check uiver.IsDebugMode(ctx) before
+// invoking).
+templ DebugConsole(entries []debug.Entry, total uint64, logPath string) {
+	<div id="debug-console-panel" class="fixed inset-x-0 bottom-0 z-50 max-h-[60vh] overflow-hidden rounded-t-lg border border-slate-300 bg-white shadow-2xl">
+		<div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2">
+			<div class="flex items-center gap-2 text-sm">
+				<span class="font-semibold text-slate-700">Debug Console</span>
+				<span class="text-xs text-slate-500">{ fmt.Sprintf("(%d entries)", len(entries)) }</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<select name="level" class="rounded border border-slate-300 px-2 py-1 text-xs"
+					hx-get="/debug/console"
+					hx-trigger="change"
+					hx-target="#debug-console-panel"
+					hx-swap="outerHTML">
+					<option value="">All</option>
+					<option value="DEBUG">Debug</option>
+					<option value="INFO">Info</option>
+					<option value="WARN">Warn</option>
+					<option value="ERROR">Error</option>
+				</select>
+				<button type="button" class="rounded bg-slate-200 px-2 py-1 text-xs hover:bg-slate-300"
+					onclick="window.__dixieDebug && navigator.clipboard && navigator.clipboard.writeText(Array.from(document.querySelectorAll('#debug-tail > div')).map(function(d){return d.textContent;}).join('\n'))">
+					Copy
+				</button>
+				<button type="button" class="rounded bg-slate-200 px-2 py-1 text-xs hover:bg-slate-300"
+					onclick="window.__dixieDebug && window.__dixieDebug.openFolder()">
+					Open folder
+				</button>
+				<button type="button" class="rounded bg-slate-200 px-2 py-1 text-xs hover:bg-slate-300"
+					hx-post="/debug/console/clear"
+					hx-target="#debug-console-panel"
+					hx-swap="outerHTML">
+					Clear
+				</button>
+				<button type="button" class="rounded bg-slate-200 px-2 py-1 text-xs hover:bg-slate-300"
+					hx-get="/debug/console"
+					hx-target="#debug-console-panel"
+					hx-swap="outerHTML">
+					Refresh
+				</button>
+				<button type="button" class="rounded bg-slate-200 px-2 py-1 text-xs hover:bg-slate-300"
+					onclick="document.getElementById('debug-console-panel').remove()">
+					Close
+				</button>
+			</div>
+		</div>
+		<div id="debug-tail" class="overflow-y-auto px-4 py-2 font-mono text-xs leading-relaxed" style="max-height: calc(60vh - 60px)">
+			if len(entries) == 0 {
+				<p class="text-slate-400">No log entries yet.</p>
+			} else {
+				for _, e := range entries {
+					<div class="border-b border-slate-100 py-1" data-level={ e.Level }>
+						<span class="text-slate-400">{ e.Time.Format("15:04:05.000") }</span>
+						<span class={ levelClass(e.Level) }>{ e.Level }</span>
+						<span class="text-slate-700">{ e.Message }</span>
+						if e.Component != "" {
+							<span class="ml-2 rounded bg-slate-100 px-1 text-slate-600">{ e.Component }</span>
+						}
+						if len(e.Attrs) > 0 {
+							for k, v := range e.Attrs {
+								<span class="ml-2 text-slate-500">{ k }={ fmt.Sprintf("%v", v) }</span>
+							}
+						}
+					</div>
+				}
+			}
+		</div>
+		<div class="border-t border-slate-200 bg-slate-50 px-4 py-1 text-xs text-slate-500">
+			Log file: { logPath }
+		</div>
+	</div>
+}
+
+func levelClass(level string) string {
+	switch level {
+	case "ERROR":
+		return "ml-2 font-bold text-red-700"
+	case "WARN":
+		return "ml-2 font-semibold text-amber-700"
+	case "DEBUG":
+		return "ml-2 text-slate-500"
+	default:
+		return "ml-2 text-slate-700"
+	}
+}

@@ -7,6 +7,7 @@ package appshell
 import (
 	"net/http"
 
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/uiver"
 )
 
@@ -15,6 +16,7 @@ func (a *App) setupRoutes() {
 
 	mux.HandleFunc("/app.js", a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("/app.css", a.handleFrontendAsset("app.css", "text/css; charset=utf-8"))
+	mux.HandleFunc("/debug.js", a.handleFrontendAsset("debug.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("/htmx.min.js", a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
 	mux.HandleFunc("/recovery", a.handleRecovery)
@@ -89,9 +91,22 @@ func (a *App) setupRoutes() {
 	mux.HandleFunc("/scratchpad/open", a.handleScratchpadOpen)
 	mux.HandleFunc("/media/", a.handleMedia)
 
+	// Phase 4: debug endpoints (state + client-logs + toggle).
+	mux.HandleFunc("/debug/state", a.handleDebugState)
+	mux.HandleFunc("/debug/client-logs", a.handleClientLogs)
+	mux.HandleFunc("/settings/debug-mode", a.handleDebugModeToggle)
+
+	// Phase 6: console + folder + clear (handlers defined in debug_handlers.go).
+	mux.HandleFunc("/debug/console", a.handleDebugConsole)
+	mux.HandleFunc("/debug/console/tail", a.handleDebugConsoleTail)
+	mux.HandleFunc("/debug/console/clear", a.handleDebugConsoleClear)
+	mux.HandleFunc("/debug/open-folder", a.handleDebugOpenFolder)
+
 	a.muxRaw = mux
 	// uiver.Middleware reads ?ui=v2 and stores it on the request context so
 	// templates can dispatch via uiver.IsV2(ctx). recovery wraps it last so
 	// a panic during UI-version dispatch still hits the crash log.
-	a.mux = recoverMiddleware(uiver.Middleware(mux))
+	// debug.Middleware is OUTERMOST so the request_id it generates is on
+	// the context before recover runs (the crash log line carries it).
+	a.mux = debug.Middleware(recoverMiddleware(uiver.Middleware(mux)))
 }
