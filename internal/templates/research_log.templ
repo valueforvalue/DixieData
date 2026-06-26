@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -80,7 +81,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 								</label>
 							</div>
 							<div class="md:col-span-2">
-								<button type="submit" class="primary-button w-full sm:w-auto">Add Research Task</button>
+								@components.Button("Add Research Task", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 							</div>
 						</form>
 					</section>
@@ -101,7 +102,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 										<p class="text-sm font-semibold text-slate-900">{ suggestion.Title }</p>
 										<p class="mt-2 text-sm leading-6 text-slate-600">{ suggestion.Notes }</p>
 										<p class="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ researchEvidenceTypeLabel(suggestion.EvidenceType) }</p>
-										<button type="submit" class="secondary-button mt-4 w-full sm:w-auto">Add to Research Log</button>
+										@components.Button("Add to Research Log", components.ButtonSecondary, "mt-4 w-full sm:w-auto", templ.Attributes{"type": "submit"})
 									</form>
 								}
 							</div>
@@ -137,7 +138,9 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 												}
 											</div>
 											if !strings.EqualFold(strings.TrimSpace(task.Status), "resolved") {
-												<button hx-post={ fmt.Sprintf("/soldiers/%d/research-log/tasks/%d/resolve", log.SubjectPersonRecord.ID, task.ID) } class="secondary-button w-full sm:w-auto" type="button">Mark Resolved</button>
+												@components.Button("Mark Resolved", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+													"hx-post": fmt.Sprintf("/soldiers/%d/research-log/tasks/%d/resolve", log.SubjectPersonRecord.ID, task.ID),
+												})
 											}
 										</div>
 									</div>
