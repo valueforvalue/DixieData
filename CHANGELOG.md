@@ -13,6 +13,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `calendar_day.templ` at two sites
+  (Save Changes, Add Item). The disclosure `<summary>` and `<a>`
+  elements using button class strings remain — Button primitive
+  targets `<button>` only; summary + anchor reuse is intentional
+  CSS-level styling, slated for either the Pill primitive or a
+  future Disclosure primitive migration.
 - Button primitive adopted in `insights.templ` at five sites
   (Export Analytics Report, Audit Now, Back to Insights, Compare
   Selected, Quick View). `insights.templ` now has zero raw button
