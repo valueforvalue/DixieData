@@ -3,6 +3,7 @@ package appshell
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -83,13 +84,14 @@ func (a *App) OpenMultipleFilesDialog(opts wailsruntime.OpenDialogOptions) ([]st
 // caller has no way to recover and the process exits.
 func (a *App) BrowserOpenURL(rawURL string) error {
 	if !wailsHasFrontend(a.ctx) {
-		// Best-effort fallback: validate the URL and let the caller
-		// decide what to do. We deliberately do NOT call os/exec to
-		// open the URL here — the appshell in web-mode can't speak
-		// to a browser anyway, and the caller will surface the error
-		// to the user.
+		// Best-effort fallback: validate the URL first so callers can
+		// distinguish "running in web-mode" (expected, ignore) from
+		// "malformed URL" (real bug, surface to user). We deliberately
+		// do NOT call os/exec to open the URL here — the appshell in
+		// web-mode can't speak to a browser anyway, and the caller
+		// will surface the error to the user.
 		if _, err := url.Parse(rawURL); err != nil {
-			return errWailsFrontendUnavailable
+			return fmt.Errorf("debug: parse URL %q: %w", rawURL, err)
 		}
 		return errWailsFrontendUnavailable
 	}
