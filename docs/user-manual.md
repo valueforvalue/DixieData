@@ -558,6 +558,31 @@ The Restore Point and the previously safe app build are preserved together until
 - open the record and verify the image is still attached
 - run **Image Maintenance** in Settings to scan for orphan problems
 
+### Debug logging + Debug Console
+
+DixieData emits a single structured log file at `<dataDir>/logs/app.log.jsonl` (one JSON object per line). Every request carries a 16-character `request_id` echoed in the `X-Request-Id` response header so a single operation's log trail can be grepped end-to-end.
+
+**Turn debug mode on**
+
+- Click the 🐞 **Debug** button that appears in the footer when debug mode is off, then **Debug mode** in Settings → the toggle persists in `<dataDir>/local_settings.json` and survives restarts; or
+- Launch the app with `DIXIEDATA_DEBUG=1` in the environment (PowerShell: `$env:DIXIEDATA_DEBUG = "1"; make run`; cmd: `set DIXIEDATA_DEBUG=1 && make run`; bash: `DIXIEDATA_DEBUG=1 make run`).
+
+When debug mode is on, the slog level drops to Debug, output also mirrors to stderr, and the 🐞 button opens the **Debug Console** panel showing the most recent 500 in-memory log entries with a level filter, copy, open-folder (reveals `~/.dixiedata/logs/` in the OS file manager), and clear controls. The frontend's own console output, `window.onerror`, and `unhandledrejection` events are batched and posted back to Go every 2 s (or every 50 entries / 32 KB) under `source=frontend`.
+
+**Reading the log**
+
+```bash
+# Tail everything at INFO+
+tail -f ~/.dixiedata/logs/app.log.jsonl | jq -c 'select(.level != "DEBUG")'
+
+# Trace a single request
+grep deadbeef00000001 ~/.dixiedata/logs/app.log.jsonl | jq -c .
+```
+
+**Bug reports**
+
+The bug-report zip (Share → Support & Diagnostics → Export bug report) bundles `logs/app.log.jsonl` truncated to the last 1000 lines so operators have recent crash + error context without the file growing unboundedly. `feedback-log.jsonl` is included in full (user-submitted content, separate retention).
+
 ## 20. Best practices
 
 - verify Find a Grave autofill before saving
