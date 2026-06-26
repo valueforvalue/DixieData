@@ -59,6 +59,7 @@ const (
 	PanelSettingsLayout         = "panel.settings.layout"
 	PanelSettingsInitialize     = "panel.settings.initialize"
 	PanelSettingsUpdates        = "panel.settings.updates"
+	PanelSettingsDebug          = "panel.settings.debug"
 	OverlayFloatingMenu         = "overlay.floating.menu"
 	OverlayFeedbackModal        = "overlay.feedback.modal"
 	OverlayPrintConfigModal     = "overlay.print-config.modal"
@@ -123,6 +124,7 @@ var Registry = []Surface{
 	{ID: PanelSettingsLayout, Kind: "panel", Description: "Responsive layout mode controls on the settings page."},
 	{ID: PanelSettingsInitialize, Kind: "panel", Description: "Initialize Data panel on the settings page."},
 	{ID: PanelSettingsUpdates, Kind: "panel", Description: "Software Updates panel on the settings page."},
+	{ID: PanelSettingsDebug, Kind: "panel", Description: "Debug mode toggle on the settings page."},
 	{ID: OverlayFloatingMenu, Kind: "overlay", Description: "Floating quick-navigation menu overlay."},
 	{ID: OverlayFeedbackModal, Kind: "overlay", Description: "Global feedback modal overlay."},
 	{ID: OverlayPrintConfigModal, Kind: "overlay", Description: "Printable export settings modal overlay."},

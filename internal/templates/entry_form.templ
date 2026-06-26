@@ -5,6 +5,7 @@ import (
 	"strings"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
@@ -796,6 +797,26 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 						<span class="text-[0.65rem] uppercase tracking-[0.18em]">Compact</span>
 					</button>
 				</div>
+			</div>
+			<div data-ui-id={ uiids.PanelSettingsDebug } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				@SurfaceBadge(uiids.PanelSettingsDebug)
+				<div>
+					<h3 class="text-xl gold font-bold">Debug Mode</h3>
+					<p class="mt-2 text-sm text-slate-600">Turn on debug logging. Once on, the 🐞 button appears in the footer — click it to open the Debug Console and read the in-memory log tail. The setting persists in <code>local_settings.json</code> across restarts.</p>
+					<p class="mt-1 text-xs text-slate-500">Equivalent to launching the app with <code>DIXIEDATA_DEBUG=1</code> in the environment.</p>
+				</div>
+				<form hx-post="/settings/debug-mode" hx-target="this" hx-swap="none" class="flex items-center gap-3">
+					<label class="flex items-center gap-2 text-sm text-slate-700">
+						<input type="checkbox" name="debug_mode" value="on"
+							if debug.IsDebugMode(ctx) {
+								checked
+							}
+							class="h-4 w-4 rounded border border-[#8d7440]"
+						/>
+						Debug mode is on
+					</label>
+					@components.Button("Apply", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+				</form>
 			</div>
 			<div data-ui-id={ uiids.PanelSettingsInitialize } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				@SurfaceBadge(uiids.PanelSettingsInitialize)
