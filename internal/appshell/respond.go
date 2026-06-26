@@ -26,9 +26,10 @@ package appshell
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 // ErrorKind is the user-facing category for an error response. The kind
@@ -139,8 +140,15 @@ func respondError(w http.ResponseWriter, r *http.Request, kind ErrorKind, userMe
 
 	// Log the raw error server-side. Use a stable attribute name so the
 	// audit harness and any future log-based dashboards can filter.
+	// Use debug.FromContext so the request_id (set by debug.Middleware)
+	// is automatically attached to the audit line.
 	if err != nil {
-		slog.Error("appshell: request failed",
+		var log = debug.FromContext(nil)
+		if r != nil {
+			log = debug.FromContext(r.Context())
+		}
+		log.Error("appshell: request failed",
+			"component", "http",
 			"audit", "respond-error",
 			"kind", string(kind),
 			"path", requestPath(r),

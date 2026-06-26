@@ -18,6 +18,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +34,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/findagrave"
 	"github.com/valueforvalue/DixieData/internal/integrations"
 	"github.com/valueforvalue/DixieData/internal/jobs"
@@ -70,6 +72,7 @@ type App struct {
 	inFlight               sync.Map // map[string]struct{} — dedupes in-flight native dialog calls
 	startupErr              error
 	setupRequired           bool
+	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
 	pendingLaunchStateClear bool
 	pendingRecovery         *update.RestorePointRecord
 	recoveryFailure         string
@@ -515,7 +518,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 }
 
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
-	LogDebugEvent(r, "handleCalendarPDF ENTER")
+	debug.FromContext(r.Context()).Debug("handleCalendarPDF ENTER")
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -530,16 +533,16 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
-	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF month=%d form=%v", month, r.Form))
+	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF month=%d form=%v", month, r.Form))
 	calendar, err := a.anniversary.GetMonthCalendar(month)
 	if err != nil {
 		respondInternal(w, r, "Could not load the monthly calendar.", err)
 		return
 	}
-	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF calendar days=%d", len(calendar)))
+	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF calendar days=%d", len(calendar)))
 	options := parsePDFOptionsRequest(r, "P", false)
-	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF options=%+v", options))
-	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF pre-dialog ctx_nil=%v frontend=%v",
+	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF options=%+v", options))
+	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF pre-dialog ctx_nil=%v frontend=%v",
 		a.ctx == nil, ctxHasFrontend(a.ctx)))
 
 	// Reject rapid duplicate POSTs before we hit the native dialog.
@@ -550,7 +553,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	// with the first.
 	dupKey := fmt.Sprintf("cal-pdf|%d|%s|%s", month, options.Orientation, monthPDFName(month, options))
 	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
-		LogDebugEvent(r, "handleCalendarPDF duplicate request rejected")
+		debug.FromContext(r.Context()).Debug("handleCalendarPDF duplicate request rejected")
 		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
@@ -563,19 +566,19 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		},
 	})
 	if err != nil || path == "" {
-		LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF dialog cancelled err=%v path=%q", err, path))
+		debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog cancelled err=%v path=%q", err, path))
 		respondError(w, r, KindValidation, "Monthly PDF export cancelled.", nil)
 		return
 	}
-	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
+	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
 	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options); err != nil {
-		LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF export err=%v", err))
+		debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF export err=%v", err))
 		respondInternal(w, r, "Could not write the monthly PDF.", err)
 		return
 	}
-	LogDebugEvent(r, fmt.Sprintf("handleCalendarPDF export OK path=%q", path))
+	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF export OK path=%q", path))
 	setToastHeader(w, fmt.Sprintf("Monthly PDF saved to %s", path))
-	LogDebugEvent(r, "handleCalendarPDF EXIT")
+	debug.FromContext(r.Context()).Debug("handleCalendarPDF EXIT")
 }
 
 func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
