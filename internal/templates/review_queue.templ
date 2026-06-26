@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/uiids"
@@ -32,8 +33,18 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 								<span>Select all on this page</span>
 							</label>
 							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-								<button type="submit" name="bulk_action" value="ignore" class="secondary-button w-full sm:w-auto" hx-confirm={ bulkIgnoreConfirmMessage(len(entries)) }>Ignore Selected</button>
-								<button type="submit" name="bulk_action" value="delete" class="danger-button w-full sm:w-auto" hx-confirm={ bulkDeleteConfirmMessage(len(entries)) }>Delete Selected</button>
+								@components.Button("Ignore Selected", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+								"type": "submit",
+								"name": "bulk_action",
+								"value": "ignore",
+								"hx-confirm": bulkIgnoreConfirmMessage(len(entries)),
+							})
+								@components.Button("Delete Selected", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
+								"type": "submit",
+								"name": "bulk_action",
+								"value": "delete",
+								"hx-confirm": bulkDeleteConfirmMessage(len(entries)),
+							})
 							</div>
 						</div>
 						for _, entry := range entries {
@@ -64,7 +75,11 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 									</div>
 									<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 										<a href={ fmt.Sprintf("/soldiers/%d", entry.PersonRecord.ID) } class="pill-link w-full sm:w-auto">View Person Record</a>
-										<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID) } hx-target={ fmt.Sprintf("#review-queue-item-%d", entry.PersonRecord.ID) } hx-swap="outerHTML" class="primary-button w-full sm:w-auto">Mark as Resolved</button>
+										@components.Button("Mark as Resolved", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+										"hx-post": fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID),
+										"hx-target": fmt.Sprintf("#review-queue-item-%d", entry.PersonRecord.ID),
+										"hx-swap": "outerHTML",
+									})
 									</div>
 								</div>
 							</div>
@@ -111,7 +126,9 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 						class="pill-link w-full sm:w-auto"
 					>← { comparisonBackLabel(comparison) }</button>
 					if comparison.FindingID > 0 && comparison.Status != "resolved" {
-						<button hx-post={ fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID) } class="primary-button w-full sm:w-auto">Mark Match Resolved</button>
+						@components.Button("Mark Match Resolved", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+						"hx-post": fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID),
+					})
 					}
 				</div>
 			</div>
