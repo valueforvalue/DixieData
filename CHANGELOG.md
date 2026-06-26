@@ -13,6 +13,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `browse.templ` at three sites
+  (Apply Filters, Reset Browse, Clear Selection). The Print/Export
+  Selected anchor is intentionally left untouched — it's an `<a>`
+  styled with `.primary-button`, not a `<button>`, so it belongs to
+  the future Pill primitive migration.
 - Button primitive adopted in `review_queue.templ` at four sites
   (issue #74 Phase 1 migration). The bulk-action Ignore Selected /
   Delete Selected form buttons and the per-entry Mark as Resolved /
