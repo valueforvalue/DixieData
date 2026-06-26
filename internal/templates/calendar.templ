@@ -66,7 +66,9 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 									</label>
 								</div>
 								<div class="sm:col-span-2 flex justify-end pt-1">
-									@components.Button("Export Month PDF", components.ButtonPrimary, "", nil)
+									@components.Button("Export Month PDF", components.ButtonPrimary, "", templ.Attributes{
+									"type": "submit",
+								})
 								</div>
 							</div>
 						</form>
