@@ -3326,7 +3326,13 @@
     // duplicate fetches. window.htmx is still defined (third-party code
     // can check for it). See audit/reports/SLICES.md for context.
     document.querySelectorAll("[hx-get], [hx-post], [hx-put], [hx-delete], [hx-trigger]").forEach((el) => {
-      ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-target", "hx-swap", "hx-confirm", "hx-include"].forEach((attr) => el.removeAttribute(attr));
+      // Strip the trigger + URL attrs so app.js's own request handlers
+      // own network round-trips. Keep hx-target / hx-swap so htmx can
+      // resolve the swap target when it does fire the request from a
+      // cached config. Without hx-target, htmx falls back to swapping
+      // into the triggering element (the search form), which destroys
+      // the search input on every keystroke.
+      ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-confirm", "hx-include"].forEach((attr) => el.removeAttribute(attr));
     });
 
     ensureResponsiveLayoutWatcher();
