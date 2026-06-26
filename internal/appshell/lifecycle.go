@@ -92,6 +92,19 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.dataDir = appdata.DefaultDir()
 
+	// One-time migration: move logs out of the data directory into a
+	// sibling .dixiedata-logs/ folder. Before the split, app logs
+	// lived at <dataDir>/logs/app.log.jsonl, which forced the
+	// .ddbak restore code path to release its Windows file handle
+	// on the log file before os.Rename(.dixiedata, ...) could
+	// succeed. The migration runs BEFORE debug.Configure so the new
+	// log file is opened in the new location, not the old one.
+	if moved, err := migrateLogsToSiblingDir(a.dataDir); err != nil {
+		fmt.Printf("warning: log migration failed (continuing with new layout): %v\n", err)
+	} else if moved > 0 {
+		fmt.Printf("info: migrated %d log file(s) out of .dixiedata/ into .dixiedata-logs/\n", moved)
+	}
+
 	// Configure structured logging AFTER dataDir is resolved so the log
 	// file lands in the correct location.
 	logPath := appdata.AppLogPath(a.dataDir)
@@ -343,4 +356,79 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// render the Debug Console button without needing the App struct.
 	ctx := debug.WithDebugMode(r.Context(), a.debugMode.Load())
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// migrateLogsToSiblingDir is the one-time startup migration that moves
+// the app log files out of <dataDir>/logs/ into the sibling
+// <parent-of-dataDir>/.dixiedata-logs/ directory.
+//
+// Before the layout split, app logs lived inside .dixiedata/, which
+// meant the .ddbak restore code path (replaceDataDir → os.Rename) had
+// to release the open log file handle on Windows before the rename
+// could succeed. Every restore attempt failed with "Access is denied"
+// while the log file was still open. Splitting app state from
+// archive state makes restore atomic and removes the handle-release
+// requirement entirely.
+//
+// Returns the number of files moved (0 if there was nothing to
+// migrate, or if the migration had already run on a previous start).
+// Errors are non-fatal — the caller logs them and continues with the
+// new layout, so a half-migrated state does not block app startup.
+func migrateLogsToSiblingDir(dataDir string) (int, error) {
+	oldLogsDir := filepath.Join(dataDir, "logs")
+	newLogsDir := appdata.LogsRoot(dataDir)
+
+	// Nothing to do if the old location never existed (fresh install).
+	if _, err := os.Stat(oldLogsDir); err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("stat old logs dir: %w", err)
+	}
+
+	// If the new location already exists, the migration already ran
+	// (or the user manually moved logs). Move any stragglers from
+	// old → new without overwriting; both sides converge to the same
+	// content so this is safe to re-run.
+	if err := os.MkdirAll(newLogsDir, 0o755); err != nil {
+		return 0, fmt.Errorf("create new logs dir: %w", err)
+	}
+
+	entries, err := os.ReadDir(oldLogsDir)
+	if err != nil {
+		return 0, fmt.Errorf("read old logs dir: %w", err)
+	}
+
+	moved := 0
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() {
+			continue
+		}
+		oldPath := filepath.Join(oldLogsDir, entry.Name())
+		newPath := filepath.Join(newLogsDir, entry.Name())
+		// Skip if the destination already has the file — never
+		// overwrite. The user may have started writing the new log
+		// before we got to the migration.
+		if _, err := os.Stat(newPath); err == nil {
+			continue
+		}
+		// os.Rename on Windows fails if the destination exists or if
+		// the source is held open by another process. Both are
+		// acceptable: skip and continue with the next file. A future
+		// restart can retry stragglers.
+		if err := os.Rename(oldPath, newPath); err != nil {
+			continue
+		}
+		moved++
+	}
+
+	// If the old logs dir is now empty, remove it so the data
+	// directory contains no stale log artifacts. Failure here is
+	// non-fatal — the dir will just sit empty inside the data
+	// folder until the next restore wipes it via replaceDataDir.
+	if remaining, _ := os.ReadDir(oldLogsDir); len(remaining) == 0 {
+		_ = os.Remove(oldLogsDir)
+	}
+
+	return moved, nil
 }

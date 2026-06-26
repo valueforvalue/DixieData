@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
@@ -2148,7 +2149,7 @@ func nullableString(value string) interface{} {
 }
 
 func newMergeLogger(dataDir string) (*mergeLogger, error) {
-	logDir := filepath.Join(dataDir, "logs")
+	logDir := appdata.LogsDir(dataDir)
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		return nil, err
 	}

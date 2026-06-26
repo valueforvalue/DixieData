@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -49,7 +50,7 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 	if err := os.WriteFile(scratchpadPath, []byte("temporary notes"), 0o644); err != nil {
 		t.Fatalf("WriteFile scratchpad: %v", err)
 	}
-	logPath := filepath.Join(dataDir, "logs", "shared-merge-latest.log")
+	logPath := filepath.Join(appdata.LogsDir(dataDir), "shared-merge-latest.log")
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		t.Fatalf("MkdirAll logs: %v", err)
 	}

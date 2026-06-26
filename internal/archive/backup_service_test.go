@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -824,7 +825,7 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 	if _, err := os.Stat(summary.LogPath); err != nil {
 		t.Fatalf("merge log missing: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(targetDir, "logs", "shared-merge-latest.log")); err != nil {
+	if _, err := os.Stat(filepath.Join(appdata.LogsDir(targetDir), "shared-merge-latest.log")); err != nil {
 		t.Fatalf("latest merge log missing: %v", err)
 	}
 

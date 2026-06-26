@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -51,7 +52,7 @@ func TestHandleFeedbackSubmitAppendsFeedbackLog(t *testing.T) {
 		t.Fatalf("expected feedback modal close header")
 	}
 
-	data, err := os.ReadFile(filepath.Join(dataDir, "logs", "feedback-log.jsonl"))
+	data, err := os.ReadFile(filepath.Join(appdata.LogsDir(dataDir), "feedback-log.jsonl"))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}

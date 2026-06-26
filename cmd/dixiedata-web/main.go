@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -55,6 +56,20 @@ func main() {
 	// Intentionally NOT calling WithFrontendAssets — appshell falls back to
 	// reading app.js/app.css from ./frontend/ on disk, which keeps edits
 	// in app.js live during audit iterations without a rebuild.
+
+	// Optional: DIXIE_OPEN_FILE_DIALOG_PATH=/path/to/file.ddbak wires
+	// the open-file-dialog override so headless browser probes can
+	// drive the .ddbak restore flow end-to-end. Used by
+	// audit/probe-full-restore.mjs to verify the layout-split fix.
+	if dialogPath := os.Getenv("DIXIE_OPEN_FILE_DIALOG_PATH"); strings.TrimSpace(dialogPath) != "" {
+		// Capture by value so the closure stays stable if the env
+		// var changes later.
+		captured := dialogPath
+		app.SetOpenFileDialogOverride(func(_ any) (string, error) {
+			return captured, nil
+		})
+		log.Printf("dixiedata-web: OpenFileDialog override wired to %s", captured)
+	}
 
 	app.Startup(context.Background())
 

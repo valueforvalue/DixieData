@@ -73,6 +73,16 @@ func (a *App) OpenFileDialog(opts wailsruntime.OpenDialogOptions) (string, error
 	return wailsruntime.OpenFileDialog(a.ctx, opts)
 }
 
+// SetOpenFileDialogOverride installs a hook that replaces the
+// wailsruntime.OpenFileDialog call. Returns the supplied path
+// unchanged, simulating the user picking that file. Used by the
+// web-mode binary to drive the .ddbak restore flow end-to-end
+// without a real OS file picker; used by httptest to inject a
+// known path without panicking through wailsruntime.
+func (a *App) SetOpenFileDialogOverride(fn func(opts any) (string, error)) {
+	a.openFileDialogOverride = fn
+}
+
 // OpenMultipleFilesDialog wraps wailsruntime.OpenMultipleFilesDialog.
 func (a *App) OpenMultipleFilesDialog(opts wailsruntime.OpenDialogOptions) ([]string, error) {
 	if !wailsHasFrontend(a.ctx) {
