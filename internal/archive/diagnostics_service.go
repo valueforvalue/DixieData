@@ -2,7 +2,9 @@ package archive
 
 import (
 	"archive/zip"
+	"bufio"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -172,6 +174,69 @@ func writeDiagnosticsJSON(zipWriter *zip.Writer, name string, value interface{})
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
 }
+
+// addBackupLogFiles writes the logs/ directory into the zip with a
+// truncation policy: feedback-log.jsonl is included in full, but
+// app.log.jsonl is capped at the most recent 1000 lines so the
+// bundle stays bounded in size.
+func addBackupLogFiles(zipWriter *zip.Writer, logsDir string) error {
+	feedbackPath := filepath.Join(logsDir, "feedback-log.jsonl")
+	if err := addBackupImages(zipWriter, feedbackPath); err != nil {
+		return err
+	}
+	appLogPath := filepath.Join(logsDir, "app.log.jsonl")
+	return addTruncatedLogFile(zipWriter, appLogPath, "logs/app.log.jsonl", 1000)
+}
+
+// addTruncatedLogFile reads up to the last 4 MB of the source log
+// and writes at most maxLines lines to the zip entry. Returns nil
+// silently if the source file does not exist (no log yet).
+func addTruncatedLogFile(zipWriter *zip.Writer, srcPath, entryName string, maxLines int) error {
+	f, err := os.Open(srcPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	defer f.Close()
+
+	const maxRead = 4 * 1024 * 1024
+	stat, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	size := stat.Size()
+	offset := int64(0)
+	if size > maxRead {
+		offset = size - maxRead
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
+	}
+
+	w, err := zipWriter.Create(entryName)
+	if err != nil {
+		return err
+	}
+	for _, line := range lines {
+		if _, err := w.Write([]byte(line + "\n")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// (no fmt usage here; package-level fmt imported only if needed by future edits)
 
 func DiagnosticsBundleName(now time.Time) string {
 	return "dixiedata-bug-report-" + now.Format("2006-01-02") + ".zip"
