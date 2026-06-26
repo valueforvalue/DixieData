@@ -2219,16 +2219,17 @@
     });
   }
 
+  // Floating nav toggle: the click handler is bound inline in
+  // layout.templ (onclick="…toggle('hidden')") so it works even
+  // before this script runs. This init function only owns the
+  // outside-click-to-close behavior, which is safe to defer until
+  // after DOMContentLoaded.
   function initializeFloatingNav() {
     const panel = document.querySelector("[data-floating-nav-panel]");
     const toggle = document.querySelector("[data-floating-nav-toggle]");
     if (!(panel instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) {
       return;
     }
-    toggle.addEventListener("click", (event) => {
-      event.preventDefault();
-      panel.classList.toggle("hidden");
-    });
     document.addEventListener("click", (event) => {
       if (panel.classList.contains("hidden")) {
         return;

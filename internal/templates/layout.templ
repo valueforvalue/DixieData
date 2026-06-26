@@ -80,7 +80,7 @@ templ Layout(title string) {
 					<p data-floating-scratchpad-status class="mr-auto text-xs text-slate-300" aria-live="polite"></p>
 					@components.Button("Scratch Pad", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-scratchpad-open": ""})
 					@components.Button("Feedback", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-feedback-open": ""})
-					@components.Button("Menu", components.ButtonPrimary, "floating-dock-button", templ.Attributes{"data-floating-nav-toggle": ""})
+					@components.Button("Menu", components.ButtonPrimary, "floating-dock-button", templ.Attributes{"data-floating-nav-toggle": "", "onclick": "document.querySelector('[data-floating-nav-panel]')?.classList.toggle('hidden')"})
 				</div>
 				<div data-floating-nav-panel data-ui-id={ uiids.OverlayFloatingMenu } class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
 					@SurfaceBadge(uiids.OverlayFloatingMenu)
