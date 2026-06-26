@@ -13,6 +13,8 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `research_log.templ` at three sites
+  (Add Research Task, Add to Research Log, Mark Resolved).
 - Button primitive adopted in `layout.templ` at three sites
   (feedback modal Close, Cancel, Save Feedback). The two `<a>`
   anchors ("Add Person Record" in the top nav + floating nav panel)
