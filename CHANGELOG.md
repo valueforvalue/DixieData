@@ -13,6 +13,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `review_queue.templ` at four sites
+  (issue #74 Phase 1 migration). The bulk-action Ignore Selected /
+  Delete Selected form buttons and the per-entry Mark as Resolved /
+  Mark Match Resolved buttons now call `@components.Button` with
+  the form attributes (`type="submit"`, `name`, `value`,
+  `hx-confirm`, `hx-post`, `hx-target`, `hx-swap`) threaded
+  through the `templ.Attributes` parameter. Rendered HTML is
+  byte-stable against the legacy form; existing review-queue
+  snapshot tests pass unchanged. `review_queue.templ` now has zero
+  raw `class="primary-button"` / `class="secondary-button"` /
+  `class="danger-button"` usages — a clean migration template for
+  the remaining 110 button sites.
 - EmptyState primitive adopted at six sites (issue #74 Phase 1.6
   migration): `/soldiers` (advanced filters, browse mode, quick
   search query, recent records, initial-state prompt) and
