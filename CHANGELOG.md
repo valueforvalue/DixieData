@@ -13,6 +13,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `share.templ` at all 33 sites:
+  Export JSON/CSV/iCal/Static/Backup/Shared cards (ButtonContent
+  variant for rich `<span>` children), Print config dialog
+  (Close/Cancel/Generate Printable PDF), Import cards (Shared/
+  Memorial JSON/Backup), Support & Diagnostics (Feedback Log/Bug
+  Report Bundle), Merge Review (Inspect Diff/Keep Local/Keep
+  Incoming/Keep Both), Google integration (Connect/Disconnect/
+  Backup/Sheets), DixieData Calendar (Use/Sync/Unsync/Preferences
+  + test variants), Calendar preferences (Close/Cancel/Save
+  Preferences). `share.templ` now has zero raw button class
+  strings. New `ButtonContent` variant added to the Button
+  primitive for buttons with structured markup (bold title +
+  muted description) — the existing string-only `Button` is for
+  simple label buttons. Two `ButtonContent` regression tests
+  cover the children render + type-not-duplicated invariants.
 - Button primitive adopted in `entry_form.templ` at twenty-six
   sites (Fetch Data, Confirm/Cancel delete draft x2, Undo delete,
   Reapply older changes, Delete saved local draft, Add Source

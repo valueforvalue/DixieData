@@ -83,6 +83,28 @@ func buttonTypeAttr(attrs templ.Attributes) string {
 	return s
 }
 
+// ButtonContent renders a <button> with rich children (templ.Component).
+// Use this when the button label needs structured markup — e.g. the
+// share export cards wrap a bold title + muted description in two
+// <span> elements. The kind + class + attribute order matches Button
+// byte-for-byte; only the label is replaced by { children... }.
+//
+// Added in response to the share.templ migration, which surfaced
+// 13 rich-label buttons that the string-only Button can't render.
+templ ButtonContent(kind ButtonKind, extraClass string, attrs templ.Attributes) {
+	<button
+		if buttonTypeAttr(attrs) != "" {
+			type={ buttonTypeAttr(attrs) }
+		} else {
+			type="button"
+		}
+		{ buttonAttrsExcludingType(attrs)... }
+		class={ buttonClass(kind, extraClass) }
+	>
+		{ children... }
+	</button>
+}
+
 // buttonClass returns the legacy class string for the chosen kind,
 // optionally merged with caller-supplied extra classes. Kept in
 // lockstep with frontend/tailwind.css so the snapshot tests stay
