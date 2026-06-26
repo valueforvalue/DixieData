@@ -26,6 +26,12 @@ const (
 // class on every existing call site except form submits). The class
 // string is locked to match the legacy inline form so existing callers
 // swap in with zero visual change.
+//
+// Attribute order matches the legacy inline form: type first, then
+// any caller-supplied attrs (hx-*, data-*, name, value, etc.), then
+// the kind class LAST before the label. This preserves byte-stability
+// for existing snapshot tests that grep for `class="...">Label` as
+// the trailing fragment.
 templ Button(label string, kind ButtonKind, extraClass string, attrs templ.Attributes) {
 	<button
 		if buttonTypeAttr(attrs) != "" {
@@ -33,11 +39,33 @@ templ Button(label string, kind ButtonKind, extraClass string, attrs templ.Attri
 		} else {
 			type="button"
 		}
+		{ buttonAttrsExcludingType(attrs)... }
 		class={ buttonClass(kind, extraClass) }
-		{ attrs... }
 	>
 		{ label }
 	</button>
+}
+
+// buttonAttrsExcludingType returns attrs with the "type" key removed.
+// The primitive owns the type attribute (it controls whether the
+// button is submit/reset/button) so a duplicate type= rendered by
+// the { attrs... } spread would produce invalid HTML like
+// `<button type="submit" ... type="submit">`.
+//
+// Added in response to the soldier_card.templ migration, which
+// surfaced the bug at scale (Export JPG had two type= attributes).
+func buttonAttrsExcludingType(attrs templ.Attributes) templ.Attributes {
+	if attrs == nil {
+		return nil
+	}
+	out := make(templ.Attributes, len(attrs))
+	for k, v := range attrs {
+		if k == "type" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // buttonTypeAttr returns the explicit type from attrs or "" so the

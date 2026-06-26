@@ -114,3 +114,28 @@ func TestButton_UnknownKindFallback(t *testing.T) {
 		t.Fatalf("unknown kind fallback drift:\n got: %q\nwant: %q", got, want)
 	}
 }
+
+// TestButton_TypeNotDuplicatedFromAttrs asserts that passing
+// type="submit" via attrs does NOT produce a duplicate type=
+// attribute in the rendered HTML. The primitive owns the type
+// attribute; the { attrs... } spread must strip it.
+//
+// Regression: discovered during the soldier_card.templ migration
+// (Export JPG rendered as <button type="submit" ... type="submit">).
+func TestButton_TypeNotDuplicatedFromAttrs(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Button("Submit", ButtonPrimary, "", templ.Attributes{
+		"type":    "submit",
+		"name":    "action",
+		"hx-post": "/soldiers",
+	}).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+	if strings.Count(got, "type=") != 1 {
+		t.Fatalf("expected exactly one type= attribute, got %d:\n%s", strings.Count(got, "type="), got)
+	}
+	if !strings.Contains(got, `type="submit"`) {
+		t.Fatalf("missing type=\"submit\":\n%s", got)
+	}
+}

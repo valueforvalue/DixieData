@@ -11,6 +11,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -173,7 +174,10 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 							class="field-input" aria-label="Quick search across the Local Archive"/>
 					</form>
 					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-						<button type="button" hx-get="/soldiers/search?browse=1" hx-target="#soldier-list" class="secondary-button">Browse Alphabetically</button>
+						@components.Button("Browse Alphabetically", components.ButtonSecondary, "", templ.Attributes{
+							"hx-get": "/soldiers/search?browse=1",
+							"hx-target": "#soldier-list",
+						})
 					</div>
 					<p class="text-xs text-slate-500">Quick search matches names, relationship labels, units, ranks, pension states, burial locations, and display IDs.</p>
 				</div>
@@ -288,8 +292,8 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						<input type="text" name="death_date" class="field-input" placeholder="MM/DD/YYYY or 11/00/1886" id="sc-death_date"/>
 					</div>
 					<div class="responsive-span-2 col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-						<button type="submit" class="primary-button">Run Advanced Search</button>
-						<button type="reset" class="ghost-link px-4 py-2">Reset Filters</button>
+						@components.Button("Run Advanced Search", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
+						@components.Button("Reset Filters", components.ButtonGhost, "px-4 py-2", templ.Attributes{"type": "reset"})
 					</div>
 					<p class="responsive-span-2 col-span-2 text-xs text-slate-500">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
 				</form>
@@ -371,8 +375,13 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 									</div>
 									<p class="sm:col-span-2 text-xs leading-5 text-slate-500">Single-record PDF and JPG exports use <strong>PDF excerpt override</strong> when present, otherwise <strong>biography</strong>. Internal notes and scratch pad content stay out of these exports.</p>
 									<div class="sm:col-span-2 flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
-										<button class="primary-button w-full sm:w-auto">Export PDF</button>
-										<button type="submit" hx-post={ fmt.Sprintf("/soldiers/%d/jpg", s.ID) } hx-target="this" hx-swap="none" class="secondary-button w-full sm:w-auto">Export JPG</button>
+										@components.Button("Export PDF", components.ButtonPrimary, "w-full sm:w-auto", nil)
+										@components.Button("Export JPG", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+											"type": "submit",
+											"hx-post": fmt.Sprintf("/soldiers/%d/jpg", s.ID),
+											"hx-target": "this",
+											"hx-swap": "none",
+										})
 									</div>
 								</div>
 							</form>
@@ -528,16 +537,18 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow person record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
 									</label>
 									<div class="flex flex-wrap gap-3">
-										<button type="submit" class="primary-button">
-											if s.NeedsReview {
-												Update Review Note
-											} else {
-												Send to Review Queue
-											}
-										</button>
+										if s.NeedsReview {
+											@components.Button("Update Review Note", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
+										} else {
+											@components.Button("Send to Review Queue", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
+										}
 										if s.NeedsReview {
 											<a href="/review-queue" class="secondary-button">Open Review Queue</a>
-											<button hx-post={ fmt.Sprintf("/soldiers/%d/review/resolve", s.ID) } hx-target="this" hx-swap="none" class="secondary-button" type="button">Mark as Resolved</button>
+											@components.Button("Mark as Resolved", components.ButtonSecondary, "", templ.Attributes{
+												"hx-post": fmt.Sprintf("/soldiers/%d/review/resolve", s.ID),
+												"hx-target": "this",
+												"hx-swap": "none",
+											})
 										}
 									</div>
 								</form>
@@ -591,7 +602,11 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
 					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">
-						<button hx-delete={ fmt.Sprintf("/soldiers/%d", s.ID) } hx-confirm="Delete this Person Record? It will also remove every Source Record attached to it, every image file, the spouse link, the scratch pad, and any research tasks. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover." hx-target="body" class="danger-button">Delete Person Record</button>
+						@components.Button("Delete Person Record", components.ButtonDanger, "", templ.Attributes{
+							"hx-delete": fmt.Sprintf("/soldiers/%d", s.ID),
+							"hx-confirm": "Delete this Person Record? It will also remove every Source Record attached to it, every image file, the spouse link, the scratch pad, and any research tasks. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover.",
+							"hx-target": "body",
+						})
 					</div>
 				</div>
 				if len(s.SourceRecords) > 0 {
@@ -619,10 +634,17 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								Select all images
 							</label>
 							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import", s.ID) } hx-target="#image-download-status" class="primary-button w-full sm:w-auto">Add Images From Computer</button>
+								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+								"hx-post": fmt.Sprintf("/soldiers/%d/images/import", s.ID),
+								"hx-target": "#image-download-status",
+							})
 								if len(s.Images) > 0 {
-									<button type="submit" class="primary-button w-full sm:w-auto">Download Selected Images</button>
-									<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/delete", s.ID) } hx-target="#image-download-status" hx-confirm="Delete the selected image(s)?" class="danger-button w-full sm:w-auto">Delete Selected Images</button>
+									@components.Button("Download Selected Images", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+									@components.Button("Delete Selected Images", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
+										"hx-post": fmt.Sprintf("/soldiers/%d/images/delete", s.ID),
+										"hx-target": "#image-download-status",
+										"hx-confirm": "Delete the selected image(s)?",
+									})
 								}
 							</div>
 						</div>

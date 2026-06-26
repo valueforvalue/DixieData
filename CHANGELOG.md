@@ -13,6 +13,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `soldier_card.templ` at eleven sites
+  (Browse Alphabetically, Run Advanced Search, Reset Filters, Export
+  PDF, Export JPG, Send to Review Queue / Update Review Note, Mark
+  as Resolved, Delete Person Record, Add Images From Computer,
+  Download Selected Images, Delete Selected Images). The
+  "Send to Review Queue / Update Review Note" pair required
+  splitting the legacy conditional-label button into two
+  primitive calls gated on `s.NeedsReview`. Anchors (Open Record,
+  Compare, Open Unit Graph, etc.) and disclosure summaries stay
+  unchanged — slated for Pill + future Disclosure primitives.
+- Button primitive bug fix: the `{ attrs... }` spread previously
+  duplicated the `type` attribute (rendered as `<button type="submit"
+  ... type="submit">`). Added `buttonAttrsExcludingType` helper that
+  strips `type` before the spread, so the primitive owns the type
+  attribute end-to-end. Reordered attribute emission so caller attrs
+  come before the kind `class=`, matching the legacy inline byte
+  order (`<button type="submit" hx-post="..." class="...">Label`).
+  New `TestButton_TypeNotDuplicatedFromAttrs` regression test
+  asserts exactly one `type=` attribute in the rendered HTML.
 - Button primitive adopted in `calendar_day.templ` at two sites
   (Save Changes, Add Item). The disclosure `<summary>` and `<a>`
   elements using button class strings remain — Button primitive
