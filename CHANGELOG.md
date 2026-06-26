@@ -13,6 +13,9 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `research_collections.templ` at two
+  sites (Create Collection, Add Current Person Record). The
+  Compare Person Records anchor is left for the Pill migration.
 - Button primitive adopted in `research_log.templ` at three sites
   (Add Research Task, Add to Research Log, Mark Resolved).
 - Button primitive adopted in `layout.templ` at three sites
