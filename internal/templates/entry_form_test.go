@@ -160,6 +160,12 @@ func TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts(t *testing.T) {
 	}
 
 	content := buf.String()
+	// The Button primitive emits data-* attrs with empty string values
+	// (data-record-add="") while the legacy inline form omitted the
+	// value (data-record-add). Both are semantically equivalent HTML.
+	// Normalize the content to accept both forms.
+	contentNormalized := strings.ReplaceAll(content, `data-record-add=""`, `data-record-add`)
+	contentNormalized = strings.ReplaceAll(contentNormalized, `data-record-remove=""`, `data-record-remove`)
 	for _, needle := range []string{
 		`data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto"`,
 		`data-record-remove class="pill-link w-full justify-center sm:w-auto"`,
@@ -168,7 +174,7 @@ func TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts(t *testing.T) {
 		`class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap"`,
 		`class="ghost-link w-full px-4 py-2 sm:w-auto"`,
 	} {
-		if !strings.Contains(content, needle) {
+		if !strings.Contains(contentNormalized, needle) {
 			t.Fatalf("entry form missing mobile-safe layout fragment %s", needle)
 		}
 	}

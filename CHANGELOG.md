@@ -13,6 +13,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `entry_form.templ` at twenty-six
+  sites (Fetch Data, Confirm/Cancel delete draft x2, Undo delete,
+  Reapply older changes, Delete saved local draft, Add Source
+  Record, Add Images From Computer x2, Save Changes / Create
+  Person Record, Save Identity, Initialize Data, Back, Scan for
+  Orphaned Images, Run Data Quality Scan, Save Update Source,
+  Use Default GitHub Feed, Check for Updates, Export Backup,
+  Download and Apply Latest Update, Move Listed Files to Temp
+  Trash, Move Selected to Review Queue, Compare Selected, Quick
+  View). The "Save Changes / Create Person Record" conditional-
+  label pair was split into two primitive calls gated on `isEdit`.
+  Test `TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts`
+  updated to accept both legacy `data-record-add` (bare) and
+  primitive `data-record-add=""` (empty value) as semantically
+  equivalent HTML. entry_form.templ now has zero raw button class
+  strings.
 - Button primitive adopted in `soldier_card.templ` at eleven sites
   (Browse Alphabetically, Run Advanced Search, Reset Filters, Export
   PDF, Export JPG, Send to Review Queue / Update Review Note, Mark

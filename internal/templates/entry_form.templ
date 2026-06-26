@@ -59,7 +59,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<label class="block text-sm text-slate-500" for="ef-findagrave_source">Find a Grave HTML Source</label>
 						<textarea name="findagrave_source" rows="4" class="field-input min-h-24" placeholder="Paste Find a Grave memorial HTML here" id="ef-findagrave_source">{ scrape.Input }</textarea>
 						<div class="flex flex-wrap items-center gap-3">
-							<button type="submit" class="secondary-button">Fetch Data</button>
+							@components.Button("Fetch Data", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 						</div>
 					</form>
 					if scrape.ErrorMessage != "" {
@@ -143,8 +143,12 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]">
 							<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 							<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-								<button type="button" class="danger-button w-full sm:w-auto" data-confirm-clear-draft="base">Confirm delete</button>
-								<button type="button" class="secondary-button w-full sm:w-auto" data-cancel-clear-draft="base">Cancel</button>
+								@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
+								"data-confirm-clear-draft": "base",
+							})
+								@components.Button("Cancel", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+								"data-cancel-clear-draft": "base",
+							})
 							</div>
 						</div>
 					</div>
@@ -152,7 +156,9 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				<div data-cleared-draft-undo class="mt-4 hidden rounded-2xl border border-emerald-700/30 bg-white/70 p-4 text-sm text-emerald-950">
 					<p>Saved local draft deleted. You can undo that while this tab stays open.</p>
 					<div class="mt-3">
-						<button type="button" class="secondary-button" data-undo-cleared-draft>Undo delete</button>
+						@components.Button("Undo delete", components.ButtonSecondary, "", templ.Attributes{
+							"data-undo-cleared-draft": "",
+						})
 					</div>
 				</div>
 				<div data-record-persistence-preview class="mt-4 hidden rounded-2xl border border-amber-700/30 bg-white/70 p-4">
@@ -160,14 +166,22 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 					<p class="mt-2 text-sm text-amber-950" data-record-persistence-preview-message></p>
 					<ul class="mt-3 space-y-2 text-sm text-amber-950" data-record-persistence-preview-list></ul>
 					<div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-						<button type="button" class="secondary-button hidden" data-reapply-stale-draft>Reapply older saved local changes</button>
-						<button type="button" class="secondary-button hidden" data-clear-draft-trigger="stale">Delete saved local draft</button>
+						@components.Button("Reapply older saved local changes", components.ButtonSecondary, "hidden", templ.Attributes{
+							"data-reapply-stale-draft": "",
+						})
+						@components.Button("Delete saved local draft", components.ButtonSecondary, "hidden", templ.Attributes{
+							"data-clear-draft-trigger": "stale",
+						})
 					</div>
 					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]">
 						<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 						<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-							<button type="button" class="danger-button w-full sm:w-auto" data-confirm-clear-draft="stale">Confirm delete</button>
-							<button type="button" class="secondary-button w-full sm:w-auto" data-cancel-clear-draft="stale">Cancel</button>
+							@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
+								"data-confirm-clear-draft": "stale",
+							})
+							@components.Button("Cancel", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+								"data-cancel-clear-draft": "stale",
+							})
 						</div>
 					</div>
 				</div>
@@ -352,7 +366,9 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
 							<p class="mt-2 text-sm text-slate-600">Attach pension notes, local archive references, and source transcripts that should travel with this person record.</p>
 						</div>
-						<button type="button" data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto">+ Add Source Record</button>
+						@components.Button("+ Add Source Record", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
+							"data-record-add": "",
+						})
 					</div>
 					<details>
 						<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Show / hide source records</summary>
@@ -432,14 +448,20 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									<p>Desktop image uploads use the native file picker.</p>
 									<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
 								</div>
-								<button type="button" hx-post={ fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID) } hx-target="this" hx-swap="none" class="primary-button w-full sm:w-auto">Add Images From Computer</button>
+								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+								"hx-post": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
+								"hx-target": "this",
+								"hx-swap": "none",
+							})
 							</div>
 						} else {
 							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
 									<p>Create the person record first, then use <strong>Add Images From Computer</strong> on the detail page to import one or more images.</p>
 								</div>
-								<button type="button" class="primary-button w-full cursor-not-allowed opacity-60 sm:w-auto" disabled>Add Images From Computer</button>
+								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full cursor-not-allowed opacity-60 sm:w-auto", templ.Attributes{
+								"disabled": "",
+							})
 							</div>
 						}
 					</div>
@@ -449,13 +471,11 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</section>
 			</div>
 			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
-				<button type="submit" class="primary-button w-full sm:w-auto">
-					if isEdit {
-						Save Changes
-					} else {
-						Create Person Record
-					}
-				</button>
+				if isEdit {
+					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+				} else {
+					@components.Button("Create Person Record", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+				}
 				<button
 					type="button"
 					data-history-back
@@ -719,7 +739,7 @@ templ InitialSetupView(form viewmodel.InitialSetupForm) {
 						</div>
 					}
 					<div class="responsive-span-2">
-						<button type="submit" class="primary-button">Save Identity</button>
+						@components.Button("Save Identity", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
 					</div>
 				</form>
 			</div>
@@ -790,8 +810,12 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 						<input type="text" name="confirmation_word" class="field-input" autocomplete="off" spellcheck="false" id="ef-confirmation_word"/>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-						<button type="submit" class="danger-button w-full sm:w-auto">Initialize Data</button>
-						<button type="button" data-history-back data-fallback-href="/calendar" data-fallback-label="Back" class="ghost-link w-full px-4 py-2 sm:w-auto">Back</button>
+						@components.Button("Initialize Data", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+						@components.Button("Back", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
+							"data-history-back": "",
+							"data-fallback-href": "/calendar",
+							"data-fallback-label": "Back",
+						})
 					</div>
 				</form>
 			</div>
@@ -801,7 +825,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
 				</div>
 				<form hx-post="/settings/images/orphans/scan" hx-target="#settings-orphan-results" class="space-y-4">
-					<button type="submit" class="secondary-button w-full sm:w-auto">Scan for Orphaned Images</button>
+					@components.Button("Scan for Orphaned Images", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				</form>
 				<div id="settings-orphan-results" class="space-y-3"></div>
 			</div>
@@ -821,7 +845,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 							<span><strong>Advanced</strong> (broader checks)</span>
 						</label>
 					</div>
-					<button type="submit" class="secondary-button w-full sm:w-auto">Run Data Quality Scan</button>
+					@components.Button("Run Data Quality Scan", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				</form>
 				<div id="settings-quality-results" class="space-y-3"></div>
 			</div>
@@ -865,12 +889,12 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				<input type="url" name="source_url" value={ state.SourceURL } placeholder="Leave blank to use the default GitHub latest release feed" class="field-input" autocomplete="off" spellcheck="false" id="ef-source_url"/>
 			</div>
 			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-				<button type="submit" class="secondary-button w-full sm:w-auto">Save Update Source</button>
+				@components.Button("Save Update Source", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</div>
 		</form>
 		<form hx-post="/settings/updates/source" hx-target="#settings-update-panel" hx-swap="outerHTML">
 			<input type="hidden" name="source_url" value=""/>
-			<button type="submit" class="ghost-link w-full px-4 py-2 text-left sm:w-auto">Use Default GitHub Feed</button>
+			@components.Button("Use Default GitHub Feed", components.ButtonGhost, "w-full px-4 py-2 text-left sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.22)] bg-[rgba(246,241,228,0.72)] px-4 py-3 text-sm text-slate-600">
 			if state.UsingDefaultSource {
@@ -885,14 +909,14 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 		}
 		<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 			<form hx-post="/settings/updates/check" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
-				<button type="submit" class="secondary-button w-full sm:w-auto">Check for Updates</button>
+				@components.Button("Check for Updates", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
 			<form hx-post="/export/backup" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
-				<button type="submit" class="secondary-button w-full sm:w-auto">Export Backup (.ddbak)</button>
+				@components.Button("Export Backup (.ddbak)", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
 			if state.CanApply {
 				<form hx-post="/settings/updates/apply" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
-					<button type="submit" class="primary-button w-full sm:w-auto">Download and Apply Latest Update</button>
+					@components.Button("Download and Apply Latest Update", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				</form>
 			}
 		</div>
@@ -954,7 +978,10 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 					</div>
 				}
 			</div>
-			<button type="submit" class="danger-button" hx-confirm="Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.">Move Listed Files to Temp Trash</button>
+			@components.Button("Move Listed Files to Temp Trash", components.ButtonDanger, "", templ.Attributes{
+					"type": "submit",
+					"hx-confirm": "Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.",
+				})
 		</form>
 	}
 }
@@ -998,7 +1025,10 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 					</div>
 				</details>
 			}
-			<button type="submit" class="primary-button w-full sm:w-auto" hx-confirm="Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.">Move Selected to Review Queue</button>
+			@components.Button("Move Selected to Review Queue", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+				"type": "submit",
+				"hx-confirm": "Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.",
+			})
 		</form>
 	}
 }
@@ -1068,7 +1098,12 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 					<p id="search-compare-selection-status" class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
 					<p id="search-compare-selection-help" data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two person records to compare them side by side. Quick View is the in-list research panel for notes, local archive signals, family links, and counts.</p>
 				</div>
-				<button type="button" data-compare-selected data-compare-group="search-compare" aria-describedby="search-compare-selection-help" class="secondary-button opacity-60 cursor-not-allowed" disabled>Compare Selected</button>
+				@components.Button("Compare Selected", components.ButtonSecondary, "opacity-60 cursor-not-allowed", templ.Attributes{
+				"data-compare-selected": "",
+				"data-compare-group": "search-compare",
+				"aria-describedby": "search-compare-selection-help",
+				"disabled": "",
+			})
 			</div>
 		}
 	if len(soldiers) == 0 {
@@ -1095,7 +1130,10 @@ templ SearchResults(soldiers []viewmodel.PersonRecord, search viewmodel.PersonRe
 						<input type="checkbox" value={ fmt.Sprintf("%d", s.ID) } data-checkbox-group="search-compare" data-compare-select data-compare-label={ s.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 						Compare
 					</label>
-					<button type="button" data-preview-open data-preview-target={ fmt.Sprintf("soldier-preview-%d", s.ID) } class="secondary-button px-3 py-2 text-xs">Quick View</button>
+					@components.Button("Quick View", components.ButtonSecondary, "px-3 py-2 text-xs", templ.Attributes{
+					"data-preview-open": "",
+					"data-preview-target": fmt.Sprintf("soldier-preview-%d", s.ID),
+				})
 				</div>
 				<div class="min-w-0 flex-1">
 					@SoldierCard(s, hasActiveSearch(search))
