@@ -13,6 +13,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Button primitive adopted in `layout.templ` at three sites
+  (feedback modal Close, Cancel, Save Feedback). The two `<a>`
+  anchors ("Add Person Record" in the top nav + floating nav panel)
+  remain — they're anchor-styled-as-button, slated for the Pill
+  primitive migration.
 - Button primitive adopted in `browse.templ` at three sites
   (Apply Filters, Reset Browse, Clear Selection). The Print/Export
   Selected anchor is intentionally left untouched — it's an `<a>`

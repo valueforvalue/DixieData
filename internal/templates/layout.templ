@@ -139,7 +139,9 @@ templ layoutV1(title string) {
 								<h3 id="feedback-modal-heading" class="mt-2 text-xl gold font-bold">Send app feedback</h3>
 								<p class="mt-2 text-sm text-slate-600">Save bugs, workflow pain points, or feature ideas to the local feedback log without leaving your current screen.</p>
 							</div>
-							<button type="button" data-feedback-close class="secondary-button w-full px-4 sm:w-auto">Close</button>
+							@components.Button("Close", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
+								"data-feedback-close": "",
+							})
 						</div>
 						<div class="grid gap-4 sm:grid-cols-2">
 							<label class="block text-sm text-slate-700">
@@ -166,8 +168,10 @@ templ layoutV1(title string) {
 						</label>
 						<p class="text-xs leading-6 text-slate-500">Use Share → Support &amp; Diagnostics to export the feedback log for email attachments.</p>
 						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-							<button type="button" data-feedback-close class="secondary-button w-full sm:w-auto">Cancel</button>
-							<button type="submit" class="primary-button w-full sm:w-auto">Save Feedback</button>
+							@components.Button("Cancel", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+								"data-feedback-close": "",
+							})
+							@components.Button("Save Feedback", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 						</div>
 					</form>
 				</div>
