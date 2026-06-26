@@ -7,7 +7,7 @@
 //     by default; future Syslog/OTLP/HTTP sinks register themselves).
 //   - SetDebugMode: toggle debug mode at runtime; future slog calls
 //     use the new level + mirror to stderr.
-//   - IsDebugMode / LogPath / GetRingBuffer: accessors consumed by the
+//   - IsEnabled / LogPath / GetRingBuffer: accessors consumed by the
 //     appshell layer (handlers, settings, debug console).
 //   - FromContext: per-request logger that decorates every line with
 //     the request_id set by Middleware.
@@ -231,8 +231,8 @@ func SetDebugMode(enabled bool) {
 	currentLevel = handler.level
 }
 
-// IsDebugMode returns the current debug-mode flag.
-func IsDebugMode() bool { return debugMode.Load() }
+// IsEnabled returns the current debug-mode flag.
+func IsEnabled() bool { return debugMode.Load() }
 
 // LogPath returns the configured log file path, or "" if Configure has
 // not run.

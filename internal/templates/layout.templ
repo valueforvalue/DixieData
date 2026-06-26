@@ -4,26 +4,16 @@ import (
 	"fmt"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/uiids"
-	"github.com/valueforvalue/DixieData/internal/uiver"
 )
 
+// Layout is the single shell used across the app. The previous
+// `?ui=v2` dispatch + LayoutV2 variant were dropped: issue #74's
+// component-primitive refactor was abandoned, so v2 had no production
+// users and was dead code.
 templ Layout(title string) {
-	if uiver.IsV2(ctx) {
-		@LayoutV2(title) {
-			{ children... }
-		}
-	} else {
-		@layoutV1(title) {
-			{ children... }
-		}
-	}
-}
-
-// layoutV1 is the existing layout shell. Renamed from Layout so the
-// ?ui=v2 flag can dispatch to LayoutV2 in the wrapper above.
-templ layoutV1(title string) {
 	<!DOCTYPE html>
 	// lang is hard-coded to "en" for now. DixieData may be used by
 	// researchers working with Spanish / French / German Civil War
@@ -179,7 +169,7 @@ templ layoutV1(title string) {
 			</dialog>
 			<footer class="mt-8 text-right text-xs text-slate-600" data-build-identity={ buildinfo.BuildIdentity() }>
 				{ buildinfo.AppLabel() } · Schema v{ fmt.Sprintf("%d", buildinfo.SchemaVersion) } · { buildinfo.BuildIdentity() }
-				if uiver.IsDebugMode(ctx) {
+				if debug.IsDebugMode(ctx) {
 					<button type="button"
 						class="ml-3 rounded bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600"
 						hx-get="/debug/console"
@@ -191,45 +181,6 @@ templ layoutV1(title string) {
 				}
 			</footer>
 		</div>
-	</body>
-	</html>
-}
-
-// LayoutV2 is the v2 dispatch target. It is a passthrough in Phase 0:
-// the body is identical to layoutV1 so ?ui=v2 currently renders the
-// same shell. Phase 1 component primitives (#74) will diverge from
-// layoutV1 here, one primitive per PR.
-templ LayoutV2(title string) {
-	<!DOCTYPE html>
-	<html lang="en" data-ui-version="v2">
-	<head>
-		<meta charset="UTF-8"/>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<title>{ title } - DixieData (v2)</title>
-		<link rel="stylesheet" href="/app.css"/>
-		<script defer src="/debug.js"></script>
-		<script defer src="/htmx.min.js"></script>
-		<script defer src="/app.js"></script>
-	</head>
-	<body class="min-h-screen" data-ui-version="v2">
-		<div class="app-shell">
-			<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-5 py-3">
-				<p class="top-brand-title gold leading-none">DixieData <span class="text-xs text-[#cfb77a]">v2</span></p>
-			</header>
-			<main>
-				{ children... }
-			</main>
-		</div>
-		if uiver.IsDebugMode(ctx) {
-			<button type="button"
-				class="fixed bottom-4 right-4 z-50 rounded bg-amber-500 px-3 py-1 text-xs font-semibold text-white shadow-lg hover:bg-amber-600"
-				hx-get="/debug/console"
-				hx-target="body"
-				hx-swap="beforeend"
-				data-debug-button>
-				🐞 Debug
-			</button>
-		}
 	</body>
 	</html>
 }

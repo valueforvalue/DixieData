@@ -148,8 +148,8 @@ func TestConfigure_DebugModeFromEnv(t *testing.T) {
 	if err := Configure(Config{LogPath: path, RingSize: 5}); err != nil {
 		t.Fatalf("Configure: %v", err)
 	}
-	if !IsDebugMode() {
-		t.Errorf("IsDebugMode() with DIXIEDATA_DEBUG=1 = false, want true")
+	if !IsEnabled() {
+		t.Errorf("IsEnabled() with DIXIEDATA_DEBUG=1 = false, want true")
 	}
 	_ = Close()
 }
@@ -162,15 +162,15 @@ func TestSetDebugMode_TogglesLevel(t *testing.T) {
 	if err := Configure(Config{LogPath: path, RingSize: 5, Debug: false}); err != nil {
 		t.Fatalf("Configure: %v", err)
 	}
-	if IsDebugMode() {
+	if IsEnabled() {
 		t.Fatal("expected IsDebugMode false initially")
 	}
 	SetDebugMode(true)
-	if !IsDebugMode() {
+	if !IsEnabled() {
 		t.Fatal("SetDebugMode(true) did not flip flag")
 	}
 	SetDebugMode(false)
-	if IsDebugMode() {
+	if IsEnabled() {
 		t.Fatal("SetDebugMode(false) did not flip flag")
 	}
 	_ = Close()
