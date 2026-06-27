@@ -2,17 +2,16 @@ package templates
 
 import (
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/htmxattr"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -69,121 +68,47 @@ templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 		</div>
 }
 
-func soldierCardClass(highlighted bool) string {
-	className := "group relative card rounded-2xl p-4 mb-3"
-	if highlighted {
-		className += " border-[rgba(197,171,104,0.92)] bg-[rgba(245,241,230,0.97)] shadow-[0_0_30px_rgba(197,171,104,0.16)] ring-1 ring-[rgba(197,171,104,0.7)]"
-	}
-	return className
-}
-
-func hasActiveSearch(search viewmodel.PersonRecordSearch) bool {
-	if search.Browse {
-		return true
-	}
-	if search.Mode == "advanced" {
-		return len(searchParams(search)) > 0
-	}
-	return strings.TrimSpace(search.Query) != ""
-}
-
-func deathDate(s viewmodel.PersonRecord) string {
-	return dates.DisplayUnknown(s.DeathDate)
-}
-
-func emptyDetail(value string) string {
-	if strings.TrimSpace(value) == "" {
-		return "N/A"
-	}
-	return value
-}
-
-func blankDetail(value string) string {
-	return strings.TrimSpace(value)
-}
-
-func formatAuditTimestamp(value string) string {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return ""
-	}
-	for _, layout := range []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04:05"} {
-		if parsed, err := time.Parse(layout, trimmed); err == nil {
-			return parsed.Local().Format("Jan 2, 2006 3:04 PM")
-		}
-	}
-	return trimmed
-}
-
-func auditHistoryLines(value string) []string {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return nil
-	}
-	parts := []string{}
-	if strings.Contains(trimmed, "\n") {
-		parts = strings.Split(trimmed, "\n")
-	} else {
-		parts = strings.Split(trimmed, ",")
-	}
-	lines := make([]string, 0, len(parts))
-	for _, part := range parts {
-		item := strings.TrimSpace(part)
-		if item == "" {
-			continue
-		}
-		if strings.Contains(item, " changed from ") || strings.HasSuffix(item, ".") {
-			lines = append(lines, item)
-			continue
-		}
-		label := strings.TrimSpace(strings.ReplaceAll(item, "_", " "))
-		if label == "" {
-			continue
-		}
-		lines = append(lines, strings.Title(label)+" updated.")
-	}
-	return lines
-}
-
 templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query string, suggestions viewmodel.PersonRecordFormSuggestions) {
 	@Layout("Soldiers") {
-		<div data-ui-id={ uiids.PageSoldiersList } class="relative">
-			@SurfaceBadge(uiids.PageSoldiersList)
+		<div class="relative">
 			<div class="mb-4">
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<h2 class="text-2xl gold font-bold">Person Records</h2>
 					<a href="/soldiers/new" class="primary-button">+ Add Person Record</a>
 				</div>
 				<div class="mb-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-					<button type="button" data-ui-id={ uiids.TabSoldiersSearchBasic } data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
+					<button type="button" data-tab-group="soldier-search" data-tab-target="basic" data-tab-default="true"
 						class="flex w-full items-center justify-between rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
 						Quick Search
-						@InlineSurfaceBadge(uiids.TabSoldiersSearchBasic)
+						
 					</button>
-					<button type="button" data-ui-id={ uiids.TabSoldiersSearchAdvanced } data-tab-group="soldier-search" data-tab-target="advanced"
+					<button type="button" data-tab-group="soldier-search" data-tab-target="advanced"
 						class="flex w-full items-center justify-between rounded-xl border border-[#8d7440] bg-[rgba(246,241,228,0.92)] px-3 py-2 text-sm font-medium text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto sm:justify-center">
 						Advanced Search
-						@InlineSurfaceBadge(uiids.TabSoldiersSearchAdvanced)
+						
 					</button>
 				</div>
-				<div data-ui-id={ uiids.PanelSoldiersSearchBasic } data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
-					@SurfaceBadge(uiids.PanelSoldiersSearchBasic)
-					<form hx-get="/soldiers/search" hx-target="#soldier-list" hx-trigger="keyup changed delay:300ms from:input[name='q']" hx-sync="this:replace" class="contents">
+				<div data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
+					<form { htmxattr.Mux{
+						Get:     routebuilder.SoldierSearch(false),
+						Target:  "#soldier-list",
+						Trigger: "keyup changed delay:300ms from:input[name='q']",
+					}.Attrs()... } hx-sync="this:replace" class="contents">
 						<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
 							value={ query }
 							class="field-input" aria-label="Quick search across the Local Archive"/>
 					</form>
 					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-						@components.Button("Browse Alphabetically", components.ButtonSecondary, "", templ.Attributes{
-							"hx-get": "/soldiers/search?browse=1",
-							"hx-target": "#soldier-list",
-						})
+						@components.Button("Browse Alphabetically", components.ButtonSecondary, "", htmxattr.Mux{
+							Get:    routebuilder.SoldierSearch(true),
+							Target: "#soldier-list",
+						}.Attrs())
 					</div>
 					<p class="text-xs text-slate-500">Quick search matches names, relationship labels, units, ranks, pension states, burial locations, and display IDs.</p>
 				</div>
-				<form data-ui-id={ uiids.PanelSoldiersSearchAdvanced } data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
-					hx-get="/soldiers/search/advanced" hx-target="#soldier-list">
-					@SurfaceBadge(uiids.PanelSoldiersSearchAdvanced)
+				<form data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
+					hx-get={ templ.SafeURL(routebuilder.SoldierSearchAdvanced()) } hx-target="#soldier-list">
+					
 					<div class="responsive-span-2 col-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
 						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
@@ -306,8 +231,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				@SuggestionDatalist("advanced-buried-in-suggestions", suggestions.BuriedIn)
 				@SuggestionDatalist("advanced-relationship-label-suggestions", suggestions.RelationshipLabel)
 			</div>
-			<div id="soldier-list" data-ui-id={ uiids.PanelSoldiersResults } class="relative">
-				@SurfaceBadge(uiids.PanelSoldiersResults)
+			<div id="soldier-list" class="relative">
 				@SearchResults(soldiers, viewmodel.PersonRecordSearch{Mode: "basic", Query: query}, page, total, 50)
 			</div>
 		</div>
@@ -316,8 +240,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 
 templ SoldierDetail(s viewmodel.PersonRecord) {
 	@Layout(detailHeading(s)) {
-			<div data-ui-id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
-				@SurfaceBadge(uiids.PageSoldierDetail)
+			<div data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				<div class="mb-4 flex flex-wrap gap-3">
 					<button
 						type="button"
@@ -327,8 +250,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 						class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
 					>← { backButtonLabel(s) }</button>
 				</div>
-				<div data-ui-id={ uiids.PanelSoldierDetailSummary } class="relative card rounded-3xl p-5 sm:p-8">
-					@SurfaceBadge(uiids.PanelSoldierDetailSummary)
+				<div class="relative card rounded-3xl p-5 sm:p-8">
 					<div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 						<div>
 							<h2 class="text-2xl font-bold">{ detailHeading(s) }</h2>
@@ -344,7 +266,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								<span>Export Record</span>
 								<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / JPG</span>
 							</summary>
-							<form hx-post={ fmt.Sprintf("/soldiers/%d/pdf", s.ID) } hx-target="this" hx-swap="none" data-pdf-pref-scope="soldier" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
+							<form hx-post={ templ.SafeURL(routebuilder.SoldierPDF(s.ID)) } hx-target="this" hx-swap="none" data-pdf-pref-scope="soldier" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 								<div class="flex items-start justify-between gap-3">
 									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Single Record Export</p>
 									<button type="button" popovertarget="single-record-export-help" class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</button>
@@ -377,7 +299,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 									<div class="sm:col-span-2 flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
 										@components.Button("Export PDF", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 											"type": "submit",
-											"hx-post": fmt.Sprintf("/soldiers/%d/pdf", s.ID),
+											"hx-post": templ.SafeURL(routebuilder.SoldierPDF(s.ID)),
 											"hx-target": "this",
 											"hx-swap": "none",
 										})
@@ -536,7 +458,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								} else {
 									<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this person record for follow-up research or duplicate checking and it will appear in the review queue.</p>
 								}
-								<form hx-post={ fmt.Sprintf("/soldiers/%d/review/flag", s.ID) } hx-target="this" hx-swap="none" class="mt-4 space-y-3">
+								<form hx-post={ templ.SafeURL(routebuilder.SoldierReviewFlag(s.ID)) } hx-target="this" hx-swap="none" class="mt-4 space-y-3">
 									<label class="block text-sm font-medium text-[#6f2c26]">
 										Review Note
 										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow person record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
@@ -615,8 +537,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					</div>
 				</div>
 				if len(s.SourceRecords) > 0 {
-					<section data-ui-id={ uiids.PanelSoldierDetailRecords } class="relative">
-						@SurfaceBadge(uiids.PanelSoldierDetailRecords)
+					<section class="relative">
 						<h3 class="mt-8 text-lg gold font-semibold">Source Records</h3>
 						for _, r := range s.SourceRecords {
 							<div class="card rounded-2xl p-4 mt-3 text-sm">
@@ -629,10 +550,9 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 						}
 					</section>
 				}
-				<section data-ui-id={ uiids.PanelSoldierDetailImages } class="relative">
-					@SurfaceBadge(uiids.PanelSoldierDetailImages)
+				<section class="relative">
 					<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
-					<form hx-post={ fmt.Sprintf("/soldiers/%d/images/download", s.ID) } hx-target="#image-download-status" class="mt-2">
+					<form hx-post={ templ.SafeURL(routebuilder.SoldierImagesDownload(s.ID)) } hx-target="#image-download-status" class="mt-2">
 						<div class="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between">
 							<label class="inline-flex items-center gap-2 font-medium text-slate-700">
 								<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
@@ -665,7 +585,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 											</label>
 											<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
 												<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
-												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } hx-post={ fmt.Sprintf("/soldiers/%d/images/primary/%d", s.ID, img.ID) } hx-target="#image-download-status" hx-swap="none" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
+												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } hx-post={ templ.SafeURL(routebuilder.SoldierImagesPrimary(s.ID, img.ID)) } hx-target="#image-download-status" hx-swap="none" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
 												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
 											</div>
 										</div>
@@ -685,105 +605,6 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 			</div>
 		</div>
 	}
-}
-
-func pageHref(search viewmodel.PersonRecordSearch, page int) templ.SafeURL {
-	return templ.SafeURL(pageRequestURL(search, page))
-}
-
-func pageRequestURL(search viewmodel.PersonRecordSearch, page int) string {
-	params := searchParams(search)
-	params.Set("page", fmt.Sprintf("%d", page))
-	if search.Mode == "advanced" {
-		return "/soldiers/search/advanced?" + params.Encode()
-	}
-	return "/soldiers/search?" + params.Encode()
-}
-
-func searchParams(search viewmodel.PersonRecordSearch) url.Values {
-	values := url.Values{}
-	if search.Mode == "advanced" {
-		if strings.TrimSpace(search.DisplayID) != "" {
-			values.Set("display_id", search.DisplayID)
-		}
-		if strings.TrimSpace(search.EntryType) != "" {
-			values.Set("entry_type", search.EntryType)
-		}
-		if strings.TrimSpace(search.FirstName) != "" {
-			values.Set("first_name", search.FirstName)
-		}
-		if strings.TrimSpace(search.MiddleName) != "" {
-			values.Set("middle_name", search.MiddleName)
-		}
-		if strings.TrimSpace(search.LastName) != "" {
-			values.Set("last_name", search.LastName)
-		}
-		if strings.TrimSpace(search.MaidenName) != "" {
-			values.Set("maiden_name", search.MaidenName)
-		}
-		if strings.TrimSpace(search.Rank) != "" {
-			values.Set("rank", search.Rank)
-		}
-		if strings.TrimSpace(search.RankIn) != "" {
-			values.Set("rank_in", search.RankIn)
-		}
-		if strings.TrimSpace(search.RankOut) != "" {
-			values.Set("rank_out", search.RankOut)
-		}
-		if strings.TrimSpace(search.Unit) != "" {
-			values.Set("unit", search.Unit)
-		}
-		if strings.TrimSpace(search.SourceRecordType) != "" {
-			values.Set("record_type", search.SourceRecordType)
-		}
-		if strings.TrimSpace(search.PensionState) != "" {
-			values.Set("pension_state", search.PensionState)
-		}
-		if strings.TrimSpace(search.ConfederateHomeStatus) != "" {
-			values.Set("confederate_home_status", search.ConfederateHomeStatus)
-		}
-		if strings.TrimSpace(search.ConfederateHomeName) != "" {
-			values.Set("confederate_home_name", search.ConfederateHomeName)
-		}
-		if strings.TrimSpace(search.BuriedIn) != "" {
-			values.Set("buried_in", search.BuriedIn)
-		}
-		if strings.TrimSpace(search.ReviewStatus) != "" {
-			values.Set("review_status", search.ReviewStatus)
-		}
-		if strings.TrimSpace(search.BirthDate) != "" {
-			values.Set("birth_date", search.BirthDate)
-		}
-		if strings.TrimSpace(search.BirthYear) != "" {
-			values.Set("birth_year", search.BirthYear)
-		}
-		if strings.TrimSpace(search.BirthYearTo) != "" {
-			values.Set("birth_year_to", search.BirthYearTo)
-		}
-		if strings.TrimSpace(search.DeathDate) != "" {
-			values.Set("death_date", search.DeathDate)
-		}
-		if strings.TrimSpace(search.DeathYear) != "" {
-			values.Set("death_year", search.DeathYear)
-		}
-		if strings.TrimSpace(search.DeathYearTo) != "" {
-			values.Set("death_year_to", search.DeathYearTo)
-		}
-		if strings.TrimSpace(search.DeathMonth) != "" {
-			values.Set("death_month", search.DeathMonth)
-		}
-		if strings.TrimSpace(search.DeathDay) != "" {
-			values.Set("death_day", search.DeathDay)
-		}
-		return values
-	}
-	if search.Browse {
-		values.Set("browse", "1")
-	}
-	if strings.TrimSpace(search.Query) != "" {
-		values.Set("q", search.Query)
-	}
-	return values
 }
 
 func searchSummary(search viewmodel.PersonRecordSearch) string {

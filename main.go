@@ -4,11 +4,9 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"os"
 
 	"github.com/valueforvalue/DixieData/internal/appshell"
 	"github.com/valueforvalue/DixieData/internal/db"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -18,8 +16,6 @@ import (
 var assets embed.FS
 
 func main() {
-	uiids.EnableFromArgs(os.Args[1:])
-
 	frontendAssets, err := fs.Sub(assets, "frontend")
 	if err != nil {
 		panic(err)

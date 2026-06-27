@@ -2,9 +2,9 @@ package templates
 
 import (
 	"fmt"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 // JobStatusView renders the running-job status page. The page auto-refreshes
@@ -13,8 +13,7 @@ import (
 // includes hx-trigger="none".
 templ JobStatusView(job jobs.Job) {
 	@Layout("Export in progress") {
-		<div data-ui-id={ uiids.PanelJobStatus } class="relative mx-auto max-w-3xl space-y-6">
-			@SurfaceBadge(uiids.PanelJobStatus)
+		<div class="relative mx-auto max-w-3xl space-y-6">
 			<div>
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Background Export</p>
 				<h2 class="mt-2 text-2xl font-bold text-[#22303d]">{ jobLabel(job.Kind) }</h2>
@@ -68,7 +67,7 @@ templ JobStatusFragment(job jobs.Job) {
 		if job.Status == jobs.StatusDone || job.Status == jobs.StatusError || job.Status == jobs.StatusCancelled {
 			hx-trigger="none"
 		} else {
-			hx-get={ templ.SafeURL("/jobs/" + job.ID + "/status") }
+			hx-get={ templ.SafeURL(routebuilder.JobStatus(job.ID)) }
 			hx-trigger="every 2s"
 			hx-swap="outerHTML"
 			hx-target="#job-status-body"

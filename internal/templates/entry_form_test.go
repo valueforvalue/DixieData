@@ -227,25 +227,22 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 		}
 	}
 	for _, needle := range []string{"data-print-config-modal", "overflow-y-auto", "max-h-[calc(100vh-2rem)]", "sm:max-h-[calc(100vh-4rem)]"} {
-		if needle == "data-print-config-modal" && !strings.Contains(content, `data-ui-id="overlay.print-config.modal"`) {
-			t.Fatalf("share view should include the print-config surface inventory id")
-		}
-		for _, needle := range []string{
-			`Export Feedback Log`,
-			`Bug Report Bundle`,
-			`data-print-config-close`,
-			`class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end"`,
-			`data-print-config-submit`,
-			`data-pdf-pref-key="fullBiographyPage"`,
-			`w-full px-4 sm:w-auto`,
-			`w-full sm:w-auto`,
-		} {
-			if !strings.Contains(content, needle) {
-				t.Fatalf("share view missing mobile-safe overlay fragment %s", needle)
-			}
-		}
 		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing responsive printable export modal fragment %s", needle)
+			t.Fatalf("share view missing printable export control %s", needle)
+		}
+	}
+	for _, needle := range []string{
+		`Export Feedback Log`,
+		`Bug Report Bundle`,
+		`data-print-config-close`,
+		`class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end"`,
+		`data-print-config-submit`,
+		`data-pdf-pref-key="fullBiographyPage"`,
+		`w-full px-4 sm:w-auto`,
+		`w-full sm:w-auto`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("share view missing mobile-safe overlay fragment %s", needle)
 		}
 	}
 	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive (.ddshare)") {
@@ -342,8 +339,8 @@ func TestInitialSetupViewHasSurfaceInventoryID(t *testing.T) {
 	}
 
 	content := buf.String()
-	if !strings.Contains(content, `data-ui-id="page.setup"`) {
-		t.Fatalf("initial setup should participate in the surface inventory")
+	if !strings.Contains(content, "First Launch Setup") {
+		t.Fatalf("initial setup should render the page heading")
 	}
 }
 
@@ -356,7 +353,6 @@ func TestSettingsViewShowsResponsiveLayoutControls(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
-		`data-ui-id="panel.settings.layout"`,
 		`data-layout-mode-option="auto"`,
 		`data-layout-mode-option="relaxed"`,
 		`data-layout-mode-option="split-screen"`,

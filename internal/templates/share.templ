@@ -2,95 +2,17 @@ package templates
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 )
-
-const exportFilterUnknownValue = "__unknown__"
-
-func exportRecordOptionLabel(record viewmodel.ExportRecordOption) string {
-	name := strings.TrimSpace(record.DisplayName)
-	if name == "" {
-		name = "Unnamed Record"
-	}
-	entryType := exportRecordOptionEntryTypeLabel(record.EntryType)
-	if entryType == "" {
-		return fmt.Sprintf("%s - %s", strings.TrimSpace(record.DisplayID), name)
-	}
-	return fmt.Sprintf("%s - %s (%s)", strings.TrimSpace(record.DisplayID), name, entryType)
-}
-
-func exportRecordOptionEntryTypeLabel(value string) string {
-	words := strings.Fields(strings.ReplaceAll(strings.TrimSpace(value), "_", " "))
-	for i := range words {
-		if words[i] == "" {
-			continue
-		}
-		words[i] = strings.ToUpper(words[i][:1]) + strings.ToLower(words[i][1:])
-	}
-	return strings.Join(words, " ")
-}
-
-func exportRecordOptionSearchText(record viewmodel.ExportRecordOption) string {
-	return strings.ToLower(strings.TrimSpace(strings.Join([]string{
-		record.DisplayID,
-		record.DisplayName,
-		strings.ReplaceAll(record.EntryType, "_", " "),
-		record.Unit,
-		record.PensionState,
-		record.ConfederateHomeStatus,
-		record.BuriedIn,
-	}, " ")))
-}
-
-func isExportMissingValue(value string) bool {
-	switch strings.ToUpper(strings.TrimSpace(value)) {
-	case "", "N/A", "NA", "NOT RECORDED", "NONE":
-		return true
-	default:
-		return false
-	}
-}
-
-func exportUniqueFilterValues(records []viewmodel.ExportRecordOption, valueFor func(viewmodel.ExportRecordOption) string) []string {
-	seen := map[string]bool{}
-	values := make([]string, 0, len(records))
-	for _, record := range records {
-		value := strings.TrimSpace(valueFor(record))
-		if isExportMissingValue(value) {
-			continue
-		}
-		key := strings.ToLower(value)
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		values = append(values, value)
-	}
-	sort.Slice(values, func(i, j int) bool {
-		return strings.ToLower(values[i]) < strings.ToLower(values[j])
-	})
-	return values
-}
-
-func exportHasUnknownValue(records []viewmodel.ExportRecordOption, valueFor func(viewmodel.ExportRecordOption) string) bool {
-	for _, record := range records {
-		if isExportMissingValue(valueFor(record)) {
-			return true
-		}
-	}
-	return false
-}
 
 templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts) {
 	@Layout("Share") {
-		<div data-ui-id={ uiids.PageExport } class="relative mx-auto max-w-6xl space-y-6">
-			@SurfaceBadge(uiids.PageExport)
+		<div class="relative mx-auto max-w-6xl space-y-6">
 			if counts.TotalRecords() == 0 {
 				@partials.EmptyStateCard("share", counts)
 			}
@@ -98,8 +20,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
 				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
 			</div>
-			<div data-ui-id={ uiids.PanelExportActions } class="responsive-two-col relative grid gap-6">
-				@SurfaceBadge(uiids.PanelExportActions)
+			<div class="responsive-two-col relative grid gap-6">
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Export & Backup</p>
@@ -240,10 +161,10 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</section>
 				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"><p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">Import + export status messages appear here.</p></div>
 			</div>
-			<dialog id="share-print-config-modal" aria-labelledby="share-print-config-modal-heading" data-print-config-modal data-ui-id={ uiids.OverlayPrintConfigModal } class="fixed inset-0 z-[90] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
+			<dialog id="share-print-config-modal" aria-labelledby="share-print-config-modal-heading" data-print-config-modal class="fixed inset-0 z-[90] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
-					@SurfaceBadge(uiids.OverlayPrintConfigModal)
-					<form id="share-print-config-form" hx-post="/export/database-pdf?async=1" hx-on::after-request="if(event.detail.xhr.status === 303){window.location = event.detail.xhr.getResponseHeader('Location')}" data-pdf-pref-scope="archive" data-async-job-redirect="true" class="space-y-6">
+					
+					<form id="share-print-config-form" hx-post={ templ.SafeURL(routebuilder.ExportDatabasePDFAsync()) } hx-on::after-request="if(event.detail.xhr.status === 303){window.location = event.detail.xhr.getResponseHeader('Location')}" data-pdf-pref-scope="archive" data-async-job-redirect="true" class="space-y-6">
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
@@ -561,8 +482,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					}
 				</div>
 			}
-			<div data-ui-id={ uiids.PanelExportGoogle } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				@SurfaceBadge(uiids.PanelExportGoogle)
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Google Integration</h3>
 					<p class="mt-2 text-sm text-slate-500">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
@@ -690,7 +610,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>
 			</div>
-			<dialog id="google-calendar-preferences-modal" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal data-ui-id={ uiids.OverlayGoogleCalendarPrefs } class="fixed inset-0 z-[95] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
+			<dialog id="google-calendar-preferences-modal" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal class="fixed inset-0 z-[95] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
 					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 						<div>
@@ -702,7 +622,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						"data-google-calendar-preferences-close": "",
 					})
 					</div>
-					<form class="mt-6 space-y-5" hx-post="/integrations/google/calendar/preferences/save" hx-target="this" hx-swap="none">
+					<form class="mt-6 space-y-5" hx-post={ templ.SafeURL(routebuilder.GoogleCalendarPreferencesSave()) } hx-target="this" hx-swap="none">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-3">
 							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Title format</p>
 							<label class="flex items-start gap-3 text-sm text-slate-700">
@@ -775,33 +695,4 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 	}
 }
 
-// mergeReviewConfirmMessage returns the browser confirm prompt for a
-// merge-review decision. Names the action and the cascading effect so a
-// user cannot dismiss the prompt without understanding which Person Record
-// survives and which is dropped.
-func mergeReviewConfirmMessage(action string, conflict viewmodel.MergeReviewConflict) string {
-	localID := conflict.LocalDisplayID
-	if strings.TrimSpace(localID) == "" {
-		if conflict.LocalRecord != nil {
-			localID = conflict.LocalRecord.DisplayID
-		} else {
-			localID = "(empty)"
-		}
-	}
-	incomingID := strings.TrimSpace(conflict.IncomingDisplayID)
-	if incomingID == "" {
-		incomingID = strings.TrimSpace(conflict.IncomingRecord.DisplayID)
-	}
-	if incomingID == "" {
-		incomingID = "(empty)"
-	}
-	switch action {
-	case "Keep Local":
-		return fmt.Sprintf("Keep Local: keep '%s' and drop '%s'? The incoming Person Record will not be added.", localID, incomingID)
-	case "Keep Incoming":
-		return fmt.Sprintf("Keep Incoming: drop '%s' and replace with '%s'? The local Person Record will be overwritten (Source Records, images, and scratch pad remain).", localID, incomingID)
-	case "Keep Both":
-		return fmt.Sprintf("Keep Both: keep '%s' and import '%s' under a new unique Display ID? Both Person Records will be in your Local Archive after this.", localID, incomingID)
-	}
-	return fmt.Sprintf("Confirm %s for conflict between '%s' and '%s'?", action, localID, incomingID)
-}
+

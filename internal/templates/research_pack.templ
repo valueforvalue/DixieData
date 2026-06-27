@@ -3,14 +3,12 @@ package templates
 import (
 	"fmt"
 
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ResearchPackView(pack viewmodel.ResearchPack) {
 	@Layout("Research Pack") {
-		<div data-ui-id={ uiids.PageResearchPack } class="relative mx-auto max-w-6xl">
-			@SurfaceBadge(uiids.PageResearchPack)
+		<div class="relative mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
 					type="button"
