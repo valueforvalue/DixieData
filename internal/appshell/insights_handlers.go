@@ -7,11 +7,13 @@
 package appshell
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 )
@@ -134,13 +136,22 @@ func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	result, err := a.audit.RunDuplicateAudit()
-	if err != nil {
-		setToastHeaderWithType(w, "Duplicate audit failed.", "error")
-		respondInternal(w, r, "Duplicate audit failed.", err)
-		return
-	}
-	message := fmt.Sprintf("Success: scanned %d records and found %d candidate duplicate pairs (%d suppressed by prior resolutions).", result.ScannedRecords, result.FindingsDiscovered, result.FindingsSuppressed)
-	setToastHeader(w, message)
-	fmt.Fprintf(w, `<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">Scanned <strong>%d</strong> records. <strong>%d</strong> candidate duplicate pairs remain open in the Review Queue.</div>`, result.ScannedRecords, result.OpenFindings)
+
+	// Defer the audit to a background job so the user sees real
+	// progress. The audit can scan hundreds of records; the prior
+	// inline path blocked the request goroutine for the duration.
+	var jobID string
+	jobID = a.jobs.Start("duplicate_audit", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(10, "Scanning archive for duplicates")
+		result, err := a.audit.RunDuplicateAudit()
+		if err != nil {
+			return err
+		}
+		p.Set(100, fmt.Sprintf("Scanned %d records, %d candidate pairs (%d suppressed).", result.ScannedRecords, result.FindingsDiscovered, result.FindingsSuppressed))
+		_ = jobID
+		return nil
+	})
+	setToastHeader(w, "Duplicate audit started\u2026")
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }

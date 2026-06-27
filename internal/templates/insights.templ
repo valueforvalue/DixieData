@@ -122,7 +122,6 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 						@components.Button("Audit Now", components.ButtonPrimary, "", templ.Attributes{
 							"hx-post": "/insights/audit/duplicates",
 							"hx-target": "#insights-audit-status",
-							"data-progress-label": "Scanning archive for duplicates...",
 						})
 					</div>
 				</section>

@@ -11,11 +11,13 @@
 package appshell
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 )
 
@@ -106,13 +108,20 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 			relativePaths = append(relativePaths, trimmed)
 		}
 	}
-	moved, trashRoot, err := a.images.MoveOrphansToTrash(a.dataDir, relativePaths)
-	if err != nil {
-		respondInternal(w, r, "Could not move the selected image orphans to temp trash.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Moved %d orphaned image(s) into temp trash for 30-day retention.", moved))
-	presentation.SettingsOrphanCleanupResult(moved, trashRoot).Render(r.Context(), w)
+	var jobID string
+	jobID = a.jobs.Start("image_orphan_cleanup", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(20, fmt.Sprintf("Moving %d orphan(s) to trash", len(relativePaths)))
+		moved, trashRoot, err := a.images.MoveOrphansToTrash(a.dataDir, relativePaths)
+		if err != nil {
+			return err
+		}
+		p.Set(100, fmt.Sprintf("Moved %d image(s) into temp trash.", moved))
+		_ = trashRoot
+		return nil
+	})
+	setToastHeader(w, "Orphan cleanup started\u2026")
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
