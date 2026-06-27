@@ -92,7 +92,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					<form { htmxattr.Mux{
 						Get:     routebuilder.SoldierSearch(false),
 						Target:  "#soldier-list",
-						Trigger: "keyup changed delay:300ms from:input[name='q']",
+						Trigger: "input changed delay:300ms from:input[name='q']",
 					}.Attrs()... } hx-sync="this:replace" class="contents">
 						<input type="text" placeholder="Search by name, unit, rank, pension state, display ID, or burial place..." name="q"
 							value={ query }
