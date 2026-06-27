@@ -27,6 +27,26 @@ func (a *App) handleLegacyExportRedirect(w http.ResponseWriter, r *http.Request)
 
 
 // --- main export handlers (JSON, InsightsPDF, CSV, iCal, StaticArchive, DatabasePDF, Backup, SharedArchive, BugReport) ---
+
+// enqueueExport starts a background export job and writes a 303
+// redirect to /jobs/{id}. Used by every export handler that wraps
+// long-running work. Mirrors the shape of enqueueStaticArchive /
+// enqueueDatabasePDF (which predate this helper).
+func (a *App) enqueueExport(kind string, work func(p *jobs.Progress) error, path string, w http.ResponseWriter) {
+	var jobID string
+	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(5, "Preparing")
+		err := work(p)
+		if err == nil && path != "" {
+			a.jobs.SetResultPath(jobID, path)
+			p.Set(100, "Done")
+		}
+		return err
+	})
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
+}
+
 func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -42,11 +62,10 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
-	if err := a.export.ExportJSON(path); err != nil {
-		respondInternal(w, r, "Could not write the JSON export.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("JSON saved to %s", path))
+	a.enqueueExport("json_export", func(p *jobs.Progress) error {
+		p.Set(20, "Writing JSON")
+		return a.export.ExportJSON(path)
+	}, path, w)
 }
 
 func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
@@ -74,11 +93,10 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Analytics export cancelled.")
 		return
 	}
-	if err := a.export.ExportAnalyticsSummaryPDF(path, snapshot, options); err != nil {
-		respondInternal(w, r, "Could not write the insights PDF.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Analytics PDF saved to %s", path))
+	a.enqueueExport("insights_pdf", func(p *jobs.Progress) error {
+		p.Set(20, "Rendering analytics PDF")
+		return a.export.ExportAnalyticsSummaryPDF(path, snapshot, options)
+	}, path, w)
 }
 
 func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
@@ -96,11 +114,10 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
-	if err := a.export.ExportExcel(path); err != nil {
-		respondInternal(w, r, "Could not write the Excel workbook.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Excel workbook saved to %s", path))
+	a.enqueueExport("excel_export", func(p *jobs.Progress) error {
+		p.Set(20, "Building workbook")
+		return a.export.ExportExcel(path)
+	}, path, w)
 }
 
 func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
@@ -123,11 +140,10 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load Google Calendar preferences.", err)
 		return
 	}
-	if err := a.export.ExportICalendar(path, preferences); err != nil {
-		respondInternal(w, r, "Could not write the iCalendar file.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("iCalendar saved to %s", path))
+	a.enqueueExport("icalendar_export", func(p *jobs.Progress) error {
+		p.Set(20, "Building iCalendar file")
+		return a.export.ExportICalendar(path, preferences)
+	}, path, w)
 }
 
 func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) {
@@ -150,34 +166,19 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		respondError(w, r, KindValidation, "Static web archive export cancelled.", nil)
 		return
 	}
-	if r.URL.Query().Get("async") == "1" {
-		a.enqueueStaticArchive(path, w)
-		return
-	}
-	if err := a.export.ExportStaticArchive(path, a.dataDir); err != nil {
-		respondInternal(w, r, "Could not write the static web archive.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Static web archive saved to %s", path))
+	// Always enqueue — static archive export is heavy and the user
+	// benefits from the persistent progress slot regardless of which
+	// page they navigate to while it runs.
+	a.enqueueExport("static_archive", func(p *jobs.Progress) error {
+		p.Set(5, "Gathering images")
+		return a.export.ExportStaticArchive(path, a.dataDir)
+	}, path, w)
 }
 
-// enqueueStaticArchive kicks off a background Static Archive export and
-// responds with a 302 to the /jobs/{id} status page. Workers use the
-// registry's cooperative cancellation to honour user clicks.
-func (a *App) enqueueStaticArchive(path string, w http.ResponseWriter) {
-	var jobID string
-	jobID = a.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
-		p.Set(5, "Gathering images")
-		err := a.export.ExportStaticArchive(path, a.dataDir)
-		if err == nil {
-			a.jobs.SetResultPath(jobID, path)
-		}
-		p.Set(100, "Done")
-		return err
-	})
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
-}
+// enqueueStaticArchive was removed in phase 4 of the feedback /
+// progress redesign: the unified enqueueExport helper handles all
+// background exports and the static-archive export always uses it
+// now (no more synchronous fallback path).
 
 func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -194,32 +195,11 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Printable PDF export cancelled.", err)
 		return
 	}
-	if r.URL.Query().Get("async") == "1" {
-		a.enqueueDatabasePDF(path, settings, w)
-		return
-	}
-	if err := a.export.ExportFullDatabasePDF(path, settings); err != nil {
-		respondInternal(w, r, "Could not write the printable PDF.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Printable PDF saved to %s", path))
-}
-
-// enqueueDatabasePDF kicks off a background Printable Archive PDF export
-// and responds with a 302 to the /jobs/{id} status page.
-func (a *App) enqueueDatabasePDF(path string, settings archive.PrintSettings, w http.ResponseWriter) {
-	var jobID string
-	jobID = a.jobs.Start("database_pdf", func(ctx context.Context, p *jobs.Progress) error {
+	// Always enqueue — printable PDF is heavy.
+	a.enqueueExport("database_pdf", func(p *jobs.Progress) error {
 		p.Set(5, "Building archive")
-		err := a.export.ExportFullDatabasePDF(path, settings)
-		if err == nil {
-			a.jobs.SetResultPath(jobID, path)
-		}
-		p.Set(100, "Done")
-		return err
-	})
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+		return a.export.ExportFullDatabasePDF(path, settings)
+	}, path, w)
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
@@ -311,12 +291,14 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifest, err := a.backup.Export(path, a.dataDir)
-	if err != nil {
-		respondInternal(w, r, "Could not write the backup archive.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Backup saved to %s (%d soldiers, %d images)", path, manifest.Soldiers, manifest.Images))
+	a.enqueueExport("backup_archive", func(p *jobs.Progress) error {
+		p.Set(10, "Gathering archive data")
+		_, err := a.backup.Export(path, a.dataDir)
+		if err == nil {
+			p.Set(80, "Compressing backup")
+		}
+		return err
+	}, path, w)
 }
 
 func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) {
@@ -336,12 +318,11 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	manifest, err := a.backup.ExportShared(path, a.dataDir)
-	if err != nil {
-		respondInternal(w, r, "Could not write the shared archive.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Shared archive saved to %s (%d soldiers, %d images)", path, manifest.Soldiers, manifest.Images))
+	a.enqueueExport("shared_archive", func(p *jobs.Progress) error {
+		p.Set(10, "Building shared archive")
+		_, err := a.backup.ExportShared(path, a.dataDir)
+		return err
+	}, path, w)
 }
 
 func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
@@ -361,10 +342,9 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifest, err := a.diagnostics.Export(path, a.dataDir)
-	if err != nil {
-		respondInternal(w, r, "Could not write the bug report bundle.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Bug report bundle saved to %s (%d soldiers, %d images, %d scratch pads)", path, manifest.Soldiers, manifest.Images, manifest.Scratchpads))
+	a.enqueueExport("bug_report", func(p *jobs.Progress) error {
+		p.Set(10, "Collecting diagnostics")
+		_, err := a.diagnostics.Export(path, a.dataDir)
+		return err
+	}, path, w)
 }
