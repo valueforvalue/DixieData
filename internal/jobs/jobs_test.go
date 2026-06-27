@@ -409,3 +409,50 @@ func TestMostRecentActiveIgnoresTerminalJobs(t *testing.T) {
 		t.Fatalf("MostRecentActive after terminal job = %s, want nil", got.ID)
 	}
 }
+func TestNewJobConstructsWithGivenIDAndKind(t *testing.T) {
+	j := NewJob("job-123", "export_pdf")
+	if j == nil {
+		t.Fatal("NewJob returned nil")
+	}
+	if j.ID != "job-123" {
+		t.Errorf("ID = %q, want job-123", j.ID)
+	}
+	if j.Kind != "export_pdf" {
+		t.Errorf("Kind = %q, want export_pdf", j.Kind)
+	}
+	if j.Status != "" {
+		t.Errorf("Status should default to empty, got %q", j.Status)
+	}
+	if j.Progress != 0 {
+		t.Errorf("Progress should default to 0, got %d", j.Progress)
+	}
+}
+
+func TestNewJobIsSafeForConcurrentRead(t *testing.T) {
+	j := NewJob("job-concurrent", "export_pdf")
+	// Snapshot acquires the mutex; this would deadlock if NewJob
+	// left the mutex in a broken state.
+	done := make(chan struct{})
+	go func() {
+		_ = j.Snapshot()
+		close(done)
+	}()
+	select {
+	case <-done:
+		// OK
+	case <-time.After(time.Second):
+		t.Fatal("Snapshot deadlocked; NewJob left mutex in bad state")
+	}
+}
+
+func TestNewJobEmptyIDAndKind(t *testing.T) {
+	// NewJob should accept empty strings without panicking. Some
+	// callers (template render with missing data) may pass blanks.
+	j := NewJob("", "")
+	if j == nil {
+		t.Fatal("NewJob returned nil for empty inputs")
+	}
+	if j.ID != "" || j.Kind != "" {
+		t.Errorf("expected empty ID/Kind, got ID=%q Kind=%q", j.ID, j.Kind)
+	}
+}
