@@ -1,0 +1,45 @@
+// Subcomponents of the entry form that were extracted from
+// entry_form.templ during the Stabilization Sprint PR #4 to reduce
+// the largest template's size. They live in their own file because
+// the entry form body (in entry_form.templ) is one big section, but
+// the row layout and the datalist helpers are reused in enough
+// places that a single-file home keeps the markup findable.
+//
+// Splitting strategy: every file in internal/templates/ is part of
+// the same `templates` Go package, so `templ` symbols are
+// cross-referenceable without imports. Adding a new file here is
+// additive; removing one is a multi-file move.
+package templates
+
+import "github.com/valueforvalue/DixieData/internal/viewmodel"
+
+templ RecordInputRow(record viewmodel.SourceRecord) {
+	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
+		<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Source Record Entry</span>
+			<button type="button" data-record-remove class="pill-link w-full justify-center sm:w-auto">Remove</button>
+		</div>
+		<div class="responsive-two-col grid gap-4">
+			<div>
+				<label class="mb-1 block text-sm text-slate-500" for="ef-record_type">Source Record Type</label>
+				<input type="text" name="record_type" value={ record.SourceRecordType } list="record-type-suggestions" class="field-input" id="ef-record_type"/>
+			</div>
+			<div>
+				<label class="mb-1 block text-sm text-slate-500" for="ef-record_app_id">App / Source Record Number</label>
+				<input type="text" name="record_app_id" value={ record.AppID } class="field-input" id="ef-record_app_id"/>
+			</div>
+			<div class="responsive-span-2 col-span-2">
+				<label class="mb-1 block text-sm text-slate-500" for="ef-record_details">Details</label>
+				<textarea name="record_details" rows="3" class="field-input min-h-24" id="ef-record_details">{ record.Details }</textarea>
+			</div>
+		</div>
+	</div>
+}
+
+templ SuggestionDatalist(id string, values []string) {
+	<datalist id={ id }>
+		for _, value := range values {
+			<option value={ value }></option>
+		}
+	</datalist>
+}
