@@ -3816,6 +3816,14 @@
       }
       if (form instanceof HTMLFormElement) {
         saveBrowseState(currentBrowseStateFromForm(form));
+        // The browse filters form has hx-get / hx-target on the <form>
+        // element but does not declare hx-trigger="change" on the
+        // inputs. The change handler above resets paging + persists
+        // state; we now also tell htmx to fire the form so the
+        // results panel actually refreshes.
+        if (typeof window.htmx !== "undefined" && typeof window.htmx.trigger === "function") {
+          window.htmx.trigger(form, "change");
+        }
       }
       return;
     }
