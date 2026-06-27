@@ -64,3 +64,32 @@ func TestBrowserOpenURLMalformedReturnsParseErrorNotFrontendSentinel(t *testing.
 	}
 }
 
+func TestOpenMultipleFilesDialogOverrideTakesPrecedenceOverGuard(t *testing.T) {
+	// Phase-0 prerequisite for the image-import migration: the new
+	// test hook must intercept the multi-file dialog BEFORE the
+	// frontend guard fires so httptest can inject paths without a
+	// Wails runtime.
+	app := NewApp()
+	want := []string{"/tmp/a.png", "/tmp/b.jpg"}
+	app.SetOpenMultipleFilesDialogOverride(func(opts any) ([]string, error) {
+		return want, nil
+	})
+	got, err := app.OpenMultipleFilesDialog(wailsruntime.OpenDialogOptions{})
+	if err != nil {
+		t.Fatalf("OpenMultipleFilesDialog via override: got %v want nil", err)
+	}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("OpenMultipleFilesDialog via override: got %v want %v", got, want)
+	}
+}
+
+func TestOpenMultipleFilesDialogWithoutOverrideStillReturnsFrontendSentinel(t *testing.T) {
+	// Regression guard: without an override installed, the
+	// multi-file dialog must still reject ctx-less calls so the
+	// web-mode binary never panics through wailsruntime.
+	app := NewApp()
+	if _, err := app.OpenMultipleFilesDialog(wailsruntime.OpenDialogOptions{}); !errors.Is(err, errWailsFrontendUnavailable) {
+		t.Fatalf("OpenMultipleFilesDialog without override: got %v want errWailsFrontendUnavailable", err)
+	}
+}
+
