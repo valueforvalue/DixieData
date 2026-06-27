@@ -13,6 +13,72 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Persistent progress slot in the layout: a top-center progress bar
+  (below the toast region) that polls `/jobs/active` every 3s and
+  shows real progress for whatever background task the user kicked
+  off most recently. The slot stays visible across page navigation
+  so a user who starts an export from `/share` and navigates to
+  `/soldiers` still sees the progress bar at the top of the page.
+  Implemented as `JobStatusSlotFragment` in
+  `internal/templates/job_slot_fragment.templ`.
+- Toast kinds now have distinct CSS: success = warm cream + gold
+  border (existing), error = warm red (existing), warning = amber
+  (new), info = blue (new). `showToast()` in `frontend/app.js`
+  switched to a header label matrix (Success/Heads up/Warning/
+  Attention) and auto-dismisses `success` and `info` toasts after
+  4 seconds. `error` and `warning` toasts remain manual-dismiss
+  per the Issue #54 decision.
+- Jobs registry hardening: `Registry.Shutdown(ctx)` cancels every
+  running/queued job and waits on a new `workerWG` for worker
+  goroutines to drain. Wired into `lifecycle.go` shutdown sequence
+  before `database.Close()`, bounded by a 5s deadline. Prevents
+  file-handle leaks on app exit (same family as the WJ-2 fix in
+  `271149a`).
+- New `openMultipleFilesDialogOverride` test hook on `*App`,
+  mirroring the existing `openFileDialogOverride`. Required by the
+  image-import migration so httptest can inject file paths.
+- Migrated the following long-running handlers to the jobs registry
+  (each now reports real progress via the persistent slot):
+  JSON export, InsightsPDF export, Excel export, iCalendar export,
+  Static web archive export, Printable database PDF export, Backup
+  archive export, Shared archive export, Bug report bundle
+  export, soldier PDF export (with and without images), soldier
+  JPG export, monthly anniversary PDF export, image import on
+  soldier detail and edit pages, shared archive import, memorial
+  JSON import, duplicate audit, image orphan cleanup, review queue
+  bulk-resolve and bulk-delete, Google Drive backup upload, Google
+  Sheets export.
+- Repaired the `JobStatusFragment` htmx polling: added the missing
+  `hx-trigger="every 2s"` attribute so the `/jobs/{id}` page
+  actually polls (previously the comment claimed 2s but no trigger
+  was set, so htmx used the default `natural` trigger and never
+  fired).
+- Removed the unused SSE endpoint `/jobs/{id}/stream` and its
+  handler (`streamJobProgress`, `writeJobEvent`,
+  `isTerminalJobStatus`). No JS consumer in `app.js` opened an
+  `EventSource` on the endpoint.
+
+### Changed
+
+- `data-progress-label` indeterminate spinner retained only on
+  intentional carve-outs: image-import buttons (open native
+  file picker), update-apply and recovery buttons (call
+  `a.Quit()` 750ms after responding, cannot use the 303
+  redirect pattern), and the six Google Calendar interaction
+  buttons (OAuth popup, calendar picker UI).
+
+### Fixed
+
+- Broken `JobStatusFragment` htmx polling — added the missing
+  `hx-trigger` so the fragment actually re-fetches every 2s.
+
+### Removed
+
+- `/jobs/{id}/stream` route + `streamJobProgress`/`writeJobEvent`/
+  `isTerminalJobStatus` handlers (dead code, no consumers).
+- `enqueueStaticArchive` and `enqueueDatabasePDF` (replaced by
+  the unified `enqueueExport` helper).
+
 - Button primitive adopted in `calendar.templ` (Export Month PDF)
   and `jobs.templ` (Cancel x2) — these three sites were missed by
   the original grep pass that scoped to `class="primary-button"`
