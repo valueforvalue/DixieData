@@ -5,14 +5,13 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 	@Layout("Research Collections") {
-		<div data-ui-id={ uiids.PageResearchCollectionsHub } class="relative mx-auto max-w-6xl space-y-5">
-			@SurfaceBadge(uiids.PageResearchCollectionsHub)
+		<div class="relative mx-auto max-w-6xl space-y-5">
 			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Named Research Collections</h2>
@@ -37,7 +36,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 			}
 			<section class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
 				<h3 class="text-lg font-semibold text-slate-900">Create Collection</h3>
-				<form hx-post="/research-collections" class="mt-4 grid gap-4 md:grid-cols-2">
+				<form hx-post={ templ.SafeURL(routebuilder.ResearchCollectionsCreate()) } class="mt-4 grid gap-4 md:grid-cols-2">
 					if hub.CurrentPersonRecord != nil {
 						<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 					}
@@ -85,7 +84,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 								<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 									<a href={ researchCollectionDetailHref(collection.ID, hub.CurrentPersonRecord) } class="pill-link w-full sm:w-auto">Open Collection</a>
 									if hub.CurrentPersonRecord != nil && !collection.ContainsCurrent {
-										<form hx-post={ fmt.Sprintf("/research-collections/%d/add", collection.ID) }>
+										<form hx-post={ templ.SafeURL(routebuilder.ResearchCollectionAdd(collection.ID)) }>
 											<input type="hidden" name="soldier_id" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 											<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 											@components.Button("Add Current Person Record", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
@@ -103,8 +102,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 
 templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 	@Layout("Research Collection") {
-		<div data-ui-id={ uiids.PageResearchCollection } class="relative mx-auto max-w-6xl space-y-5">
-			@SurfaceBadge(uiids.PageResearchCollection)
+		<div class="relative mx-auto max-w-6xl space-y-5">
 			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
 					type="button"

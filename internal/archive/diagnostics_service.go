@@ -132,8 +132,7 @@ func (d *DiagnosticsService) buildManifest(dataDir string) (DiagnosticsManifest,
 		Executable:            executable,
 		DataDir:               dataDir,
 		Environment: map[string]string{
-			"DIXIEDATA_DATA_DIR":     os.Getenv("DIXIEDATA_DATA_DIR"),
-			"DIXIEDATA_DEBUG_UI_IDS": os.Getenv("DIXIEDATA_DEBUG_UI_IDS"),
+			"DIXIEDATA_DATA_DIR": os.Getenv("DIXIEDATA_DATA_DIR"),
 		},
 	}, nil
 }

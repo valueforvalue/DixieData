@@ -5,16 +5,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts viewmodel.ArchiveCounts, quote viewmodel.Quote) {
 	@Layout("Calendar") {
-		<div data-ui-id={ uiids.PageCalendar } class="relative">
-			@SurfaceBadge(uiids.PageCalendar)
+		<div class="relative">
 			<div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="gold text-5xl leading-none">Calendar</h2>
@@ -48,7 +47,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 							<span>Export Month</span>
 							<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / Print</span>
 						</summary>
-						<form hx-post={ fmt.Sprintf("/calendar/%d/report/pdf", month) } hx-target="this" hx-swap="none" data-pdf-pref-scope="calendar" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
+						<form hx-post={ templ.SafeURL(routebuilder.CalendarReportPDF(month)) } hx-target="this" hx-swap="none" data-pdf-pref-scope="calendar" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Monthly Calendar Export</p>
 							<p class="mt-2 text-sm text-slate-600">Generate a printable PDF for the selected month.</p>
 							<div class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -75,8 +74,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 					</details>
 				</div>
 			</div>
-			<div data-ui-id={ uiids.PanelCalendarQuote } class="relative mb-6 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_16px_34px_rgba(21,29,38,0.18)]">
-				@SurfaceBadge(uiids.PanelCalendarQuote)
+			<div class="relative mb-6 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-6 py-5 shadow-[0_16px_34px_rgba(21,29,38,0.18)]">
 				<p class="text-xs font-semibold uppercase tracking-[0.28em] text-[#cfb77a]">Rotating Local Archive Quote</p>
 				<blockquote class="mt-3 max-w-4xl text-2xl leading-relaxed text-[#f2ede1]">"{ quote.Text }"</blockquote>
 				<p class="mt-3 text-base font-semibold text-[#cfb77a]">{ quote.Author }</p>
@@ -90,8 +88,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 					@partials.EmptyStateCard("calendar", counts)
 				}
 				@CalendarGrid(month, calendar)
-				<div id="details-pane" data-ui-id={ uiids.PanelCalendarDetails } class="relative card min-h-[300px] rounded-2xl p-6">
-					@SurfaceBadge(uiids.PanelCalendarDetails)
+				<div id="details-pane" class="relative card min-h-[300px] rounded-2xl p-6">
 					<h3 class="gold text-4xl leading-none">Select a day</h3>
 					<p class="mt-6 max-w-sm text-xl leading-relaxed text-[#445260]">Click any day to add holidays or events and review matching anniversaries.</p>
 				</div>
@@ -101,8 +98,7 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 }
 
 templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
-	<div id="calendar-grid-panel" data-ui-id={ uiids.PanelCalendarGrid } class="relative card overflow-hidden rounded-2xl">
-		@SurfaceBadge(uiids.PanelCalendarGrid)
+	<div id="calendar-grid-panel" class="relative card overflow-hidden rounded-2xl">
 		<div class="flex items-center justify-between border-b border-[#8d7440] bg-[rgba(36,48,61,0.08)] px-5 py-4">
 			<div>
 				<h3 class="gold text-4xl leading-none">{ monthName(month) }</h3>
@@ -127,7 +123,7 @@ templ CalendarGrid(month int, calendar map[int]viewmodel.CalendarDaySummary) {
 					<button
 						type="button"
 						class={ calendarDayClass(month, day) }
-						hx-get={ fmt.Sprintf("/anniversary/%d/%d", month, day) }
+						hx-get={ templ.SafeURL(routebuilder.Anniversary(month, day)) }
 						hx-target="#details-pane"
 						hx-swap="innerHTML"
 						aria-label={ calendarDayAriaLabel(month, day, calendar[day]) }

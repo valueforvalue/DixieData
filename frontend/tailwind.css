@@ -184,39 +184,6 @@
     opacity: 0.72;
     pointer-events: none;
   }
-  [data-debug-ui-ids="true"] [data-ui-id] {
-    outline: 1px dashed rgba(111, 44, 38, 0.45);
-    outline-offset: 2px;
-  }
-  .ui-debug-badge {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    z-index: 20;
-    border-radius: 9999px;
-    border: 1px solid rgba(111, 44, 38, 0.88);
-    background: rgba(111, 44, 38, 0.94);
-    color: #fff8e7;
-    padding: 0.25rem 0.55rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    pointer-events: none;
-  }
-  .ui-debug-inline {
-    margin-left: 0.5rem;
-    border-radius: 9999px;
-    border: 1px solid rgba(111, 44, 38, 0.6);
-    background: rgba(111, 44, 38, 0.12);
-    color: #6f2c26;
-    padding: 0.12rem 0.45rem;
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    vertical-align: middle;
-  }
   .layout-mode-option {
     width: 100%;
     justify-content: space-between;

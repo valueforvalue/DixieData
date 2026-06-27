@@ -436,20 +436,8 @@ if (-not (Test-Path $exePath)) {
     throw "DixieData.exe was not found at $exePath"
 }
 
-$previousDebugSetting = [System.Environment]::GetEnvironmentVariable("DIXIEDATA_DEBUG_UI_IDS", "Process")
-try {
-    [System.Environment]::SetEnvironmentVariable("DIXIEDATA_DEBUG_UI_IDS", "1", "Process")
-    & $exePath "--debug-ui-ids" @AppArgs
-    $exitCode = $LASTEXITCODE
-} finally {
-    if ([string]::IsNullOrEmpty($previousDebugSetting)) {
-        Remove-Item Env:DIXIEDATA_DEBUG_UI_IDS -ErrorAction SilentlyContinue
-    } else {
-        [System.Environment]::SetEnvironmentVariable("DIXIEDATA_DEBUG_UI_IDS", $previousDebugSetting, "Process")
-    }
-}
-
-exit $exitCode
+& $exePath @AppArgs
+exit $LASTEXITCODE
 '@
 
     Set-Content -Path $launcherPath -Value $script -Encoding UTF8

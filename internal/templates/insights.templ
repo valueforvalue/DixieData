@@ -6,16 +6,15 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.ArchiveCounts) {
 	@Layout("Insights") {
-		<div data-ui-id={ uiids.PageInsights } class="mx-auto max-w-6xl space-y-6">
-			@SurfaceBadge(uiids.PageInsights)
+		<div class="mx-auto max-w-6xl space-y-6">
 			if counts.TotalRecords() == 0 {
 				@partials.EmptyStateCard("insights", counts)
 			}
@@ -25,7 +24,7 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 					<p class="mt-2 max-w-3xl text-sm text-slate-600">High-level analytics for the current local archive, including burial patterns, Confederate Home participation, pension geography, unit concentration, and decade-level chronology.</p>
 				</div>
 				<div class="flex flex-col items-stretch gap-3 xl:items-end">
-					<form hx-post="/insights/report/pdf" hx-target="this" hx-swap="none" data-pdf-pref-scope="insights" class="flex flex-col items-stretch gap-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
+					<form hx-post={ templ.SafeURL(routebuilder.InsightsReportPDF()) } hx-target="this" hx-swap="none" data-pdf-pref-scope="insights" class="flex flex-col items-stretch gap-2 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
 						<select name="orientation" data-pdf-pref-key="orientation" aria-label="PDF orientation" class="w-full rounded-lg border border-[rgba(141,116,64,0.35)] bg-white px-2 py-1 text-sm text-slate-700 sm:w-auto">
 							<option value="P" selected>Portrait</option>
 							<option value="L">Landscape</option>
@@ -42,8 +41,7 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 			</div>
 
 			<div class="responsive-two-col grid gap-6">
-				<section data-ui-id={ uiids.PanelInsightsOverview } class="relative card rounded-3xl p-5 sm:p-8">
-					@SurfaceBadge(uiids.PanelInsightsOverview)
+				<section class="relative card rounded-3xl p-5 sm:p-8">
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Overview</p>
 					<h3 class="mt-2 text-xl gold font-bold">Person Record Type Snapshot</h3>
 					<div class="mt-5 grid gap-4 sm:grid-cols-3">
@@ -62,15 +60,13 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 					</div>
 				</section>
 
-				<section data-ui-id={ uiids.PanelInsightsCemeteries } class="relative card rounded-3xl p-5 sm:p-8">
-					@SurfaceBadge(uiids.PanelInsightsCemeteries)
+				<section class="relative card rounded-3xl p-5 sm:p-8">
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Burial Analytics</p>
 					<h3 class="mt-2 text-xl gold font-bold">Top Cemeteries</h3>
 					@InsightsCountList(snapshot.CemeteryDensity, "buried_in", "No burial locations are recorded yet.")
 				</section>
 
-				<section data-ui-id={ uiids.PanelInsightsHomes } class="relative card rounded-3xl p-5 sm:p-8 space-y-6">
-					@SurfaceBadge(uiids.PanelInsightsHomes)
+				<section class="relative card rounded-3xl p-5 sm:p-8 space-y-6">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Confederate Home Census</p>
 						<h3 class="mt-2 text-xl gold font-bold">Status Breakdown</h3>
@@ -82,22 +78,19 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 					</div>
 				</section>
 
-				<section data-ui-id={ uiids.PanelInsightsPensions } class="relative card rounded-3xl p-5 sm:p-8">
-					@SurfaceBadge(uiids.PanelInsightsPensions)
+				<section class="relative card rounded-3xl p-5 sm:p-8">
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Geography</p>
 					<h3 class="mt-2 text-xl gold font-bold">Pension Distribution</h3>
 					@InsightsCountList(snapshot.PensionDistribution, "pension_state", "No pension states are recorded yet.")
 				</section>
 
-				<section data-ui-id={ uiids.PanelInsightsUnits } class="relative card rounded-3xl p-5 sm:p-8">
-					@SurfaceBadge(uiids.PanelInsightsUnits)
+				<section class="relative card rounded-3xl p-5 sm:p-8">
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Military Representation</p>
 					<h3 class="mt-2 text-xl gold font-bold">Top Units</h3>
 					@InsightsCountList(snapshot.UnitRepresentation, "unit", "No units are recorded yet.")
 				</section>
 
-				<section data-ui-id={ uiids.PanelInsightsDuplicateAudit } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-					@SurfaceBadge(uiids.PanelInsightsDuplicateAudit)
+				<section class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Review Queue Audit</p>
 					<h3 class="mt-2 text-xl gold font-bold">Advanced Duplicate Discovery</h3>
 					<p class="text-sm text-slate-600">Runs an exact + fuzzy duplicate scan using the current Levenshtein threshold of { fmt.Sprintf("%d", snapshot.DuplicateAudit.SimilarityThreshold) }.</p>
@@ -126,8 +119,7 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 					</div>
 				</section>
 
-				<section data-ui-id={ uiids.PanelInsightsChronology } class="relative responsive-span-2 card rounded-3xl p-5 sm:p-8">
-					@SurfaceBadge(uiids.PanelInsightsChronology)
+				<section class="relative responsive-span-2 card rounded-3xl p-5 sm:p-8">
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Chronological Overview</p>
 					<h3 class="mt-2 text-xl gold font-bold">Birth and Death Decades</h3>
 					<div class="mt-5 grid gap-6 lg:grid-cols-2">
@@ -163,8 +155,7 @@ templ InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage st
 
 templ InsightsDrilldownView(title, description string, personRecords []viewmodel.PersonRecord, search viewmodel.PersonRecordSearch, page, total, pageSize int, scope, value string) {
 	@Layout(title) {
-		<div data-ui-id={ uiids.PageInsightsDrilldown } class="relative mx-auto max-w-6xl space-y-6">
-			@SurfaceBadge(uiids.PageInsightsDrilldown)
+		<div class="relative mx-auto max-w-6xl space-y-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">{ title }</h2>

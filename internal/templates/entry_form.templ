@@ -7,9 +7,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -26,8 +25,7 @@ templ EntryFormWithError(s viewmodel.PersonRecord, spouseCandidates []viewmodel.
 }
 
 templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
-	<div id="entry-form-shell" data-ui-id={ entryFormPageID(isEdit) } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
-		@SurfaceBadge(entryFormPageID(isEdit))
+	<div id="entry-form-shell" data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
 		if !isEdit {
 			<details class="card mb-5 rounded-3xl p-4">
@@ -56,7 +54,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</summary>
 				<div class="mt-4 space-y-3">
 					<p class="text-sm text-slate-600">Paste Find a Grave memorial HTML to prefill this form, then verify every field manually before saving.</p>
-					<form hx-post="/soldiers/scrape-findagrave" hx-target="#entry-form-shell" hx-swap="outerHTML" class="space-y-3">
+					<form hx-post={ templ.SafeURL(routebuilder.SoldierScrapeFindAGrave()) } hx-target="#entry-form-shell" hx-swap="outerHTML" class="space-y-3">
 						<label class="block text-sm text-slate-500" for="ef-findagrave_source">Find a Grave HTML Source</label>
 						<textarea name="findagrave_source" rows="4" class="field-input min-h-24" placeholder="Paste Find a Grave memorial HTML here" id="ef-findagrave_source">{ scrape.Input }</textarea>
 						<div class="flex flex-wrap items-center gap-3">
@@ -112,7 +110,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				data-draft-key={ draftKey(s, isEdit) }
 				data-draft-record-version={ draftRecordVersion(s, isEdit) }
 			} else {
-				hx-post="/soldiers"
+				hx-post={ templ.SafeURL(routebuilder.SoldierCreate()) }
 				data-draft-key={ draftKey(s, isEdit) }
 			}
 			hx-target="body"
@@ -360,8 +358,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</div>
 				</section>
-				<section data-ui-id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
-					@SurfaceBadge(uiids.PanelSoldierFormRecords)
+				<section class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
@@ -435,8 +432,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</details>
 				</section>
-				<section data-ui-id={ uiids.PanelSoldierFormImages } class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
-					@SurfaceBadge(uiids.PanelSoldierFormImages)
+				<section class="relative rounded-[1.7rem] border border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.58)] p-5">
 					<div class="mb-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
 						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p>
@@ -500,278 +496,12 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 	</div>
 }
 
-func formTitle(s viewmodel.PersonRecord, isEdit bool) string {
-	label := entryTypeLabel(normalizedEntryType(s))
-	if isEdit {
-		return "Edit " + label + " Person Record"
-	}
-	return "New " + label + " Person Record"
-}
-
-func entryFormPageID(isEdit bool) string {
-	if isEdit {
-		return uiids.PageSoldierEdit
-	}
-	return uiids.PageSoldierNew
-}
-
-func displayIDInputClass(isEdit bool) string {
-	if isEdit {
-		return "field-input"
-	}
-	return "field-input bg-slate-100 text-slate-500"
-}
-
-func draftKey(s viewmodel.PersonRecord, isEdit bool) string {
-	if isEdit {
-		return fmt.Sprintf("edit-soldier-%d", s.ID)
-	}
-	return "new-soldier"
-}
-
-func draftMode(isEdit bool) string {
-	if isEdit {
-		return "edit"
-	}
-	return "new"
-}
-
-func draftRecordVersion(s viewmodel.PersonRecord, isEdit bool) string {
-	if !isEdit {
-		return ""
-	}
-	parts := []string{}
-	for _, candidate := range []string{strings.TrimSpace(s.UpdatedAt), strings.TrimSpace(s.LastEditedAt), strings.TrimSpace(s.CreatedAt)} {
-		if candidate != "" {
-			parts = append(parts, candidate)
-		}
-	}
-	parts = append(parts, fmt.Sprintf("%d", s.ID))
-	return strings.Join(parts, "|")
-}
-
-func draftResetPath(s viewmodel.PersonRecord, isEdit bool) string {
-	if isEdit {
-		return fmt.Sprintf("/soldiers/%d/edit", s.ID)
-	}
-	return "/soldiers/new"
-}
-
-func recordPersistenceClass(isEdit bool) string {
-	if isEdit {
-		return "rounded-2xl border border-emerald-700/40 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900"
-	}
-	return "rounded-2xl border border-amber-700/40 bg-amber-50/80 px-4 py-3 text-sm text-amber-900"
-}
-
-func recordPersistenceHeading(isEdit bool) string {
-	if isEdit {
-		return "Committed to database."
-	}
-	return "Local draft only."
-}
-
-func recordPersistenceMessage(isEdit bool) string {
-	if isEdit {
-		return "This person record currently matches the primary database until you make new local edits."
-	}
-	return "This new person record is cached in localStorage until you create it in the database."
-}
-
-func pensionStates() []string {
-	return []string{
-		pensionstate.NotApplicable,
-		"Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
-		"Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
-		"Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
-		"Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
-		"New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
-		"North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island",
-		"South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
-		"Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
-	}
-}
-
-func confederateHomeStatuses() []string {
-	return []string{confederatehomestatus.NotApplicable, confederatehomestatus.Inmate, confederatehomestatus.Staffer, confederatehomestatus.Trustee}
-}
-
-func selectedPensionState(s viewmodel.PersonRecord) string {
-	if strings.TrimSpace(s.PensionState) == "" {
-		return pensionstate.NotApplicable
-	}
-	return pensionstate.Normalize(s.PensionState)
-}
-
-func selectedConfederateHomeStatus(s viewmodel.PersonRecord) string {
-	switch confederatehomestatus.Normalize(s.ConfederateHomeStatus) {
-	case confederatehomestatus.Inmate, confederatehomestatus.Staffer, confederatehomestatus.Trustee:
-		return confederatehomestatus.Normalize(s.ConfederateHomeStatus)
-	default:
-		return confederatehomestatus.NotApplicable
-	}
-}
-
-func rankOutValue(s viewmodel.PersonRecord) string {
-	if s.RankOut != "" {
-		return s.RankOut
-	}
-	return s.Rank
-}
-
-func pdfExcerptBudget() int {
-	return 1200
-}
-
-type entryTypeOption struct {
-	Value string
-	Label string
-}
-
-func entryTypes() []entryTypeOption {
-	return []entryTypeOption{
-		{Value: models.EntryTypeSoldier, Label: "Soldier"},
-		{Value: models.EntryTypeLinkedPerson, Label: "Person Record"},
-		{Value: models.EntryTypeWife, Label: "Wife"},
-		{Value: models.EntryTypeWidow, Label: "Widow"},
-	}
-}
-
-func normalizedEntryType(s viewmodel.PersonRecord) string {
-	switch s.EntryType {
-	case models.EntryTypeWife, models.EntryTypeWidow, models.EntryTypeLinkedPerson:
-		return s.EntryType
-	default:
-		return models.EntryTypeSoldier
-	}
-}
-
-func entryTypeLabel(entryType string) string {
-	for _, option := range entryTypes() {
-		if option.Value == entryType {
-			return option.Label
-		}
-	}
-	return "Soldier"
-}
-
-func spouseCandidateLabel(s viewmodel.PersonRecord) string {
-	label := strings.TrimSpace(s.GetFullName())
-	if label == "" {
-		label = strings.TrimSpace(s.DisplayID)
-	}
-	if strings.TrimSpace(s.DisplayID) == "" {
-		return label
-	}
-	return label + " (" + s.DisplayID + ")"
-}
-
-templ RecordInputRow(record viewmodel.SourceRecord) {
-	<div data-record-row class="rounded-2xl border border-slate-200 bg-white/70 p-4">
-		<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<span class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Source Record Entry</span>
-			<button type="button" data-record-remove class="pill-link w-full justify-center sm:w-auto">Remove</button>
-		</div>
-		<div class="responsive-two-col grid gap-4">
-			<div>
-				<label class="mb-1 block text-sm text-slate-500" for="ef-record_type">Source Record Type</label>
-				<input type="text" name="record_type" value={ record.SourceRecordType } list="record-type-suggestions" class="field-input" id="ef-record_type"/>
-			</div>
-			<div>
-				<label class="mb-1 block text-sm text-slate-500" for="ef-record_app_id">App / Source Record Number</label>
-				<input type="text" name="record_app_id" value={ record.AppID } class="field-input" id="ef-record_app_id"/>
-			</div>
-			<div class="responsive-span-2 col-span-2">
-				<label class="mb-1 block text-sm text-slate-500" for="ef-record_details">Details</label>
-				<textarea name="record_details" rows="3" class="field-input min-h-24" id="ef-record_details">{ record.Details }</textarea>
-			</div>
-		</div>
-	</div>
-}
-
-templ SuggestionDatalist(id string, values []string) {
-	<datalist id={ id }>
-		for _, value := range values {
-			<option value={ value }></option>
-		}
-	</datalist>
-}
-
-func formRecords(records []viewmodel.SourceRecord) []viewmodel.SourceRecord {
-	if len(records) == 0 {
-		return []viewmodel.SourceRecord{{}}
-	}
-	return records
-}
-
-templ InitialSetupView(form viewmodel.InitialSetupForm) {
-	@Layout("First Launch Setup") {
-		<div data-ui-id={ uiids.PageInitialSetup } class="relative mx-auto max-w-3xl space-y-6">
-			@SurfaceBadge(uiids.PageInitialSetup)
-			<h2 class="text-2xl gold font-bold">First Launch Setup</h2>
-			<div class="card rounded-3xl p-5 sm:p-8 space-y-4">
-				<div>
-					<p class="text-sm text-slate-600">Enter your name and birth year once. DixieData will use your initials plus birth year as the prefix for new visible IDs so shared archives are easier to trace back to their source.</p>
-				</div>
-				if form.ErrorMessage != "" {
-					<div class="rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
-						{ form.ErrorMessage }
-					</div>
-				}
-				<form method="post" action="/setup" class="responsive-two-col grid gap-4">
-					<div>
-						<label class="mb-1 block text-sm text-slate-500" for="setup-first_name">First name</label>
-						<input type="text" name="first_name" value={ form.FirstName } class="field-input" autocomplete="given-name" id="setup-first_name"/>
-					</div>
-					<div>
-						<label class="mb-1 block text-sm text-slate-500" for="setup-middle_name">Middle name</label>
-						<input type="text" name="middle_name" value={ form.MiddleName } class="field-input" autocomplete="additional-name" id="setup-middle_name"/>
-					</div>
-					<div>
-						<label class="mb-1 block text-sm text-slate-500" for="setup-last_name">Last name</label>
-						<input type="text" name="last_name" value={ form.LastName } class="field-input" autocomplete="family-name" id="setup-last_name"/>
-					</div>
-					<div>
-						<label class="mb-1 block text-sm text-slate-500" for="ef-birth_year">Birth year</label>
-						<input type="text" name="birth_year" value={ form.BirthYear } inputmode="numeric" maxlength="4" class="field-input" autocomplete="bday-year" id="ef-birth_year"/>
-					</div>
-					if form.PrefixPreview != "" {
-						<div class="responsive-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
-							New ID prefix: <strong class="text-[#22303d]">{ form.PrefixPreview }</strong>
-						</div>
-					}
-					<div class="responsive-span-2">
-						@components.Button("Save Identity", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
-					</div>
-				</form>
-			</div>
-		</div>
-	}
-}
-
-func mergeReviewDisplayName(soldier viewmodel.PersonRecord) string {
-	name := strings.TrimSpace(soldier.GetFullName())
-	if name == "" {
-		return soldier.DisplayID
-	}
-	return name
-}
-
-func boolFlag(value bool) string {
-	if value {
-		return "1"
-	}
-	return "0"
-}
-
 templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings) {
 	@Layout("Settings") {
-		<div data-ui-id={ uiids.PageSettings } class="relative mx-auto max-w-3xl space-y-6">
-			@SurfaceBadge(uiids.PageSettings)
+		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
 			@SettingsUpdatePanel(updateState)
-			<div data-ui-id={ uiids.PanelSettingsLayout } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				@SurfaceBadge(uiids.PanelSettingsLayout)
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Responsive Layout Mode</h3>
 					<p class="mt-2 text-sm text-slate-600">Switch between the relaxed and split-screen layouts, or leave the app on Auto so it changes around <span data-layout-mode-breakpoint>1000px</span> as the window narrows.</p>
@@ -799,14 +529,13 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					</button>
 				</div>
 			</div>
-			<div data-ui-id={ uiids.PanelSettingsDebug } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				@SurfaceBadge(uiids.PanelSettingsDebug)
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Debug Mode</h3>
 					<p class="mt-2 text-sm text-slate-600">Turn on debug logging. Once on, the 🐞 button appears in the footer — click it to open the Debug Console and read the in-memory log tail. The setting persists in <code>local_settings.json</code> across restarts.</p>
 					<p class="mt-1 text-xs text-slate-500">Equivalent to launching the app with <code>DIXIEDATA_DEBUG=1</code> in the environment.</p>
 				</div>
-				<form hx-post="/settings/debug-mode" hx-target="this" hx-swap="none" class="flex items-center gap-3">
+				<form hx-post={ templ.SafeURL(routebuilder.SettingsDebugMode()) } hx-target="this" hx-swap="none" class="flex items-center gap-3">
 					<label class="flex items-center gap-2 text-sm text-slate-700">
 						<input type="checkbox" name="debug_mode" value="on"
 							if debug.IsDebugMode(ctx) {
@@ -819,14 +548,13 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					@components.Button("Apply", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 				</form>
 			</div>
-			<div data-ui-id={ uiids.PanelSettingsInitialize } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				@SurfaceBadge(uiids.PanelSettingsInitialize)
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Initialize Data</h3>
 					<p class="mt-2 text-sm text-slate-600">Clear the local archive and rebuild a fresh empty database and folder tree.</p>
 					<p class="mt-1 text-xs text-slate-500">This removes soldiers, records, images, local backups, and Google sync state stored in <code>.dixiedata</code>. The shared <code>google-oauth-defaults.json</code> file next to the app is not touched.</p>
 				</div>
-				<form hx-post="/settings/initialize" hx-target="this" hx-swap="none" class="space-y-4">
+				<form hx-post={ templ.SafeURL(routebuilder.SettingsInitialize()) } hx-target="this" hx-swap="none" class="space-y-4">
 					<div>
 						<label class="mb-1 block text-sm text-slate-500" for="ef-confirmation_word">Type { confirmationWord } to confirm</label>
 						<input type="text" name="confirmation_word" class="field-input" autocomplete="off" spellcheck="false" id="ef-confirmation_word"/>
@@ -846,7 +574,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Image Maintenance</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
 				</div>
-				<form hx-post="/settings/images/orphans/scan" hx-target="#settings-orphan-results" class="space-y-4">
+				<form hx-post={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } hx-target="#settings-orphan-results" class="space-y-4">
 					@components.Button("Scan for Orphaned Images", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				</form>
 				<div id="settings-orphan-results" class="space-y-3"></div>
@@ -856,7 +584,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
 				</div>
-				<form hx-post="/settings/quality/scan" hx-target="#settings-quality-results" class="space-y-4">
+				<form hx-post={ templ.SafeURL(routebuilder.SettingsQualityScan()) } hx-target="#settings-quality-results" class="space-y-4">
 					<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
 						<label class="inline-flex items-center gap-2">
 							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
@@ -876,8 +604,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 }
 
 templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
-	<div id="settings-update-panel" data-ui-id={ uiids.PanelSettingsUpdates } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-		@SurfaceBadge(uiids.PanelSettingsUpdates)
+	<div id="settings-update-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 		<div class="space-y-2">
 			<h3 class="text-xl gold font-bold">Software Updates</h3>
 			<p class="text-sm text-slate-600">Check the latest DixieData release, save a custom update feed URL, and apply packaged updates in place for installed builds.</p>
@@ -905,7 +632,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				}
 			</div>
 		}
-		<form hx-post="/settings/updates/source" hx-target="#settings-update-panel" hx-swap="outerHTML" class="space-y-4">
+		<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } hx-target="#settings-update-panel" hx-swap="outerHTML" class="space-y-4">
 			<div>
 				<label class="mb-1 block text-sm text-slate-500" for="ef-source_url">Update source URL</label>
 				<input type="url" name="source_url" value={ state.SourceURL } placeholder="Leave blank to use the default GitHub latest release feed" class="field-input" autocomplete="off" spellcheck="false" id="ef-source_url"/>
@@ -914,7 +641,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				@components.Button("Save Update Source", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</div>
 		</form>
-		<form hx-post="/settings/updates/source" hx-target="#settings-update-panel" hx-swap="outerHTML">
+		<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } hx-target="#settings-update-panel" hx-swap="outerHTML">
 			<input type="hidden" name="source_url" value=""/>
 			@components.Button("Use Default GitHub Feed", components.ButtonGhost, "w-full px-4 py-2 text-left sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>
@@ -930,14 +657,14 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			@SettingsUpdateStatusMessage("error", state.DisabledReason)
 		}
 		<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-			<form hx-post="/settings/updates/check" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
+			<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateCheck()) } hx-target="this" hx-swap="none" class="w-full sm:w-auto">
 				@components.Button("Check for Updates", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
-			<form hx-post="/export/backup" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
+			<form hx-post={ templ.SafeURL(routebuilder.ExportBackup()) } hx-target="this" hx-swap="none" class="w-full sm:w-auto">
 				@components.Button("Export Backup (.ddbak)", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
 			if state.CanApply {
-				<form hx-post="/settings/updates/apply" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
+				<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateApply()) } hx-target="this" hx-swap="none" class="w-full sm:w-auto">
 					@components.Button("Download and Apply Latest Update", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 						"type": "submit",
 						"data-progress-label": "Preparing update\u2026",
@@ -990,7 +717,7 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 	if len(orphans) == 0 {
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">No orphaned image files were found.</div>
 	} else {
-		<form hx-post="/settings/images/orphans/cleanup" hx-target="#settings-orphan-results" class="space-y-3">
+		<form hx-post={ templ.SafeURL(routebuilder.SettingsImagesOrphansCleanup()) } hx-target="#settings-orphan-results" class="space-y-3">
 			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 				Found <strong>{ fmt.Sprintf("%d", len(orphans)) }</strong> orphaned image file(s). Cleanup moves them into temp trash instead of deleting them immediately.
 			</div>
@@ -1028,7 +755,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 	if len(result.Groups) == 0 {
 		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-[rgba(242,252,244,0.95)] px-4 py-3 text-sm text-[#29522d]">No obvious issues were found in this run.</div>
 	} else {
-		<form hx-post="/settings/quality/apply" hx-target="#settings-quality-results" class="space-y-3">
+		<form hx-post={ templ.SafeURL(routebuilder.SettingsQualityApply()) } hx-target="#settings-quality-results" class="space-y-3">
 			for _, group := range result.Groups {
 				<details class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(246,241,228,0.72)]">
 					<summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">{ group.Group } ({ fmt.Sprintf("%d", group.Count) })</summary>

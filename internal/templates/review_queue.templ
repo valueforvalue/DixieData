@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.ArchiveCounts, page, total, pageSize int) {
 	@Layout("Review Queue") {
-		<div data-ui-id={ uiids.PageReviewQueue } class="relative mx-auto max-w-5xl space-y-6">
-			@SurfaceBadge(uiids.PageReviewQueue)
+		<div class="relative mx-auto max-w-5xl space-y-6">
 			if counts.TotalRecords() == 0 {
 				@partials.EmptyStateCard("review", counts)
 			}
@@ -21,12 +20,11 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 				<h2 class="text-2xl gold font-bold">Review Queue</h2>
 				<p class="mt-2 text-sm text-slate-600">Records flagged for duplicate review or follow-up research appear here until they are resolved.</p>
 			</div>
-			<section data-ui-id={ uiids.PanelReviewQueueList } class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				@SurfaceBadge(uiids.PanelReviewQueueList)
+			<section class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				if len(entries) == 0 {
 					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
 				} else {
-					<form hx-post="/review-queue/bulk" hx-target="body" class="space-y-4">
+					<form hx-post={ templ.SafeURL(routebuilder.ReviewQueueBulk()) } hx-target="body" class="space-y-4">
 						<div class="flex flex-col gap-3 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-[rgba(246,241,228,0.72)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 							<label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
 								<input type="checkbox" data-select-all="review-queue" class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
@@ -106,8 +104,7 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 
 templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 	@Layout(comparisonTitle(comparison)) {
-		<div data-ui-id={ uiids.PageReviewQueueCompare } class="relative mx-auto max-w-6xl space-y-6">
-			@SurfaceBadge(uiids.PageReviewQueueCompare)
+		<div class="relative mx-auto max-w-6xl space-y-6">
 			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">{ comparisonTitle(comparison) }</h2>
@@ -132,8 +129,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 					}
 				</div>
 			</div>
-			<section data-ui-id={ uiids.PanelReviewQueueCompare } class="relative card rounded-3xl p-5 sm:p-8">
-				@SurfaceBadge(uiids.PanelReviewQueueCompare)
+			<section class="relative card rounded-3xl p-5 sm:p-8">
 				<div class="grid gap-6 xl:grid-cols-2">
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
 						<div class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ comparison.LeftPersonRecord.DisplayID }</div>

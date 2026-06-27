@@ -1,13 +1,5 @@
 package uiids
 
-import (
-	"os"
-	"strings"
-)
-
-const DebugEnvVar = "DIXIEDATA_DEBUG_UI_IDS"
-const DebugArg = "--debug-ui-ids"
-
 const (
 	PageCalendar                = "page.calendar"
 	PageInitialSetup            = "page.setup"
@@ -132,25 +124,17 @@ var Registry = []Surface{
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
 }
 
-func DebugEnabled() bool {
-	return truthy(os.Getenv(DebugEnvVar))
-}
 
-func EnableFromArgs(args []string) bool {
-	for _, arg := range args {
-		if strings.TrimSpace(arg) == DebugArg {
-			_ = os.Setenv(DebugEnvVar, "1")
+
+// Has reports whether id is one of the canonical surface IDs in
+// Registry. Used by htmxattr.Mux to validate hx-target selectors at
+// render time and by other packages that need to know whether a
+// string is a known surface.
+func Has(id string) bool {
+	for _, s := range Registry {
+		if s.ID == id {
 			return true
 		}
 	}
 	return false
-}
-
-func truthy(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "1", "true", "yes", "on":
-		return true
-	default:
-		return false
-	}
 }

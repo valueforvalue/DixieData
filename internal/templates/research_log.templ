@@ -5,15 +5,14 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ResearchLogView(log viewmodel.ResearchLog) {
 	@Layout("Research Log") {
-		<div data-ui-id={ uiids.PageResearchLog } class="relative mx-auto max-w-6xl">
-			@SurfaceBadge(uiids.PageResearchLog)
+		<div class="relative mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
 					type="button"
@@ -53,7 +52,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 								<p class="text-sm text-slate-600">Track missing evidence, unresolved identity questions, or records still needing verification.</p>
 							</div>
 						</div>
-						<form hx-post={ fmt.Sprintf("/soldiers/%d/research-log/tasks", log.SubjectPersonRecord.ID) } class="mt-4 grid gap-4 md:grid-cols-2">
+						<form hx-post={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } class="mt-4 grid gap-4 md:grid-cols-2">
 							<div class="md:col-span-2">
 								<label class="block text-sm font-medium text-slate-700">
 									Task Title
@@ -95,7 +94,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 							</div>
 							<div class="mt-4 grid gap-4 md:grid-cols-2">
 								for _, suggestion := range log.Suggestions {
-									<form hx-post={ fmt.Sprintf("/soldiers/%d/research-log/tasks", log.SubjectPersonRecord.ID) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/80 p-4">
+									<form hx-post={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/80 p-4">
 										<input type="hidden" name="title" value={ suggestion.Title }/>
 										<input type="hidden" name="notes" value={ suggestion.Notes }/>
 										<input type="hidden" name="evidence_type" value={ suggestion.EvidenceType }/>

@@ -16,7 +16,6 @@
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const draftBaselines = new WeakMap();
   const staleDrafts = new WeakMap();
-  const debugSurfaceIDsEnabled = () => document.body?.getAttribute("data-debug-ui-ids") === "true";
   let layoutModeMediaQuery = null;
   const imageViewerState = {
     baseScale: 1,
@@ -968,8 +967,7 @@
     viewer.id = "image-viewer";
     viewer.className = "fixed inset-0 z-50 hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.7)] p-3 sm:items-center sm:p-6";
     viewer.innerHTML = `
-      <div data-ui-id="overlay.image.viewer" class="relative my-3 flex max-h-[calc(100vh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(36,48,61,0.97)] shadow-2xl sm:my-0 sm:max-h-[calc(100vh-3rem)]">
-        ${debugSurfaceIDsEnabled() ? '<div class="ui-debug-badge" aria-hidden="true">overlay.image.viewer</div>' : ""}
+      <div class="relative my-3 flex max-h-[calc(100vh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(36,48,61,0.97)] shadow-2xl sm:my-0 sm:max-h-[calc(100vh-3rem)]">
         <div class="flex flex-col gap-3 border-b border-[rgba(141,116,64,0.35)] px-4 py-4 text-[#f4ead0] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
           <div>
             <p data-image-caption class="text-sm font-semibold tracking-[0.14em] text-[#eddca6]"></p>

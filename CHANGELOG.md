@@ -74,6 +74,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Removed
 
+- Developer visualizer overlay (orphan from v1; no current consumers).
+  Removed `data-ui-id` template attributes (52 sites), `@SurfaceBadge`
+  and `@InlineSurfaceBadge` calls (54 sites), `SurfaceBadge`/`InlineSurfaceBadge`/
+  `uiDebugEnabled`/`uiDebugValue` helpers, `internal/uiids.DebugEnabled`/
+  `EnableFromArgs`/`DebugEnvVar`/`DebugArg`/`truthy`, the
+  `DIXIEDATA_DEBUG_UI_IDS` env var, the `--debug-ui-ids` flag, the
+  `[data-debug-ui-ids=true] [data-ui-id]{...}` CSS outline rule,
+  `.ui-debug-badge` / `.ui-debug-inline` styles, and
+  `debugSurfaceIDsEnabled()` in `frontend/app.js`. The 78 surface
+  constants in `internal/uiids/uiids.go` registry stay — they remain
+  the canonical surface identifiers used by future HTMX typing work.
+  The runtime log console at `/debug/console` (separate feature) is
+  untouched.
 - `/jobs/{id}/stream` route + `streamJobProgress`/`writeJobEvent`/
   `isTerminalJobStatus` handlers (dead code, no consumers).
 - `enqueueStaticArchive` and `enqueueDatabasePDF` (replaced by
