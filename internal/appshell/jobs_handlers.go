@@ -61,11 +61,33 @@ func (a *App) renderJobStatus(w http.ResponseWriter, r *http.Request, id string,
 		http.NotFound(w, r)
 		return
 	}
+	if r.URL.Query().Get("slot") == "1" {
+		presentation.JobStatusSlotFragment(job).Render(r.Context(), w)
+		return
+	}
 	if fragmentOnly {
 		presentation.JobStatusFragment(job).Render(r.Context(), w)
 		return
 	}
 	templates.JobStatusView(job).Render(r.Context(), w)
+}
+
+// renderActiveJob serves /jobs/active: returns the slot variant of
+// the most recent queued/running job, or 204 No Content when none.
+// The layout progress slot polls this every 3s via htmx, so it
+// surfaces whatever background task the user kicked off most recently
+// regardless of the page they are on.
+func (a *App) renderActiveJob(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	job := a.jobs.MostRecentActive()
+	if job == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	presentation.JobStatusSlotFragment(*job).Render(r.Context(), w)
 }
 
 func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {

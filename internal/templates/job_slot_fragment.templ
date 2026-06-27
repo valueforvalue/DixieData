@@ -1,0 +1,47 @@
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/jobs"
+)
+
+// JobStatusSlotFragment is the compact progress bar rendered into the
+// layout progress slot (top-center, just below the toast region).
+// Unlike JobStatusFragment which is the full /jobs/{id} page card,
+// this variant targets [data-progress-region] so htmx swaps it back
+// into the layout slot without disturbing the surrounding nav and
+// main content.
+//
+// The fragment self-polls every 2s while the job is active and stops
+// polling once it reaches a terminal state (done / error / cancelled /
+// interrupted).
+templ JobStatusSlotFragment(job jobs.Job) {
+	<div
+		class="card rounded-2xl p-4 shadow-[0_22px_45px_rgba(21,29,38,0.3)] space-y-3"
+		if job.Status == jobs.StatusDone || job.Status == jobs.StatusError || job.Status == jobs.StatusCancelled || job.Status == jobs.StatusInterrupted {
+			hx-trigger="none"
+		} else {
+			hx-get={ templ.SafeURL("/jobs/" + job.ID + "/status?slot=1") }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+			hx-target="[data-progress-region]"
+		}>
+		<div class="flex items-center justify-between gap-3 text-sm">
+			<span class="text-slate-600">Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
+			<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ job.DisplayLabel() }</span>
+		</div>
+		<div class="h-2 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label={ fmt.Sprintf("%s progress", job.DisplayLabel()) }>
+			<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
+		</div>
+		if job.Message != "" {
+			<p class="text-xs text-slate-600">{ job.Message }</p>
+		}
+		if job.Status == jobs.StatusDone && job.ResultPath != "" {
+			<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link text-xs">Open result</a>
+		}
+		if job.Status == jobs.StatusError {
+			<p class="break-words text-xs text-[#6f2c26]">{ job.Error }</p>
+		}
+	</div>
+}

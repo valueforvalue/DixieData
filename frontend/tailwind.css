@@ -140,6 +140,16 @@
     gap: 0.75rem;
     pointer-events: none;
   }
+  .progress-region {
+    position: fixed;
+    top: 8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 79;
+    width: min(92vw, 42rem);
+    pointer-events: none;
+  }
+  .progress-region > * { pointer-events: auto; }
   .toast-card {
     pointer-events: auto;
     display: flex;
