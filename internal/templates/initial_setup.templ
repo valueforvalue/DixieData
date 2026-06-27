@@ -1,0 +1,55 @@
+// Initial setup page, extracted from entry_form.templ during the
+// Stabilization Sprint PR #4. This is the page that collects the
+// user's name and birth year on first launch, before any Local
+// Archive exists. The page is shown only when setupRequired is
+// true; the redirect logic lives in internal/appshell/lifecycle.go.
+package templates
+
+import (
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ InitialSetupView(form viewmodel.InitialSetupForm) {
+	@Layout("First Launch Setup") {
+		<div class="relative mx-auto max-w-3xl space-y-6">
+			<h2 class="text-2xl gold font-bold">First Launch Setup</h2>
+			<div class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<p class="text-sm text-slate-600">Enter your name and birth year once. DixieData will use your initials plus birth year as the prefix for new visible IDs so shared archives are easier to trace back to their source.</p>
+				</div>
+				if form.ErrorMessage != "" {
+					<div class="rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+						{ form.ErrorMessage }
+					</div>
+				}
+				<form method="post" action="/setup" class="responsive-two-col grid gap-4">
+					<div>
+						<label class="mb-1 block text-sm text-slate-500" for="setup-first_name">First name</label>
+						<input type="text" name="first_name" value={ form.FirstName } class="field-input" autocomplete="given-name" id="setup-first_name"/>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm text-slate-500" for="setup-middle_name">Middle name</label>
+						<input type="text" name="middle_name" value={ form.MiddleName } class="field-input" autocomplete="additional-name" id="setup-middle_name"/>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm text-slate-500" for="setup-last_name">Last name</label>
+						<input type="text" name="last_name" value={ form.LastName } class="field-input" autocomplete="family-name" id="setup-last_name"/>
+					</div>
+					<div>
+						<label class="mb-1 block text-sm text-slate-500" for="ef-birth_year">Birth year</label>
+						<input type="text" name="birth_year" value={ form.BirthYear } inputmode="numeric" maxlength="4" class="field-input" autocomplete="bday-year" id="ef-birth_year"/>
+					</div>
+					if form.PrefixPreview != "" {
+						<div class="responsive-span-2 rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
+							New ID prefix: <strong class="text-[#22303d]">{ form.PrefixPreview }</strong>
+						</div>
+					}
+					<div class="responsive-span-2">
+						@components.Button("Save Identity", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
+					</div>
+				</form>
+			</div>
+		</div>
+	}
+}
