@@ -938,7 +938,10 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			</form>
 			if state.CanApply {
 				<form hx-post="/settings/updates/apply" hx-target="this" hx-swap="none" class="w-full sm:w-auto">
-					@components.Button("Download and Apply Latest Update", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
+					@components.Button("Download and Apply Latest Update", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+						"type": "submit",
+						"data-progress-label": "Preparing update\u2026",
+					})
 				</form>
 			}
 		</div>
