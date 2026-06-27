@@ -2,108 +2,148 @@
 // 1 of the God-class reduction tracked in issue #42. All handler methods
 // referenced here stay defined on *App in their domain-specific files; the
 // route table is the single point that maps URL patterns to handler methods.
+//
+// PR #1 (Stabilization Sprint): migrated the underlying router from
+// net/http.ServeMux to github.com/go-chi/chi/v5. Chi gives us middleware
+// composition and explicit pattern routing without changing any handler
+// signatures. Each handler reads r.URL.Path directly, so passing through
+// chi's wildcard routes preserves the existing prefix-trim logic in the
+// handler bodies.
 package appshell
 
 import (
-	"net/http"
-
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 func (a *App) setupRoutes() {
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
 
-	mux.HandleFunc("/app.js", a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("/app.css", a.handleFrontendAsset("app.css", "text/css; charset=utf-8"))
-	mux.HandleFunc("/debug.js", a.handleFrontendAsset("debug.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("/htmx.min.js", a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
-	mux.HandleFunc("/recovery", a.handleRecovery)
-	mux.HandleFunc("/jobs/active", a.renderActiveJob)
-	mux.HandleFunc("/jobs/", a.handleJobStatus)
-	mux.HandleFunc("/", a.handleCalendar)
-	mux.HandleFunc("/calendar", a.handleCalendar)
-	mux.HandleFunc("/calendar/", a.handleCalendarMonth)
-	mux.HandleFunc("/anniversary/", a.handleAnniversary)
-	mux.HandleFunc("/soldiers", a.handleSoldiers)
-	mux.HandleFunc("/browse", a.handleBrowse)
-	mux.HandleFunc("/browse/results", a.handleBrowseResults)
-	mux.HandleFunc("/soldiers/search", a.handleSearch)
-	mux.HandleFunc("/soldiers/search/recent", a.handleRecentSearch)
-	mux.HandleFunc("/soldiers/search/advanced", a.handleAdvancedSearch)
-	mux.HandleFunc("/soldiers/display/", a.handleSoldierByDisplayID)
-	mux.HandleFunc("/soldiers/new", a.handleNewSoldier)
-	mux.HandleFunc("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
-	mux.HandleFunc("/soldiers/", a.handleSoldierByID)
-	mux.HandleFunc("/review-queue", a.handleReviewQueue)
-	mux.HandleFunc("/review-queue/bulk", a.handleReviewQueueBulk)
-	mux.HandleFunc("/review-queue/compare/", a.handleReviewQueueCompare)
-	mux.HandleFunc("/compare", a.handleCompare)
-	mux.HandleFunc("/setup", a.handleInitialSetup)
-	mux.HandleFunc("/version", a.handleVersion)
-	mux.HandleFunc("/share", a.handleShare)
-	mux.HandleFunc("/research-collections", a.handleResearchCollections)
-	mux.HandleFunc("/research-collections/", a.handleResearchCollectionByID)
-	mux.HandleFunc("/insights", a.handleInsights)
-	mux.HandleFunc("/insights/drilldown", a.handleInsightsDrilldown)
-	mux.HandleFunc("/insights/audit/duplicates", a.handleRunDuplicateAudit)
-	mux.HandleFunc("/export", a.handleLegacyExportRedirect)
-	mux.HandleFunc("/settings", a.handleSettings)
-	mux.HandleFunc("/settings/initialize", a.handleSettingsInitialize)
-	mux.HandleFunc("/settings/updates/source", a.handleUpdateSource)
-	mux.HandleFunc("/settings/updates/check", a.handleCheckForUpdates)
-	mux.HandleFunc("/settings/updates/apply", a.handleApplyLatestUpdate)
-	mux.HandleFunc("/settings/updates/health/bootstrap", a.handleUpdateBootstrapHealth)
-	mux.HandleFunc("/settings/images/orphans/scan", a.handleScanImageOrphans)
-	mux.HandleFunc("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
-	mux.HandleFunc("/settings/quality/scan", a.handleScanDataQuality)
-	mux.HandleFunc("/settings/quality/apply", a.handleApplyDataQuality)
-	mux.HandleFunc("/export/json", a.handleExportJSON)
-	mux.HandleFunc("/export/csv", a.handleExportCSV)
-	mux.HandleFunc("/export/ical", a.handleExportICalendar)
-	mux.HandleFunc("/export/static-archive", a.handleExportStaticArchive)
-	mux.HandleFunc("/export/database-pdf", a.handleExportDatabasePDF)
-	mux.HandleFunc("/export/backup", a.handleExportBackup)
-	mux.HandleFunc("/export/shared-archive", a.handleExportSharedArchive)
-	mux.HandleFunc("/export/bug-report", a.handleExportBugReport)
-	mux.HandleFunc("/export/feedback-log", a.handleExportFeedbackLog)
-	mux.HandleFunc("/insights/report/pdf", a.handleExportInsightsPDF)
-	mux.HandleFunc("/import/backup", a.handleImportBackup)
-	mux.HandleFunc("/import/shared-archive", a.handleImportSharedArchive)
-	mux.HandleFunc("/import/memorial-json/preview", a.handlePreviewMemorialJSONImport)
-	mux.HandleFunc("/import/memorial-json/confirm", a.handleConfirmMemorialJSONImport)
-	mux.HandleFunc("/merge-review/", a.handleMergeReviewConflict)
-	mux.HandleFunc("/integrations/google/connect", a.handleGoogleConnect)
-	mux.HandleFunc("/integrations/google/disconnect", a.handleGoogleDisconnect)
-	mux.HandleFunc("/integrations/google/backup", a.handleGoogleBackup)
-	mux.HandleFunc("/integrations/google/sheets/export", a.handleGoogleSheetsExport)
-	mux.HandleFunc("/integrations/google/calendar/use-managed", a.handleGoogleCalendarUseManaged)
-	mux.HandleFunc("/integrations/google/calendar/preferences/save", a.handleGoogleCalendarPreferencesSave)
-	mux.HandleFunc("/integrations/google/calendar/sync-managed", a.handleGoogleCalendarSyncManaged)
-	mux.HandleFunc("/integrations/google/calendar/unsync-managed", a.handleGoogleCalendarUnsyncManaged)
-	mux.HandleFunc("/integrations/google/calendar/use-test", a.handleGoogleCalendarUseTest)
-	mux.HandleFunc("/integrations/google/calendar/sync-test", a.handleGoogleCalendarSyncTest)
-	mux.HandleFunc("/integrations/google/calendar/unsync-test", a.handleGoogleCalendarUnsyncTest)
-	mux.HandleFunc("/images/screenshot", a.handleImageScreenshot)
-	mux.HandleFunc("/images/rotate", a.handleImageRotate)
-	mux.HandleFunc("/open-link", a.handleOpenLink)
-	mux.HandleFunc("/feedback/submit", a.handleFeedbackSubmit)
-	mux.HandleFunc("/scratchpad/open", a.handleScratchpadOpen)
-	mux.HandleFunc("/media/", a.handleMedia)
+	// Standard middleware stack. Order matters: recover wraps everything
+	// else so a panic in a handler produces a 500 instead of crashing the
+	// process. RequestID lets handlers log with a stable ID across the
+	// crash log + debug log + response header.
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
 
-	// Phase 4: debug endpoints (state + client-logs + toggle).
-	mux.HandleFunc("/debug/state", a.handleDebugState)
-	mux.HandleFunc("/debug/client-logs", a.handleClientLogs)
-	mux.HandleFunc("/settings/debug-mode", a.handleDebugModeToggle)
+	// Static frontend assets. These are served by the asset handler (see
+	// app.go AssetServer) but the local-loopback HTTP server also serves
+	// them when running in dev or when the embedded asset server is
+	// bypassed.
+	r.Get("/app.js", a.handleFrontendAsset("app.js", "text/javascript; charset=utf-8"))
+	r.Get("/app.css", a.handleFrontendAsset("app.css", "text/css; charset=utf-8"))
+	r.Get("/debug.js", a.handleFrontendAsset("debug.js", "text/javascript; charset=utf-8"))
+	r.Get("/htmx.min.js", a.handleFrontendAsset("htmx.min.js", "text/javascript; charset=utf-8"))
+	r.Get("/index.html", a.handleFrontendAsset("index.html", "text/html; charset=utf-8"))
 
-	// Phase 6: console + folder + clear (handlers defined in debug_handlers.go).
-	mux.HandleFunc("/debug/console", a.handleDebugConsole)
-	mux.HandleFunc("/debug/console/tail", a.handleDebugConsoleTail)
-	mux.HandleFunc("/debug/console/clear", a.handleDebugConsoleClear)
-	mux.HandleFunc("/debug/open-folder", a.handleDebugOpenFolder)
+	r.Get("/recovery", a.handleRecovery)
+	r.Get("/jobs/active", a.renderActiveJob)
+	r.Get("/jobs/*", a.handleJobStatus)
 
-	a.muxRaw = mux
+	r.Get("/", a.handleCalendar)
+	r.Get("/calendar", a.handleCalendar)
+	r.Get("/calendar/*", a.handleCalendarMonth)
+	r.Post("/calendar/*", a.handleCalendarMonth)
+	r.Get("/anniversary/*", a.handleAnniversary)
+
+	r.Get("/soldiers", a.handleSoldiers)
+	r.Post("/soldiers", a.handleSoldiers)
+	r.Get("/browse", a.handleBrowse)
+	r.Get("/browse/results", a.handleBrowseResults)
+	r.Get("/soldiers/search", a.handleSearch)
+	r.Get("/soldiers/search/recent", a.handleRecentSearch)
+	r.Get("/soldiers/search/advanced", a.handleAdvancedSearch)
+	r.Get("/soldiers/display/*", a.handleSoldierByDisplayID)
+	r.Post("/soldiers/display/*", a.handleSoldierByDisplayID)
+	r.Put("/soldiers/display/*", a.handleSoldierByDisplayID)
+	r.Delete("/soldiers/display/*", a.handleSoldierByDisplayID)
+	r.Get("/soldiers/new", a.handleNewSoldier)
+	r.Post("/soldiers/new", a.handleNewSoldier)
+	r.Post("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
+	r.Get("/soldiers/*", a.handleSoldierByID)
+	r.Post("/soldiers/*", a.handleSoldierByID)
+	r.Put("/soldiers/*", a.handleSoldierByID)
+	r.Delete("/soldiers/*", a.handleSoldierByID)
+
+	r.Get("/review-queue", a.handleReviewQueue)
+	r.Post("/review-queue/bulk", a.handleReviewQueueBulk)
+	r.Get("/review-queue/compare/*", a.handleReviewQueueCompare)
+	r.Get("/compare", a.handleCompare)
+
+	r.Get("/setup", a.handleInitialSetup)
+	r.Post("/setup", a.handleInitialSetup)
+	r.Get("/version", a.handleVersion)
+	r.Get("/share", a.handleShare)
+	r.Get("/research-collections", a.handleResearchCollections)
+	r.Get("/research-collections/*", a.handleResearchCollectionByID)
+
+	r.Get("/insights", a.handleInsights)
+	r.Get("/insights/drilldown", a.handleInsightsDrilldown)
+	r.Post("/insights/audit/duplicates", a.handleRunDuplicateAudit)
+
+	r.Get("/export", a.handleLegacyExportRedirect)
+	r.Get("/settings", a.handleSettings)
+	r.Post("/settings/initialize", a.handleSettingsInitialize)
+	r.Post("/settings/updates/source", a.handleUpdateSource)
+	r.Post("/settings/updates/check", a.handleCheckForUpdates)
+	r.Post("/settings/updates/apply", a.handleApplyLatestUpdate)
+	r.Post("/settings/updates/health/bootstrap", a.handleUpdateBootstrapHealth)
+	r.Post("/settings/images/orphans/scan", a.handleScanImageOrphans)
+	r.Post("/settings/images/orphans/cleanup", a.handleCleanupImageOrphans)
+	r.Post("/settings/quality/scan", a.handleScanDataQuality)
+	r.Post("/settings/quality/apply", a.handleApplyDataQuality)
+
+	r.Get("/export/json", a.handleExportJSON)
+	r.Get("/export/csv", a.handleExportCSV)
+	r.Get("/export/ical", a.handleExportICalendar)
+	r.Get("/export/static-archive", a.handleExportStaticArchive)
+	r.Post("/export/database-pdf", a.handleExportDatabasePDF)
+	r.Get("/export/backup", a.handleExportBackup)
+	r.Get("/export/shared-archive", a.handleExportSharedArchive)
+	r.Get("/export/bug-report", a.handleExportBugReport)
+	r.Get("/export/feedback-log", a.handleExportFeedbackLog)
+	r.Get("/insights/report/pdf", a.handleExportInsightsPDF)
+
+	r.Post("/import/backup", a.handleImportBackup)
+	r.Post("/import/shared-archive", a.handleImportSharedArchive)
+	r.Post("/import/memorial-json/preview", a.handlePreviewMemorialJSONImport)
+	r.Post("/import/memorial-json/confirm", a.handleConfirmMemorialJSONImport)
+
+	r.Get("/merge-review/*", a.handleMergeReviewConflict)
+
+	r.Get("/integrations/google/connect", a.handleGoogleConnect)
+	r.Get("/integrations/google/disconnect", a.handleGoogleDisconnect)
+	r.Get("/integrations/google/backup", a.handleGoogleBackup)
+	r.Get("/integrations/google/sheets/export", a.handleGoogleSheetsExport)
+	r.Post("/integrations/google/calendar/use-managed", a.handleGoogleCalendarUseManaged)
+	r.Post("/integrations/google/calendar/preferences/save", a.handleGoogleCalendarPreferencesSave)
+	r.Post("/integrations/google/calendar/sync-managed", a.handleGoogleCalendarSyncManaged)
+	r.Post("/integrations/google/calendar/unsync-managed", a.handleGoogleCalendarUnsyncManaged)
+	r.Post("/integrations/google/calendar/use-test", a.handleGoogleCalendarUseTest)
+	r.Post("/integrations/google/calendar/sync-test", a.handleGoogleCalendarSyncTest)
+	r.Post("/integrations/google/calendar/unsync-test", a.handleGoogleCalendarUnsyncTest)
+
+	r.Get("/images/screenshot", a.handleImageScreenshot)
+	r.Post("/images/rotate", a.handleImageRotate)
+	r.Get("/open-link", a.handleOpenLink)
+	r.Post("/feedback/submit", a.handleFeedbackSubmit)
+	r.Post("/scratchpad/open", a.handleScratchpadOpen)
+	r.Get("/media/*", a.handleMedia)
+
+	// Debug endpoints (state + client-logs + toggle).
+	r.Get("/debug/state", a.handleDebugState)
+	r.Post("/debug/client-logs", a.handleClientLogs)
+	r.Post("/settings/debug-mode", a.handleDebugModeToggle)
+
+	// Console + folder + clear.
+	r.Get("/debug/console", a.handleDebugConsole)
+	r.Get("/debug/console/tail", a.handleDebugConsoleTail)
+	r.Post("/debug/console/clear", a.handleDebugConsoleClear)
+	r.Get("/debug/open-folder", a.handleDebugOpenFolder)
+
 	// debug.Middleware is OUTERMOST so the request_id it generates is on
 	// the context before recover runs (the crash log line carries it).
-	a.mux = debug.Middleware(recoverMiddleware(mux))
+	a.muxRaw = nil
+	a.mux = debug.Middleware(recoverMiddleware(r))
 }

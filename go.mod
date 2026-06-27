@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/a-h/templ v0.3.1001
 	github.com/agnivade/levenshtein v1.2.1
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/xuri/excelize/v2 v2.9.1

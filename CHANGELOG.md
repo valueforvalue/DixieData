@@ -13,6 +13,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- `internal/routebuilder` package providing typed URL builders for
+  every route templates reference (`ActiveJobs`, `JobStatus`,
+  `JobStatusSlot`, `Anniversary`, `AnniversaryEdit`,
+  `AnniversaryItemDelete`, `AnniversaryItemUpdate`,
+  `AnniversaryItemCreate`, `FeedbackSubmit`, `DebugConsole`,
+  `BrowseResults`, `SoldierSearch`). Templates call these via
+  `templ.SafeURL(routebuilder.X(...))` instead of string literals.
+  When a route moves, only `routes.go` and the matching builder need
+  to change. 16 unit tests cover URL escaping, whitespace trimming,
+  path-segment validation, and per-builder output stability.
+- `github.com/go-chi/chi/v5` v5.3.0 added as a direct dep.
+
+### Changed
+
+- `internal/appshell/routes.go`: swapped `net/http.ServeMux` for
+  `github.com/go-chi/chi/v5`. Chi provides explicit pattern routing,
+  middleware composition (`middleware.Recoverer`,
+  `middleware.RequestID`), and wildcard segments (`/*`) without
+  changing handler signatures — every handler still reads
+  `r.URL.Path` directly, so existing `strings.TrimPrefix` logic
+  works unchanged. Wildcard routes register GET, POST, PUT, and
+  DELETE methods where the handler dispatches by `r.Method` (soldier
+  records, soldier display IDs).
+
+### Added (continued)
+
 - Persistent progress slot in the layout: a top-center progress bar
   (below the toast region) that polls `/jobs/active` every 3s and
   shows real progress for whatever background task the user kicked
