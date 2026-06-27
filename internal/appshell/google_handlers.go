@@ -6,12 +6,15 @@
 package appshell
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/jobs"
 )
 
 func (a *App) handleGoogleConnect(w http.ResponseWriter, r *http.Request) {
@@ -49,20 +52,32 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		setToastHeaderWithType(w, fmt.Sprintf("Google Drive upload failed: %v", err), "error")
 		return
 	}
-	defer os.RemoveAll(tempDir)
-
 	backupPath := filepath.Join(tempDir, backupArchiveName(time.Now()))
-	manifest, err := a.backup.Export(backupPath, a.dataDir)
-	if err != nil {
-		setToastHeaderWithType(w, fmt.Sprintf("Google Drive upload failed: %v", err), "error")
-		return
-	}
-	uploaded, err := a.google.UploadBackup(r.Context(), backupPath)
-	if err != nil {
-		setToastHeaderWithType(w, fmt.Sprintf("Google Drive upload failed: %v", err), "error")
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Backup uploaded to Google Drive (%d soldiers, %d images): %s", manifest.Soldiers, manifest.Images, uploaded.WebViewLink))
+
+	var jobID string
+	jobID = a.jobs.Start("google_drive_backup", func(ctx context.Context, p *jobs.Progress) error {
+		// tempDir cleanup MUST run after the worker, not via defer
+		// in the request goroutine which returns immediately.
+		defer os.RemoveAll(tempDir)
+
+		p.Set(10, "Building backup archive")
+		manifest, err := a.backup.Export(backupPath, a.dataDir)
+		if err != nil {
+			return err
+		}
+		p.Set(60, "Uploading to Google Drive")
+		uploaded, err := a.google.UploadBackup(ctx, backupPath)
+		if err != nil {
+			return err
+		}
+		p.Set(100, fmt.Sprintf("Uploaded %d soldiers, %d images.", manifest.Soldiers, manifest.Images))
+		_ = uploaded
+		_ = jobID
+		return nil
+	})
+	setToastHeader(w, "Google Drive upload started\u2026")
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
@@ -76,20 +91,29 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		setToastHeaderWithType(w, fmt.Sprintf("Google Sheets export failed: %v", err), "error")
 		return
 	}
-	defer os.RemoveAll(tempDir)
-
 	csvPath := filepath.Join(tempDir, "dixiedata-export.csv")
-	if err := a.export.ExportCSV(csvPath); err != nil {
-		setToastHeaderWithType(w, fmt.Sprintf("Google Sheets export failed: %v", err), "error")
-		return
-	}
 
-	uploaded, err := a.google.UploadCSVAsSheet(r.Context(), csvPath, "DixieData Export")
-	if err != nil {
-		setToastHeaderWithType(w, fmt.Sprintf("Google Sheets export failed: %v", err), "error")
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Google Sheet ready: %s", uploaded.WebViewLink))
+	var jobID string
+	jobID = a.jobs.Start("google_sheets_export", func(ctx context.Context, p *jobs.Progress) error {
+		defer os.RemoveAll(tempDir)
+
+		p.Set(10, "Building CSV")
+		if err := a.export.ExportCSV(csvPath); err != nil {
+			return err
+		}
+		p.Set(70, "Uploading to Google Sheets")
+		uploaded, err := a.google.UploadCSVAsSheet(ctx, csvPath, "DixieData Export")
+		if err != nil {
+			return err
+		}
+		p.Set(100, "Google Sheet ready.")
+		_ = uploaded
+		_ = jobID
+		return nil
+	})
+	setToastHeader(w, "Google Sheets export started\u2026")
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleGoogleCalendarUseManaged(w http.ResponseWriter, r *http.Request) {
