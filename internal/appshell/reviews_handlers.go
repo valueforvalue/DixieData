@@ -5,6 +5,7 @@
 package appshell
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 )
 
@@ -63,37 +65,43 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := strings.ToLower(strings.TrimSpace(r.FormValue("bulk_action")))
+	var jobID string
 	switch action {
 	case "ignore":
-		for _, soldierID := range selected {
-			if err := a.soldiers.MarkReviewResolved(soldierID); err != nil {
-				respondInternal(w, r, fmt.Sprintf("Could not resolve review status for record %d.", soldierID), err)
-				return
+		jobID = a.jobs.Start("review_bulk_resolve", func(ctx context.Context, p *jobs.Progress) error {
+			for i, soldierID := range selected {
+				p.Set(10+80*i/len(selected), fmt.Sprintf("Resolving record %d (%d/%d)", soldierID, i+1, len(selected)))
+				if err := a.soldiers.MarkReviewResolved(soldierID); err != nil {
+					return err
+				}
+				if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
+					return err
+				}
 			}
-			if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
-				respondInternal(w, r, fmt.Sprintf("Could not resolve findings for record %d.", soldierID), err)
-				return
-			}
-		}
-		setToastHeader(w, fmt.Sprintf("Resolved %d review queue item(s).", len(selected)))
+			p.Set(100, fmt.Sprintf("Resolved %d review queue item(s).", len(selected)))
+			return nil
+		})
 	case "delete":
-		for _, soldierID := range selected {
-			if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
-				respondInternal(w, r, fmt.Sprintf("Could not resolve findings for record %d.", soldierID), err)
-				return
+		jobID = a.jobs.Start("review_bulk_delete", func(ctx context.Context, p *jobs.Progress) error {
+			for i, soldierID := range selected {
+				p.Set(10+80*i/len(selected), fmt.Sprintf("Deleting record %d (%d/%d)", soldierID, i+1, len(selected)))
+				if err := a.audit.ResolveFindingsForPersonRecord(soldierID); err != nil {
+					return err
+				}
+				if err := a.soldiers.Delete(soldierID); err != nil {
+					return err
+				}
 			}
-			if err := a.soldiers.Delete(soldierID); err != nil {
-				respondInternal(w, r, fmt.Sprintf("Could not delete record %d.", soldierID), err)
-				return
-			}
-		}
-		setToastHeaderWithType(w, fmt.Sprintf("Deleted %d review queue record(s).", len(selected)), "success")
+			p.Set(100, fmt.Sprintf("Deleted %d review queue record(s).", len(selected)))
+			return nil
+		})
 	default:
 		respondValidation(w, r, "Unknown bulk action. Use ignore or delete.", nil)
 		return
 	}
-	w.Header().Set("X-DixieData-Redirect", "/review-queue")
-	fmt.Fprint(w, "Review queue updated.")
+	setToastHeader(w, fmt.Sprintf("Bulk %s started\u2026", action))
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleMergeReviewConflict(w http.ResponseWriter, r *http.Request) {
