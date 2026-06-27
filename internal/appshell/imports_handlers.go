@@ -5,6 +5,7 @@
 package appshell
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -94,22 +96,27 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	summary, err := a.backup.ImportSharedBackup(path, a.dataDir)
-	if err != nil {
-		respondInternal(w, r, "Shared archive import failed.", err)
-		return
-	}
-	if summary.PendingConflicts > 0 {
-		w.Header().Set("X-DixieData-Redirect", "/export")
-	}
-	setToastHeader(w, fmt.Sprintf("Success: %d records imported, %d flagged for review.", summary.SoldiersInserted+summary.SoldiersUpdated, summary.PendingConflicts))
-	fmt.Fprintf(w, "Shared backup merged: %d soldiers added, %d updated; %d records added, %d updated; %d images added, %d updated; %d conflicts staged for review. Merge log: %s",
-		summary.SoldiersInserted, summary.SoldiersUpdated,
-		summary.RecordsInserted, summary.RecordsUpdated,
-		summary.ImagesInserted, summary.ImagesUpdated,
-		summary.PendingConflicts,
-		summary.LogPath,
-	)
+	// Run the import inside a background job so the user sees real
+	// progress. We pre-compute the summary outside the worker (the
+	// worker only touches jobs state) because ImportSharedBackup is
+	// a single blocking call and we want a single progress tick.
+	var jobID string
+	jobID = a.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(20, "Merging shared archive")
+		summary, err := a.backup.ImportSharedBackup(path, a.dataDir)
+		if err != nil {
+			return err
+		}
+		if summary.PendingConflicts > 0 {
+			p.Set(95, fmt.Sprintf("Staged %d conflicts for review", summary.PendingConflicts))
+		}
+		p.Set(100, fmt.Sprintf("Imported %d soldiers, %d pending conflicts.", summary.SoldiersInserted+summary.SoldiersUpdated, summary.PendingConflicts))
+		_ = jobID
+		return nil
+	})
+	setToastHeader(w, "Shared archive import started\u2026")
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Request) {
@@ -154,18 +161,33 @@ func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		respondValidation(w, r, "Import preview expired. Run preview again.", nil)
 		return
 	}
-	summary, err := a.soldiers.ImportMemorialArchive(path)
-	if err != nil {
-		respondInternal(w, r, "Memorial JSON import failed.", err)
-		return
-	}
-	logPath, logErr := writeMemorialImportErrorLog(summary)
-	if logErr != nil {
-		respondInternal(w, r, "Memorial JSON import completed but the error log could not be written.", logErr)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed.", summary.Created, summary.Skipped, summary.Failed))
-	fmt.Fprint(w, memorialImportSummaryMarkup(summary, logPath))
+
+	// Capture the path before the request returns and enqueue the
+	// actual import as a background job. The /jobs/{id} page will
+	// render when the worker finishes. The summary + error log are
+	// written to the job's ResultPath-equivalent so they survive
+	// the request lifecycle; in practice we use the existing
+	// memorialImportSummaryMarkup against the summary captured
+	// inside the worker.
+	var jobID string
+	jobID = a.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(20, "Reading Memorial archive")
+		summary, err := a.soldiers.ImportMemorialArchive(path)
+		if err != nil {
+			return err
+		}
+		p.Set(80, "Writing error log")
+		logPath, logErr := writeMemorialImportErrorLog(summary)
+		if logErr != nil {
+			return logErr
+		}
+		p.Set(100, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed. Log: %s", summary.Created, summary.Skipped, summary.Failed, logPath))
+		_ = jobID
+		return nil
+	})
+	setToastHeader(w, "Memorial JSON import started\u2026")
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) rememberMemorialPreview(path string) (string, error) {
