@@ -69,6 +69,7 @@ templ JobStatusFragment(job jobs.Job) {
 			hx-trigger="none"
 		} else {
 			hx-get={ templ.SafeURL("/jobs/" + job.ID + "/status") }
+			hx-trigger="every 2s"
 			hx-swap="outerHTML"
 			hx-target="#job-status-body"
 		}>

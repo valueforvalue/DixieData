@@ -48,55 +48,6 @@ func TestHandleJobCancelUnknownJobReturns404(t *testing.T) {
 	}
 }
 
-func TestHandleJobStreamReturnsEventStream(t *testing.T) {
-	app := newStressApp(t)
-	var id string
-	id = app.jobs.Start("unit", func(ctx context.Context, p *jobs.Progress) error {
-		p.Set(25, "quarter")
-		p.Set(50, "half")
-		p.Set(100, "done")
-		return nil
-	})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/stream", nil).WithContext(ctx)
-	rec := httptest.NewRecorder()
-
-	done := make(chan struct{})
-	go func() {
-		app.handleJobStatus(rec, req)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatalf("stream handler did not return")
-	}
-
-	body := rec.Body.String()
-	if !strings.Contains(rec.Header().Get("Content-Type"), "text/event-stream") {
-		t.Fatalf("expected text/event-stream; got %q", rec.Header().Get("Content-Type"))
-	}
-	if !strings.Contains(body, "event: progress") {
-		t.Fatalf("stream body should include event: progress; got:\n%s", body)
-	}
-	if !strings.Contains(body, `"Progress":100`) {
-		t.Fatalf("stream body should reach progress=100; got:\n%s", body)
-	}
-}
-
-func TestHandleJobStreamUnknownJobReturns404(t *testing.T) {
-	app := newStressApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/jobs/missing/stream", nil)
-	rec := httptest.NewRecorder()
-	app.handleJobStatus(rec, req)
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", rec.Code)
-	}
-}
-
 func TestHandleJobArtifactStreamsResultFile(t *testing.T) {
 	app := newStressApp(t)
 	dir := t.TempDir()

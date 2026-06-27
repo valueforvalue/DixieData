@@ -6,14 +6,11 @@
 package appshell
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/presentation"
@@ -41,12 +38,6 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.renderJobStatus(w, r, id, true)
-	case "stream":
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		a.streamJobProgress(w, r, id)
 	case "artifact":
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -88,86 +79,6 @@ func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
 	default:
 		respondInternal(w, r, "Could not cancel the export job.", err)
 	}
-}
-
-// streamJobProgress streams job snapshots as Server-Sent Events. The
-// browser opens an EventSource on /jobs/{id}/stream; each Progress.Set
-// or state transition fires a data: <json>\n\n frame. The stream
-// terminates as soon as the job reaches a terminal state
-// (done / error / cancelled / interrupted).
-//
-// Clients without EventSource support can keep using the existing
-// /jobs/{id}/status polling endpoint; the two paths coexist.
-func (a *App) streamJobProgress(w http.ResponseWriter, r *http.Request, id string) {
-	job, ok := a.jobs.Get(id)
-	if !ok {
-		http.NotFound(w, r)
-		return
-	}
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
-	w.WriteHeader(http.StatusOK)
-
-	// Push the current snapshot first so a slow worker that has not
-	// called Progress.Set yet still produces a meaningful first event.
-	writeJobEvent(w, job)
-	flusher.Flush()
-
-	if isTerminalJobStatus(job.Status) {
-		return
-	}
-
-	sub := a.jobs.Subscribe(id)
-	defer a.jobs.Unsubscribe(id, sub)
-
-	keepalive := time.NewTicker(15 * time.Second)
-	defer keepalive.Stop()
-
-	for {
-		select {
-		case snap, ok := <-sub:
-			if !ok {
-				return
-			}
-			writeJobEvent(w, snap)
-			flusher.Flush()
-			if isTerminalJobStatus(snap.Status) {
-				return
-			}
-		case <-keepalive.C:
-			// Comment line keeps the connection warm through proxies
-			// that close idle sockets.
-			_, _ = w.Write([]byte(": keepalive\n\n"))
-			flusher.Flush()
-		case <-r.Context().Done():
-			return
-		}
-	}
-}
-
-func writeJobEvent(w http.ResponseWriter, job jobs.Job) {
-	payload, err := json.Marshal(job)
-	if err != nil {
-		return
-	}
-	_, _ = fmt.Fprintf(w, "event: progress\ndata: %s\n\n", payload)
-}
-
-func isTerminalJobStatus(status string) bool {
-	switch status {
-	case jobs.StatusDone, jobs.StatusError, jobs.StatusCancelled, jobs.StatusInterrupted:
-		return true
-	}
-	return false
 }
 
 // streamJobArtifact streams the saved file at job.ResultPath back to the
