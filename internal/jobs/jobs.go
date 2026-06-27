@@ -134,6 +134,13 @@ type Registry struct {
 	concurrency int
 	sem         chan struct{}
 
+	// workerWG tracks in-flight worker goroutines. Shutdown waits on
+	// it after cancelling every active job so the appshell exit path
+	// does not leak file handles or panic on closed channels. Each
+	// worker goroutine spawned by Start does wg.Add(1) before it
+	// runs and wg.Done() in its defer.
+	workerWG sync.WaitGroup
+
 	// logMu guards logWriter + logCloser. logWriter is appended to
 	// on every job state change so the Registry survives a webview
 	// reload or app restart. nil disables persistence.
@@ -311,6 +318,8 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 // is saturated the semaphore blocks until another worker exits, so
 // the job stays in StatusQueued (set at registration) until then.
 	go func() {
+		r.workerWG.Add(1)
+		defer r.workerWG.Done()
 		r.sem <- struct{}{}
 		defer func() { <-r.sem }()
 
@@ -423,6 +432,57 @@ func (r *Registry) SetResultPath(id, path string) {
 	job.mu.Unlock()
 	r.appendSnapshot(snap)
 	r.broadcast(id, snap)
+}
+
+// MostRecentActive returns the most recently started job that is
+// still queued or running, or nil if none. Used by the layout
+// progress slot to render whichever background task the user kicked
+// off most recently regardless of which page they are on. Returns a
+// value-copy so callers can read fields without holding any lock.
+func (r *Registry) MostRecentActive() *Job {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var latest *Job
+	for _, j := range r.jobs {
+		if j.Status != StatusQueued && j.Status != StatusRunning {
+			continue
+		}
+		snap := cloneJob(j)
+		if latest == nil || snap.StartedAt.After(latest.StartedAt) {
+			latest = &snap
+		}
+	}
+	return latest
+}
+
+// Shutdown cancels every running/queued job and waits for the worker
+// goroutines to drain. Bounded by ctx; if the deadline expires before
+// the workers exit, Shutdown returns ctx.Err() and the goroutines are
+// abandoned (they will eventually finish on their own unless blocked
+// on I/O). Called from the appshell shutdown sequence so file handles
+// held by export workers are released before main returns. The WJ-2
+// appendSnapshot race fix in 271149a made file-handle ownership
+// explicit; this method is the matching exit-side guarantee that
+// those handles are actually released.
+func (r *Registry) Shutdown(ctx context.Context) error {
+	r.mu.Lock()
+	for _, j := range r.jobs {
+		if j.Status == StatusQueued || j.Status == StatusRunning {
+			j.cancelCause()
+		}
+	}
+	r.mu.Unlock()
+	done := make(chan struct{})
+	go func() {
+		r.workerWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Subscribe registers a buffered channel as a listener for snapshot

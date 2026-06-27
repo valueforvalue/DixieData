@@ -85,10 +85,23 @@ func (a *App) SetOpenFileDialogOverride(fn func(opts any) (string, error)) {
 
 // OpenMultipleFilesDialog wraps wailsruntime.OpenMultipleFilesDialog.
 func (a *App) OpenMultipleFilesDialog(opts wailsruntime.OpenDialogOptions) ([]string, error) {
+	if a.openMultipleFilesDialogOverride != nil {
+		return a.openMultipleFilesDialogOverride(opts)
+	}
 	if !wailsHasFrontend(a.ctx) {
 		return nil, errWailsFrontendUnavailable
 	}
 	return wailsruntime.OpenMultipleFilesDialog(a.ctx, opts)
+}
+
+// SetOpenMultipleFilesDialogOverride installs a hook that replaces
+// the wailsruntime.OpenMultipleFilesDialog call. Mirrors
+// SetOpenFileDialogOverride but for multi-select. Used by httptest
+// to inject a known slice of paths without panicking through
+// wailsruntime, and by the web-mode binary to drive image-import
+// flows end-to-end without a real OS file picker.
+func (a *App) SetOpenMultipleFilesDialogOverride(fn func(opts any) ([]string, error)) {
+	a.openMultipleFilesDialogOverride = fn
 }
 
 // BrowserOpenURL wraps wailsruntime.BrowserOpenURL. The Wails

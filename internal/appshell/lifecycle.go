@@ -12,9 +12,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
@@ -232,6 +234,18 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown(ctx context.Context) {
 	_ = debug.Flush()
 	_ = debug.Close()
+	// Drain background jobs BEFORE closing the database, since
+	// several workers read from the DB mid-export. Bound the wait by
+	// a 5s deadline so a stuck worker cannot hang app exit. If the
+	// deadline expires the workers are abandoned (they finish on
+	// their own unless blocked on I/O).
+	if a.jobs != nil {
+		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		if err := a.jobs.Shutdown(shutdownCtx); err != nil {
+			slog.Warn("jobs shutdown timed out", "err", err)
+		}
+		cancel()
+	}
 	if a.database != nil {
 		a.database.Close()
 	}

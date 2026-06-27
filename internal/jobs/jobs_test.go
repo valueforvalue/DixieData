@@ -312,3 +312,100 @@ func TestRegistryWorkerPoolBoundedConcurrency(t *testing.T) {
 	}
 	time.Sleep(20 * time.Millisecond)
 }
+
+func TestShutdownCancelsRunningAndDrainsWorkers(t *testing.T) {
+	reg := New()
+	started := make(chan struct{}, 4)
+	blocked := make(chan struct{}, 4)
+	for i := 0; i < 2; i++ {
+		reg.Start("unit", func(ctx context.Context, p *Progress) error {
+			started <- struct{}{}
+			<-ctx.Done()
+			blocked <- struct{}{}
+			p.Set(100, "done")
+			return nil
+		})
+	}
+	// Wait for both workers to start.
+	for i := 0; i < 2; i++ {
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatalf("worker %d did not start", i)
+		}
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := reg.Shutdown(shutdownCtx); err != nil {
+		t.Fatalf("Shutdown: got %v want nil", err)
+	}
+	// Both workers must have observed ctx.Done().
+	for i := 0; i < 2; i++ {
+		select {
+		case <-blocked:
+		case <-time.After(time.Second):
+			t.Fatalf("worker %d did not unblock on shutdown", i)
+		}
+	}
+}
+
+func TestShutdownReturnsContextErrWhenDeadlineExpires(t *testing.T) {
+	reg := New()
+	reg.Start("unit", func(ctx context.Context, p *Progress) error {
+		// Worker that ignores ctx and sleeps long enough to exceed
+		// the shutdown deadline. Shutdown must return ctx.Err()
+		// rather than block forever.
+		time.Sleep(500 * time.Millisecond)
+		return nil
+	})
+	// Give the worker a moment to start.
+	time.Sleep(20 * time.Millisecond)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	err := reg.Shutdown(shutdownCtx)
+	if err == nil {
+		t.Fatalf("Shutdown with 50ms deadline should have returned an error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Shutdown: got %v want context.DeadlineExceeded", err)
+	}
+}
+
+func TestMostRecentActiveReturnsLatestRunningJob(t *testing.T) {
+	reg := New()
+	reg.Start("unit", func(ctx context.Context, p *Progress) error {
+		time.Sleep(100 * time.Millisecond)
+		return nil
+	})
+	time.Sleep(20 * time.Millisecond) // ensure StartedAt ordering
+	id := reg.Start("unit2", func(ctx context.Context, p *Progress) error {
+		time.Sleep(100 * time.Millisecond)
+		return nil
+	})
+	got := reg.MostRecentActive()
+	if got == nil {
+		t.Fatalf("MostRecentActive returned nil with two running jobs")
+	}
+	if got.ID != id {
+		t.Fatalf("MostRecentActive = %s, want %s (latest by StartedAt)", got.ID, id)
+	}
+}
+
+func TestMostRecentActiveIgnoresTerminalJobs(t *testing.T) {
+	reg := New()
+	id := reg.Start("unit", func(ctx context.Context, p *Progress) error {
+		return nil
+	})
+	// Wait for the worker to finish.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := reg.Get(id)
+		if snap.Status == StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := reg.MostRecentActive(); got != nil {
+		t.Fatalf("MostRecentActive after terminal job = %s, want nil", got.ID)
+	}
+}
