@@ -2504,21 +2504,34 @@
     if (!(region instanceof HTMLElement) || !message) {
       return;
     }
+    const headers = {
+      success: "Success",
+      info: "Heads up",
+      warning: "Warning",
+      error: "Attention",
+    };
     const toast = document.createElement("div");
     toast.className = "toast-card";
     toast.setAttribute("data-toast-kind", kind);
     toast.innerHTML = `
       <div>
-        <div class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">${kind === "error" ? "Attention" : "Success"}</div>
+        <div class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">${headers[kind] || "Notice"}</div>
         <div class="mt-1 text-sm text-[#22303d]">${message}</div>
       </div>
       <button type="button" class="secondary-button px-3 py-1 text-xs" data-toast-dismiss>Dismiss</button>
     `;
     region.appendChild(toast);
     const dismiss = () => {
-      toast.remove();
+      toast.setAttribute("data-toast-dismissing", "true");
+      window.setTimeout(() => toast.remove(), 320);
     };
     toast.querySelector("[data-toast-dismiss]")?.addEventListener("click", dismiss);
+    // Auto-dismiss success/info after 4s. Error and warning stay
+    // until the user dismisses them — preserves the manual-dismiss
+    // decision from Issue #54.
+    if (kind === "success" || kind === "info") {
+      window.setTimeout(dismiss, 4000);
+    }
   }
 
   function restorePendingToast() {
