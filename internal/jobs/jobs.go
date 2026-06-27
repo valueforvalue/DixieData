@@ -104,6 +104,21 @@ func (p *Progress) Cancelled() bool {
 	return p.job.cancelled
 }
 
+// NewJob constructs a Job value with the given ID and kind, leaving
+// runtime fields (Status, Progress, StartedAt, etc.) zero. The mutex
+// and other unexported fields are zero-initialised, so the result is
+// safe to pass to read-only template rendering or to register with a
+// worker via Registry.New followed by ID lookup.
+//
+// This constructor exists because tests in other packages cannot
+// write `jobs.Job{ID: ..., Kind: ...}` literals: the mu field is
+// unexported and would force tests to construct through the public
+// Registry, which requires a running event loop. Tests that need a
+// synthetic Job for snapshot or template rendering use NewJob.
+func NewJob(id, kind string) *Job {
+	return &Job{ID: id, Kind: kind}
+}
+
 // Snapshot returns the registry view of the job's current state.
 func (j *Job) Snapshot() Job {
 	j.mu.Lock()
