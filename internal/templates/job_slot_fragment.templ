@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 )
 
@@ -22,7 +23,7 @@ templ JobStatusSlotFragment(job jobs.Job) {
 		if job.Status == jobs.StatusDone || job.Status == jobs.StatusError || job.Status == jobs.StatusCancelled || job.Status == jobs.StatusInterrupted {
 			hx-trigger="none"
 		} else {
-			hx-get={ templ.SafeURL("/jobs/" + job.ID + "/status?slot=1") }
+			hx-get={ templ.SafeURL(routebuilder.JobStatusSlot(job.ID)) }
 			hx-trigger="every 2s"
 			hx-swap="outerHTML"
 			hx-target="[data-progress-region]"

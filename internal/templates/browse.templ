@@ -5,16 +5,16 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/htmxattr"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions) {
 	@Layout("Browse") {
-		<div data-ui-id={ uiids.PageBrowse } data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
-			@SurfaceBadge(uiids.PageBrowse)
+		<div data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
 			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Browse Local Archive</h2>
@@ -24,7 +24,10 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.
 				</div>
 			</div>
-			<form id="browse-filters" hx-get="/browse/results" hx-target="#browse-results" data-browse-filters-form class="rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)]">
+			<form id="browse-filters" { htmxattr.Mux{
+				Get:    routebuilder.BrowseResults(),
+				Target: "#browse-results",
+			}.Attrs()... } data-browse-filters-form class="rounded-3xl border border-[rgba(141,116,64,0.4)] bg-[rgba(223,228,234,0.92)]">
 				<details class="group" data-browse-filters-details>
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5">
 						<span class="flex items-center gap-2">
@@ -143,8 +146,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 				@SuggestionDatalist("browse-unit-suggestions", suggestions.Unit)
 				@SuggestionDatalist("browse-buried-in-suggestions", suggestions.BuriedIn)
 				@SuggestionDatalist("browse-pension-state-suggestions", suggestions.PensionState)
-			<div id="browse-results" data-ui-id={ uiids.PanelBrowseResults } class="relative">
-				@SurfaceBadge(uiids.PanelBrowseResults)
+			<div id="browse-results" class="relative">
 				@BrowseResults(records, state)
 			</div>
 		</div>

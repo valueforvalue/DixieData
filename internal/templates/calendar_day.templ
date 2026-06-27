@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -105,7 +106,7 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 							</div>
 							<div class="flex flex-wrap gap-2">
 								<button
-									hx-get={ fmt.Sprintf("/anniversary/%d/%d?edit=%d", day.Month, day.Day, item.ID) }
+									hx-get={ templ.SafeURL(routebuilder.AnniversaryEdit(day.Month, day.Day, item.ID)) }
 									hx-target="#details-pane"
 									hx-swap="innerHTML"
 									class="ghost-link px-3 py-2"
@@ -113,7 +114,7 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 									Edit
 								</button>
 								<button
-									hx-delete={ fmt.Sprintf("/anniversary/%d/%d/items/%d", day.Month, day.Day, item.ID) }
+									hx-delete={ templ.SafeURL(routebuilder.AnniversaryItemDelete(day.Month, day.Day, item.ID)) }
 									hx-confirm={ fmt.Sprintf("Delete '%s'? It will stop appearing on %s each year and any research-note link will be removed.", item.Title, calendarDayHeading(day.Month, day.Day)) }
 									hx-target="#details-pane"
 									hx-swap="innerHTML"
@@ -158,7 +159,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 			</div>
 			if day.Form.EditingID > 0 {
 				<button
-					hx-get={ fmt.Sprintf("/anniversary/%d/%d", day.Month, day.Day) }
+					hx-get={ templ.SafeURL(routebuilder.Anniversary(day.Month, day.Day)) }
 					hx-target="#details-pane"
 					hx-swap="innerHTML"
 					class="ghost-link px-3 py-2"
@@ -173,7 +174,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 		if day.Form.EditingID > 0 {
 			<form
 				class="mt-4 grid gap-4"
-				hx-put={ fmt.Sprintf("/anniversary/%d/%d/items/%d", day.Month, day.Day, day.Form.EditingID) }
+				hx-put={ templ.SafeURL(routebuilder.AnniversaryItemUpdate(day.Month, day.Day, day.Form.EditingID)) }
 				hx-target="#details-pane"
 				hx-swap="innerHTML"
 			>
@@ -186,7 +187,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 		} else {
 			<form
 				class="mt-4 grid gap-4"
-				hx-post={ fmt.Sprintf("/anniversary/%d/%d/items", day.Month, day.Day) }
+				hx-post={ templ.SafeURL(routebuilder.AnniversaryItemCreate(day.Month, day.Day)) }
 				hx-target="#details-pane"
 				hx-swap="innerHTML"
 			>
