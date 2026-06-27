@@ -453,6 +453,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 								"hx-post": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
 								"hx-target": "this",
 								"hx-swap": "none",
+								"data-progress-label": "Importing images\u2026",
 							})
 							</div>
 						} else {
