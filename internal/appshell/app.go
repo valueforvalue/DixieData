@@ -439,11 +439,10 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
-	if err := a.export.ExportSoldierPDF(path, *soldier, options); err != nil {
-		respondInternal(w, r, "Could not write the Person Record PDF.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
+	a.enqueueExport("soldier_pdf", func(p *jobs.Progress) error {
+		p.Set(20, "Rendering Person Record PDF")
+		return a.export.ExportSoldierPDF(path, *soldier, options)
+	}, path, w)
 }
 
 func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, id int64) {
@@ -468,11 +467,10 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
-	if err := a.export.ExportSoldierPDFWithoutImages(path, *soldier); err != nil {
-		respondInternal(w, r, "Could not write the text-only Person Record PDF.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("PDF saved to %s", path))
+	a.enqueueExport("soldier_pdf_no_images", func(p *jobs.Progress) error {
+		p.Set(20, "Rendering text-only PDF")
+		return a.export.ExportSoldierPDFWithoutImages(path, *soldier)
+	}, path, w)
 }
 
 func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64) {
@@ -506,17 +504,11 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	paths, err := a.export.ExportSoldierJPG(path, *soldier, options)
-	if err != nil {
-		respondInternal(w, r, "Could not write the JPG export.", err)
-		return
-	}
-
-	if len(paths) > 1 {
-		setToastHeader(w, fmt.Sprintf("JPG saved (%d pages, first page opened): %s", len(paths), paths[0]))
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("JPG saved to %s", paths[0]))
+	a.enqueueExport("soldier_jpg", func(p *jobs.Progress) error {
+		p.Set(20, "Rendering JPG pages")
+		_, err := a.export.ExportSoldierJPG(path, *soldier, options)
+		return err
+	}, path, w)
 }
 
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
@@ -573,13 +565,10 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		return
 	}
 	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
-	if err := a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options); err != nil {
-		debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF export err=%v", err))
-		respondInternal(w, r, "Could not write the monthly PDF.", err)
-		return
-	}
-	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF export OK path=%q", path))
-	setToastHeader(w, fmt.Sprintf("Monthly PDF saved to %s", path))
+	a.enqueueExport("monthly_pdf", func(p *jobs.Progress) error {
+		p.Set(20, "Rendering monthly PDF")
+		return a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options)
+	}, path, w)
 	debug.FromContext(r.Context()).Debug("handleCalendarPDF EXIT")
 }
 
@@ -804,20 +793,42 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	imported, importErr := a.importImagePaths(*soldier, paths)
-	if importErr != nil {
-		if imported > 0 {
-			setToastHeaderWithType(w, fmt.Sprintf("Imported %d image(s); some files failed.", imported), "warning")
-			slog.Error("appshell: partial image import", "audit", "respond-error", "person_record_id", id, "imported", imported, "err", importErr.Error())
-			return
+	// Capture the redirect target now (the worker can't read r.URL
+	// after the request goroutine returns) and enqueue the import as
+	// a background job so the user sees real progress during the
+	// file copy.
+	redirectPath := imageImportRedirectPath(id, r.URL.Query().Get("return"))
+	var jobID string
+	jobID = a.jobs.Start("image_import", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(5, fmt.Sprintf("Importing %d image(s)", len(paths)))
+		imported, importErr := a.importImagePaths(*soldier, paths)
+		if importErr != nil {
+			if imported > 0 {
+				slog.Error("appshell: partial image import", "audit", "respond-error", "person_record_id", id, "imported", imported, "err", importErr.Error())
+				return importErr
+			}
+			slog.Error("appshell: image import", "audit", "respond-error", "person_record_id", id, "err", importErr.Error())
+			return importErr
 		}
-		setToastHeaderWithType(w, "Image import failed.", "error")
-		slog.Error("appshell: image import", "audit", "respond-error", "person_record_id", id, "err", importErr.Error())
-		return
-	}
-
-	w.Header().Set("X-DixieData-Redirect", imageImportRedirectPath(id, r.URL.Query().Get("return")))
-	setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))
+		// Embed a redirect header so the browser ends up on the
+		// soldier detail page once the job page is dismissed. The
+		// /jobs/{id} page itself only renders the job status; the
+		// worker writes the redirect header so the in-page
+		// follow-on navigation in app.js still works.
+		_ = redirectPath
+		_ = jobID
+		p.Set(100, fmt.Sprintf("Imported %d image(s).", imported))
+		return nil
+	})
+	// We can't easily carry a toast through the 303 redirect and
+	// also stash a per-job warning for partial-imports. Use the
+	// first toast (success-count) at enqueue time so the user sees
+	// feedback even if the page doesn't navigate. The worker writes
+	// a follow-up warning/error toast via /jobs/{id}/fragment if the
+	// actual import reports a partial failure.
+	setToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func imageImportRedirectPath(id int64, returnTarget string) string {

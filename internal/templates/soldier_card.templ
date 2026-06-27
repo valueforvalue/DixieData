@@ -642,6 +642,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 								"hx-post": fmt.Sprintf("/soldiers/%d/images/import", s.ID),
 								"hx-target": "#image-download-status",
+								"data-progress-label": "Importing images\u2026",
 							})
 								if len(s.Images) > 0 {
 									@components.Button("Download Selected Images", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
