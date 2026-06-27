@@ -1,36 +1,32 @@
 # UI surface IDs
 
-Use these IDs when requesting changes to a specific part of UI. Canonical source stays in `internal\uiids\uiids.go`.
+Surface IDs are the canonical identifiers for UI regions (pages, panels,
+tabs, overlays). They are typed Go constants in `internal/uiids/uiids.go`
+and registered in the `Registry` slice for lookup. Templates and HTMX
+attributes reference these constants instead of string literals so renames
+stay in sync.
 
-## Debug visibility
-
-Set `DIXIEDATA_DEBUG_UI_IDS=1` before launch to show surface badges in UI.
-
-- Development example: `set DIXIEDATA_DEBUG_UI_IDS=1`
-- Debug build path:
-  - `make debug` (or `.\scripts\build-debug.ps1` for direct invocation)
-  - `make run` (or `.\scripts\run-debug.ps1`)
-- Release builds stay visually clean while variable stays unset.
-- Markup still keeps `data-ui-id` attributes for DevTools inspection.
-
-## Responsive audit gate
-
-Every responsive release slice should clear this path before closeout:
-
-1. Build debug app with `make debug` (or `.\scripts\build-debug.ps1`).
-2. Launch with `make run` (or `.\scripts\run-debug.ps1`) or set `DIXIEDATA_DEBUG_UI_IDS=1`.
-3. Verify relaxed mode, split-screen mode, narrow-window behavior, and overlay behavior against surface IDs below.
-4. Confirm shell overlays count as first-class responsive surfaces: floating menu, feedback modal, print-config modal, image viewer.
-5. Keep automated proof green with `go test ./...`, `go build ./...`, and debug build regeneration.
+Use these IDs when requesting changes to a specific part of the UI.
 
 ## Naming rules
 
-- Use lowercase dot-separated names.
+- Lowercase dot-separated names (`page.soldier.detail`).
 - Prefix by surface type: `page.*`, `panel.*`, `tab.*`, `overlay.*`.
-- Keep names human-friendly so they are easy to say in requests.
+- Names should be human-friendly so they are easy to say in requests.
 - Only assign IDs to durable surfaces, not repeated list items.
 
-## Current catalog
+## Adding a new surface
+
+1. Add a constant to `internal/uiids/uiids.go`.
+2. Add a `Surface{ID, Kind, Description}` entry to `Registry`.
+3. Reference via `uiids.YourNewSurface` in templates and HTMX attributes.
+4. Add a row to the catalog below.
+
+## Catalog
+
+The catalog is the human-readable mirror of the registry. Tests do not
+parse this file; tests assert against `Registry` directly. Keep this
+table in sync when adding or renaming surfaces.
 
 | ID | Type | Surface |
 | --- | --- | --- |
