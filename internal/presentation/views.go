@@ -19,6 +19,10 @@ func JobStatusFragment(job jobs.Job) templ.Component {
 	return templates.JobStatusFragment(job)
 }
 
+func JobStatusSlotFragment(job jobs.Job) templ.Component {
+	return templates.JobStatusSlotFragment(job)
+}
+
 func CalendarGrid(month int, summary map[int]records.CalendarDaySummary) templ.Component {
 	return templates.CalendarGrid(month, viewmodel.CalendarDaySummariesFromDomain(summary))
 }

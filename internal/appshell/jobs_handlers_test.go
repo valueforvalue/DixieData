@@ -94,6 +94,51 @@ func TestHandleJobArtifactUnknownJobReturns404(t *testing.T) {
 	}
 }
 
+func TestRenderActiveJobReturns204WhenNoActiveJobs(t *testing.T) {
+	app := newStressApp(t)
+	req := httptest.NewRequest(http.MethodGet, "/jobs/active", nil)
+	rec := httptest.NewRecorder()
+	app.renderActiveJob(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204 when no active jobs, got %d", rec.Code)
+	}
+}
+
+func TestRenderActiveJobReturnsSlotFragmentForLatest(t *testing.T) {
+	app := newStressApp(t)
+	// Long-running worker so the test can observe the running job
+	// before it finishes and disappears from MostRecentActive.
+	hold := make(chan struct{})
+	id := app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(50, "halfway")
+		<-hold
+		return nil
+	})
+	defer close(hold)
+	// Wait for the worker to mark the job running.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := app.jobs.Get(id)
+		if snap.Status == jobs.StatusRunning {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/jobs/active", nil)
+	rec := httptest.NewRecorder()
+	app.renderActiveJob(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 with active job, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "data-progress-region") {
+		t.Fatalf("slot fragment should target [data-progress-region]; got:\n%s", body)
+	}
+	if !strings.Contains(body, "static_archive") && !strings.Contains(body, "Static web archive") {
+		t.Fatalf("slot fragment should show job label; got:\n%s", body)
+	}
+}
+
 func TestHandleJobArtifactMissingFileReturns500(t *testing.T) {
 	app := newStressApp(t)
 	var id string
