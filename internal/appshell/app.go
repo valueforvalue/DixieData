@@ -224,6 +224,22 @@ func setupRequestAllowed(path string) bool {
 		return true
 	case path == "/app.css":
 		return true
+	case path == "/htmx.min.js":
+		return true
+	case path == "/debug.js":
+		return true
+	case path == "/jobs/active":
+		return true
+	case strings.HasPrefix(path, "/jobs/") && strings.HasSuffix(path, "/status"):
+		// /jobs/{id}/status is the polling fragment. When setup is
+		// required, no jobs exist, but the layout progress slot
+		// still polls every 3s. Without this allowlist, every poll
+		// 303s to /setup, the browser follows the redirect, and the
+		// full setup HTML document gets innerHTML-swapped into the
+		// progress region — which then re-fires its own load
+		// trigger and stacks the layout. See the bug report
+		// `uibug.jpg` in the repo root.
+		return true
 	case strings.HasPrefix(path, "/wailsjs/"):
 		return true
 	default:

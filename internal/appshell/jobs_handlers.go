@@ -56,6 +56,10 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) renderJobStatus(w http.ResponseWriter, r *http.Request, id string, fragmentOnly bool) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
 	job, ok := a.jobs.Get(id)
 	if !ok {
 		http.NotFound(w, r)
@@ -82,6 +86,14 @@ func (a *App) renderActiveJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if a.jobs == nil {
+		// jobs registry not initialized — happens during very early
+		// startup or in tests that don't wire the registry. Treat
+		// as "no active job" so the layout progress slot stays
+		// empty instead of crashing the request goroutine.
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	job := a.jobs.MostRecentActive()
 	if job == nil {
 		w.WriteHeader(http.StatusNoContent)
@@ -91,6 +103,10 @@ func (a *App) renderActiveJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
 	switch err := a.jobs.Cancel(id); {
 	case err == nil:
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
@@ -109,6 +125,10 @@ func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
 // the job is in the done state with a populated ResultPath; otherwise
 // respond with 404 or 409 to make the failure mode clear.
 func (a *App) streamJobArtifact(w http.ResponseWriter, r *http.Request, id string) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
 	job, ok := a.jobs.Get(id)
 	if !ok {
 		http.NotFound(w, r)

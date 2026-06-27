@@ -892,6 +892,54 @@ func TestAppServeHTTPAllowsFrontendCSSWhenSetupRequired(t *testing.T) {
 	}
 }
 
+// TestAppServeHTTPAllowsJobsEndpointsWhenSetupRequired prevents the
+// "stacked setup page" bug. The layout progress slot polls
+// /jobs/active every 3s via htmx. When setup is required, every poll
+// used to 303-redirect to /setup, the browser followed the redirect,
+// and htmx did an innerHTML swap on the progress region with the full
+// setup document — including its own progress region with hx-trigger
+// load — which fired another swap. The cascade stacked the layout
+// (see uibug.jpg in the repo root) and made the credential inputs
+// un-clickable because subsequent layers covered them.
+//
+// Both /jobs/active and /jobs/{id}/status MUST be allowed through the
+// middleware when setup is required so the handlers can return
+// 204 No Content directly without redirecting.
+func TestAppServeHTTPAllowsJobsEndpointsWhenSetupRequired(t *testing.T) {
+	app := NewApp()
+	app.setupRequired = true
+	app.setupRoutes()
+
+	for _, path := range []string{"/jobs/active", "/jobs/abc/status"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		if rec.Code == http.StatusSeeOther {
+			t.Errorf("GET %s returned 303 -> %s (should not redirect during setup)", path, rec.Header().Get("Location"))
+		}
+	}
+}
+
+func TestAppServeHTTPAllowsHTMXAndDebugJSWhenSetupRequired(t *testing.T) {
+	// Same family as the /jobs/{id}/status test: without these in
+	// setupRequestAllowed, the <script src="/htmx.min.js"> and
+	// <script src="/debug.js"> tags in the layout return 303 -> /setup
+	// (an HTML body). The browser then chokes on the HTML while
+	// trying to parse it as JS (pageerror: "Unexpected token '<'").
+	app := NewApp().WithFrontendAssets(os.DirFS(repoFixturePath(t, "frontend")))
+	app.setupRequired = true
+	app.setupRoutes()
+
+	for _, path := range []string{"/htmx.min.js", "/debug.js"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		app.ServeHTTP(rec, req)
+		if rec.Code == http.StatusSeeOther {
+			t.Errorf("GET %s returned 303 -> %s (should serve the asset, not redirect)", path, rec.Header().Get("Location"))
+		}
+	}
+}
+
 func TestHandleUpdateBootstrapHealthClearsPendingLaunchState(t *testing.T) {
 	dataDir := t.TempDir()
 	manager := update.NewRestorePointManager(dataDir)
