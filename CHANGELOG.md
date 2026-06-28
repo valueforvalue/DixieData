@@ -28,6 +28,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `internal/templates/jobs.templ`: non-viewable job artifacts
+  (.ddbak, .ddshare, .zip, .csv, .ics) now render with a `download`
+  attribute instead of `target="_blank"` (issue #129). The old
+  combination opened a blank tab and triggered a silent download
+  that the user couldn't see or find. PDFs, JPGs, PNGs, and other
+  viewable extensions still open in a new tab as before. New
+  `jobs.Job.IsViewableArtifact()` + `jobs.Job.ArtifactFilename()`
+  helpers own the classification so the template stays declarative.
 
 ### Added
 
