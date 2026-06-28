@@ -119,4 +119,11 @@ func TestEnqueueExportRecordsJobIDOnEntry(t *testing.T) {
 	if loc := rec.Header().Get("Location"); loc != "/jobs/"+entry.JobID {
 		t.Fatalf("expected Location=/jobs/%s, got %q", entry.JobID, loc)
 	}
+	// htmx 2.x with hx-swap="none" needs HX-Redirect to navigate;
+	// without it the user sits on the originating page while the
+	// export runs invisibly. Pinning it down here so a future
+	// refactor that drops HX-Redirect fails this test.
+	if hx := rec.Header().Get("HX-Redirect"); hx != "/jobs/"+entry.JobID {
+		t.Fatalf("expected HX-Redirect=/jobs/%s so htmx hx-swap=none buttons land on the status page; got %q", entry.JobID, hx)
+	}
 }

@@ -229,7 +229,13 @@ func (a *App) inFlightJobID(dupKey string) string {
 func (a *App) respondDuplicateInFlight(w http.ResponseWriter, r *http.Request, dupKey string) {
 	if jobID := a.inFlightJobID(dupKey); jobID != "" {
 		debug.FromContext(r.Context()).Debug("redirecting duplicate request to existing job", "dupKey", dupKey, "jobID", jobID)
-		http.Redirect(w, r, "/jobs/"+jobID, http.StatusSeeOther)
+		// Both Location and HX-Redirect so the dedup redirect works
+		// for plain browser submits (Location) and htmx hx-swap="none"
+		// buttons (HX-Redirect). See enqueueExport for the full
+		// rationale; the bug class is the same.
+		w.Header().Set("Location", "/jobs/"+jobID)
+		w.Header().Set("HX-Redirect", "/jobs/"+jobID)
+		w.WriteHeader(http.StatusSeeOther)
 		return
 	}
 	debug.FromContext(r.Context()).Debug("duplicate request rejected", "dupKey", dupKey)

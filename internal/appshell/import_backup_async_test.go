@@ -43,6 +43,10 @@ func TestImportBackupInFlightGuardRedirectsToExistingJob(t *testing.T) {
 	if got := rec.Header().Get("Location"); got != "/jobs/restore-job-123" {
 		t.Errorf("expected Location=/jobs/restore-job-123, got %q", got)
 	}
+	// Same htmx hx-swap="none" guarantee as TestEnqueueExportRecordsJobIDOnEntry.
+	if got := rec.Header().Get("HX-Redirect"); got != "/jobs/restore-job-123" {
+		t.Errorf("expected HX-Redirect=/jobs/restore-job-123 (htmx hx-swap=none buttons); got %q", got)
+	}
 }
 
 // TestImportBackupInFlightGuardFallsBackToError covers the

@@ -200,6 +200,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     end-to-end net: GET `/jobs/{id}` returns a body that
     wires the poll (holds the worker on a channel so the
     job stays running through the render).
+- `internal/appshell/exports_handlers.go` +
+  `internal/appshell/imports_handlers.go` +
+  `internal/appshell/app.go`:
+  Fixed the share-page export-lands-on-blank-page bug that
+  hid the new per-kind stats summary card. htmx 2.x with
+  `hx-swap="none"` silently swallows 303 responses unless the
+  server also writes `HX-Redirect`; the export + import + dedup
+  helpers only wrote `Location`, so the user clicked the
+  button, the export ran to completion in the background, and
+  the page silently stayed on `/share`. Now `enqueueExport`,
+  `enqueueExportWithResult`, `respondDuplicateInFlight`, and
+  the backup restore's in-flight redirect write both
+  `Location` (for plain `<form method="post">` submits like
+  static archive) and `HX-Redirect` (for htmx). Static archive
+  was unaffected because it already uses a plain HTML form,
+  not htmx.
+  Regression net:
+  - `TestEnqueueExportRecordsJobIDOnEntry` now also asserts
+    `HX-Redirect`.
+  - `TestImportBackupInFlightGuardRedirectsToExistingJob`
+    same.
+  - `TestEnqueueExportWithResultSetsHXRedirect` (new) pins
+    both headers on the with-stats helper.
 - `internal/jobs/jobs.go`: new `SilentKinds` set + `IsSilentKind`
   helper, and `Registry.MostRecentActive` filters out kinds in
   the set. The global layout progress popup is now opt-out
