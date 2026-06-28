@@ -12,7 +12,9 @@ LOGDIR := build/log
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
-        stress goldmaster tune tune-smoke tune-snapshots render-round render-round-ONE update-snapshots-ONE render-svg tpl css audit clean log-clean bump release-github
+        stress goldmaster tune tune-smoke tune-snapshots tune-bin \
+        web seed gold render-round render-round-ONE update-snapshots-ONE \
+        render-svg tpl css audit clean log-clean bump release-github
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -27,11 +29,52 @@ LOG_RECIPE = @mkdir -p $(LOGDIR) && \
 	bash -c 'set -o pipefail; $(PWSH) -File $(SCRIPT) $(ARGS) 2>&1 | tee $(LOGDIR)/$(TARGET).log' && \
 	rm -f $(LOGDIR)/$(TARGET).log.tmp
 
+# Debug chain: `make debug` builds the Wails desktop binary
+# (scripts/build-debug.ps1) PLUS every sibling binary that the
+# debug workflow expects to be present (audit smoke harness
+# needs dixiedata-web + seed-data; the render/tune workflow
+# needs dixiedata-tune; the gold-master suite needs the
+# gold-master binary). Without these dependencies the user
+# runs `make debug`, opens the app, hits a button, and the
+# harness smoke test fails because the web server binary isn't
+# in build/bin/. The dependencies guarantee a one-shot `make
+# debug` produces everything a debug session needs.
+WEB_BIN := build/bin/dixiedata-web.exe
+SEED_BIN := build/bin/seed-data.exe
+GOLD_BIN := build/bin/gold-master.exe
+TUNE_BIN := tools/tune/bin/dixiedata-tune.exe
+
 build debug: SCRIPT := scripts/build-debug.ps1
 build debug: TARGET := debug
 build debug: ARGS :=
 build debug: ## Debug build via scripts/build-debug.ps1
 	$(LOG_RECIPE)
+	@$(MAKE) --no-print-directory web seed gold tune-bin
+
+# Web server (audit/smoke.mjs, ui-diff, render-round).
+web: ## Build cmd/dixiedata-web (web-mode server, audit harness target)
+	@mkdir -p build/bin
+	go build -o $(WEB_BIN) ./cmd/dixiedata-web
+
+# Seed tool (bootstraps .scratch/webmode for audit harness).
+seed: ## Build cmd/seed-data (audit harness fixture seeder)
+	@mkdir -p build/bin
+	go build -o $(SEED_BIN) ./cmd/seed-data
+
+# Gold-master regression runner (`make goldmaster`).
+gold: ## Build cmd/gold-master
+	@mkdir -p build/bin
+	go build -o $(GOLD_BIN) ./cmd/gold-master
+
+# Tune harness (`make render-round`, `make render-round-ONE`).
+tune-bin: ## Build tools/tune (render-round PDF harness)
+	@mkdir -p tools/tune/bin
+	cd tools/tune && go build -o bin/dixiedata-tune.exe .
+
+# `make tune` is the existing run target (renders a PDF against
+# the live archive). Add `tune-bin` for the build-only step so
+# the debug chain can depend on it without colliding with the run
+# target.
 
 release: SCRIPT := scripts/build-release.ps1
 release: TARGET := release
