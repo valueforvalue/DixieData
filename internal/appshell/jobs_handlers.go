@@ -148,10 +148,58 @@ func (a *App) streamJobArtifact(w http.ResponseWriter, r *http.Request, id strin
 		respondInternal(w, r, "Could not open the export artifact.", err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", formatContentLength(info.Size()))
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(path)+"\"")
+	disposition, contentType := jobArtifactHeaders(path)
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", disposition)
 	http.ServeFile(w, r, path)
+}
+
+// jobArtifactHeaders returns the Content-Disposition and
+// Content-Type the artifact stream should send based on the
+// file's extension. Viewable types (PDF, images, HTML, text)
+// are served inline so the user sees them render in the new
+// tab the "Open" link opens; everything else (.ddbak, .ddshare,
+// .zip, .json, .csv, .ics) downloads via Content-Disposition:
+// attachment.
+//
+// Before this split, every artifact forced
+// Content-Disposition: attachment, so opening a finished
+// export's "Open" link in a new tab immediately triggered
+// a download and left the user looking at a blank tab.
+// See docs/agents/jobs-artifact-content-disposition-bug.md
+// (the bug was reported by Jeremy on 2026-06-28 while
+// testing a ddbak export; the same code path hit PDFs
+// and JPGs and made the GUI feel broken).
+func jobArtifactHeaders(path string) (disposition, contentType string) {
+	ext := strings.ToLower(filepath.Ext(path))
+	filename := filepath.Base(path)
+	disposition = "attachment; filename=\"" + filename + "\""
+	contentType = "application/octet-stream"
+	if mime, ok := jobArtifactMimeByExt[ext]; ok {
+		disposition = "inline; filename=\"" + filename + "\""
+		contentType = mime
+	}
+	return disposition, contentType
+}
+
+// jobArtifactMimeByExt maps the file extensions the GUI's
+// "Open" link sends inline to the MIME type the browser
+// needs to render them. Add a new entry only when the
+// extension is something the user is expected to view in
+// the browser, not download.
+var jobArtifactMimeByExt = map[string]string{
+	".pdf":  "application/pdf",
+	".jpg":  "image/jpeg",
+	".jpeg": "image/jpeg",
+	".png":  "image/png",
+	".gif":  "image/gif",
+	".webp": "image/webp",
+	".svg":  "image/svg+xml",
+	".html": "text/html; charset=utf-8",
+	".htm":  "text/html; charset=utf-8",
+	".txt":  "text/plain; charset=utf-8",
+	".json": "application/json; charset=utf-8",
 }
 
 func formatContentLength(n int64) string {
