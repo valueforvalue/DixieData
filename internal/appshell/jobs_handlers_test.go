@@ -245,9 +245,11 @@ func TestRenderActiveJobReturns204WhenNoActiveJobs(t *testing.T) {
 func TestRenderActiveJobReturnsSlotFragmentForLatest(t *testing.T) {
 	app := newStressApp(t)
 	// Long-running worker so the test can observe the running job
-	// before it finishes and disappears from MostRecentActive.
+	// before it finishes and disappears from MostRecentActive. Use
+	// a non-silent kind; static_archive is in jobs.SilentKinds and
+	// is covered separately by TestRenderActiveJobSuppressesSilentKinds.
 	hold := make(chan struct{})
-	id := app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+	id := app.jobs.Start("json_export", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(50, "halfway")
 		<-hold
 		return nil
@@ -272,8 +274,48 @@ func TestRenderActiveJobReturnsSlotFragmentForLatest(t *testing.T) {
 	if !strings.Contains(body, "data-progress-region") {
 		t.Fatalf("slot fragment should target [data-progress-region]; got:\n%s", body)
 	}
-	if !strings.Contains(body, "static_archive") && !strings.Contains(body, "Static web archive") {
+	if !strings.Contains(body, "json_export") {
 		t.Fatalf("slot fragment should show job label; got:\n%s", body)
+	}
+}
+
+// TestRenderActiveJobSuppressesSilentKinds is the end-to-end net
+// for the static-archive popup regression: when the most recent
+// running job is a kind in jobs.SilentKinds, /jobs/active returns
+// 204 No Content so the layout popup stays empty. The user lands
+// on /jobs/{id} via the standard 303 and never sees the floating
+// card whose "Open result" button would otherwise open a blank
+// tab (zip artifacts don't preview well in a new tab).
+func TestRenderActiveJobSuppressesSilentKinds(t *testing.T) {
+	app := newStressApp(t)
+	hold := make(chan struct{})
+	id := app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(50, "halfway")
+		<-hold
+		return nil
+	})
+	defer close(hold)
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := app.jobs.Get(id)
+		if snap.Status == jobs.StatusRunning {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/jobs/active", nil)
+	rec := httptest.NewRecorder()
+	app.renderActiveJob(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("silent static_archive should NOT render a popup card; got status %d body:\n%s", rec.Code, rec.Body.String())
+	}
+	// The job itself is still poll-able at /jobs/{id}, so the
+	// user is not stranded — the 303 from the export handler
+	// already took them there.
+	recJob := httptest.NewRecorder()
+	app.handleJobStatus(recJob, httptest.NewRequest(http.MethodGet, "/jobs/"+id, nil))
+	if recJob.Code != http.StatusOK {
+		t.Fatalf("silent job should still render /jobs/%s (status %d)", id, recJob.Code)
 	}
 }
 

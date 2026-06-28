@@ -14,6 +14,13 @@ import (
 // into the layout slot without disturbing the surrounding nav and
 // main content.
 //
+// This fragment is only emitted for non-silent jobs; the picker
+// in jobs.Registry.MostRecentActive filters out kinds listed in
+// jobs.SilentKinds so the popup stays empty for jobs whose
+// /jobs/{id} status page is the intended landing (e.g.
+// static_archive, whose artifact is a .zip that does not preview
+// well in a new tab).
+//
 // The fragment self-polls every 2s while the job is active and stops
 // polling once it reaches a terminal state (done / error / cancelled /
 // interrupted).

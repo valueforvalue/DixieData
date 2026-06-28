@@ -65,6 +65,34 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   launcher writes the new env vars. Skips cleanly when
   `build/bin/DixieData.exe` is absent so release-only CI
   doesn't fail.
+- `internal/jobs/jobs.go`: new `SilentKinds` set + `IsSilentKind`
+  helper, and `Registry.MostRecentActive` filters out kinds in
+  the set. The global layout progress popup is now opt-out
+  per kind: jobs whose `/jobs/{id}` status page is the
+  intended landing (and whose artifact does not preview well
+  in a new tab) get filtered out so the floating popup card
+  never appears. Kinds register by adding to the map; the
+  call site (the export handler) is unchanged.
+
+- `static_archive` is the first silent kind: clicking "Export
+  Static Web Archive" used to render a popup card whose
+  "Open result" link opened a blank tab (the artifact is a
+  .zip, which falls through to `Content-Disposition:
+  attachment` and the browser consumes the response in its
+  download manager without rendering anything). With this
+  fix the popup stays empty and the user lands on
+  `/jobs/{id}` via the standard 303.
+
+- `internal/jobs/jobs_test.go` +
+  `internal/appshell/jobs_handlers_test.go`: 3 new tests pin
+  down the contract (silent kinds are filtered, non-silent
+  kinds still surface, `/jobs/{id}` still renders for the
+  silent job so the user isn't stranded).
+
+- `internal/templates/job_slot_fragment.templ`: comment now
+  documents the SilentKinds filter so future authors know
+  why some jobs don't show up in the popup.
+
 - `audit/smoke.mjs`: closed the three live regression gaps
   that commit b185f0e deferred. New assertions cover:
 
