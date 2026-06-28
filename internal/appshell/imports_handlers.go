@@ -114,12 +114,18 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
+	opts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
 		},
-	})
-	if err != nil || path == "" {
+	}
+	dupKey := guardedOpenFileDialogKey("shared_archive", opts)
+	path, admitted, ok := a.guardedOpenFileDialog(dupKey, opts)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	if !ok {
 		respondError(w, r, KindValidation, "Shared archive import cancelled.", nil)
 		return
 	}
@@ -152,12 +158,18 @@ func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
+	opts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Memorial archive JSON", Pattern: "*.json"},
 		},
-	})
-	if err != nil || path == "" {
+	}
+	dupKey := guardedOpenFileDialogKey("memorial_preview", opts)
+	path, admitted, ok := a.guardedOpenFileDialog(dupKey, opts)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	if !ok {
 		respondError(w, r, KindValidation, "Memorial JSON import preview cancelled.", nil)
 		return
 	}
