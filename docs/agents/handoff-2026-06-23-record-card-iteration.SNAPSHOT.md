@@ -1,8 +1,15 @@
-# Handoff: DixieData record-card iteration (active)
+# Handoff: DixieData record-card iteration (snapshot 2026-06-23)
 
-Date: 2026-06-23
+> **Status: HISTORICAL SNAPSHOT.** Captures the iteration state on
+> 2026-06-23. The work continued past this point; current state is
+> `c1d9dc1 fix(appshell): guard every native dialog call + lock the
+> pattern as law` (2026-06-27). Use this file only to read the
+> rationale that informed rounds before round 32. For anything
+> after round 32, consult `CHANGELOG.md` and `git log`.
+
+Date: 2026-06-23 (snapshot date)
 Branch: `dev`
-Last commit: `7f6a416 chore(snapshots): regenerate after round-32 suffix comma drop`
+Last commit at snapshot time: `7f6a416 chore(snapshots): regenerate after round-32 suffix comma drop`
 
 This handoff is a fresh snapshot of where the work is right
 now, written so a fresh session can pick up the iteration

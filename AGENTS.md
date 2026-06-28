@@ -25,20 +25,41 @@ See `CONTEXT.md` for the full glossary and anti-patterns.
 
 | Path | Role |
 |---|---|
-| `main.go` | Wails app entry point |
+| `main.go` | Wails app entry point (also handles `--smoke` headless boot) |
 | `internal/appshell/` | App bootstrap + request handlers + stress tests |
 | `internal/db/` | SQLite schema, migrations, `GetAppVersion()` |
+| `internal/htmxattr/` | Typed `htmxattr.Mux` builder — use instead of raw `hx-*` strings |
+| `internal/routebuilder/` | Typed URL builders — use instead of string route literals |
 | `internal/records/` | Person Record, Source Record, Claim, Finding model logic |
 | `internal/templates/` | Templ HTML templates (regenerate with `make tpl`) |
+| `internal/uiids/` | Canonical DOM ID constants (used by goquery invariant tests) |
+| `internal/exportcontract/` | Shared types between Go export pipeline and JS frontend |
 | `frontend/` | Static assets, Tailwind input, `app.js`, `app.css` output |
 | `audit/` | UI/UX audit harness (round 1 → 4), `npm run audit` |
 | `tools/tune/` | Iteration harness for design polish |
+| `templates/` | Typst source templates (PDF rendering, NOT Go `text/template`) |
 | `docs/` | User manual, ADRs, audit narrative, release docs |
-| `scripts/` | PowerShell + bash build/test helpers (`token-clean.ps1`, `build-common.ps1`) |
+| `scripts/` | PowerShell + bash build/test helpers (`build-common.ps1`, `run-crash-dump.ps1`, `debug-crash.dlv`) |
 | `Makefile` | Top-level DX (run `make help` for all targets) |
-| `CONTEXT.md` | **Glossary source of truth** — read first |
+| `CONTEXT.md` | **Glossary + Laws source of truth** — read first |
 
 ## Agent skills
+
+### Working guides (read before touching the layer)
+
+These two files are the high-leverage pre-commit reads. They document
+recurring bug patterns extracted from 79 `fix:` commits across the
+history. Read the section that matches the layer you're about to
+touch:
+
+- [`docs/COMMON_BUGS.md`](docs/COMMON_BUGS.md) — bug-pattern catalog
+  by layer (HTMX wiring, templ markup, frontend JS, Go backend,
+  Typst, accessibility, calendar/API, build/CI, database,
+  debugging). Includes `Find it:` greps for each pattern.
+- [`docs/CODE_CHANGES.md`](docs/CODE_CHANGES.md) — cross-layer
+  working contract. Read this when your change touches templ +
+  htmx + JS + Go handler together (the chi-router migration and
+  the hx-attr strip both shipped as one-system drift).
 
 ### Issue tracker
 
@@ -65,3 +86,14 @@ native dialog, read [`docs/agents/dialog-guard.md`](docs/agents/dialog-guard.md)
 end-to-end.** The pattern (helper, inline, or sentinel-error) and the regression
 tests are documented there. The rule is also encoded at glossary level in
 `CONTEXT.md` under "Laws (non-negotiable)" so domain work can't drift past it.
+
+### CLI / headless mode (read before adding non-GUI entry points)
+
+`dixiedata --smoke` boots without the GUI for CI and user support.
+The full subcommand roadmap (`doctor`, `list`, `show`, `search`,
+`export`, `import`, `migrate`, `backup`, `restore point`, `logs`,
+`config`, `debug`) is staged across 7 phases in
+[`docs/agents/cli-plan.md`](docs/agents/cli-plan.md). Phase 1
+(`smoke`) is shipping now. **Before adding any new subcommand, read
+the phase layout in that doc** — every CLI command dispatches to
+existing `*App` methods, never duplicates handler logic.
