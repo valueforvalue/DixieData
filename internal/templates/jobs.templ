@@ -34,7 +34,11 @@ templ JobStatusView(job jobs.Job) {
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] p-4 text-sm text-[#22303d]">
 						<p class="font-semibold">Export complete.</p>
 						if job.ResultPath != "" {
-							<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link mt-3 inline-flex">Open { job.DisplayLabel() }</a>
+							if job.IsViewableArtifact() {
+								<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link mt-3 inline-flex">Open { job.DisplayLabel() }</a>
+							} else {
+								<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } download={ job.ArtifactFilename() } class="pill-link mt-3 inline-flex">Save { job.DisplayLabel() }</a>
+							}
 							<p class="mt-2 break-all text-xs text-slate-500">Saved to <code>{ job.ResultPath }</code></p>
 						}
 					</div>
@@ -86,7 +90,11 @@ templ JobStatusFragment(job jobs.Job) {
 			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] p-4 text-sm text-[#22303d]">
 				<p class="font-semibold">Export complete.</p>
 				if job.ResultPath != "" {
-					<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link mt-3 inline-flex">Open { job.DisplayLabel() }</a>
+					if job.IsViewableArtifact() {
+						<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link mt-3 inline-flex">Open { job.DisplayLabel() }</a>
+					} else {
+						<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } download={ job.ArtifactFilename() } class="pill-link mt-3 inline-flex">Save { job.DisplayLabel() }</a>
+					}
 					<p class="mt-2 break-all text-xs text-slate-500">Saved to <code>{ job.ResultPath }</code></p>
 				}
 			</div>
