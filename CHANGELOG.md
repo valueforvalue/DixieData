@@ -231,6 +231,47 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   followed the redirect, which is how the htmx `hx-swap="none"`
   + 303 silent-swallow bug slipped through. Now the live
   harness catches both: response shape AND navigation.
+- "Upload Backup to Google Drive" and "Export CSV to Google
+  Sheets" share-page buttons now land the user on `/jobs/{id}`
+  after the worker starts. Previously the two Google handlers
+  wrote a `Location` header but no `HX-Redirect`, so with the
+  buttons' `hx-swap="none"` htmx 2.x swallowed the redirect and
+  the user stayed on `/share`. Pinned by
+  `appshell.TestGoogleHandlersRedirectToJobs` (two assertions:
+  `/integrations/google/backup` and
+  `/integrations/google/sheets/export`) and the new
+  `share-/integrations/google/backup-navigates-to-jobs` /
+  `share-/integrations/google/sheets/export-navigates-to-jobs`
+  smoke assertions.
+- The Printable PDF export modal (Share → "Printable PDF…")
+  now lands on `/jobs/{id}` instead of dumping markup into the
+  `#share-status` panel. Dropped the Wails-bridge JS interceptor
+  in `app.js::submitPrintConfig` and the brittle
+  `hx-on::after-request` 303 shim on the modal form, and made
+  the form a plain htmx form that relies on
+  `handleExportDatabasePDF`'s existing `HX-Redirect` header
+  (same pattern as every other share-page export). Pinned by
+  the new `[5b]` smoke block.
+- `internal/appshell` 303-redirect handlers now ship HX-Redirect
+  alongside Location so `hx-swap="none"` buttons land the user
+  on the destination page instead of silently swallowing the
+  redirect. Five additional handlers were missed by the original
+  3612dab sweep and were repaired in the same commit that added
+  the global guard:
+  - `handleImportSoldierImages` (`app.go`)
+  - `handleRunDuplicateAudit` (`insights_handlers.go`)
+  - `handleReviewQueueBulk` (`reviews_handlers.go`)
+  - `handleCleanupImageOrphans` (`settings_handlers.go`)
+  - `handleCreateSoldier` / `handleSoldierByID` (DELETE branch) /
+    `handleUpdateSoldier` (`soldiers_handlers.go`)
+  The new `appshell.TestAll303sWriteHXRedirect` walks every
+  function in the package, finds every `StatusSeeOther` write,
+  and asserts a sibling `HX-Redirect` is set on the same
+  handler (with an explicit allow-list for server-initiated
+  middleware redirects). Verified to fail when the header is
+  removed and pass when restored; the allow-list requires a
+  one-line reason per exempt function so the next reader knows
+  why no htmx button reaches it.
 
 ### Maintenance
 

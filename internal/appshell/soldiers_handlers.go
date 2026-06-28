@@ -305,6 +305,11 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 		a.renderEntryForm(w, r, *reloaded, true, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// hx-post on entry_form.templ uses hx-target="body" with the
+	// default swap. The default swap follows 303+Location, but
+	// HX-Redirect makes the redirect explicit and survives any future
+	// swap-mode change. See redirect_headers_test.go.
+	w.Header().Set("HX-Redirect", fmt.Sprintf("/soldiers/%d", created.ID))
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", created.ID), http.StatusSeeOther)
 }
 
@@ -403,6 +408,14 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 			respondInternal(w, r, fmt.Sprintf("Could not delete person record %d.", id), err)
 			return
 		}
+		// hx-delete on soldier_card.templ uses hx-target="body" with
+		// the default swap. The default swap DOES follow 303+Location,
+		// but HX-Redirect makes the navigation explicit and survives
+		// any future swap-mode change. Without it a future edit that
+		// adds hx-swap="none" would silently strand the user on the
+		// detail page. See redirect_headers_test.go for the regression
+		// net (TestAll303sWriteHXRedirect).
+		w.Header().Set("HX-Redirect", "/soldiers")
 		http.Redirect(w, r, "/soldiers", http.StatusSeeOther)
 	default:
 		http.Error(w, "method not allowed", 405)
@@ -441,6 +454,11 @@ func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int
 		a.renderEntryForm(w, r, *reloaded, true, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// hx-put / hx-post on entry_form.templ uses hx-target="body" with
+	// the default swap. The default swap follows 303+Location, but
+	// HX-Redirect makes the redirect explicit and survives any future
+	// swap-mode change. See redirect_headers_test.go.
+	w.Header().Set("HX-Redirect", fmt.Sprintf("/soldiers/%d", id))
 	http.Redirect(w, r, fmt.Sprintf("/soldiers/%d", id), http.StatusSeeOther)
 }
 

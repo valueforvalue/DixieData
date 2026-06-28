@@ -100,7 +100,11 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setInfoToastHeader(w, fmt.Sprintf("Bulk %s started\u2026", action))
+	// See exports_handlers.enqueueExport — hx-swap="none" buttons
+	// on /reviews need HX-Redirect or the user stays on the review
+	// queue instead of landing on /jobs/{id}.
 	w.Header().Set("Location", "/jobs/"+jobID)
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
 
