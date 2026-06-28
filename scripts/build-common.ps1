@@ -116,6 +116,36 @@ function Get-DixieDataPdfiumAssetName {
     return "pdfium-win-x64.tgz"
 }
 
+# Get-DixieDataLocalPdfiumCandidate searches release/ for a
+# previously-shipped pdfium.dll matching the expected version.
+# Returns the full path of the first match, or "" if none.
+# We don't recurse — release archives live at
+# release/DixieData-debug-v*/pdfium.dll by convention.
+function Get-DixieDataLocalPdfiumCandidate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+        [Parameter(Mandatory = $true)]
+        [string]$Version
+    )
+
+    $releaseRoot = Join-Path $Root "release"
+    if (-not (Test-Path $releaseRoot)) {
+        return ""
+    }
+    $matches = Get-ChildItem -Path $releaseRoot -Recurse -Filter "pdfium.dll" -ErrorAction SilentlyContinue
+    foreach ($match in $matches) {
+        $marker = Join-Path (Split-Path -Parent $match.FullName) "pdfium.version"
+        if (Test-Path $marker) {
+            $markerText = (Get-Content -Path $marker -Raw).Trim()
+            if ($markerText -eq $Version) {
+                return $match.FullName
+            }
+        }
+    }
+    return ""
+}
+
 function Get-DixieDataPdfiumBuildPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -223,6 +253,24 @@ function Restore-DixieDataPdfiumBinary {
     $currentVersion = if (Test-Path $markerPath) { (Get-Content -Path $markerPath -Raw).Trim() } else { "" }
     if ((Test-Path $dllPath) -and $currentVersion -eq $expectedVersion) {
         return
+    }
+
+    # Fast path: if a prior release archive under release/ ships
+    # the same version's pdfium.dll, copy it locally. Saves the
+    # 30s+ download round-trip on every debug build. We only use
+    # the local copy when the SHA256 matches the pinned hash; a
+    # mismatch falls through to the network download (and the
+    # download's own SHA256 check catches tampering upstream).
+    $localCandidate = Get-DixieDataLocalPdfiumCandidate -Root $Root -Version $expectedVersion
+    if ($localCandidate) {
+        $expectedHash = Get-DixieDataPdfiumExpectedHash
+        if (Test-DixieDataSha256 -Path $localCandidate -ExpectedHash $expectedHash) {
+            Copy-Item $localCandidate $dllPath -Force
+            Set-Content -Path $markerPath -Value $expectedVersion -Encoding ASCII
+            Write-Host "Restored pdfium.dll from local cache: $localCandidate"
+            return
+        }
+        Write-Warning "Local pdfium.dll at $localCandidate has wrong hash; falling through to network download."
     }
 
     $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("DixieData-pdfium-" + [guid]::NewGuid().ToString())
