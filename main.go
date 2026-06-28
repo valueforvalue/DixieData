@@ -18,11 +18,17 @@ import (
 var assets embed.FS
 
 func main() {
-	// Headless subcommand dispatch. Phase 1 of
-	// docs/agents/cli-plan.md: `--smoke` / `--smoke-json` /
-	// DIXIEDATA_SMOKE=1 boot the app without a window, run a
-	// fixed set of boot checks, and exit. Everything else falls
-	// through to the Wails GUI launch.
+	// Headless subcommand dispatch. Phase 1 (--smoke) and
+	// Phase 2 (doctor) of docs/agents/cli-plan.md. Smoke is a
+	// flag-style invocation; doctor is a subcommand.
+	if appshell.HasDoctorFlag(os.Args[1:]) {
+		_, code := appshell.RunDoctor(context.Background(), appshell.DoctorOptions{
+			JSON:   appshell.WantsDoctorJSON(os.Args[1:]),
+			Fix:    appshell.WantsDoctorFix(os.Args[1:]),
+			Checks: appshell.ParseDoctorChecks(os.Args[1:]),
+		})
+		os.Exit(code)
+	}
 	if appshell.HasSmokeFlag(os.Args[1:]) || appshell.EnvRequestsSmoke() {
 		_, code := appshell.RunSmoke(context.Background(), appshell.SmokeOptions{
 			JSON: appshell.WantsSmokeJSON(os.Args[1:]),
