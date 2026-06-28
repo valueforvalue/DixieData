@@ -95,8 +95,41 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
-- Broken `JobStatusFragment` htmx polling — added the missing
+- **16 chi-mis-registered routes** (PR #1 of the stabilization
+  sprint set `r.Get` for every action endpoint whose handler
+  rejected anything except `http.MethodPost`). Every export,
+  share, insights, merge-review, and Google-connect button
+  silently returned 405 Method Not Allowed when clicked.
+  Flipped to `r.Post` for: `/export/{json,csv,ical,
+  static-archive,backup,shared-archive,bug-report,feedback-log}`,
+  `/insights/report/pdf`, `/merge-review/*`,
+  `/integrations/google/{connect,disconnect,backup,
+  sheets/export}`, `/images/screenshot`, `/open-link`. Two
+  regression nets added so the class cannot recur:
+  `routes_method_guard_test.go` (AST walk, flags any
+  `r.Get` paired with a POST-only handler — pure compile-time
+  check) and `route_integration_test.go` (runtime check that
+  fires GET against every known POST-only path and asserts
+  405 + `Allow: POST`). Plus a wildcard-shadowing test
+  (`route_wildcard_test.go`) that fires GET at the more
+  specific sibling of every `/parent/*` wildcard.
+
+- **Broken `JobStatusFragment` htmx polling** — added the missing
   `hx-trigger` so the fragment actually re-fetches every 2s.
+
+- **App.js hx-* attribute strip silently broke every click
+  handler.** DOMContentLoaded stripped `hx-get`, `hx-post`,
+  `hx-trigger`, etc. from the DOM to prevent htmx's auto-handler
+  from double-firing alongside app.js's own `request()` /
+  `queueRequest()`. But the same handlers READ those attrs to
+  construct the fetch. After the strip, every read returned
+  empty / null, so every click handler bailed out and the button
+  did nothing. Fix: cache each `hx-*` attr to a `data-hx-*`
+  mirror BEFORE stripping, then add `hxAttr(el, name)` /
+  `hxHas(el, name)` helpers that prefer the live attr and fall
+  back to the data-* mirror. Also added `input` to the
+  `triggerInputRequest` regex so the quick-search trigger
+  (`input changed delay:300ms`) actually fires.
 
 ### Removed
 
