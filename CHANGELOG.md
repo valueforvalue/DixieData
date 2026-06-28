@@ -28,6 +28,31 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `internal/appshell`: native OpenFileDialog, OpenDirectoryDialog,
+  and OpenMultipleFilesDialog callsites now route through
+  dedicated guarded helpers (`guardedOpenFileDialog`,
+  `guardedOpenDirectoryDialog`, `guardedOpenMultipleFilesDialog`
+  in `internal/appshell/exports_handlers.go`) so the
+  WebView2 `Chrome_WidgetWin_0. Error = 1412` re-entry race
+  is closed for the import flows the original save-dialog
+  law deferred. Closes the "open question" item in
+  `docs/agents/dialog-guard.md`. Covers
+  `handleImportSharedArchive`, `handlePreviewMemorialJSONImport`
+  (file pickers), `handleImportSoldierImages` (multi-file
+  picker), and `handleDownloadSoldierImages` (directory
+  picker). The 3-value return shape (`path, admitted, ok`)
+  lets each handler distinguish dup-hit (redirect to
+  `/jobs/{id}`) from cancel (validation error) without
+  re-reading the in-flight map. Regression net:
+  `internal/appshell/open_dialog_guard_test.go`.
+- `internal/appshell`: new `/jobs/{id}/report` route renders
+  the job's terminal-state payload on a printable layout
+  (status, summary, timeline, artifact metadata, error log
+  when present). Wired through the redesigned job status
+  page's "Show report" button (issue #131 follow-up). New
+  `renderJobReport` handler in `jobs_handlers.go` and
+  `templates.JobReportView` in `jobs.templ`. Regression
+  net: `internal/appshell/jobs_report_handler_test.go`.
 - `internal/templates/jobs.templ`: redesigned the terminal-state
   status card around a structured summary (issue #131). The new
   `jobSummaryCard` renders a kind-specific headline + size +
