@@ -248,6 +248,108 @@ hit one, add a test before fixing.
   Could be added to the page-snapshot suite as a
   `TestPageSnapshot<Page>AfterSwap` variant.
 
+## Pre-mortem — "every export crashed the app" (2026-06-27)
+
+**Symptom (as the user reported it):** "I think this actually
+fixed the crashes. No crashes however I did find another bug."
+
+The crash was: clicking any export button (soldier PDF, soldier
+JPG, screenshot, share-page printable PDF) opened the native
+save dialog and then killed the process with `[WebView2 Error]
+The parameter is incorrect.` followed by `Failed to unregister
+class Chrome_WidgetWin_0. Error = 1412`. Calendar PDF worked.
+Standalone native dialogs from the file menu worked. Bulk
+exports crashed. Reproducible in 100% of attempts.
+
+**Investigation:**
+
+1. Caught the goroutine stack via
+   `scripts/run-crash-dump.ps1` → `build/bin/crashlogs/`.
+2. Bottom of every stack was `runtime.main` → `wails.Run` →
+   `Frontend.RunMainLoop` → `DispatchMessage` →
+   `generalWndProc` → `EventManager.Fire` → `Frontend.onFocus`
+   → `Chromium.Focus()` → `controller.MoveFocus(...)` →
+   `Chromium.errorCallback` → `os.Exit(1)`.
+3. Two `iFileSaveDialog.show` frames appeared in the same
+   goroutine (frames 14–17 and 29–32), both originating from
+   `showCfdDialog.func1` in `dialog.go:156` (Wails v2.12.0
+   internals). The same COM call was being entered twice in
+   the same Windows message-loop tick.
+4. Hypothesis #1: native `<dialog>` modals (issue #117) caused
+   the focus reentry. Reverted the three modals to
+   `<div role="dialog" aria-modal="true">` overlays and
+   re-tested. **Same crash.** Hypothesis falsified — `<dialog>`
+   was a red herring (though still reverted defensively because
+   it complicates the focus-event surface).
+5. Hypothesis #2: Typst / templates. Rejected by inspecting
+   the stack — crash fires before any Typst code runs (it's a
+   `MoveFocus` COM error, not a Typst invocation error).
+6. Hypothesis #3: the guard pattern from `162c353` was
+   incomplete. Re-read that commit's message — it claimed
+   "every SaveFileDialog call" was guarded, but missed the
+   five call sites in `internal/appshell/app.go` and the
+   `exportFullDatabasePDFPath` helper. Added inline guards to
+   all five. **Crash gone.**
+
+**Root cause:** Every `a.SaveFileDialog` call from a Go handler
+without a guard is one double-click away from killing the
+process. The Wails v2.12.0 Windows frontend is the wrong
+place to fix this (upstream wailsapp/wails#2807); the
+`go-webview2` global error callback is hard-coded to
+`os.Exit(1)` which means any COM failure takes the app down.
+We can't prevent the focus event chain, but we can prevent
+two native dialogs from ever being on screen at the same time.
+
+**Why the previous "fix every export" commit didn't catch
+this:** `162c353` introduced `guardedSaveFileDialog` and
+routed 9 handlers through it, but it only audited the
+exports_handlers.go file. The 5 call sites in
+`internal/appshell/app.go` were skipped — they predate the
+exports-handler extraction and were never revisited when the
+guard was added. Code review of `162c353` should have
+required a full repo grep for `SaveFileDialog` and a
+line-by-line check that every match was guarded.
+
+**Guardrails added this round:**
+
+1. Inline `a.inFlight.LoadOrStore` + `defer a.inFlight.Delete`
+   guards added to `handleSoldierPDF`,
+   `handleSoldierPDFNoImages`, `handleSoldierJPG`, and
+   `handleImageScreenshot` in `internal/appshell/app.go`.
+2. `exportFullDatabasePDFPath` in
+   `internal/appshell/exports_handlers.go` returns a new
+   `errExportInFlight` sentinel. Both the HTTP handler and
+   the Wails binding map it to a 429 / friendly toast.
+3. New test `TestExportFullDatabasePDFPathGuardKeys` plus the
+   existing 5 assertions in `save_dialog_guard_test.go` lock
+   the contract.
+4. `CONTEXT.md` "Laws (non-negotiable)" section encodes the
+   rule at glossary level.
+5. `docs/agents/dialog-guard.md` is the canonical reference
+   with the bug history, patterns, table of guarded call
+   sites, and instructions for extending coverage.
+6. `docs/COMMON_BUGS.md` section 4.10 documents the bug
+   class so future bug-hunter scans flag any unguarded
+   `SaveFileDialog` / `OpenFileDialog` call site.
+7. `docs/COMMON_BUGS.md` section 6.1 was wrong (it told
+   readers to use native `<dialog>` for modals); rewritten
+   to point at `showOverlayModal` instead.
+8. `CHANGELOG.md` Unreleased > Fixed has the user-facing
+   description.
+
+**Open follow-ups (not in scope this round):**
+
+- `OpenFileDialog` / `OpenDirectoryDialog` /
+  `OpenMultipleFilesDialog` race the same way but don't
+  have a guarded helper yet. Today they each carry their own
+  ad-hoc guard (or none). Worth a follow-up issue.
+- The Wails v2.12.0 / go-webview2 `MoveFocus` race should
+  be reported upstream to wailsapp/wails and
+  wailsapp/go-webview2 with our crash log. The hard-coded
+  `os.Exit(1)` in `errorCallback` is hostile — at minimum
+  it should be configurable so apps can recover instead of
+  die.
+
 ## When in doubt
 
 The architecture intentionally has belt-and-braces guards at

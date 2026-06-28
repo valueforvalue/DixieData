@@ -445,6 +445,14 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	}
 	options := parsePDFOptionsRequest(r, "L", true)
 
+	dupKey := fmt.Sprintf("soldier-pdf|%d|%s|%s", id, options.Orientation, soldierPDFName(*soldier, options))
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		debug.FromContext(r.Context()).Debug("handleSoldierPDF duplicate request rejected")
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		return
+	}
+	defer a.inFlight.Delete(dupKey)
+
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFName(*soldier, options),
 		Filters: []runtime.FileFilter{
@@ -472,6 +480,14 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
+
+	dupKey := fmt.Sprintf("soldier-pdf-noimg|%d|%s", id, soldierPDFNameNoImages(*soldier))
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		debug.FromContext(r.Context()).Debug("handleSoldierPDFNoImages duplicate request rejected")
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		return
+	}
+	defer a.inFlight.Delete(dupKey)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFNameNoImages(*soldier),
@@ -508,6 +524,14 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		soldier.Images[i].ResolvedPath = filepath.Join(a.dataDir, filepath.FromSlash(soldier.Images[i].FilePath))
 	}
 	options := parsePDFOptionsRequest(r, "L", true)
+
+	dupKey := fmt.Sprintf("soldier-jpg|%d|%s|%s", id, options.Orientation, soldierJPGName(*soldier, options))
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		debug.FromContext(r.Context()).Debug("handleSoldierJPG duplicate request rejected")
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		return
+	}
+	defer a.inFlight.Delete(dupKey)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierJPGName(*soldier, options),
@@ -614,6 +638,14 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 		respondValidation(w, r, "Could not decode the screenshot image data.", err)
 		return
 	}
+
+	dupKey := fmt.Sprintf("screenshot|%s", imageScreenshotName(payload.FileName))
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		debug.FromContext(r.Context()).Debug("handleImageScreenshot duplicate request rejected")
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		return
+	}
+	defer a.inFlight.Delete(dupKey)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: imageScreenshotName(payload.FileName),

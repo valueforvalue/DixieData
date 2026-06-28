@@ -166,3 +166,62 @@ _Avoid_: Spouse
 - "review" was used for queueing, duplicate detection, and merge conflict handling — resolved: use **Review Queue**, **Duplicate Audit**, and **Merge Review** for those separate workflows.
 - "soldier" was used both for one subtype and for the whole main table — resolved: use **Soldier** only for that subtype and **Person Record** for the umbrella.
 - "spouse", "wife", and "widow" were used interchangeably — resolved: use **Spouse Record** as the umbrella term, with **Wife** and **Widow** as specific subtypes when the distinction matters.
+
+## Laws (non-negotiable)
+
+These are not style preferences. Each one was earned by a real bug that
+crashed the app, lost data, or confused a researcher. Treat any code that
+violates a law as a bug that must be fixed before the change can ship.
+
+### Every native dialog call is guarded against re-entry
+
+Wails v2.12.0 on Windows runs every native `SaveFileDialog` and
+`OpenFileDialog` on the UI thread. If two of them land on the message
+loop at the same time, WebView2 loses focus while the Wails
+`onFocus` handler calls `Chromium.Focus()` → `MoveFocus()` and the
+frontend process dies with `Chrome_WidgetWin_0. Error = 1412`
+(wailsapp/wails#2807). The double-click is enough.
+
+The contract:
+
+- Every HTTP handler that calls `a.SaveFileDialog` /
+  `a.OpenFileDialog` / `a.OpenDirectoryDialog` /
+  `a.OpenMultipleFilesDialog` MUST guard the call with
+  `a.inFlight.LoadOrStore(dupKey, struct{}{})` and `defer a.inFlight.Delete(dupKey)`.
+- Every Wails binding that opens a native dialog from JS MUST go
+  through a Go helper that carries the same guard.
+- The guard key must be unique enough to distinguish concurrent
+  exports of different kinds but stable enough to collapse
+  duplicate clicks on the same button. Use
+  `kind|filename|filters` or the equivalent.
+- The slot is released AFTER the dialog returns (`defer Delete`),
+  never before. Releasing early re-opens the race.
+
+Existing helpers (use them; do not invent new ones):
+
+- `(*App).guardedSaveFileDialog(kind, opts)` in
+  `internal/appshell/exports_handlers.go` — covers all export
+  handlers in that file.
+- Inline `a.inFlight.LoadOrStore` + `defer a.inFlight.Delete` in
+  `internal/appshell/app.go` — pattern from `handleCalendarPDF`
+  for the soldier-record / image / calendar handlers.
+
+New native dialog calls added in the future MUST either route
+through one of those helpers or follow the inline pattern with a
+duplicate test added to `save_dialog_guard_test.go`.
+
+Full bug history, reproduction steps, and references:
+[`docs/agents/dialog-guard.md`](docs/agents/dialog-guard.md).
+
+### Do not regress to native `<dialog>` for in-app modals
+
+The native `<dialog>` element was tried for the three in-app
+modals (feedback, print-config, google-prefs) in issue #117 and
+shipped a transient WebView2 focus-event reentry that compounded
+the dialog-race crash above. The modals were reverted to
+`<div role="dialog" aria-modal="true">` overlays with manual
+focus trap and ESC close handlers in `frontend/app.js`
+(`showOverlayModal` / `overlayModalKeydown`). Keep it that way
+until Wails fixes the upstream interaction. Tests in
+`internal/templates/{layout,share}_test.go` lock in the
+overlay shape.

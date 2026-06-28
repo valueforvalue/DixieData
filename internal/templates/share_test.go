@@ -9,20 +9,31 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-// TestShareModalsAreNativeDialogs asserts the print-config and
-// google-calendar-preferences modals use the native <dialog>
-// element so focus trapping, ESC-to-close, and inert background
-// come from the browser instead of a custom div overlay.
-func TestShareModalsAreNativeDialogs(t *testing.T) {
+// TestShareModalsAreOverlayDivs asserts the print-config and
+// google-calendar-preferences modals render as
+// <div role="dialog" aria-modal="true"> overlays, not native
+// <dialog> elements.
+//
+// The native <dialog> swap in issue #117 introduced WebView2
+// focus-event reentry that crashed every native SaveFileDialog
+// and OpenFileDialog opened from inside the modal (or from any
+// sibling export button). Reverting to the div overlay restores
+// pre-#117 behaviour while keeping focus trap + ESC close
+// implemented manually in app.js.
+func TestShareModalsAreOverlayDivs(t *testing.T) {
 	var buf bytes.Buffer
 	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
 	for _, id := range []string{"share-print-config-modal", "google-calendar-preferences-modal"} {
-		needle := `<dialog id="` + id + `"`
-		if !strings.Contains(content, needle) {
-			t.Fatalf("ShareView should render %s as a native <dialog>; got:\n%s", id, content)
+		divNeedle := `<div id="` + id + `" role="dialog" aria-modal="true"`
+		if !strings.Contains(content, divNeedle) {
+			t.Fatalf("ShareView should render %s as a div overlay with role/aria-modal; got:\n%s", id, content)
+		}
+		dialogNeedle := `<dialog id="` + id + `"`
+		if strings.Contains(content, dialogNeedle) {
+			t.Fatalf("ShareView must not render %s as a native <dialog>; it regresses to the WebView2 focus-event crash", id)
 		}
 	}
 }

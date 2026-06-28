@@ -171,6 +171,42 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `hasAttribute` method existence, which both real browsers
   and the mock satisfy.
 
+- **Soldier PDF / JPG, image screenshot, and full database PDF
+  exports no longer crash the app.** The 4 native `SaveFileDialog`
+  call sites in `internal/appshell/app.go` (`handleSoldierPDF`,
+  `handleSoldierPDFNoImages`, `handleSoldierJPG`,
+  `handleImageScreenshot`) and `exportFullDatabasePDFPath` in
+  `internal/appshell/exports_handlers.go` were the missing
+  link in the issue #2807 guard net added by commit `162c353`.
+  That commit routed 9 export handlers through
+  `guardedSaveFileDialog` (or its inline equivalent) but the
+  5 above called `a.SaveFileDialog` directly. A double-click
+  on any of them queued a second native dialog on the Wails
+  UI thread, both blocked, WebView2 lost focus during
+  `MoveFocus`, and `errorCallback` killed the process with
+  `Chrome_WidgetWin_0. Error = 1412`. All 5 call sites now
+  carry the same `a.inFlight.LoadOrStore(...)` guard pattern
+  as `handleCalendarPDF`; the database PDF helper returns a
+  new `errExportInFlight` sentinel that the HTTP handler maps
+  to a 429 and the Wails binding surfaces as a friendly toast.
+  See `internal/appshell/save_dialog_guard_test.go` for the
+  regression net.
+
+- **Three modal dialogs reverted from native `<dialog>` back to
+  the pre-issue-117 `<div role="dialog" aria-modal="true">`
+  overlay** (feedback modal in layout, print-config and
+  google-prefs in share). The native `<dialog>` swap was
+  blamed for the crash but was a red herring — the real
+  trigger was the unguarded `SaveFileDialog` race above.
+  However, native `<dialog>` still carries a subtle WebView2
+  interaction (showModal grabs host focus, which then routes
+  through Wails' `onFocus` → `Chromium.Focus()` → `MoveFocus`
+  at unexpected times), so reverting keeps the focus-event
+  surface small while we wait for an upstream Wails fix.
+  Manual focus trap and ESC close handlers live in
+  `frontend/app.js` (`showOverlayModal` /
+  `overlayModalKeydown`).
+
 ### Removed
 
 - Developer visualizer overlay (orphan from v1; no current consumers).

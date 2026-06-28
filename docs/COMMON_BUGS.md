@@ -559,6 +559,90 @@ after export.
 **Real example:** `eaac840 fix(appshell): stop auto-opening exported
 files`.
 
+### 4.10 Unguarded native dialog crashes the app
+
+**Symptom:** Click "Export PDF" (or JPG, or screenshot, or
+"Printable PDF"). Native save dialog appears, then the app
+dies. `crash.log` shows `[WebView2 Error] The parameter is
+incorrect.` followed by `Failed to unregister class
+Chrome_WidgetWin_0. Error = 1412` and a goroutine stack that
+ends in `Chromium.errorCallback` → `os.Exit(1)`. User loses
+unsaved state.
+
+**Why it happens:** Wails v2.12.0 on Windows hosts every native
+`SaveFileDialog` and `OpenFileDialog` on the UI thread. Wails'
+`onFocus` handler calls `Chromium.Focus()` →
+`controller.MoveFocus(...)` whenever the host window regains
+focus. When two native dialogs land on the message loop at the
+same time (a double-click, a parallel JS bridge call, or a
+htmx race), both block the UI thread, the focus event chain
+fires while WebView2 is unstable, and the COM call returns
+`The parameter is incorrect.` The
+[`go-webview2`](https://github.com/wailsapp/go-webview2)
+global error callback is hard-coded to call `os.Exit(1)`
+(`chromium.go:151`), so the entire process dies.
+[wailsapp/wails#2807](https://github.com/wailsapp/wails/issues/2807).
+
+**Find it:**
+
+```bash
+# Every site that calls a.SaveFileDialog / OpenFileDialog
+# without going through a guard.
+grep -rn "a\.SaveFileDialog\|a\.OpenFileDialog\|a\.OpenDirectoryDialog\|a\.OpenMultipleFilesDialog" \
+  internal/appshell/ --include="*.go"
+```
+
+For every match, confirm the handler either:
+
+1. Routes through `a.guardedSaveFileDialog(...)` (pattern A),
+2. Carries an inline `a.inFlight.LoadOrStore(dupKey, ...)` +
+   `defer a.inFlight.Delete(...)` block (pattern B), or
+3. Returns a sentinel error like `errExportInFlight` from a
+   helper that owns the guard (pattern C).
+
+**Fix:**
+
+- **Pattern A** — call sites in
+  `internal/appshell/exports_handlers.go` should route through
+  `guardedSaveFileDialog(kind, opts)`. Caller checks `ok` and
+  maps `false` to a 429 / friendly toast.
+- **Pattern B** — call sites in `internal/appshell/app.go`
+  carry inline guards modelled after `handleCalendarPDF`. Key
+  is `kind|filename|filters` (or include `id` /
+  `orientation` for soldier-record exports).
+- **Pattern C** — `exportFullDatabasePDFPath` is the example.
+  Returns `errExportInFlight`. HTTP handler maps it to
+  `respondError(..., KindUnavailable, ...)`; Wails binding
+  returns a friendly toast string.
+
+**Required follow-up for every new guard:**
+
+- Add a test to
+  `internal/appshell/save_dialog_guard_test.go` that
+  exercises the dupKey, asserts the second call is rejected,
+  asserts the slot is released after the dialog returns, and
+  asserts two distinct kinds don't collide.
+- Update the table in
+  [`docs/agents/dialog-guard.md`](agents/dialog-guard.md).
+- Update `CHANGELOG.md` under `### Fixed`.
+
+**Real examples:**
+
+- `162c353 fix(appshell): guard every SaveFileDialog call against
+  duplicate requests` — introduced `guardedSaveFileDialog` and
+  wired 9 export handlers through it. Missed 5 sites (soldier
+  PDF / JPG, screenshot, database PDF).
+- The follow-up commit that closed those 5 sites — see
+  `CHANGELOG.md` > Unreleased > Fixed.
+
+**Why this is a bug class, not a one-off:** every new export /
+import handler adds another call site. Any handler that reaches
+`a.SaveFileDialog` without a guard is one double-click away from
+killing the process. Code review must reject new unguarded sites
+outright. See `CONTEXT.md` "Laws (non-negotiable)" and
+[`docs/agents/dialog-guard.md`](agents/dialog-guard.md) for the
+full law.
+
 ---
 
 ## 5. Typst PDF rendering bugs
@@ -598,19 +682,29 @@ batches of 500 instead of loading all at once`.
 
 (12 of 79 fix commits — second-largest category.)
 
-### 6.1 Native `<dialog>` vs custom modal markup
+### 6.1 Custom modal markup must trap focus + handle Esc manually
 
 **Symptom:** Modal doesn't trap focus, doesn't close on Esc, doesn't
 restore focus on close.
 
-**Why it happens:** Custom modal markup (positioned divs) doesn't
-have native dialog semantics.
+**Why it happens:** A custom `<div role="dialog" aria-modal="true">`
+overlay has no built-in focus semantics.
 
-**Fix:** Use the `<dialog>` element with `showModal()`. Browsers
-handle focus trap, Esc, and ARIA correctly.
+**Fix:** Use the helpers in `frontend/app.js` —
+`showOverlayModal(modal)` / `hideOverlayModal(modal)` /
+`overlayModalKeydown(event)`. They swap the `hidden` / `flex`
+classes, move focus to the first focusable child, trap Tab
+inside the dialog, and unregister the keydown listener on
+close.
 
-**Real example:** `1548407 fix(a11y): switch the three modal dialogs
-to native <dialog>`.
+**Why not `<dialog>`?** Native `<dialog>` was tried in
+`1548407 fix(a11y): switch the three modal dialogs to native
+<dialog>` and reverted because `showModal()` fires a focus event
+on the WebView2 host that races the Wails `onFocus` handler —
+the exact `MoveFocus` race described in section 4.10 below. Keep
+the div overlay until Wails fixes the upstream interaction.
+Tests in `internal/templates/{layout,share}_test.go` lock in the
+overlay shape so this can't drift back.
 
 ---
 

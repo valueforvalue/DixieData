@@ -1,0 +1,27 @@
+# debug-crash.dlv — Set breakpoints on every SaveFileDialog call site.
+# Usage: dlv exec --init scripts/debug-crash.dlv --allow-non-terminal-interactive=true build/bin/DixieData.exe
+
+# Breakpoints on every SaveFileDialog call site (Windows path syntax).
+break C:/Development/DixieData/internal/appshell/app.go:448
+break C:/Development/DixieData/internal/appshell/app.go:476
+break C:/Development/DixieData/internal/appshell/app.go:512
+break C:/Development/DixieData/internal/appshell/app.go:572
+break C:/Development/DixieData/internal/appshell/app.go:618
+
+# Also break inside the guard helper so we can see who routes through it.
+break C:/Development/DixieData/internal/appshell/exports_handlers.go:46
+
+breakpoints
+
+# --- Workflow notes (printed as comments; type manually at (dlv) prompt) ---
+#
+# 1. Type `continue` to start the app.
+# 2. Click an export button (Soldier PDF, Soldier JPG, etc.).
+# 3. When the debugger pauses, run:
+#      stack                  # see which handler called SaveFileDialog
+#      goroutines             # look for multiple blocked in iFileSaveDialog.Show
+#      print opts             # (when inside the breakpoint) see dialog options
+# 4. To see the in-flight dedup map state, also break at exports_handlers.go:46.
+#
+# Key insight: app.go:448, 476, 512, 618 have NO guard — double-click crashes.
+#              app.go:572 (Calendar PDF) and the guarded export handlers DO guard.
