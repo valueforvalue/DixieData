@@ -71,7 +71,7 @@ type App struct {
 	saveFileDialogOverride       func(opts any) (string, error)
 	openFileDialogOverride       func(opts any) (string, error)
 	openMultipleFilesDialogOverride func(opts any) ([]string, error)
-	inFlight               sync.Map // map[string]struct{} — dedupes in-flight native dialog calls
+	inFlight               sync.Map // map[string]*inFlightEntry — dedupes in-flight native dialog calls
 	startupErr              error
 	setupRequired           bool
 	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
@@ -130,6 +130,102 @@ func (a *App) clearPendingLaunchState() error {
 	}
 	a.pendingLaunchStateClear = false
 	return nil
+}
+
+// inFlightEntry is the value stored under each dedup key in
+// (*App).inFlight. The JobID field is populated by enqueueExport
+// once the background job has been started, so a duplicate
+// request that arrives after the user has picked a save target
+// (or after the dialog has been dismissed) can be redirected to
+// the existing /jobs/{id} status page instead of an error page.
+// When the dedup key only covers the still-open dialog (no JobID
+// yet) the handler falls back to the legacy friendly-error
+// response so the second click is rejected without crashing the
+// native dialog.
+type inFlightEntry struct {
+	JobID string
+}
+
+// enterInFlight admits the caller as the active owner of dupKey.
+// On admit, returns (true, newly-created-entry). When another
+// request already holds the key, returns (false, the existing
+// entry) so the caller can inspect JobID for redirect.
+// The entry pointer return is the value to pass into
+// leaveInFlight so the release is exact (no key collisions
+// between unrelated callers).
+func (a *App) enterInFlight(dupKey string) (bool, *inFlightEntry) {
+	entry := &inFlightEntry{}
+	actual, loaded := a.inFlight.LoadOrStore(dupKey, entry)
+	if loaded {
+		if existing, ok := actual.(*inFlightEntry); ok {
+			return false, existing
+		}
+		return false, nil
+	}
+	return true, entry
+}
+
+// leaveInFlight releases the dedup key iff the caller still owns
+// it (matches the entry pointer from enterInFlight). The pointer
+// check prevents a stale release from a different generation of
+// the same key from clearing a fresh admission.
+func (a *App) leaveInFlight(dupKey string, entry *inFlightEntry) {
+	if entry == nil {
+		return
+	}
+	if actual, loaded := a.inFlight.Load(dupKey); loaded {
+		if existing, ok := actual.(*inFlightEntry); ok && existing == entry {
+			a.inFlight.Delete(dupKey)
+		}
+	}
+}
+
+// inFlightJobID returns the JobID associated with dupKey, or "" if
+// no entry exists or the entry has not yet recorded a JobID.
+// Used by the duplicate-request guard to issue a 303 redirect to
+// the existing /jobs/{id} status page.
+func (a *App) inFlightJobID(dupKey string) string {
+	if actual, loaded := a.inFlight.Load(dupKey); loaded {
+		if entry, ok := actual.(*inFlightEntry); ok {
+			return entry.JobID
+		}
+	}
+	return ""
+}
+
+// respondDuplicateInFlight writes the response for a duplicate
+// request that hit the in-flight guard. When a background job
+// has already been started under dupKey, redirect the user to
+// its /jobs/{id} status page so they can watch the real job
+// progress (the legacy error page left them stranded). When no
+// JobID exists yet (the save dialog is still open), redirect
+// back to the originating page with a toast so the user's
+// modal/page stays put instead of being replaced by an error
+// body.
+func (a *App) respondDuplicateInFlight(w http.ResponseWriter, r *http.Request, dupKey string) {
+	if jobID := a.inFlightJobID(dupKey); jobID != "" {
+		debug.FromContext(r.Context()).Debug("redirecting duplicate request to existing job", "dupKey", dupKey, "jobID", jobID)
+		http.Redirect(w, r, "/jobs/"+jobID, http.StatusSeeOther)
+		return
+	}
+	debug.FromContext(r.Context()).Debug("duplicate request rejected", "dupKey", dupKey)
+	// Dialog is still open — bounce the user back to their page so
+	// the modal is not replaced by an error body. Use HX-Redirect so
+	// the navigation happens client-side without reloading the
+	// modal form (a server-side 303 would clear htmx state and any
+	// queued requests). Fall back to a plain 303 to "/" if the
+	// referrer is absent or off-origin.
+	redirectTo := "/"
+	if r != nil {
+		if referer := strings.TrimSpace(r.Referer()); referer != "" {
+			if u, err := url.Parse(referer); err == nil && u.Path != "" {
+				redirectTo = u.Path
+			}
+		}
+	}
+	setToastHeaderWithType(w, "Export already in progress; please wait for the save dialog.", "info")
+	w.Header().Set("HX-Redirect", redirectTo)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleUpdateBootstrapHealth(w http.ResponseWriter, r *http.Request) {
@@ -446,12 +542,13 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	options := parsePDFOptionsRequest(r, "L", true)
 
 	dupKey := fmt.Sprintf("soldier-pdf|%d|%s|%s", id, options.Orientation, soldierPDFName(*soldier, options))
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		debug.FromContext(r.Context()).Debug("handleSoldierPDF duplicate request rejected")
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFName(*soldier, options),
@@ -463,7 +560,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
-	a.enqueueExport("soldier_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "soldier_pdf", func(p *jobs.Progress) error {
 		p.Set(20, "Rendering Person Record PDF")
 		return a.export.ExportSoldierPDF(path, *soldier, options)
 	}, path, w)
@@ -482,12 +579,13 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 	}
 
 	dupKey := fmt.Sprintf("soldier-pdf-noimg|%d|%s", id, soldierPDFNameNoImages(*soldier))
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		debug.FromContext(r.Context()).Debug("handleSoldierPDFNoImages duplicate request rejected")
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierPDFNameNoImages(*soldier),
@@ -499,7 +597,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
-	a.enqueueExport("soldier_pdf_no_images", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "soldier_pdf_no_images", func(p *jobs.Progress) error {
 		p.Set(20, "Rendering text-only PDF")
 		return a.export.ExportSoldierPDFWithoutImages(path, *soldier)
 	}, path, w)
@@ -526,12 +624,13 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 	options := parsePDFOptionsRequest(r, "L", true)
 
 	dupKey := fmt.Sprintf("soldier-jpg|%d|%s|%s", id, options.Orientation, soldierJPGName(*soldier, options))
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		debug.FromContext(r.Context()).Debug("handleSoldierJPG duplicate request rejected")
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: soldierJPGName(*soldier, options),
@@ -544,7 +643,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	a.enqueueExport("soldier_jpg", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "soldier_jpg", func(p *jobs.Progress) error {
 		p.Set(20, "Rendering JPG pages")
 		_, err := a.export.ExportSoldierJPG(path, *soldier, options)
 		return err
@@ -586,12 +685,13 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	// user see a toast and prevents the second click from racing
 	// with the first.
 	dupKey := fmt.Sprintf("cal-pdf|%d|%s|%s", month, options.Orientation, monthPDFName(month, options))
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		debug.FromContext(r.Context()).Debug("handleCalendarPDF duplicate request rejected")
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: monthPDFName(month, options),
@@ -605,7 +705,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		return
 	}
 	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
-	a.enqueueExport("monthly_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "monthly_pdf", func(p *jobs.Progress) error {
 		p.Set(20, "Rendering monthly PDF")
 		return a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options)
 	}, path, w)
@@ -640,12 +740,13 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dupKey := fmt.Sprintf("screenshot|%s", imageScreenshotName(payload.FileName))
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		debug.FromContext(r.Context()).Debug("handleImageScreenshot duplicate request rejected")
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: imageScreenshotName(payload.FileName),

@@ -27,6 +27,15 @@ import (
 // toast via the same respondError path.
 var errExportInFlight = errors.New("export already in progress; please wait for the save dialog")
 
+// guardedSaveFileDialogKey returns the dedup key guardedSaveFileDialog
+// would use for the given kind + options. Callers that need the key
+// (so they can thread it into enqueueExport and update the entry's
+// JobID) compute it once with this helper before calling the dialog
+// wrapper.
+func guardedSaveFileDialogKey(kind string, opts runtime.SaveDialogOptions) string {
+	return fmt.Sprintf("export|%s|%s|%v", kind, opts.DefaultFilename, opts.Filters)
+}
+
 // guardedSaveFileDialog wraps a.SaveFileDialog with the duplicate-request
 // guard used by handleCalendarPDF. Without it, a double-click (or any
 // back-to-back POST that reaches the handler before the user picks a
@@ -51,12 +60,15 @@ var errExportInFlight = errors.New("export already in progress; please wait for 
 // Every export handler that calls a.SaveFileDialog must route through
 // this helper. The calendar PDF handler carries an equivalent guard
 // inline; that handler predates this helper.
-func (a *App) guardedSaveFileDialog(kind string, opts runtime.SaveDialogOptions) (string, bool) {
-	dupKey := fmt.Sprintf("export|%s|%s|%v", kind, opts.DefaultFilename, opts.Filters)
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+func (a *App) guardedSaveFileDialog(dupKey string, opts runtime.SaveDialogOptions) (string, bool) {
+	if dupKey == "" {
+		dupKey = guardedSaveFileDialogKey("export", opts)
+	}
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		return "", false
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 	path, err := a.SaveFileDialog(opts)
 	if err != nil || path == "" {
 		return "", false
@@ -76,8 +88,11 @@ func (a *App) handleLegacyExportRedirect(w http.ResponseWriter, r *http.Request)
 // enqueueExport starts a background export job and writes a 303
 // redirect to /jobs/{id}. Used by every export handler that wraps
 // long-running work. Mirrors the shape of enqueueStaticArchive /
-// enqueueDatabasePDF (which predate this helper).
-func (a *App) enqueueExport(kind string, work func(p *jobs.Progress) error, path string, w http.ResponseWriter) {
+// enqueueDatabasePDF (which predate this helper). When dupKey is
+// non-empty the new JobID is recorded against the in-flight entry
+// so a duplicate request that arrives after the job has been
+// queued can be redirected to the same status page (issue #130).
+func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) error, path string, w http.ResponseWriter) {
 	var jobID string
 	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
@@ -88,6 +103,13 @@ func (a *App) enqueueExport(kind string, work func(p *jobs.Progress) error, path
 		}
 		return err
 	})
+	if dupKey != "" {
+		if actual, loaded := a.inFlight.Load(dupKey); loaded {
+			if entry, ok := actual.(*inFlightEntry); ok {
+				entry.JobID = jobID
+			}
+		}
+	}
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -97,17 +119,19 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, ok := a.guardedSaveFileDialog("json_export", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-export.json",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "JSON", Pattern: "*.json"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("json_export", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	a.enqueueExport("json_export", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "json_export", func(p *jobs.Progress) error {
 		p.Set(20, "Writing JSON")
 		return a.export.ExportJSON(path)
 	}, path, w)
@@ -128,17 +152,19 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	options := parsePDFOptionsRequest(r, "P", false)
-	path, ok := a.guardedSaveFileDialog("insights_pdf", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: pdfReportName("dixiedata-archive-insights", options, false),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF", Pattern: "*.pdf"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("insights_pdf", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	a.enqueueExport("insights_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "insights_pdf", func(p *jobs.Progress) error {
 		p.Set(20, "Rendering analytics PDF")
 		return a.export.ExportAnalyticsSummaryPDF(path, snapshot, options)
 	}, path, w)
@@ -149,17 +175,19 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, ok := a.guardedSaveFileDialog("excel_export", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-export.xlsx",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Excel workbook", Pattern: "*.xlsx"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("excel_export", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	a.enqueueExport("excel_export", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "excel_export", func(p *jobs.Progress) error {
 		p.Set(20, "Building workbook")
 		return a.export.ExportExcel(path)
 	}, path, w)
@@ -170,14 +198,16 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, ok := a.guardedSaveFileDialog("icalendar_export", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-anniversaries.ics",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "iCalendar", Pattern: "*.ics"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("icalendar_export", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 	preferences, err := a.google.ManagedEventPreferences()
@@ -185,7 +215,7 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load Google Calendar preferences.", err)
 		return
 	}
-	a.enqueueExport("icalendar_export", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "icalendar_export", func(p *jobs.Progress) error {
 		p.Set(20, "Building iCalendar file")
 		return a.export.ExportICalendar(path, preferences)
 	}, path, w)
@@ -201,20 +231,22 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 	if suggested, err := a.export.StaticArchiveFileName(time.Now()); err == nil {
 		defaultName = suggested
 	}
-	path, ok := a.guardedSaveFileDialog("static_archive", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: defaultName,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "ZIP archive", Pattern: "*.zip"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("static_archive", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 	// Always enqueue — static archive export is heavy and the user
 	// benefits from the persistent progress slot regardless of which
 	// page they navigate to while it runs.
-	a.enqueueExport("static_archive", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "static_archive", func(p *jobs.Progress) error {
 		p.Set(5, "Gathering images")
 		return a.export.ExportStaticArchive(path, a.dataDir)
 	}, path, w)
@@ -235,9 +267,9 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		respondValidation(w, r, "Print settings could not be read.", err)
 		return
 	}
-	path, err := a.exportFullDatabasePDFPath(settings)
+	path, dupKey, err := a.exportFullDatabasePDFPath(settings)
 	if errors.Is(err, errExportInFlight) {
-		respondError(w, r, KindUnavailable, "Printable PDF export already in progress; please wait for the save dialog.", err)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 	if err != nil || path == "" {
@@ -245,15 +277,22 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Always enqueue — printable PDF is heavy.
-	a.enqueueExport("database_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "database_pdf", func(p *jobs.Progress) error {
 		p.Set(5, "Building archive")
 		return a.export.ExportFullDatabasePDF(path, settings)
 	}, path, w)
 }
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
-	path, err := a.exportFullDatabasePDFPath(settings)
+	path, dupKey, err := a.exportFullDatabasePDFPath(settings)
 	if errors.Is(err, errExportInFlight) {
+		// A duplicate request hit the guard. If a job is already in
+		// flight under the same key, surface a status link so the
+		// user can monitor it instead of being told to wait for a
+		// dialog that has already been dismissed.
+		if jobID := a.inFlightJobID(dupKey); jobID != "" {
+			return fmt.Sprintf("Printable PDF export already in progress. <a href=\"/jobs/%s\">View status</a>.", jobID), nil
+		}
 		return "Printable PDF export already in progress; please wait for the save dialog.", nil
 	}
 	if err != nil {
@@ -269,10 +308,13 @@ func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, err
 }
 
 // exportFullDatabasePDFPath normalizes settings and prompts for a
-// destination via the SaveFileDialog. Returns ("", nil) when the
-// user cancels the dialog. Used by both handleExportDatabasePDF
-// (HTTP) and ExportFullDatabasePDF (Wails binding) so the
-// SaveFileDialog block stays in one place.
+// destination via the SaveFileDialog. Returns the user-chosen path,
+// the dupKey used to guard the dialog (so the caller can thread it
+// into enqueueExport and update the in-flight JobID), and an error.
+// When the user cancels the dialog the path is empty and err is
+// nil. Used by both handleExportDatabasePDF (HTTP) and
+// ExportFullDatabasePDF (Wails binding) so the SaveFileDialog block
+// stays in one place.
 //
 // Like the other SaveFileDialog call sites, this carries a
 // sync.Map-based in-flight guard against the WebView2 focus race
@@ -280,14 +322,15 @@ func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, err
 // the share-page "Printable PDF" button or two parallel calls from
 // the Wails binding queue a second native dialog while the first
 // is still up and crash the WebView2 control.
-func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string, error) {
+func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string, string, error) {
 	settings = settings.Normalize()
 	dupKey := fmt.Sprintf("db-pdf|%s", printableArchivePDFName(settings))
-	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
 		debug.FromContext(context.Background()).Debug("exportFullDatabasePDFPath duplicate request rejected")
-		return "", errExportInFlight
+		return "", dupKey, errExportInFlight
 	}
-	defer a.inFlight.Delete(dupKey)
+	defer a.leaveInFlight(dupKey, entry)
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: printableArchivePDFName(settings),
 		Filters: []runtime.FileFilter{
@@ -295,9 +338,9 @@ func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string,
 		},
 	})
 	if err != nil {
-		return "", err
+		return "", dupKey, err
 	}
-	return path, nil
+	return path, dupKey, nil
 }
 
 func parsePrintSettingsRequest(r *http.Request) (archive.PrintSettings, error) {
@@ -345,18 +388,20 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, ok := a.guardedSaveFileDialog("backup_archive", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: backupArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("backup_archive", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 
-	a.enqueueExport("backup_archive", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "backup_archive", func(p *jobs.Progress) error {
 		p.Set(10, "Gathering archive data")
 		_, err := a.backup.Export(path, a.dataDir)
 		if err == nil {
@@ -372,18 +417,20 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	path, ok := a.guardedSaveFileDialog("shared_archive", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: sharedArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("shared_archive", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 
-	a.enqueueExport("shared_archive", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "shared_archive", func(p *jobs.Progress) error {
 		p.Set(10, "Building shared archive")
 		_, err := a.backup.ExportShared(path, a.dataDir)
 		return err
@@ -396,18 +443,20 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, ok := a.guardedSaveFileDialog("bug_report", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: archive.DiagnosticsBundleName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Bug report bundle", Pattern: "*.zip"},
 		},
-	})
+	}
+	dupKey := guardedSaveFileDialogKey("bug_report", opts)
+	path, ok := a.guardedSaveFileDialog(dupKey, opts)
 	if !ok {
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 
-	a.enqueueExport("bug_report", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "bug_report", func(p *jobs.Progress) error {
 		p.Set(10, "Collecting diagnostics")
 		_, err := a.diagnostics.Export(path, a.dataDir)
 		return err
