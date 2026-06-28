@@ -28,6 +28,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `internal/templates/share.templ`: print-config modal renders
+  with the centering classes required to display the dialog in
+  the middle of the page (`justify-center`, `items-center` on
+  `>=sm` viewports). Issue #128 reported the modal "loading on
+  the left of the page" — root cause was a duplicate export
+  click replacing the modal contents with the in-flight error
+  body, fixed by the issue #130 redirect. The new
+  `TestSharePrintConfigModalIsCentered` test pins down the
+  CSS classes so a future refactor cannot silently remove
+  them.
 - `internal/templates/jobs.templ`: non-viewable job artifacts
   (.ddbak, .ddshare, .zip, .csv, .ics) now render with a `download`
   attribute instead of `target="_blank"` (issue #129). The old

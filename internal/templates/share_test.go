@@ -9,6 +9,33 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
+// TestSharePrintConfigModalIsCentered is the regression test for
+// issue #128. The print-config modal must render with the
+// CSS classes that center it horizontally (justify-center) and
+// vertically (items-center on >=640px viewports). Without the
+// justify-center class the inner card aligns to the start edge of
+// the overlay, which the user perceived as "loading on the left
+// of the page instead of center".
+func TestSharePrintConfigModalIsCentered(t *testing.T) {
+	var buf bytes.Buffer
+	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, needle := range []string{
+		`id="share-print-config-modal"`,
+		`justify-center`,
+		`items-center`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("ShareView print-config modal missing centering class %s; full HTML:\n%s", needle, content)
+		}
+	}
+	if !strings.Contains(content, `data-print-config-modal`) {
+		t.Errorf("ShareView print-config modal missing data-print-config-modal hook used by showOverlayModal")
+	}
+}
+
 // TestShareModalsAreOverlayDivs asserts the print-config and
 // google-calendar-preferences modals render as
 // <div role="dialog" aria-modal="true"> overlays, not native
