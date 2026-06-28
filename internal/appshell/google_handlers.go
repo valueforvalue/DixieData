@@ -76,7 +76,16 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	setInfoToastHeader(w, "Google Drive upload started\u2026")
+	// htmx 2.x with hx-swap="none" suppresses both the swap AND
+	// redirect handling; it silently swallows a plain Location
+	// header. Write HX-Redirect alongside Location so the button
+	// on share.templ:511 navigates the user to the job status
+	// page instead of stranding them on /share. See
+	// appshell.exports_handlers.enqueueExport for the full note
+	// and audit/smoke.mjs share-{path}-navigates-to-jobs for the
+	// regression net.
 	w.Header().Set("Location", "/jobs/"+jobID)
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
 
@@ -112,7 +121,11 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	setInfoToastHeader(w, "Google Sheets export started\u2026")
+	// See handleGoogleBackup above — hx-swap="none" on the share
+	// page buttons needs HX-Redirect or the user never sees the
+	// job status page.
 	w.Header().Set("Location", "/jobs/"+jobID)
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
 
