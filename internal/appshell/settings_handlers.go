@@ -119,7 +119,7 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 		_ = trashRoot
 		return nil
 	})
-	setToastHeader(w, "Orphan cleanup started\u2026")
+	setInfoToastHeader(w, "Orphan cleanup started\u2026")
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }

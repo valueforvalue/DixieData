@@ -99,7 +99,7 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 		respondValidation(w, r, "Unknown bulk action. Use ignore or delete.", nil)
 		return
 	}
-	setToastHeader(w, fmt.Sprintf("Bulk %s started\u2026", action))
+	setInfoToastHeader(w, fmt.Sprintf("Bulk %s started\u2026", action))
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }

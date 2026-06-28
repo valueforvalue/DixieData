@@ -975,7 +975,7 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 	// feedback even if the page doesn't navigate. The worker writes
 	// a follow-up warning/error toast via /jobs/{id}/fragment if the
 	// actual import reports a partial failure.
-	setToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
+	setInfoToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }

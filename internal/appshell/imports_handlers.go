@@ -114,7 +114,7 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		_ = jobID
 		return nil
 	})
-	setToastHeader(w, "Shared archive import started\u2026")
+	setInfoToastHeader(w, "Shared archive import started\u2026")
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -185,7 +185,7 @@ func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		_ = jobID
 		return nil
 	})
-	setToastHeader(w, "Memorial JSON import started\u2026")
+	setInfoToastHeader(w, "Memorial JSON import started\u2026")
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }

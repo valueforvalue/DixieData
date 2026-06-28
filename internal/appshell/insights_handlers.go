@@ -151,7 +151,7 @@ func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
 		_ = jobID
 		return nil
 	})
-	setToastHeader(w, "Duplicate audit started\u2026")
+	setInfoToastHeader(w, "Duplicate audit started\u2026")
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }

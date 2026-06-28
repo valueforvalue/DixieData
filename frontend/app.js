@@ -12,6 +12,17 @@
   const layoutModeStorageKey = "dixiedata.layout.mode";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
   const splitScreenBreakpointPx = 1000;
+  // Toast auto-dismiss timing. success + info kinds fade out after
+  // this delay; warning + error stay until the user clicks Dismiss
+  // (issue #54 contract). Tuning this constant is the single source
+  // of truth for both the inline showToast call and the
+  // sessionStorage-restore path.
+  const toastAutoDismissMs = 4000;
+  // Toast fade-out animation length, kept in sync with the
+  // .toast-card CSS opacity transition + the remove() defer in
+  // showToast's dismiss helper. Set to the visible fade duration
+  // so the DOM node is removed only after the animation completes.
+  const toastFadeOutMs = 320;
   const recentSearchHydrationState = { token: 0 };
   const defaultBrowseColumns = ["display_id", "name", "entry_type", "rank_out", "unit", "pension_state", "review_status", "last_edited"];
   const draftBaselines = new WeakMap();
@@ -2555,14 +2566,14 @@
     region.appendChild(toast);
     const dismiss = () => {
       toast.setAttribute("data-toast-dismissing", "true");
-      window.setTimeout(() => toast.remove(), 320);
+      window.setTimeout(() => toast.remove(), toastFadeOutMs);
     };
     toast.querySelector("[data-toast-dismiss]")?.addEventListener("click", dismiss);
-    // Auto-dismiss success/info after 4s. Error and warning stay
-    // until the user dismisses them — preserves the manual-dismiss
-    // decision from Issue #54.
+    // Auto-dismiss success/info after toastAutoDismissMs. Error
+    // and warning stay until the user dismisses them —
+    // preserves the manual-dismiss decision from Issue #54.
     if (kind === "success" || kind === "info") {
-      window.setTimeout(dismiss, 4000);
+      window.setTimeout(dismiss, toastAutoDismissMs);
     }
   }
 
