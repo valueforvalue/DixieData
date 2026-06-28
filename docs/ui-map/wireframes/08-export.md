@@ -108,6 +108,23 @@ the full export-config form (`data-pdf-pref-scope="archive"`).
 
 ## Footguns
 
+- **Import job results surface per-kind stats on the `/jobs/{id}`
+  summary card** (`backup_import` → Replaced records/images +
+  Schema migrated line; `shared_import` → Added/Merged/Skipped +
+  Conflicts staged + Images imported; `memorial_import` → Added/
+  Skipped/Failed + Images imported). Users land here when their
+  import finishes — the stats are the first confirmation the import
+  succeeded. See [20-jobs.md](20-jobs.md) for the full per-kind table.
+- **Memorial import log path is invisible** — `JobResult.LogPath`
+  is set by `handleConfirmMemorialJSONImport` but the summary card
+  doesn't render a download button for it. If the user hits the
+  memorial "Preview → Confirm" flow with any `Failed` count, they
+  have no in-app path to the error log. See [gaps.md](../gaps.md).
+- **Shared-import conflicts reminder is text-only** — when
+  `Conflicts > 0` the summary card shows
+  `Conflicts staged for review: N — see Merge Review below.` but
+  no button. The user has to navigate to the Share page to find
+  the Merge Review section. Consider adding a deep-link pill.
 - **Native dialog handlers everywhere** — `/export/backup`,
   `/export/shared-archive`, `/export/static-archive`, image imports,
   calendar actions. Each MUST be guarded per
