@@ -614,7 +614,11 @@ mirroring to stderr would be cheaper). Cheap to add: one
 ## Open follow-up (all phases shipped, these are next)
 
 Tracked separately from the phase plan now. Each item is small
-enough for its own commit.
+enough for its own commit. Ordered by approximate value-per-line
+of effort. Items 1-4 are recommended; 5-12 are deferred or
+optional polish.
+
+### Recommended
 
 1. **`restore point apply` — real implementation.** Currently
    prints the record; the actual restore would either
@@ -622,35 +626,80 @@ enough for its own commit.
    or refactor `archive.replaceDataDir` to accept an
    alternate target (cleaner). Block on whether we need
    in-process restore (CLI script-friendly) or only
-   manual-copy-then-import (user-driven).
+   manual-copy-then-import (user-driven). Path (a) — the
+   shim — is ~20 lines + 2 tests and ships TODAY; path
+   (b) is a real refactor.
 
-2. **`migrate down <version>`.** Best-effort undo path;
+2. **`--log-to-stderr`.** Mirror the JSONL to stderr in real
+   time via `io.MultiWriter` so failed CLI invocations can
+   be debugged from CI logs without a `dixiedata logs path`
+   round-trip. ~10 lines + 1 test.
+
+3. **`--version` flag.** Add `dixiedata --version` that
+   prints `buildinfo.AppVersion` + `buildinfo.BuildIdentity()`
+   and exits 0. ~5 lines + 1 test. Makes the CLI
+   self-describing for support workflows.
+
+4. **JSON key consistency pass.** `restore point list
+   --json` uses `restore_points` (plural); `backup list
+   --json` uses `backups`; `migrate status --json` uses
+   `applied_version` / `current_version`; `import backup
+   --json` uses `soldiers` / `records` / `images`. Pick
+   one convention (snake_case + plural for collections,
+   singular for the type itself) and normalise. Touches
+   each `runAdmin*` and `runImport*` handler; no schema
+   impact because the shapes are CLI-only.
+
+### Ship when a user story needs them
+
+5. **`migrate down <version>`.** Best-effort undo path;
    needs a `--yes` guard plus a pre-migration snapshot.
-   Schema actually has a real down-migration story would
-   unblock this.
+   The schema actually has a real down-migration story
+   would unblock this. Blocked on a schema audit (what
+   migrations are reversible, what aren't).
 
-3. **`--log-to-stderr`.** Mirror JSONL to stderr in real
-   time via `io.MultiWriter`. Cheap.
+6. **Error message consistency.** Some subcommands write
+   `error: <msg>` to stderr; others write `<msg>` with no
+   prefix. Matters for CI parsing. Trivial sed-style
+   pass over the `cli_*.go` files.
 
-4. **JSON envelope unification.** See "Cross-cutting
-   concerns" above. Parked indefinitely.
+7. **Stable exit codes (audit).** The plan reserves 0/1/2/3/4/5
+   but only 0/1/2/3 are used in practice. Walk each
+   handler, add explicit exit-4 (permission) and exit-5
+   (internal) where natural. ~30 minutes.
 
-5. **`dixiedata package` for building `.ddbak` / `.ddsa`
-   bundles from a directory tree.** Not in any current user
-   story. Defer indefinitely.
+8. **Shell quoting test for `--data-dir`.** Never tested
+   with spaces. Add a test that uses a path with spaces
+   and asserts the data dir is resolved correctly.
 
-6. **TUI for restore point resolution.** When an import has
-   50 conflicts, plain text is painful. Anti-goal says no
-   TUI, so we stick to JSON +
-   `--filter-conflicts <field>=<value>` to narrow (not
-   shipped; not blocking).
+9. **`no` subcommand or `dixiedata help`.** No
+   discoverability story beyond parsing the usage error
+   messages. `dixiedata help` listing every subcommand
+   + their flags would be useful. ~50 lines.
 
-7. **Backup format versioning.** `.ddbak` zip embeds a
-   `manifest.json` with `format: "1"` and `version: <n>`.
-   When we bump the format, does `import backup` reject
-   older versions or migrate? Currently rejects. Decision
-   belongs with the import command when a real format
-   bump happens.
+### Deferred indefinitely
+
+10. **JSON envelope unification.** Per-subcommand shapes
+    are stable enough; a top-level envelope would force
+    every consumer to unwrap one level and lose the
+    `jq -r '.soldiers'` ergonomics of the current shapes.
+
+11. **`dixiedata package` for building `.ddbak` / `.ddsa`
+    bundles from a directory tree.** Not in any current
+    user story.
+
+12. **TUI for restore point resolution.** When an import
+    has 50 conflicts, plain text is painful. Anti-goal
+    says no TUI, so we stick to JSON +
+    `--filter-conflicts <field>=<value>` to narrow (not
+    shipped; not blocking).
+
+13. **Backup format versioning decision.** `.ddbak` zip
+    embeds a `manifest.json` with `format: "1"` and
+    `version: <n>`. When we bump the format, does
+    `import backup` reject older versions or migrate?
+    Currently rejects. Decision belongs with the import
+    command when a real format bump happens.
 
 ## What this enables (cumulative)
 
