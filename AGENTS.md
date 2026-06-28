@@ -54,3 +54,14 @@ The triage label vocabulary uses the canonical labels: `needs-triage`, `needs-in
 
 This repo uses a single-context domain-doc layout centered on the root `CONTEXT.md`;
 ADRs live under `docs/adr/` when present. See `docs/agents/domain.md`.
+
+### Native dialog guard law (read before adding any export or import)
+
+Wails v2.12.0 on Windows crashes the frontend process if two native `SaveFileDialog`
+or `OpenFileDialog` calls land on the UI thread at the same time. Every export and
+import handler MUST guard its native dialog call with `a.inFlight.LoadOrStore` +
+`defer a.inFlight.Delete`. **Before adding or modifying a handler that opens a
+native dialog, read [`docs/agents/dialog-guard.md`](docs/agents/dialog-guard.md)
+end-to-end.** The pattern (helper, inline, or sentinel-error) and the regression
+tests are documented there. The rule is also encoded at glossary level in
+`CONTEXT.md` under "Laws (non-negotiable)" so domain work can't drift past it.

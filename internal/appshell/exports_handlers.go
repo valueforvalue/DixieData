@@ -8,6 +8,7 @@ package appshell
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,9 +16,16 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/pkg/exportbridge"
 )
+
+// errExportInFlight is returned by exportFullDatabasePDFPath when a
+// SaveFileDialog is already up for the same destination. The HTTP
+// handler maps it to a 429; the Wails binding maps it to a friendly
+// toast via the same respondError path.
+var errExportInFlight = errors.New("export already in progress; please wait for the save dialog")
 
 // guardedSaveFileDialog wraps a.SaveFileDialog with the duplicate-request
 // guard used by handleCalendarPDF. Without it, a double-click (or any
@@ -228,6 +236,10 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path, err := a.exportFullDatabasePDFPath(settings)
+	if errors.Is(err, errExportInFlight) {
+		respondError(w, r, KindUnavailable, "Printable PDF export already in progress; please wait for the save dialog.", err)
+		return
+	}
 	if err != nil || path == "" {
 		respondError(w, r, KindValidation, "Printable PDF export cancelled.", err)
 		return
@@ -241,6 +253,9 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
 	path, err := a.exportFullDatabasePDFPath(settings)
+	if errors.Is(err, errExportInFlight) {
+		return "Printable PDF export already in progress; please wait for the save dialog.", nil
+	}
 	if err != nil {
 		return "", err
 	}
@@ -258,8 +273,21 @@ func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, err
 // user cancels the dialog. Used by both handleExportDatabasePDF
 // (HTTP) and ExportFullDatabasePDF (Wails binding) so the
 // SaveFileDialog block stays in one place.
+//
+// Like the other SaveFileDialog call sites, this carries a
+// sync.Map-based in-flight guard against the WebView2 focus race
+// described in handleCalendarPDF. Without it, a double-click on
+// the share-page "Printable PDF" button or two parallel calls from
+// the Wails binding queue a second native dialog while the first
+// is still up and crash the WebView2 control.
 func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string, error) {
 	settings = settings.Normalize()
+	dupKey := fmt.Sprintf("db-pdf|%s", printableArchivePDFName(settings))
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		debug.FromContext(context.Background()).Debug("exportFullDatabasePDFPath duplicate request rejected")
+		return "", errExportInFlight
+	}
+	defer a.inFlight.Delete(dupKey)
 	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
 		DefaultFilename: printableArchivePDFName(settings),
 		Filters: []runtime.FileFilter{

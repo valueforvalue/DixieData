@@ -124,8 +124,8 @@ templ Layout(title string) {
 					</div>
 				</div>
 			</div>
-			<dialog id="feedback-modal" aria-labelledby="feedback-modal-heading" data-feedback-modal class="fixed inset-0 z-[90] m-0 h-full max-h-none w-full max-w-none bg-transparent p-4 backdrop:bg-[rgba(15,23,42,0.58)] sm:p-8">
-				<div class="relative mx-auto mt-12 w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
+			<div id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-heading" data-feedback-modal class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
 					<form id="feedback-form" { htmxattr.Mux{
 						Post:   routebuilder.FeedbackSubmit(),
 						Target: "this",
@@ -174,7 +174,7 @@ templ Layout(title string) {
 						</div>
 					</form>
 				</div>
-			</dialog>
+			</div>
 			<footer class="mt-8 text-right text-xs text-slate-600" data-build-identity={ buildinfo.BuildIdentity() }>
 				{ buildinfo.AppLabel() } · Schema v{ fmt.Sprintf("%d", buildinfo.SchemaVersion) } · { buildinfo.BuildIdentity() }
 				if debug.IsDebugMode(ctx) {

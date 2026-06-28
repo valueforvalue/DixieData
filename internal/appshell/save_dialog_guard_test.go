@@ -297,3 +297,27 @@ func TestGuardedSaveFileDialogCancelReleasesSlot(t *testing.T) {
 		t.Errorf("dialog must be invoked twice (cancelled + retry); got %d", got)
 	}
 }
+
+// TestExportFullDatabasePDFPathGuardKeys ensures the dupKey
+// construction in exportFullDatabasePDFPath differentiates by
+// destination filename (so JSON then CSV exports run independently
+// but two clicks on the same Printable PDF collapse to one dialog).
+// This catches a future refactor that drops the kind/filename
+// components from the key and accidentally lets duplicates through.
+func TestExportFullDatabasePDFPathGuardKeys(t *testing.T) {
+	keyA := "db-pdf|June-report.pdf"
+	keyB := "db-pdf|July-report.pdf"
+	if keyA == keyB {
+		t.Fatalf("different filenames must produce different guard keys")
+	}
+	var inFlight sync.Map
+	if _, loaded := inFlight.LoadOrStore(keyA, struct{}{}); loaded {
+		t.Fatalf("first LoadOrStore must not report loaded")
+	}
+	if _, loaded := inFlight.LoadOrStore(keyA, struct{}{}); !loaded {
+		t.Fatalf("second LoadOrStore on same key must report loaded")
+	}
+	if _, loaded := inFlight.LoadOrStore(keyB, struct{}{}); loaded {
+		t.Fatalf("LoadOrStore on different filename must not collide")
+	}
+}

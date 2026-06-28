@@ -152,25 +152,27 @@ func TestLayoutDialogsAreLabelledByTheirHeading(t *testing.T) {
 	}
 }
 
-// TestLayoutFeedbackModalIsNativeDialog asserts the feedback modal
-// uses the native <dialog> element so the browser handles focus
-// trapping, ESC-to-close, and inert background for free. A custom
-// <div role="dialog"> overlay (the pre-issue-117 implementation)
-// leaked Tab focus into background controls.
-func TestLayoutFeedbackModalIsNativeDialog(t *testing.T) {
+// TestLayoutFeedbackModalIsOverlayDiv asserts the feedback modal
+// renders as a <div role="dialog" aria-modal="true"> overlay.
+//
+// The native <dialog> element was tried in issue #117 but caused
+// WebView2 focus-event reentry that crashed any native Save/Open
+// dialog opened from inside the modal (and from any sibling export
+// button). Reverting to the div overlay keeps the focus trap +
+// ESC close working — both implemented manually in app.js —
+// without leaking Chromium.Focus calls into the native dialog.
+func TestLayoutFeedbackModalIsOverlayDiv(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
-	if !strings.Contains(content, `<dialog id="feedback-modal"`) {
-		t.Fatalf("feedback modal should render as a native <dialog> element")
+	needle := `<div id="feedback-modal" role="dialog" aria-modal="true"`
+	if !strings.Contains(content, needle) {
+		t.Fatalf("feedback modal should render as a <div role=\"dialog\" aria-modal=\"true\"> overlay; got:\n%s", content)
 	}
-	if strings.Contains(content, `role="dialog"`) && strings.Contains(content, `id="feedback-modal"`) {
-		// The role attribute was used on the old div overlay; the native
-		// dialog already exposes role=dialog implicitly so the
-		// redundant explicit role should be gone.
-		t.Fatalf("feedback modal should not carry an explicit role='dialog' alongside the native element")
+	if strings.Contains(content, `<dialog id="feedback-modal"`) {
+		t.Fatalf("feedback modal must not be a native <dialog>; it regresses to WebView2 focus-event crash")
 	}
 }
 

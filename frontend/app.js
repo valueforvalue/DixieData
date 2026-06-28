@@ -3141,6 +3141,86 @@
     }
   }
 
+  // Overlay modal helpers — restored from pre-issue-117 because the native
+  // <dialog> element introduced in #117 caused focus-event reentry into
+  // WebView2 when a native Save/Open dialog opened from inside the modal.
+  // The native dialog hosts the focus event itself, so a separate
+  // Chromium.Focus() call from the Wails onFocus hook crashes the
+  // WebView2 control with the Chrome_WidgetWin_0 = 1412 class-cleanup
+  // error. We use a plain <div role="dialog" aria-modal="true">
+  // overlay, restore focus trap + ESC close manually, and keep
+  // pointer/focus on background inert via Tailwind's z-index + backdrop.
+  const OVERLAY_MODAL_FOCUSABLE = [
+    'a[href]',
+    'area[href]',
+    'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(",");
+
+  let overlayModalRestoreFocus = null;
+
+  function showOverlayModal(modal) {
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    overlayModalRestoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    const focusable = modal.querySelectorAll(OVERLAY_MODAL_FOCUSABLE);
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    } else {
+      modal.setAttribute("tabindex", "-1");
+      modal.focus();
+    }
+    document.addEventListener("keydown", overlayModalKeydown, true);
+  }
+
+  function hideOverlayModal(modal) {
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    document.removeEventListener("keydown", overlayModalKeydown, true);
+    if (overlayModalRestoreFocus instanceof HTMLElement) {
+      overlayModalRestoreFocus.focus();
+      overlayModalRestoreFocus = null;
+    } else {
+      overlayModalRestoreFocus = null;
+    }
+  }
+
+  function overlayModalKeydown(event) {
+    if (event.key !== "Tab") {
+      return;
+    }
+    const openModal = document.querySelector('[role="dialog"][aria-modal="true"]:not(.hidden)');
+    if (!(openModal instanceof HTMLElement)) {
+      return;
+    }
+    const focusable = Array.from(openModal.querySelectorAll(OVERLAY_MODAL_FOCUSABLE)).filter(
+      (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+    );
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function printConfigModal() {
     const modal = document.querySelector("[data-print-config-modal]");
     return modal instanceof HTMLElement ? modal : null;
@@ -3175,11 +3255,7 @@
     syncPrintScopeState();
     applyPrintRecordFilter();
     applyPrintBuriedFilter();
-    if (typeof modal.showModal === "function") {
-      modal.showModal();
-    } else {
-      modal.setAttribute("open", "");
-    }
+    showOverlayModal(modal);
   }
 
   function closePrintConfigModal() {
@@ -3187,11 +3263,7 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
-    if (typeof modal.close === "function") {
-      modal.close();
-    } else {
-      modal.removeAttribute("open");
-    }
+    hideOverlayModal(modal);
   }
 
   function openGoogleCalendarPreferencesModal() {
@@ -3200,11 +3272,7 @@
       return;
     }
     syncGoogleCalendarPreview();
-    if (typeof modal.showModal === "function") {
-      modal.showModal();
-    } else {
-      modal.setAttribute("open", "");
-    }
+    showOverlayModal(modal);
   }
 
   function closeGoogleCalendarPreferencesModal() {
@@ -3212,11 +3280,7 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
-    if (typeof modal.close === "function") {
-      modal.close();
-    } else {
-      modal.removeAttribute("open");
-    }
+    hideOverlayModal(modal);
   }
 
   function syncGoogleCalendarPreview() {
@@ -3252,11 +3316,7 @@
         pathField.value = `${window.location.pathname || ""}${window.location.search || ""}`;
       }
     }
-    if (typeof modal.showModal === "function") {
-      modal.showModal();
-    } else {
-      modal.setAttribute("open", "");
-    }
+    showOverlayModal(modal);
   }
 
   function closeFeedbackModal() {
@@ -3264,11 +3324,7 @@
     if (!(modal instanceof HTMLElement)) {
       return;
     }
-    if (typeof modal.close === "function") {
-      modal.close();
-    } else {
-      modal.removeAttribute("open");
-    }
+    hideOverlayModal(modal);
     const form = feedbackForm();
     if (form instanceof HTMLFormElement) {
       form.reset();
