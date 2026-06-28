@@ -47,6 +47,34 @@ const (
 	StatusInterrupted  = "interrupted"
 )
 
+// SilentKinds enumerates job kinds that MUST NOT surface in the
+// global layout progress popup. The popup is meant for tasks the
+// user would otherwise lose track of while navigating the app
+// (long-running PDF / ddbak exports, calendar imports, etc).
+// Kinds in this set are still tracked, still poll-able via
+// /jobs/{id}, and still land on /jobs/{id} via the standard 303
+// — they just do not render the floating card. Use this for
+// jobs whose export path is so short and whose destination
+// page (/jobs/{id}) already serves as the landing.
+//
+// Add a kind here only when:
+//   1. The worker's destination page (always /jobs/{id}) is
+//      self-sufficient — the user does not need the popup
+//      to remember where they were going.
+//   2. The artifact (if any) does not preview well in a new
+//      tab, so the popup's "Open result" button would be a
+//      dead end.
+var SilentKinds = map[string]struct{}{
+	"static_archive": {},
+}
+
+// IsSilentKind reports whether the given job kind opts out of
+// the global layout progress popup.
+func IsSilentKind(kind string) bool {
+	_, ok := SilentKinds[kind]
+	return ok
+}
+
 // Job is the registry-side view of a background job. Worker code should
 // not write to this struct directly; it should use the Progress receiver
 // passed to the worker function.
@@ -681,12 +709,20 @@ func (r *Registry) SetResultPath(id, path string) {
 // progress slot to render whichever background task the user kicked
 // off most recently regardless of which page they are on. Returns a
 // value-copy so callers can read fields without holding any lock.
+//
+// Jobs whose Kind appears in SilentKinds are excluded: their
+// /jobs/{id} status page is the landing, so the floating popup
+// card would only get in the way (especially when the artifact
+// is a binary that does not preview well in a new tab).
 func (r *Registry) MostRecentActive() *Job {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var latest *Job
 	for _, j := range r.jobs {
 		if j.Status != StatusQueued && j.Status != StatusRunning {
+			continue
+		}
+		if IsSilentKind(j.Kind) {
 			continue
 		}
 		snap := cloneJob(j)

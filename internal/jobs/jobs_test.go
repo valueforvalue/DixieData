@@ -409,6 +409,63 @@ func TestMostRecentActiveIgnoresTerminalJobs(t *testing.T) {
 		t.Fatalf("MostRecentActive after terminal job = %s, want nil", got.ID)
 	}
 }
+
+// TestMostRecentActiveSkipsSilentKinds pins down the contract
+// that jobs whose Kind appears in jobs.SilentKinds never surface
+// in the global layout popup, even when they are the most recent
+// active job. The popup is fed by /jobs/active which calls
+// MostRecentActive; if a silent job slips through, the popup
+// shows a card whose "Open result" link may lead to a blank page
+// (zip artifacts don't preview well in a new tab — see
+// appshell/jobArtifactHeaders' inline mime allowlist).
+//
+// The regression net for issue #TBD: clicking "Export Static Web
+// Archive" and getting a popup card that leads to a blank tab.
+func TestMostRecentActiveSkipsSilentKinds(t *testing.T) {
+	reg := New()
+	// Seed a non-silent job so we know the picker is choosing
+	// between candidates, not just returning the first.
+	keep := reg.Start("json_export", func(ctx context.Context, p *Progress) error {
+		time.Sleep(150 * time.Millisecond)
+		return nil
+	})
+	time.Sleep(20 * time.Millisecond)
+	// Latest by StartedAt is the silent one.
+	reg.Start("static_archive", func(ctx context.Context, p *Progress) error {
+		time.Sleep(150 * time.Millisecond)
+		return nil
+	})
+	got := reg.MostRecentActive()
+	if got == nil {
+		t.Fatalf("MostRecentActive returned nil; expected the non-silent 'json_export' job %s", keep)
+	}
+	if got.Kind == "static_archive" {
+		t.Fatalf("MostRecentActive returned silent kind %q; expected the non-silent 'json_export' job", got.Kind)
+	}
+	if got.ID != keep {
+		t.Fatalf("MostRecentActive = %s, want %s (latest non-silent)", got.ID, keep)
+	}
+}
+
+// TestIsSilentKindIsTheOnlyEntryPoint guards against callers
+// reaching past the SilentKinds map and breaking the picker.
+// SilentKinds is exported for jobs_handlers tests that need to
+// assert behaviour; the lookup helper exists so we can change
+// the storage shape later (e.g. a method on Registry) without
+// touching every caller.
+func TestIsSilentKindIsTheOnlyEntryPoint(t *testing.T) {
+	cases := map[string]bool{
+		"static_archive": true,
+		"json_export":    false,
+		"":               false,
+		"STATIC_ARCHIVE": false, // case-sensitive
+	}
+	for kind, want := range cases {
+		if got := IsSilentKind(kind); got != want {
+			t.Errorf("IsSilentKind(%q) = %v, want %v", kind, got, want)
+		}
+	}
+}
 func TestNewJobConstructsWithGivenIDAndKind(t *testing.T) {
 	j := NewJob("job-123", "export_pdf")
 	if j == nil {
