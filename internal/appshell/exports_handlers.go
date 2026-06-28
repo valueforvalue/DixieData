@@ -199,7 +199,17 @@ func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) err
 			}
 		}
 	}
+	// Write both Location and HX-Redirect so the response works
+	// for every caller: a plain <form method="post"> browser submit
+	// follows Location (e.g. static archive), and a htmx button with
+	// hx-swap="none" follows HX-Redirect. Without HX-Redirect, htmx
+	// 2.x swallows the 303 because hx-swap="none" suppresses both
+	// the swap AND the redirect handling; the user stays on the
+	// originating page and the export runs invisibly in the
+	// background. See audit/smoke.mjs share-{path}-redirects-303
+	// for the live net that pins this down.
 	w.Header().Set("Location", "/jobs/"+jobID)
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
 
@@ -236,7 +246,11 @@ func (a *App) enqueueExportWithResult(dupKey, kind string, work func(p *jobs.Pro
 			}
 		}
 	}
+	// See enqueueExport for why both Location and HX-Redirect are
+	// written. htmx 2.x with hx-swap="none" needs HX-Redirect or
+	// it silently swallows the 303.
 	w.Header().Set("Location", "/jobs/"+jobID)
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
 

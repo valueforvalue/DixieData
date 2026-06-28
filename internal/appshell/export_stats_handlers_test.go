@@ -79,3 +79,33 @@ func TestEnqueueExportWithResultPopulatesJobStats(t *testing.T) {
 		t.Errorf("ResultPath = %q, want %q (SetResult.Path must promote)", snap.ResultPath, outPath)
 	}
 }
+
+// TestEnqueueExportWithResultSetsHXRedirect is the regression net
+// for the share-page-export-lands-on-/jobs/{id} bug. htmx 2.x
+// with hx-swap="none" silently swallows 303 responses unless the
+// server also writes HX-Redirect. enqueueExportWithResult (and
+// enqueueExport) must set BOTH Location (for plain browser form
+// submits like static archive) AND HX-Redirect (for htmx).
+//
+// Without this assertion the same bug class can slip in again
+// because the visible user-visible outcome (export completes
+// silently in the background, user stays on /share) looks like
+// "no error" in casual testing.
+func TestEnqueueExportWithResultSetsHXRedirect(t *testing.T) {
+	app := newStressApp(t)
+
+	rec := httptest.NewRecorder()
+	app.enqueueExportWithResult("", "json_export", func(p *jobs.Progress) (jobs.JobResult, error) {
+		return jobs.JobResult{Records: 1}, nil
+	}, "/tmp/example.json", rec)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); !strings.HasPrefix(loc, "/jobs/") {
+		t.Errorf("missing Location=/jobs/{id}, got %q", loc)
+	}
+	if hx := rec.Header().Get("HX-Redirect"); !strings.HasPrefix(hx, "/jobs/") {
+		t.Errorf("missing HX-Redirect=/jobs/{id} (htmx hx-swap=none buttons will sit on /share without this); got %q", hx)
+	}
+}
