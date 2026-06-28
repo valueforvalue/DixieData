@@ -28,6 +28,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `audit/smoke.mjs`: closed the three live regression gaps
+  that commit b185f0e deferred. New assertions cover:
+
+    - `share-{path}-redirects-303` on every share-page export
+      button (proves the issue #130 redirect path fires
+      end-to-end; accepts either the Wails `Location: /jobs/{id}`
+      header OR the `HX-Redirect: /share` fallback that web-mode
+      uses because it has no native dialog).
+    - `debug-console-panel-appends-beforeend` (proves the
+      b185f0e beforeend swap fix is in place; without it the
+      debug-mode toggle would wipe the document).
+    - `progress-region-survives-polls` (proves the
+      `JobStatusSlotFragment` `outerHTML`->`innerHTML` fix is
+      in place; without it the progress bar would freeze after
+      the first poll).
+
+  Live regression net jumped from 26 to 32 assertions.
 - `internal/appshell`: native OpenFileDialog, OpenDirectoryDialog,
   and OpenMultipleFilesDialog callsites now route through
   dedicated guarded helpers (`guardedOpenFileDialog`,

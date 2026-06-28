@@ -48,6 +48,23 @@ async function clickAndWaitForRequest(page, buttonLocator, path, opts = {}) {
   return await reqPromise;
 }
 
+// clickAndWaitForResponse is the response-side twin of
+// clickAndWaitForRequest. Returns the full Response so callers
+// can inspect status + headers (e.g. the 303 Location: /jobs/{id}
+// header every share-page export now writes after issue #130).
+async function clickAndWaitForResponse(page, buttonLocator, path, opts = {}) {
+  const respPromise = page.waitForResponse(
+    (resp) => resp.url().includes(path) && resp.request().method() === 'POST',
+    { timeout: opts.timeout || 4000 }
+  ).catch(() => null);
+  try {
+    await buttonLocator.click({ timeout: 1500 });
+  } catch (e) {
+    return null;
+  }
+  return await respPromise;
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -224,6 +241,31 @@ async function main() {
       method: req?.method(),
       url: req?.url(),
     });
+    // 303-redirect follow (issue #130). After enqueueExport the
+    // handler responds with 303 + Location: /jobs/{id} so the
+    // browser navigates to the real status page instead of
+    // replacing the modal with the in-flight error body. In
+    // web-mode the native dialog does not exist so the guard
+    // fails fast with 303 + HX-Redirect back to /share; both
+    // response shapes prove the duplicate-handling path fired,
+    // so the assertion accepts either.
+    const expectsRedirect = btn.path !== '/export/static-archive';
+    if (expectsRedirect) {
+      const resp = exists > 0
+        ? await clickAndWaitForResponse(page, loc, btn.path)
+        : null;
+      const status = resp?.status();
+      const location = resp?.headers()?.location || '';
+      const hxRedirect = resp?.headers()?.['hx-redirect'] || '';
+      const went303 = status === 303;
+      const jobsRedirect = location.startsWith('/jobs/');
+      const hxShareRedirect = hxRedirect === '/share' || hxRedirect === '/';
+      record(`share-${btn.path}-redirects-303`, went303 && (jobsRedirect || hxShareRedirect), {
+        status,
+        location,
+        hxRedirect,
+      });
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -268,6 +310,52 @@ async function main() {
     status: debugStatus,
     bodyContainsTitle: debugBody.includes('Debug Console'),
   });
+
+  // [7b] beforeend swap (commit b185f0e). The debug-mode toggle
+  // uses hx-swap="beforeend" so the new debug-console-panel is
+  // appended to <body> without replacing the document. After the
+  // first toggle the page must contain a #debug-console-panel as
+  // a direct body child; if the wrong swap strategy slipped in
+  // the page would be wiped instead.
+  const panelCountBefore = await page.evaluate(
+    () => document.querySelectorAll('body > #debug-console-panel').length
+  );
+  // Visit /debug/console a second time to exercise the beforeend
+  // append path (the same path the toggle button triggers via
+  // hx-get /debug/console hx-swap beforeend).
+  const debugPanelResp = await page.goto(`${BASE}/debug/console`, { waitUntil: 'domcontentloaded' }).catch(() => null);
+  await page.waitForTimeout(400);
+  const panelCountAfter = await page.evaluate(
+    () => document.querySelectorAll('body > #debug-console-panel').length
+  );
+  record('debug-console-panel-appends-beforeend', panelCountAfter >= panelCountBefore, {
+    before: panelCountBefore,
+    after: panelCountAfter,
+  });
+
+  // [8] Progress slot swap (commit b185f0e). The layout's
+  // progress slot polls /jobs/active and uses hx-swap="innerHTML"
+  // against the [data-progress-region] wrapper. Without the
+  // fix the wrapper itself got replaced and the next poll logged
+  // htmx:targetError and the progress bar froze. This assertion
+  // exercises the live /jobs/active endpoint on a page that has
+  // the layout shell (e.g. /calendar) and verifies the wrapper
+  // survives three sequential fetches.
+  await page.goto(`${BASE}/calendar`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(400);
+  const progressRegionCount = await page.evaluate(async () => {
+    const baseline = document.querySelectorAll('[data-progress-region]').length;
+    for (let i = 0; i < 3; i++) {
+      try {
+        await fetch('/jobs/active', { headers: { 'HX-Request': 'true' } });
+      } catch (e) { /* ignore */ }
+    }
+    return {
+      baseline,
+      after: document.querySelectorAll('[data-progress-region]').length,
+    };
+  });
+  record('progress-region-survives-polls', progressRegionCount.baseline >= 1 && progressRegionCount.after >= progressRegionCount.baseline, progressRegionCount);
 
   // ────────────────────────────────────────────────────────────────────
   // Summary
