@@ -1019,6 +1019,14 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 	// actual import reports a partial failure.
 	setInfoToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
 	w.Header().Set("Location", "/jobs/"+jobID)
+	// htmx 2.x with hx-swap="none" suppresses both the swap AND
+	// the redirect handling; it silently swallows a plain Location
+	// header. The soldier image-import form (entry_form.templ) uses
+	// hx-swap="none" on its status pill, so without HX-Redirect the
+	// user stays on the soldier detail page instead of landing on
+	// /jobs/{id}. See exports_handlers.enqueueExport for the full
+	// rationale and redirect_headers_test.go for the regression net.
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
 

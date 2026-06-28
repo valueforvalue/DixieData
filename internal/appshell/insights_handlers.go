@@ -152,6 +152,10 @@ func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	setInfoToastHeader(w, "Duplicate audit started\u2026")
+	// See exports_handlers.enqueueExport — hx-swap="none" buttons
+	// (insights.templ duplicate-audit trigger) need HX-Redirect or
+	// the user stays on /insights instead of landing on /jobs/{id}.
 	w.Header().Set("Location", "/jobs/"+jobID)
+	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
