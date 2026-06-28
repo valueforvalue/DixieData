@@ -28,6 +28,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `internal/templates/jobs.templ`: redesigned the terminal-state
+  status card around a structured summary (issue #131). The new
+  `jobSummaryCard` renders a kind-specific headline + size +
+  duration detail lines, a primary Dismiss button that routes
+  back to the page that kicked off the export
+  (`jobs.Job.DismissTargetPath()`), a Show report button that
+  links to `/jobs/{id}/report`, and demotes the artifact action
+  (Open / Save) to a secondary link. `jobs.Job.Summary()`
+  owns the structured payload so the template stays declarative;
+  `formatBytes` rounds file sizes to a user-friendly unit.
 - `internal/appshell`: .ddbak restore now runs as a background
   job (issue #133). The handler reads the local identity,
   enqueues the restore, and 303-redirects the user to

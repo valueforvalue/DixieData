@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -430,6 +431,144 @@ func (j Job) DisplayLabel() string {
 	}
 }
 
+// JobSummary is the structured payload the /jobs/{id} status page
+// renders in its summary card. The fields are intentionally
+// kind-agnostic so the template can render any job without a
+// per-kind switch; jobs that do not surface a particular datum
+// (soldier count for a JSON export, image count for a static
+// archive) leave it zero. Issue #131's acceptance criteria
+// require counts + size + duration, so every terminal-state
+// summary card carries those three at minimum.
+type JobSummary struct {
+	Kind        string
+	Label       string
+	Headline    string
+	DetailLines []string
+	SizeBytes   int64
+	Duration    time.Duration
+	ResultPath  string
+}
+
+// Summary returns a JobSummary describing the job's terminal
+// state. Headline + DetailLines are the user-facing copy that
+// the template renders in the summary card. ResultPath is
+// always populated for finished jobs so the card can name the
+// on-disk file even when the artifact is not viewable in the
+// browser (issue #129 + #131). Returns a zero-value summary
+// for jobs that are still running.
+func (j Job) Summary() JobSummary {
+	s := JobSummary{
+		Kind:       j.Kind,
+		Label:      j.DisplayLabel(),
+		ResultPath: j.ResultPath,
+	}
+	if j.Status != StatusDone || j.StartedAt.IsZero() || j.FinishedAt.IsZero() {
+		return s
+	}
+	s.Duration = j.FinishedAt.Sub(j.StartedAt).Round(time.Second)
+	if j.ResultPath != "" {
+		if info, err := os.Stat(j.ResultPath); err == nil {
+			s.SizeBytes = info.Size()
+		}
+	}
+	switch j.Kind {
+	case "static_archive":
+		s.Headline = fmt.Sprintf("Static archive complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"Open the .zip and host it on any static-file web server to browse the archive without DixieData.",
+		}
+	case "database_pdf":
+		s.Headline = fmt.Sprintf("Printable archive PDF complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"The PDF contains every record grouped and sorted per your export settings.",
+		}
+	case "soldier_pdf", "soldier_pdf_no_images":
+		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+		}
+	case "soldier_jpg":
+		s.Headline = fmt.Sprintf("Soldier JPG export complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+		}
+	case "monthly_pdf":
+		s.Headline = fmt.Sprintf("Monthly calendar PDF complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+		}
+	case "backup_archive":
+		s.Headline = fmt.Sprintf("Backup archive complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"Use 'Load Backup' on the Share page to restore this archive.",
+		}
+	case "shared_archive":
+		s.Headline = fmt.Sprintf("Shared archive complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"Send this .ddshare file to another DixieData user; they can preview it on the Share page.",
+		}
+	case "json_export", "excel_export", "icalendar_export", "insights_pdf", "bug_report":
+		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+		}
+	case "image_import", "backup_import":
+		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
+		if j.Message != "" {
+			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
+		} else {
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+		}
+	case "shared_import":
+		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
+		if j.Message != "" {
+			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
+		} else {
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+		}
+	default:
+		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+		}
+	}
+	return s
+}
+
+// formatBytes renders a byte count as a human-friendly size
+// (e.g. 1.2 MB, 489 kB). Used by JobSummary.DetailLines so the
+// summary card stays readable without a separate helper import.
+func formatBytes(n int64) string {
+	const (
+		kB = 1024
+		mB = 1024 * kB
+		gB = 1024 * mB
+	)
+	switch {
+	case n >= gB:
+		return fmt.Sprintf("%.1f GB", float64(n)/float64(gB))
+	case n >= mB:
+		return fmt.Sprintf("%.1f MB", float64(n)/float64(mB))
+	case n >= kB:
+		return fmt.Sprintf("%.1f kB", float64(n)/float64(kB))
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
+}
+
 // jobArtifactMimeByExt mirrors the appshell viewable-artifact map
 // (issue #129) so the jobs package can decide whether a finished
 // job's ResultPath is something the browser will render inline.
@@ -471,6 +610,38 @@ func (j Job) IsViewableArtifact() bool {
 	ext := strings.ToLower(filepath.Ext(j.ResultPath))
 	_, ok := jobArtifactMimeByExt[ext]
 	return ok
+}
+
+// DismissTargetPath returns the in-app path the user lands on
+// when they dismiss the /jobs/{id} status page. Most exports
+// were kicked off from the Share page; imports were kicked off
+// from Share too (via the Load Backup / Preview Memorial JSON
+// buttons); single-record exports are routed back to that
+// soldier. Issue #131 prefers the referring page, but the
+// /jobs/{id} status page does not always have the original
+// referer, so the template falls back to this kind-specific
+// path when no referer was saved.
+func (j Job) DismissTargetPath() string {
+	switch j.Kind {
+	case "image_import":
+		// Image imports are per-soldier; we don't know the
+		// soldier id from the job alone, so fall back to the
+		// browse page where the user can pick the soldier
+		// again.
+		return "/browse"
+	case "backup_import":
+		return "/share"
+	case "shared_import", "shared_archive":
+		return "/share"
+	case "monthly_pdf":
+		return "/calendar"
+	case "soldier_pdf", "soldier_pdf_no_images", "soldier_jpg":
+		return "/soldiers"
+	case "insights_pdf":
+		return "/insights"
+	default:
+		return "/share"
+	}
 }
 
 // ArtifactFilename returns the base name of the job's ResultPath

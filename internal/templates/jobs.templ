@@ -11,6 +11,12 @@ import (
 // via htmx polling on /jobs/{id}/status until the job reaches a terminal
 // state, at which point htmx stops calling because the swapped response
 // includes hx-trigger="none".
+//
+// Issue #131: when the job reaches a terminal state the page renders
+// a summary card (jobSummaryCard) with counts / size / duration
+// instead of the legacy 'Export complete. Open {label}.' block.
+// The primary CTA is always Dismiss; the artifact action (Open /
+// Save) is a secondary button below the summary card.
 templ JobStatusView(job jobs.Job) {
 	@Layout("Export in progress") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
@@ -20,28 +26,20 @@ templ JobStatusView(job jobs.Job) {
 				<p class="mt-2 text-sm text-slate-600">Job ID <code class="rounded bg-slate-100 px-1.5 py-0.5">{ job.ID }</code></p>
 			</div>
 			<div class="card rounded-2xl p-5 space-y-4" id="job-status-body" data-job-id={ job.ID }>
-				<div class="flex items-center justify-between text-sm text-slate-600">
-					<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
-					if job.Message != "" {
-						<span>{ job.Message }</span>
-					}
-				</div>
-				<div class="h-3 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Export progress">
-					<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
-				</div>
-				<p class="text-xs text-slate-500">{ fmt.Sprintf("%d", job.Progress) } percent complete</p>
-				if job.Status == jobs.StatusDone {
-					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] p-4 text-sm text-[#22303d]">
-						<p class="font-semibold">Export complete.</p>
-						if job.ResultPath != "" {
-							if job.IsViewableArtifact() {
-								<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link mt-3 inline-flex">Open { job.DisplayLabel() }</a>
-							} else {
-								<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } download={ job.ArtifactFilename() } class="pill-link mt-3 inline-flex">Save { job.DisplayLabel() }</a>
-							}
-							<p class="mt-2 break-all text-xs text-slate-500">Saved to <code>{ job.ResultPath }</code></p>
+				if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
+					<div class="flex items-center justify-between text-sm text-slate-600">
+						<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
+						if job.Message != "" {
+							<span>{ job.Message }</span>
 						}
 					</div>
+					<div class="h-3 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Export progress">
+						<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
+					</div>
+					<p class="text-xs text-slate-500">{ fmt.Sprintf("%d", job.Progress) } percent complete</p>
+				}
+				if job.Status == jobs.StatusDone {
+					@jobSummaryCard(job)
 				}
 				if job.Status == jobs.StatusError {
 					<div class="rounded-2xl border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.08)] p-4 text-sm text-[#6f2c26]">
@@ -65,6 +63,64 @@ templ JobStatusView(job jobs.Job) {
 	}
 }
 
+// jobSummaryCard renders the terminal-state summary card.
+// Layout (issue #131 acceptance):
+//   - Headline: kind-specific one-liner with size.
+//   - Detail lines: structured bullet list (size / duration / kind note).
+//   - Primary CTA: Dismiss (routes to job.DismissTargetPath()).
+//   - Show report button: links to /jobs/{id}/report (placeholder).
+//   - Artifact action (Open / Save): secondary, only when ResultPath is set.
+templ jobSummaryCard(job jobs.Job) {
+	<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] p-5 text-sm text-[#22303d] space-y-4">
+		<p class="font-semibold">{ job.Summary().Headline }</p>
+		if len(job.Summary().DetailLines) > 0 {
+			<ul class="space-y-1 text-slate-600">
+				for _, line := range job.Summary().DetailLines {
+					<li>{ line }</li>
+				}
+			</ul>
+		}
+		if job.Summary().ResultPath != "" {
+			<p class="break-all text-xs text-slate-500">Saved to <code>{ job.Summary().ResultPath }</code></p>
+		}
+		<div class="flex flex-wrap items-center gap-2 pt-2">
+			@components.Button("Dismiss", components.ButtonPrimary, "", templ.Attributes{"type": "button", "onclick": "window.location.assign(" + quoteAttr(job.DismissTargetPath()) + ")"})
+			@components.Button("Show report", components.ButtonSecondary, "", templ.Attributes{"type": "button", "onclick": "window.location.assign('/jobs/" + job.ID + "/report')"})
+			if job.Summary().ResultPath != "" {
+				if job.IsViewableArtifact() {
+					<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="secondary-button px-3 py-1 text-xs">Open { job.DisplayLabel() }</a>
+				} else {
+					<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } download={ job.ArtifactFilename() } class="secondary-button px-3 py-1 text-xs">Save { job.DisplayLabel() }</a>
+				}
+			}
+		</div>
+	</div>
+}
+
+// quoteAttr escapes a string for inclusion in a JS string literal
+// (single-quoted) inside an HTML attribute value. Used by the
+// Dismiss button's inline onclick handler.
+func quoteAttr(s string) string {
+	out := make([]byte, 0, len(s)+2)
+	out = append(out, '\'')
+	for _, r := range s {
+		switch r {
+		case '\'':
+			out = append(out, '\\', '\'')
+		case '\\':
+			out = append(out, '\\', '\\')
+		case '\n':
+			out = append(out, '\\', 'n')
+		case '\r':
+			out = append(out, '\\', 'r')
+		default:
+			out = append(out, byte(r))
+		}
+	}
+	out = append(out, '\'')
+	return string(out)
+}
+
 // JobStatusFragment is the polling fragment htmx swaps in every 2s.
 templ JobStatusFragment(job jobs.Job) {
 	<div class="card rounded-2xl p-5 space-y-4" id="job-status-body" data-job-id={ job.ID }
@@ -76,28 +132,20 @@ templ JobStatusFragment(job jobs.Job) {
 			hx-swap="outerHTML"
 			hx-target="#job-status-body"
 		}>
-		<div class="flex items-center justify-between text-sm text-slate-600">
-			<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
-			if job.Message != "" {
-				<span>{ job.Message }</span>
-			}
-		</div>
-		<div class="h-3 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Export progress">
-			<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
-		</div>
-		<p class="text-xs text-slate-500">{ fmt.Sprintf("%d", job.Progress) } percent complete</p>
-		if job.Status == jobs.StatusDone {
-			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] p-4 text-sm text-[#22303d]">
-				<p class="font-semibold">Export complete.</p>
-				if job.ResultPath != "" {
-					if job.IsViewableArtifact() {
-						<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link mt-3 inline-flex">Open { job.DisplayLabel() }</a>
-					} else {
-						<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } download={ job.ArtifactFilename() } class="pill-link mt-3 inline-flex">Save { job.DisplayLabel() }</a>
-					}
-					<p class="mt-2 break-all text-xs text-slate-500">Saved to <code>{ job.ResultPath }</code></p>
+		if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
+			<div class="flex items-center justify-between text-sm text-slate-600">
+				<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
+				if job.Message != "" {
+					<span>{ job.Message }</span>
 				}
 			</div>
+			<div class="h-3 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Export progress">
+				<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
+			</div>
+			<p class="text-xs text-slate-500">{ fmt.Sprintf("%d", job.Progress) } percent complete</p>
+		}
+		if job.Status == jobs.StatusDone {
+			@jobSummaryCard(job)
 		}
 		if job.Status == jobs.StatusError {
 			<div class="rounded-2xl border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.08)] p-4 text-sm text-[#6f2c26]">
