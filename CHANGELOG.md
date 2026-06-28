@@ -28,6 +28,43 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `scripts/build-common.ps1` + `scripts/build-debug.ps1`:
+  `make debug` now actually builds a debug binary. Previously
+  the recipe passed `wails build -clean -trimpath` (a
+  production build with stripped source paths) and only
+  generated a thin launcher wrapper. The wrapper was a no-op
+  that just re-exec'd the production binary. With this fix:
+
+    - `Invoke-DixieDataBuild -DebugBuild` swaps the default
+      Wails args to drop `-trimpath` and add `-debug`, which
+      makes Wails:
+      * Preserve source paths in DWARF (so dlv can set
+        breakpoints by file:line; the existing
+        `scripts/debug-crash.dlv` workflow now works as
+        written).
+      * Add `-gcflags=all=-N -l` automatically (Go's
+        optimiser no longer elides frames or inlines past
+        breakpoints).
+      * Enable the WebView2 DevTools + default context menu
+        in the running Wails app. `F12` / `Ctrl+Shift+I`
+        now opens the inspector without rebuilding.
+
+    - The `Run-DixieData-Debug.ps1` launcher regenerated with
+      debug-friendly env defaults:
+      * `GOTRACEBACK=all` — full stack on panic.
+      * `DIXIEDATA_DEVTOOLS=1` — forces the Wails
+        `EnableDefaultContextMenu` env-gate (new in
+        `main.go`) to enable DevTools in any build, including
+        a release binary launched via the debug launcher.
+      * `DIXIEDATA_WAIT_FOR_DEBUGGER` — opt-in pause at
+        process start so `dlv attach $PID` from another shell
+        can attach before Startup runs.
+
+  Regression net in `internal/appshell/build_flags_test.go`
+  pins down: DWARF source paths present, 10k+ symbols, the
+  launcher writes the new env vars. Skips cleanly when
+  `build/bin/DixieData.exe` is absent so release-only CI
+  doesn't fail.
 - `audit/smoke.mjs`: closed the three live regression gaps
   that commit b185f0e deferred. New assertions cover:
 

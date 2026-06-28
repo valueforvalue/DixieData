@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appshell"
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -59,6 +60,18 @@ func main() {
 		os.Exit(code)
 	}
 
+	// waitForDebugger pauses the process until a debugger
+	// attaches or the user Ctrl-Cs out. Used by Run-DixieData-
+	// Debug.ps1: set DIXIEDATA_WAIT_FOR_DEBUGGER=1 in your shell
+	// before launch, then `dlv attach $PID` from another shell
+	// before the 30s timeout fires. Useful when reproducing a
+	// crash in Startup() — you want breakpoints on first line.
+	if os.Getenv("DIXIEDATA_WAIT_FOR_DEBUGGER") == "1" {
+		fmt.Fprintln(os.Stderr, "DIXIEDATA_WAIT_FOR_DEBUGGER=1: pausing for 30s; attach with `dlv attach $PID` from another shell.")
+		fmt.Fprintf(os.Stderr, "pid=%d\n", os.Getpid())
+		time.Sleep(30 * time.Second)
+	}
+
 	frontendAssets, err := fs.Sub(assets, "frontend")
 	if err != nil {
 		panic(err)
@@ -79,6 +92,14 @@ func main() {
 		},
 		OnStartup:  app.Startup,
 		OnShutdown: app.Shutdown,
+		// EnableDefaultContextMenu turns on the browser's default
+		// context menu in production builds so the user can right-click
+		// → "Inspect" to open DevTools. In debug builds (`wails build
+		// -debug`) this is already on; setting it here is a no-op.
+		// The DIXIEDATA_DEVTOOLS=1 env var (set by the debug launcher)
+		// forces this on even in a release build so a user can debug
+		// without rebuilding.
+		EnableDefaultContextMenu: os.Getenv("DIXIEDATA_DEVTOOLS") == "1",
 	})
 	if err != nil {
 		panic(err)

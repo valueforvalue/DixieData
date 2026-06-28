@@ -470,6 +470,16 @@ function Write-DixieDataDebugLauncher {
     )
 
     $launcherPath = Join-Path (Get-DixieDataBuildBinDir -Root $Root) "Run-DixieData-Debug.ps1"
+    # The launcher forwards args to DixieData.exe verbatim, but
+    # also sets up a debug-friendly env so a debugger can attach.
+    # In particular:
+    #   - DIXIEDATA_DATA_DIR lets the user point at a scratch dir
+    #     without rebuilding (handy when reproducing a crash).
+    #   - GOTRACEBACK=all gives a full stack on panic.
+    # The launcher does NOT enable the race detector; that lives
+    # on the binary itself (make debug uses -gcflags=-N -l so a
+    # debugger can attach; the race detector is added via
+    # `make race` / wails build -race).
     $script = @'
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -483,6 +493,16 @@ $exePath = Join-Path $binDir "DixieData.exe"
 if (-not (Test-Path $exePath)) {
     throw "DixieData.exe was not found at $exePath"
 }
+
+# Debug-friendly env defaults. Existing values win so a user
+# can override per-invocation: `$env:GOTRACEBACK='panic';
+# .\Run-DixieData-Debug.ps1`.
+if (-not $env:GOTRACEBACK) { $env:GOTRACEBACK = "all" }
+if (-not $env:DIXIEDATA_DEVTOOLS) { $env:DIXIEDATA_DEVTOOLS = "1" }
+# Allow the user to attach a Go debugger on a fixed port. The
+# binary's symbols are intact (make debug uses -gcflags=-N -l)
+# so dlv attach --pid <pid> works after the process is up.
+if (-not $env:DIXIEDATA_WAIT_FOR_DEBUGGER) { $env:DIXIEDATA_WAIT_FOR_DEBUGGER = "0" }
 
 & $exePath @AppArgs
 exit $LASTEXITCODE
@@ -520,7 +540,8 @@ function Invoke-DixieDataBuild {
         [Parameter(Mandatory = $true)]
         [string]$Root,
         [string[]]$WailsArguments = @("build", "-clean", "-trimpath"),
-        [switch]$AllowExampleOAuthDefaults
+        [switch]$AllowExampleOAuthDefaults,
+        [switch]$DebugBuild
     )
 
     $preservedOAuth = Save-DixieDataOAuthDefaults -Root $Root
@@ -539,8 +560,26 @@ function Invoke-DixieDataBuild {
             throw "failed to resolve git commit for build metadata"
         }
         $buildTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        # -X injects the build metadata. When -DebugBuild is set
+        # we also pass -debug to Wails, which:
+        #   * Drops -trimpath so the debugger can map addresses
+        #     back to source paths.
+        #   * Adds -gcflags=all=-N -l so Go's optimiser does not
+        #     elide frames or inline past breakpoints.
+        #   * Enables the WebView2 inspector and default context
+        #     menu (F12 / Ctrl+Shift+I works in the running app).
+        # The Go runtime symbol table is intact in both modes,
+        # so `dlv attach $PID` works against any build.
         $buildLdFlags = "-X github.com/valueforvalue/DixieData/internal/buildinfo.GitCommit=$gitCommit -X github.com/valueforvalue/DixieData/internal/buildinfo.BuildTimestamp=$buildTimestamp"
-        $effectiveWailsArguments = @($WailsArguments) + @("-ldflags", $buildLdFlags)
+        $effectiveWailsArguments = @($WailsArguments)
+        if ($DebugBuild) {
+            # Strip -trimpath from the caller-supplied args; the
+            # Wails -debug flag is mutually exclusive with -trimpath
+            # but the user may have left it in the default.
+            $effectiveWailsArguments = $effectiveWailsArguments | Where-Object { $_ -ne "-trimpath" }
+            $effectiveWailsArguments += "-debug"
+        }
+        $effectiveWailsArguments += @("-ldflags", $buildLdFlags)
 
         & wails @effectiveWailsArguments
         if ($LASTEXITCODE -ne 0) {
