@@ -89,12 +89,17 @@ type imageFacade interface {
 
 type exportFacade interface {
 	ExportJSON(outputPath string) error
+	ExportJSONWithStats(outputPath string) (records, images, sources int, err error)
 	ExportAnalyticsSummaryPDF(outputPath string, snapshot records.AnalyticsSnapshot, options archive.PDFOptions) error
 	ExportExcel(outputPath string) error
+	ExportExcelWithStats(outputPath string) (records, images, sources int, err error)
 	ExportICalendar(outputPath string, preferences models.CalendarEventPreferences) error
+	ExportICalendarWithStats(outputPath string, preferences models.CalendarEventPreferences) (records, images, sources int, err error)
 	StaticArchiveFileName(now time.Time) (string, error)
 	ExportStaticArchive(outputPath, dataDir string) error
+	ExportStaticArchiveWithStats(outputPath, dataDir string) (records, images, sources int, err error)
 	ExportFullDatabasePDF(outputPath string, settings archive.PrintSettings) error
+	ExportFullDatabasePDFWithStats(outputPath string, settings archive.PrintSettings) (records, images, sources int, err error)
 	ExportCSV(outputPath string) error
 	ExportSoldierPDF(outputPath string, soldier models.Soldier, options archive.PDFOptions) error
 	ExportSoldierJPG(outputPath string, soldier models.Soldier, options archive.PDFOptions) ([]string, error)

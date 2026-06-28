@@ -203,6 +203,43 @@ func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) err
 	w.WriteHeader(http.StatusSeeOther)
 }
 
+// enqueueExportWithResult is the stats-aware counterpart of
+// enqueueExport. The work callback returns a jobs.JobResult
+// (records / images / sources for structured exports) that is
+// recorded against the job before completion, so /jobs/{id}
+// renders per-kind stats on the terminal summary card (see
+// jobs.Summary and the appendExportStats helper in jobs.go).
+//
+// Existing workers that have no stats to record (soldier_pdf,
+// soldier_jpg, monthly_pdf, insights_pdf, bug_report,
+// image_import) continue to use enqueueExport unchanged. New
+// workers that compute per-record counts use this helper with
+// the matching ExportXxxWithStats service method.
+func (a *App) enqueueExportWithResult(dupKey, kind string, work func(p *jobs.Progress) (jobs.JobResult, error), path string, w http.ResponseWriter) {
+	var jobID string
+	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(5, "Preparing")
+		result, err := work(p)
+		if err == nil {
+			if path != "" {
+				result.Path = path
+			}
+			a.jobs.SetResult(jobID, result)
+			p.Set(100, "Done")
+		}
+		return err
+	})
+	if dupKey != "" {
+		if actual, loaded := a.inFlight.Load(dupKey); loaded {
+			if entry, ok := actual.(*inFlightEntry); ok {
+				entry.JobID = jobID
+			}
+		}
+	}
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
+}
+
 func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -220,9 +257,10 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	a.enqueueExport(dupKey, "json_export", func(p *jobs.Progress) error {
+	a.enqueueExportWithResult(dupKey, "json_export", func(p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(20, "Writing JSON")
-		return a.export.ExportJSON(path)
+		records, images, sources, err := a.export.ExportJSONWithStats(path)
+		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
 }
 
@@ -276,9 +314,10 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
-	a.enqueueExport(dupKey, "excel_export", func(p *jobs.Progress) error {
+	a.enqueueExportWithResult(dupKey, "excel_export", func(p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(20, "Building workbook")
-		return a.export.ExportExcel(path)
+		records, images, sources, err := a.export.ExportExcelWithStats(path)
+		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
 }
 
@@ -304,9 +343,10 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load Google Calendar preferences.", err)
 		return
 	}
-	a.enqueueExport(dupKey, "icalendar_export", func(p *jobs.Progress) error {
+	a.enqueueExportWithResult(dupKey, "icalendar_export", func(p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(20, "Building iCalendar file")
-		return a.export.ExportICalendar(path, preferences)
+		records, images, sources, err := a.export.ExportICalendarWithStats(path, preferences)
+		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
 }
 
@@ -366,9 +406,10 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Always enqueue — printable PDF is heavy.
-	a.enqueueExport(dupKey, "database_pdf", func(p *jobs.Progress) error {
+	a.enqueueExportWithResult(dupKey, "database_pdf", func(p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(5, "Building archive")
-		return a.export.ExportFullDatabasePDF(path, settings)
+		records, images, sources, err := a.export.ExportFullDatabasePDFWithStats(path, settings)
+		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
 }
 
@@ -503,13 +544,17 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.enqueueExport(dupKey, "backup_archive", func(p *jobs.Progress) error {
+	a.enqueueExportWithResult(dupKey, "backup_archive", func(p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(10, "Gathering archive data")
-		_, err := a.backup.Export(path, a.dataDir)
+		manifest, err := a.backup.Export(path, a.dataDir)
 		if err == nil {
 			p.Set(80, "Compressing backup")
 		}
-		return err
+		return jobs.JobResult{
+			Records: manifest.Soldiers,
+			Images:  manifest.Images,
+			Sources: manifest.Records,
+		}, err
 	}, path, w)
 }
 
@@ -532,10 +577,14 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	a.enqueueExport(dupKey, "shared_archive", func(p *jobs.Progress) error {
+	a.enqueueExportWithResult(dupKey, "shared_archive", func(p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(10, "Building shared archive")
-		_, err := a.backup.ExportShared(path, a.dataDir)
-		return err
+		manifest, err := a.backup.ExportShared(path, a.dataDir)
+		return jobs.JobResult{
+			Records: manifest.Soldiers,
+			Images:  manifest.Images,
+			Sources: manifest.Records,
+		}, err
 	}, path, w)
 }
 

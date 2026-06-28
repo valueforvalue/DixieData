@@ -196,6 +196,39 @@ func (e *ExportService) ExportFullDatabasePDF(outputPath string, settings PrintS
 	return e.exportFullDatabasePDFViaRegistry(outputPath, settings)
 }
 
+// ExportFullDatabasePDFWithStats is the stats-aware variant used
+// by the Wails /jobs/{id} summary card. PDF exports group records
+// under the user's PrintSettings scope (all / filtered /
+// selected); we mirror the same filter pipeline to compute an
+// honest count without re-implementing the typst render. Images
+// is summed from each soldier's image list so the summary card
+// reports how many images ended up in the .pdf.
+//
+// The cost is one extra DB read (exportDetailedSoldiers already
+// runs inside ExportFullDatabasePDF), which is negligible relative
+// to the typst render that follows.
+func (e *ExportService) ExportFullDatabasePDFWithStats(outputPath string, settings PrintSettings) (records, images, sources int, err error) {
+	settings = settings.Normalize()
+	var selectedIDs []int64
+	if settings.Scope == PrintScopeSelected {
+		selectedIDs = settings.SelectedIDs
+	}
+	soldiers, err := exportDetailedSoldiers(e.soldier, selectedIDs)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if settings.Scope == PrintScopeFiltered {
+		soldiers = render.FilterPrintableSoldiers(soldiers, settings)
+	}
+	for _, s := range soldiers {
+		images += len(s.Images)
+	}
+	if err := e.ExportFullDatabasePDF(outputPath, settings); err != nil {
+		return 0, 0, 0, err
+	}
+	return len(soldiers), images, 0, nil
+}
+
 // exportFullDatabasePDFViaRegistry writes a bulk export as a
 // single sorted PDF at outputPath. The typst path renders the
 // entire sorted record set in one invocation of
@@ -664,6 +697,63 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 	return enc.Encode(payload)
 }
 
+// ExportJSONWithStats is the stats-aware variant used by the
+// Wails /jobs/{id} summary card (see jobs.JobResult.Records).
+// The body is identical to ExportJSON but counts how many Person
+// Records were written before the encoder flushes; the count is
+// the headline stat for the JSON export summary line ("Person
+// records: 247"). The CLI in internal/appshell/cli_export.go
+// still calls ExportJSON because shell output does not surface
+// per-record stats; when the CLI gains structured output it
+// should switch to this variant.
+//
+// JSON exports do not carry images or source records, so the
+// returned images / sources counts are always 0.
+func (e *ExportService) ExportJSONWithStats(outputPath string) (records, images, sources int, err error) {
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	defer f.Close()
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+
+	payload := JSONExportDocument{
+		Metadata: newExportMetadata("json", buildinfo.JSONExportVersion),
+		Soldiers: []models.Soldier{},
+	}
+	page := 1
+	for {
+		batch, _, err := e.soldier.List(page, exportBatchSize)
+		if err != nil {
+			return records, 0, 0, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+
+		for _, s := range batch {
+			enriched, err := e.soldier.GetByID(s.ID)
+			if err != nil {
+				return records, 0, 0, err
+			}
+			payload.Soldiers = append(payload.Soldiers, *enriched)
+			records++
+		}
+
+		if len(batch) < exportBatchSize {
+			break
+		}
+		page++
+	}
+
+	if err := enc.Encode(payload); err != nil {
+		return records, 0, 0, err
+	}
+	return records, 0, 0, nil
+}
+
 func (e *ExportService) ExportExcel(outputPath string) error {
 	const (
 		archiveSheet  = "Archive Export"
@@ -923,6 +1013,30 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 	return workbook.SaveAs(outputPath)
 }
 
+// ExportExcelWithStats is the stats-aware variant used by the
+// Wails /jobs/{id} summary card. Excel exports do not carry
+// images or source records, so only the records count is
+// populated. We count by re-running exportDetailedSoldiers (the
+// same helper ExportExcel uses to enumerate its rows) so the
+// count is honest even if ExportExcel's internal pagination
+// later diverges; the cost is one extra DB read which is
+// negligible relative to the .xlsx render.
+//
+// Like ExportJSONWithStats, the CLI in
+// internal/appshell/cli_export.go still calls the count-less
+// ExportExcel because shell output does not surface per-record
+// stats. Switch when the CLI gains structured output.
+func (e *ExportService) ExportExcelWithStats(outputPath string) (records, images, sources int, err error) {
+	soldiers, err := exportDetailedSoldiers(e.soldier, nil)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if err := e.ExportExcel(outputPath); err != nil {
+		return 0, 0, 0, err
+	}
+	return len(soldiers), 0, 0, nil
+}
+
 func (e *ExportService) ExportICalendar(outputPath string, preferences models.CalendarEventPreferences) error {
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -997,6 +1111,23 @@ func (e *ExportService) ExportICalendar(outputPath string, preferences models.Ca
 	}
 
 	return writeICalendarLine(f, "END:VCALENDAR")
+}
+
+// ExportICalendarWithStats is the stats-aware variant used by
+// the Wails /jobs/{id} summary card. iCalendar exports enumerate
+// anniversary events per soldier; the records count is the number
+// of soldiers with memorial anniversary candidates (exportSoldiers
+// returns the same list ExportICalendar iterates). Images and
+// sources are always 0 because the .ics payload carries neither.
+func (e *ExportService) ExportICalendarWithStats(outputPath string, preferences models.CalendarEventPreferences) (records, images, sources int, err error) {
+	soldiers, err := exportSoldiers(e.soldier)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if err := e.ExportICalendar(outputPath, preferences); err != nil {
+		return 0, 0, 0, err
+	}
+	return len(soldiers), 0, 0, nil
 }
 
 // ExportCSV streams a flat CSV export of all soldiers, processing records in
@@ -1337,6 +1468,33 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	}
 
 	return zipDirectory(outputPath, exportRoot)
+}
+
+// ExportStaticArchiveWithStats is the stats-aware variant used by
+// the Wails /jobs/{id} summary card. Static archive packs the
+// full archive into a .zip with HTML/JS/image assets; we count
+// records + images via the same staticArchiveRecords() helper
+// the body uses so the count matches what actually shipped.
+//
+// The static archive worker is registered in jobs.SilentKinds
+// because the .zip artifact does not preview well in a new tab
+// (issue #129 follow-up; the popup card was suppressed in
+// commit c77ab9b). The stats summary still renders on the
+// /jobs/{id} landing page so the user sees the size + record
+// + image counts without unpacking the .zip.
+func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string) (records, images, sources int, err error) {
+	entries, err := e.staticArchiveRecords()
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	records = len(entries)
+	for _, entry := range entries {
+		images += len(entry.Images)
+	}
+	if err := e.ExportStaticArchive(outputPath, dataDir); err != nil {
+		return 0, 0, 0, err
+	}
+	return records, images, 0, nil
 }
 
 func (e *ExportService) ExportImages(outputPath string, images []models.Image) error {

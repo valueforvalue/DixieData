@@ -117,6 +117,109 @@ func TestSetResultPathUnknownJobIsNoop(t *testing.T) {
 	reg.SetResultPath("missing", "/tmp/whatever.zip")
 }
 
+// TestSetResultRecordsPayloadAndPromotesPath pins down the new
+// SetResult behaviour: a worker-supplied JobResult lands on the
+// job's Result field, and a non-empty Path promotes to ResultPath
+// so /jobs/{id}/artifact streams without a separate SetResultPath
+// call. Tests for the Summary per-kind render live in
+// job_summary_test.go so they can exercise one branch per test.
+func TestSetResultRecordsPayloadAndPromotesPath(t *testing.T) {
+	reg := New()
+	id := reg.Start("json_export", func(ctx context.Context, p *Progress) error { return nil })
+	// Let the worker exit so we know the job is terminal; SetResult
+	// is also safe to call from inside the worker (before the worker
+	// returns nil), but testing the post-worker path here matches the
+	// integration point in appshell/exports_handlers.go.
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := reg.Get(id)
+		if snap.Status == StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	reg.SetResult(id, JobResult{
+		Path:    "/tmp/export.json",
+		Records: 247,
+		Images:  0,
+		Sources: 18,
+	})
+	snap, ok := reg.Get(id)
+	if !ok {
+		t.Fatalf("Get(%q) = missing", id)
+	}
+	if snap.Result.Records != 247 {
+		t.Errorf("Result.Records = %d, want 247", snap.Result.Records)
+	}
+	if snap.Result.Sources != 18 {
+		t.Errorf("Result.Sources = %d, want 18", snap.Result.Sources)
+	}
+	if snap.ResultPath != "/tmp/export.json" {
+		t.Errorf("ResultPath = %q, want /tmp/export.json (SetResult.Path should promote)", snap.ResultPath)
+	}
+}
+
+// TestSetResultWithoutPathLeavesResultPathAlone guards the
+// invariant that SetResult does not clobber an existing ResultPath
+// when the payload's Path is empty. Callers that fill ResultPath
+// via SetResultPath first and then call SetResult with stats only
+// (no Path) rely on this so the artifact stays downloadable.
+func TestSetResultWithoutPathLeavesResultPathAlone(t *testing.T) {
+	reg := New()
+	id := reg.Start("shared_archive", func(ctx context.Context, p *Progress) error { return nil })
+	reg.SetResultPath(id, "/tmp/shared.ddshare")
+	reg.SetResult(id, JobResult{Added: 12, Merged: 7, Skipped: 3})
+	snap, _ := reg.Get(id)
+	if snap.ResultPath != "/tmp/shared.ddshare" {
+		t.Errorf("ResultPath = %q, want /tmp/shared.ddshare (SetResult.Path empty must not overwrite)", snap.ResultPath)
+	}
+	if snap.Result.Added != 12 || snap.Result.Merged != 7 || snap.Result.Skipped != 3 {
+		t.Errorf("Result = %+v, want Added=12 Merged=7 Skipped=3", snap.Result)
+	}
+}
+
+// TestSetResultUnknownJobIsNoop mirrors SetResultPath: setting a
+// result for an unknown ID must not panic and must not allocate
+// (the registry map lookup returns the zero value).
+func TestSetResultUnknownJobIsNoop(t *testing.T) {
+	reg := New()
+	reg.SetResult("missing", JobResult{Records: 1})
+}
+
+// TestSetResultBroadcastsSnapshot pins down the SSE contract: a
+// SetResult call must broadcast the post-update snapshot so a live
+// /jobs/{id}/status page (issue #131 poll wiring) sees the final
+// counts without a page reload. Without this the stats would only
+// land on the next /jobs/{id} poll, defeating the "live" promise.
+func TestSetResultBroadcastsSnapshot(t *testing.T) {
+	reg := New()
+	id := reg.Start("backup_import", func(ctx context.Context, p *Progress) error { return nil })
+	sub := reg.Subscribe(id)
+	t.Cleanup(func() { reg.Unsubscribe(id, sub) })
+	// Drain any pre-existing snapshot the subscriber may have
+	// queued before SetResult lands.
+	for {
+		select {
+		case <-sub:
+		default:
+			goto publish
+		}
+	}
+publish:
+	reg.SetResult(id, JobResult{ReplacedRecords: 99, BackupSchema: 5, CurrentSchema: 7, MigrationRan: true})
+	select {
+	case snap := <-sub:
+		if snap.Result.ReplacedRecords != 99 {
+			t.Errorf("broadcast Result.ReplacedRecords = %d, want 99", snap.Result.ReplacedRecords)
+		}
+		if !snap.Result.MigrationRan {
+			t.Error("broadcast Result.MigrationRan = false, want true")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("SetResult did not broadcast within 1s")
+	}
+}
+
 func TestDisplayLabelMapsKnownKinds(t *testing.T) {
 	cases := map[string]string{
 		"static_archive": "Static web archive",
@@ -235,6 +338,39 @@ func TestNewFromLogRejectsMalformedLine(t *testing.T) {
 	log := "not-json\n"
 	if _, err := NewFromLog(strings.NewReader(log)); err == nil {
 		t.Fatalf("NewFromLog should reject malformed JSONL")
+	}
+}
+
+// TestNewFromLogPreservesResultStats pins down the wire-format
+// contract for the new Result field on persistedSnapshot: jobs
+// written with stats land with the same numbers on rehydrate,
+// jobs written WITHOUT the field (older logs, omitempty) parse
+// cleanly with a zero JobResult.
+func TestNewFromLogPreservesResultStats(t *testing.T) {
+	now := time.Now().UTC()
+	log := `{"id":"with","kind":"json_export","status":"done","progress":100,"started_at":"` + now.Format(time.RFC3339Nano) + `","finished_at":"` + now.Format(time.RFC3339Nano) + `","result_path":"/tmp/a.json","result":{"records":247,"images":0,"sources":18}}
+{"id":"without","kind":"json_export","status":"done","progress":100,"started_at":"` + now.Format(time.RFC3339Nano) + `","finished_at":"` + now.Format(time.RFC3339Nano) + `","result_path":"/tmp/b.json"}
+`
+	reg, err := NewFromLog(strings.NewReader(log))
+	if err != nil {
+		t.Fatalf("NewFromLog: %v", err)
+	}
+	with, ok := reg.Get("with")
+	if !ok {
+		t.Fatalf("with-stats job missing after rehydrate")
+	}
+	if with.Result.Records != 247 || with.Result.Sources != 18 {
+		t.Errorf("with.Result = %+v, want Records=247 Sources=18", with.Result)
+	}
+	without, ok := reg.Get("without")
+	if !ok {
+		t.Fatalf("without-stats job missing after rehydrate")
+	}
+	if without.Result.Records != 0 || without.Result.Sources != 0 {
+		t.Errorf("without.Result = %+v, want zero value", without.Result)
+	}
+	if without.ResultPath != "/tmp/b.json" {
+		t.Errorf("without.ResultPath = %q, want /tmp/b.json", without.ResultPath)
 	}
 }
 

@@ -1764,7 +1764,142 @@ func TestExportService_ExportICalendar(t *testing.T) {
 		t.Fatalf("ics should skip soldiers without full month/day")
 	}
 }
-	var buf bytes.Buffer
+
+// TestExportService_ExportJSONWithStatsCountsRecords pins down
+// the stats-aware JSON export variant. The count must equal the
+// number of Person Records the JSON payload carries; images and
+// sources are always 0 because the .json format does not embed
+// images or source records.
+func TestExportService_ExportJSONWithStatsCountsRecords(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee"})
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", DisplayID: "PENSION-001"})
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "James", LastName: "Longstreet"})
+
+	outPath := filepath.Join(t.TempDir(), "export.json")
+	records, images, sources, err := exportSvc.ExportJSONWithStats(outPath)
+	if err != nil {
+		t.Fatalf("ExportJSONWithStats: %v", err)
+	}
+	if records != 3 {
+		t.Errorf("records = %d, want 3", records)
+	}
+	if images != 0 {
+		t.Errorf("images = %d, want 0 (JSON carries no images)", images)
+	}
+	if sources != 0 {
+		t.Errorf("sources = %d, want 0 (JSON carries no source records)", sources)
+	}
+	// Sanity: the file actually contains all three soldiers so the
+	// count matches the artifact.
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read exported file: %v", err)
+	}
+	var doc JSONExportDocument
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if len(doc.Soldiers) != records {
+		t.Errorf("file carries %d soldiers but count returned %d", len(doc.Soldiers), records)
+	}
+}
+
+// TestExportService_ExportExcelWithStatsCountsRecords pins down
+// the stats-aware Excel variant. Excel does not carry images /
+// sources, so only records is populated.
+func TestExportService_ExportExcelWithStatsCountsRecords(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee"})
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson"})
+
+	outPath := filepath.Join(t.TempDir(), "export.xlsx")
+	records, images, sources, err := exportSvc.ExportExcelWithStats(outPath)
+	if err != nil {
+		t.Fatalf("ExportExcelWithStats: %v", err)
+	}
+	if records != 2 {
+		t.Errorf("records = %d, want 2", records)
+	}
+	if images != 0 || sources != 0 {
+		t.Errorf("xlsx carries no images/sources; got images=%d sources=%d", images, sources)
+	}
+}
+
+// TestExportService_ExportICalendarWithStatsCountsRecords is
+// the iCal counterpart. iCal enumerates anniversary events per
+// soldier; the records count is the number of soldiers the export
+// enumerated from the DB (regardless of whether each one carries
+// an anniversary date). Images and sources are 0 because the
+// .ics payload carries neither.
+func TestExportService_ExportICalendarWithStatsCountsRecords(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	// Use DeathYear/Month/Day instead of DeathDate to bypass the
+	// strict death_date normaliser that rejects "1870-10-12". The
+	// iCal payload uses the year/month/day fields directly.
+	if _, err := soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee", DeathYear: 1870, DeathMonth: 10, DeathDay: 12}); err != nil {
+		t.Fatalf("seed Lee: %v", err)
+	}
+	if _, err := soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", DeathYear: 1863, DeathMonth: 5, DeathDay: 10}); err != nil {
+		t.Fatalf("seed Jackson: %v", err)
+	}
+	if _, err := soldierSvc.Create(models.Soldier{FirstName: "James", LastName: "Longstreet"}); err != nil {
+		t.Fatalf("seed Longstreet: %v", err)
+	}
+
+	all, err := exportSoldiers(soldierSvc)
+	if err != nil {
+		t.Fatalf("exportSoldiers: %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("exportSoldiers returned %d soldiers; want 3 — Create likely failed silently and the test cannot continue", len(all))
+	}
+
+	outPath := filepath.Join(t.TempDir(), "export.ics")
+	records, images, sources, err := exportSvc.ExportICalendarWithStats(outPath, models.DefaultCalendarEventPreferences())
+	if err != nil {
+		t.Fatalf("ExportICalendarWithStats: %v", err)
+	}
+	if records != 3 {
+		t.Errorf("records = %d, want 3 (all soldiers, including those with no death date)", records)
+	}
+	if images != 0 || sources != 0 {
+		t.Errorf("ics carries no images/sources; got images=%d sources=%d", images, sources)
+	}
+}
+
+// TestExportService_ExportFullDatabasePDFWithStatsCountsRecords
+// pins down the PDF variant. The records count must match the
+// scope-filtered soldiers list (not the full archive) so the
+// summary card reflects what the .pdf actually contains.
+func TestExportService_ExportFullDatabasePDFWithStatsCountsRecords(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee", Rank: "General"})
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", Rank: "General"})
+	_, _ = soldierSvc.Create(models.Soldier{FirstName: "James", LastName: "Longstreet", Rank: "Lt. General"})
+
+	outPath := filepath.Join(t.TempDir(), "archive.pdf")
+	records, images, _, err := exportSvc.ExportFullDatabasePDFWithStats(outPath, PrintSettings{Scope: PrintScopeAll})
+	if err != nil {
+		t.Fatalf("ExportFullDatabasePDFWithStats: %v", err)
+	}
+	if records != 3 {
+		t.Errorf("records = %d, want 3", records)
+	}
+	// No images seeded; the count must be 0 (not uninitialised).
+	if images != 0 {
+		t.Errorf("images = %d, want 0 (no images seeded)", images)
+	}
+}
+
 func pngFixture() []byte {
 	imageRect := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	imageRect.Set(0, 0, color.RGBA{R: 180, G: 120, B: 70, A: 255})
