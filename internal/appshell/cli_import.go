@@ -71,8 +71,10 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/archive"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/update"
 )
 
 // (no extra type aliases — we use records.BackupManifest directly,
@@ -447,8 +449,12 @@ func runImportSharedArchive(ctx context.Context, a *App, opts ImportOptions) (in
 		return previewSharedArchive(from, opts)
 	}
 
-	var snapshotID string
-	_ = snapshotID
+	// Pre-merge restore point at a sibling of the data dir.
+	// Lives in <parent>/.dixiedata-restore-points/<id>/, so
+	// archive.replaceDataDir's in-place merge of the data dir
+	// can't touch it. Phase 5 re-enable: see the
+	// restore-point finding in docs/agents/cli-plan.md.
+	snapshotID := createImportRestorePoint(a)
 
 	summary, err := a.backup.ImportSharedBackup(from, a.dataDir)
 	if err != nil {
@@ -467,6 +473,7 @@ func runImportSharedArchive(ctx context.Context, a *App, opts ImportOptions) (in
 			"images_updated":    summary.ImagesUpdated,
 			"pending_conflicts": summary.PendingConflicts,
 			"merge_log":         summary.LogPath,
+			"restore_point":     snapshotID,
 		}
 		_ = json.NewEncoder(opts.Writer).Encode(out)
 		return 0, nil
@@ -481,7 +488,10 @@ func runImportSharedArchive(ctx context.Context, a *App, opts ImportOptions) (in
 	if summary.LogPath != "" {
 		fmt.Fprintf(opts.Writer, "  merge_log=%s\n", summary.LogPath)
 	}
-	fmt.Fprintf(opts.Writer, "rollback: review pending_conflicts in the merge-review UI; no pre-merge snapshot taken\n")
+	if snapshotID != "" {
+		fmt.Fprintf(opts.Writer, "  restore_point=%s (sibling: %s)\n", snapshotID, importRestorePointSibling(a.dataDir))
+	}
+	fmt.Fprintf(opts.Writer, "rollback: review pending_conflicts in the merge-review UI; to roll back the merge, use the restore_point above\n")
 	return 0, nil
 }
 
@@ -697,14 +707,58 @@ func loadLocalImportIdentity(a *App) (models.UserIdentity, bool, error) {
 	return identity, true, nil
 }
 
-// createImportRestorePoint was removed in commit fixing Phase 5.
-// Rationale captured inline in runImportBackup / runImportSharedArchive:
-// the .ddbak / merge imports overwrite the data dir in place, so a
-// restore point written inside it would be destroyed by the very
-// import it was meant to back out. Phase 6 will add a sibling
-// restore-point root (.dixiedata-restore-points/) that lives outside
-// the data dir, at which point this helper returns with the same
-// archive-writer closure that wires a.backup.Export.
+// createImportRestorePoint takes a snapshot of the live
+// archive at a SIBLING of the data dir
+// (<parent>/<base>-restore-points/<id>/local-archive.ddbak)
+// using NewSiblingRestorePointManager. The sibling root is
+// OUTSIDE the data dir, so the snapshot survives
+// archive.replaceDataDir's rename of the data dir during
+// the import. Restore-point failure is non-fatal: the helper
+// logs a warning and returns "" so the import proceeds.
+//
+// Wired into runImportSharedArchive only. Backup import does
+// not need a snapshot: the .ddbak IS the rollback artifact
+// (re-import a different .ddbak), so the safety net is
+// structurally useless for that case.
+func createImportRestorePoint(a *App) string {
+	sibling := importRestorePointSibling(a.dataDir)
+	manager := update.NewSiblingRestorePointManager(a.dataDir, sibling)
+	archiveWriter := func(outputPath string) error {
+		_, err := a.backup.Export(outputPath, a.dataDir)
+		return err
+	}
+	// buildWriter is a no-op for CLI: there's no installed
+	// binary in the field to roll back to, and forcing a
+	// cp-of-the-current-exe creates more confusion than
+	// safety. The manager requires a non-nil writer though,
+	// so we just MkdirAll to satisfy the contract.
+	buildWriter := func(outputDir string) error {
+		return os.MkdirAll(outputDir, 0o755)
+	}
+	record, err := manager.Create(update.CreateRestorePointInput{
+		SourceAppVersion:    buildinfo.AppVersion,
+		TargetAppVersion:    buildinfo.AppVersion,
+		SourceBuildIdentity: buildinfo.BuildIdentity(),
+		TargetBuildIdentity: buildinfo.BuildIdentity(),
+	}, archiveWriter, buildWriter)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: pre-import restore point failed (continuing): %v\n", err)
+		return ""
+	}
+	return record.ID
+}
+
+// importRestorePointSibling returns the conventional sibling
+// path for pre-import restore points. <dataDir> is
+// <project>/.dixiedata, so the sibling is
+// <project>/.dixiedata-restore-points/ — alphabetically
+// adjacent to the data dir so it's discoverable in
+// directory listings.
+func importRestorePointSibling(dataDir string) string {
+	parent := filepath.Dir(dataDir)
+	base := filepath.Base(dataDir)
+	return filepath.Join(parent, base+"-restore-points")
+}
 
 // readBackupManifestFromZip opens a .ddbak and reads just the
 // manifest.json entry. Used by import backup --dry-run to

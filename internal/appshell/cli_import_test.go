@@ -389,3 +389,30 @@ func TestLoadLocalImportIdentity_NilDatabase(t *testing.T) {
 		t.Fatal("expected error for nil database")
 	}
 }
+
+// TestImportRestorePointSiblingConvention locks the path
+// convention that Phase 5 + Phase 6 both rely on. The
+// sibling root is <parent>/<dataDirBase>-restore-points/ so
+// it sorts alphabetically next to the data dir. If this
+// changes, every existing on-disk sibling restore point
+// will orphan and the next import's rollback will silently
+// fail to find them.
+//
+// Uses filepath.Join directly in the test so the assertion
+// is platform-aware (Windows would otherwise produce
+// backslashes via filepath.Join inside the helper).
+func TestImportRestorePointSiblingConvention(t *testing.T) {
+	cases := []struct {
+		dataDir string
+		want    string
+	}{
+		{`C:\proj\.dixiedata`, filepath.Join(`C:\proj`, `.dixiedata-restore-points`)},
+		{`/home/u/proj/.dixiedata`, filepath.Join(`/home/u/proj`, `.dixiedata-restore-points`)},
+		{`/tmp/.dixiedata`, filepath.Join(`/tmp`, `.dixiedata-restore-points`)},
+	}
+	for _, tc := range cases {
+		if got := importRestorePointSibling(tc.dataDir); got != tc.want {
+			t.Errorf("importRestorePointSibling(%q) = %q, want %q", tc.dataDir, got, tc.want)
+		}
+	}
+}
