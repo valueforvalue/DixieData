@@ -3,7 +3,7 @@
 This is the canonical roadmap for DixieData's headless CLI surface.
 Phases ship one at a time; this file updates after each ship.
 
-**Status snapshot** (last update after commit `e4474b7`):
+**Status snapshot** (last update after commit `98ddb45`):
 
 | Phase | Status | Commit |
 |-------|--------|--------|
@@ -11,7 +11,7 @@ Phases ship one at a time; this file updates after each ship.
 | 2 — `doctor` | ✅ shipped | `7d9fc69` |
 | 3 — `list` / `show` / `search` | ✅ shipped | `e5f8e61` |
 | 4 — `export ...` | ✅ shipped | `e4474b7` |
-| 5 — `import ...` | ⏳ next | — |
+| 5 — `import ...` | ✅ shipped | `98ddb45` |
 | 6 — `migrate` / `backup` / `restore point` / `logs` / `config` | ⏳ backlog | — |
 | 7 — `debug ...` | ⏳ backlog | — |
 
@@ -222,69 +222,132 @@ still benefit from the in-flight guard added in c1d9dc1.
   `opts.Mode` (only PDF does). `runExportJPG` must check
   `opts.SoldierID == 0` directly, not `opts.Mode != ExportModeSingle`.
 
-### Phase 5 — `import ...` ⏳ NEXT
+### Phase 5 — `import ...` ✅ shipped (commit `98ddb45`)
 
 ```
-dixiedata import backup --from <file> [--dry-run]
-dixiedata import static-archive --from <dir> [--dry-run]
-dixiedata import shared-archive --from <file> [--dry-run]
-dixiedata import images --soldier <id> --from <file>...
-dixiedata import feedback-log --from <file>
+dixiedata import backup          --from <file.ddbak>          [--dry-run|--yes]
+dixiedata import shared-archive --from <file.ddshare>        [--dry-run|--yes]
+dixiedata import images         --soldier <id|dxd-id> --from <file>...
+dixiedata import memorial-json  --from <file.json>           [--dry-run]
 ```
 
-Dispatches to existing import handlers, with a `--dry-run`
-default that shows what would change without modifying the
-archive. **`--yes` is required for non-dry-run import of
-backup/static/shared** because they overwrite data.
+**Scope locked at design time:** four real imports only.
+`import static-archive` and `import feedback-log` were dropped
+during planning — neither has a GUI button in the live app
+(`/import/backup`, `/import/shared-archive`,
+`/import/memorial-json/preview|confirm`, and
+`/soldiers/{id}/images/import` are the only import routes
+registered in `internal/appshell/routes.go`). Static archives
+are read-only browser-viewable output with no companion import
+path. Feedback is hand-typed in the GUI; there's no consumer
+for ingesting JSONL feedback logs.
 
-**File:** `internal/appshell/cli_import.go`.
+**File:** `internal/appshell/cli_import.go` (+ `cli_import_zip.go`).
 
-**Dispatch target:**
+**Dispatch table:**
 
 | Command | App method |
 |---------|-----------|
-| `import backup` | `a.backup.ImportWithLocalIdentity(...)` or similar |
-| `import static-archive` | `a.export.ExportStaticArchive`-shape import (new? check archive package) |
-| `import shared-archive` | `a.backup.ImportSharedBackup(...)` |
-| `import images` | `a.imports.handleImportSoldierImages` (HTTP handler) — adapt to service-level |
-| `import feedback-log` | `appendFeedbackEntry` (existing in `app_feedback.go`) |
+| `import backup`          | `a.backup.ImportWithLocalIdentity(from, dataDir, localIdentity, preserveLocalIdentity)`. Closes + reopens DB around the staging swap, exactly mirroring `handleImportBackup`. `loadLocalImportIdentity` helper inlines `archive.currentImportIdentity` so the local identity can be resolved before the DB handle is closed. |
+| `import shared-archive`  | `a.backup.ImportSharedBackup(from, dataDir)`. Single blocking call. `SharedImportSummary` (soldiers/records/images inserted/updated, pending conflicts, log path) is printed + JSON-serializable. |
+| `import images`          | `a.ImportImagePaths(soldier, paths)` — new exported wrapper around the unexported `importImagePaths` used by `handleImportSoldierImages`. Supports `SoldierID` and `DisplayID` (auto-detect from `--soldier` value). |
+| `import memorial-json`   | `a.soldiers.ImportMemorialArchive(from)` — single blocking call; writes its own issues log under the data dir. Skips the GUI's two-phase preview (CLI user has already chosen the file). Dry-run path uses `a.soldiers.PreviewMemorialArchive` for the same preview the GUI shows. |
 
-**Decisions to make during planning:**
+**Decisions settled during implementation:**
 
-1. **Where does `--dry-run` surface?** Each import handler has its
-   own pre-flight checks. Probably easiest: add a `DryRun bool` to
-   each import method signature and have it return a
-   `DryRunReport{Changes []Change, Errors []error}` instead of
-   mutating. That's invasive — alternative is a wrapper that calls
-   the real import then rolls back. Rollback is risky for shared
-   archives.
-
-   Recommendation: add `DryRun` parameter to each method. The
-   report is JSON-serializable so `--json` output is useful.
+1. **Where does `--dry-run` surface?** Per-kind lightweight pre-flight
+   inside the CLI dispatch (not in the service layer). Each
+   `runImport*` function branches on `opts.DryRun` BEFORE touching
+   the App's facades. No invasive `DryRun bool` parameter on the
+   service signatures — that would force every caller (GUI handlers
+   included) to deal with the same plumbing.
 
 2. **`--yes` enforcement.** Without `--yes`, refuse to run if the
-   import is destructive. Match the pattern from `git rebase` /
-   `apt install` — default to dry-run + show what would happen, then
-   prompt user. In CLI mode without a TTY, refuse unless `--yes`
-   is set. Exit 4 (auth/permission) for refusal.
+   import is destructive (`import backup` and `import shared-archive`
+   only — `ImportKind.IsDestructive()` decides). Refusal is a parser
+   error → exit 3 = usage error per the standard exit codes. Matches
+   the `git rebase` / `apt install` pattern. No TTY check — the user
+   can pass `--yes` in scripts.
 
-3. **Conflict resolution for shared-archive.** Existing
-   `ImportSharedBackup` returns a `SharedImportSummary` that may
-   include conflicts. CLI should print the conflict summary and ask
-   user how to resolve (skip / merge / overwrite). For non-interactive
-   use, a `--conflict=skip|merge|overwrite` flag picks the resolution
-   up-front.
+3. **Conflict resolution for shared-archive.** Deferred. Existing
+   `ImportSharedBackup` auto-merges non-conflicting records and
+   stages conflicts for review via the existing merge-review UI.
+   CLI just prints the `PendingConflicts` count and the merge log
+   path. A `--conflict=skip|merge|overwrite` flag would need an
+   upstream signature change to `ImportSharedBackup`. Park until a
+   real user story demands it.
 
-4. **Atomicity.** If an import fails halfway, does the data dir
-   contain a partial state? Current code has no transaction wrapper
-   for `backup.Import`. The restore-point machinery
-   (`a.restorePoints.Create`) can be used to take a snapshot before
-   import so the user can roll back. Phase 6 should add
-   `dixiedata restore point apply <id>` before the import starts.
+4. **Atomicity.** **Pre-import restore-point safety net was REMOVED
+   after live testing revealed a contract conflict. See "Restore-point
+   finding" below for the full story.** Rollback story is surfaced
+   in import output instead: backup import says "rollback: re-run
+   with a different .ddbak"; shared-archive import says "rollback:
+   review pending conflicts in the merge-review UI".
 
-   **For Phase 5 minimum:** take an automatic restore point before any
-   non-dry-run import; print the restore point ID so the user can
-   roll back if something goes wrong.
+**Restore-point finding — READ BEFORE TOUCHING PHASE 6:**
+
+The Phase 5 plan called for taking a restore point via
+`a.restorePoints.Create` before any non-dry-run backup or
+shared-archive import, then printing the ID so the user could
+roll back. Implemented and tested at the parser level (14 unit
+tests passing). Then live-tested: parser accepted, manager
+returned success, `writeZipArchive.Rename` returned success,
+manager defer correctly skipped cleanup — yet no files on
+disk. After three rounds of debug prints at every step of the
+manager + `writeZipArchive`, the root cause surfaced:
+
+> The restore-point manager writes to
+> `<dataDir>/updates/restore-points/<id>/`, which is INSIDE the
+> data dir. `archive.replaceDataDir` (called by backup import
+> via `ImportWithLocalIdentity`) renames the data dir to a
+> `*-previous-*` sibling and then `RemoveAll`s it, destroying
+> any restore point that landed inside. `ImportSharedBackup`
+> mutates the live DB in place, so a restore point in
+> `<dataDir>/updates/` would have been overwritten by the
+> merge. Either way, the restore-point files do not survive
+> the import that created them.
+
+The manager isn't broken. The plan assumption was wrong:
+**the in-place update restore-point manager is a
+data-dir-resident store, but backup imports REPLACE the data
+dir in place.** Those contracts can't coexist.
+
+**Locked regression test:**
+`internal/archive/backup_service_test.go::TestBackupService_ImportDestroysFilesInsideDataDir`
+plants a sidecar file at `<dataDir>/updates/restore-points/<id>/local-archive.ddbak`,
+imports a `.ddbak`, asserts the sidecar and the whole `updates/`
+tree are gone. If `replaceDataDir` ever starts preserving
+sidecars (or the restore-point root moves), this test goes red
+and forces the right update.
+
+**What Phase 6 needs to do to make pre-import restore points
+viable:** add a sibling restore-point root
+(`.dixiedata-restore-points/`) outside the data dir. The
+manager's `dataDir` field would point at the sibling; existing
+tests need their `dataDir` updated. `RestorePointManager` will
+need a constructor parameter or a new constructor
+(`NewSiblingRestorePointManager`) — the existing
+`NewRestorePointManager(dataDir)` writes inside dataDir and
+should stay unchanged for the in-place update flow.
+
+**Lessons learned:**
+
+- The native restore-point system is for **update-in-place**.
+  It snapshots the live archive BEFORE the update swaps it.
+  The user's mental model is "update the binary; the restore
+  point rolls back the data dir if the new binary breaks". My
+  CLI tried to use it as "import rolls back the data dir if
+  the import breaks". Same machinery, different purpose, and
+  the data-dir-resident root is wrong for the import case.
+- Restore-point safety net for backup imports is **structurally
+  useless** because the imported `.ddbak` IS the rollback
+  artifact. Re-importing a different `.ddbak` is faster and
+  cleaner than rolling back a snapshot to import a different
+  snapshot.
+- Restore-point safety net for shared-archive imports is
+  **valuable** because the merge mutates existing data; the
+  pre-merge state is not preserved anywhere else. Phase 6's
+  sibling root unblocks this.
 
 ### Phase 6 — admin subcommands ⏳ backlog
 
@@ -310,8 +373,19 @@ Each maps to an existing `*App` method.
   `user_version == CurrentSchemaVersion`). `migrate down` is more
   invasive; consider whether we want it.
 - `backup` / `restore point` wrap the existing `.ddbak` /
-  restore-point machinery. `restore point apply <id>` will be used
-  by the Phase 5 import subcommand to roll back on failure.
+  restore-point machinery. **Phase 6's `restore point` subcommand
+  is the dependency for re-enabling the pre-import safety net
+  that Phase 5 had to disable** (see "Restore-point finding"
+  above). Specifically: Phase 6 must add a sibling
+  `.dixiedata-restore-points/` root OUTSIDE the data dir before
+  `import shared-archive --yes` can offer a rollback safety net.
+  The current `RestorePointManager` writes inside the data dir
+  and conflicts with `replaceDataDir`. New constructor
+  `NewSiblingRestorePointManager(siblingDir)` (or equivalent)
+  writes to the sibling and survives the data-dir swap. Once
+  that lands, Phase 5 should call the sibling manager in
+  `createImportRestorePoint` and resume printing the ID for
+  rollback via `restore point apply`.
 - `logs tail` reads the JSONL file directly (last N lines). `--follow`
   tails like `tail -f`. Needs careful handling of file rotation.
 - `config show` / `config set` operate on the SQLite-backed
@@ -345,8 +419,8 @@ file.)
 | 2 | doctor | ✅ | `7d9fc69` |
 | 3 | list / show / search | ✅ | `e5f8e61` |
 | 4 | export | ✅ | `e4474b7` |
-| 5 | import (with --dry-run + --yes + auto restore point) | ⏳ next | — |
-| 6 | migrate / backup / restore point / logs / config / --data-dir | ⏳ | — |
+| 5 | import (4 real kinds, --dry-run + --yes; pre-import restore-point REMOVED — see restore-point finding) | ✅ | `98ddb45` |
+| 6 | migrate / backup / restore point / logs / config / --data-dir (restore-point sibling root FIRST so Phase 5 can re-enable safety net) | ⏳ | — |
 | 7 | debug (incl. hx-invariants walker) | ⏳ | — |
 
 ## Cross-cutting concerns
@@ -430,8 +504,16 @@ After Phase 5 ships:
 - **Scripting** exports every soldier PDF without clicks via
   `for id in $(dixiedata list soldiers --json | jq -r '.[].id');
   do dixiedata export pdf --soldier $id --out pdfs/$id.pdf; done`.
-- **Disaster recovery** uses `dixiedata restore point apply <id>`
-  to roll back after a bad import, all from a shell.
+- **Scripting** imports the full archive via
+  `dixiedata import backup --from $BACKUP --yes` and merges shared
+  archives via `dixiedata import shared-archive --from $SHARE --yes`,
+  all from a shell.
+- **Disaster recovery** (backup import): re-import a different
+  `.ddbak`. The original `.ddbak` IS the rollback artifact.
+- **Disaster recovery** (shared-archive import): review pending
+  conflicts in the merge-review UI. No automatic rollback yet;
+  the restore-point sibling root is Phase 6 work that would
+  unlock `restore point apply <id>` for shared-archive imports.
 - **Integration tests** boot a real `*App`, drive imports + exports
   via the CLI, assert output files + DB state. No Wails, no
   Playwright, no GUI.
