@@ -3478,40 +3478,7 @@
   }
 
   async function submitPrintConfig(form, trigger) {
-    const bridge = window.go?.main?.App?.ExportFullDatabasePDF;
-    const status = shareStatusTarget();
-    const settings = readPrintSettings(form);
-    if (settings.scope === "selected" && settings.selectedIds.length === 0) {
-      if (status) {
-        status.textContent = "Select at least one record or choose a different export scope.";
-      }
-      return;
-    }
-    if (typeof bridge !== "function") {
-      form.setAttribute("hx-post", "/export/database-pdf");
-      closePrintConfigModal();
-      request(form);
-      return;
-    }
-
-    const label = "Printable PDF";
-    setBusyState(trigger, true);
-    if (status) {
-      status.textContent = `Preparing ${label.toLowerCase()}...`;
-    }
-    try {
-      const markup = await bridge(settings);
-      closePrintConfigModal();
-      if (status) {
-        status.innerHTML = markup || `${label} export finished.`;
-      }
-    } catch (error) {
-      if (status) {
-        status.textContent = `${label} export failed: ${error?.message || error || "unknown error"}`;
-      }
-    } finally {
-      setBusyState(trigger, false);
-    }
+    return; // deprecated — modal form is now plain htmx; kept stub for back-compat
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -3858,11 +3825,6 @@
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) {
-      return;
-    }
-    if (form.id === "share-print-config-form") {
-      event.preventDefault();
-      submitPrintConfig(form, event.submitter instanceof HTMLElement ? event.submitter : form);
       return;
     }
     if (!hxHas(form, "hx-get") && !hxHas(form, "hx-post") && !hxHas(form, "hx-put")) {
