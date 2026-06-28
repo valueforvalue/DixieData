@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -23,6 +24,20 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Only one .ddbak restore can run at a time because the
+	// import replaces the SQLite file the rest of the app is
+	// reading. Refuse a second concurrent request with a 503
+	// + toast that points at the existing /jobs/{id} so the user
+	// can monitor the in-flight restore.
+	if a.importInFlight.Load() {
+		if jobID := a.importInFlightJobID(); jobID != "" {
+			http.Redirect(w, r, "/jobs/"+jobID, http.StatusSeeOther)
+			return
+		}
+		respondError(w, r, KindUnavailable, "A backup restore is already in progress; please wait for it to finish.", nil)
+		return
+	}
+
 	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
@@ -34,6 +49,10 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Capture the local identity BEFORE we close the DB — the
+	// worker doesn't have access to a.database once the import
+	// starts, and the identity preservation rule needs to read
+	// it now.
 	var localIdentity models.UserIdentity
 	preserveLocalIdentity := false
 	if a.database != nil {
@@ -52,32 +71,41 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if a.database != nil {
-		a.database.Close()
-		a.database = nil
-	}
-
-	manifest, err := a.backup.ImportWithLocalIdentity(path, a.dataDir, localIdentity, preserveLocalIdentity)
-	if err != nil {
-		if reopenErr := a.reopenDatabase(); reopenErr != nil {
-			respondInternal(w, r, "Backup import failed and the database could not be reopened. Restart DixieData to recover.", fmt.Errorf("import: %w; reopen: %w", err, reopenErr))
-			return
+	// Run the restore inside a background job so the user sees a
+	// /jobs/{id} status page with real progress instead of being
+	// blocked on the HTTP goroutine for 10+ seconds on a 500 MB
+	// archive (issue #133). The worker closes the DB, replaces the
+	// data dir, and reopens the DB + reloads services when done.
+	var jobID string
+	jobID = a.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
+		a.importInFlight.Store(true)
+		a.importInFlightJobIDSet(jobID)
+		defer a.importInFlight.Store(false)
+		defer a.importInFlightJobIDClear()
+		p.Set(5, "Closing database")
+		if a.database != nil {
+			a.database.Close()
+			a.database = nil
 		}
-		respondInternal(w, r, "Backup import failed.", err)
-		return
-	}
-	if err := a.reopenDatabase(); err != nil {
-		respondInternal(w, r, "Backup imported but the database could not be reopened.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Success: %d records imported from backup.", manifest.Soldiers))
-	// Send the user to the home page so every panel reflects the
-	// restored archive instead of the pre-import state they were
-	// looking at. Without this redirect the user stays on /share —
-	// which keeps showing the pre-import merge review, counts, and
-	// recent records — and concludes the restore "didn't happen".
-	w.Header().Set("X-DixieData-Redirect", "/")
-	fmt.Fprintf(w, "Backup loaded: %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images)
+		p.Set(20, fmt.Sprintf("Restoring %s", filepath.Base(path)))
+		manifest, err := a.backup.ImportWithLocalIdentity(path, a.dataDir, localIdentity, preserveLocalIdentity)
+		if err != nil {
+			if reopenErr := a.reopenDatabase(); reopenErr != nil {
+				return fmt.Errorf("import failed (%w) and database could not be reopened (%v); restart DixieData to recover", err, reopenErr)
+			}
+			return fmt.Errorf("import failed: %w", err)
+		}
+		p.Set(85, "Reopening database")
+		if err := a.reopenDatabase(); err != nil {
+			return fmt.Errorf("backup imported but database could not be reopened: %w", err)
+		}
+		p.Set(100, fmt.Sprintf("Imported %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images))
+		return nil
+	})
+
+	setInfoToastHeader(w, fmt.Sprintf("Restoring backup: %s", filepath.Base(path)))
+	w.Header().Set("Location", "/jobs/"+jobID)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) {

@@ -72,6 +72,7 @@ type App struct {
 	openFileDialogOverride       func(opts any) (string, error)
 	openMultipleFilesDialogOverride func(opts any) ([]string, error)
 	inFlight               sync.Map // map[string]*inFlightEntry — dedupes in-flight native dialog calls
+	importInFlight         atomic.Bool // true while a .ddbak restore is replacing the data dir; handlers can 503 instead of crashing on a stale DB handle
 	startupErr              error
 	setupRequired           bool
 	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
@@ -130,6 +131,29 @@ func (a *App) clearPendingLaunchState() error {
 	}
 	a.pendingLaunchStateClear = false
 	return nil
+}
+
+// importInFlightJobID is the JobID of the currently-running
+// .ddbak restore, used by handleImportBackup's duplicate-request
+// guard to redirect to the in-flight /jobs/{id} page instead of
+// returning a generic 503. Empty when no restore is running.
+var importInFlightJobID atomic.Value // string
+
+func (a *App) importInFlightJobIDSet(id string) {
+	importInFlightJobID.Store(id)
+}
+
+func (a *App) importInFlightJobIDClear() {
+	importInFlightJobID.Store("")
+}
+
+func (a *App) importInFlightJobID() string {
+	if v := importInFlightJobID.Load(); v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
 }
 
 // inFlightEntry is the value stored under each dedup key in

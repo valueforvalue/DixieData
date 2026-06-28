@@ -28,6 +28,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `internal/appshell`: .ddbak restore now runs as a background
+  job (issue #133). The handler reads the local identity,
+  enqueues the restore, and 303-redirects the user to
+  /jobs/{id} so they see real progress during the multi-second
+  restore instead of being blocked on the HTTP goroutine.
+  Replaces the synchronous `X-DixieData-Redirect: /` flow that
+  left the user on a blank /share tab for 10+ seconds on a
+  500 MB archive. A new `a.importInFlight` atomic flag + an
+  `importInFlightJobID` global coordinate the worker; a second
+  click during a running restore redirects to the existing
+  /jobs/{id} instead of opening a second dialog or crashing.
+  The toast text now reads "Restoring backup: <name>" (info
+  kind, issue #132) and the user lands on a real status page.
 - `internal/appshell`: in-progress toasts (image import,
   shared-archive import, memorial-JSON import, Google Drive /
   Sheets exports, duplicate audit, bulk reviews, orphan
