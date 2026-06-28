@@ -3,7 +3,7 @@
 This is the canonical roadmap for DixieData's headless CLI surface.
 Phases ship one at a time; this file updates after each ship.
 
-**Status snapshot** (last update after commit `98ddb45`):
+**Status snapshot** (last update after commit `98ddb45`; Phase 7 shipped in the same series):
 
 | Phase | Status | Commit |
 |-------|--------|--------|
@@ -13,7 +13,7 @@ Phases ship one at a time; this file updates after each ship.
 | 4 — `export ...` | ✅ shipped | `e4474b7` |
 | 5 — `import ...` | ✅ shipped | `98ddb45` |
 | 6 — `migrate` / `backup` / `restore point` / `logs` / `config` | ⏳ backlog | — |
-| 7 — `debug ...` | ⏳ backlog | — |
+| 7 — `debug ...` | ✅ shipped | `82bf194` |
 
 ## Design
 
@@ -392,7 +392,7 @@ Each maps to an existing `*App` method.
   `local_settings` table.
 - Add `--data-dir` flag support to all subcommands here (and Phase 7).
 
-### Phase 7 — debugging ⏳ backlog
+### Phase 7 — debugging ✅ shipped (commit `82bf194`)
 
 ```
 dixiedata debug dump > archive-summary.json
@@ -401,15 +401,110 @@ dixiedata debug browser-tree
 dixiedata debug request <path>
 ```
 
-`debug` subcommands never write to the archive. Useful for
-supporting users without the GUI.
+**File:** `internal/appshell/cli_debug.go` (+ `cli_debug_test.go`).
 
-`debug hx-invariants` is the closest thing to a UI regression net
-that doesn't need a browser. Walks every `.templ` file and checks
-that `hx-target` IDs exist, `hx-post` routes are registered, etc.
-(Connects to the Phase A test plan in the original bug-class
-audit — `internal/templates/hx_invariant_test.go` was the planned
-file.)
+**Hard constraint upheld:** debug subcommands never write to
+the archive, never accept `--yes`, and never accept `--fix`.
+Four kinds only. `--json` envelope + `--data-dir PATH` on
+every subcommand.
+
+**Dispatch table:**
+
+| Command | Implementation |
+|---------|---------------|
+| `debug dump`             | `App.ArchiveInventory()` — new thin wrapper. Reads `user_version` (PRAGMA), `archive_counts` via `soldiers.ArchiveCounts()`, plus row counts for 15 tables (soldiers, records, images, calendar_items, duplicate_audit_findings, merge_review_sessions, merge_review_conflicts, shared_merge_aliases, research_tasks, research_collections, research_collection_items, import_batches, soldiers_needing_review) + the two pending-state sub-counts. Also surfaces `local_settings.json` snapshot + `user_identity` from `db.UserIdentity()`. Returns `ArchiveInventory` struct that JSON-encodes to a stable envelope. |
+| `debug hx-invariants`    | Pure source walker. Walks every `.templ` file under `<repo>/internal/templates/` (via `collectTemplFiles`), extracts `hx-target`/`hx-post`/`hx-get`/`hx-put`/`hx-delete`/`hx-patch`/`hx-trigger` attributes via regex, builds a global DOM ID index from `id="..."` declarations, then AST-walks `internal/appshell/routes.go` for registered (pattern, method) pairs. Cross-references: (a) every `hx-target="#id"` must resolve to a known DOM ID; (b) every `hx-{post,get,put,delete,patch}="URL"` must resolve to a registered route (with chi-style `{param}` and `/*` wildcard matching). Exit 0 if clean, exit 1 if any violations. |
+| `debug browser-tree`     | Same AST walker as `hx-invariants` but renders the registered route table grouped by HTTP method. Sorted output for stable diffs. |
+| `debug request <path>`   | `App.DispatchHeadlessRequest(path)` — new thin wrapper. Builds a synthetic `httptest.NewRequest("GET", path, nil)`, runs the registered mux (via `a.mux`, which is wrapped in `debug.Middleware + recoverMiddleware + chi.NewRouter`), and captures the recorder's status + headers (subset: Content-Type, Location, X-Request-Id, HX-Trigger, HX-Redirect) + body (capped at 64 KB with `body_truncated: true` when oversized). Trims the body's leading `/` if missing. |
+
+**Decisions settled during implementation:**
+
+1. **Routes come from AST, not the live mux.** `a.mux` is
+   wrapped in `debug.Middleware` + `recoverMiddleware`, so the
+   chi router is not directly reachable. We AST-walk
+   `routes.go` (same source-of-truth file `routes_method_guard_test.go`
+   uses) instead. This also gives CLI + tests a consistent view.
+
+2. **Wildcard route matching is literal-pattern style.** `/*`
+   is treated as prefix-match; `{name}` is treated as any
+   single segment. The matcher is in `matchChiPattern`. Method
+   families (POST vs GET) aren't enforced here — that's the
+   job of `TestRouteMethodMatchesHandler`. The walker only
+   checks route existence.
+
+3. **`debug dump` reads, never writes.** The wrapper never
+   calls `SetSystemConfig`, never updates `local_settings.json`,
+   never inserts into `import_batches`. It's the closest
+   thing to a support snapshot we have — surface everything
+   useful but mutate nothing. Row counts surface as a
+   map so new tables can be added in one line (see
+   `inventoryRowQueries`).
+
+4. **`debug request` honours `--data-dir` via env var
+   precedence.** `--data-dir PATH` sets `DIXIEDATA_DATA_DIR`
+   before `NewApp`, so `appdata.DefaultDir()` inside
+   `startup()` picks it up. Same mechanism the Phase 6 admin
+   subcommands will use. Precedence: CLI flag > env var >
+   default. Centralised in `ApplyDebugDataDirOverride` so
+   Phase 6 can call it too.
+
+5. **`hx-trigger` is intentionally NOT linted.** Triggers
+   are event names (`click`, `keyup`, `intersect once`, etc.)
+   and would be impossible to validate without re-implementing
+   htmx's grammar. The walker skips them.
+
+6. **Empty `hx-target` values are skipped.** A template
+   that emits `hx-target=""` (invalid htmx) is a separate
+   lint concern — the walker only checks non-empty values
+   that look like ID selectors (`#id`). Selectors like
+   `this`, `body`, `closest .x` are also skipped because
+   they're valid htmx selectors that aren't DOM IDs.
+
+7. **Test-only writer = `io.Discard`.** Integration tests
+   that exercise the real App against a temp data dir use
+   `io.Discard` to keep the test output clean. The CLI
+   path defaults to `os.Stdout` exactly like every other
+   subcommand.
+
+8. **Windows-specific test workaround.** The jobs registry
+   opens `<dataDir>/jobs.jsonl` in append mode and does not
+   close the handle across `Shutdown`. On Windows that
+   blocks `t.TempDir()`'s `RemoveAll` cleanup. Test helper
+   `closeJobsLogWriter` reaches into the registry's
+   unexported `logCloser` field via `reflect` + `unsafe.Pointer`
+   and calls `Close()` before the temp dir is removed.
+   Documented as test-only — production code calls
+   `os.Exit` after Shutdown so this never matters.
+
+**Lessons learned:**
+
+- The chi router's pattern matcher uses `{param}` and
+  `{name:regex}` shapes. For the existence check, we accept
+  any `{...}` as a single segment. If a future route uses
+  `{rest:.*}` (chi's catch-all syntax), the literal
+  substitution breaks; Phase 8 can revisit if a template
+  ever hits one.
+- `debug dump` against an empty DB shows schema_version=55
+  (CurrentSchemaVersion) and zero counts everywhere —
+  useful for confirming the user's "I just created the data
+  dir" claim. The wrapper intentionally fails loud (exit 1)
+  if any table disappears rather than returning zero, so the
+  support report stays trustworthy across schema drifts.
+- `debug hx-invariants` AST-walking `routes.go` means the
+  walker is compiler-independent — it survives templ
+  regeneration, chi upgrades, and middleware reorderings.
+  The same trick lets `debug browser-tree` work in any
+  checkout where `internal/appshell/routes.go` exists.
+- `debug request <path>` is the most useful subcommand for
+  triage: it reproduces a browser request without the
+  WebView2 race that bites the GUI, so support engineers
+  can poke routes from a shell. Exit codes mirror the GUI:
+  a missing route returns 404, a broken handler panics and
+  `recoverMiddleware` returns 500.
+- The `cli_query.go` pattern (parsed args + thin App
+  dispatch) scales perfectly to four subcommands — total
+  file size is ~800 lines including JSON renderers. No
+  cobra/kingpin would have been cheaper here.
 
 ## Implementation order (final)
 
@@ -421,7 +516,7 @@ file.)
 | 4 | export | ✅ | `e4474b7` |
 | 5 | import (4 real kinds, --dry-run + --yes; pre-import restore-point REMOVED — see restore-point finding) | ✅ | `98ddb45` |
 | 6 | migrate / backup / restore point / logs / config / --data-dir (restore-point sibling root FIRST so Phase 5 can re-enable safety net) | ⏳ | — |
-| 7 | debug (incl. hx-invariants walker) | ⏳ | — |
+| 7 | debug (incl. hx-invariants walker; read-only) | ✅ | `82bf194` |
 
 ## Cross-cutting concerns
 
@@ -495,7 +590,7 @@ the JSONL to stderr in real time. Cheap (one `io.MultiWriter`).
 
 ## What this enables (cumulative)
 
-After Phase 5 ships:
+After Phase 7 ships:
 
 - **CI** runs `dixiedata --smoke --json` after every release build
   (catches the `7dbff27` / `caf2c28626`-class bugs).
@@ -517,6 +612,17 @@ After Phase 5 ships:
 - **Integration tests** boot a real `*App`, drive imports + exports
   via the CLI, assert output files + DB state. No Wails, no
   Playwright, no GUI.
+- **User support** runs `dixiedata debug dump --json` to
+  capture a full archive snapshot for a bug report. Read-only,
+  safe to ask users to run.
+- **User support** runs `dixiedata debug hx-invariants` to
+  surface broken `hx-target` / `hx-post` references without
+  needing a browser. Exits non-zero on any violation so it's
+  shell-friendly for CI / regression nets.
+- **User support** runs `dixiedata debug request /some/path`
+  to reproduce a browser request from a shell. Returns the
+  same status + headers + body the GUI would see, without
+  the WebView2 focus-race that bites the GUI.
 
 ## References
 
@@ -532,5 +638,7 @@ After Phase 5 ships:
 - `internal/appshell/doctor.go` — Phase 2.
 - `internal/appshell/cli_query.go` — Phase 3.
 - `internal/appshell/cli_export.go` — Phase 4.
+- `internal/appshell/cli_import.go` — Phase 5.
+- `internal/appshell/cli_debug.go` — Phase 7.
 - `docs/agents/doctor-impl-notes.md` — design decisions for the
   doctor's `templates_parseable` check (Typst stub strategy).
