@@ -265,6 +265,31 @@ async function main() {
         location,
         hxRedirect,
       });
+
+      // End-to-end navigation check: after the click, the page
+      // URL must actually change to /jobs/{id}. Without this
+      // net the user can click "Export JSON", the server
+      // responds with a perfectly valid 303 + Location header,
+      // AND the export runs to completion in the background
+      // — but the browser silently stays on /share because
+      // htmx 2.x with hx-swap="none" swallows 303 responses
+      // unless the server also writes HX-Redirect. The headers
+      // check above is necessary but not sufficient; only the
+      // URL check below proves the user actually sees the
+      // status page.
+      //
+      // The check is `endsWith` (not `===`) because the test
+      // environment sometimes appends a trailing slash or a
+      // hash; the path component must be /jobs/{id} either way.
+      if (went303 && jobsRedirect) {
+        await page.waitForTimeout(200); // give the redirect a moment to settle
+        const urlAfter = page.url();
+        const navigated = urlAfter.includes('/jobs/');
+        record(`share-${btn.path}-navigates-to-jobs`, navigated, {
+          urlAfter,
+          expected: '/jobs/{id}',
+        });
+      }
     }
   }
 

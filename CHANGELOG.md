@@ -223,6 +223,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     same.
   - `TestEnqueueExportWithResultSetsHXRedirect` (new) pins
     both headers on the with-stats helper.
+- `audit/smoke.mjs`: every share-page export button now also
+  asserts `share-{path}-navigates-to-jobs` — after the click,
+  `page.url()` must include `/jobs/`. The previous
+  `share-{path}-redirects-303` assertion only checked the
+  response headers; it did NOT prove the browser actually
+  followed the redirect, which is how the htmx `hx-swap="none"`
+  + 303 silent-swallow bug slipped through. Now the live
+  harness catches both: response shape AND navigation.
+
+### Maintenance
+
+- `Makefile`: `make debug` now builds every sibling binary
+  the debug workflow expects to be present:
+  `build/bin/DixieData.exe`, `build/bin/dixiedata-web.exe`,
+  `build/bin/seed-data.exe`, `build/bin/gold-master.exe`,
+  `tools/tune/bin/dixiedata-tune.exe`. New standalone targets:
+  `make web`, `make seed`, `make gold`, `make tune-bin` (the
+  existing `make tune` target runs the render harness, so the
+  build step is split off under a new name to avoid a
+  collision). `migrate-logs` is intentionally NOT included —
+  no script in this repo calls it; add it when a workflow needs
+  it.
 - `internal/jobs/jobs.go`: new `SilentKinds` set + `IsSilentKind`
   helper, and `Registry.MostRecentActive` filters out kinds in
   the set. The global layout progress popup is now opt-out
