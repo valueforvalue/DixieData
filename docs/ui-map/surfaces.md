@@ -1,10 +1,12 @@
-# UI surface IDs
+# Surfaces (canonical DOM IDs)
 
 Surface IDs are the canonical identifiers for UI regions (pages, panels,
 tabs, overlays). They are typed Go constants in `internal/uiids/uiids.go`
 and registered in the `Registry` slice for lookup. Templates and HTMX
 attributes reference these constants instead of string literals so renames
 stay in sync.
+
+> Moved from `docs/ui-ids.md` as part of the UI-map consolidation.
 
 Use these IDs when requesting changes to a specific part of the UI.
 

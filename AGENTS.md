@@ -39,6 +39,7 @@ See `CONTEXT.md` for the full glossary and anti-patterns.
 | `tools/tune/` | Iteration harness for design polish |
 | `templates/` | Typst source templates (PDF rendering, NOT Go `text/template`) |
 | `docs/` | User manual, ADRs, audit narrative, release docs |
+| `docs/ui-map/` | **UI reference** — screen × component matrix, per-screen ASCII wireframes, route/surface lookup, gaps. Read first for any UI bug hunt or redesign. |
 | `scripts/` | PowerShell + bash build/test helpers (`build-common.ps1`, `run-crash-dump.ps1`, `debug-crash.dlv`) |
 | `Makefile` | Top-level DX (run `make help` for all targets) |
 | `CONTEXT.md` | **Glossary + Laws source of truth** — read first |
@@ -58,6 +59,32 @@ touch:
   debugging). Includes `Find it:` greps for each pattern.
 - [`docs/CODE_CHANGES.md`](docs/CODE_CHANGES.md) — cross-layer
   working contract. Read this when your change touches templ +
+  htmx + JS + Go handler together (the chi-router migration and
+  the hx-attr strip both shipped as one-system drift).
+
+### UI map (read before any UI bug hunt or redesign)
+
+[`docs/ui-map/README.md`](docs/ui-map/README.md) is the single
+entry point for the UI reference. It contains:
+
+- [`INDEX.md`](docs/ui-map/INDEX.md) — screen × component matrix.
+- [`routes.md`](docs/ui-map/routes.md) — every route → owning
+  screen + handler.
+- [`surfaces.md`](docs/ui-map/surfaces.md) — canonical DOM IDs
+  (`page.*`, `panel.*`, `tab.*`, `overlay.*`).
+- [`components.md`](docs/ui-map/components.md) — atomic components
+  (button, card, empty_state, field, pill, toast).
+- [`glossary.md`](docs/ui-map/glossary.md) — region vocabulary
+  (drawer/modal/panel/section).
+- [`states.md`](docs/ui-map/states.md) — cross-cutting states
+  (loading / empty / error / unauthorized).
+- [`gaps.md`](docs/ui-map/gaps.md) — orphaned routes, unrouted UI,
+  redundancy findings.
+- [`wireframes/`](docs/ui-map/wireframes/) — one ASCII wireframe
+  per screen, with HTMX wiring tables and per-screen footguns.
+
+When hunting a UI bug, start at the wireframe for the affected
+screen, then follow the HTMX wiring table to the owning handler.
   htmx + JS + Go handler together (the chi-router migration and
   the hx-attr strip both shipped as one-system drift).
 
