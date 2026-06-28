@@ -109,6 +109,43 @@ in `templ.SafeURL`. `Swap` is validated against an allowlist (invalid
 values panic at render time). `Target` selectors that start with `#`
 are checked against the uiids registry.
 
+## Buttons that POST and expect navigation
+
+Any handler that returns `303 See Other` to navigate the user
+to another page **must** write both response headers:
+
+- `Location: /target` — for plain `<form method="post">` browsers.
+- `HX-Redirect: /target` — for htmx 2.x buttons with
+  `hx-swap="none"`.
+
+htmx 2.x with `hx-swap="none"` silently swallows a 303 unless
+the server also writes `HX-Redirect`. The user stays on the
+originating page and the work runs invisibly in the background.
+Static archive worked only because it uses `<form method="post">`
+without htmx. See `docs/COMMON_BUGS.md` §1.9 for the full postmortem.
+
+Canonical helper: `(*App).enqueueExport` and
+`(*App).enqueueExportWithResult` in
+`internal/appshell/exports_handlers.go` (both write Location
+and HX-Redirect). For non-export POST-then-navigate handlers,
+copy the two-line pattern explicitly:
+
+```go
+w.Header().Set("Location", target)
+w.Header().Set("HX-Redirect", target)
+w.WriteHeader(http.StatusSeeOther)
+```
+
+Checklist before shipping any new POST-then-navigate handler:
+
+- [ ] `Location` header set to the target path.
+- [ ] `HX-Redirect` header set to the same path.
+- [ ] `audit/smoke.mjs` has a `-navigates-to-<dest>` assertion
+      for the new button (asserts `page.url()` after click, not
+      just response headers — header-only checks let this bug
+      slip past CI; see `audit/smoke.mjs`
+      `share-${btn.path}-navigates-to-jobs` as the worked example).
+
 ## Component primitives
 
 Reuse the existing primitives in `internal/templates/components/`:

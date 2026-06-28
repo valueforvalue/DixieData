@@ -241,12 +241,16 @@ async function main() {
       method: req?.method(),
       url: req?.url(),
     });
-    // 303-redirect follow (issue #130). After enqueueExport the
-    // handler responds with 303 + Location: /jobs/{id} so the
-    // browser navigates to the real status page instead of
-    // replacing the modal with the in-flight error body. In
-    // web-mode the native dialog does not exist so the guard
-    // fails fast with 303 + HX-Redirect back to /share; both
+    // 303-redirect follow (issue #130). The success path
+    // writes BOTH `Location: /jobs/{id}` AND
+    // `HX-Redirect: /jobs/{id}` (see
+    // internal/appshell/exports_handlers.go::enqueueExport).
+    // Both are required: htmx 2.x with hx-swap="none" silently
+    // swallows a 303 with only Location; plain browser form
+    // submits ignore HX-Redirect. Static archive uses a plain
+    // <form method="post"> so it lands via Location alone.
+    // In web-mode the native dialog does not exist so the
+    // dedup guard fires 303 + HX-Redirect back to /share; both
     // response shapes prove the duplicate-handling path fired,
     // so the assertion accepts either.
     const expectsRedirect = btn.path !== '/export/static-archive';

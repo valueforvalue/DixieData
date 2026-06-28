@@ -383,6 +383,63 @@ If another AI needs to continue work, read in this order:
 11. `internal\templates\review_queue.templ`
 12. `frontend\app.js`
 
+## Adding a feature: canonical workflow
+
+End-to-end skeleton for a new feature that touches templ +
+handler + service + tests. Skip the steps that don't apply;
+do them in this order.
+
+1. **Define the surface.** Add surface IDs to
+   `internal/uiids/uiids.go` (`Kind: page.X` / `panel.X.Y`).
+   If the feature has a new top-level page, add it to the
+   screen × component matrix in `docs/ui-map/INDEX.md`.
+2. **Add a routebuilder.** `internal/routebuilder/routebuilder.go`
+   gets the typed URL helper. Never bare strings in templ.
+3. **Write the Go service.** Place it in the deep module
+   that owns the concept (`internal/records`,
+   `internal/archive`, `internal/integrations`). It must
+   not import `internal/appshell` (architecture test enforces).
+4. **Wire the handler.** `internal/appshell/routes.go`
+   registers the route (specific before wildcard;
+   `postOnlyPaths` updated if POST-only). If the handler
+   opens a native dialog, follow `docs/agents/dialog-guard.md`.
+   If the handler returns 303 to navigate, follow
+   `internal/templates/components/conventions.md` ("Buttons
+   that POST and expect navigation") — write **both** `Location`
+   AND `HX-Redirect`.
+5. **Render the templ.** `internal/templates/<page>.templ`
+   uses `templ.SafeURL(routebuilder.X())` and
+   `htmxattr.Mux{...}.Attrs()...`. Reuse
+   `components/Button|Card|Pill|EmptyState|Field|Toast`
+   instead of raw markup.
+6. **Add the regression net.** At minimum:
+   - Page-snapshot test (model on
+     `internal/templates/page_snapshot_test.go`).
+   - Handler test in `internal/appshell/<handler>_test.go`
+     that exercises the success path AND the in-flight
+     guard if applicable.
+   - If the feature has a clickable button, an assertion in
+     `audit/smoke.mjs` that clicks it and verifies a network
+     round-trip. For POST-then-navigate, also verify
+     `page.url()` ends up at the target — header-only checks
+     let the htmx `hx-swap="none"` + 303 silent-swallow bug
+     slip through.
+7. **Verify.** `make tpl && make test && make audit`.
+8. **CHANGELOG.** Bullet under `[Unreleased]` > `### Added`
+   in the same commit.
+
+Read first, per layer:
+- `docs/CODE_CHANGES.md` — "When you change a route",
+  "When you change a template", "When you add a new
+  top-level page" checklists.
+- `docs/COMMON_BUGS.md` — section 1 (HTMX wiring) and
+  section 4 (Go backend) for your layer.
+- `internal/templates/components/conventions.md` — URL
+  building, HTMX attribute typing, and the nav-after-POST
+  rule.
+- `AGENTS.md` — commit/branch convention and the
+  `Makefile` target list (`make help`).
+
 ## Handoff summary
 
 The repo is in a working state. The recent scale-hardening and UX work has already landed, the startup dead-end was fixed, and the full build/test pipeline passes. A new AI should treat the current storage layout, FTS search stack, duplicate-audit persistence, and merge-review workflow as the canonical behavior.

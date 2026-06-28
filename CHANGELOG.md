@@ -234,6 +234,38 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **Doc consolidation for click-driven surfaces.** Five
+  edits land in one commit so the htmx `hx-swap="none"` + 303
+  trap and the surrounding patterns have a single source of
+  truth:
+  - `internal/templates/components/conventions.md`: new
+    section "Buttons that POST and expect navigation" —
+    recipe for the canonical `Location` + `HX-Redirect`
+    pair, checklist for new POST-then-navigate handlers.
+  - `docs/COMMON_BUGS.md`: new §1.9 — bug catalog entry with
+    grep commands, root cause, fix recipe, and the regression
+    net (audit/smoke.mjs `-navigates-to-jobs` assertion).
+  - `AGENTS.md`: new "Commits and branches" section —
+    one-commit-one-logical-change rule, message shape,
+    branch naming, pre-push checks, CHANGELOG rule, and the
+    cross-link to the new conventions rule for any new
+    click-driven button.
+  - `docs/ai-handoff.md`: new "Adding a feature: canonical
+    workflow" section — 8-step skeleton (surface → routebuilder
+    → service → handler → templ → regression net → verify →
+    CHANGELOG) with cross-links to per-layer checklist docs
+    and explicit warnings about the htmx + 303 trap.
+  - `audit/smoke.mjs`: comment block above the share-page
+    export assertions tightened to clarify that the success
+    path (enqueueExport) writes BOTH Location AND HX-Redirect,
+    not just the dedup-fallback path.
+
+  `CONTEXT.md` Laws stays slim — the trap is documented in
+  `conventions.md` (recipe) + `COMMON_BUGS.md` (postmortem),
+  cross-linked from AGENTS.md.
+
+### Maintenance
+
 - `Makefile`: `make debug` now builds every sibling binary
   the debug workflow expects to be present:
   `build/bin/DixieData.exe`, `build/bin/dixiedata-web.exe`,

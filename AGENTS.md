@@ -44,6 +44,15 @@ See `CONTEXT.md` for the full glossary and anti-patterns.
 | `Makefile` | Top-level DX (run `make help` for all targets) |
 | `CONTEXT.md` | **Glossary + Laws source of truth** — read first |
 
+## Commits and branches
+
+- **One commit = one logical change.** If the message splits cleanly in half and each half still stands alone, you have two commits. Recurring failure: a 200-line "fix export buttons" commit that bundles the templ + handler + audit test + regression net + CHANGELOG. That should be 4 commits.
+- **Commit message shape:** `<area>: <imperative summary>` for the subject (≤72 chars), blank line, then 1–3 bullets explaining *why* and what the regression net is. Reference the issue number if one exists (`issue #130`). Look at recent commits with `git log --oneline -20` for the in-repo house style.
+- **Branch names:** `feature/<short-kebab>` for new surfaces, `fix/<short-kebab>` for bug fixes, `chore/<short-kebab>` for refactors / docs. Never `agent-scratch`, never `temp`, never `wip`. Push the branch the moment it has one green commit.
+- **Before pushing:** `make test` (runs `go test ./... -short`) and `make tpl` (regenerates templ — the diff should be empty if your templ edits match the generated output). If you touched htmx or templ markup, run `node audit/smoke.mjs` against a live `dixiedata-web` server. `make audit` runs the full visual sweep.
+- **CHANGELOG:** every user-visible change gets a bullet in `CHANGELOG.md` `[Unreleased]` under `### Added`, `### Changed`, `### Fixed`, or `### Maintenance` in the same commit that lands the change. Internal refactors that don't change user-visible behavior live under `### Maintenance`.
+- **Click-driven surfaces:** any new templ button that POSTs and expects navigation must follow the recipe in `internal/templates/components/conventions.md` ("Buttons that POST and expect navigation") AND grow a matching `audit/smoke.mjs` assertion that verifies both the response shape AND `page.url()` after the click. The response-only assertion is insufficient — that is how the htmx `hx-swap="none"` + 303 silent-swallow bug shipped (commit `70878ac` → caught in `3612dab`).
+
 ## Agent skills
 
 ### Working guides (read before touching the layer)
