@@ -586,7 +586,10 @@
   // Strip order at boot is: cache value to data-hx-*, then remove
   // hx-*. Both paths return the same string here.
   function hxAttr(el, name) {
-    if (!(el instanceof Element)) {
+    // Duck-type the Element contract — `instanceof Element` is
+    // browser-only and breaks the Node test harness (which mocks
+    // HTMLElement but not Element).
+    if (!el || typeof el.getAttribute !== "function") {
       return null;
     }
     const direct = el.getAttribute(name);
@@ -597,7 +600,7 @@
   }
 
   function hxHas(el, name) {
-    if (!(el instanceof Element)) {
+    if (!el || typeof el.hasAttribute !== "function") {
       return false;
     }
     return el.hasAttribute(name) || el.hasAttribute("data-" + name);
@@ -3867,11 +3870,15 @@
         // The browse filters form has hx-get / hx-target on the <form>
         // element but does not declare hx-trigger="change" on the
         // inputs. The change handler above resets paging + persists
-        // state; we now also tell htmx to fire the form so the
-        // results panel actually refreshes.
-        if (typeof window.htmx !== "undefined" && typeof window.htmx.trigger === "function") {
-          window.htmx.trigger(form, "change");
-        }
+        // state; we now also fire the request via the app's own
+        // queueRequest so the results panel actually refreshes.
+        //
+        // We use queueRequest (not window.htmx.trigger) because
+        // DOMContentLoaded strips hx-trigger from the DOM, so
+        // htmx.trigger(form, "change") would see no hx-trigger attr
+        // and silently do nothing. queueRequest reads from
+        // data-hx-* mirrors that the strip preserved.
+        queueRequest(form);
       }
       return;
     }

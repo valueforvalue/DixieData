@@ -75,6 +75,18 @@ You touch: `internal/templates/*.templ` files.
 
 Checklist:
 
+0. **`htmxattr.Mux.Attrs()` returns plain `string` for URL values,
+   NOT `templ.SafeURL`.** This is a hard-won finding from the
+   stabilization sprint: templ.RenderAttributes' type switch has
+   cases for `string`, `*string`, `bool`, etc. but NOT for
+   `templ.SafeURL`. When an attribute value is a `SafeURL`,
+   `RenderAttributes` silently drops the attribute. Symptom: every
+   `hx-get` / `hx-post` button renders without those attrs and
+   clicks do nothing. Tests asserting `templ.SafeURL` in the
+   value pass — they don't exercise RenderAttributes. The
+   smoke test in `audit/smoke.mjs` is the only thing that
+   catches this.
+
 1. **Use `htmxattr.Mux` and `routebuilder.X()`** for new
    elements. Don't write `hx-get="/foo"` directly. The goquery
    guard (`internal/templates/hx_guard_test.go`) flags bare

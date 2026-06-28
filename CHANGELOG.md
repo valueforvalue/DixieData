@@ -79,6 +79,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   actually polls (previously the comment claimed 2s but no trigger
   was set, so htmx used the default `natural` trigger and never
   fired).
+- **`audit/smoke.mjs`** — live Playwright regression net for
+  click-driven surfaces. Boots a real Chromium against
+  `dixiedata-web`, walks every button on the search / browse /
+  share / insights / settings pages, asserts that each one
+  fires the expected network request and that the swap target
+  updates. 25 assertions. This is the test that finally
+  caught the four bugs that PR #1 + PR #2 + PR #F1 shipped
+  silently. Every commit that changes templ + htmx + JS +
+  handler code must keep this green.
 - Removed the unused SSE endpoint `/jobs/{id}/stream` and its
   handler (`streamJobProgress`, `writeJobEvent`,
   `isTerminalJobStatus`). No JS consumer in `app.js` opened an
@@ -130,6 +139,37 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   back to the data-* mirror. Also added `input` to the
   `triggerInputRequest` regex so the quick-search trigger
   (`input changed delay:300ms`) actually fires.
+
+- **htmxattr.Mux.Attrs() used `templ.SafeURL` for URL values
+  — which templ.RenderAttributes silently drops.** This was
+  the deepest bug in the chain: every `htmxattr.Mux{Get: ...}`
+  call rendered the form/button without an `hx-get` attribute
+  at all. The 16 unit tests in `internal/htmxattr/` passed
+  because they only inspect the `templ.Attributes` map;
+  nothing rendered the map through `templ.RenderAttributes`
+  in a test. Fix: use plain `string` for URL values (not
+  `templ.SafeURL`). The `SafeURL` wrapper is meaningful inside
+  templ expression context but breaks in spread-attribute
+  context.
+
+- **Browse filter changes now auto-apply** (previously saved
+  draft state only). The change handler in app.js calls
+  `queueRequest(form)` after saving draft state, so the
+  `/browse/results` request fires immediately. Updated the
+  `TestBrowseFilterChangeSavesDraftWithoutAutoApplyingIt`
+  Node-harness test (renamed to
+  `TestBrowseFilterChangeAutoAppliesAndPersistsDraft`) to
+  match the new behavior. The harness needed `window.setTimeout`
+  added to the `windowMock` object so `queueRequest`'s
+  `setTimeout(..., 0)` callback can drain.
+
+- **`hxAttr` / `hxHas` duck-type the Element contract instead
+  of `instanceof Element`.** `instanceof Element` is
+  browser-only and broke the Node test harness for browse
+  filter changes (the harness mocks `HTMLElement` but not
+  `Element`). Now they check for `getAttribute` /
+  `hasAttribute` method existence, which both real browsers
+  and the mock satisfy.
 
 ### Removed
 

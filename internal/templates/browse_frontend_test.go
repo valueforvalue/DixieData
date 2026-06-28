@@ -387,8 +387,9 @@ if (pageField.value !== "1") {
 	runBrowseFrontendHarness(t, script)
 }
 
-func TestBrowseFilterChangeSavesDraftWithoutAutoApplyingIt(t *testing.T) {
+func TestBrowseFilterChangeAutoAppliesAndPersistsDraft(t *testing.T) {
 	script := `
+(async () => {
 const fs = require("fs");
 const vm = require("vm");
 
@@ -576,6 +577,8 @@ const windowMock = {
   scrollTo() {},
 };
 windowMock.location.assign = () => {};
+windowMock.setTimeout = setTimeout;
+windowMock.clearTimeout = clearTimeout;
 
 Object.assign(global, {
   window: windowMock,
@@ -625,8 +628,20 @@ for (const handler of listeners.change || []) {
   handler({ target: unitField });
 }
 
-if (fetchCalls !== 0) {
-  throw new Error("changing browse filters should not auto-apply until submit");
+// Drain pending timers so queueRequest's setTimeout(..., 0) callback
+// has a chance to fire before we assert.
+await new Promise((resolve) => setImmediate(resolve));
+await new Promise((resolve) => setTimeout(resolve, 50));
+
+// Behavior change (2026-06-27): browse filter changes now auto-apply.
+// The change handler in app.js calls queueRequest(form) so the form
+// fires its hx-get /browse/results request. Before this change the
+// filters only saved draft state and required an explicit submit;
+// users reported "browse alphabetically doesn't load results" and
+// "filter changes don't refresh the table" as bugs. The smoke test
+// in audit/smoke.mjs covers the new auto-apply behavior end-to-end.
+if (fetchCalls !== 1) {
+  throw new Error("changing browse filters should auto-apply once via queueRequest; got fetchCalls=" + fetchCalls);
 }
 if (pageField.value !== "1") {
   throw new Error("changing browse filters should reset the pending page to 1");
@@ -635,6 +650,7 @@ const saved = JSON.parse(windowMock.localStorage.getItem("dixiedata.browse.state
 if (saved.unit !== "Alabama Cavalry") {
   throw new Error("changing browse filters should persist the draft state");
 }
+})().catch((err) => { console.error(err); process.exit(1); });
 `
 
 	runBrowseFrontendHarness(t, script)
