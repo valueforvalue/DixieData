@@ -17,6 +17,17 @@ import (
 // instead of the legacy 'Export complete. Open {label}.' block.
 // The primary CTA is always Dismiss; the artifact action (Open /
 // Save) is a secondary button below the summary card.
+//
+// The body of the page is rendered by jobStatusBody so the
+// landing page and the polling fragment share the same source
+// of truth. Before that refactor the landing page was a static
+// snapshot — it never included the hx-get / hx-trigger that
+// drives the 2s poll, so the page froze at the value captured
+// in the 303 redirect even while the job ran to completion in
+// the background. The user reported this as "the static archive
+// status page never updates" because static_archive exports run
+// fast enough that the page almost always lands after the job
+// has already finished.
 templ JobStatusView(job jobs.Job) {
 	@Layout("Export in progress") {
 		<div class="relative mx-auto max-w-3xl space-y-6">
@@ -25,39 +36,7 @@ templ JobStatusView(job jobs.Job) {
 				<h2 class="mt-2 text-2xl font-bold text-[#22303d]">{ jobLabel(job.Kind) }</h2>
 				<p class="mt-2 text-sm text-slate-600">Job ID <code class="rounded bg-slate-100 px-1.5 py-0.5">{ job.ID }</code></p>
 			</div>
-			<div class="card rounded-2xl p-5 space-y-4" id="job-status-body" data-job-id={ job.ID }>
-				if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
-					<div class="flex items-center justify-between text-sm text-slate-600">
-						<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
-						if job.Message != "" {
-							<span>{ job.Message }</span>
-						}
-					</div>
-					<div class="h-3 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ fmt.Sprintf("%d", job.Progress) } aria-label="Export progress">
-						<div class="h-full rounded-full bg-[#8d7440] transition-all" style={ fmt.Sprintf("width: %d%%", job.Progress) }></div>
-					</div>
-					<p class="text-xs text-slate-500">{ fmt.Sprintf("%d", job.Progress) } percent complete</p>
-				}
-				if job.Status == jobs.StatusDone {
-					@jobSummaryCard(job)
-				}
-				if job.Status == jobs.StatusError {
-					<div class="rounded-2xl border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.08)] p-4 text-sm text-[#6f2c26]">
-						<p class="font-semibold">Export failed.</p>
-						<p class="mt-1 break-words">{ job.Error }</p>
-					</div>
-				}
-				if job.Status == jobs.StatusCancelled {
-					<div class="rounded-2xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-						<p class="font-semibold">Export cancelled.</p>
-					</div>
-				}
-				if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
-					<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/cancel") } class="flex justify-end">
-						@components.Button("Cancel", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
-					</form>
-				}
-			</div>
+			@jobStatusBody(job)
 			<p class="text-xs text-slate-500">Status updates automatically. Leave this page open or return to <a href="/" class="text-[#8d7440] underline">the dashboard</a>.</p>
 		</div>
 	}
@@ -121,10 +100,22 @@ func quoteAttr(s string) string {
 	return string(out)
 }
 
-// JobStatusFragment is the polling fragment htmx swaps in every 2s.
-templ JobStatusFragment(job jobs.Job) {
+// jobStatusBody is the shared live body for the job status page.
+// Renders the wrapping div with id="job-status-body" and wires
+// the 2s htmx poll against /jobs/{id}/status. The poll stops
+// when the job reaches a terminal state (done / error /
+// cancelled / interrupted) because the swapped-in fragment
+// emits hx-trigger="none" — see JobStatusFragment.
+//
+// Both JobStatusView (the full page that lives at /jobs/{id})
+// and JobStatusFragment (the fragment served from
+// /jobs/{id}/status) embed this body so the landing page and
+// the polling response share the same source of truth. Before
+// the extraction the full page was a static snapshot and never
+// updated after the 303 redirect.
+templ jobStatusBody(job jobs.Job) {
 	<div class="card rounded-2xl p-5 space-y-4" id="job-status-body" data-job-id={ job.ID }
-		if job.Status == jobs.StatusDone || job.Status == jobs.StatusError || job.Status == jobs.StatusCancelled {
+		if job.Status == jobs.StatusDone || job.Status == jobs.StatusError || job.Status == jobs.StatusCancelled || job.Status == jobs.StatusInterrupted {
 			hx-trigger="none"
 		} else {
 			hx-get={ templ.SafeURL(routebuilder.JobStatus(job.ID)) }
@@ -164,6 +155,15 @@ templ JobStatusFragment(job jobs.Job) {
 			</form>
 		}
 	</div>
+}
+
+// JobStatusFragment is the polling fragment htmx swaps in every 2s.
+// Delegates to jobStatusBody so the body and the polling response
+// cannot drift; both render the same wrapping div with id=
+// "job-status-body" so the outerHTML swap in jobStatusBody's
+// hx-swap lands cleanly.
+templ JobStatusFragment(job jobs.Job) {
+	@jobStatusBody(job)
 }
 
 func jobLabel(kind string) string {

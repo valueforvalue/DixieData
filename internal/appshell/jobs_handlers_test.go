@@ -38,6 +38,58 @@ func TestHandleJobStatusFragmentRoute(t *testing.T) {
 	}
 }
 
+// TestHandleJobStatusFullPageWiresThePoll is the end-to-end net
+// for the "static archive status page never updates" bug. The
+// full-page route /jobs/{id} is what the user lands on after the
+// 303 redirect from the export handler; before the body
+// extraction it rendered a static snapshot (no hx-get /
+// hx-trigger), so a job that finished during the redirect
+// window left the page reading "running" forever even though
+// the artifact sat ready in /jobs/{id}/artifact. The fix wires
+// the same 2s poll into the full page that the fragment uses.
+//
+// The test holds the job open on a channel so the worker
+// cannot transition to a terminal state during the render.
+// Without that hold the static_archive worker returns
+// immediately and the rendered page legitimately emits
+// hx-trigger="none" (because the body has the same terminal
+// branch as the fragment). The point of the test is that the
+// running-state branch wires the poll; the terminal branch is
+// covered by TestJobStatusViewPollsForUpdates/done_job_stops_polling.
+func TestHandleJobStatusFullPageWiresThePoll(t *testing.T) {
+	app := newStressApp(t)
+	hold := make(chan struct{})
+	id := app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(50, "Gathering images")
+		<-hold
+		return nil
+	})
+	t.Cleanup(func() { close(hold) })
+	// Wait for the worker to mark the job running so the body
+	// chooses the poll branch (not the terminal-stop branch).
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := app.jobs.Get(id)
+		if snap.Status == jobs.StatusRunning {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id, nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `hx-get="/jobs/`+id+`/status"`) {
+		t.Fatalf("full /jobs/{id} page must wire hx-get against the polling endpoint so the page auto-updates while the job runs; the body extraction in templates/jobs.templ guarantees both the view and the fragment share the same source of truth. Got body:\n%s", body)
+	}
+	if !strings.Contains(body, `hx-trigger="every 2s"`) {
+		t.Errorf("full /jobs/{id} page must poll every 2s; got body:\n%s", body)
+	}
+}
+
 func TestHandleJobCancelUnknownJobReturns404(t *testing.T) {
 	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodPost, "/jobs/missing/cancel", nil)
