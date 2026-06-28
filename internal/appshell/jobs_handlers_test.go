@@ -271,8 +271,8 @@ func TestRenderActiveJobReturnsSlotFragmentForLatest(t *testing.T) {
 		t.Fatalf("expected 200 with active job, got %d", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "data-progress-region") {
-		t.Fatalf("slot fragment should target [data-progress-region]; got:\n%s", body)
+	if !strings.Contains(body, "data-jobs-progress-region") {
+		t.Fatalf("slot fragment should target [data-jobs-progress-region]; got:\n%s", body)
 	}
 	if !strings.Contains(body, "json_export") {
 		t.Fatalf("slot fragment should show job label; got:\n%s", body)

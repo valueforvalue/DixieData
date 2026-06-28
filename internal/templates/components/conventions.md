@@ -61,13 +61,45 @@ Or use the typed wrapper for HTMX attributes:
 
 `hx-target` and `hx-select` attributes that start with `#` should
 reference an ID from `internal/uiids.Registry`. The registry holds
-78 surface identifiers (PageCalendar, PanelBrowseResults, etc.). The
+79 surface identifiers (PageCalendar, PanelBrowseResults, etc.). The
 `TestHXTargetsPreferRegistry` test reports ad-hoc selectors that
 should be promoted to the registry.
 
 Ad-hoc selectors are allowed (transient panels like `#feedback-form`
 don't earn a registry entry) but consider promoting them when the
 panel becomes durable.
+
+### Naming convention for surfaces
+
+Every surface in the registry follows a dotted form that maps to
+where it lives:
+
+- `page.<area>` — top-level page (e.g. `page.calendar`,
+  `page.soldier.detail`).
+- `panel.<area>.<region>` — region inside a page (e.g.
+  `panel.browse.results`).
+- `tab.<area>.<region>` — tab trigger that switches between panels
+  in the same page.
+- `overlay.<feature>` — full-app overlay not bound to a page
+  (e.g. `overlay.floating.menu`, `overlay.jobs.progress`). Lives
+  in `layout.templ` and renders over every page; htmx fragments
+  target it via `data-<feature>-*` attribute, not `id`. The
+  `jobs.progress` overlay is the canonical example:
+  `uiids.OverlayJobsProgress` lives at
+  `<div class="jobs-progress-overlay" data-jobs-progress-region>`
+  in `internal/templates/layout.templ`, and the
+  `JobStatusSlotFragment` targets it with
+  `hx-target="[data-jobs-progress-region]"`.
+
+When adding a new surface:
+1. Add the constant to `internal/uiids/uiids.go` in the canonical
+   block (alphabetic by Surface ID; matches the existing order).
+2. Add a row to `Registry` with `Kind` matching the prefix above.
+3. Reference the constant in the templ markup (never inline the
+   string). If the surface is an overlay, also add a CSS class
+   in `frontend/tailwind.css` named `<feature>-<region>` and a
+   `data-<feature>-<region>` attribute on the wrapper so htmx
+   fragments can target it without an `id` collision.
 
 ## HTMX attribute typing
 

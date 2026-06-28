@@ -335,7 +335,7 @@ async function main() {
 
   // [8] Progress slot swap (commit b185f0e). The layout's
   // progress slot polls /jobs/active and uses hx-swap="innerHTML"
-  // against the [data-progress-region] wrapper. Without the
+  // against the [data-jobs-progress-region] wrapper. Without the
   // fix the wrapper itself got replaced and the next poll logged
   // htmx:targetError and the progress bar froze. This assertion
   // exercises the live /jobs/active endpoint on a page that has
@@ -344,7 +344,7 @@ async function main() {
   await page.goto(`${BASE}/calendar`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(400);
   const progressRegionCount = await page.evaluate(async () => {
-    const baseline = document.querySelectorAll('[data-progress-region]').length;
+    const baseline = document.querySelectorAll('[data-jobs-progress-region]').length;
     for (let i = 0; i < 3; i++) {
       try {
         await fetch('/jobs/active', { headers: { 'HX-Request': 'true' } });
@@ -352,10 +352,10 @@ async function main() {
     }
     return {
       baseline,
-      after: document.querySelectorAll('[data-progress-region]').length,
+      after: document.querySelectorAll('[data-jobs-progress-region]').length,
     };
   });
-  record('progress-region-survives-polls', progressRegionCount.baseline >= 1 && progressRegionCount.after >= progressRegionCount.baseline, progressRegionCount);
+  record('jobs-progress-overlay-survives-polls', progressRegionCount.baseline >= 1 && progressRegionCount.after >= progressRegionCount.baseline, progressRegionCount);
 
   // ────────────────────────────────────────────────────────────────────
   // Summary
