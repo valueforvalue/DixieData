@@ -572,14 +572,45 @@
     return form instanceof HTMLFormElement ? form : null;
   }
 
+  // hxAttr reads an hx-* attribute from the live DOM, falling back
+  // to its data-hx-* mirror if the original was stripped at boot.
+  //
+  // Why this exists: DOMContentLoaded strips hx-* attributes from
+  // every element to prevent htmx's auto-handling from double-firing
+  // alongside app.js's own request() / queueRequest() / triggerInputRequest
+  // handlers. But those same handlers read hx-* attrs to construct
+  // the fetch. Without a fallback, the reads returned empty / null
+  // and every click handler bailed out (the bug class fixed in
+  // 2026-06-27 — see CHANGELOG.md entry).
+  //
+  // Strip order at boot is: cache value to data-hx-*, then remove
+  // hx-*. Both paths return the same string here.
+  function hxAttr(el, name) {
+    if (!(el instanceof Element)) {
+      return null;
+    }
+    const direct = el.getAttribute(name);
+    if (direct !== null) {
+      return direct;
+    }
+    return el.getAttribute("data-" + name);
+  }
+
+  function hxHas(el, name) {
+    if (!(el instanceof Element)) {
+      return false;
+    }
+    return el.hasAttribute(name) || el.hasAttribute("data-" + name);
+  }
+
   function getMethod(el) {
-    if (el.hasAttribute("hx-post")) {
+    if (hxHas(el, "hx-post")) {
       return "POST";
     }
-    if (el.hasAttribute("hx-put")) {
+    if (hxHas(el, "hx-put")) {
       return "PUT";
     }
-    if (el.hasAttribute("hx-delete")) {
+    if (hxHas(el, "hx-delete")) {
       return "DELETE";
     }
     const form = closestParentForm(el);
@@ -590,7 +621,7 @@
   }
 
   function getUrl(el, method) {
-    const direct = el.getAttribute(`hx-${method.toLowerCase()}`);
+    const direct = hxAttr(el, `hx-${method.toLowerCase()}`);
     if (direct) {
       return direct;
     }
@@ -2934,7 +2965,7 @@
       return;
     }
 
-    const confirmMessage = el.getAttribute("hx-confirm");
+    const confirmMessage = hxAttr(el, "hx-confirm");
     if (confirmMessage && !window.confirm(confirmMessage)) {
       return;
     }
@@ -3026,7 +3057,7 @@
   }
 
   function queueRequest(el) {
-    const trigger = el.getAttribute("hx-trigger") || "";
+    const trigger = hxAttr(el, "hx-trigger") || "";
     const delay = parseDelay(trigger);
     const existingTimer = timers.get(el);
     if (existingTimer) {
@@ -3371,14 +3402,31 @@
     // network round-trips and preventDefault on submit to avoid
     // duplicate fetches. window.htmx is still defined (third-party code
     // can check for it). See audit/reports/SLICES.md for context.
+    //
+    // BUGFIX (2026-06-27): the original implementation removed hx-* attrs
+    // directly, but app.js's handlers (request(), getMethod(), getUrl(),
+    // triggerInputRequest()) read those same attrs to construct the
+    // fetch. After stripping, every read returned empty / null, so
+    // every click handler bailed out and the button did nothing.
+    // Cache each attr into a data-* mirror before stripping, then read
+    // from data-* in the handlers below.
+    const cachedAttrs = ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-confirm", "hx-include"];
     document.querySelectorAll("[hx-get], [hx-post], [hx-put], [hx-delete], [hx-trigger]").forEach((el) => {
-      // Strip the trigger + URL attrs so app.js's own request handlers
-      // own network round-trips. Keep hx-target / hx-swap so htmx can
-      // resolve the swap target when it does fire the request from a
-      // cached config. Without hx-target, htmx falls back to swapping
-      // into the triggering element (the search form), which destroys
-      // the search input on every keystroke.
-      ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-confirm", "hx-include"].forEach((attr) => el.removeAttribute(attr));
+      // Cache hx-* attrs as data-* mirrors so app.js handlers can
+      // read them after the originals are stripped.
+      cachedAttrs.forEach((attr) => {
+        const value = el.getAttribute(attr);
+        if (value !== null) {
+          el.setAttribute("data-" + attr, value);
+        }
+        // Strip the trigger + URL attrs so htmx doesn't double-fire.
+        // Keep hx-target / hx-swap so htmx can resolve the swap target
+        // when it does fire the request from a cached config. Without
+        // hx-target, htmx falls back to swapping into the triggering
+        // element (the search form), which destroys the search input
+        // on every keystroke.
+        el.removeAttribute(attr);
+      });
     });
 
     ensureResponsiveLayoutWatcher();
@@ -3401,7 +3449,7 @@
     hydrateRecentSearchResults();
     initializeBrowseView();
     openPrintConfigFromQuery();
-    document.querySelectorAll('[hx-trigger="load"]').forEach((el) => {
+    document.querySelectorAll('[data-hx-trigger="load"]').forEach((el) => {
       request(el);
     });
     window.requestAnimationFrame(() => clampPopoutPanels(document));
@@ -3680,7 +3728,7 @@
       request(mergeReviewAction);
       return;
     }
-    const el = event.target.closest("[hx-get],[hx-post],[hx-delete]");
+    const el = event.target.closest("[hx-get],[hx-post],[hx-delete],[data-hx-get],[data-hx-post],[data-hx-delete]");
     if (!el || el instanceof HTMLFormElement) {
       return;
     }
@@ -3698,7 +3746,7 @@
       submitPrintConfig(form, event.submitter instanceof HTMLElement ? event.submitter : form);
       return;
     }
-    if (!form.hasAttribute("hx-get") && !form.hasAttribute("hx-post") && !form.hasAttribute("hx-put")) {
+    if (!hxHas(form, "hx-get") && !hxHas(form, "hx-post") && !hxHas(form, "hx-put")) {
       return;
     }
     event.preventDefault();
@@ -3706,12 +3754,12 @@
   });
 
   const triggerInputRequest = (event) => {
-    const el = event.target.closest("[hx-trigger]");
+    const el = event.target.closest("[hx-trigger],[data-hx-trigger]");
     if (!el) {
       return;
     }
-    const trigger = el.getAttribute("hx-trigger") || "";
-    if (!trigger.includes("keyup") && !trigger.includes("changed")) {
+    const trigger = hxAttr(el, "hx-trigger") || "";
+    if (!trigger.includes("keyup") && !trigger.includes("input") && !trigger.includes("changed")) {
       return;
     }
     queueRequest(el);
