@@ -2722,6 +2722,38 @@
       return;
     }
 
+    // htmx 2.0 swap semantics for the four positional values:
+    //   beforebegin / afterbegin — relative to target, BEFORE/AFTER first child
+    //   beforeend   / afterend   — relative to target, BEFORE/AFTER last child
+    // App.js's earlier implementation silently dropped into
+    // `target.innerHTML = html` for every non-outerHTML / non-none
+    // value, which replaced the entire target's contents instead of
+    // appending / prepending. Symptom: clicking the 🐞 Debug button
+    // (hx-get /debug/console, hx-target body, hx-swap beforeend)
+    // wiped the whole page; closing the stranded panel left an
+    // empty document.body.
+    const swap = getSwap(el);
+    if (swap === "beforebegin") {
+      target.insertAdjacentHTML("beforebegin", html);
+      initializeDynamicContent();
+      return;
+    }
+    if (swap === "afterbegin") {
+      target.insertAdjacentHTML("afterbegin", html);
+      initializeDynamicContent();
+      return;
+    }
+    if (swap === "beforeend" || swap === "") {
+      target.insertAdjacentHTML("beforeend", html);
+      initializeDynamicContent();
+      return;
+    }
+    if (swap === "afterend") {
+      target.insertAdjacentHTML("afterend", html);
+      initializeDynamicContent();
+      return;
+    }
+
     target.innerHTML = html;
     initializeDynamicContent();
     scrollShareStatusIntoView(target);
@@ -3029,6 +3061,23 @@
         }
         rememberRedirectState(el, redirectTo, html, requestState);
         window.location.assign(redirectTo);
+        return;
+      }
+      // HTTP 303 (See Other) used by enqueueExport to redirect the
+      // browser to /jobs/{id} after queuing a background job. fetch
+      // follows the redirect by default, so response.redirected is
+      // true and response.url is the final (job status) URL. Without
+      // this branch, the export button silently bails: getTarget
+      // returns null for hx-target="this", applyResponse returns
+      // early, and the user has no feedback that the job started.
+      // The static archive's <form method="post"> works because the
+      // browser follows the 303 natively; this branch makes the
+      // hx-post exports behave the same way.
+      if (response.redirected && response.url !== requestUrl) {
+        if (form instanceof HTMLFormElement && response.ok) {
+          clearDraftForForm(form);
+        }
+        window.location.assign(response.url);
         return;
       }
       if (form instanceof HTMLFormElement && response.ok && response.redirected) {
