@@ -3,7 +3,7 @@
 This is the canonical roadmap for DixieData's headless CLI surface.
 Phases ship one at a time; this file updates after each ship.
 
-**Status snapshot** (last update after commit `98ddb45`; Phase 7 shipped in the same series):
+**Status snapshot** (last update after commit `a1e6222`):
 
 | Phase | Status | Commit |
 |-------|--------|--------|
@@ -12,8 +12,13 @@ Phases ship one at a time; this file updates after each ship.
 | 3 — `list` / `show` / `search` | ✅ shipped | `e5f8e61` |
 | 4 — `export ...` | ✅ shipped | `e4474b7` |
 | 5 — `import ...` | ✅ shipped | `98ddb45` |
-| 6 — `migrate` / `backup` / `restore point` / `logs` / `config` | ⏳ backlog | — |
-| 7 — `debug ...` | ✅ shipped | `82bf194` |
+| 5b — pre-import restore-point safety net (re-enabled via sibling root) | ✅ shipped | `35ab425` |
+| 6 — admin subcommands + `--data-dir` + sibling restore-point root | ✅ shipped | `91dc8b8` |
+| 7 — `debug ...` (dump / hx-invariants / browser-tree / request) | ✅ shipped | `5b32510` (merged `a1e6222`) |
+
+**All seven phases shipped.** The CLI is feature-complete per this
+plan. Open follow-up work is now tracked in this file's
+"Follow-up" section below, not as separate phases.
 
 ## Design
 
@@ -33,9 +38,12 @@ Dispatch order in main.go (most specific first):
 1. `appshell.HasDoctorFlag` — `doctor` subcommand
 2. `appshell.HasQuerySubcommand` — `list` / `show` / `search`
 3. `appshell.HasExportSubcommand` — `export ...`
-4. `appshell.HasImportSubcommand` — `import ...` (Phase 5, not yet wired)
-5. `appshell.HasSmokeFlag` / `EnvRequestsSmoke` — `--smoke` / `DIXIEDATA_SMOKE=1`
-6. fall through to Wails GUI
+4. `appshell.HasImportSubcommand` — `import ...`
+5. `appshell.HasAdminSubcommand` — `migrate` / `backup` /
+   `restore point` / `logs` / `config`
+6. `appshell.HasDebugSubcommand` — `debug ...`
+7. `appshell.HasSmokeFlag` / `EnvRequestsSmoke` — `--smoke` / `DIXIEDATA_SMOKE=1`
+8. fall through to Wails GUI
 
 Each subcommand handler follows the same pattern:
 
@@ -72,8 +80,8 @@ If we ever hit >20 subcommands, revisit.
 - All subcommands support `--help` (generated from a docstring table;
   doctor / smoke already auto-print their flags in failure messages).
 - All subcommands accept `--data-dir <path>` to override the data dir
-  (default: standard location via `appdata`). *(Not yet wired — see
-  Phase 6 admin / Open questions.)*
+  (default: standard location via `appdata`). Precedence:
+  **CLI flag > env var > default**. Shipped in commit `91dc8b8`.
 - Bool flags: `--no-images`, `--printer-friendly`, `--dry-run`, `--fix`,
   `--yes`.
 - Both `--flag value` and `--flag=value` forms are accepted everywhere.
@@ -349,50 +357,88 @@ should stay unchanged for the in-place update flow.
   pre-merge state is not preserved anywhere else. Phase 6's
   sibling root unblocks this.
 
-### Phase 6 — admin subcommands ⏳ backlog
+### Phase 6 — admin subcommands ✅ shipped (commit `91dc8b8`)
 
 ```
 dixiedata migrate status
 dixiedata migrate up
-dixiedata migrate down <version>
 dixiedata backup list
 dixiedata backup prune --keep-last N
 dixiedata restore point list
-dixiedata restore point create [--note <text>]
-dixiedata restore point apply <id>
-dixiedata logs tail [--follow]
+dixiedata restore point create [--note <text>] [--root <path>]
+dixiedata restore point apply <id>          # placeholder: prints record
 dixiedata logs path
+dixiedata logs tail [--follow] [--lines N]
 dixiedata config show
 dixiedata config set <key> <value>
 ```
 
-Each maps to an existing `*App` method.
+All commands accept `--data-dir PATH` (sets
+`DIXIEDATA_DATA_DIR` before `App.Startup` so
+`appdata.DefaultDir()` picks it up via the existing env-var
+fallback in `internal/appdata/appdata.go`) and `--json` for
+a stable JSON envelope.
 
-- `migrate` wraps the SQLite migration runner. `migrate up` is just
-  `db.Open(dataDir)` (idempotent — `applySchema` short-circuits if
-  `user_version == CurrentSchemaVersion`). `migrate down` is more
-  invasive; consider whether we want it.
-- `backup` / `restore point` wrap the existing `.ddbak` /
-  restore-point machinery. **Phase 6's `restore point` subcommand
-  is the dependency for re-enabling the pre-import safety net
-  that Phase 5 had to disable** (see "Restore-point finding"
-  above). Specifically: Phase 6 must add a sibling
-  `.dixiedata-restore-points/` root OUTSIDE the data dir before
-  `import shared-archive --yes` can offer a rollback safety net.
-  The current `RestorePointManager` writes inside the data dir
-  and conflicts with `replaceDataDir`. New constructor
-  `NewSiblingRestorePointManager(siblingDir)` (or equivalent)
-  writes to the sibling and survives the data-dir swap. Once
-  that lands, Phase 5 should call the sibling manager in
-  `createImportRestorePoint` and resume printing the ID for
-  rollback via `restore point apply`.
-- `logs tail` reads the JSONL file directly (last N lines). `--follow`
-  tails like `tail -f`. Needs careful handling of file rotation.
-- `config show` / `config set` operate on the SQLite-backed
-  `local_settings` table.
-- Add `--data-dir` flag support to all subcommands here (and Phase 7).
+**Dispatch table — every subcommand hits an existing service:**
 
-### Phase 7 — debugging ✅ shipped (commit `82bf194`)
+| Command | Implementation |
+|---------|---------------|
+| `migrate status`        | `db.Open(dataDir)` + `PRAGMA user_version` query. Prints applied vs current schema, app build, status (up-to-date / pending). |
+| `migrate up`            | `db.Open(dataDir)` twice (first to read pre-state, second to trigger `applySchema`). applySchema short-circuits if already at `CurrentSchemaVersion`, so this is a no-op on up-to-date DBs. |
+| `backup list`           | `update.NewRetainedBackupManager(dataDir).List()` — pre-schema-upgrade snapshots, newest-first. |
+| `backup prune`          | Loop: keep first `--keep-last N` (default 5, matches `defaultMaxRetainedBackups`), `os.RemoveAll` the rest. Same shape `Housekeeping()` would use, but invoked on demand. |
+| `restore point list`    | `a.restorePoints.List()` — the in-place update manager wired in `lifecycle.go`. |
+| `restore point create`  | Default: `a.restorePoints.Create(...)` writing to `<dataDir>/updates/restore-points/<id>/`. With `--root PATH`: `update.NewSiblingRestorePointManager(dataDir, root).Create(...)` writing to `<root>/<id>/`. Both call `a.backup.Export` for the local-archive snapshot. |
+| `restore point apply <id>` | `a.restorePoints.Get(id)` — prints the record. **Apply is NOT YET wired** (see "Open follow-up" below). |
+| `logs path`             | `appdata.AppLogPath(dataDir)` — single line. |
+| `logs tail`             | `os.ReadFile` the JSONL, `bufio.Scanner`, last N lines. `--follow` polls every 250ms, reopens on rotation (inode change detected via size rollback). |
+| `config show`           | `records.LoadLocalSettings(dataDir)`. |
+| `config set <key> <value>` | `LoadLocalSettings` + `SaveLocalSettings`. Only known keys accepted via `isKnownConfigKey` (currently `debug_mode`) — fails loudly on typos. |
+
+**`migrate down` is NOT shipped** — the schema-version-down
+path is best-effort and would need a fresh `--yes` guard plus
+a pre-migration snapshot. Phase 6 ships `status` + `up` (which
+is the same as opening the DB). The `down` command can land
+when the schema actually has a real down-migration story.
+
+**`restore point apply` is NOT YET wired** — the manager has
+no public Apply because the in-place update flow does the
+actual restore (downgrade via `internal/update` scripts). For
+Phase 6 we print the record so the user can manually `cp` the
+`local-archive.ddbak` aside and
+`dixiedata import backup --from <copy> --yes` to apply. A real
+`apply` is the "Open follow-up" item below.
+
+**Sibling restore-point root** — the design that unblocks
+Phase 5's pre-import safety net:
+
+- `NewRestorePointManager(dataDir)` UNCHANGED. The in-place
+  update flow keeps using it (binary swap doesn't move the
+  data dir, so the data-dir-resident root is correct for it).
+- `NewSiblingRestorePointManager(dataDir, root)` adds a `root`
+  field. When set:
+    - `restorePointsRoot()` returns `root` (not
+      `appdata.UpdateRestorePointsDir(dataDir)`)
+    - `pathBase()` returns empty (paths stored in the record
+      are `<id>/local-archive.ddbak`, NOT
+      `updates/restore-points/<id>/local-archive.ddbak`) so
+      they resolve cleanly under `root` via `absolutePath()`
+    - `absolutePath()` joins with `root`, not `dataDir`
+  When `root` is empty (in-place manager), `pathBase()` returns
+  `updates/restore-points` and `absolutePath()` joins with
+  `dataDir` — identical to the previous behavior.
+
+Locked regression test:
+`TestRestorePointManagerSiblingRootSurvivesDataDirRename` in
+`internal/update/restore_point_manager_test.go` creates a
+sibling manager, creates a restore point, RENAMES the data
+dir (simulating `archive.replaceDataDir`), asserts the
+sibling restore point is still on disk. This is the test that
+would have failed under the old in-place manager (and did
+fail during Phase 5's live testing, which is what kicked off
+Phase 6's sibling-root work).
+
+### Phase 7 — debugging ✅ shipped (commit `5b32510`, merged in `a1e6222`)
 
 ```
 dixiedata debug dump > archive-summary.json
@@ -444,9 +490,11 @@ every subcommand.
    precedence.** `--data-dir PATH` sets `DIXIEDATA_DATA_DIR`
    before `NewApp`, so `appdata.DefaultDir()` inside
    `startup()` picks it up. Same mechanism the Phase 6 admin
-   subcommands will use. Precedence: CLI flag > env var >
-   default. Centralised in `ApplyDebugDataDirOverride` so
-   Phase 6 can call it too.
+   subcommands use (`main.go`'s `firstDataDir` helper is
+   the canonical implementation; `ApplyDebugDataDirOverride`
+   in `cli_debug.go` is the package-internal equivalent
+   for debug subcommands). Precedence: CLI flag > env var >
+   default.
 
 5. **`hx-trigger` is intentionally NOT linted.** Triggers
    are event names (`click`, `keyup`, `intersect once`, etc.)
@@ -513,47 +561,45 @@ every subcommand.
 | 1 | smoke | ✅ | `df981a1` |
 | 2 | doctor | ✅ | `7d9fc69` |
 | 3 | list / show / search | ✅ | `e5f8e61` |
-| 4 | export | ✅ | `e4474b7` |
-| 5 | import (4 real kinds, --dry-run + --yes; pre-import restore-point REMOVED — see restore-point finding) | ✅ | `98ddb45` |
-| 6 | migrate / backup / restore point / logs / config / --data-dir (restore-point sibling root FIRST so Phase 5 can re-enable safety net) | ⏳ | — |
-| 7 | debug (incl. hx-invariants walker; read-only) | ✅ | `82bf194` |
+| 4 | export (9 subcommands; pdf / jpg / json / csv / ical / static-archive / backup / shared-archive) | ✅ | `e4474b7` |
+| 5 | import (4 real kinds, --dry-run + --yes; pre-import restore-point REMOVED) | ✅ | `98ddb45` |
+| 5b | re-enable pre-import restore-point safety net (sibling root + shared-archive merge rollback) | ✅ | `35ab425` |
+| 6 | admin subcommands + --data-dir + sibling restore-point root (migrate down + restore point apply not yet wired — see follow-up) | ✅ | `91dc8b8` |
+| 7 | debug (dump / hx-invariants / browser-tree / request; read-only) | ✅ | `5b32510` (merged `a1e6222`) |
 
 ## Cross-cutting concerns
 
 ### `--data-dir` flag
 
-Not yet implemented anywhere. Trivial addition to each `RunXxx`
-subcommand — `appdata.DefaultDir()` returns the default; we should
-honour `--data-dir=<path>` and `DIXIEDATA_DATA_DIR` env var in every
-subcommand. Phase 6 work.
+✅ Shipped in commit `91dc8b8`. Implemented in `main.go`'s
+`firstDataDir` helper, called by `runExportSubcommand` /
+`runImportSubcommand` / `runAdminSubcommand` /
+`runDebugSubcommand` (Phase 7 ships its own
+`appshell.ApplyDebugDataDirOverride` with the same semantics).
+Sets `DIXIEDATA_DATA_DIR` BEFORE `a.Startup(ctx)` so
+`appdata.DefaultDir()` picks it up via the existing env-var
+fallback in `internal/appdata/appdata.go`. Precedence:
+**CLI flag > env var > default**.
 
 ### JSON envelope standardisation
 
-Each subcommand defines its own `XxxResult` struct. They share
-fields but aren't unified. Consider a top-level envelope:
-
-```go
-type CLIResult struct {
-    Command    string        `json:"command"`
-    Subcommand string        `json:"subcommand,omitempty"`
-    StartedAt  string        `json:"started_at"`
-    DurationMs int64         `json:"duration_ms"`
-    Exit       int           `json:"exit"`
-    Error      string        `json:"error,omitempty"`
-    Data       json.RawMessage `json:"data,omitempty"` // subcommand-specific
-}
-```
-
-Adding this in Phase 6 (when `config show` returns structured data)
-unifies parsing for any downstream CI tool.
+Each subcommand still defines its own `XxxResult` struct
+(idiomatic for the per-subcommand output format). Top-level
+unification deferred indefinitely — the per-subcommand shapes
+are stable enough that downstream CI can parse them
+individually, and a top-level envelope would force every
+subcommand to wrap its data, losing the `jq -r '.soldiers'`
+ergonomics of the current shapes.
 
 ### Logging in headless mode
 
-Headless mode currently routes logs through `internal/debug` to the
-JSONL file at `<dataDir>/.dixiedata-logs/app.log.jsonl`. For
-debugging a failed CLI invocation, the user has to know where the
-log file is. Add a `--log-to-stderr` flag in Phase 6 that mirrors
-the JSONL to stderr in real time. Cheap (one `io.MultiWriter`).
+`--log-to-stderr` still NOT shipped. Headless mode routes logs
+through `internal/debug` to the JSONL file at
+`<dataDir>/.dixiedata-logs/app.log.jsonl`. For debugging a
+failed CLI invocation, the user has to know where the log
+file is (`dixiedata logs path` reveals it, but real-time
+mirroring to stderr would be cheaper). Cheap to add: one
+`io.MultiWriter` swap. Defer to follow-up.
 
 ## Anti-goals (re-confirmed)
 
@@ -565,28 +611,46 @@ the JSONL to stderr in real time. Cheap (one `io.MultiWriter`).
 - **No HTTP server in CLI mode.** CLI is single-shot. If you need a
   long-running process, that's the Wails app.
 
-## Open questions
+## Open follow-up (all phases shipped, these are next)
 
-1. **`--data-dir` precedence:** env var, CLI flag, default. Doc the
-   precedence order. (Easy; do in Phase 6.)
-2. **Import atomicity for shared-archive:** is `--dry-run` enough, or
-   do we need a "two-phase commit" with explicit `--apply`? The
-   restore-point snapshot covers rollback but not parallel-import
-   conflicts. Defer to Phase 5 design.
-3. **Backup format versioning:** `.ddbak` zip embeds a
-   `manifest.json` with `format: "1"` and `version: <n>`. When we
-   bump the format, does `import backup` reject older versions or
-   migrate? Currently rejects. Decision belongs with the import
-   command.
-4. **`--json` for shared-archive import:** when conflicts arise,
-   the report is large. JSON is the right format. Phase 5.
-5. **TUI for restore point resolution:** when an import has 50
-   conflicts, plain text is painful. Anti-goal says no TUI, so we
-   stick to JSON + `--filter-conflicts <field>=<value>` to narrow.
-6. **`dixiedata package` for building `.ddbak` / `.ddsa` bundles
-   from a directory tree** (not in any current user story, but
-   would be useful for CLI-only archive assembly without the GUI).
-   Defer indefinitely.
+Tracked separately from the phase plan now. Each item is small
+enough for its own commit.
+
+1. **`restore point apply` — real implementation.** Currently
+   prints the record; the actual restore would either
+   re-invoke `dixiedata import backup --from <copy>` (clunky)
+   or refactor `archive.replaceDataDir` to accept an
+   alternate target (cleaner). Block on whether we need
+   in-process restore (CLI script-friendly) or only
+   manual-copy-then-import (user-driven).
+
+2. **`migrate down <version>`.** Best-effort undo path;
+   needs a `--yes` guard plus a pre-migration snapshot.
+   Schema actually has a real down-migration story would
+   unblock this.
+
+3. **`--log-to-stderr`.** Mirror JSONL to stderr in real
+   time via `io.MultiWriter`. Cheap.
+
+4. **JSON envelope unification.** See "Cross-cutting
+   concerns" above. Parked indefinitely.
+
+5. **`dixiedata package` for building `.ddbak` / `.ddsa`
+   bundles from a directory tree.** Not in any current user
+   story. Defer indefinitely.
+
+6. **TUI for restore point resolution.** When an import has
+   50 conflicts, plain text is painful. Anti-goal says no
+   TUI, so we stick to JSON +
+   `--filter-conflicts <field>=<value>` to narrow (not
+   shipped; not blocking).
+
+7. **Backup format versioning.** `.ddbak` zip embeds a
+   `manifest.json` with `format: "1"` and `version: <n>`.
+   When we bump the format, does `import backup` reject
+   older versions or migrate? Currently rejects. Decision
+   belongs with the import command when a real format
+   bump happens.
 
 ## What this enables (cumulative)
 
@@ -605,10 +669,13 @@ After Phase 7 ships:
   all from a shell.
 - **Disaster recovery** (backup import): re-import a different
   `.ddbak`. The original `.ddbak` IS the rollback artifact.
-- **Disaster recovery** (shared-archive import): review pending
-  conflicts in the merge-review UI. No automatic rollback yet;
-  the restore-point sibling root is Phase 6 work that would
-  unlock `restore point apply <id>` for shared-archive imports.
+- **Disaster recovery** (shared-archive import): a sibling
+  restore-point snapshot at `<parent>/.dixiedata-restore-points/<id>/`
+  is taken BEFORE the merge (commit `35ab425`); the ID is
+  printed in import output. A real `restore point apply <id>`
+  is parked in follow-up; for now, manual rollback is
+  `dixiedata import backup --from <archived-.ddbak> --yes`
+  (the .ddbak in the sibling dir IS the pre-merge snapshot).
 - **Integration tests** boot a real `*App`, drive imports + exports
   via the CLI, assert output files + DB state. No Wails, no
   Playwright, no GUI.
@@ -622,7 +689,9 @@ After Phase 7 ships:
 - **User support** runs `dixiedata debug request /some/path`
   to reproduce a browser request from a shell. Returns the
   same status + headers + body the GUI would see, without
-  the WebView2 focus-race that bites the GUI.
+  the WebView2 focus-race that bites the GUI. (Note: under
+  Git Bash on Windows, prefix with `MSYS_NO_PATHCONV=1` so
+  `/calendar` is not converted to a Windows path.)
 
 ## References
 
@@ -639,6 +708,10 @@ After Phase 7 ships:
 - `internal/appshell/cli_query.go` — Phase 3.
 - `internal/appshell/cli_export.go` — Phase 4.
 - `internal/appshell/cli_import.go` — Phase 5.
+- `internal/appshell/cli_admin.go` — Phase 6.
 - `internal/appshell/cli_debug.go` — Phase 7.
+- `internal/update/restore_point_manager.go` — sibling
+  manager added in Phase 6, unlocks Phase 5's pre-import
+  safety net (re-enabled in commit `35ab425`).
 - `docs/agents/doctor-impl-notes.md` — design decisions for the
   doctor's `templates_parseable` check (Typst stub strategy).
