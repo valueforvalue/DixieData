@@ -19,6 +19,43 @@ import (
 	"github.com/valueforvalue/DixieData/pkg/exportbridge"
 )
 
+// guardedSaveFileDialog wraps a.SaveFileDialog with the duplicate-request
+// guard used by handleCalendarPDF. Without it, a double-click (or any
+// back-to-back POST that reaches the handler before the user picks a
+// file) queues a SECOND native dialog on the Wails main window message
+// loop while the first is still up. Both block on the UI thread, and
+// the WebView2 frontend crashes with `Chrome_WidgetWin_0. Error = 1412`
+// (wailsapp/wails#2807). The guard returns a 429 with a friendly toast
+// so the second click is rejected without ever calling SaveFileDialog.
+//
+// The guard key is the export kind + a fingerprint of the dialog
+// options. Two requests with the same options collapse to one
+// dialog; two requests with different options (e.g. exporting JSON
+// then immediately exporting CSV) are independent and both proceed.
+//
+// CRITICAL: the slot is released AFTER SaveFileDialog returns, not
+// before. Releasing early (before the dialog returns) would let a
+// concurrent goroutine race through the LoadOrStore check and queue
+// a second native dialog while the first is still up — exactly the
+// scenario the guard is meant to prevent. The release happens in
+// `defer` so it covers both the success and the cancel/error paths.
+//
+// Every export handler that calls a.SaveFileDialog must route through
+// this helper. The calendar PDF handler carries an equivalent guard
+// inline; that handler predates this helper.
+func (a *App) guardedSaveFileDialog(kind string, opts runtime.SaveDialogOptions) (string, bool) {
+	dupKey := fmt.Sprintf("export|%s|%s|%v", kind, opts.DefaultFilename, opts.Filters)
+	if _, loaded := a.inFlight.LoadOrStore(dupKey, struct{}{}); loaded {
+		return "", false
+	}
+	defer a.inFlight.Delete(dupKey)
+	path, err := a.SaveFileDialog(opts)
+	if err != nil || path == "" {
+		return "", false
+	}
+	return path, true
+}
+
 
 // --- handleLegacyExportRedirect ---
 func (a *App) handleLegacyExportRedirect(w http.ResponseWriter, r *http.Request) {
@@ -52,14 +89,14 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("json_export", runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-export.json",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "JSON", Pattern: "*.json"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 	a.enqueueExport("json_export", func(p *jobs.Progress) error {
@@ -83,14 +120,14 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	options := parsePDFOptionsRequest(r, "P", false)
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("insights_pdf", runtime.SaveDialogOptions{
 		DefaultFilename: pdfReportName("dixiedata-archive-insights", options, false),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF", Pattern: "*.pdf"},
 		},
 	})
-	if err != nil || path == "" {
-		fmt.Fprint(w, "Analytics export cancelled.")
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 	a.enqueueExport("insights_pdf", func(p *jobs.Progress) error {
@@ -104,14 +141,14 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("excel_export", runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-export.xlsx",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Excel workbook", Pattern: "*.xlsx"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 	a.enqueueExport("excel_export", func(p *jobs.Progress) error {
@@ -125,14 +162,14 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("icalendar_export", runtime.SaveDialogOptions{
 		DefaultFilename: "dixiedata-anniversaries.ics",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "iCalendar", Pattern: "*.ics"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "iCalendar export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 	preferences, err := a.google.ManagedEventPreferences()
@@ -156,14 +193,14 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 	if suggested, err := a.export.StaticArchiveFileName(time.Now()); err == nil {
 		defaultName = suggested
 	}
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("static_archive", runtime.SaveDialogOptions{
 		DefaultFilename: defaultName,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "ZIP archive", Pattern: "*.zip"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Static web archive export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 	// Always enqueue — static archive export is heavy and the user
@@ -280,14 +317,14 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("backup_archive", runtime.SaveDialogOptions{
 		DefaultFilename: backupArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Backup export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 
@@ -307,14 +344,14 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("shared_archive", runtime.SaveDialogOptions{
 		DefaultFilename: sharedArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Shared archive export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 
@@ -331,14 +368,14 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := a.SaveFileDialog( runtime.SaveDialogOptions{
+	path, ok := a.guardedSaveFileDialog("bug_report", runtime.SaveDialogOptions{
 		DefaultFilename: archive.DiagnosticsBundleName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Bug report bundle", Pattern: "*.zip"},
 		},
 	})
-	if err != nil || path == "" {
-		respondError(w, r, KindValidation, "Bug report export cancelled.", nil)
+	if !ok {
+		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
 	}
 
