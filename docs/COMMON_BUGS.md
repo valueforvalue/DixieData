@@ -216,6 +216,53 @@ warns about ad-hoc `#id` selectors that aren't in the
 
 ---
 
+### 1.9 POST-then-navigate handler ignored by htmx 2.x when `hx-swap="none"`
+
+**Symptom:** User clicks the button. Network tab shows `303`
++ `Location: /target`. Page does NOT navigate. User stays on
+the originating page; the work runs invisibly in the background.
+
+**Why it happens:** htmx 2.x with `hx-swap="none"` suppresses
+both the swap AND the redirect handling. A plain `Location`
+header alone is ignored; the browser only navigates when the
+server also writes `HX-Redirect`. Native `<form method="post">`
+submits work because they bypass htmx entirely.
+
+**Real example:** commit `70878ac` added per-kind stats on
+`/jobs/{id}`. All six share-page exports landed server-side,
+but the export buttons stayed on `/share` until commit
+`3612dab` added `HX-Redirect`. `audit/smoke.mjs` had
+`share-${btn.path}-redirects-303` (header check only) and let
+it slip through.
+
+**Find it:**
+```bash
+grep -rn 'w.Header().Set("Location"' internal/appshell/*.go
+grep -rn 'StatusSeeOther' internal/appshell/*.go
+```
+Every 303 must have a sibling `HX-Redirect` set on the same
+handler.
+
+**Fix:** In every POST-then-navigate handler, after
+`w.Header().Set("Location", target)`, also call
+`w.Header().Set("HX-Redirect", target)`. Use the existing
+`(*App).enqueueExport` / `(*App).enqueueExportWithResult`
+helpers for export-style handlers; copy the two-line pattern
+for non-export cases. See
+`internal/templates/components/conventions.md`
+("Buttons that POST and expect navigation") for the canonical
+recipe.
+
+**Regression net:** `audit/smoke.mjs` records
+`share-${btn.path}-navigates-to-jobs` (asserts `page.url()`
+after click), not just `share-${btn.path}-redirects-303`.
+Any new POST-then-navigate handler should grow a matching
+`*-navigates-to-<dest>` assertion. Header-only checks are
+insufficient — they passed for a week while the user was
+stranded on `/share`.
+
+---
+
 ## 2. `.templ` markup bugs
 
 ### 2.1 Typst template fidelity — matching the legacy fpdf renderer
