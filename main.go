@@ -38,6 +38,10 @@ func main() {
 		code := runExportSubcommand()
 		os.Exit(code)
 	}
+	if appshell.HasImportSubcommand(os.Args[1:]) {
+		code := runImportSubcommand()
+		os.Exit(code)
+	}
 	if appshell.HasSmokeFlag(os.Args[1:]) || appshell.EnvRequestsSmoke() {
 		_, code := appshell.RunSmoke(context.Background(), appshell.SmokeOptions{
 			JSON: appshell.WantsSmokeJSON(os.Args[1:]),
@@ -105,6 +109,27 @@ func runExportSubcommand() int {
 	defer a.Shutdown(ctx)
 	opts.App = a
 	code, err := appshell.RunExport(ctx, opts)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+	}
+	return code
+}
+
+// runImportSubcommand mirrors runExportSubcommand. Same lifecycle.
+// No Wails — bypasses the native OpenFileDialog entirely (every
+// command takes --from PATH).
+func runImportSubcommand() int {
+	opts, err := appshell.ParseImportArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 3
+	}
+	a := appshell.NewApp()
+	ctx := context.Background()
+	a.Startup(ctx)
+	defer a.Shutdown(ctx)
+	opts.App = a
+	code, err := appshell.RunImport(ctx, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 	}
