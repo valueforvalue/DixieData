@@ -48,6 +48,10 @@ func main() {
 		code := runAdminSubcommand()
 		os.Exit(code)
 	}
+	if appshell.HasDebugSubcommand(os.Args[1:]) {
+		code := runDebugSubcommand()
+		os.Exit(code)
+	}
 	if appshell.HasSmokeFlag(os.Args[1:]) || appshell.EnvRequestsSmoke() {
 		_, code := appshell.RunSmoke(context.Background(), appshell.SmokeOptions{
 			JSON: appshell.WantsSmokeJSON(os.Args[1:]),
@@ -186,6 +190,37 @@ func runAdminSubcommand() int {
 	defer a.Shutdown(ctx)
 	opts.App = a
 	code, err := appshell.RunAdmin(ctx, opts)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+	}
+	return code
+}
+
+// runDebugSubcommand wires Phase 7 of cli-plan.md (debug ...).
+// Same lifecycle as runImportSubcommand — build *App, call
+// Startup, dispatch, call Shutdown. Honours --data-dir by
+// setting DIXIEDATA_DATA_DIR before constructing the App so
+// appdata.DefaultDir() inside startup() picks it up.
+//
+// Debug subcommands are strictly read-only. They never accept
+// --yes and never touch the archive file. Useful for support
+// workflows where the GUI is unavailable.
+func runDebugSubcommand() int {
+	opts, err := appshell.ParseDebugArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 3
+	}
+	if err := appshell.ApplyDebugDataDirOverride(opts.DataDir); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 3
+	}
+	a := appshell.NewApp()
+	ctx := context.Background()
+	a.Startup(ctx)
+	defer a.Shutdown(ctx)
+	opts.App = a
+	code, err := appshell.RunDebug(ctx, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 	}
