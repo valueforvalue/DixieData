@@ -140,7 +140,7 @@
     gap: 0.75rem;
     pointer-events: none;
   }
-  .progress-region {
+  .jobs-progress-overlay {
     position: fixed;
     top: 8rem;
     left: 50%;
@@ -149,7 +149,7 @@
     width: min(92vw, 42rem);
     pointer-events: none;
   }
-  .progress-region > * { pointer-events: auto; }
+  .jobs-progress-overlay > * { pointer-events: auto; }
   .toast-card {
     pointer-events: auto;
     display: flex;

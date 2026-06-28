@@ -122,8 +122,8 @@ func TestPageSnapshotLayout(t *testing.T) {
 	if doc.Find("[data-toast-region]").Length() == 0 {
 		t.Error("toast region missing")
 	}
-	if doc.Find("[data-progress-region]").Length() == 0 {
-		t.Error("progress region missing")
+	if doc.Find("[data-jobs-progress-region]").Length() == 0 {
+		t.Error("jobs progress overlay (uiids.OverlayJobsProgress) missing from layout")
 	}
 	assertNoDebugOverlayAttrs(t, "Layout", doc)
 }

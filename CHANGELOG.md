@@ -11,6 +11,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- The global layout progress popup is now named consistently
+  with the rest of the UI surface vocabulary:
+  - `uiids.OverlayJobsProgress` is the canonical surface ID
+    (kind: overlay). Added to `internal/uiids/uiids.go`
+    alongside the other overlays (FloatingMenu, FeedbackModal,
+    ImageViewer, etc.).
+  - CSS class `progress-region` renamed to
+    `jobs-progress-overlay` in `frontend/tailwind.css`.
+  - Data attribute `data-progress-region` renamed to
+    `data-jobs-progress-region` (follows the three-attribute
+    namespace rule: `data-<feature>-...` for runtime hooks).
+  - `hx-target` selector in
+    `internal/templates/job_slot_fragment.templ` updated
+    accordingly.
+  - All 25 grep matches across 9 files updated: 5 test files
+    (job_slot_swap_test.go, page_snapshot_test.go,
+    jobs_handlers_test.go, audit/smoke.mjs,
+    audit/probe-setup-stacking.mjs), 3 doc files (CHANGELOG,
+    COMMON_BUGS, RESEARCH), and the live audit smoke
+    assertion (renamed `progress-region-survives-polls` to
+    `jobs-progress-overlay-survives-polls`).
+
 ### Fixed
 
 - `internal/appshell`: duplicate export requests (issue #130) no
@@ -104,7 +128,7 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     - `debug-console-panel-appends-beforeend` (proves the
       b185f0e beforeend swap fix is in place; without it the
       debug-mode toggle would wipe the document).
-    - `progress-region-survives-polls` (proves the
+    - `jobs-progress-overlay-survives-polls` (proves the
       `JobStatusSlotFragment` `outerHTML`->`innerHTML` fix is
       in place; without it the progress bar would freeze after
       the first poll).

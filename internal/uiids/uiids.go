@@ -57,6 +57,14 @@ const (
 	OverlayPrintConfigModal     = "overlay.print-config.modal"
 	OverlayGoogleCalendarPrefs  = "overlay.google-calendar-prefs.modal"
 	OverlayImageViewer          = "overlay.image.viewer"
+	// OverlayJobsProgress is the fixed-position popup region that
+	// shows a progress card for the most recent active background
+	// job (polled via /jobs/active every 3s). Lives once in
+	// layout.templ so the card floats over every page; not a
+	// per-page panel. Silent kinds in jobs.SilentKinds (e.g.
+	// static_archive) are filtered out by MostRecentActive so
+	// this region stays empty for them.
+	OverlayJobsProgress = "overlay.jobs.progress"
 )
 
 type Surface struct {
@@ -122,6 +130,7 @@ var Registry = []Surface{
 	{ID: OverlayPrintConfigModal, Kind: "overlay", Description: "Printable export settings modal overlay."},
 	{ID: OverlayGoogleCalendarPrefs, Kind: "overlay", Description: "Google managed calendar event preferences modal overlay."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
+	{ID: OverlayJobsProgress, Kind: "overlay", Description: "Global fixed-position popup region that renders the most recent active background job's progress card (polled via /jobs/active every 3s)."},
 }
 
 

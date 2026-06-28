@@ -57,7 +57,7 @@ templ Layout(title string) {
 	</head>
 		<body class="min-h-screen" data-layout-mode="relaxed" data-layout-mode-preference="auto">
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
-				<div class="progress-region" data-progress-region { htmxattr.Mux{
+				<div class="jobs-progress-overlay" data-jobs-progress-region { htmxattr.Mux{
 				Get:     routebuilder.ActiveJobs(),
 				Swap:    "innerHTML",
 				Trigger: "load, every 3s",

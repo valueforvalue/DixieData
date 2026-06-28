@@ -205,7 +205,10 @@ endpoint being called. Run `make dev`, open DevTools, click the
 trigger, watch the response — does the target ID still exist?
 
 **Fix:** Either render the target in the endpoint response, or
-change `hx-target` to a stable parent like `[data-progress-region]`.
+change `hx-target` to a stable parent like `[data-jobs-progress-region]`
+(the `uiids.OverlayJobsProgress` global overlay; see
+`internal/templates/components/conventions.md` for the canonical
+naming).
 
 **Defensive tooling:** `internal/templates/hx_guard_test.go`
 warns about ad-hoc `#id` selectors that aren't in the
