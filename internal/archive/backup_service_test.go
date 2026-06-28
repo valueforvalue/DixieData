@@ -299,6 +299,68 @@ func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 	}
 }
 
+// TestBackupService_ImportDestroysFilesInsideDataDir locks the
+// contract that motivates Phase 5's choice to skip pre-import
+// restore points. Importing a .ddbak replaces the data dir via
+// archive.replaceDataDir (os.Rename old -> sibling, then
+// RemoveAll sibling). Any file written inside the data dir
+// BEFORE the import is gone afterwards.
+//
+// This is the seam Phase 5 hit when trying to use the
+// in-place update restore-point manager as an import rollback
+// safety net: the snapshot landed in
+// <dataDir>/updates/restore-points/<id>/, which got renamed
+// away by the import's replaceDataDir. Reverting this test
+// would require either (a) changing replaceDataDir to
+// preserve sidecar data dirs, or (b) moving the restore-point
+// root outside the data dir. Both are Phase 6 work; until
+// then the import CLI doesn't pre-snapshot.
+func TestBackupService_ImportDestroysFilesInsideDataDir(t *testing.T) {
+	sourceDB := newTestDB(t)
+	sourceSvc := NewSoldierService(sourceDB)
+	backupSvc := NewBackupService(sourceDB, sourceSvc)
+
+	sourceDataDir := t.TempDir()
+	created, err := sourceSvc.Create(models.Soldier{
+		DisplayID: "PENSION-9",
+		FirstName: "Jane",
+		LastName:  "Doe",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	_ = created
+
+	backupPath := filepath.Join(t.TempDir(), "backup.zip")
+	if _, err := backupSvc.Export(backupPath, sourceDataDir); err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	restoreDir := t.TempDir()
+	// Plant a sidecar file inside the target data dir, mimicking
+	// what a pre-import restore-point manager would have written
+	// at <dataDir>/updates/restore-points/<id>/local-archive.ddbak.
+	sidecarDir := filepath.Join(restoreDir, "updates", "restore-points", "restore-point-20260628-070000")
+	if err := os.MkdirAll(sidecarDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll sidecar: %v", err)
+	}
+	sidecarFile := filepath.Join(sidecarDir, "local-archive.ddbak")
+	if err := os.WriteFile(sidecarFile, []byte("would-be-rollback-snapshot"), 0o644); err != nil {
+		t.Fatalf("WriteFile sidecar: %v", err)
+	}
+
+	if _, err := backupSvc.Import(backupPath, restoreDir); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	if _, err := os.Stat(sidecarFile); !os.IsNotExist(err) {
+		t.Fatalf("expected sidecar to be destroyed by import; stat err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(restoreDir, "updates")); !os.IsNotExist(err) {
+		t.Fatalf("expected updates/ to be gone after import; stat err = %v", err)
+	}
+}
+
 func TestBackupService_ImportAllowsExtraImageFilesInSQLiteBackup(t *testing.T) {
 	sourceDB := newTestDB(t)
 	sourceSvc := NewSoldierService(sourceDB)
