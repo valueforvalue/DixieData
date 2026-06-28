@@ -181,3 +181,107 @@ func TestJobStatusFragmentDdbakArtifactUsesDownload(t *testing.T) {
 		t.Errorf("ddbak artifact in fragment must NOT use target=_blank; got HTML:\n%s", html)
 	}
 }
+
+// TestJobStatusViewPollsForUpdates is the regression test for the
+// "static archive status page never updates" bug. Before the fix
+// JobStatusView rendered a static snapshot (the body had no
+// hx-get / hx-trigger), so the page froze at the value captured
+// in the 303 redirect even while the job ran to completion in the
+// background. Static_archive exports are fast enough that the
+// page almost always landed after the job had already finished,
+// which made the symptom obvious: status forever reads
+// "running" / "queued" while the artifact sits ready in /jobs/{id}.
+//
+// The fix extracts the body into jobStatusBody so both the full
+// page (JobStatusView) and the polling fragment (JobStatusFragment)
+// share one source of truth. The body wires the 2s hx-get against
+// /jobs/{id}/status so the full page auto-polls exactly the same
+// way the fragment does.
+//
+// Asserts:
+//  1. The page's #job-status-body wrapper carries hx-get against
+//     /jobs/{id}/status (proves the poll is wired).
+//  2. The trigger is "every 2s" (proves it polls periodically).
+//  3. When the job is in a terminal state (done) the body emits
+//     hx-trigger="none" so polling stops once the user sees
+//     the summary card.
+//  4. The fragment and the page render the same hx-get URL so
+//     a swap cannot land on a stale target.
+func TestJobStatusViewPollsForUpdates(t *testing.T) {
+	t.Run("running job wires the poll", func(t *testing.T) {
+		job := jobs.NewJob("job-running", "static_archive")
+		job.Status = jobs.StatusRunning
+		job.Progress = 35
+
+		var buf bytes.Buffer
+		if err := JobStatusView(*job).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("JobStatusView render: %v", err)
+		}
+		html := buf.String()
+
+		if !strings.Contains(html, `hx-get="/jobs/job-running/status"`) {
+			t.Errorf("running JobStatusView must hx-get the /jobs/{id}/status endpoint; the landing page was a static snapshot before the body extraction, so a fast export like static_archive finished while the page sat there. Got HTML:\n%s", html)
+		}
+		if !strings.Contains(html, `hx-trigger="every 2s"`) {
+			t.Errorf("running JobStatusView must poll every 2s; got HTML:\n%s", html)
+		}
+		if !strings.Contains(html, `id="job-status-body"`) {
+			t.Errorf("running JobStatusView must render #job-status-body so htmx can find its swap target; got HTML:\n%s", html)
+		}
+	})
+
+	t.Run("done job stops polling", func(t *testing.T) {
+		dir := t.TempDir()
+		resultPath := filepath.Join(dir, "archive.zip")
+		if err := os.WriteFile(resultPath, []byte("PK\x03\x04 placeholder"), 0o644); err != nil {
+			t.Fatalf("seed zip: %v", err)
+		}
+		job := jobs.NewJob("job-done", "static_archive")
+		job.Status = jobs.StatusDone
+		job.StartedAt = time.Now().Add(-2 * time.Second)
+		job.FinishedAt = time.Now()
+		job.ResultPath = resultPath
+
+		var buf bytes.Buffer
+		if err := JobStatusView(*job).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("JobStatusView render: %v", err)
+		}
+		html := buf.String()
+
+		if !strings.Contains(html, `hx-trigger="none"`) {
+			t.Errorf("terminal JobStatusView must stop polling (hx-trigger=none); got HTML:\n%s", html)
+		}
+		if strings.Contains(html, `hx-get="/jobs/job-done/status"`) {
+			t.Errorf("terminal JobStatusView must NOT keep polling; got HTML:\n%s", html)
+		}
+	})
+
+	t.Run("view and fragment share the poll url", func(t *testing.T) {
+		// The view's first poll and every subsequent swap target
+		// must resolve to the same URL. If the view rendered one
+		// URL and the fragment another, the first swap would land
+		// on a target that the next fragment response could not
+		// update. The body extraction guarantees both render
+		// through jobStatusBody so they cannot drift.
+		job := jobs.NewJob("job-aligned", "static_archive")
+		job.Status = jobs.StatusRunning
+		job.Progress = 10
+
+		var viewBuf, fragBuf bytes.Buffer
+		if err := JobStatusView(*job).Render(context.Background(), &viewBuf); err != nil {
+			t.Fatalf("JobStatusView render: %v", err)
+		}
+		if err := JobStatusFragment(*job).Render(context.Background(), &fragBuf); err != nil {
+			t.Fatalf("JobStatusFragment render: %v", err)
+		}
+
+		viewHTML := viewBuf.String()
+		fragHTML := fragBuf.String()
+
+		viewPoll := strings.Contains(viewHTML, `hx-get="/jobs/job-aligned/status"`)
+		fragPoll := strings.Contains(fragHTML, `hx-get="/jobs/job-aligned/status"`)
+		if !viewPoll || !fragPoll {
+			t.Errorf("view and fragment must both wire hx-get=/jobs/job-aligned/status; viewPoll=%v fragPoll=%v\n--- view ---\n%s\n--- fragment ---\n%s", viewPoll, fragPoll, viewHTML, fragHTML)
+		}
+	})
+}

@@ -89,6 +89,45 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   launcher writes the new env vars. Skips cleanly when
   `build/bin/DixieData.exe` is absent so release-only CI
   doesn't fail.
+- `internal/templates/jobs.templ`: the `/jobs/{id}` landing
+  page (`JobStatusView`) was a static snapshot — it rendered
+  the body of the page but did NOT include the `hx-get` /
+  `hx-trigger="every 2s"` that drives the 2s poll. The page
+  froze at the value captured in the 303 redirect even while
+  the job ran to completion in the background. Fast exports
+  (`static_archive` in particular) finished during the
+  redirect window, so the user always landed on a page that
+  read "running" / "queued" forever even though the artifact
+  sat ready in `/jobs/{id}/artifact`.
+
+  Fix: extract the body of the status page into a single
+  `jobStatusBody` sub-template that both `JobStatusView` (the
+  full page) and `JobStatusFragment` (the polling fragment
+  served from `/jobs/{id}/status`) call. Now both render the
+  same `id="job-status-body"` wrapper with the same `hx-get`
+  / `hx-trigger` so the landing page polls automatically. The
+  extraction also prevents the view and the fragment from
+  drifting apart in future edits.
+
+  Regression net:
+  - `internal/templates/jobs_artifact_link_test.go`:
+    * `TestJobStatusViewPollsForUpdates/running_job_wires_the_poll`
+      asserts the page renders `hx-get="/jobs/{id}/status"`.
+    * `TestJobStatusViewPollsForUpdates/done_job_stops_polling`
+      asserts the page renders `hx-trigger="none"` when the
+      job is done (so polling stops once the summary card
+      is visible).
+    * `TestJobStatusViewPollsForUpdates/view_and_fragment_share_the_poll_url`
+      asserts the view and the fragment agree on the poll
+      URL — the extraction cannot drift.
+  - `internal/templates/page_snapshot_test.go`:
+    `TestPageSnapshotJobsStatus` now also asserts the running
+    page renders `hx-get="/jobs/job-abc/status"`.
+  - `internal/appshell/jobs_handlers_test.go`:
+    `TestHandleJobStatusFullPageWiresThePoll` is the
+    end-to-end net: GET `/jobs/{id}` returns a body that
+    wires the poll (holds the worker on a channel so the
+    job stays running through the render).
 - `internal/jobs/jobs.go`: new `SilentKinds` set + `IsSilentKind`
   helper, and `Registry.MostRecentActive` filters out kinds in
   the set. The global layout progress popup is now opt-out

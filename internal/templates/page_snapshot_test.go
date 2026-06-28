@@ -236,6 +236,15 @@ func TestPageSnapshotJobsStatus(t *testing.T) {
 	if doc.Find("#job-status-body").Length() == 0 {
 		t.Error("JobStatus view missing #job-status-body container")
 	}
+	// Assert the full page wires the 2s hx-get against
+	// /jobs/{id}/status. Before the body extraction the landing
+	// page was a static snapshot: no hx-get, no hx-trigger, so
+	// fast jobs (static_archive) finished while the page sat
+	// there reading "running" forever. See
+	// TestJobStatusViewPollsForUpdates for the focused net.
+	if !strings.Contains(html, `hx-get="/jobs/job-abc/status"`) {
+		t.Error("JobStatus view missing hx-get against /jobs/{id}/status; the landing page will not auto-update")
+	}
 
 	assertNoDebugOverlayAttrs(t, "JobStatus", doc)
 }
