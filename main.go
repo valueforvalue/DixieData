@@ -18,15 +18,20 @@ import (
 var assets embed.FS
 
 func main() {
-	// Headless subcommand dispatch. Phase 1 (--smoke) and
-	// Phase 2 (doctor) of docs/agents/cli-plan.md. Smoke is a
-	// flag-style invocation; doctor is a subcommand.
+	// Headless subcommand dispatch. Phase 1 (--smoke), Phase 2
+	// (doctor), Phase 3 (list / show / search) of
+	// docs/agents/cli-plan.md. Smoke is a flag-style invocation;
+	// doctor + query subcommands are positional verbs.
 	if appshell.HasDoctorFlag(os.Args[1:]) {
 		_, code := appshell.RunDoctor(context.Background(), appshell.DoctorOptions{
 			JSON:   appshell.WantsDoctorJSON(os.Args[1:]),
 			Fix:    appshell.WantsDoctorFix(os.Args[1:]),
 			Checks: appshell.ParseDoctorChecks(os.Args[1:]),
 		})
+		os.Exit(code)
+	}
+	if appshell.HasQuerySubcommand(os.Args[1:]) {
+		code := runQuerySubcommand()
 		os.Exit(code)
 	}
 	if appshell.HasSmokeFlag(os.Args[1:]) || appshell.EnvRequestsSmoke() {
@@ -60,4 +65,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// runQuerySubcommand builds an App, parses the query args,
+// dispatches, and returns the exit code. The App is fully
+// started (so the soldiers facade is wired) then shut down so
+// background jobs + the DB close cleanly. We don't need Wails.
+func runQuerySubcommand() int {
+	opts, _ := appshell.ParseQueryCommand(os.Args[1:])
+	a := appshell.NewApp()
+	ctx := context.Background()
+	a.Startup(ctx)
+	defer a.Shutdown(ctx)
+	opts.App = a
+	code, err := appshell.RunQuery(ctx, opts)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+	}
+	return code
 }
