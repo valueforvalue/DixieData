@@ -174,3 +174,187 @@ func (s JobSummary) joinDetails() string {
 	}
 	return out
 }
+
+// TestSummaryRendersExportStatsConditionally pins down the rule
+// the user picked: summary cards only surface records / images /
+// sources counts when the worker populates them. A worker that
+// hasn't been upgraded yet (zero counts) renders the original
+// Size + Duration copy unchanged.
+//
+// The test covers the six kinds the user is upgrading
+// (json_export, excel_export, icalendar_export, database_pdf,
+// static_archive, backup_archive, shared_archive) and the two
+// kinds we deliberately leave alone (insights_pdf, bug_report).
+func TestSummaryRendersExportStatsConditionally(t *testing.T) {
+	type expect struct {
+		recordsLine bool
+		imagesLine  bool
+		sourcesLine bool
+	}
+	cases := []struct {
+		kind   string
+		result JobResult
+		expect expect
+	}{
+		// Workers that fill only Records (JSON, Excel, iCal).
+		{kind: "json_export", result: JobResult{Records: 247}, expect: expect{recordsLine: true}},
+		{kind: "excel_export", result: JobResult{Records: 247}, expect: expect{recordsLine: true}},
+		{kind: "icalendar_export", result: JobResult{Records: 247}, expect: expect{recordsLine: true}},
+		// Database PDF adds images (the export prints primary
+		// images for each record).
+		{kind: "database_pdf", result: JobResult{Records: 247, Images: 312}, expect: expect{recordsLine: true, imagesLine: true}},
+		// Static archive has records + images (no sources).
+		{kind: "static_archive", result: JobResult{Records: 247, Images: 312}, expect: expect{recordsLine: true, imagesLine: true}},
+		// Backup and shared archive include all three counts.
+		{kind: "backup_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
+		{kind: "shared_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
+		// Insights and bug report do not enumerate persons — no stats lines.
+		{kind: "insights_pdf"},
+		{kind: "bug_report"},
+	}
+	for _, c := range cases {
+		t.Run(c.kind, func(t *testing.T) {
+			dir := t.TempDir()
+			resultPath := filepath.Join(dir, "blob.bin")
+			if err := os.WriteFile(resultPath, []byte("test bytes"), 0o644); err != nil {
+				t.Fatalf("seed artifact: %v", err)
+			}
+			j := NewJob("job-"+c.kind, c.kind)
+			j.Status = StatusDone
+			j.StartedAt = time.Now().Add(-2 * time.Second)
+			j.FinishedAt = time.Now()
+			j.ResultPath = resultPath
+			j.Result = c.result
+			s := j.Summary()
+			body := s.joinDetails()
+			if c.expect.recordsLine {
+				if !strings.Contains(body, "Person records: 247") {
+					t.Errorf("kind=%s expected 'Person records: 247' line; got details=%v", c.kind, s.DetailLines)
+				}
+			} else {
+				if strings.Contains(body, "Person records:") {
+					t.Errorf("kind=%s unexpectedly rendered 'Person records:' line; details=%v", c.kind, s.DetailLines)
+				}
+			}
+			if c.expect.imagesLine {
+				if !strings.Contains(body, "Images: 312") {
+					t.Errorf("kind=%s expected 'Images: 312' line; got details=%v", c.kind, s.DetailLines)
+				}
+			} else {
+				if strings.Contains(body, "Images: 312") {
+					t.Errorf("kind=%s unexpectedly rendered 'Images: 312' line; details=%v", c.kind, s.DetailLines)
+				}
+			}
+			if c.expect.sourcesLine {
+				if !strings.Contains(body, "Source records: 18") {
+					t.Errorf("kind=%s expected 'Source records: 18' line; got details=%v", c.kind, s.DetailLines)
+				}
+			}
+		})
+	}
+}
+
+// TestSummaryRendersSharedImportStats pins down the merge-review
+// headline (Added/Merged/Skipped) plus the conflicts reminder.
+// When Conflicts > 0 the user is told to open Merge Review; when
+// 0 the line is absent so a clean import stays clean.
+func TestSummaryRendersSharedImportStats(t *testing.T) {
+	t.Run("clean import", func(t *testing.T) {
+		j := NewJob("job-clean", "shared_import")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		j.Result = JobResult{Added: 5, Merged: 3, Skipped: 12}
+		s := j.Summary()
+		body := s.joinDetails()
+		if !strings.Contains(body, "5 added, 3 merged, 12 skipped") {
+			t.Errorf("expected merge headline; got %v", s.DetailLines)
+		}
+		if strings.Contains(body, "Conflicts staged for review") {
+			t.Errorf("clean import must not show conflicts line; got %v", s.DetailLines)
+		}
+	})
+	t.Run("conflicts present", func(t *testing.T) {
+		j := NewJob("job-conf", "shared_import")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		j.Result = JobResult{Added: 2, Merged: 1, Skipped: 0, Conflicts: 4}
+		s := j.Summary()
+		body := s.joinDetails()
+		if !strings.Contains(body, "2 added, 1 merged, 0 skipped") {
+			t.Errorf("expected merge headline; got %v", s.DetailLines)
+		}
+		if !strings.Contains(body, "Conflicts staged for review: 4") {
+			t.Errorf("expected conflicts reminder; got %v", s.DetailLines)
+		}
+	})
+	t.Run("images and sources imported", func(t *testing.T) {
+		j := NewJob("job-imp", "shared_import")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		j.Result = JobResult{Added: 1, Merged: 0, Skipped: 0, ImagesImported: 14, SourcesImported: 6}
+		s := j.Summary()
+		body := s.joinDetails()
+		if !strings.Contains(body, "Images imported: 14") {
+			t.Errorf("expected images imported line; got %v", s.DetailLines)
+		}
+		if !strings.Contains(body, "Source records imported: 6") {
+			t.Errorf("expected sources imported line; got %v", s.DetailLines)
+		}
+	})
+}
+
+// TestSummaryRendersBackupRestoreStats pins down the
+// replace-semantics summary: replaced counts and schema parity.
+// The schema line is always shown when either schema field is
+// populated; the wording switches on MigrationRan.
+func TestSummaryRendersBackupRestoreStats(t *testing.T) {
+	t.Run("schema migrated", func(t *testing.T) {
+		j := NewJob("job-mig", "backup_import")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		j.Result = JobResult{ReplacedRecords: 247, ReplacedImages: 312, BackupSchema: 5, CurrentSchema: 7, MigrationRan: true}
+		s := j.Summary()
+		body := s.joinDetails()
+		if !strings.Contains(body, "Replaced: 247 records, 312 images") {
+			t.Errorf("expected replaced line; got %v", s.DetailLines)
+		}
+		if !strings.Contains(body, "Schema migrated: backup v5 → current v7") {
+			t.Errorf("expected migration line; got %v", s.DetailLines)
+		}
+	})
+	t.Run("schema equal", func(t *testing.T) {
+		j := NewJob("job-eq", "backup_import")
+		j.Status = StatusDone
+		j.StartedAt = time.Now().Add(-2 * time.Second)
+		j.FinishedAt = time.Now()
+		j.Result = JobResult{ReplacedRecords: 247, ReplacedImages: 312, BackupSchema: 7, CurrentSchema: 7}
+		s := j.Summary()
+		body := s.joinDetails()
+		if !strings.Contains(body, "Schema: backup v7 = current v7 (no migration)") {
+			t.Errorf("expected schema-equality line; got %v", s.DetailLines)
+		}
+	})
+}
+
+// TestSummaryRendersMemorialImportStats pins down the
+// memorial-import headline (Added/Skipped/Failed) and the
+// optional images line.
+func TestSummaryRendersMemorialImportStats(t *testing.T) {
+	j := NewJob("job-mem", "memorial_import")
+	j.Status = StatusDone
+	j.StartedAt = time.Now().Add(-2 * time.Second)
+	j.FinishedAt = time.Now()
+	j.Result = JobResult{Added: 18, Skipped: 3, Failed: 2, ImagesImported: 4}
+	s := j.Summary()
+	body := s.joinDetails()
+	if !strings.Contains(body, "18 added, 3 skipped, 2 failed") {
+		t.Errorf("expected memorial headline; got %v", s.DetailLines)
+	}
+	if !strings.Contains(body, "Images imported: 4") {
+		t.Errorf("expected images imported line; got %v", s.DetailLines)
+	}
+}

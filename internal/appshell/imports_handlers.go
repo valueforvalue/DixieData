@@ -13,6 +13,7 @@ import (
 
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -100,6 +101,18 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("backup imported but database could not be reopened: %w", err)
 		}
 		p.Set(100, fmt.Sprintf("Imported %d soldiers, %d records, %d images.", manifest.Soldiers, manifest.Records, manifest.Images))
+		// Surface the replace-semantics stats on the /jobs/{id}
+		// summary card: how many records/images the backup
+		// overwrote and whether the schema migration ran. Backup
+		// restore is a full replace (not a merge) so the summary
+		// wording switches accordingly.
+		a.jobs.SetResult(jobID, jobs.JobResult{
+			ReplacedRecords: manifest.Soldiers,
+			ReplacedImages:  manifest.Images,
+			BackupSchema:    manifest.SchemaVersion,
+			CurrentSchema:   buildinfo.SchemaVersion,
+			MigrationRan:    manifest.SchemaVersion != buildinfo.SchemaVersion,
+		})
 		return nil
 	})
 
@@ -145,6 +158,24 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 			p.Set(95, fmt.Sprintf("Staged %d conflicts for review", summary.PendingConflicts))
 		}
 		p.Set(100, fmt.Sprintf("Imported %d soldiers, %d pending conflicts.", summary.SoldiersInserted+summary.SoldiersUpdated, summary.PendingConflicts))
+		// Surface the merge-review headline on the /jobs/{id}
+		// summary card: how many records were added / merged /
+		// skipped, how many conflicts were staged for review, and
+		// how many images / source records came in. When
+		// PendingConflicts > 0 the summary line reminds the user
+		// to open Merge Review; when 0 the import is fully
+		// resolved.
+		//
+		// Note: SharedImportSummary currently does not return a
+		// source-records count. SourcesImported stays 0; if the
+		// service ever surfaces that field, plumb it through here.
+		a.jobs.SetResult(jobID, jobs.JobResult{
+			Added:          summary.SoldiersInserted,
+			Merged:         summary.SoldiersUpdated,
+			Skipped:        0, // service does not surface Skipped today
+			Conflicts:      summary.PendingConflicts,
+			ImagesImported: summary.ImagesInserted + summary.ImagesUpdated,
+		})
 		_ = jobID
 		return nil
 	})
@@ -222,6 +253,17 @@ func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Req
 			return logErr
 		}
 		p.Set(100, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed. Log: %s", summary.Created, summary.Skipped, summary.Failed, logPath))
+		// Surface the memorial-import headline on the /jobs/{id}
+		// summary card: how many rows were added / skipped /
+		// failed. Memorial JSON is additive (no Merge Review) so
+		// the conflicts line stays hidden. The optional error log
+		// becomes a secondary download action via Result.LogPath.
+		a.jobs.SetResult(jobID, jobs.JobResult{
+			Added:   summary.Created,
+			Skipped: summary.Skipped,
+			Failed:  summary.Failed,
+			LogPath: logPath,
+		})
 		_ = jobID
 		return nil
 	})

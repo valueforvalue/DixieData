@@ -88,10 +88,65 @@ type Job struct {
 	FinishedAt  time.Time
 	Error       string
 	ResultPath  string
+	Result      JobResult
 	mu          sync.Mutex
 	cancelled   bool
 	cancelCause context.CancelFunc
-	registry    *Registry // set at registration so Progress can broadcast
+	registry    *Registry// set at registration so Progress can broadcast
+}
+
+// JobResult is the worker-supplied completion payload. Populated
+// by Registry.SetResult before the worker returns nil so /jobs/{id}
+// can render per-kind stats on the terminal summary card:
+//
+//   - Exports fill Records / Images / Sources.
+//   - Shared imports fill Added / Merged / Skipped / Conflicts /
+//     SourcesImported / ImagesImported.
+//   - Memorial JSON imports fill Added / Skipped / Failed (the
+//     preview-then-confirm flow does not stage Merge Review).
+//   - Backup restore fills ReplacedRecords / ReplacedImages plus
+//     BackupSchema / CurrentSchema / MigrationRan.
+//
+// The struct is intentionally a single value with optional fields
+// rather than a discriminated union so callers from different
+// kinds can share one setter and one storage slot on Job.
+// Fields default to zero; Summary() renders a stat line only
+// when the corresponding field is > 0 (or true for MigrationRan),
+// so legacy kinds that don't fill the struct are unaffected.
+type JobResult struct {
+	// Path is promoted to Job.ResultPath on SetResult so the
+	// /jobs/{id}/artifact endpoint still streams the saved file
+	// when the worker forgets to call SetResultPath explicitly.
+	Path string
+
+	// Export counts.
+	Records int // Person Records written to the artifact
+	Images  int // Image files copied into the artifact
+	Sources int // Source Records (claims + findings) included
+
+	// Shared-import counts.
+	Added           int // Person Records inserted (new from incoming)
+	Merged          int // Person Records updated (matched + changed)
+	Skipped         int // Person Records unchanged (matched + same)
+	Conflicts       int // Staged for Merge Review (>= 1 means visit /merge-review/{id})
+	ImagesImported  int
+	SourcesImported int
+
+	// Memorial JSON import counts (preview-then-confirm flow).
+	Failed int // Memorial records that could not be imported
+
+	// Backup restore (replace semantics, not merge).
+	ReplacedRecords int
+	ReplacedImages  int
+	BackupSchema    int // schema version of the .ddbak
+	CurrentSchema   int // schema version DixieData is on now
+	MigrationRan    bool
+
+	// LogPath is an optional companion artifact (e.g. memorial
+	// import error log) that the summary card can offer as a
+	// secondary action. Distinct from Path so the primary
+	// artifact keeps a single download link.
+	LogPath string
 }
 
 // Progress is passed to a worker so it can update its job without holding
@@ -163,6 +218,7 @@ func (j *Job) Snapshot() Job {
 		FinishedAt: j.FinishedAt,
 		Error:      j.Error,
 		ResultPath: j.ResultPath,
+		Result:     j.Result,
 	}
 }
 
@@ -214,6 +270,10 @@ type persistedSnapshot struct {
 	FinishedAt  time.Time `json:"finished_at,omitempty"`
 	Error       string    `json:"error,omitempty"`
 	ResultPath  string    `json:"result_path,omitempty"`
+	// Result is omitempty so older log files (written before
+	// stats landed) parse cleanly. NewFromLog drops the field
+	// when absent; live jobs always carry a zero JobResult.
+	Result JobResult `json:"result,omitempty"`
 }
 
 // New returns a Registry sized to DefaultConcurrency workers. Callers
@@ -274,6 +334,7 @@ func NewFromLog(reader io.Reader) (*Registry, error) {
 			FinishedAt: snap.FinishedAt,
 			Error:      snap.Error,
 			ResultPath: snap.ResultPath,
+			Result:     snap.Result,
 			registry:   reg,
 		}
 		if status == StatusDone {
@@ -330,6 +391,7 @@ func (r *Registry) appendSnapshot(j Job) {
 		FinishedAt: j.FinishedAt,
 		Error:      j.Error,
 		ResultPath: j.ResultPath,
+		Result:     j.Result,
 	})
 	if err != nil {
 		return
@@ -424,6 +486,7 @@ func cloneJob(j *Job) Job {
 		FinishedAt: j.FinishedAt,
 		Error:      j.Error,
 		ResultPath: j.ResultPath,
+		Result:     j.Result,
 	}
 }
 
@@ -500,20 +563,6 @@ func (j Job) Summary() JobSummary {
 		}
 	}
 	switch j.Kind {
-	case "static_archive":
-		s.Headline = fmt.Sprintf("Static archive complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
-			"Open the .zip and host it on any static-file web server to browse the archive without DixieData.",
-		}
-	case "database_pdf":
-		s.Headline = fmt.Sprintf("Printable archive PDF complete — %s.", formatBytes(s.SizeBytes))
-		s.DetailLines = []string{
-			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
-			fmt.Sprintf("Duration: %s", s.Duration),
-			"The PDF contains every record grouped and sorted per your export settings.",
-		}
 	case "soldier_pdf", "soldier_pdf_no_images":
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
@@ -539,6 +588,7 @@ func (j Job) Summary() JobSummary {
 			fmt.Sprintf("Duration: %s", s.Duration),
 			"Use 'Load Backup' on the Share page to restore this archive.",
 		}
+		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
 	case "shared_archive":
 		s.Headline = fmt.Sprintf("Shared archive complete — %s.", formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
@@ -546,19 +596,51 @@ func (j Job) Summary() JobSummary {
 			fmt.Sprintf("Duration: %s", s.Duration),
 			"Send this .ddshare file to another DixieData user; they can preview it on the Share page.",
 		}
-	case "json_export", "excel_export", "icalendar_export", "insights_pdf", "bug_report":
+		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
+	case "json_export", "excel_export", "icalendar_export":
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
 			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
 			fmt.Sprintf("Duration: %s", s.Duration),
 		}
-	case "image_import", "backup_import":
+		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
+	case "database_pdf":
+		s.Headline = fmt.Sprintf("Printable archive PDF complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"The PDF contains every record grouped and sorted per your export settings.",
+		}
+		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
+	case "static_archive":
+		s.Headline = fmt.Sprintf("Static archive complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"Open the .zip and host it on any static-file web server to browse the archive without DixieData.",
+		}
+		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
+	case "insights_pdf", "bug_report":
+		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+		}
+	case "image_import":
 		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
 		if j.Message != "" {
 			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
 		} else {
 			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
 		}
+	case "backup_import":
+		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
+		if j.Message != "" {
+			s.DetailLines = []string{j.Message, fmt.Sprintf("Duration: %s", s.Duration)}
+		} else {
+			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+		}
+		s.DetailLines = appendBackupRestoreStats(s.DetailLines, j.Result)
 	case "shared_import":
 		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
 		if j.Message != "" {
@@ -566,6 +648,11 @@ func (j Job) Summary() JobSummary {
 		} else {
 			s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
 		}
+		s.DetailLines = appendSharedImportStats(s.DetailLines, j.Result)
+	case "memorial_import":
+		s.Headline = fmt.Sprintf("%s complete.", j.DisplayLabel())
+		s.DetailLines = []string{fmt.Sprintf("Duration: %s", s.Duration)}
+		s.DetailLines = appendMemorialImportStats(s.DetailLines, j.Result)
 	default:
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
@@ -574,6 +661,85 @@ func (j Job) Summary() JobSummary {
 		}
 	}
 	return s
+}
+
+// appendExportStats conditionally appends records / images /
+// sources lines to the summary card based on which fields the
+// worker populated. Lines appear only when the count is > 0 so
+// legacy workers (and kinds that do not surface stats, like
+// insights_pdf) keep their existing copy unchanged.
+//
+// Ordering: Records before Images before Sources, matching the
+// order the user thinks about the artifact (people → media →
+// evidence). The Size and Duration lines are already on the card
+// before this helper runs.
+func appendExportStats(lines []string, r JobResult) []string {
+	if r.Records > 0 {
+		lines = append(lines, fmt.Sprintf("Person records: %d", r.Records))
+	}
+	if r.Images > 0 {
+		lines = append(lines, fmt.Sprintf("Images: %d", r.Images))
+	}
+	if r.Sources > 0 {
+		lines = append(lines, fmt.Sprintf("Source records: %d", r.Sources))
+	}
+	return lines
+}
+
+// appendSharedImportStats renders the merge-review headline
+// (Added / Merged / Skipped / Conflicts) plus images / sources.
+// When Conflicts > 0 the user is reminded to open Merge Review;
+// when 0 the import is fully resolved.
+func appendSharedImportStats(lines []string, r JobResult) []string {
+	if r.Added > 0 || r.Merged > 0 || r.Skipped > 0 {
+		lines = append(lines, fmt.Sprintf("Person records: %d added, %d merged, %d skipped",
+			r.Added, r.Merged, r.Skipped))
+	}
+	if r.Conflicts > 0 {
+		lines = append(lines, fmt.Sprintf("Conflicts staged for review: %d — see Merge Review below.", r.Conflicts))
+	}
+	if r.ImagesImported > 0 {
+		lines = append(lines, fmt.Sprintf("Images imported: %d", r.ImagesImported))
+	}
+	if r.SourcesImported > 0 {
+		lines = append(lines, fmt.Sprintf("Source records imported: %d", r.SourcesImported))
+	}
+	return lines
+}
+
+// appendMemorialImportStats renders the dry-run-then-confirm
+// import counts. Memorial JSON is additive (no Merge Review), so
+// the headline is Added / Skipped / Failed. The optional error log
+// at Result.LogPath becomes a secondary download action on the
+// summary card (see jobs.templ::jobSummaryCard).
+func appendMemorialImportStats(lines []string, r JobResult) []string {
+	if r.Added > 0 || r.Skipped > 0 || r.Failed > 0 {
+		lines = append(lines, fmt.Sprintf("Person records: %d added, %d skipped, %d failed",
+			r.Added, r.Skipped, r.Failed))
+	}
+	if r.ImagesImported > 0 {
+		lines = append(lines, fmt.Sprintf("Images imported: %d", r.ImagesImported))
+	}
+	return lines
+}
+
+// appendBackupRestoreStats renders the replace-semantics summary:
+// how many records/images the backup overwrote and whether the
+// schema migration ran. The schema line is always shown (even when
+// migration did not run) because schema parity is the headline
+// question after a full restore.
+func appendBackupRestoreStats(lines []string, r JobResult) []string {
+	if r.ReplacedRecords > 0 || r.ReplacedImages > 0 {
+		lines = append(lines, fmt.Sprintf("Replaced: %d records, %d images", r.ReplacedRecords, r.ReplacedImages))
+	}
+	if r.BackupSchema > 0 || r.CurrentSchema > 0 {
+		if r.MigrationRan {
+			lines = append(lines, fmt.Sprintf("Schema migrated: backup v%d → current v%d", r.BackupSchema, r.CurrentSchema))
+		} else {
+			lines = append(lines, fmt.Sprintf("Schema: backup v%d = current v%d (no migration)", r.BackupSchema, r.CurrentSchema))
+		}
+	}
+	return lines
 }
 
 // formatBytes renders a byte count as a human-friendly size
@@ -698,6 +864,35 @@ func (r *Registry) SetResultPath(id, path string) {
 	}
 	job.mu.Lock()
 	job.ResultPath = path
+	snap := cloneJob(job)
+	job.mu.Unlock()
+	r.appendSnapshot(snap)
+	r.broadcast(id, snap)
+}
+
+// SetResult records the worker-supplied completion payload for the
+// given job. Safe to call from inside the worker before it returns
+// nil, or from another goroutine after the worker has completed
+// (the job entry stays in the Registry until Shutdown). If the
+// payload carries a non-empty Path, it is also written to the job's
+// ResultPath so /jobs/{id}/artifact streams the artifact without
+// callers having to call SetResultPath separately.
+//
+// The change is appended to the JSONL log if one is attached, and
+// the snapshot is broadcast to any SSE subscribers so live progress
+// pages reflect the final stats without a page reload.
+func (r *Registry) SetResult(id string, result JobResult) {
+	r.mu.Lock()
+	job, ok := r.jobs[id]
+	r.mu.Unlock()
+	if !ok {
+		return
+	}
+	job.mu.Lock()
+	if result.Path != "" {
+		job.ResultPath = result.Path
+	}
+	job.Result = result
 	snap := cloneJob(job)
 	job.mu.Unlock()
 	r.appendSnapshot(snap)

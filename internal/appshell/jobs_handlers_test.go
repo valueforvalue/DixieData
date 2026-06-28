@@ -394,3 +394,135 @@ func TestHandleJobArtifactMissingFileReturns500(t *testing.T) {
 		t.Fatalf("expected error status for missing file, got %d", rec.Code)
 	}
 }
+
+// TestRenderJobStatusShowsExportStatsOnSummaryCard is the e2e net
+// for the new stats lines. When a worker calls SetResult with
+// populated counts, the /jobs/{id} summary card must render the
+// "Person records: N" (and "Images: N" / "Source records: N")
+// lines so the user sees what the export actually contained.
+//
+// Without this regression net the Summary() extension could be
+// silently dropped (e.g. a future refactor moves the helper into
+// a kind that no longer calls it) and the user would see only
+// size + duration on the card.
+func TestRenderJobStatusShowsExportStatsOnSummaryCard(t *testing.T) {
+	app := newStressApp(t)
+	var id string
+	id = app.jobs.Start("backup_archive", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(100, "Done")
+		// Mirror the real worker: a backup manifest with 247
+		// soldiers, 312 images, 18 source records.
+		app.jobs.SetResult(id, jobs.JobResult{
+			Records: 247,
+			Images:  312,
+			Sources: 18,
+		})
+		return nil
+	})
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, _ := app.jobs.Get(id)
+		if snap.Status == jobs.StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id, nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Person records: 247") {
+		t.Errorf("summary card missing 'Person records: 247' line; got body:\n%s", body)
+	}
+	if !strings.Contains(body, "Images: 312") {
+		t.Errorf("summary card missing 'Images: 312' line; got body:\n%s", body)
+	}
+	if !strings.Contains(body, "Source records: 18") {
+		t.Errorf("summary card missing 'Source records: 18' line; got body:\n%s", body)
+	}
+}
+
+// TestRenderJobStatusShowsImportStatsOnSummaryCard is the
+// import-side counterpart. A shared-import worker that records
+// Added/Merged/Skipped/Conflicts must render those counts on the
+// /jobs/{id} summary card; a backup-import worker that records
+// ReplacedRecords + MigrationRan must render the replace + schema
+// line.
+func TestRenderJobStatusShowsImportStatsOnSummaryCard(t *testing.T) {
+	t.Run("shared import", func(t *testing.T) {
+		app := newStressApp(t)
+		var id string
+		id = app.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
+			p.Set(100, "Done")
+			app.jobs.SetResult(id, jobs.JobResult{
+				Added:          5,
+				Merged:         3,
+				Skipped:        12,
+				Conflicts:      2,
+				ImagesImported: 14,
+			})
+			return nil
+		})
+		waitJobDone(t, app, id)
+		body := renderJobBody(t, app, id)
+		if !strings.Contains(body, "5 added, 3 merged, 12 skipped") {
+			t.Errorf("missing merge headline; got body:\n%s", body)
+		}
+		if !strings.Contains(body, "Conflicts staged for review: 2") {
+			t.Errorf("missing conflicts reminder; got body:\n%s", body)
+		}
+		if !strings.Contains(body, "Images imported: 14") {
+			t.Errorf("missing images imported line; got body:\n%s", body)
+		}
+	})
+	t.Run("backup restore", func(t *testing.T) {
+		app := newStressApp(t)
+		var id string
+		id = app.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
+			p.Set(100, "Done")
+			app.jobs.SetResult(id, jobs.JobResult{
+				ReplacedRecords: 247,
+				ReplacedImages:  312,
+				BackupSchema:    5,
+				CurrentSchema:   7,
+				MigrationRan:    true,
+			})
+			return nil
+		})
+		waitJobDone(t, app, id)
+		body := renderJobBody(t, app, id)
+		if !strings.Contains(body, "Replaced: 247 records, 312 images") {
+			t.Errorf("missing replaced line; got body:\n%s", body)
+		}
+		if !strings.Contains(body, "Schema migrated: backup v5 → current v7") {
+			t.Errorf("missing migration line; got body:\n%s", body)
+		}
+	})
+}
+
+func waitJobDone(t *testing.T, app *App, id string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		snap, ok := app.jobs.Get(id)
+		if ok && snap.Status == jobs.StatusDone {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("job %s did not finish within 1s", id)
+}
+
+func renderJobBody(t *testing.T, app *App, id string) string {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id, nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	return rec.Body.String()
+}

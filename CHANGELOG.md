@@ -11,6 +11,78 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- `/jobs/{id}` summary cards now show per-kind stats so the
+  user can see what an export or import actually contained
+  without re-opening the artifact. Six Wails share-page
+  exports and three import flows were upgraded:
+
+  **Exports** (kinds that surface `Person records:`,
+  `Images:`, and/or `Source records:`):
+  - JSON export → `Person records: N` (records count)
+  - Excel export → `Person records: N`
+  - iCalendar export → `Person records: N` (soldiers enumerated)
+  - Printable archive PDF → `Person records: N` + `Images: N`
+  - Backup (.ddbak) → `Person records: N` + `Images: N` +
+    `Source records: N`
+  - Shared archive (.ddshare) → same as backup
+
+  **Imports** (kinds that surface the merge-review headline or
+  the replace + schema migration line):
+  - Shared archive import → `N added, N merged, N skipped`,
+    plus `Conflicts staged for review: N` when >= 1 (so the
+    user is reminded to open Merge Review), plus
+    `Images imported: N`.
+  - Memorial JSON import → `N added, N skipped, N failed`,
+    plus `Images imported: N` when applicable.
+  - Backup restore → `Replaced: N records, N images`, plus a
+    schema line that reads `Schema migrated: backup vX → current vY`
+    when the migration ran or `Schema: backup vX = current vY (no migration)`
+    when schema parity held.
+
+  Lines render conditionally on the populated count (zero
+  counts stay absent), so legacy kinds that don't fill the
+  struct are unaffected.
+
+- Plumbed end-to-end:
+  - `internal/jobs/jobs.go`: new `JobResult` struct + `Job.Result`
+    field + `Registry.SetResult` setter. Promotes `Path` to
+    `ResultPath` so `/jobs/{id}/artifact` still streams when
+    callers forget to call `SetResultPath` explicitly.
+  - `internal/jobs/jobs.go`: `Summary()` now surfaces the new
+    counts via four helpers — `appendExportStats`,
+    `appendSharedImportStats`, `appendMemorialImportStats`,
+    `appendBackupRestoreStats`. Each kind's existing copy is
+    preserved; stats lines append only when populated.
+  - `internal/archive/export_service.go`: new with-stats
+    variants — `ExportJSONWithStats`,
+    `ExportExcelWithStats`,
+    `ExportICalendarWithStats`,
+    `ExportFullDatabasePDFWithStats`,
+    `ExportStaticArchiveWithStats`. Existing `ExportXxx`
+    methods are unchanged; the CLI in
+    `internal/appshell/cli_export.go` still calls the
+    count-less variants because shell output does not surface
+    per-record stats. When the CLI gains structured output it
+    should switch.
+  - `internal/appshell/app_facades.go`: facade lists the new
+    with-stats methods so `a.export.ExportXxxWithStats` type-checks.
+  - `internal/appshell/exports_handlers.go`: new
+    `enqueueExportWithResult` helper alongside the existing
+    `enqueueExport`. The six handlers that produce structured
+    artifacts (`json_export`, `excel_export`, `icalendar_export`,
+    `database_pdf`, `backup_archive`, `shared_archive`) now use
+    it. The remaining kinds (`soldier_pdf`, `soldier_jpg`,
+    `monthly_pdf`, `insights_pdf`, `image_import`, `bug_report`,
+    `static_archive`) continue to use the original helper
+    unchanged.
+  - `internal/appshell/imports_handlers.go`: the three import
+    workers (`backup_import`, `shared_import`, `memorial_import`)
+    now call `SetResult` with the appropriate counts before
+    returning nil. Memorial import also records `LogPath` so a
+    future UI iteration can wire the error log download.
+
 ### Maintenance
 
 - The global layout progress popup is now named consistently
