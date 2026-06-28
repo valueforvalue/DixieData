@@ -34,6 +34,10 @@ func main() {
 		code := runQuerySubcommand()
 		os.Exit(code)
 	}
+	if appshell.HasExportSubcommand(os.Args[1:]) {
+		code := runExportSubcommand()
+		os.Exit(code)
+	}
 	if appshell.HasSmokeFlag(os.Args[1:]) || appshell.EnvRequestsSmoke() {
 		_, code := appshell.RunSmoke(context.Background(), appshell.SmokeOptions{
 			JSON: appshell.WantsSmokeJSON(os.Args[1:]),
@@ -79,6 +83,28 @@ func runQuerySubcommand() int {
 	defer a.Shutdown(ctx)
 	opts.App = a
 	code, err := appshell.RunQuery(ctx, opts)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+	}
+	return code
+}
+
+// runExportSubcommand builds an App, parses export args, dispatches
+// to RunExport, returns the exit code. Same lifecycle as
+// runQuerySubcommand. No Wails — bypasses the native SaveFileDialog
+// entirely (every command takes --out PATH).
+func runExportSubcommand() int {
+	opts, err := appshell.ParseExportArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 3
+	}
+	a := appshell.NewApp()
+	ctx := context.Background()
+	a.Startup(ctx)
+	defer a.Shutdown(ctx)
+	opts.App = a
+	code, err := appshell.RunExport(ctx, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 	}
