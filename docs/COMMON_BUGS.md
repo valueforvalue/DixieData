@@ -433,6 +433,88 @@ misses it.
 **Real example:** `3f75356 fix(web): load htmx on every page; JS
 handlers own all network round-trips`.
 
+### 3.4 JS submit interceptor bypasses htmx redirect
+
+**Symptom:** A form has `hx-post` (so it posts via htmx) AND a
+`submit` event listener that calls `event.preventDefault()`. The
+listener dispatches the work itself — typically by calling a
+Wails bridge method, which returns inline HTML markup that the
+listener injects into a status panel. The form's `HX-Redirect`
+header from the server is NEVER honored because htmx never sees
+the response: the JS path owns the entire submit cycle.
+
+User clicks "Generate Printable PDF" on `/share`. Modal closes.
+Status text dumps into `#share-status`. No `/jobs/{id}` page ever
+lands. User has no idea where the export went.
+
+**Why it happens:** The Wails bridge was added to a form that
+already had `hx-post`. The bridge path was simpler to write than
+threading the job through HTTP and reading the redirect. The
+developer kept both paths as a "fallback": JS calls bridge if
+available, else calls `request(form)` to defer to htmx. The JS
+path was the one that actually ran in production.
+
+**Find it:**
+
+```bash
+# Every form with a submit listener that calls preventDefault
+grep -rn 'addEventListener.*"submit"' frontend/app.js
+grep -rn 'submitPrintConfig\|submitExport\|onSubmit' frontend/app.js
+
+# Every form with a hx-post AND a data attribute that implies JS
+# interception
+grep -rn 'hx-post=' internal/templates/*.templ | grep -v '_test.go' \
+  | while read line; do
+    file=$(echo "$line" | cut -d: -f1)
+    grep -l 'data-.*-submit\|data-async' "$file" 2>/dev/null
+  done
+```
+
+Any form that has BOTH `hx-post` (or `hx-put`) AND a sibling JS
+submit handler that calls `event.preventDefault()` is a candidate
+for this bug class.
+
+**Fix:** Pick ONE path and own it:
+
+- **htmx path (preferred for status-page parity).** Delete the JS
+  submit listener. Add `hx-target="this" hx-swap="none"` to the
+  form. The form's server endpoint must write both `Location` and
+  `HX-Redirect` (see §1.9). htmx handles everything end-to-end and
+  the user lands on `/jobs/{id}` like every other export button.
+
+- **JS path (preferred for synchronous flow with file path).** Delete
+  the `hx-post` attribute from the form (and the
+  `hx-on::after-request` 303 shim that some templates carry). The
+  JS handler is now the sole submit owner. The bridge return value
+  IS the status UI; document that the user will not land on
+  `/jobs/{id}` from this button (or make the bridge return
+  `/jobs/{id}` markup that links to the job status page).
+
+Never carry both paths. The "bridge fallback to htmx" pattern is
+the bug.
+
+**Regression net:**
+
+- `internal/appshell/redirect_headers_test.go::TestAll303sWriteHXRedirect`
+  catches the §1.9 half (server side). The JS-intercept half has
+  no automated guard yet — review the new PR template's
+  "Click-driven surfaces checklist" to enforce it manually until a
+  `submitPrintConfig`-style detector ships.
+
+- `audit/smoke.mjs` `[5b]` Printable PDF modal flow asserts
+  `share-print-modal-hx-redirect-to-jobs` and
+  `share-print-modal-navigates-to-jobs` — pins the htmx path
+  end-to-end.
+
+**Real example:** The Printable PDF modal at
+`internal/templates/share.templ:167` carried
+`hx-on::after-request` 303 shim while `frontend/app.js::submitPrintConfig`
+called `event.preventDefault()` and dispatched to the Wails bridge.
+The bridge returned inline file-link markup. User never saw
+`/jobs/{id}`. Fixed by dropping the JS interceptor, dropping the
+shim, and routing the form through `handleExportDatabasePDF` like
+every other export button.
+
 ---
 
 ## 4. Go backend bugs
