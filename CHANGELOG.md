@@ -272,6 +272,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   removed and pass when restored; the allow-list requires a
   one-line reason per exempt function so the next reader knows
   why no htmx button reaches it.
+- `audit/smoke.mjs` now auto-discovers share-page export buttons
+  by scanning `internal/templates/*.templ` instead of
+  hand-maintaining the `shareButtons` array. New export routes
+  added to `share.templ` are covered by `share-{path}-navigates-
+  to-jobs` assertions without manual harness edits. The new
+  `audit/discover_export_buttons.mjs` walks every form and bare
+  button, resolves label inference for both `components.Button`
+  and `components.ButtonContent` patterns, and gates inclusion
+  on an explicit override table (`builderPrefixOverrides` for
+  routebuilder-driven buttons, `literalPathOverrides` for
+  literal-string hx-post paths, `actionPathOverrides` for plain
+  `<form method="post">` actions). The companion
+  `discover_export_buttons.test.mjs` pins the manifest shape
+  (10 canonical share-page buttons, Google Calendar / connect
+  / disconnect excluded, printable PDF modal excluded because
+  its dedicated `[5b]` smoke block covers it). The hand-written
+  `shareButtons` array now derives from the discovery result.
 
 ### Maintenance
 

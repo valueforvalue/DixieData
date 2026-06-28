@@ -13,6 +13,7 @@
 // Exit code is non-zero when any smoke assertion fails.
 
 import { chromium } from 'playwright';
+import { discoverShareExportButtons } from './discover_export_buttons.mjs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8765';
 
@@ -219,14 +220,16 @@ async function main() {
   // Share page export buttons (correct labels)
   // ────────────────────────────────────────────────────────────────────
   console.log('\n[5] Share page export buttons');
-  const shareButtons = [
-    { label: /^Export JSON/i, path: '/export/json' },
-    { label: /^Export Excel/i, path: '/export/csv' },
-    { label: /^Export iCalendar/i, path: '/export/ical' },
-    { label: /^Export Static Web Archive/i, path: '/export/static-archive' },
-    { label: /^Export Backup/i, path: '/export/backup' },
-    { label: /^Export Shared Archive/i, path: '/export/shared-archive' },
-  ];
+  // The manifest is auto-discovered from internal/templates/*.templ
+  // by audit/discover_export_buttons.mjs. A new export button added
+  // to share.templ is covered by the harness without manual
+  // curation. See the discovery module header for the eligibility
+  // rules and the override tables (builderPrefixOverrides +
+  // literalPathOverrides) that govern which buttons qualify.
+  const shareButtons = discoverShareExportButtons().map((b) => ({
+    label: b.label,
+    path: b.path,
+  }));
 
   for (const btn of shareButtons) {
     await page.goto(`${BASE}/share`, { waitUntil: 'domcontentloaded' });
@@ -253,7 +256,7 @@ async function main() {
     // dedup guard fires 303 + HX-Redirect back to /share; both
     // response shapes prove the duplicate-handling path fired,
     // so the assertion accepts either.
-    const expectsRedirect = btn.path !== '/export/static-archive';
+    const expectsRedirect = !btn.path.startsWith('/export/static-archive');
     if (expectsRedirect) {
       const resp = exists > 0
         ? await clickAndWaitForResponse(page, loc, btn.path)
@@ -296,6 +299,45 @@ async function main() {
       }
     }
   }
+  // Printable PDF modal: same /jobs/{id} landing surface as the buttons above.
+  // Regression net for the bug where the JS bridge returned inline markup instead of
+  // letting htmx redirect to the job status page (issue: 'export options status pages
+  // not landing'). The form now uses hx-swap=none, so the only thing that can navigate
+  // the page is the HX-Redirect header from handleExportDatabasePDF.
+  console.log('\n[5b] Printable PDF modal navigates to /jobs/{id}');
+  await page.goto(`${BASE}/share`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(300);
+  const printModalTrigger = page.locator('[data-print-config-open]').first();
+  const printModalExists = await printModalTrigger.count();
+  if (printModalExists > 0) {
+    await printModalTrigger.click();
+    await page.waitForTimeout(200);
+    const submitPrint = page.locator('button[type="submit"]', { hasText: /Generate|Export|Start|Print|Printable/i }).first();
+    const printSubmitExists = await submitPrint.count();
+    record('share-print-modal-openable', printSubmitExists > 0);
+    if (printSubmitExists > 0) {
+      const printResp = await clickAndWaitForResponse(page, submitPrint, '/export/database-pdf');
+      const printStatus = printResp?.status();
+      const printHx = printResp?.headers()?.['hx-redirect'] || '';
+      const printLoc = printResp?.headers()?.location || '';
+      record('share-print-modal-redirects-303', printStatus === 303, {
+        status: printStatus,
+        hxRedirect: printHx,
+        location: printLoc,
+      });
+      record('share-print-modal-hx-redirect-to-jobs', printHx.startsWith('/jobs/'), {
+        hxRedirect: printHx,
+      });
+      await page.waitForTimeout(200);
+      const printUrlAfter = page.url();
+      record('share-print-modal-navigates-to-jobs', printUrlAfter.includes('/jobs/'), {
+        urlAfter: printUrlAfter,
+      });
+    }
+  } else {
+    record('share-print-modal-openable', false, { reason: 'no trigger found' });
+  }
+
 
   // ────────────────────────────────────────────────────────────────────
   // Settings → Debug Mode toggle (enables debug console)
