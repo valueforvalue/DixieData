@@ -11,6 +11,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- `internal/appshell`: duplicate export requests (issue #130) no
+  longer strand the user on an error page. Each in-flight dedup
+  key now stores the background `JobID` once the worker has been
+  started, so a duplicate click that races against the save
+  dialog roundtrip is redirected 303 to `/jobs/{id}` instead of
+  replacing the modal/document with the "Export already in
+  progress" body. When no `JobID` is known yet (the dialog is
+  still open), the duplicate still receives an `HX-Redirect` +
+  toast so the originating page stays put. Covers the five
+  SaveFileDialog sites in `app.go` (soldier PDF / soldier PDF
+  no-images / soldier JPG / calendar PDF / image screenshot),
+  the printable-PDF flow in `exports_handlers.go`, and every
+  `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
+  `excel`, `icalendar`, `static_archive`, `backup_archive`,
+  `shared_archive`, `bug_report`, `feedback_log`).
+
 ### Added
 
 - `internal/routebuilder` package providing typed URL builders for

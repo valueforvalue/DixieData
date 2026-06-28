@@ -107,12 +107,13 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, ok := a.guardedSaveFileDialog("feedback_log", runtime.SaveDialogOptions{
+	opts := runtime.SaveDialogOptions{
 		DefaultFilename: feedbackExportName(time.Now()),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Feedback log", Pattern: "*.jsonl"},
 		},
-	})
+	}
+	path, ok := a.guardedSaveFileDialog(guardedSaveFileDialogKey("feedback_log", opts), opts)
 	if !ok {
 		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
 		return
