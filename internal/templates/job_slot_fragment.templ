@@ -17,6 +17,17 @@ import (
 // The fragment self-polls every 2s while the job is active and stops
 // polling once it reaches a terminal state (done / error / cancelled /
 // interrupted).
+//
+// Swap strategy: innerHTML, not outerHTML. The outer
+// `[data-progress-region]` element must survive every poll so htmx
+// can find the target on subsequent polls; if we used outerHTML the
+// first swap would replace the layout's progress slot with the new
+// fragment div (which lacks the `data-progress-region` attribute),
+// and every poll thereafter would log `htmx:targetError,
+// [data-progress-region]` and freeze the visible progress at the
+// value captured in the first poll (the "stuck at 5%" symptom). With
+// innerHTML the layout slot stays put, the new fragment becomes its
+// child, and the next poll finds its target.
 templ JobStatusSlotFragment(job jobs.Job) {
 	<div
 		class="card rounded-2xl p-4 shadow-[0_22px_45px_rgba(21,29,38,0.3)] space-y-3"
@@ -25,7 +36,7 @@ templ JobStatusSlotFragment(job jobs.Job) {
 		} else {
 			hx-get={ templ.SafeURL(routebuilder.JobStatusSlot(job.ID)) }
 			hx-trigger="every 2s"
-			hx-swap="outerHTML"
+			hx-swap="innerHTML"
 			hx-target="[data-progress-region]"
 		}>
 		<div class="flex items-center justify-between gap-3 text-sm">
