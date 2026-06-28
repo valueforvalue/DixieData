@@ -80,16 +80,61 @@ func (s RestorePointLaunchState) MatchesCurrentBuild(currentVersion, currentBuil
 
 type RestorePointManager struct {
 	dataDir string
+	root    string // override for restorePointsRoot(); empty = dataDir/updates/restore-points
 	now     func() time.Time
 	policy  RestorePointPolicy
 }
 
+// NewRestorePointManager returns a manager that stores its
+// root inside the data dir at
+// <dataDir>/updates/restore-points/. This is the in-place
+// update flow: the manager's root lives where the update
+// code can find it, and the binary swap won't move it
+// because the data dir isn't renamed by the updater.
 func NewRestorePointManager(dataDir string) *RestorePointManager {
 	return &RestorePointManager{
 		dataDir: dataDir,
 		now:     time.Now,
 		policy:  RestorePointPolicy{MaxRestorePoints: defaultMaxRestorePoints},
 	}
+}
+
+// NewSiblingRestorePointManager returns a manager that
+// stores its root at a SIBLING of the data dir, e.g.
+// <projectDir>/.dixiedata-restore-points/. The sibling root
+// survives archive.replaceDataDir's rename of the data dir,
+// so this is the manager to use for any pre-import rollback
+// snapshot (see docs/agents/cli-plan.md restore-point
+// finding).
+//
+// root must be an absolute path; the directory is created
+// on first Create. dataDir is still passed so absolutePath()
+// resolution matches the convention used by the in-place
+// manager, but restore points are written under root, not
+// under dataDir/updates/restore-points.
+func NewSiblingRestorePointManager(dataDir, root string) *RestorePointManager {
+	return &RestorePointManager{
+		dataDir: dataDir,
+		root:    filepath.Clean(root),
+		now:     time.Now,
+		policy:  RestorePointPolicy{MaxRestorePoints: defaultMaxRestorePoints},
+	}
+}
+
+// DataDir returns the data dir the manager was constructed
+// for. Used by callers that need to build the sibling root
+// (sibling lives next to dataDir, not inside it).
+func (m *RestorePointManager) DataDir() string {
+	return m.dataDir
+}
+
+// Root returns the root path restore points are written
+// under. For NewRestorePointManager this is
+// <dataDir>/updates/restore-points/; for
+// NewSiblingRestorePointManager it's the absolute path the
+// caller passed.
+func (m *RestorePointManager) Root() string {
+	return m.restorePointsRoot()
 }
 
 func (m *RestorePointManager) Create(input CreateRestorePointInput, archiveWriter RestorePointArchiveWriter, buildWriter InstalledBuildSnapshotWriter) (RestorePointRecord, error) {
@@ -112,9 +157,9 @@ func (m *RestorePointManager) Create(input CreateRestorePointInput, archiveWrite
 		TargetAppVersion:    strings.TrimSpace(input.TargetAppVersion),
 		SourceBuildIdentity: strings.TrimSpace(input.SourceBuildIdentity),
 		TargetBuildIdentity: strings.TrimSpace(input.TargetBuildIdentity),
-		LocalArchivePath:    filepath.ToSlash(filepath.Join("updates", "restore-points", recordID, "local-archive.ddbak")),
-		InstalledBuildPath:  filepath.ToSlash(filepath.Join("updates", "restore-points", recordID, "installed-build")),
-		MetadataPath:        filepath.ToSlash(filepath.Join("updates", "restore-points", recordID, "metadata.json")),
+		LocalArchivePath:    filepath.ToSlash(filepath.Join(m.pathBase(), recordID, "local-archive.ddbak")),
+		InstalledBuildPath:  filepath.ToSlash(filepath.Join(m.pathBase(), recordID, "installed-build")),
+		MetadataPath:        filepath.ToSlash(filepath.Join(m.pathBase(), recordID, "metadata.json")),
 	}
 
 	restorePointDir := m.restorePointDir(record)
@@ -241,7 +286,23 @@ func (m *RestorePointManager) ClearLaunchState() error {
 }
 
 func (m *RestorePointManager) restorePointsRoot() string {
+	if m.root != "" {
+		return m.root
+	}
 	return appdata.UpdateRestorePointsDir(m.dataDir)
+}
+
+// pathBase returns the directory portion used when building
+// the relative paths stored in RestorePointRecord. For the
+// in-place manager this is `updates/restore-points` (paths
+// resolve under dataDir). For the sibling manager this is
+// empty (paths resolve under root directly). Centralising
+// this keeps Create and absolutePath in lockstep.
+func (m *RestorePointManager) pathBase() string {
+	if m.root != "" {
+		return ""
+	}
+	return filepath.Join("updates", "restore-points")
 }
 
 func (m *RestorePointManager) indexPath() string {
@@ -262,6 +323,9 @@ func (m *RestorePointManager) restorePointDir(record RestorePointRecord) string 
 func (m *RestorePointManager) absolutePath(path string) string {
 	if filepath.IsAbs(path) {
 		return path
+	}
+	if m.root != "" {
+		return filepath.Join(m.root, filepath.FromSlash(path))
 	}
 	return filepath.Join(m.dataDir, filepath.FromSlash(path))
 }
