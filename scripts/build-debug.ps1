@@ -10,7 +10,12 @@ $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Get-DixieDataRoot -StartPath $scriptRoot
 
 Set-DixieDataBuildLocation -Root $root
-Invoke-DixieDataBuild -Root $root
+# -Debug toggles on the Wails -debug flag (DevTools + context menu
+# in the WebView2) AND adds -gcflags="all=-N -l" to the Go ldflags so
+# the binary has symbols and unoptimised frames suitable for
+# attaching a debugger (dlv, VS Code, etc.). Without this, make
+# debug was indistinguishable from make release.
+Invoke-DixieDataBuild -Root $root -DebugBuild
 
 $launcherPath = Write-DixieDataDebugLauncher -Root $root
 Write-Host "Debug build ready:" (Join-Path (Get-DixieDataBuildBinDir -Root $root) "DixieData.exe")
