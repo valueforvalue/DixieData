@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/a-h/templ"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
@@ -24,12 +23,14 @@ func TestMuxGetOnly(t *testing.T) {
 	if !ok {
 		t.Fatal("hx-get missing")
 	}
-	s, ok := v.(templ.SafeURL)
+	// Plain string, NOT templ.SafeURL. SafeURL is silently dropped
+	// by templ.RenderAttributes' type switch — see Attrs() comment.
+	s, ok := v.(string)
 	if !ok {
-		t.Fatalf("hx-get should be templ.SafeURL, got %T", v)
+		t.Fatalf("hx-get should be string, got %T", v)
 	}
-	if string(s) != "/jobs/active" {
-		t.Fatalf("hx-get = %q, want /jobs/active", string(s))
+	if s != "/jobs/active" {
+		t.Fatalf("hx-get = %q, want /jobs/active", s)
 	}
 }
 
@@ -39,12 +40,12 @@ func TestMuxPostOnly(t *testing.T) {
 	if !ok {
 		t.Fatal("hx-post missing")
 	}
-	s, ok := v.(templ.SafeURL)
+	s, ok := v.(string)
 	if !ok {
-		t.Fatalf("hx-post should be templ.SafeURL, got %T", v)
+		t.Fatalf("hx-post should be string, got %T", v)
 	}
-	if string(s) != "/soldiers" {
-		t.Fatalf("hx-post = %q, want /soldiers", string(s))
+	if s != "/soldiers" {
+		t.Fatalf("hx-post = %q, want /soldiers", s)
 	}
 }
 

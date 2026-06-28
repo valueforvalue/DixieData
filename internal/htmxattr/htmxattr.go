@@ -98,10 +98,19 @@ func (m Mux) Attrs() templ.Attributes {
 
 	out := templ.Attributes{}
 	if strings.TrimSpace(m.Get) != "" {
-		out["hx-get"] = templ.SafeURL(m.Get)
+		// Use plain string, NOT templ.SafeURL. templ.SafeURL is
+		// a typed string that the templ runtime's RenderAttributes
+		// doesn't have a case for in its type switch — when an
+		// attribute value is a SafeURL, RenderAttributes silently
+		// drops the entire attribute. This was the root cause of
+		// every hx-get / hx-post button silently doing nothing
+		// after PR #1 + PR #2 of the stabilization sprint. The
+		// templ.SafeURL wrapper is only meaningful inside templ's
+		// expression context (not in spread attributes).
+		out["hx-get"] = m.Get
 	}
 	if strings.TrimSpace(m.Post) != "" {
-		out["hx-post"] = templ.SafeURL(m.Post)
+		out["hx-post"] = m.Post
 	}
 	if strings.TrimSpace(m.Target) != "" {
 		out["hx-target"] = m.Target
