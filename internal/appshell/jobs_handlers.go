@@ -44,6 +44,12 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.streamJobArtifact(w, r, id)
+	case "report":
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.renderJobReport(w, r, id)
 	case "cancel":
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -74,6 +80,27 @@ func (a *App) renderJobStatus(w http.ResponseWriter, r *http.Request, id string,
 		return
 	}
 	templates.JobStatusView(job).Render(r.Context(), w)
+}
+
+// renderJobReport serves /jobs/{id}/report. Renders the job's
+// terminal-state summary card plus a structured report payload
+// (timeline, artifact metadata, error log when present) on a
+// printable layout so the user can save or share it without the
+// live-polling scaffolding of the status view. Returns 404 when
+// the job is unknown; falls through to a minimal "still running"
+// report when the job is queued or running so a refresh during
+// the export doesn't dead-end the user.
+func (a *App) renderJobReport(w http.ResponseWriter, r *http.Request, id string) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
+	job, ok := a.jobs.Get(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	templates.JobReportView(job).Render(r.Context(), w)
 }
 
 // renderActiveJob serves /jobs/active: returns the slot variant of
