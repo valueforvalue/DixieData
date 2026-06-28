@@ -28,6 +28,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `guardedSaveFileDialog` caller (`json`, `insights_pdf`,
   `excel`, `icalendar`, `static_archive`, `backup_archive`,
   `shared_archive`, `bug_report`, `feedback_log`).
+- `internal/appshell`: in-progress toasts (image import,
+  shared-archive import, memorial-JSON import, Google Drive /
+  Sheets exports, duplicate audit, bulk reviews, orphan
+  cleanup) now emit `X-DixieData-Toast-Type: info` instead of
+  the default `success` (issue #132). Combined with the
+  existing `success || info` auto-dismiss branch in
+  `frontend/app.js`'s `showToast`, every "X started…" toast
+  fades out after 4 s on both the originating page and the
+  page the user lands on after the 303 redirect. New
+  `setInfoToastHeader` helper centralises the kind so future
+  in-progress sites cannot regress to success-by-default.
+  Error and warning toasts keep the manual-dismiss contract
+  from issue #54. The 4 s and 320 ms timing values are now
+  named constants (`toastAutoDismissMs`, `toastFadeOutMs`)
+  at the top of `app.js` so future tuning is one edit.
+- `internal/templates/jobs.templ`: non-viewable job artifacts
+  (.ddbak, .ddshare, .zip, .csv, .ics) now render with a `download`
+  attribute instead of `target="_blank"` (issue #129). The old
+  combination opened a blank tab and triggered a silent download
+  that the user couldn't see or find. PDFs, JPGs, PNGs, and other
+  viewable extensions still open in a new tab as before. New
+  `jobs.Job.IsViewableArtifact()` + `jobs.Job.ArtifactFilename()`
+  helpers own the classification so the template stays declarative.
 - `internal/templates/share.templ`: print-config modal renders
   with the centering classes required to display the dialog in
   the middle of the page (`justify-center`, `items-center` on
@@ -38,14 +61,6 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestSharePrintConfigModalIsCentered` test pins down the
   CSS classes so a future refactor cannot silently remove
   them.
-- `internal/templates/jobs.templ`: non-viewable job artifacts
-  (.ddbak, .ddshare, .zip, .csv, .ics) now render with a `download`
-  attribute instead of `target="_blank"` (issue #129). The old
-  combination opened a blank tab and triggered a silent download
-  that the user couldn't see or find. PDFs, JPGs, PNGs, and other
-  viewable extensions still open in a new tab as before. New
-  `jobs.Job.IsViewableArtifact()` + `jobs.Job.ArtifactFilename()`
-  helpers own the classification so the template stays declarative.
 
 ### Added
 

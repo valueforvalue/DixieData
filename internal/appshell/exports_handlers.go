@@ -382,6 +382,19 @@ func setToastHeaderWithType(w http.ResponseWriter, message, kind string) {
 	w.Header().Set("X-DixieData-Toast-Type", kind)
 }
 
+// setInfoToastHeader writes an "in-progress" toast header. The
+// frontend uses kind="info" to mark the toast as auto-dismissable
+// (same behaviour as success), but the wording in the toast
+// heading ("Heads up" instead of "Success") accurately reflects
+// that the action is still running rather than complete. Used by
+// every handler that enqueues a background job — image import,
+// shared archive import, memorial JSON import, Google Drive /
+// Sheets exports, duplicate audit, bulk reviews, orphan cleanup.
+// Issue #132.
+func setInfoToastHeader(w http.ResponseWriter, message string) {
+	setToastHeaderWithType(w, message, "info")
+}
+
 func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

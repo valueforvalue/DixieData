@@ -75,7 +75,7 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		_ = jobID
 		return nil
 	})
-	setToastHeader(w, "Google Drive upload started\u2026")
+	setInfoToastHeader(w, "Google Drive upload started\u2026")
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -111,7 +111,7 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		_ = jobID
 		return nil
 	})
-	setToastHeader(w, "Google Sheets export started\u2026")
+	setInfoToastHeader(w, "Google Sheets export started\u2026")
 	w.Header().Set("Location", "/jobs/"+jobID)
 	w.WriteHeader(http.StatusSeeOther)
 }
