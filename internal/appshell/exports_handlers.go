@@ -76,6 +76,95 @@ func (a *App) guardedSaveFileDialog(dupKey string, opts runtime.SaveDialogOption
 	return path, true
 }
 
+// guardedOpenFileDialogKey returns the dedup key guardedOpenFileDialog
+// would use for the given kind + options. Mirrors
+// guardedSaveFileDialogKey so callers can compute the key once,
+// thread it into enqueueExport, and use the same key for both the
+// dedup check and the JobID redirect (issue #130 pattern).
+func guardedOpenFileDialogKey(kind string, opts runtime.OpenDialogOptions) string {
+	return fmt.Sprintf("open|%s|%s|%v", kind, opts.DefaultFilename, opts.Filters)
+}
+
+// guardedOpenFileDialog wraps a.OpenFileDialog with the same
+// in-flight guard used by guardedSaveFileDialog. Native
+// OpenFileDialog calls land on the same UI thread as Save
+// dialogs; a double-click during a .ddbak import or shared
+// archive preview would otherwise queue a second dialog and
+// crash WebView2 with Chrome_WidgetWin_0. Error = 1412.
+//
+// The guard key is the import kind + a fingerprint of the
+// dialog options. Two requests with the same options collapse
+// to one dialog; two requests with different kinds (shared
+// archive vs memorial JSON) are independent and both proceed.
+func (a *App) guardedOpenFileDialog(dupKey string, opts runtime.OpenDialogOptions) (string, bool, bool) {
+	if dupKey == "" {
+		dupKey = guardedOpenFileDialogKey("open", opts)
+	}
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
+		return "", false, false
+	}
+	defer a.leaveInFlight(dupKey, entry)
+	path, err := a.OpenFileDialog(opts)
+	if err != nil || path == "" {
+		return "", true, false
+	}
+	return path, true, true
+}
+
+// guardedOpenDirectoryDialogKey mirrors guardedOpenFileDialogKey
+// for folder-picker dialogs. The Title field is the only
+// stable fingerprint for directory pickers (no DefaultFilename
+// or Filters), so the key includes it instead.
+func guardedOpenDirectoryDialogKey(kind string, opts runtime.OpenDialogOptions) string {
+	return fmt.Sprintf("opendir|%s|%s", kind, opts.Title)
+}
+
+// guardedOpenDirectoryDialog wraps a.OpenDirectoryDialog with
+// the in-flight guard. Same crash class as the save + file
+// pickers; same dialog guard law applies.
+func (a *App) guardedOpenDirectoryDialog(dupKey string, opts runtime.OpenDialogOptions) (string, bool, bool) {
+	if dupKey == "" {
+		dupKey = guardedOpenDirectoryDialogKey("opendir", opts)
+	}
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
+		return "", false, false
+	}
+	defer a.leaveInFlight(dupKey, entry)
+	path, err := a.OpenDirectoryDialog(opts)
+	if err != nil || path == "" {
+		return "", true, false
+	}
+	return path, true, true
+}
+
+// guardedOpenMultipleFilesDialogKey mirrors guardedOpenFileDialogKey
+// for multi-select file pickers.
+func guardedOpenMultipleFilesDialogKey(kind string, opts runtime.OpenDialogOptions) string {
+	return fmt.Sprintf("openmulti|%s|%s|%v", kind, opts.DefaultFilename, opts.Filters)
+}
+
+// guardedOpenMultipleFilesDialog wraps a.OpenMultipleFilesDialog
+// with the in-flight guard. Multi-select pickers land on the
+// same UI thread as the single-select pickers; same crash
+// class; same dialog guard law applies.
+func (a *App) guardedOpenMultipleFilesDialog(dupKey string, opts runtime.OpenDialogOptions) ([]string, bool, bool) {
+	if dupKey == "" {
+		dupKey = guardedOpenMultipleFilesDialogKey("openmulti", opts)
+	}
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
+		return nil, false, false
+	}
+	defer a.leaveInFlight(dupKey, entry)
+	paths, err := a.OpenMultipleFilesDialog(opts)
+	if err != nil || len(paths) == 0 {
+		return nil, true, false
+	}
+	return paths, true, true
+}
+
 
 // --- handleLegacyExportRedirect ---
 func (a *App) handleLegacyExportRedirect(w http.ResponseWriter, r *http.Request) {

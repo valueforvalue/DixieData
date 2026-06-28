@@ -929,10 +929,16 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	parentDir, err := a.OpenDirectoryDialog( runtime.OpenDialogOptions{
+	parentDirOpts := runtime.OpenDialogOptions{
 		Title: "Choose where to copy the record images",
-	})
-	if err != nil || parentDir == "" {
+	}
+	dupKey := guardedOpenDirectoryDialogKey("download_images", parentDirOpts)
+	parentDir, admitted, ok := a.guardedOpenDirectoryDialog(dupKey, parentDirOpts)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	if !ok {
 		respondError(w, r, KindValidation, "Download cancelled.", nil)
 		return
 	}
@@ -956,12 +962,18 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	paths, err := a.OpenMultipleFilesDialog( runtime.OpenDialogOptions{
+	pathsOpts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
 		},
-	})
-	if err != nil || len(paths) == 0 {
+	}
+	dupKey := guardedOpenMultipleFilesDialogKey("import_images", pathsOpts)
+	paths, admitted, ok := a.guardedOpenMultipleFilesDialog(dupKey, pathsOpts)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	if !ok {
 		respondError(w, r, KindValidation, "Image import cancelled.", nil)
 		return
 	}
