@@ -266,7 +266,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								<span>Export Record</span>
 								<span class="text-[0.68rem] uppercase tracking-[0.16em] text-[#8d7440]">PDF / JPG</span>
 							</summary>
-							<form hx-post={ templ.SafeURL(routebuilder.SoldierPDF(s.ID)) } hx-target="this" hx-swap="none" data-pdf-pref-scope="soldier" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
+							<form action={ templ.SafeURL(routebuilder.SoldierPDF(s.ID)) } data-dixie-submit="true" data-pdf-pref-scope="soldier" data-popout-panel class="absolute left-0 z-20 mt-3 w-[min(24rem,calc(100vw-3rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)] sm:w-96 xl:left-auto xl:right-0">
 								<div class="flex items-start justify-between gap-3">
 									<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Single Record Export</p>
 									<button type="button" popovertarget="single-record-export-help" class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</button>
@@ -299,15 +299,11 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 									<div class="sm:col-span-2 flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:justify-end">
 										@components.Button("Export PDF", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 											"type": "submit",
-											"hx-post": templ.SafeURL(routebuilder.SoldierPDF(s.ID)),
-											"hx-target": "this",
-											"hx-swap": "none",
 										})
 										@components.Button("Export JPG", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
 											"type": "submit",
-											"hx-post": fmt.Sprintf("/soldiers/%d/jpg", s.ID),
-											"hx-target": "this",
-											"hx-swap": "none",
+											"data-action": fmt.Sprintf("/soldiers/%d/jpg", s.ID),
+											"data-dixie-submit": "true",
 										})
 									</div>
 								</div>
@@ -458,7 +454,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								} else {
 									<p class="mt-2 text-sm text-[#6f2c26]">Manually flag this person record for follow-up research or duplicate checking and it will appear in the review queue.</p>
 								}
-								<form hx-post={ templ.SafeURL(routebuilder.SoldierReviewFlag(s.ID)) } hx-target="this" hx-swap="none" class="mt-4 space-y-3">
+								<form action={ templ.SafeURL(routebuilder.SoldierReviewFlag(s.ID)) } data-dixie-submit="true" class="mt-4 space-y-3">
 									<label class="block text-sm font-medium text-[#6f2c26]">
 										Review Note
 										<textarea name="review_reason" rows="3" class="field-input mt-2 min-h-24" placeholder="Example: Check pension packet against widow person record or verify duplicate candidate.">{ s.ReviewReason }</textarea>
@@ -472,9 +468,8 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 										if s.NeedsReview {
 											<a href="/review-queue" class="secondary-button">Open Review Queue</a>
 											@components.Button("Mark as Resolved", components.ButtonSecondary, "", templ.Attributes{
-												"hx-post": fmt.Sprintf("/soldiers/%d/review/resolve", s.ID),
-												"hx-target": "this",
-												"hx-swap": "none",
+												"data-action": fmt.Sprintf("/soldiers/%d/review/resolve", s.ID),
+												"data-dixie-submit": "true",
 											})
 										}
 									</div>
@@ -530,9 +525,10 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">
 						@components.Button("Delete Person Record", components.ButtonDanger, "", templ.Attributes{
-							"hx-delete": fmt.Sprintf("/soldiers/%d", s.ID),
-							"hx-confirm": "Delete this Person Record? It will also remove every Source Record attached to it, every image file, the spouse link, the scratch pad, and any research tasks. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover.",
-							"hx-target": "body",
+							"data-action": fmt.Sprintf("/soldiers/%d", s.ID),
+							"data-method": "DELETE",
+							"data-confirm": "Delete this Person Record? It will also remove every Source Record attached to it, every image file, the spouse link, the scratch pad, and any research tasks. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover.",
+							"data-dixie-submit": "true",
 						})
 					</div>
 				</div>
@@ -552,7 +548,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 				}
 				<section class="relative">
 					<h3 class="mt-8 text-lg gold font-semibold">Images</h3>
-					<form hx-post={ templ.SafeURL(routebuilder.SoldierImagesDownload(s.ID)) } hx-target="#image-download-status" class="mt-2">
+					<form action={ templ.SafeURL(routebuilder.SoldierImagesDownload(s.ID)) } data-dixie-submit="true" class="mt-2">
 						<div class="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between">
 							<label class="inline-flex items-center gap-2 font-medium text-slate-700">
 								<input type="checkbox" data-select-all="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
@@ -560,16 +556,16 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 							</label>
 							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
-								"hx-post": fmt.Sprintf("/soldiers/%d/images/import", s.ID),
-								"hx-target": "#image-download-status",
+								"data-action": fmt.Sprintf("/soldiers/%d/images/import", s.ID),
+								"data-dixie-submit": "true",
 								"data-progress-label": "Importing images\u2026",
 							})
 								if len(s.Images) > 0 {
 									@components.Button("Download Selected Images", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 									@components.Button("Delete Selected Images", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
-										"hx-post": fmt.Sprintf("/soldiers/%d/images/delete", s.ID),
-										"hx-target": "#image-download-status",
-										"hx-confirm": "Delete the selected image(s)?",
+										"data-action": fmt.Sprintf("/soldiers/%d/images/delete", s.ID),
+										"data-dixie-submit": "true",
+										"data-confirm": "Delete the selected image(s)?",
 									})
 								}
 							</div>
@@ -585,7 +581,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 											</label>
 											<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
 												<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
-												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } hx-post={ templ.SafeURL(routebuilder.SoldierImagesPrimary(s.ID, img.ID)) } hx-target="#image-download-status" hx-swap="none" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
+												<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } data-action={ templ.SafeURL(routebuilder.SoldierImagesPrimary(s.ID, img.ID)) } data-dixie-submit="true" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
 												<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
 											</div>
 										</div>
