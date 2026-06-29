@@ -11,6 +11,34 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- `reloadServices()` was unconditionally replacing `a.jobs` with a
+  fresh empty `jobs.Registry`, which silently dropped every job in
+  two contexts:
+    1. **App startup**: `lifecycle.go` had already wired the
+       persistent `jobs.jsonl` rehydrated Registry into `a.jobs` on
+       line 141; `reloadServices()` then ran on line 210 and
+       discarded it, so the `jobs.jsonl` persistence layer was
+       effectively dead code — no job that survived a previous
+       session ever appeared in the new session's registry.
+    2. **`.ddbak` restore**: `handleImportBackup`'s worker calls
+       `a.reopenDatabase()` after replacing the data dir.
+       `reopenDatabase()` runs `reloadServices()`, which used to
+       replace `a.jobs` while the `backup_import` job was still
+       running. The user landed on `/jobs/{id}` (rendered fine from
+       the pre-reload registry), but the 2s `hx-get` poll against
+       `/jobs/{id}/status` started returning 404 the moment the
+       reload happened — the page logged a flood of
+       `htmx:responseError` events and never showed the final
+       summary card, even though the import itself succeeded.
+  Now `reloadServices()` preserves `a.jobs` when one is already
+  wired and only allocates a fresh Registry on the very first call
+  (the test-bypass-startup path where `NewApp()` leaves it nil).
+  Two regression nets pin the contract: pointer-identity check
+  across multiple reloads and an in-flight `Start`-then-reload
+  round-trip that asserts `Get(jobID)` still returns ok.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
