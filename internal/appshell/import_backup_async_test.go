@@ -37,15 +37,15 @@ func TestImportBackupInFlightGuardRedirectsToExistingJob(t *testing.T) {
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303 redirect to existing /jobs/{id}, got status=%d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (Option C contract), got status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("Location"); got != "/jobs/restore-job-123" {
-		t.Errorf("expected Location=/jobs/restore-job-123, got %q", got)
+	if got := rec.Header().Get("Location"); got != "" {
+		t.Errorf("expected no Location header (Option C contract), got %q", got)
 	}
-	// Same htmx hx-swap="none" guarantee as TestEnqueueExportRecordsJobIDOnEntry.
-	if got := rec.Header().Get("HX-Redirect"); got != "/jobs/restore-job-123" {
-		t.Errorf("expected HX-Redirect=/jobs/restore-job-123 (htmx hx-swap=none buttons); got %q", got)
+	// Option C: dispatchDixieDataForm navigates from X-DixieData-Redirect.
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/jobs/restore-job-123" {
+		t.Errorf("expected X-DixieData-Redirect=/jobs/restore-job-123, got %q", got)
 	}
 }
 

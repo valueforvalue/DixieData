@@ -29,6 +29,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   subtrees. Polling fragments (`/jobs/active`, `/jobs/{id}`)
   swap fresh DOM every 2–3s; without re-init, any JS handlers
   on those subtrees would never re-bind.
+- Migrated 13 Go handlers from `303 + Location + HX-Redirect`
+  to the new `200 + X-DixieData-Redirect` contract via the
+  `writeExportRedirect` helper. Touches: `enqueueExport` and
+  `enqueueExportWithResult` (cascades to ~10 callers including
+  the soldier PDF/JPG and monthly PDF flows), `handleGoogleBackup`,
+  `handleGoogleSheetsExport`, `handleImportBackup`,
+  `handleImportSharedArchive`, `handleConfirmMemorialJSONImport`,
+  `handleRunDuplicateAudit`, `handleReviewQueueBulk`,
+  `handleCleanupImageOrphans`, `handleCreateSoldier`,
+  `handleSoldierByID` (DELETE branch), `handleUpdateSoldier`,
+  `handleImportSoldierImages`, both branches of
+  `respondDuplicateInFlight`. `handleExportStaticArchive`
+  opts into `enqueueExportOpt{NativeRedirect: true}` to keep
+  the 303 + Location path for its plain-`<form method="post">`
+  carve-out. Regression net:
+  `TestPostThenNavigateUsesDixieRedirect` (in `redirect_headers_test.go`)
+  now reports 0 offenders; the legacy 303-contract test
+  inverted in commit 5800ea1 turns green.
 
 ### Added
 

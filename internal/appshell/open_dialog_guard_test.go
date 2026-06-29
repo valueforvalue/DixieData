@@ -254,7 +254,10 @@ func TestGuardedOpenDialogRecorders(t *testing.T) {
 	// still the right escape hatch for the dup-hit branch.
 	rec := httptest.NewRecorder()
 	app.respondDuplicateInFlight(rec, httptest.NewRequest("POST", "/import/shared", nil), dupKey)
-	if rec.Code != 303 {
-		t.Errorf("dup-hit must 303; got %d", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("dup-hit must return 200 (Option C contract: dispatchDixieDataForm navigates from X-DixieData-Redirect); got %d", rec.Code)
+	}
+	if rec.Header().Get("X-DixieData-Redirect") == "" {
+		t.Errorf("dup-hit must set X-DixieData-Redirect; got empty")
 	}
 }

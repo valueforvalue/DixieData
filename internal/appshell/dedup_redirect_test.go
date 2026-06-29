@@ -30,11 +30,11 @@ func TestRespondDuplicateInFlightRedirectsToExistingJob(t *testing.T) {
 	rec := httptest.NewRecorder()
 	app.respondDuplicateInFlight(rec, req, dupKey)
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303 redirect, got status=%d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (Option C contract), got status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("Location"); got != "/jobs/"+jobID {
-		t.Fatalf("expected Location=/jobs/%s, got %q", jobID, got)
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/jobs/"+jobID {
+		t.Fatalf("expected X-DixieData-Redirect=/jobs/%s (dispatchDixieDataForm navigates from this header), got %q", jobID, got)
 	}
 }
 
@@ -56,17 +56,17 @@ func TestRespondDuplicateInFlightWithoutJobIDReturnsUserMessage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	app.respondDuplicateInFlight(rec, req, dupKey)
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303 HX-Redirect, got status=%d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (Option C contract), got status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("HX-Redirect"); got != "/soldiers/1" {
-		t.Fatalf("expected HX-Redirect=/soldiers/1, got %q", got)
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/soldiers/1" {
+		t.Fatalf("expected X-DixieData-Redirect=/soldiers/1, got %q", got)
 	}
 	if got := rec.Header().Get("X-DixieData-Toast"); got == "" {
 		t.Fatalf("expected a toast header so the user sees feedback; got none")
 	}
 	if rec.Body.Len() != 0 {
-		t.Fatalf("expected empty body (toast + HX-Redirect should not include error page text); got %q", rec.Body.String())
+		t.Fatalf("expected empty body (toast + X-DixieData-Redirect should not include error page text); got %q", rec.Body.String())
 	}
 }
 
@@ -83,11 +83,11 @@ func TestRespondDuplicateInFlightWithUnknownKeyReturnsUserMessage(t *testing.T) 
 	rec := httptest.NewRecorder()
 	app.respondDuplicateInFlight(rec, req, "never-stored-key")
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303 HX-Redirect, got status=%d", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (Option C contract), got status=%d", rec.Code)
 	}
-	if got := rec.Header().Get("HX-Redirect"); got != "/soldiers/1" {
-		t.Fatalf("expected HX-Redirect=/soldiers/1, got %q", got)
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/soldiers/1" {
+		t.Fatalf("expected X-DixieData-Redirect=/soldiers/1, got %q", got)
 	}
 }
 

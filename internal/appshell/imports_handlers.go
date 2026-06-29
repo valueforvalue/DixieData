@@ -32,12 +32,8 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	// can monitor the in-flight restore.
 	if a.importInFlight.Load() {
 		if jobID := a.importInFlightJobID(); jobID != "" {
-			// Both Location and HX-Redirect — see enqueueExport
-			// for the rationale. Without HX-Redirect, htmx
-			// hx-swap="none" buttons silently swallow the 303.
-			w.Header().Set("Location", "/jobs/"+jobID)
-			w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-			w.WriteHeader(http.StatusSeeOther)
+			// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
+			writeExportRedirect(w, "/jobs/"+jobID)
 			return
 		}
 		respondError(w, r, KindUnavailable, "A backup restore is already in progress; please wait for it to finish.", nil)
@@ -122,13 +118,8 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	})
 
 	setInfoToastHeader(w, fmt.Sprintf("Restoring backup: %s", filepath.Base(path)))
-	// Both Location and HX-Redirect so the backup restore lands on
-	// /jobs/{id} for both plain form submits (the legacy Load
-	// Backup path) and htmx hx-swap="none" buttons. See
-	// enqueueExport for the full rationale.
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
+	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
 func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) {
@@ -190,9 +181,7 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return nil
 	})
 	setInfoToastHeader(w, "Shared archive import started\u2026")
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
 func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Request) {
@@ -279,9 +268,7 @@ func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Req
 		return nil
 	})
 	setInfoToastHeader(w, "Memorial JSON import started\u2026")
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
 func (a *App) rememberMemorialPreview(path string) (string, error) {
