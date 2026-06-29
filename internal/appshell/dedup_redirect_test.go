@@ -116,14 +116,15 @@ func TestEnqueueExportRecordsJobIDOnEntry(t *testing.T) {
 	if entry.JobID == "" {
 		t.Fatalf("expected JobID populated on entry after enqueueExport; got empty")
 	}
-	if loc := rec.Header().Get("Location"); loc != "/jobs/"+entry.JobID {
-		t.Fatalf("expected Location=/jobs/%s, got %q", entry.JobID, loc)
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("expected no Location header (Option C: 200 + X-DixieData-Redirect); got %q", loc)
 	}
-	// htmx 2.x with hx-swap="none" needs HX-Redirect to navigate;
-	// without it the user sits on the originating page while the
-	// export runs invisibly. Pinning it down here so a future
-	// refactor that drops HX-Redirect fails this test.
-	if hx := rec.Header().Get("HX-Redirect"); hx != "/jobs/"+entry.JobID {
-		t.Fatalf("expected HX-Redirect=/jobs/%s so htmx hx-swap=none buttons land on the status page; got %q", entry.JobID, hx)
+	// Option C: the dispatcher reads X-DixieData-Redirect, not
+	// HX-Redirect (which is dead code — no code path reads it).
+	if dixie := rec.Header().Get("X-DixieData-Redirect"); dixie != "/jobs/"+entry.JobID {
+		t.Fatalf("expected X-DixieData-Redirect=/jobs/%s so dispatchDixieDataForm navigates; got %q", entry.JobID, dixie)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK (Option C contract); got %d", rec.Code)
 	}
 }

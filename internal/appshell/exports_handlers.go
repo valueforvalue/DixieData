@@ -174,14 +174,38 @@ func (a *App) handleLegacyExportRedirect(w http.ResponseWriter, r *http.Request)
 
 // --- main export handlers (JSON, InsightsPDF, CSV, iCal, StaticArchive, DatabasePDF, Backup, SharedArchive, BugReport) ---
 
-// enqueueExport starts a background export job and writes a 303
-// redirect to /jobs/{id}. Used by every export handler that wraps
-// long-running work. Mirrors the shape of enqueueStaticArchive /
-// enqueueDatabasePDF (which predate this helper). When dupKey is
-// non-empty the new JobID is recorded against the in-flight entry
-// so a duplicate request that arrives after the job has been
-// queued can be redirected to the same status page (issue #130).
-func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) error, path string, w http.ResponseWriter) {
+// enqueueExportOpt configures the response shape written by
+// enqueueExport / enqueueExportWithResult. The zero value is the
+// new Option C contract: 200 OK + X-DixieData-Redirect, read by
+// dispatchDixieDataForm in frontend/app.js.
+type enqueueExportOpt struct {
+	// NativeRedirect keeps the legacy 303 + Location contract for
+	// callers reached by a plain <form method="post"> (the browser
+	// follows 303 natively; the custom dispatcher doesn't intercept).
+	// Only handleExportStaticArchive needs this carve-out — every
+	// share-page button now goes through the dispatcher, which
+	// understands the new contract.
+	NativeRedirect bool
+}
+
+// enqueueExport starts a background export job and writes a redirect
+// to /jobs/{id}. Used by every export handler that wraps long-running
+// work. Mirrors the shape of enqueueStaticArchive / enqueueDatabasePDF
+// (which predate this helper). When dupKey is non-empty the new JobID
+// is recorded against the in-flight entry so a duplicate request that
+// arrives after the job has been queued can be redirected to the same
+// status page (issue #130).
+//
+// Response shape:
+//   - default: 200 OK + X-DixieData-Redirect: /jobs/{id} (Option C contract)
+//   - if opts.NativeRedirect: 303 See Other + Location: /jobs/{id} (legacy)
+//
+// The X-DixieData-Redirect branch is read by dispatchDixieDataForm in
+// frontend/app.js, which calls window.location.assign() to navigate.
+// The 303 branch is read by the browser natively — used only by
+// handleExportStaticArchive, which is reached by a plain <form
+// method="post"> without hx-post.
+func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) error, path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
 	var jobID string
 	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
@@ -199,18 +223,7 @@ func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) err
 			}
 		}
 	}
-	// Write both Location and HX-Redirect so the response works
-	// for every caller: a plain <form method="post"> browser submit
-	// follows Location (e.g. static archive), and a htmx button with
-	// hx-swap="none" follows HX-Redirect. Without HX-Redirect, htmx
-	// 2.x swallows the 303 because hx-swap="none" suppresses both
-	// the swap AND the redirect handling; the user stays on the
-	// originating page and the export runs invisibly in the
-	// background. See audit/smoke.mjs share-{path}-redirects-303
-	// for the live net that pins this down.
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	writeExportRedirect(w, "/jobs/"+jobID, opts...)
 }
 
 // enqueueExportWithResult is the stats-aware counterpart of
@@ -225,7 +238,7 @@ func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) err
 // image_import) continue to use enqueueExport unchanged. New
 // workers that compute per-record counts use this helper with
 // the matching ExportXxxWithStats service method.
-func (a *App) enqueueExportWithResult(dupKey, kind string, work func(p *jobs.Progress) (jobs.JobResult, error), path string, w http.ResponseWriter) {
+func (a *App) enqueueExportWithResult(dupKey, kind string, work func(p *jobs.Progress) (jobs.JobResult, error), path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
 	var jobID string
 	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
@@ -246,12 +259,31 @@ func (a *App) enqueueExportWithResult(dupKey, kind string, work func(p *jobs.Pro
 			}
 		}
 	}
-	// See enqueueExport for why both Location and HX-Redirect are
-	// written. htmx 2.x with hx-swap="none" needs HX-Redirect or
-	// it silently swallows the 303.
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	writeExportRedirect(w, "/jobs/"+jobID, opts...)
+}
+
+// writeExportRedirect writes the response that takes the user to the
+// post-then-navigate destination. Default shape: 200 OK +
+// X-DixieData-Redirect, read by dispatchDixieDataForm. With
+// NativeRedirect: 303 + Location, followed natively by the browser
+// (used for the static archive's plain-<form> carve-out).
+//
+// HX-Redirect is no longer written. htmx is not the dispatcher in this
+// codebase; the custom JS reads X-DixieData-Redirect. See
+// internal/appshell/redirect_headers_test.go (TestPostThenNavigateUsesDixieRedirect)
+// for the source-scan regression net.
+func writeExportRedirect(w http.ResponseWriter, target string, opts ...enqueueExportOpt) {
+	native := false
+	if len(opts) > 0 {
+		native = opts[0].NativeRedirect
+	}
+	if native {
+		w.Header().Set("Location", target)
+		w.WriteHeader(http.StatusSeeOther)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", target)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
@@ -389,10 +421,15 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 	// Always enqueue — static archive export is heavy and the user
 	// benefits from the persistent progress slot regardless of which
 	// page they navigate to while it runs.
+	// NativeRedirect: true — handleExportStaticArchive is reached by
+	// a plain <form method="post"> on share.templ (no hx-post), so
+	// the browser follows the 303 + Location natively. The custom
+	// dispatcher is not in the path; we can't rely on
+	// X-DixieData-Redirect being read.
 	a.enqueueExport(dupKey, "static_archive", func(p *jobs.Progress) error {
 		p.Set(5, "Gathering images")
 		return a.export.ExportStaticArchive(path, a.dataDir)
-	}, path, w)
+	}, path, w, enqueueExportOpt{NativeRedirect: true})
 }
 
 // enqueueStaticArchive was removed in phase 4 of the feedback /
