@@ -31,6 +31,47 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- Three pre-existing audit-workflow gaps closed together with the
+  pkg/render build-tag fix (`8503f3a`):
+    1. **Missing templ-generate step.** `internal/templates/*_templ.go`
+       is gitignored (generated from .templ source), so a fresh CI
+       checkout has only the .templ files plus the plain .go files.
+       The plain .go files (e.g. `linked_text_support.go`) call
+       helpers like `isSoldierEntry` that are defined in the
+       generated `*_templ.go` files. Without regenerating templ, the
+       audit workflow's `go build` failed with
+       `undefined: isSoldierEntry`. The test workflow already had
+       this step (test.yml:39-44); audit was missing it. Added a
+       `Regenerate templ files` step that runs
+       `go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate`
+       before the build step.
+    2. **Path filter too narrow.** The pull_request trigger was
+       limited to `internal/templates/**`, `frontend/**`,
+       `audit/**`. Changes to `pkg/`, `cmd/`, or
+       `.github/workflows/audit.yml` itself did NOT trigger the
+       audit. The pkg/render fix (PR #153) demonstrated this: the
+       audit never ran on the branch, so the fix landed without
+       CI confirmation. Expanded to `internal/**`, `pkg/**`,
+       `cmd/**`, `frontend/**`, `audit/**`,
+       `.github/workflows/audit.yml`. The audit workflow is now
+       self-triggering on its own edits.
+    3. **Server port mismatch.** The `Start dev server` step
+       polled `http://localhost:8080/` for readiness, but the
+       server command was
+       `./build/bin/dixiedata-web -scratch-dir .scratch/webmode`
+       — the default port is 8765 (see cmd/dixiedata-web/main.go),
+       so the wait-for-readiness check timed out after 30s and the
+       workflow failed even though the server was running. Added
+       `-addr 127.0.0.1:8080` to the boot line. The poll loop was
+       already correct; it was just polling the wrong port.
+
+  All three changes match the existing test.yml pattern. Verified
+  end-to-end: `gh workflow run audit.yml --ref
+  fix/audit-workflow-templ-generate` returns `success` after the
+  three fixes. Risk: low. `templ generate` is idempotent. Broader
+  path filter increases audit CI usage — a few extra runs per
+  PR, but each is Ubuntu + cached deps + takes ~3-4 minutes.
+
 - CI audit workflow on ubuntu-latest was failing because
   `pkg/render/renderers.go` referenced `syscall.SysProcAttr{
   HideWindow: true, CreationFlags: 0x08000000}` directly. Those

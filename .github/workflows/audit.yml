@@ -13,9 +13,12 @@ on:
   pull_request:
     branches: [dev, main]
     paths:
-      - 'internal/templates/**'
+      - 'internal/**'
+      - 'pkg/**'
+      - 'cmd/**'
       - 'frontend/**'
       - 'audit/**'
+      - '.github/workflows/audit.yml'
 
 permissions:
   contents: read
@@ -43,6 +46,21 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium --with-deps
 
+      - name: Regenerate templ files
+        # internal/templates/*_templ.go is gitignored (generated
+        # from .templ source files), so a fresh CI checkout has
+        # only the .templ files plus the plain .go files. The plain
+        # .go files (e.g. internal/templates/linked_text_support.go)
+        # call helpers like `isSoldierEntry` that are defined in
+        # the generated `*_templ.go` files. Without this step the
+        # go build below fails with "undefined: isSoldierEntry".
+        # The test workflow already runs this step; audit was
+        # missing it. (Discovered 2026-06-29 when verifying the
+        # pkg/render build-tag fix on dev.)
+        run: |
+          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+        timeout-minutes: 5
+
       - name: Build dixiedata-web + seed-data
         run: |
           mkdir -p build/bin
@@ -56,7 +74,7 @@ jobs:
 
       - name: Start dev server
         run: |
-          ./build/bin/dixiedata-web -scratch-dir .scratch/webmode &
+          ./build/bin/dixiedata-web -addr 127.0.0.1:8080 -scratch-dir .scratch/webmode &
           # Poll for readiness up to 30s instead of fixed sleep
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/ > /dev/null; then
