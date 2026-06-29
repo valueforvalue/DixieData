@@ -24,9 +24,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/appshell"
 )
@@ -70,6 +72,38 @@ func main() {
 		})
 		log.Printf("dixiedata-web: OpenFileDialog override wired to %s", captured)
 	}
+
+	// Export destinations: web-mode has no native SaveFileDialog, so the
+	// audit smoke harness and manual browser smoke tests would otherwise
+	// hit the errWailsFrontendUnavailable path and be redirected back to
+	// /share instead of /jobs/{id}. Wire a synthetic picker that
+	// auto-routes every export into <DIXIE_SAVE_FILE_DIR> (defaulting to
+	// <dataDir>/exports/). Each override call computes the destination
+	// from the SaveDialogOptions the handler passed — DefaultFilename
+	// drives the filename, while a per-call counter avoids clobbering
+	// when the harness fires several exports in a row.
+	saveDir := strings.TrimSpace(os.Getenv("DIXIE_SAVE_FILE_DIR"))
+	if saveDir == "" {
+		saveDir = filepath.Join(dataDir, "exports")
+	}
+	if err := os.MkdirAll(saveDir, 0o755); err != nil {
+		log.Fatalf("create save-file dir %s: %v", saveDir, err)
+	}
+	var exportSeq atomic.Uint64
+	saveDir = saveDir // capture for closure
+	app.SetSaveFileDialogOverride(func(opts any) (string, error) {
+		defaultName := "dixiedata-export.bin"
+		if wailsOpts, ok := opts.(wailsruntime.SaveDialogOptions); ok && strings.TrimSpace(wailsOpts.DefaultFilename) != "" {
+			defaultName = wailsOpts.DefaultFilename
+		}
+		// Append a per-call sequence so successive exports don't overwrite
+		// each other in the audit harness.
+		seq := exportSeq.Add(1)
+		ext := filepath.Ext(defaultName)
+		base := strings.TrimSuffix(defaultName, ext)
+		return filepath.Join(saveDir, fmt.Sprintf("%s-%d%s", base, seq, ext)), nil
+	})
+	log.Printf("dixiedata-web: SaveFileDialog override wired to %s", saveDir)
 
 	app.Startup(context.Background())
 
