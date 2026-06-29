@@ -2746,11 +2746,24 @@
     const form = button instanceof HTMLFormElement
       ? button
       : button.closest("form") || (() => {
-        const url = (button.getAttribute && (button.getAttribute("hx-post") || button.getAttribute("hx-delete") || button.getAttribute("data-hx-post") || button.getAttribute("data-hx-delete"))) || "";
+        // Bare-button mode: pull URL + method from data-* attrs (new
+        // convention) or hx-* / data-hx-* (translator window). After
+        // the templ retag, only data-* attrs remain.
+        const url = (button.getAttribute && (
+          button.getAttribute("data-action")
+          || button.getAttribute("hx-post")
+          || button.getAttribute("hx-delete")
+          || button.getAttribute("data-hx-post")
+          || button.getAttribute("data-hx-delete")
+        )) || "";
         if (!url) return null;
+        const method = (button.getAttribute("data-method")
+          || button.getAttribute("hx-delete")
+          || button.getAttribute("data-hx-delete"))
+          ? "DELETE" : "POST";
         const synthetic = document.createElement("form");
         synthetic.action = url;
-        synthetic.method = (button.getAttribute("hx-delete") || button.getAttribute("data-hx-delete")) ? "DELETE" : "POST";
+        synthetic.method = method;
         return synthetic;
       })();
     if (!(form instanceof HTMLFormElement)) {
