@@ -158,6 +158,38 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   now submits both scan forms against the live `dixiedata-web` server
   and asserts the result divs are non-empty.
 
+- Toast text still rendered as mojibake after issue #135 shipped
+  the real U+2026 / U+2014 runes into the source. The source was
+  correct (`curl -i` shows valid UTF-8 bytes on the wire), but
+  Chromium / WebView2 decode HTTP/1.x response headers as
+  Windows-1252, not UTF-8, per the WHATWG Fetch spec — every byte
+  above `0x7F` gets reinterpreted as a separate codepoint,
+  producing `Shared archive import startedâ¦` on the toast.
+  Introduced `sanitiseToastForHeader` next to `setToastHeader` /
+  `setToastHeaderWithType` in `exports_handlers.go`. Source code
+  keeps the polished Unicode characters; the helper rewrites a
+  short table of common punctuation to ASCII twins (`…` → `...`,
+  `—` → `--`, `–` → `-`, curly quotes → straight, NBSP → space,
+  `→` → `->`, `✓` → `OK`, `·` → `*`, `§` → ``) at the boundary
+  where the toast text enters the response header. User-data
+  characters (accented Latin, CJK) pass through unchanged so
+  future toasts that quote user input are not silently mangled.
+  Every existing `setToastHeader*` call site benefits without
+  changes — the substitution is centralised at the contract
+  boundary. Captured the decision in
+  `docs/adr/0005-toast-header-ascii-safe.md`. Regression net:
+  `TestSanitiseToastForHeaderReplacements` pins every table entry
+  including ASCII / user-data passthrough and empty input;
+  `TestSetToastHeaderAppliesSanitisation` asserts no byte above
+  `0x7F` reaches the wire; `TestToastHeaderSourceStillContainsUnicode`
+  pins the contract that source keeps the polished characters so
+  future contributors update the table instead of stripping
+  Unicode at the source. The existing
+  `TestInProgressToastStringsContainActualEllipsis` source sweep
+  is updated to allow legitimate single-quoted rune literals
+  (`'\u2026'`) which were previously false-positives after the
+  helper table landed.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.

@@ -619,7 +619,7 @@ func setToastHeader(w http.ResponseWriter, message string) {
 	if strings.TrimSpace(message) == "" {
 		return
 	}
-	w.Header().Set("X-DixieData-Toast", message)
+	w.Header().Set("X-DixieData-Toast", sanitiseToastForHeader(message))
 	w.Header().Set("X-DixieData-Toast-Type", "success")
 }
 
@@ -630,8 +630,61 @@ func setToastHeaderWithType(w http.ResponseWriter, message, kind string) {
 	if strings.TrimSpace(kind) == "" {
 		kind = "success"
 	}
-	w.Header().Set("X-DixieData-Toast", message)
+	w.Header().Set("X-DixieData-Toast", sanitiseToastForHeader(message))
 	w.Header().Set("X-DixieData-Toast-Type", kind)
+}
+
+// toastHeaderASCIIReplacements maps Unicode punctuation to its ASCII
+// twin for use inside the X-DixieData-Toast HTTP response header.
+//
+// Chromium / WebView2 decodes HTTP/1.x response headers as
+// Windows-1252 (per WHATWG Fetch), not UTF-8. Bytes above 0x7F get
+// reinterpreted as separate Windows-1252 codepoints, producing
+// visible mojibake like "Shared archive import startedâ¦" when the
+// source contains a real U+2026 HORIZONTAL ELLIPSIS rune. The Go
+// stdlib writes header bytes raw (RFC 7230 §3.2.4 allows
+// ISO-8859-1), so the corruption happens on the browser side and
+// cannot be fixed server-side without changing the wire format.
+//
+// The table deliberately covers only punctuation that has a clean
+// ASCII twin. Stripping every byte above 0x7F would silently mangle
+// future toasts that quote user input (e.g. "Saved record for
+// José") — user data passes through unchanged on purpose. See
+// docs/adr/0005-toast-header-ascii-safe.md for the trade-off.
+var toastHeaderASCIIReplacements = map[rune]string{
+	'\u2026': "...", // … HORIZONTAL ELLIPSIS
+	'\u2014': "--",  // — EM DASH
+	'\u2013': "-",   // – EN DASH
+	'\u2018': "'",   // ‘ LEFT SINGLE QUOTATION MARK
+	'\u2019': "'",   // ’ RIGHT SINGLE QUOTATION MARK
+	'\u201C': `"`,   // “ LEFT DOUBLE QUOTATION MARK
+	'\u201D': `"`,   // ” RIGHT DOUBLE QUOTATION MARK
+	'\u00A0': " ",   //   NO-BREAK SPACE
+	'\u2192': "->",  // → RIGHTWARDS ARROW
+	'\u2713': "OK",  // ✓ CHECK MARK
+	'\u00B7': "*",   // · MIDDLE DOT
+	'\u00A7': "",    // § SECTION SIGN (omit)
+}
+
+// sanitiseToastForHeader rewrites every Unicode punctuation rune in
+// message to its ASCII twin. Bytes that are not in the replacement
+// table pass through unchanged so future toasts that quote user
+// input (accented names, non-Latin scripts) survive the Windows-1252
+// decoding unmodified.
+func sanitiseToastForHeader(message string) string {
+	if message == "" {
+		return message
+	}
+	var b strings.Builder
+	b.Grow(len(message))
+	for _, r := range message {
+		if replacement, ok := toastHeaderASCIIReplacements[r]; ok {
+			b.WriteString(replacement)
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 // setInfoToastHeader writes an "in-progress" toast header. The
