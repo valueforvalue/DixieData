@@ -54,7 +54,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 				</summary>
 				<div class="mt-4 space-y-3">
 					<p class="text-sm text-slate-600">Paste Find a Grave memorial HTML to prefill this form, then verify every field manually before saving.</p>
-					<form hx-post={ templ.SafeURL(routebuilder.SoldierScrapeFindAGrave()) } hx-target="#entry-form-shell" hx-swap="outerHTML" class="space-y-3">
+					<form action={ templ.SafeURL(routebuilder.SoldierScrapeFindAGrave()) } data-dixie-submit="true" class="space-y-3">
 						<label class="block text-sm text-slate-500" for="ef-findagrave_source">Find a Grave HTML Source</label>
 						<textarea name="findagrave_source" rows="4" class="field-input min-h-24" placeholder="Paste Find a Grave memorial HTML here" id="ef-findagrave_source">{ scrape.Input }</textarea>
 						<div class="flex flex-wrap items-center gap-3">
@@ -106,14 +106,16 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 		}
 		<form
 			if isEdit {
-				hx-put={ fmt.Sprintf("/soldiers/%d", s.ID) }
+				action={ fmt.Sprintf("/soldiers/%d", s.ID) }
+				data-dixie-submit="true"
 				data-draft-key={ draftKey(s, isEdit) }
 				data-draft-record-version={ draftRecordVersion(s, isEdit) }
 			} else {
-				hx-post={ templ.SafeURL(routebuilder.SoldierCreate()) }
+				action={ templ.SafeURL(routebuilder.SoldierCreate()) }
+				data-dixie-submit="true"
 				data-draft-key={ draftKey(s, isEdit) }
 			}
-			hx-target="body"
+			
 			enctype="multipart/form-data"
 			data-record-persistence-kind={ draftMode(isEdit) }
 			data-draft-reset-path={ draftResetPath(s, isEdit) }
@@ -446,9 +448,8 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
 								</div>
 								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
-								"hx-post": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
-								"hx-target": "this",
-								"hx-swap": "none",
+								"data-action": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
+								"data-dixie-submit": "true",
 								"data-progress-label": "Importing images\u2026",
 							})
 							</div>
@@ -535,7 +536,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<p class="mt-2 text-sm text-slate-600">Turn on debug logging. Once on, the 🐞 button appears in the footer — click it to open the Debug Console and read the in-memory log tail. The setting persists in <code>local_settings.json</code> across restarts.</p>
 					<p class="mt-1 text-xs text-slate-500">Equivalent to launching the app with <code>DIXIEDATA_DEBUG=1</code> in the environment.</p>
 				</div>
-				<form hx-post={ templ.SafeURL(routebuilder.SettingsDebugMode()) } hx-target="this" hx-swap="none" class="flex items-center gap-3">
+				<form action={ templ.SafeURL(routebuilder.SettingsDebugMode()) } data-dixie-submit="true" class="flex items-center gap-3">
 					<label class="flex items-center gap-2 text-sm text-slate-700">
 						<input type="checkbox" name="debug_mode" value="on"
 							if debug.IsDebugMode(ctx) {
@@ -554,7 +555,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<p class="mt-2 text-sm text-slate-600">Clear the local archive and rebuild a fresh empty database and folder tree.</p>
 					<p class="mt-1 text-xs text-slate-500">This removes soldiers, records, images, local backups, and Google sync state stored in <code>.dixiedata</code>. The shared <code>google-oauth-defaults.json</code> file next to the app is not touched.</p>
 				</div>
-				<form hx-post={ templ.SafeURL(routebuilder.SettingsInitialize()) } hx-target="this" hx-swap="none" class="space-y-4">
+				<form action={ templ.SafeURL(routebuilder.SettingsInitialize()) } data-dixie-submit="true" class="space-y-4">
 					<div>
 						<label class="mb-1 block text-sm text-slate-500" for="ef-confirmation_word">Type { confirmationWord } to confirm</label>
 						<input type="text" name="confirmation_word" class="field-input" autocomplete="off" spellcheck="false" id="ef-confirmation_word"/>
@@ -574,7 +575,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Image Maintenance</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
 				</div>
-				<form hx-post={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } hx-target="#settings-orphan-results" class="space-y-4">
+				<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } data-dixie-submit="true" class="space-y-4">
 					@components.Button("Scan for Orphaned Images", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				</form>
 				<div id="settings-orphan-results" class="space-y-3"></div>
@@ -584,7 +585,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
 				</div>
-				<form hx-post={ templ.SafeURL(routebuilder.SettingsQualityScan()) } hx-target="#settings-quality-results" class="space-y-4">
+				<form action={ templ.SafeURL(routebuilder.SettingsQualityScan()) } data-dixie-submit="true" class="space-y-4">
 					<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
 						<label class="inline-flex items-center gap-2">
 							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
@@ -632,7 +633,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				}
 			</div>
 		}
-		<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } hx-target="#settings-update-panel" hx-swap="outerHTML" class="space-y-4">
+		<form action={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } data-dixie-submit="true" class="space-y-4">
 			<div>
 				<label class="mb-1 block text-sm text-slate-500" for="ef-source_url">Update source URL</label>
 				<input type="url" name="source_url" value={ state.SourceURL } placeholder="Leave blank to use the default GitHub latest release feed" class="field-input" autocomplete="off" spellcheck="false" id="ef-source_url"/>
@@ -641,7 +642,7 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 				@components.Button("Save Update Source", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</div>
 		</form>
-		<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } hx-target="#settings-update-panel" hx-swap="outerHTML">
+		<form action={ templ.SafeURL(routebuilder.SettingsUpdateSource()) } data-dixie-submit="true">
 			<input type="hidden" name="source_url" value=""/>
 			@components.Button("Use Default GitHub Feed", components.ButtonGhost, "w-full px-4 py-2 text-left sm:w-auto", templ.Attributes{"type": "submit"})
 		</form>
@@ -657,14 +658,14 @@ templ SettingsUpdatePanel(state viewmodel.UpdateSettings) {
 			@SettingsUpdateStatusMessage("error", state.DisabledReason)
 		}
 		<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-			<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateCheck()) } hx-target="this" hx-swap="none" class="w-full sm:w-auto">
+			<form action={ templ.SafeURL(routebuilder.SettingsUpdateCheck()) } data-dixie-submit="true" class="w-full sm:w-auto">
 				@components.Button("Check for Updates", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
-			<form hx-post={ templ.SafeURL(routebuilder.ExportBackup()) } hx-target="this" hx-swap="none" class="w-full sm:w-auto">
+			<form action={ templ.SafeURL(routebuilder.ExportBackup()) } data-dixie-submit="true" class="w-full sm:w-auto">
 				@components.Button("Export Backup (.ddbak)", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 			</form>
 			if state.CanApply {
-				<form hx-post={ templ.SafeURL(routebuilder.SettingsUpdateApply()) } hx-target="this" hx-swap="none" class="w-full sm:w-auto">
+				<form action={ templ.SafeURL(routebuilder.SettingsUpdateApply()) } data-dixie-submit="true" class="w-full sm:w-auto">
 					@components.Button("Download and Apply Latest Update", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 						"type": "submit",
 						"data-progress-label": "Preparing update\u2026",
@@ -717,7 +718,7 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 	if len(orphans) == 0 {
 		<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">No orphaned image files were found.</div>
 	} else {
-		<form hx-post={ templ.SafeURL(routebuilder.SettingsImagesOrphansCleanup()) } hx-target="#settings-orphan-results" class="space-y-3">
+		<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansCleanup()) } data-dixie-submit="true" class="space-y-3">
 			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
 				Found <strong>{ fmt.Sprintf("%d", len(orphans)) }</strong> orphaned image file(s). Cleanup moves them into temp trash instead of deleting them immediately.
 			</div>
@@ -732,7 +733,7 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 			</div>
 			@components.Button("Move Listed Files to Temp Trash", components.ButtonDanger, "", templ.Attributes{
 					"type": "submit",
-					"hx-confirm": "Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.",
+					data-confirm: "Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.",
 				})
 		</form>
 	}
@@ -755,7 +756,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 	if len(result.Groups) == 0 {
 		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-[rgba(242,252,244,0.95)] px-4 py-3 text-sm text-[#29522d]">No obvious issues were found in this run.</div>
 	} else {
-		<form hx-post={ templ.SafeURL(routebuilder.SettingsQualityApply()) } hx-target="#settings-quality-results" class="space-y-3">
+		<form action={ templ.SafeURL(routebuilder.SettingsQualityApply()) } data-dixie-submit="true" class="space-y-3">
 			for _, group := range result.Groups {
 				<details class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(246,241,228,0.72)]">
 					<summary class="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">{ group.Group } ({ fmt.Sprintf("%d", group.Count) })</summary>
@@ -779,7 +780,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 			}
 			@components.Button("Move Selected to Review Queue", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 				"type": "submit",
-				"hx-confirm": "Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.",
+				data-confirm: "Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.",
 			})
 		</form>
 	}
