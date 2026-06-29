@@ -583,7 +583,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
-	a.enqueueExport(dupKey, "soldier_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "soldier_pdf", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Rendering Person Record PDF")
 		return a.export.ExportSoldierPDF(path, *soldier, options)
 	}, path, w)
@@ -620,7 +620,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 		respondError(w, r, KindValidation, "PDF export cancelled.", nil)
 		return
 	}
-	a.enqueueExport(dupKey, "soldier_pdf_no_images", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "soldier_pdf_no_images", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Rendering text-only PDF")
 		return a.export.ExportSoldierPDFWithoutImages(path, *soldier)
 	}, path, w)
@@ -666,7 +666,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 		return
 	}
 
-	a.enqueueExport(dupKey, "soldier_jpg", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "soldier_jpg", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Rendering JPG pages")
 		_, err := a.export.ExportSoldierJPG(path, *soldier, options)
 		return err
@@ -728,7 +728,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		return
 	}
 	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
-	a.enqueueExport(dupKey, "monthly_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "monthly_pdf", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Rendering monthly PDF")
 		return a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options)
 	}, path, w)
