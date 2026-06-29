@@ -1,6 +1,7 @@
 package appshell
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -34,7 +35,7 @@ func TestEnqueueExportWithResultPopulatesJobStats(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	app.enqueueExportWithResult("", "json_export", func(p *jobs.Progress) (jobs.JobResult, error) {
+	app.enqueueExportWithResult("", "json_export", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		// The worker body is intentionally tiny so the test
 		// stays under the 2s timeout even on slow CI. We
 		// simulate the with-stats return shape (records / images /
@@ -95,7 +96,7 @@ func TestEnqueueExportWithResultSetsHXRedirect(t *testing.T) {
 	app := newStressApp(t)
 
 	rec := httptest.NewRecorder()
-	app.enqueueExportWithResult("", "json_export", func(p *jobs.Progress) (jobs.JobResult, error) {
+	app.enqueueExportWithResult("", "json_export", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		return jobs.JobResult{Records: 1}, nil
 	}, "/tmp/example.json", rec)
 

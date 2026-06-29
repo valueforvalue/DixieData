@@ -109,7 +109,7 @@ func TestEnqueueExportRecordsJobIDOnEntry(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	app.enqueueExport(dupKey, "soldier_pdf", func(_ *jobs.Progress) error {
+	app.enqueueExport(dupKey, "soldier_pdf", func(ctx context.Context, _ *jobs.Progress) error {
 		return nil
 	}, "/tmp/example.pdf", rec)
 

@@ -244,11 +244,11 @@ type enqueueExportOpt struct {
 // The 303 branch is read by the browser natively — used only by
 // handleExportStaticArchive, which is reached by a plain <form
 // method="post"> without hx-post.
-func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) error, path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
+func (a *App) enqueueExport(dupKey, kind string, work func(ctx context.Context, p *jobs.Progress) error, path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
 	var jobID string
 	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
-		err := work(p)
+		err := work(ctx, p)
 		if err == nil && path != "" {
 			a.jobs.SetResultPath(jobID, path)
 			p.Set(100, "Done")
@@ -277,11 +277,11 @@ func (a *App) enqueueExport(dupKey, kind string, work func(p *jobs.Progress) err
 // image_import) continue to use enqueueExport unchanged. New
 // workers that compute per-record counts use this helper with
 // the matching ExportXxxWithStats service method.
-func (a *App) enqueueExportWithResult(dupKey, kind string, work func(p *jobs.Progress) (jobs.JobResult, error), path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
+func (a *App) enqueueExportWithResult(dupKey, kind string, work func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error), path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
 	var jobID string
 	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
-		result, err := work(p)
+		result, err := work(ctx, p)
 		if err == nil {
 			if path != "" {
 				result.Path = path
@@ -346,8 +346,12 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
-	a.enqueueExportWithResult(dupKey, "json_export", func(p *jobs.Progress) (jobs.JobResult, error) {
+	a.enqueueExportWithResult(dupKey, "json_export", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(20, "Writing JSON")
+		// Without a shimmer the bar would jump 20 → 100 the moment
+		// the encode pass completes. With it the bar walks to 95
+		// across the work, then Set(100, Done) wins the last write.
+		p.Shimmer(ctx, 20, 95, 30*time.Second, "Encoding JSON…")
 		records, images, sources, err := a.export.ExportJSONWithStats(path)
 		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
@@ -384,7 +388,7 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
-	a.enqueueExport(dupKey, "insights_pdf", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "insights_pdf", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Rendering analytics PDF")
 		return a.export.ExportAnalyticsSummaryPDF(path, snapshot, options)
 	}, path, w)
@@ -411,8 +415,11 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
-	a.enqueueExportWithResult(dupKey, "excel_export", func(p *jobs.Progress) (jobs.JobResult, error) {
+	a.enqueueExportWithResult(dupKey, "excel_export", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(20, "Building workbook")
+		// Walk 20 → 90 across the workbook build (multi-sheet, can
+		// take seconds for 100+ records).
+		p.Shimmer(ctx, 20, 90, 30*time.Second, "Writing workbook…")
 		records, images, sources, err := a.export.ExportExcelWithStats(path)
 		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
@@ -444,7 +451,7 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load Google Calendar preferences.", err)
 		return
 	}
-	a.enqueueExportWithResult(dupKey, "icalendar_export", func(p *jobs.Progress) (jobs.JobResult, error) {
+	a.enqueueExportWithResult(dupKey, "icalendar_export", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(20, "Building iCalendar file")
 		records, images, sources, err := a.export.ExportICalendarWithStats(path, preferences)
 		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
@@ -485,7 +492,7 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 	// the browser follows the 303 + Location natively. The custom
 	// dispatcher is not in the path; we can't rely on
 	// X-DixieData-Redirect being read.
-	a.enqueueExport(dupKey, "static_archive", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "static_archive", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Gathering images")
 		return a.export.ExportStaticArchive(path, a.dataDir)
 	}, path, w, enqueueExportOpt{NativeRedirect: true})
@@ -516,8 +523,13 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Always enqueue — printable PDF is heavy.
-	a.enqueueExportWithResult(dupKey, "database_pdf", func(p *jobs.Progress) (jobs.JobResult, error) {
+	a.enqueueExportWithResult(dupKey, "database_pdf", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(5, "Building archive")
+		// Walk 5 → 90 across the PDF render (which is slow for large
+		// archives) so the user sees progress move; the worker calls
+		// Set(100, 'Done') via enqueueExportWithResult after this
+		// returns, which wins the last write.
+		p.Shimmer(ctx, 5, 90, 60*time.Second, "Compiling printable archive…")
 		records, images, sources, err := a.export.ExportFullDatabasePDFWithStats(path, settings)
 		return jobs.JobResult{Records: records, Images: images, Sources: sources}, err
 	}, path, w)
@@ -658,11 +670,16 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.enqueueExportWithResult(dupKey, "backup_archive", func(p *jobs.Progress) (jobs.JobResult, error) {
+	a.enqueueExportWithResult(dupKey, "backup_archive", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(10, "Gathering archive data")
 		manifest, err := a.backup.Export(path, a.dataDir)
 		if err == nil {
 			p.Set(80, "Compressing backup")
+			// The compression pass is single-shot (no natural
+			// sub-steps). Shimmer 80 → 95 so the bar continues to
+			// move during the actual zip write; the registry's
+			// Set(100, 'Done') wins the last write.
+			p.Shimmer(ctx, 80, 95, 20*time.Second, "Compressing…")
 		}
 		return jobs.JobResult{
 			Records: manifest.Soldiers,
@@ -695,8 +712,12 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	a.enqueueExportWithResult(dupKey, "shared_archive", func(p *jobs.Progress) (jobs.JobResult, error) {
+	a.enqueueExportWithResult(dupKey, "shared_archive", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(10, "Building shared archive")
+		// Shimmer to keep the bar visible during the merge-review
+		// compare pass + zip write. enqueueExportWithResult's
+		// Set(100, 'Done') wins the last write.
+		p.Shimmer(ctx, 10, 95, 45*time.Second, "Staging shared archive…")
 		manifest, err := a.backup.ExportShared(path, a.dataDir)
 		return jobs.JobResult{
 			Records: manifest.Soldiers,
@@ -729,7 +750,7 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.enqueueExport(dupKey, "bug_report", func(p *jobs.Progress) error {
+	a.enqueueExport(dupKey, "bug_report", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(10, "Collecting diagnostics")
 		_, err := a.diagnostics.Export(path, a.dataDir)
 		return err
