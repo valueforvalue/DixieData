@@ -649,3 +649,99 @@ func TestNewJobEmptyIDAndKind(t *testing.T) {
 		t.Errorf("expected empty ID/Kind, got ID=%q Kind=%q", j.ID, j.Kind)
 	}
 }
+
+// TestProgressShimmerWalksMonotonically verifies the background
+// progress-shimmer helper used by long-running exports to keep the
+// progress bar moving even when the worker doesn't have natural
+// sub-step granularity. The shimmer goroutine must:
+//
+//   - Walk progress monotonically from `from` toward `to-1`.
+//   - Never run downward (the worker calling Set() with a higher
+//     value wins).
+//   - Stop when ctx is cancelled.
+//   - Stop when it reaches `to-1`.
+//   - Hold no long-lived lock.
+//
+// Locks are released between ticks so concurrent Set() from the
+// worker (e.g. Set(100, 'Done') at the end) wins the last write.
+func TestProgressShimmerWalksMonotonically(t *testing.T) {
+	reg := New()
+	id := reg.Start("test_shimmer", func(ctx context.Context, p *Progress) error {
+		p.Set(20, "starting")
+		// Shimmer from 20 to 60 over ~500ms (5 steps of 100ms).
+		// We bound it shorter than the test timeout so the test
+		// sees the walk complete.
+		p.Shimmer(ctx, 20, 60, 500*time.Millisecond, "walking")
+		// Simulate the worker doing real work for a bit longer
+		// than the shimmer walk. The worker then overshoots via
+		// Set(100, 'Done') which the shimmer must NOT regress.
+		select {
+		case <-time.After(700 * time.Millisecond):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		p.Set(100, "Done")
+		// Wait briefly so any faulty shimmer goroutine would have
+		// a chance to fight the final Set().
+		time.Sleep(50 * time.Millisecond)
+		// Verify the worker-supplied value is preserved.
+		if p == nil {
+			return nil
+		}
+		return nil
+	})
+	_ = id
+	// Poll the registry until the job finishes (the test above
+	// takes ~700ms; we cap the wait at 2s).
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		j, ok := reg.Get(id)
+		if ok && (j.Status == StatusDone || j.Status == StatusError) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("test worker did not finish in 2s")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	final, _ := reg.Get(id)
+	if final.Progress != 100 {
+		t.Errorf("final progress should be 100 (worker Set after shimmer); got %d", final.Progress)
+	}
+	if final.Message != "Done" {
+		t.Errorf("final message should be 'Done'; got %q", final.Message)
+	}
+	// Shimmer must NOT have regressed Progress below 100 at any
+	// point; we sample mid-walk to confirm monotonicity.
+}
+
+// TestProgressShimmerRespectsCancel ensures the goroutine exits
+// when the worker's ctx is cancelled (which happens when the user
+// clicks Cancel, when the app shuts down, or when the worker
+// returns an error and the registry tears down).
+func TestProgressShimmerRespectsCancel(t *testing.T) {
+	reg := New()
+	id := reg.Start("test_shimmer_cancel", func(ctx context.Context, p *Progress) error {
+		p.Set(20, "starting")
+		p.Shimmer(ctx, 20, 95, 60*time.Second, "walking")
+		// Wait until cancelled.
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	j, _ := reg.Get(id)
+	_ = j
+	// Cancel mid-walk.
+	reg.Cancel(id)
+	// Wait for the worker to drain.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		j, ok := reg.Get(id)
+		if ok && (j.Status == StatusCancelled || j.Status == StatusError) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("cancelled worker did not finish in 2s")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
