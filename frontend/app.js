@@ -2746,21 +2746,12 @@
     const form = button instanceof HTMLFormElement
       ? button
       : button.closest("form") || (() => {
-        // Bare-button mode: pull URL + method from data-* attrs (new
-        // convention) or hx-* / data-hx-* (translator window). After
-        // the templ retag, only data-* attrs remain.
-        const url = (button.getAttribute && (
-          button.getAttribute("data-action")
-          || button.getAttribute("hx-post")
-          || button.getAttribute("hx-delete")
-          || button.getAttribute("data-hx-post")
-          || button.getAttribute("data-hx-delete")
-        )) || "";
+        // Bare-button mode: pull URL from data-action (Option C
+        // convention) and method from data-method. After the templ
+        // retag, no element carries hx-* / data-hx-* anymore.
+        const url = (button.getAttribute && button.getAttribute("data-action")) || "";
         if (!url) return null;
-        const method = (button.getAttribute("data-method")
-          || button.getAttribute("hx-delete")
-          || button.getAttribute("data-hx-delete"))
-          ? "DELETE" : "POST";
+        const method = button.getAttribute("data-method") === "DELETE" ? "DELETE" : "POST";
         const synthetic = document.createElement("form");
         synthetic.action = url;
         synthetic.method = method;
@@ -3496,8 +3487,10 @@
     // data-dixie-submit / data-merge-review-action. The legacy
     // hx-post / hx-delete / data-hx-* selectors remain here during
     // the templ retag (Commits 6–14); after the last templ file,
-    // they're dead-code matches and get removed in Commit 14.
-    const submitTrigger = event.target.closest("[data-dixie-submit], [data-merge-review-action], [hx-post], [hx-delete], [data-hx-post], [data-hx-delete]");
+    // Option C: intercept clicks on data-dixie-submit + data-merge-review-action.
+// hx-post / hx-delete / data-hx-* selectors dropped after the templ
+// retag (every template uses data-dixie-submit now).
+    const submitTrigger = event.target.closest("[data-dixie-submit], [data-merge-review-action]");
     if (submitTrigger instanceof HTMLElement && !(submitTrigger instanceof HTMLFormElement)) {
       event.preventDefault();
       dispatchDixieDataForm(submitTrigger);
@@ -3510,7 +3503,7 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    if (!form.matches("[data-dixie-submit], [hx-post], [hx-delete], [data-hx-post], [data-hx-delete]")) {
+    if (!form.matches("[data-dixie-submit]")) {
       return;
     }
     event.preventDefault();
