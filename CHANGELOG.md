@@ -278,17 +278,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `feedback-save-shows-toast`.
 
 - `docs/COMMON_BUGS.md` grown with five new sections from the
-  60-day UI fix survey: §1.10 `redirect-contract-drift` (7
-  instances), §1.11 `htmx-attr-strip-by-boot-js` /
-  `data-dixie-submit` opt-in (3 instances), §3.5
-  `stale-status-panel-after-submit` (4 instances), §4.11
-  `duplicate-job-handling` (3 instances), §4.12
-  `toast-encoding-mojibake` (2 instances), §4.13
-  `route-misregistered-or-wrong-verb` (2-3 instances), §4.14
-  `floating-dock-layout-overlap` (4 instances). §1.9 status
-  updated from “Eliminated” to “REGRESSION-PRONE” with a
-  pointer to the new §1.10. The “Bug class â†’ first place to
-  look” table at §11 grows rows for each new pattern. New file
+  60-day UI fix survey: ï¿½1.10 `redirect-contract-drift` (7
+  instances), ï¿½1.11 `htmx-attr-strip-by-boot-js` /
+  `data-dixie-submit` opt-in (3 instances), ï¿½3.5
+  `stale-status-panel-after-submit` (4 instances), ï¿½4.11
+  `duplicate-job-handling` (3 instances), ï¿½4.12
+  `toast-encoding-mojibake` (2 instances), ï¿½4.13
+  `route-misregistered-or-wrong-verb` (2-3 instances), ï¿½4.14
+  `floating-dock-layout-overlap` (4 instances). ï¿½1.9 status
+  updated from ï¿½Eliminatedï¿½ to ï¿½REGRESSION-PRONEï¿½ with a
+  pointer to the new ï¿½1.10. The ï¿½Bug class â†’ first place to
+  lookï¿½ table at ï¿½11 grows rows for each new pattern. New file
   `docs/agents/bug-pattern-grep.md` is the copy-paste grep
   cookbook for all 8 patterns: one section per pattern with
   the grep, the false-positive filter, and a link back to the
@@ -317,6 +317,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Phase 1 deliverable complete. Next: Phase 2 (smoke.mjs
   expansion + Wails-free test path via OpenDirectoryDialog +
   BrowserOpenURL override hooks).
+
+- `internal/appshell/runtime.go` grows two override hooks
+  matching the existing `SetOpenFileDialogOverride` /
+  `SetSaveFileDialogOverride` / `SetOpenMultipleFilesDialogOverride`
+  pattern. The web-mode binary now installs them via the
+  `DIXIE_OPEN_DIRECTORY_DIALOG_PATH` and
+  `DIXIE_BROWSER_OPEN_URL_LOG` env vars, closing two of the
+  four Wails-only gaps that the smoke harness could not reach:
+    1. `SetOpenDirectoryDialogOverride` lets the
+       "Download images to folder" and "Choose where to copy
+       record images" flows run end-to-end in the audit
+       harness. Without it, the web-mode binary returns
+       `errWailsFrontendUnavailable` and the user sees an
+       uninformative toast.
+    2. `SetBrowserOpenURLOverride` records the requested
+       `file://` URL into a log file so the audit harness can
+       assert the "Open result" + "Open log folder" flows
+       land the right path. Without it, the user sees an
+       info-toast "Open in OS file manager" fallback and the
+       harness has no way to assert correctness.
+  Both overrides follow the same precedence as the existing
+  three: hook first, frontend guard second, real Wails call
+  last. Four new unit tests in `runtime_test.go` cover the
+  override-takes-precedence + without-override-still-sentinel
+  pattern for each. The `runtime.go` and `runtime_test.go`
+  changes are the only Go changes in this slice; the next
+  slice wires the new hooks into the smoke harness.
 
 ### Maintenance
 

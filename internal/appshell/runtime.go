@@ -56,10 +56,27 @@ func (a *App) SaveFileDialog(opts wailsruntime.SaveDialogOptions) (string, error
 
 // OpenDirectoryDialog wraps wailsruntime.OpenDirectoryDialog.
 func (a *App) OpenDirectoryDialog(opts wailsruntime.OpenDialogOptions) (string, error) {
+	if a.openDirectoryDialogOverride != nil {
+		return a.openDirectoryDialogOverride(opts)
+	}
 	if !wailsHasFrontend(a.ctx) {
 		return "", errWailsFrontendUnavailable
 	}
 	return wailsruntime.OpenDirectoryDialog(a.ctx, opts)
+}
+
+// SetOpenDirectoryDialogOverride installs a hook that replaces
+// the wailsruntime.OpenDirectoryDialog call. Same role as
+// SetOpenFileDialogOverride but for the directory-picker variant.
+// Used by the web-mode binary to drive the "Download images to
+// folder" and "Choose where to copy record images" flows
+// end-to-end without a real OS directory picker. The closure
+// receives the OpenDialogOptions so callers can inspect
+// DefaultDirectory / Title and compute a destination path.
+// Returning ("", nil) signals "user cancelled" — handlers
+// translate that to a toast on the current page.
+func (a *App) SetOpenDirectoryDialogOverride(fn func(opts any) (string, error)) {
+	a.openDirectoryDialogOverride = fn
 }
 
 // OpenFileDialog wraps wailsruntime.OpenFileDialog.
@@ -125,6 +142,9 @@ func (a *App) SetOpenMultipleFilesDialogOverride(fn func(opts any) ([]string, er
 // log.Fatalf on a missing frontend, so without this guard the
 // caller has no way to recover and the process exits.
 func (a *App) BrowserOpenURL(rawURL string) error {
+	if a.browserOpenURLOverride != nil {
+		return a.browserOpenURLOverride(rawURL)
+	}
 	if !wailsHasFrontend(a.ctx) {
 		// Best-effort fallback: validate the URL first so callers can
 		// distinguish "running in web-mode" (expected, ignore) from
@@ -139,6 +159,19 @@ func (a *App) BrowserOpenURL(rawURL string) error {
 	}
 	wailsruntime.BrowserOpenURL(a.ctx, rawURL)
 	return nil
+}
+
+// SetBrowserOpenURLOverride installs a hook that replaces the
+// wailsruntime.BrowserOpenURL call. The Wails runtime
+// BrowserOpenURL is a void that calls log.Fatalf on a missing
+// frontend, which kills the host process. With this hook the
+// web-mode binary can intercept the URL (e.g. file://... paths
+// for opening a job artifact) and either open it via the host
+// browser, log it for the audit harness, or surface a fallback
+// toast. The closure receives the raw URL and returns nil for
+// success or an error to surface to the user.
+func (a *App) SetBrowserOpenURLOverride(fn func(rawURL string) error) {
+	a.browserOpenURLOverride = fn
 }
 
 // Quit wraps wailsruntime.Quit. Quit triggers an os.Exit so we
