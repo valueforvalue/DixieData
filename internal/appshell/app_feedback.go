@@ -113,9 +113,13 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 			{DisplayName: "Feedback log", Pattern: "*.jsonl"},
 		},
 	}
-	path, ok := a.guardedSaveFileDialog(guardedSaveFileDialogKey("feedback_log", opts), opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(guardedSaveFileDialogKey("feedback_log", opts), opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 

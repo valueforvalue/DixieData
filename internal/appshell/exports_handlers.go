@@ -60,20 +60,59 @@ func guardedSaveFileDialogKey(kind string, opts runtime.SaveDialogOptions) strin
 // Every export handler that calls a.SaveFileDialog must route through
 // this helper. The calendar PDF handler carries an equivalent guard
 // inline; that handler predates this helper.
-func (a *App) guardedSaveFileDialog(dupKey string, opts runtime.SaveDialogOptions) (string, bool) {
+// saveOutcome reports why a guardedSaveFileDialog call did not yield
+// a destination path. The handler needs to distinguish three outcomes:
+//
+//   - SaveOutcomeOK              → caller proceeds to enqueueExport.
+//   - SaveOutcomeDuplicated      → a second click raced the dialog;
+//                                   respondDuplicateInFlight hands the
+//                                   user the in-progress /jobs/{id}
+//                                   page.
+//   - SaveOutcomeDialogAborted   → the native dialog was cancelled, or
+//                                   returned a frontend-unavailable
+//                                   error. Different from "duplicate":
+//                                   the user dismissed it, nothing is
+//                                   running. Returned as a toast on the
+//                                   current page so the modal/share-page
+//                                   isn't replaced with an error body.
+//
+// The dedup branch still uses (*App).inFlight (the Wails v2.12.0 UI-
+// thread crash from two native dialogs landing simultaneously is still
+// real even though the dual-JS-handler race is gone after Option C).
+// What changed in Option C + this fix is the response shape for the
+// non-dedup paths.
+type saveOutcome int
+
+const (
+	SaveOutcomeOK saveOutcome = iota
+	SaveOutcomeDuplicated
+	SaveOutcomeDialogAborted
+)
+
+func (a *App) guardedSaveFileDialog(dupKey string, opts runtime.SaveDialogOptions) (string, saveOutcome) {
 	if dupKey == "" {
 		dupKey = guardedSaveFileDialogKey("export", opts)
 	}
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		return "", false
+		return "", SaveOutcomeDuplicated
 	}
 	defer a.leaveInFlight(dupKey, entry)
 	path, err := a.SaveFileDialog(opts)
-	if err != nil || path == "" {
-		return "", false
+	if err != nil {
+		// Native dialog is unavailable (web-mode with no override
+		// wired) or the OS picker returned an error (write-protected
+		// path, etc). Treat as dialog-aborted so the user gets a
+		// toast rather than the misleading "duplicate in flight"
+		// redirect.
+		return "", SaveOutcomeDialogAborted
 	}
-	return path, true
+	if path == "" {
+		// User clicked Cancel in the OS picker. Same response shape
+		// as above: stay on the current page with a toast.
+		return "", SaveOutcomeDialogAborted
+	}
+	return path, SaveOutcomeOK
 }
 
 // guardedOpenFileDialogKey returns the dedup key guardedOpenFileDialog
@@ -298,9 +337,13 @@ func (a *App) handleExportJSON(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("json_export", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	a.enqueueExportWithResult(dupKey, "json_export", func(p *jobs.Progress) (jobs.JobResult, error) {
@@ -332,9 +375,13 @@ func (a *App) handleExportInsightsPDF(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("insights_pdf", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	a.enqueueExport(dupKey, "insights_pdf", func(p *jobs.Progress) error {
@@ -355,9 +402,13 @@ func (a *App) handleExportCSV(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("excel_export", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	a.enqueueExportWithResult(dupKey, "excel_export", func(p *jobs.Progress) (jobs.JobResult, error) {
@@ -379,9 +430,13 @@ func (a *App) handleExportICalendar(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("icalendar_export", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	preferences, err := a.google.ManagedEventPreferences()
@@ -413,9 +468,13 @@ func (a *App) handleExportStaticArchive(w http.ResponseWriter, r *http.Request) 
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("static_archive", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 	// Always enqueue — static archive export is heavy and the user
@@ -589,9 +648,13 @@ func (a *App) handleExportBackup(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("backup_archive", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 
@@ -622,9 +685,13 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("shared_archive", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 
@@ -652,9 +719,13 @@ func (a *App) handleExportBugReport(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("bug_report", opts)
-	path, ok := a.guardedSaveFileDialog(dupKey, opts)
-	if !ok {
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
 		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 

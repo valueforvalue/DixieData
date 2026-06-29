@@ -69,9 +69,9 @@ func TestGuardedSaveFileDialogRejectsConcurrentDuplicates(t *testing.T) {
 	firstDone := make(chan struct{})
 	go func() {
 		defer close(firstDone)
-		path, ok := app.guardedSaveFileDialog("json_export", opts)
-		if !ok || path != dialogResponse {
-			t.Errorf("first call: path=%q ok=%v, want path=%q ok=true", path, ok, dialogResponse)
+		path, outcome := app.guardedSaveFileDialog("json_export", opts)
+		if outcome != SaveOutcomeOK || path != dialogResponse {
+			t.Errorf("first call: path=%q outcome=%v, want path=%q outcome=SaveOutcomeOK", path, outcome, dialogResponse)
 		}
 	}()
 
@@ -80,9 +80,9 @@ func TestGuardedSaveFileDialogRejectsConcurrentDuplicates(t *testing.T) {
 
 	// Second call from the same handler MUST be rejected without
 	// invoking the dialog a second time.
-	path2, ok2 := app.guardedSaveFileDialog("json_export", opts)
-	if ok2 {
-		t.Errorf("second call must be rejected; got path=%q ok=true", path2)
+	path2, outcome2 := app.guardedSaveFileDialog("json_export", opts)
+	if outcome2 != SaveOutcomeDuplicated {
+		t.Errorf("second call must be rejected; got path=%q outcome=%v", path2, outcome2)
 	}
 	if path2 != "" {
 		t.Errorf("rejected call must return empty path; got %q", path2)
@@ -116,14 +116,14 @@ func TestGuardedSaveFileDialogReleasesAfterCompletion(t *testing.T) {
 	}
 
 	// Two sequential calls (not concurrent) must both proceed.
-	path1, ok1 := app.guardedSaveFileDialog("json_export", opts)
-	if !ok1 || path1 != dialogResponse {
-		t.Fatalf("first call: path=%q ok=%v, want path=%q ok=true", path1, ok1, dialogResponse)
+	path1, outcome1 := app.guardedSaveFileDialog("json_export", opts)
+	if outcome1 != SaveOutcomeOK || path1 != dialogResponse {
+		t.Fatalf("first call: path=%q outcome=%v, want path=%q outcome=SaveOutcomeOK", path1, outcome1, dialogResponse)
 	}
 
-	path2, ok2 := app.guardedSaveFileDialog("json_export", opts)
-	if !ok2 || path2 != dialogResponse {
-		t.Fatalf("second sequential call must succeed (slot was freed); path=%q ok=%v", path2, ok2)
+	path2, outcome2 := app.guardedSaveFileDialog("json_export", opts)
+	if outcome2 != SaveOutcomeOK || path2 != dialogResponse {
+		t.Fatalf("second sequential call must succeed (slot was freed); path=%q outcome=%v", path2, outcome2)
 	}
 }
 
@@ -163,18 +163,18 @@ func TestGuardedSaveFileDialogAllowsConcurrentDifferentKinds(t *testing.T) {
 	jsonDone := make(chan struct{})
 	go func() {
 		defer close(jsonDone)
-		path, ok := app.guardedSaveFileDialog("json_export", jsonOpts)
-		if !ok || path != dialogResponse {
-			t.Errorf("json call: path=%q ok=%v", path, ok)
+		path, outcome := app.guardedSaveFileDialog("json_export", jsonOpts)
+		if outcome != SaveOutcomeOK || path != dialogResponse {
+			t.Errorf("json call: path=%q outcome=%v", path, outcome)
 		}
 	}()
 
 	<-jsonOpen
 
 	// CSV export proceeds while JSON is in flight.
-	path2, ok2 := app.guardedSaveFileDialog("excel_export", csvOpts)
-	if !ok2 || path2 != dialogResponse {
-		t.Errorf("csv call while json is in flight must succeed; path=%q ok=%v", path2, ok2)
+	path2, outcome2 := app.guardedSaveFileDialog("excel_export", csvOpts)
+	if outcome2 != SaveOutcomeOK || path2 != dialogResponse {
+		t.Errorf("csv call while json is in flight must succeed; path=%q outcome=%v", path2, outcome2)
 	}
 
 	// Release JSON.
@@ -218,8 +218,13 @@ func TestGuardedSaveFileDialogRaceProtection(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, ok := app.guardedSaveFileDialog("json_export", opts)
-			results <- ok
+			_, outcome := app.guardedSaveFileDialog("json_export", opts)
+			// Mirror the old bool-flag channel contract:
+			//   false = rejected (admit-no, did not reach the dialog)
+			//   true  = admitted (would proceed to the dialog if not
+			//           blocked). Only the admitted goroutine sends
+			//           after the dialog releases.
+			results <- outcome == SaveOutcomeOK
 		}()
 	}
 
@@ -277,18 +282,18 @@ func TestGuardedSaveFileDialogCancelReleasesSlot(t *testing.T) {
 	}
 
 	// First call: user cancels.
-	path1, ok1 := app.guardedSaveFileDialog("json_export", opts)
-	if ok1 {
-		t.Errorf("cancel must return ok=false; got path=%q ok=true", path1)
+	path1, outcome1 := app.guardedSaveFileDialog("json_export", opts)
+	if outcome1 != SaveOutcomeDialogAborted {
+		t.Errorf("cancel must return outcome=SaveOutcomeDialogAborted; got path=%q outcome=%v", path1, outcome1)
 	}
 	if path1 != "" {
 		t.Errorf("cancel must return empty path; got %q", path1)
 	}
 
 	// Second call: must not be blocked by the cancelled first call.
-	path2, ok2 := app.guardedSaveFileDialog("json_export", opts)
-	if !ok2 {
-		t.Errorf("second call after cancel must succeed; got ok=false")
+	path2, outcome2 := app.guardedSaveFileDialog("json_export", opts)
+	if outcome2 != SaveOutcomeOK {
+		t.Errorf("second call after cancel must succeed; got outcome=%v", outcome2)
 	}
 	if path2 != dialogResponse {
 		t.Errorf("second call must return dialogResponse; got %q", path2)
