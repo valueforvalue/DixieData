@@ -63,16 +63,15 @@ func TestGoogleHandlersRedirectToJobs(t *testing.T) {
 			rec := httptest.NewRecorder()
 			app.ServeHTTP(rec, req)
 
-			if rec.Code != http.StatusSeeOther {
-				t.Fatalf("status=%d want %d (body=%s)", rec.Code, http.StatusSeeOther, rec.Body.String())
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status=%d want %d (Option C contract: 200 + X-DixieData-Redirect; body=%s)", rec.Code, http.StatusOK, rec.Body.String())
 			}
-			loc := rec.Header().Get("Location")
-			if !strings.HasPrefix(loc, "/jobs/") {
-				t.Fatalf("Location=%q want prefix /jobs/", loc)
+			if loc := rec.Header().Get("Location"); loc != "" {
+				t.Fatalf("Location=%q want empty (Option C contract)", loc)
 			}
-			hx := rec.Header().Get("HX-Redirect")
-			if !strings.HasPrefix(hx, "/jobs/") {
-				t.Fatalf("HX-Redirect=%q want prefix /jobs/ (htmx hx-swap=none needs this header to navigate; this is the regression that shipped the 'status pages not landing' bug)", hx)
+			dixie := rec.Header().Get("X-DixieData-Redirect")
+			if !strings.HasPrefix(dixie, "/jobs/") {
+				t.Fatalf("X-DixieData-Redirect=%q want prefix /jobs/ (dispatchDixieDataForm navigates from this header; this is the Option C contract that replaces the legacy 303 + HX-Redirect pattern)", dixie)
 			}
 			// The async job callback still holds a reference to the
 			// DB via the registry; close it so t.TempDir cleanup can

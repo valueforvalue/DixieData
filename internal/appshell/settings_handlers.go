@@ -120,12 +120,8 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 		return nil
 	})
 	setInfoToastHeader(w, "Orphan cleanup started\u2026")
-	// See exports_handlers.enqueueExport — hx-swap="none" buttons
-	// on /settings need HX-Redirect or the user stays on the
-	// settings page instead of landing on /jobs/{id}.
-	w.Header().Set("Location", "/jobs/"+jobID)
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
+	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
 func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {

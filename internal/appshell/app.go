@@ -229,22 +229,16 @@ func (a *App) inFlightJobID(dupKey string) string {
 func (a *App) respondDuplicateInFlight(w http.ResponseWriter, r *http.Request, dupKey string) {
 	if jobID := a.inFlightJobID(dupKey); jobID != "" {
 		debug.FromContext(r.Context()).Debug("redirecting duplicate request to existing job", "dupKey", dupKey, "jobID", jobID)
-		// Both Location and HX-Redirect so the dedup redirect works
-		// for plain browser submits (Location) and htmx hx-swap="none"
-		// buttons (HX-Redirect). See enqueueExport for the full
-		// rationale; the bug class is the same.
-		w.Header().Set("Location", "/jobs/"+jobID)
-		w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-		w.WriteHeader(http.StatusSeeOther)
+		// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
+		writeExportRedirect(w, "/jobs/"+jobID)
 		return
 	}
 	debug.FromContext(r.Context()).Debug("duplicate request rejected", "dupKey", dupKey)
 	// Dialog is still open — bounce the user back to their page so
-	// the modal is not replaced by an error body. Use HX-Redirect so
-	// the navigation happens client-side without reloading the
-	// modal form (a server-side 303 would clear htmx state and any
-	// queued requests). Fall back to a plain 303 to "/" if the
-	// referrer is absent or off-origin.
+	// the modal is not replaced by an error body. Option C: 200 +
+	// X-DixieData-Redirect so dispatchDixieDataForm navigates
+	// client-side without reloading the modal form. Fall back to "/"
+	// if the referrer is absent or off-origin.
 	redirectTo := "/"
 	if r != nil {
 		if referer := strings.TrimSpace(r.Referer()); referer != "" {
@@ -254,8 +248,7 @@ func (a *App) respondDuplicateInFlight(w http.ResponseWriter, r *http.Request, d
 		}
 	}
 	setToastHeaderWithType(w, "Export already in progress; please wait for the save dialog.", "info")
-	w.Header().Set("HX-Redirect", redirectTo)
-	w.WriteHeader(http.StatusSeeOther)
+	writeExportRedirect(w, redirectTo)
 }
 
 func (a *App) handleUpdateBootstrapHealth(w http.ResponseWriter, r *http.Request) {
@@ -1018,16 +1011,8 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 	// a follow-up warning/error toast via /jobs/{id}/fragment if the
 	// actual import reports a partial failure.
 	setInfoToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
-	w.Header().Set("Location", "/jobs/"+jobID)
-	// htmx 2.x with hx-swap="none" suppresses both the swap AND
-	// the redirect handling; it silently swallows a plain Location
-	// header. The soldier image-import form (entry_form.templ) uses
-	// hx-swap="none" on its status pill, so without HX-Redirect the
-	// user stays on the soldier detail page instead of landing on
-	// /jobs/{id}. See exports_handlers.enqueueExport for the full
-	// rationale and redirect_headers_test.go for the regression net.
-	w.Header().Set("HX-Redirect", "/jobs/"+jobID)
-	w.WriteHeader(http.StatusSeeOther)
+	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
+	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
 func imageImportRedirectPath(id int64, returnTarget string) string {
