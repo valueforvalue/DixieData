@@ -593,7 +593,7 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 //
 // Thread-safety: the returned callbacks may be invoked from any
 // goroutine and at most once.
-func (r *Registry) StartManual(kind string, initial *Progress, worker func(ctx context.Context, p *Progress) error) (id string, release func() error, cancel func() error) {
+func (r *Registry) StartManual(kind string, initialMessage string, worker func(ctx context.Context, p *Progress) error) (id string, release func() error, cancel func() error) {
 	id = newID()
 	job := &Job{
 		ID:        id,
@@ -601,13 +601,7 @@ func (r *Registry) StartManual(kind string, initial *Progress, worker func(ctx c
 		Status:    StatusQueued,
 		StartedAt: time.Now(),
 		registry:  r,
-	}
-	if initial != nil && initial.job != nil {
-		// Carry over any pre-set Message / Progress from the
-		// caller (e.g. \"Awaiting confirmation\" + a headline
-		// the preflight populated).
-		job.Message = initial.job.Message
-		job.Progress = initial.job.Progress
+		Message:   initialMessage,
 	}
 	r.mu.Lock()
 	r.jobs[id] = job

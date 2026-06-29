@@ -99,14 +99,14 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Memorial JSON Import</p>
-							<p class="mt-2 text-sm text-slate-600">Import Tampermonkey memorial JSON into basic person records using a dry-run preview before confirmation, then review the imported batch in Browse Last Import.</p>
+							<p class="mt-2 text-sm text-slate-600">Import Tampermonkey memorial JSON into basic person records. The pre-flight analyses how many rows would be added, skipped, or failed; the actual import only runs after you confirm on its own status page.</p>
 							<div class="mt-4">
 								@components.ButtonContent(components.ButtonSecondary, "justify-start text-left", templ.Attributes{
-									"data-action": "/import/memorial-json/preview",
+									"data-action": "/import/memorial-json",
 									"data-dixie-submit": "true",
 								}) {
-									<div class="font-bold">Preview Memorial JSON Import (.json)</div>
-									<div class="text-xs text-slate-500">Run dry-run analysis first, then confirm import and view a post-import report</div>
+									<div class="font-bold">Import Memorial JSON (.json)</div>
+									<div class="text-xs text-slate-500">Analyses the archive first; you confirm on the status page before any rows are added</div>
 								}
 							</div>
 						</div>

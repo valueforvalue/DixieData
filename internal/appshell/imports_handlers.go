@@ -15,7 +15,6 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -199,7 +198,16 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
-func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Request) {
+// handleImportMemorialJSON is the Memorial JSON import entry point:
+// the user picks a .json file, the handler preflights (cheap
+// header-only parse), and enqueues a jobs.Registry.StartManual
+// job that sits in StatusQueued + Progress=0 until the user
+// clicks Confirm on /jobs/{id}. Memorial imports are
+// irreversible (no Merge Review, no undo), so the worker does
+// not fire until the user explicitly opts in.
+// /jobs/{id}/confirm calls releaseManualJob which flips the
+// queued job to StatusRunning and runs ImportMemorialArchive.
+func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -209,114 +217,63 @@ func (a *App) handlePreviewMemorialJSONImport(w http.ResponseWriter, r *http.Req
 			{DisplayName: "Memorial archive JSON", Pattern: "*.json"},
 		},
 	}
-	dupKey := guardedOpenFileDialogKey("memorial_preview", opts)
+	dupKey := guardedOpenFileDialogKey("memorial_import", opts)
 	path, admitted, ok := a.guardedOpenFileDialog(dupKey, opts)
 	if !admitted {
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
 	if !ok {
-		respondError(w, r, KindValidation, "Memorial JSON import preview cancelled.", nil)
+		respondError(w, r, KindValidation, "Memorial JSON import cancelled.", nil)
 		return
 	}
+	// Preflight: parse the archive header so we can show the user
+	// exactly what the import will do. Cheap (count-only); the
+	// real work happens after the worker is released.
 	preview, err := a.soldiers.PreviewMemorialArchive(path)
 	if err != nil {
-		respondInternal(w, r, "Memorial JSON preview failed.", err)
+		respondInternal(w, r, "Memorial JSON preflight failed.", err)
 		return
 	}
-	token, err := a.rememberMemorialPreview(path)
-	if err != nil {
-		respondInternal(w, r, "Memorial JSON preview failed.", err)
-		return
-	}
-	fmt.Fprint(w, memorialImportPreviewMarkup(preview, token))
-}
+	// Seed the queued snapshot with the preflight summary so
+	// /jobs/{id} shows the headline before the user confirms.
+	summary := fmt.Sprintf(
+		"Awaiting confirmation: will create %d, skip %d, fail %d (of %d rows in %s).",
+		preview.WouldCreate, preview.WouldSkip, preview.WouldFail,
+		preview.TotalRows, filepath.Base(path),
+	)
 
-func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		respondValidation(w, r, "Could not read the import confirmation form.", err)
-		return
-	}
-	token := strings.TrimSpace(r.FormValue("preview_token"))
-	path, ok := a.consumeMemorialPreview(token)
-	if !ok {
-		respondValidation(w, r, "Import preview expired. Run preview again.", nil)
-		return
-	}
-
-	// Capture the path before the request returns and enqueue the
-	// actual import as a background job. The /jobs/{id} page will
-	// render when the worker finishes. The summary + error log are
-	// written to the job's ResultPath-equivalent so they survive
-	// the request lifecycle; in practice we use the existing
-	// memorialImportSummaryMarkup against the summary captured
-	// inside the worker.
-	var jobID string
-	jobID = a.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error {
+	// The closure captures `id` by reference, but `id` is not in
+	// scope until after StartManual returns. Pass it via a tiny
+	// indirection so the deferred SetResult / forgetManualJob
+	// calls can read it.
+	var id string
+	id, release, cancel := a.jobs.StartManual("memorial_import", summary, func(ctx context.Context, p *jobs.Progress) error {
+		defer a.forgetManualJob(id)
 		p.Set(20, "Reading Memorial archive")
-		// Memorial archive parsing can be slow on large inputs.
-		// Walk 20 → 80 during the read so the bar moves.
-		p.Shimmer(ctx, 20, 80, 30*time.Second, "Reading records…")
-		summary, err := a.soldiers.ImportMemorialArchive(path)
+		import_summary, err := a.soldiers.ImportMemorialArchive(path)
 		if err != nil {
 			return err
 		}
 		p.Set(80, "Writing error log")
-		logPath, logErr := writeMemorialImportErrorLog(summary)
+		logPath, logErr := writeMemorialImportErrorLog(import_summary)
 		if logErr != nil {
 			return logErr
 		}
-		p.Set(100, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed. Log: %s", summary.Created, summary.Skipped, summary.Failed, logPath))
-		// Surface the memorial-import headline on the /jobs/{id}
-		// summary card: how many rows were added / skipped /
-		// failed. Memorial JSON is additive (no Merge Review) so
-		// the conflicts line stays hidden. The optional error log
-		// becomes a secondary download action via Result.LogPath.
-		a.jobs.SetResult(jobID, jobs.JobResult{
-			Added:   summary.Created,
-			Skipped: summary.Skipped,
-			Failed:  summary.Failed,
+		p.Set(100, fmt.Sprintf("Memorial import complete: %d created, %d skipped, %d failed. Log: %s", import_summary.Created, import_summary.Skipped, import_summary.Failed, logPath))
+		a.jobs.SetResult(id, jobs.JobResult{
+			Added:   import_summary.Created,
+			Skipped: import_summary.Skipped,
+			Failed:  import_summary.Failed,
 			LogPath: logPath,
 		})
-		_ = jobID
 		return nil
 	})
-	setInfoToastHeader(w, "Memorial JSON import started\u2026")
-	writeExportRedirect(w, "/jobs/"+jobID)
+	_ = cancel
+	a.rememberManualJob(id, release, cancel)
+
+	setInfoToastHeader(w, "Memorial JSON import queued. Confirm on the status page to proceed.")
+	writeExportRedirect(w, "/jobs/"+id)
 }
 
-func (a *App) rememberMemorialPreview(path string) (string, error) {
-	token, err := db.NewSyncID()
-	if err != nil {
-		return "", err
-	}
-	a.previewMu.Lock()
-	if a.memorialPreview == nil {
-		a.memorialPreview = make(map[string]string)
-	}
-	a.memorialPreview[token] = strings.TrimSpace(path)
-	a.previewMu.Unlock()
-	return token, nil
-}
-
-func (a *App) consumeMemorialPreview(token string) (string, bool) {
-	trimmed := strings.TrimSpace(token)
-	if trimmed == "" {
-		return "", false
-	}
-	a.previewMu.Lock()
-	defer a.previewMu.Unlock()
-	if a.memorialPreview == nil {
-		return "", false
-	}
-	path, ok := a.memorialPreview[trimmed]
-	if ok {
-		delete(a.memorialPreview, trimmed)
-	}
-	return path, ok
-}
 

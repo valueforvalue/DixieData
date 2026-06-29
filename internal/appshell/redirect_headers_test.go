@@ -71,6 +71,7 @@ var exemptFunctions = map[string]string{
 	"handleSoldierByDisplayID":   "GET-only display-ID lookup; the two redirects are URL canonicalisation, no form submit",
 	"cancelJob":                  "POST /jobs/{id}/cancel is a plain <form method=\"post\"> (jobs.templ:153); native browser follows Location",
 	"openJobArtifact":            "POST /jobs/{id}/open is a plain <form method=\"post\"> (jobs.templ); it sets a toast header then 303's back to /jobs/{id}; native browser follows Location",
+	"confirmJob":                "POST /jobs/{id}/confirm is a plain <form method=\"post\"> (jobs.templ confirmation card); 303 + Location back to /jobs/{id}; native browser follows Location",
 }
 
 // filesExempt lists files where every function may write
