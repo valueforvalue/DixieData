@@ -111,40 +111,46 @@ are checked against the uiids registry.
 
 ## Buttons that POST and expect navigation
 
-Any handler that returns `303 See Other` to navigate the user
-to another page **must** write both response headers:
+Any handler that returns a post-then-navigate response **must**
+follow the Option C contract: return `200 OK` and write
+`X-DixieData-Redirect: /target` as the single signal that the
+custom dispatcher in `frontend/app.js` reads. The dispatcher
+calls `window.location.assign()` to navigate the user.
 
-- `Location: /target` — for plain `<form method="post">` browsers.
-- `HX-Redirect: /target` — for htmx 2.x buttons with
-  `hx-swap="none"`.
+DO NOT write `HX-Redirect`, `Location`, or 303 status codes for
+these flows. They are dead. The custom dispatcher (`dispatchDixieDataForm`
+in `frontend/app.js`) doesn't read any of them. The dispatcher
+DOES read `X-DixieData-Redirect`, plus optional
+`X-DixieData-Toast`, `X-DixieData-Close-Feedback`, and
+`X-DixieData-Refresh-Calendar-Month` for side effects.
 
-htmx 2.x with `hx-swap="none"` silently swallows a 303 unless
-the server also writes `HX-Redirect`. The user stays on the
-originating page and the work runs invisibly in the background.
-Static archive worked only because it uses `<form method="post">`
-without htmx. See `docs/COMMON_BUGS.md` §1.9 for the full postmortem.
+The one carve-out is the static-archive export, which uses a plain
+`<form method="post">` and follows the 303 natively in the browser.
+It opts into `enqueueExportOpt{NativeRedirect: true}` so the helper
+writes 303 + Location instead of the Option C contract. See
+`internal/appshell/exports_handlers.go::handleExportStaticArchive`.
 
-Canonical helper: `(*App).enqueueExport` and
-`(*App).enqueueExportWithResult` in
-`internal/appshell/exports_handlers.go` (both write Location
-and HX-Redirect). For non-export POST-then-navigate handlers,
-copy the two-line pattern explicitly:
+Canonical helper: `writeExportRedirect(w, target)` in
+`internal/appshell/exports_handlers.go`. Both `enqueueExport` and
+`enqueueExportWithResult` delegate to it. For non-export
+POST-then-navigate handlers, call it directly:
 
 ```go
-w.Header().Set("Location", target)
-w.Header().Set("HX-Redirect", target)
-w.WriteHeader(http.StatusSeeOther)
+writeExportRedirect(w, "/jobs/"+jobID)
+// or with the static-archive carve-out:
+a.enqueueExport(dupKey, "static_archive", work, path, w, enqueueExportOpt{NativeRedirect: true})
 ```
 
 Checklist before shipping any new POST-then-navigate handler:
 
-- [ ] `Location` header set to the target path.
-- [ ] `HX-Redirect` header set to the same path.
+- [ ] Handler calls `writeExportRedirect(w, target)` (not 303 + HX-Redirect).
+- [ ] Templ/HTML uses `action={ templ.SafeURL(routebuilder.X()) }` + `data-dixie-submit="true"` on the form, or `data-action="..."` + `data-dixie-submit="true"` on the bare button. NEVER `hx-post` / `hx-put` / `hx-delete` on a post-then-navigate flow.
 - [ ] `audit/smoke.mjs` has a `-navigates-to-<dest>` assertion
       for the new button (asserts `page.url()` after click, not
       just response headers — header-only checks let this bug
       slip past CI; see `audit/smoke.mjs`
       `share-${btn.path}-navigates-to-jobs` as the worked example).
+- [ ] `internal/appshell/redirect_headers_test.go` (`TestPostThenNavigateUsesDixieRedirect`) still passes (the source-scan guard fails any new `w.Header().Set("HX-Redirect", ...)` or `w.WriteHeader(http.StatusSeeOther)` outside the carve-out allow-list).
 
 ## Component primitives
 
