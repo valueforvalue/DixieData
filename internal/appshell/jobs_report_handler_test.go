@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
 )
@@ -35,6 +36,18 @@ func TestJobReportHandlerReturnsSummaryForFinishedJob(t *testing.T) {
 		return nil
 	})
 	app.jobs.SetResultPath(jobID, resultPath)
+	// Wait for the worker goroutine to mark the job StatusDone so
+	// the report handler's terminal-state branch renders. Without
+	// this the test races the worker on slow CI runners and
+	// snapshots a "queued (in progress)" body that fails the
+	// "Backup archive complete" needle.
+	waitDeadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(waitDeadline) {
+		if snap, ok := app.jobs.Get(jobID); ok && snap.Status == jobs.StatusDone {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "/jobs/"+jobID+"/report", nil)
 	rec := httptest.NewRecorder()

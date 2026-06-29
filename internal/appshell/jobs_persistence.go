@@ -32,6 +32,18 @@ func openJobsRegistry(dataDir string) *jobs.Registry {
 	if dataDir == "" {
 		return jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
 	}
+	// Ensure the data directory exists before opening the jobs log.
+	// lifecycle.startup() calls openJobsRegistry(a.dataDir) before
+	// db.Open() creates the directory, so the log file's parent may
+	// not exist yet on a fresh install. Without MkdirAll, the log
+	// open fails silently and every job state change is dropped
+	// from the JSONL until the next app restart (which then
+	// sees no log and starts empty). db.Open also MkdirAll's the
+	// directory, but it runs AFTER us; we'd race the first
+	// state-change broadcast.
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "jobs: mkdir %s failed: %v\n", dataDir, err)
+	}
 	logPath := filepath.Join(dataDir, jobsLogFilename)
 	reg, err := rehydrateJobsFromLog(logPath)
 	if err != nil {

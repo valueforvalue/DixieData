@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -154,12 +155,24 @@ func seedArtifactJob(t *testing.T, app *App, kind, artifactPath string) string {
 	if err := os.WriteFile(artifactPath, []byte("seed"), 0o644); err != nil {
 		t.Fatalf("seed artifact: %v", err)
 	}
-	var id string
-	id = app.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
+	// Bind jobID into the closure by value. Without this the goroutine
+	// captures `id` by reference and races against the assignment below:
+	// on a fast worker pool the goroutine can fire while `id` is still
+	// empty, SetResultPath is called with id="" and becomes a no-op,
+	// and the handler returns 409 because the snapshot has no
+	// ResultPath. Pre-fix this was rare on CI runners with slower
+	// goroutine scheduling; after my reloadServices() change the
+	// registry re-allocation pattern changed enough that .csv hit the
+	// race on the GitHub Actions runner. See commit ec451f4's
+	// follow-up for the regression net.
+	var jobIDHolder atomic.Value // string
+	id := app.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
+		id := jobIDHolder.Load().(string)
 		p.Set(100, "Done")
 		app.jobs.SetResultPath(id, artifactPath)
 		return nil
 	})
+	jobIDHolder.Store(id)
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		snap, _ := app.jobs.Get(id)

@@ -13,6 +13,37 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- CI `test` workflow started failing on
+  `TestHandleJobArtifactAttachmentForDownloadTypes` (`.csv` case
+  returned 409 instead of 200) and
+  `TestJobReportHandlerReturnsSummaryForFinishedJob` (report body
+  missing "Backup archive complete"). Two related races that
+  earlier ran reliably on fast runners but tripped on the GitHub
+  Actions runner once `ec451f4`'s reloadServices change altered
+  the registry re-allocation timing:
+    1. `seedArtifactJob`'s worker closure captured `id` by
+       reference and raced the `id = app.jobs.Start(...)` assignment
+       below. On a fast worker pool the goroutine fired while `id`
+       was still `""`, `SetResultPath("")` was a no-op, and the
+       subsequent GET returned 409 because the snapshot had no
+       ResultPath. Fixed by binding the ID into the closure via an
+       `atomic.Value` indirection so the worker reads the value
+       assigned *after* `Start` returns.
+    2. `TestJobReportHandlerReturnsSummaryForFinishedJob` fired
+       the report endpoint synchronously after `Start`, racing
+       the worker goroutine's transition to `StatusDone`. Fixed
+       by polling for `StatusDone` (with a 2s ceiling) before the
+       request.
+  Both fixes are test-only; the production code path was always
+  correct.
+- `openJobsRegistry(dataDir)` ran before `db.Open(dataDir)`
+  created the parent directory, so on a fresh install the jobs
+  JSONL log silently failed to open and every job state change
+  was dropped until the next app restart (which then saw no log
+  and started empty). Added an `os.MkdirAll(dataDir, 0o755)`
+  before opening the log so the persistence layer is actually
+  wired on first launch.
+
 - `reloadServices()` was unconditionally replacing `a.jobs` with a
   fresh empty `jobs.Registry`, which silently dropped every job in
   two contexts:
