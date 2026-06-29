@@ -190,6 +190,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (`'\u2026'`) which were previously false-positives after the
   helper table landed.
 
+- `pkg/render.SoldierLister` interface removed (issue #143). The
+  interface was declared but never referenced outside its own
+  declaration site — `grep -rn "SoldierLister" pkg/` matches
+  only `pkg/render/render.go` itself. The accompanying doc
+  comment claimed the interface existed "so the render package
+  does not import internal/records transitively," but the file
+  already imports `internal/records` for `AnalyticsSnapshot` /
+  `AnalyticsCount` re-aliases, so the rationale was stale. No
+  call sites to update (interface was dead); `pkg/exportbridge`
+  uses `*archive.SoldierService` directly via its own
+  `BulkRenderer` type. `pkg/render` still imports `records` for
+  the analytics re-aliases; that import is documented and
+  load-bearing.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
