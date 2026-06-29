@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -90,6 +91,14 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 			a.database = nil
 		}
 		p.Set(20, fmt.Sprintf("Restoring %s", filepath.Base(path)))
+		// The ImportWithLocalIdentity call is the slow phase (tens
+		// of seconds for a 500MB .ddbak). Without Shimmer the bar
+		// sits at 20% the entire time, then jumps to 85%
+		// (database reopen) and 100% (done). With Shimmer the bar
+		// walks smoothly through the IO phase; Set(85) below wins
+		// the last write, then the registry's Set(100) wins the
+		// terminal tick.
+		p.Shimmer(ctx, 20, 85, 60*time.Second, "Restoring records…")
 		manifest, err := a.backup.ImportWithLocalIdentity(path, a.dataDir, localIdentity, preserveLocalIdentity)
 		if err != nil {
 			if reopenErr := a.reopenDatabase(); reopenErr != nil {
@@ -151,6 +160,12 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 	var jobID string
 	jobID = a.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Merging shared archive")
+		// Shared-archive import is bounded by file IO and merge
+		// review compare-pass duration. Without Shimmer the bar
+		// sits at 20% across the import, then jumps to 95 or 100
+		// at the end. With Shimmer the bar walks smoothly through
+		// the merge phase.
+		p.Shimmer(ctx, 20, 95, 45*time.Second, "Merging records…")
 		summary, err := a.backup.ImportSharedBackup(path, a.dataDir)
 		if err != nil {
 			return err
@@ -243,6 +258,9 @@ func (a *App) handleConfirmMemorialJSONImport(w http.ResponseWriter, r *http.Req
 	var jobID string
 	jobID = a.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Reading Memorial archive")
+		// Memorial archive parsing can be slow on large inputs.
+		// Walk 20 → 80 during the read so the bar moves.
+		p.Shimmer(ctx, 20, 80, 30*time.Second, "Reading records…")
 		summary, err := a.soldiers.ImportMemorialArchive(path)
 		if err != nil {
 			return err
