@@ -567,6 +567,168 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 	return id
 }
 
+// StartManual registers a job that sits in StatusQueued + Progress=0
+// until someone explicitly releases it. The worker runs only after
+// the caller invokes the returned release() function. Used for
+// imports that need user confirmation on /jobs/{id} before any
+// irreversible change is made (Memorial JSON today; could be
+// re-used for any destructive import in the future).
+//
+// Behaviour:
+//   - The job is created with StatusQueued + Progress=0. Anything
+//     the caller has already Set() on the supplied Progress (e.g.
+//     a pre-computed preview summary) is reflected in the queued
+//     snapshot.
+//   - Calling release() flips the job to StatusRunning and starts
+//     the worker goroutine. Calling cancel() flips it to
+//     StatusCancelled and never runs the worker.
+//   - If neither release() nor cancel() is called, the job stays
+//     in StatusQueued indefinitely. The poll fragment treats the
+//     queued state as terminal-pinning (no hx-trigger), so the
+//     /jobs/{id} page renders a static Awaiting Confirmation
+//     card with Confirm + Cancel buttons.
+//   - Both release() and cancel() return ErrAlreadyTerminal if
+//     the job has already moved on (e.g. the registry was
+//     shut down).
+//
+// Thread-safety: the returned callbacks may be invoked from any
+// goroutine and at most once.
+func (r *Registry) StartManual(kind string, initial *Progress, worker func(ctx context.Context, p *Progress) error) (id string, release func() error, cancel func() error) {
+	id = newID()
+	job := &Job{
+		ID:        id,
+		Kind:      kind,
+		Status:    StatusQueued,
+		StartedAt: time.Now(),
+		registry:  r,
+	}
+	if initial != nil && initial.job != nil {
+		// Carry over any pre-set Message / Progress from the
+		// caller (e.g. \"Awaiting confirmation\" + a headline
+		// the preflight populated).
+		job.Message = initial.job.Message
+		job.Progress = initial.job.Progress
+	}
+	r.mu.Lock()
+	r.jobs[id] = job
+	r.mu.Unlock()
+
+	// Track which callback was invoked so release and cancel are
+	// exactly-once. done guards the single transition; the
+	// release channel unblocks the worker goroutine.
+	done := make(chan struct{}, 1)
+	released := false
+	cancelled := false
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	job.mu.Lock()
+	job.cancelCause = ctxCancel
+	job.mu.Unlock()
+
+	// Run the worker goroutine. It blocks on the release channel
+	// (or ctx if cancelled) before doing anything visible. The
+	// worker is responsible for honouring ctx so cancel() unblocks
+	// it cleanly.
+	go func() {
+		r.workerWG.Add(1)
+		defer r.workerWG.Done()
+
+		select {
+		case <-done:
+			// Release was called; fall through to running.
+		case <-ctx.Done():
+			// Cancel was called before release. Leave the job
+			// in StatusCancelled (Start set it before we were
+			// told to run) and exit. broadcast already fired
+			// when Cancel set the status.
+			ctxCancel()
+			return
+		}
+
+		if cancelled {
+			// Released but cancel was called between release and
+			// the worker actually starting. Treat as cancelled.
+			job.mu.Lock()
+			job.Status = StatusCancelled
+			job.FinishedAt = time.Now()
+			snap := cloneJob(job)
+			job.mu.Unlock()
+			r.appendSnapshot(snap)
+			r.broadcast(id, snap)
+			ctxCancel()
+			return
+		}
+		released = true
+
+		job.mu.Lock()
+		job.Status = StatusRunning
+		snap := cloneJob(job)
+		job.mu.Unlock()
+		r.appendSnapshot(snap)
+		r.broadcast(id, snap)
+
+		err := worker(ctx, &Progress{job: job})
+
+		job.mu.Lock()
+		job.FinishedAt = time.Now()
+		if job.cancelled {
+			job.Status = StatusCancelled
+		} else if err != nil {
+			job.Status = StatusError
+			job.Error = err.Error()
+		} else {
+			job.Status = StatusDone
+			job.Progress = 100
+		}
+		snap = cloneJob(job)
+		job.mu.Unlock()
+		r.appendSnapshot(snap)
+		r.broadcast(id, snap)
+		ctxCancel()
+	}()
+
+	release = func() error {
+		job.mu.Lock()
+		defer job.mu.Unlock()
+		if released || cancelled {
+			return ErrAlreadyTerminal
+		}
+		if job.cancelled {
+			return ErrAlreadyTerminal
+		}
+		// Push the release signal; the worker goroutine consumes
+		// it and starts the worker.
+		select {
+		case done <- struct{}{}:
+		default:
+			// Should not happen with our single-send pattern.
+		}
+		return nil
+	}
+	cancel = func() error {
+		job.mu.Lock()
+		if released || cancelled {
+			job.mu.Unlock()
+			return ErrAlreadyTerminal
+		}
+		cancelled = true
+		job.cancelled = true
+		job.Status = StatusCancelled
+		job.FinishedAt = time.Now()
+		snap := cloneJob(job)
+		job.mu.Unlock()
+		r.appendSnapshot(snap)
+		r.broadcast(id, snap)
+		// Cancel the worker's ctx so any goroutine listening on
+		// it can exit cleanly. The worker goroutine itself is
+		// blocked on `done`; it'll wake up via ctx.Done and
+		// exit before invoking fn.
+		ctxCancel()
+		return nil
+	}
+	return id, release, cancel
+}
+
 // cloneJob returns a value-copy of the given Job without taking its
 // mutex. Callers must hold job.mu (or otherwise guarantee the Job is
 // not being mutated). Used inside the Start goroutine where we
