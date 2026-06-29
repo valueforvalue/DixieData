@@ -13,14 +13,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
-// SoldierLister is the slice of *records.SoldierService the bulk
-// export helpers need. Defined as an interface so the render package
-// does not import internal/records transitively.
-type SoldierLister interface {
-	List(page, pageSize int) ([]models.Soldier, int, error)
-	GetByID(id int64) (*models.Soldier, error)
-}
-
 // AnalyticsSnapshot is re-aliased for callers that don't want to import
 // internal/records.
 type AnalyticsSnapshot = records.AnalyticsSnapshot

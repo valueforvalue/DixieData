@@ -190,6 +190,59 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (`'\u2026'`) which were previously false-positives after the
   helper table landed.
 
+- `pkg/render.SoldierLister` interface removed (issue #143). The
+  interface was declared but never referenced outside its own
+  declaration site — `grep -rn "SoldierLister" pkg/` matches
+  only `pkg/render/render.go` itself. The accompanying doc
+  comment claimed the interface existed "so the render package
+  does not import internal/records transitively," but the file
+  already imports `internal/records` for `AnalyticsSnapshot` /
+  `AnalyticsCount` re-aliases, so the rationale was stale. No
+  call sites to update (interface was dead); `pkg/exportbridge`
+  uses `*archive.SoldierService` directly via its own
+  `BulkRenderer` type. `pkg/render` still imports `records` for
+  the analytics re-aliases; that import is documented and
+  load-bearing.
+
+- Architectural boundary test tightened (issue #141). Two new
+  layers of enforcement in `internal/architecture/architecture_test.go`:
+    1. `forbiddenByPackage` now covers the grey-box layer too:
+       `internal/viewmodel` is forbidden from `appshell`,
+       `a-h/templ`, `wails`, and `templates` (the delivery
+       surface); `internal/presentation` is forbidden from
+       `appshell` and `wails` (templ is allowed because
+       presentation IS the templ-rendering adapter). Both
+       packages are still allowed to import deeper modules
+       (`records`, `archive`, `models`, `jobs`, `update`, `debug`)
+       because that is their documented grey-box role.
+    2. New `TestPkgImportsAreAllowlisted` + the
+       `allowedInternalImportsPerPackage` table enforce that each
+       `pkg/*` package only imports the `internal/...` types it
+       genuinely needs. Allowlists mirror the current imports:
+       `pkg/render` → `{models, records}`, `pkg/exportbridge` →
+       `{archive, db, models}`, `pkg/encode` → `{buildinfo,
+       models}`, `pkg/templatespec` → `{}`. Any new `internal/`
+       import requires updating the allowlist in the same commit.
+  Also: `TestArchitectureMapsToContract` now requires
+  `internal/viewmodel` and `internal/presentation` to be in the
+  forbidden table. No production code changed.
+
+- `internal/services/` shim deleted (issue #142). The 89-line
+  shim was 55 type/func re-exports of `records`, `archive`,
+  `integrations`, and `db` symbols with zero behavioral
+  purpose. The three consumer files (`cmd/gold-master/main.go`,
+  `cmd/gold-master/portability.go`, `internal/seed/seed.go`) now
+  import the deep modules directly. `services.NewSoldierService`
+  → `records.NewSoldierService`,
+  `services.NewExportService` → `archive.NewExportService`,
+  `services.NewBackupService` → `archive.NewBackupService`,
+  `services.NewAnalyticsService` → `records.NewAnalyticsService`,
+  `services.PrintSettings` / `BackupManifest` /
+  `SharedImportSummary` / `SoldierService` → `archive.*` /
+  `records.*`. The boundary test from issue #141 now guarantees
+  no future re-introduction of `internal/services/` — if a new
+  file accidentally re-imports it, CI fails.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.

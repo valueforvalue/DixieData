@@ -30,6 +30,15 @@ import (
 // free of UI/delivery concerns. The appshell, viewmodel, templates,
 // presentation, debug packages are NOT protected — they are the
 // delivery surfaces that legitimately touch everything.
+//
+// The viewmodel + presentation packages have a narrower forbidden
+// list than the deep modules: they are the documented grey-box layer
+// that converts deep-module DTOs into UI-ready shapes. They are
+// forbidden from importing the delivery surface (appshell, templ,
+// wails) but ARE allowed to import deeper modules like records,
+// archive, models, jobs, update. The test enforces this boundary so
+// a future contribution cannot quietly start importing templates or
+// wails from viewmodel without breaking CI.
 var forbiddenByPackage = map[string][]string{
 	"internal/records": {
 		"github.com/a-h/templ",
@@ -86,6 +95,54 @@ var forbiddenByPackage = map[string][]string{
 		"github.com/valueforvalue/DixieData/internal/templates",
 		"github.com/valueforvalue/DixieData/internal/uiids",
 		"github.com/valueforvalue/DixieData/internal/htmxattr",
+	},
+	"internal/viewmodel": {
+		// Grey-box layer: converts deep-module DTOs into UI shapes.
+		// Forbidden from the delivery surface (appshell, templ,
+		// wails, templates). Allowed to import records / archive /
+		// models / jobs / update / dates / debug for the conversion.
+		"github.com/a-h/templ",
+		"github.com/wailsapp/wails/v2",
+		"github.com/valueforvalue/DixieData/internal/appshell",
+		"github.com/valueforvalue/DixieData/internal/templates",
+	},
+	"internal/presentation": {
+		// Grey-box layer: renders the templ UI. templ itself is
+		// allowed because presentation is the templ-rendering
+		// adapter. Forbidden only from the HTTP handler shell
+		// (appshell) and from the Wails runtime; a presentation
+		// function reaching into an HTTP handler or a Wails
+		// runtime call is a layering inversion.
+		"github.com/wailsapp/wails/v2",
+		"github.com/valueforvalue/DixieData/internal/appshell",
+	},
+}
+
+// allowedInternalImportsPerPackage locks the pkg/* surface so each
+// external package can only import the internal/ types it
+// legitimately needs. Drift away from this allowlist fails
+// TestPkgImportsAreAllowlisted.
+//
+// The allowlists below mirror the current imports; if a new pkg/
+// file legitimately needs a new internal/ import, update the
+// allowlist in the same commit that adds the import.
+var allowedInternalImportsPerPackage = map[string]map[string]bool{
+	"pkg/render": {
+		"github.com/valueforvalue/DixieData/internal/models":  true,
+		"github.com/valueforvalue/DixieData/internal/records": true,
+	},
+	"pkg/exportbridge": {
+		"github.com/valueforvalue/DixieData/internal/archive": true,
+		"github.com/valueforvalue/DixieData/internal/db":      true,
+		"github.com/valueforvalue/DixieData/internal/models":  true,
+	},
+	"pkg/encode": {
+		"github.com/valueforvalue/DixieData/internal/buildinfo": true,
+		"github.com/valueforvalue/DixieData/internal/models":    true,
+	},
+	"pkg/templatespec": {
+		// templatespec is documented to import nothing from
+		// internal/. Empty allowlist is intentional.
 	},
 }
 
@@ -206,10 +263,73 @@ func TestArchitectureMapsToContract(t *testing.T) {
 		"internal/appdata",
 		"internal/dates",
 		"internal/routebuilder",
+		"internal/viewmodel",
+		"internal/presentation",
 	}
 	for _, pkg := range required {
 		if _, ok := forbiddenByPackage[pkg]; !ok {
 			t.Errorf("architecture contract requires %q to be in forbiddenByPackage; add it to keep the architecture test aligned with AGENTS.md", pkg)
+		}
+	}
+}
+
+// TestPkgImportsAreAllowlisted walks every Go file under each pkg/
+// package and asserts every internal/... import is in that
+// package's documented allowlist (see
+// allowedInternalImportsPerPackage). The pkg/ packages are the
+// external surface of the project; without this guard a future
+// contributor can quietly re-export internal/ types to external
+// tools without review. The allowlists mirror the current
+// imports — a new internal/ import requires updating the
+// allowlist in the same commit.
+func TestPkgImportsAreAllowlisted(t *testing.T) {
+	repoRoot, err := findRepoRoot()
+	if err != nil {
+		t.Fatalf("locate repo root: %v", err)
+	}
+
+	for pkg, allowed := range allowedInternalImportsPerPackage {
+		pkgDir := filepath.Join(repoRoot, pkg)
+		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
+			t.Fatalf("pkg package %q does not exist at %s", pkg, pkgDir)
+		}
+
+		fset := token.NewFileSet()
+		err := filepath.WalkDir(pkgDir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				name := d.Name()
+				if name == "vendor" || name == "testdata" || (strings.HasPrefix(name, ".") && name != "." && name != "..") {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") {
+				return nil
+			}
+
+			f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+			if err != nil {
+				return fmt.Errorf("parse %s: %w", path, err)
+			}
+
+			relPath, _ := filepath.Rel(repoRoot, path)
+			for _, imp := range f.Imports {
+				importPath := strings.Trim(imp.Path.Value, `"`)
+				if !strings.HasPrefix(importPath, "github.com/valueforvalue/DixieData/internal/") {
+					continue
+				}
+				if !allowed[importPath] {
+					pos := fset.Position(imp.Pos())
+					t.Errorf("pkg import outside allowlist in %s\n  file: %s:%d\n  package: %q\n  forbidden import: %q\n  fix: add the import to allowedInternalImportsPerPackage[%q] if the new import is intentional, or move the code that needs it to a deeper package", pkg, relPath, pos.Line, pkg, importPath, pkg)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Errorf("walk %s: %v", pkg, err)
 		}
 	}
 }

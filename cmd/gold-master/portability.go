@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 type portabilityAudit struct {
@@ -41,8 +42,8 @@ func runPortabilityAudit(reportDir string) (report, error) {
 		return report{}, err
 	}
 
-	soldierSvc := services.NewSoldierService(database)
-	backupSvc := services.NewBackupService(database, soldierSvc)
+	soldierSvc := records.NewSoldierService(database)
+	backupSvc := archive.NewBackupService(database, soldierSvc)
 	fixture, err := seedFixture(dataDir, database, soldierSvc)
 	if err != nil {
 		return report{}, err
@@ -93,8 +94,8 @@ func runPortabilityAudit(reportDir string) (report, error) {
 	if _, err := targetDB.ConfigureUserIdentity("Receiver", "Local", "Archivist", 1910); err != nil {
 		return report{}, err
 	}
-	targetSoldierSvc := services.NewSoldierService(targetDB)
-	targetBackupSvc := services.NewBackupService(targetDB, targetSoldierSvc)
+	targetSoldierSvc := records.NewSoldierService(targetDB)
+	targetBackupSvc := archive.NewBackupService(targetDB, targetSoldierSvc)
 	sharedSummary, err := targetBackupSvc.ImportSharedBackup(sharedPath, targetDir)
 	if err != nil {
 		return report{}, err
@@ -174,7 +175,7 @@ func buildSchemaParity(liveDBPath, backupDBPath string) (map[string]map[string]s
 	return result, nil
 }
 
-func buildFieldAudit(liveDBPath, backupDBPath string, backupEntries map[string][]byte, backupManifest services.BackupManifest, sharedEntries map[string][]byte, sharedManifest services.BackupManifest, fixture sampleFixture) (map[string]checkResult, error) {
+func buildFieldAudit(liveDBPath, backupDBPath string, backupEntries map[string][]byte, backupManifest archive.BackupManifest, sharedEntries map[string][]byte, sharedManifest archive.BackupManifest, fixture sampleFixture) (map[string]checkResult, error) {
 	result := map[string]checkResult{}
 
 	systemConfigCount, err := tableCount(backupDBPath, "system_config")
@@ -249,7 +250,7 @@ func buildRoundTripParity(beforeDBPath, afterDBPath string) (map[string]checkRes
 	return result, nil
 }
 
-func buildSharedValidation(sourceDBPath, targetDBPath string, summary services.SharedImportSummary, sharedEntries map[string][]byte, sharedManifest services.BackupManifest, sharedEntryCount int) (map[string]checkResult, error) {
+func buildSharedValidation(sourceDBPath, targetDBPath string, summary archive.SharedImportSummary, sharedEntries map[string][]byte, sharedManifest archive.BackupManifest, sharedEntryCount int) (map[string]checkResult, error) {
 	result := map[string]checkResult{}
 
 	spouseLinked, err := rowPresent(targetDBPath, `SELECT 1 FROM soldiers WHERE entry_type = 'widow' AND spouse_soldier_id IS NOT NULL AND spouse_soldier_id > 0`)
