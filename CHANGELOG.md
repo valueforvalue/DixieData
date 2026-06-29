@@ -20,7 +20,9 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   now navigates reliably because the contract is single-sourced.
   The browser always lands on the destination page or back on
   the originating page with a clear toast on dedup — never
-  silently in the background.
+  silently in the background. (Verified end-to-end via the
+  dev-server smoke harness; Wails desktop smoke is manual — see
+  `docs/adr/0004-option-c-dispatcher.md` for the rationale.)
 
 ### Maintenance
 
