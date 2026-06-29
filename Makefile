@@ -21,7 +21,8 @@ RECURSIVE_MAKE = $(PWSH) -NoLogo -NoProfile -Command "Set-Content -Path env:MAKE
 .PHONY: help build debug release archive demo run dev test test-quiet \
         stress goldmaster tune tune-smoke tune-snapshots tune-bin \
         web seed gold render-round render-round-ONE update-snapshots-ONE \
-        render-svg tpl css audit clean log-clean bump release-github
+        render-svg tpl css audit clean log-clean bump release-github \
+        probe-clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -56,7 +57,7 @@ build debug: TARGET := debug
 build debug: ARGS :=
 build debug: ## Debug build via scripts/build-debug.ps1
 	$(LOG_RECIPE)
-	@$(call RECURSIVE_MAKE,web seed gold tune-bin)
+	@$(call RECURSIVE_MAKE,probe-clean web seed gold tune-bin)
 
 # Web server (audit/smoke.mjs, ui-diff, render-round).
 web: ## Build cmd/dixiedata-web (web-mode server, audit harness target)
@@ -281,6 +282,20 @@ css: ## Rebuild Tailwind bundle
 # --- Maintenance ---
 
 audit: ## Re-run token-saver audit (scripts/token-audit.ps1)
+
+# Kill any leftover dixiedata-web / DixieData / seed-data processes
+# from a previous probe run. Without this, the next `make debug`
+# fails with `unlinkat ... dixiedata-web.exe: The process cannot
+# access the file because it is being used by another process.`
+# Safe to run anytime — taskkill /F /IM is a no-op if the process
+# is absent.
+#
+# Use cmd.exe to invoke taskkill — its exit codes (128 when no
+# match, 1 on usage error) propagate through bash's `-` prefix
+# without surfacing as make errors.
+probe-clean: ## Kill straggler dixiedata-web.exe / DixieData.exe / seed-data.exe
+	-@cmd //c "taskkill /F /IM dixiedata-web.exe /T 2>nul & taskkill /F /IM DixieData.exe /T 2>nul & taskkill /F /IM seed-data.exe /T 2>nul & taskkill /F /IM gold-master.exe /T 2>nul & exit /b 0"
+	@echo probe-clean: ok
 
 # UI v1 vs v2 side-by-side screenshot diff (issue #74 Phase 0 PR4).
 # Requires the dixiedata-web server to be running; see audit/README.md
