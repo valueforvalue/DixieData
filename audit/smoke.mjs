@@ -291,10 +291,10 @@ async function main() {
       //   - /export/static-archive: uses a plain <form method="post">
       //     and the browser follows 303 + Location natively, so the
       //     dispatcher never fires and the URL stays on /share.
-      //   - /export/feedback-log: the handler short-circuits to a
-      //     plain-text body when no feedback has been collected
-      //     (`No feedback has been saved yet.`). Acceptable since
-      //     there's no job to track.
+      //   - /export/feedback-log (issue #137): now routes through
+      //     enqueueExport when a feedback log exists (lands on /jobs/{id}),
+      //     but the no-feedback-yet branch returns 200 + X-DixieData-Toast
+      //     and stays on /share. Both outcomes are acceptable.
       const isExemptFromJobRedirect =
         btn.path.startsWith('/export/static-archive') ||
         btn.path === '/export/feedback-log';
