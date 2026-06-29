@@ -133,3 +133,42 @@ The full subcommand roadmap (`doctor`, `list`, `show`, `search`,
 (`smoke`) is shipping now. **Before adding any new subcommand, read
 the phase layout in that doc** — every CLI command dispatches to
 existing `*App` methods, never duplicates handler logic.
+
+## LLM session protocol
+
+These rules govern how an LLM agent behaves in a session on this repo.
+They are the procedural complement to the architectural boundaries in
+[`CONTEXT.md`](CONTEXT.md) and [`AGENT_ARCHITECTURE_MAP.md`](AGENT_ARCHITECTURE_MAP.md):
+those define what shape the code must take; this defines how the agent
+works until the code ships.
+
+- **No implementation before direction approved.** Recon (read, grep,
+  find, list) is always fine. Implementation (edit, write, scaffolding
+  new files, running `make` targets that mutate state) waits for
+  explicit approval of a proposed direction. LLM agents default to
+  writing more than necessary; the gate keeps that in check.
+- **Batched discovery.** Up to 3 focused questions per turn, batched
+  in a single `ask_user_question` call. One-at-a-time questioning
+  breaks flow. Skip discovery entirely if the request is already clear.
+- **YAGNI.** Do not introduce abstractions, extension points, or
+  flexibility for requirements that do not exist yet. If a future
+  change needs it, add it then. Speculative design creates more
+  problems than it solves.
+- **Bias toward action.** When two options are close in quality, pick
+  one and go. Movement creates clarity. The cost of "wrong choice
+  easily reversible" is lower than the cost of a long deliberation.
+- **Proportional depth.** Match the weight of the process to the
+  weight of the task. A small bug fix may need zero questions; a new
+  subsystem deserves a more thorough exploration. Let task complexity
+  guide conversation complexity.
+
+### Capturing decisions
+
+- **Default:** capture in the conversation. The user is the chat.
+- **Promote to ADR:** if a decision is durable enough that the next
+  LLM session (or a human six months from now) needs to know it
+  without reading the chat log, write `docs/adr/000N-<slug>.md`.
+  Match the existing ADR shape in that directory.
+- **Never inline in source.** Source-file comments are reserved for
+  non-obvious code, not session breadcrumbs. Inline comments about
+  "we discussed this" rot.
