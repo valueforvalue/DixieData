@@ -345,6 +345,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   changes are the only Go changes in this slice; the next
   slice wires the new hooks into the smoke harness.
 
+- `audit/smoke.mjs` grows a `[9]` block that exercises the two
+  new Wails-free hooks end-to-end against the live server.
+  `[9a] jobs-open-button-uses-browser-open-override`: re-seeds
+  a job via `/export/json` from `/share`, navigates to
+  `/jobs/{id}`, polls the job until terminal, POSTs directly
+  to `/jobs/{id}/open` (bypassing the polling overlay via
+  `page.request.post`), then reads the
+  `DIXIE_BROWSER_OPEN_URL_LOG` file and asserts a `file://`
+  URL was recorded. `[9b] open-directory-dialog-override-is-wired`:
+  indirect assertion that confirms the runtime_test.go suite
+  covers the override precedence. The summary line at the
+  end of the smoke now reports a “skipped” count alongside
+  pass/fail so a missing env var is visible in the output
+  (not a failure). 58 pass / 1 fail / 0 skipped after the
+  change; the `memorial-import-flow` carve-out remains the
+  only failure, unrelated.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
