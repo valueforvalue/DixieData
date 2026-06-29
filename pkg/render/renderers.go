@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -293,16 +292,19 @@ func runTypstCompile(binPath, workDir, mainPath, outputPath string) error {
 
 // hideWindow sets the Windows-specific SysProcAttr fields so a child
 // process spawned via exec.Command does not allocate a console
-// window. This is a no-op on non-Windows platforms.
-func hideWindow(cmd *exec.Cmd) {
-	if runtime.GOOS != "windows" {
-		return
-	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
-	}
-}
+// window. The Windows implementation lives in
+// pkg/render/renderers_windows.go (gated with //go:build windows);
+// the non-Windows no-op lives in pkg/render/renderers_nonwindows.go
+// (gated with //go:build !windows). The runtime.GOOS check used to
+// live here but that doesn't help on Linux/macOS because the
+// `syscall.SysProcAttr{HideWindow:..., CreationFlags:...}` literal
+// is still type-checked and the fields don't exist on those
+// platforms, breaking the build. The build-tag split moves the
+// Windows-only code out of the non-Windows compile unit entirely.
+//
+// See pkg/render/renderers_{windows,nonwindows}.go.
+// See internal/archive/pdfium_{windows,nonwindows}.go for the
+// established convention this slice follows.
 
 // stageSoldierImages copies any image files referenced by the
 // payload into <workDir>/images/. The template can then reference
