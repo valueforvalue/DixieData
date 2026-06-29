@@ -151,7 +151,7 @@ func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
 		_ = jobID
 		return nil
 	})
-	setInfoToastHeader(w, "Duplicate audit started\u2026")
+	setInfoToastHeader(w, "Duplicate audit started…")
 	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
 	writeExportRedirect(w, "/jobs/"+jobID)
 }

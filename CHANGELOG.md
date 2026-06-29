@@ -44,6 +44,27 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   before opening the log so the persistence layer is actually
   wired on first launch.
 
+- Several in-progress toast messages and progress-label
+  attributes shipped the seven-char ASCII literal `\u2026`
+  instead of the actual U+2026 HORIZONTAL ELLIPSIS rune
+  (issue #135). Go does **not** interpret `\uXXXX` inside
+  ordinary double-quoted strings — it ships the raw bytes
+  `\`, `u`, `2`, `0`, `2`, `6` verbatim. The browser then
+  surfaces mojibake like `Shared archive import startedâ¦`
+  on the toast. Fixed 10 occurrences across `imports_handlers.go`,
+  `google_handlers.go`, `insights_handlers.go`,
+  `reviews_handlers.go`, `settings_handlers.go`,
+  `entry_form.templ`, `recovery.templ`, and `soldier_card.templ`
+  by replacing the broken escape with the actual `…` character
+  in the source. Added a source-level regression net
+  (`TestInProgressToastStringsContainActualEllipsis`) that walks
+  every production `.go` file under `internal/appshell/` and
+  fails the test if any non-comment, non-backtick-raw-string
+  line contains the seven-char literal `\u2026`. Backtick raw
+  strings are exempt because the JS engine resolves the escape
+  at runtime — the broken form only affects Go double-quoted
+  string literals.
+
 - `reloadServices()` was unconditionally replacing `a.jobs` with a
   fresh empty `jobs.Registry`, which silently dropped every job in
   two contexts:
