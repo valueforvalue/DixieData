@@ -91,6 +91,31 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   across multiple reloads and an in-flight `Start`-then-reload
   round-trip that asserts `Get(jobID)` still returns ok.
 
+- Shared import re-copied every image and inflated the
+  `ImagesUpdated` counter on a full-duplicate archive (issue
+  #136). The job report surfaced `Images inserted: 1140` even
+  though every Person Record was filtered as a duplicate and no
+  net change happened. Two fixes:
+    1. `copySharedImageFile` short-circuits when the target file
+       already exists with the same byte count. Sharded image
+       filenames are derived from content hashes, so size-equal
+       means same content for any well-formed export. Avoids
+       touching the file on disk and keeps mtime stable.
+    2. `upsertSharedImage` now compares the pre-update
+       `file_name`, `file_path`, `caption`, and `is_primary`
+       columns against the incoming row and only flags the row
+       as `changed` when at least one of those columns differs.
+       The merge loop only increments `summary.ImagesUpdated`
+       for changed rows. Memorial import call site updated for
+       the new 3-return-value signature.
+  Regression net: new
+  `TestBackupService_ImportSharedBackupImageDedup` builds a
+  source archive with one image, imports it twice into the same
+  target, and asserts the second import reports zero inserts /
+  zero updates AND the on-disk file's mtime is unchanged
+  (`os.Chtimes` to a stable time, then `time.Time.Equal` after
+  the second import).
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
