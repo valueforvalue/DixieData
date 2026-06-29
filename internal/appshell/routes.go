@@ -40,6 +40,7 @@ func (a *App) setupRoutes() {
 	r.Get("/recovery", a.handleRecovery)
 	r.Get("/jobs/active", a.renderActiveJob)
 	r.Get("/jobs/*", a.handleJobStatus)
+	r.Post("/jobs/*", a.handleJobStatus)
 
 	r.Get("/", a.handleCalendar)
 	r.Get("/calendar", a.handleCalendar)

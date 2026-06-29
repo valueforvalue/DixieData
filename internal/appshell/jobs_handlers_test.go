@@ -172,12 +172,12 @@ func seedArtifactJob(t *testing.T, app *App, kind, artifactPath string) string {
 	return ""
 }
 
-// TestHandleJobArtifactInlineForViewableTypes locks the fix
-// for the "blank tab after Open" bug: a finished export's
-// "Open" link points at /jobs/{id}/artifact and opens in a
-// new tab. PDFs, JPGs, etc. must be served inline so the
-// browser RENDERS them in the new tab rather than
-// downloading and leaving the tab blank.
+// TestHandleJobArtifactInlineForViewableTypes locks the
+// artifact-endpoint's inline disposition for viewable types
+// (PDF, images, HTML, text). JSON is intentionally NOT in this
+// list because browsers render JSON natively and the artifact
+// endpoint treats it as inline via the disposition helper.
+// (See TestJobArtifactHeaders_Unit for the JSON header check.)
 func TestHandleJobArtifactInlineForViewableTypes(t *testing.T) {
 	cases := []struct {
 		ext         string
@@ -216,12 +216,10 @@ func TestHandleJobArtifactInlineForViewableTypes(t *testing.T) {
 }
 
 // TestHandleJobArtifactAttachmentForDownloadTypes locks the
-// other half of the fix: .ddbak, .ddshare, .zip, .csv, .ics
-// must still download (Content-Disposition: attachment) so
-// the browser saves them to disk instead of trying to
-// render them as HTML. .json is intentionally NOT in this
-// list because browsers render JSON natively (it's in the
-// inline map).
+// attachment branch for binary and large-text exports that
+// shouldn't be rendered inline (.ddbak, .ddshare, .zip, .csv,
+// .ics). The artifact endpoint sets Content-Disposition:
+// attachment so the browser downloads the file.
 func TestHandleJobArtifactAttachmentForDownloadTypes(t *testing.T) {
 	cases := []struct {
 		ext string

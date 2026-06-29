@@ -2563,7 +2563,49 @@
     initializeBrowseView();
     applyCalendarAnniversaryDensity();
     openPrintConfigFromQuery();
+    initializeCopyPathButtons();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
+  }
+
+  // initializeCopyPathButtons binds click handlers to every
+  // [data-copy-path] button. The button stores the absolute file
+  // path in its data-copy-path attribute; clicking copies the path
+  // to the clipboard and shows a brief "Path copied" toast. Used on
+  // /jobs/{id} completion state and the report view so the user can
+  // find the saved artifact in either runtime (Wails desktop or
+  // web-mode) without depending on the OS shell to open it.
+  function initializeCopyPathButtons() {
+    document.querySelectorAll("[data-copy-path]").forEach((button) => {
+      if (button.__copyPathBound) {
+        return;
+      }
+      button.__copyPathBound = true;
+      button.addEventListener("click", async () => {
+        const path = button.getAttribute("data-copy-path") || "";
+        if (!path) {
+          showToast("No path to copy.", "error");
+          return;
+        }
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(path);
+          } else {
+            // Fallback for browsers without the async clipboard API.
+            const tmp = document.createElement("textarea");
+            tmp.value = path;
+            tmp.style.position = "fixed";
+            tmp.style.opacity = "0";
+            document.body.appendChild(tmp);
+            tmp.select();
+            document.execCommand("copy");
+            document.body.removeChild(tmp);
+          }
+          showToast("Path copied.", "success");
+        } catch (error) {
+          showToast("Could not copy the path. Long-press to select.", "error");
+        }
+      });
+    });
   }
 
   function currentBrowseStateFromForm(form) {

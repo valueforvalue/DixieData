@@ -4,14 +4,14 @@ import (
 	"testing"
 )
 
-// TestIsViewableArtifact is the regression test for issue #129. The
-// status page picks between target="_blank" (viewable: open in a new
-// tab) and the download attribute (non-viewable: trigger a save
-// dialog in the current tab) based on this classification. PDFs and
-// JPGs must remain viewable so the existing inline-render fix from
-// commit 2f4d587 keeps working. Everything else (ddbak, ddshare, zip,
-// csv, ics, json, txt) must report non-viewable so the user gets the
-// download attribute instead of a blank tab.
+// TestIsViewableArtifact is the regression test for issue #129.
+// It locks the artifact-endpoint's disposition choice: PDFs and
+// JPGs must remain viewable (the endpoint serves them with
+// Content-Disposition: inline) so the existing inline-render
+// path keeps working. Everything else (.ddbak, .ddshare, .zip,
+// .csv, .ics) reports non-viewable; those flow through the
+// attachment branch. .json is in the viewable list because
+// Chromium renders application/json natively.
 func TestIsViewableArtifact(t *testing.T) {
 	cases := []struct {
 		path string
@@ -22,14 +22,14 @@ func TestIsViewableArtifact(t *testing.T) {
 		{"/tmp/photo.jpg", true, "JPEG stays viewable"},
 		{"/tmp/photo.jpeg", true, "JPEG (alt ext) stays viewable"},
 		{"/tmp/photo.png", true, "PNG viewable"},
-		{"/tmp/back-up.ddbak", false, "backup archive must NOT open in new tab (issue #129)"},
-		{"/tmp/share.ddshare", false, "shared archive must download in current tab"},
-		{"/tmp/archive.zip", false, "static archive zip must download in current tab"},
-		{"/tmp/export.csv", false, "CSV must download in current tab"},
-		{"/tmp/anniversaries.ics", false, "iCal must download in current tab"},
-		{"/tmp/export.json", true, "JSON stays viewable for developer inspection"},
-		{"/tmp/missing", false, "no extension defaults to download"},
-		{"", false, "empty path defaults to download"},
+		{"/tmp/back-up.ddbak", false, "backup archive: not viewable"},
+		{"/tmp/share.ddshare", false, "shared archive: not viewable"},
+		{"/tmp/archive.zip", false, "static archive zip: not viewable"},
+		{"/tmp/export.csv", false, "CSV: not viewable"},
+		{"/tmp/anniversaries.ics", false, "iCal: not viewable"},
+		{"/tmp/export.json", true, "JSON is viewable for developer inspection"},
+		{"/tmp/missing", false, "no extension defaults to non-viewable"},
+		{"", false, "empty path defaults to non-viewable"},
 	}
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {

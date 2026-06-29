@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/templates"
@@ -50,6 +51,12 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.renderJobReport(w, r, id)
+	case "open":
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.openJobArtifact(w, r, id)
 	case "cancel":
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -182,22 +189,82 @@ func (a *App) streamJobArtifact(w http.ResponseWriter, r *http.Request, id strin
 	http.ServeFile(w, r, path)
 }
 
+// openJobArtifact handles POST /jobs/{id}/open: opens the saved
+// artifact in the OS-default application using runtime.BrowserOpenURL.
+//
+// In the Wails desktop binary the file:// URL is dispatched to the
+// host shell, which opens the file in the default application (e.g.
+// Notepad for .json, Excel for .xlsx, Adobe Reader for .pdf). The
+// /jobs/{id} status page no longer renders an inline "Open {label}"
+// link pointing at the artifact endpoint, because the inline
+// disposition produced a blank tab for application/json and most
+// other types. The dedicated /jobs/{id}/open endpoint gives the user
+// a single "Open file" affordance with one consistent code path.
+//
+// In the web-mode binary (dixiedata-web.exe), BrowserOpenURL returns
+// errWailsFrontendUnavailable. The handler maps that to a
+// clear info toast so the button doesn't fail silently; it also
+// writes 303 + Location back to /jobs/{id} so the page reloads
+// with the toast. Without a browser-to-OS bridge, web-mode users
+// fall back to the "Copy path" affordance.
+func (a *App) openJobArtifact(w http.ResponseWriter, r *http.Request, id string) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
+	job, ok := a.jobs.Get(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if job.ResultPath == "" {
+		setToastHeaderWithType(w, "Export finished but the artifact path was not recorded.", "error")
+		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+		return
+	}
+	path := strings.TrimSpace(job.ResultPath)
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			setToastHeaderWithType(w, "Export artifact is missing on disk.", "error")
+			http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+			return
+		}
+		respondInternal(w, r, "Could not open the export artifact.", err)
+		return
+	}
+	_ = info
+	fileURL := "file:///" + strings.TrimLeft(filepath.ToSlash(path), "/")
+	if err := a.BrowserOpenURL(fileURL); err != nil {
+		// web-mode or any other environment without a Wails frontend
+		// context. Surface a clear info toast rather than failing with
+		// a generic 500; the user is on /jobs/{id} and the page reloads
+		// to display the toast.
+		debug.FromContext(r.Context()).Debug("openJobArtifact: BrowserOpenURL unavailable in this runtime", "path", path, "err", err)
+		setToastHeaderWithType(w, "Open file is only available in the desktop app. Use Copy Path to get the file location.", "info")
+		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+		return
+	}
+	// Wails actually opened the file. Hand the user back to the
+	// status page with a success toast.
+	setToastHeaderWithType(w, "Opening "+filepath.Base(path), "success")
+	http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+}
+
 // jobArtifactHeaders returns the Content-Disposition and
 // Content-Type the artifact stream should send based on the
-// file's extension. Viewable types (PDF, images, HTML, text)
-// are served inline so the user sees them render in the new
+// file's extension. Viewable types (PDF, images, HTML, text,
+// JSON) are served inline so the user sees them render in the new
 // tab the "Open" link opens; everything else (.ddbak, .ddshare,
-// .zip, .json, .csv, .ics) downloads via Content-Disposition:
+// .zip, .csv, .xlsx, .ics) downloads via Content-Disposition:
 // attachment.
 //
-// Before this split, every artifact forced
-// Content-Disposition: attachment, so opening a finished
-// export's "Open" link in a new tab immediately triggered
-// a download and left the user looking at a blank tab.
-// See docs/agents/jobs-artifact-content-disposition-bug.md
-// (the bug was reported by Jeremy on 2026-06-28 while
-// testing a ddbak export; the same code path hit PDFs
-// and JPGs and made the GUI feel broken).
+// The /jobs/{id} status page no longer links to /artifact for
+// inline rendering (the "Open result" button now calls
+// /jobs/{id}/open which uses runtime.BrowserOpenURL in the
+// Wails desktop; in web-mode the copy-path button is the only
+// affordance). The endpoint is preserved for any tool or future
+// feature that needs to fetch the bytes.
 func jobArtifactHeaders(path string) (disposition, contentType string) {
 	ext := strings.ToLower(filepath.Ext(path))
 	filename := filepath.Base(path)
@@ -210,11 +277,8 @@ func jobArtifactHeaders(path string) (disposition, contentType string) {
 	return disposition, contentType
 }
 
-// jobArtifactMimeByExt maps the file extensions the GUI's
-// "Open" link sends inline to the MIME type the browser
-// needs to render them. Add a new entry only when the
-// extension is something the user is expected to view in
-// the browser, not download.
+// jobArtifactMimeByExt maps the file extensions the
+// artifact stream renders inline (vs. forcing attachment).
 var jobArtifactMimeByExt = map[string]string{
 	".pdf":  "application/pdf",
 	".jpg":  "image/jpeg",
