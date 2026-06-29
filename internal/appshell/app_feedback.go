@@ -1,6 +1,7 @@
 package appshell
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -100,7 +102,10 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 	sourcePath := appdata.FeedbackLogPath(a.dataDir)
 	if _, err := os.Stat(sourcePath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Fprint(w, "No feedback has been saved yet.")
+			// Issue #137: surface the empty-state as a toast so the
+			// dispatcher's X-DixieData-Toast path lands it on the page
+			// instead of dropping a bare-body response on the floor.
+			setInfoToastHeader(w, "No feedback has been saved yet — nothing to export.")
 			return
 		}
 		respondInternal(w, r, "Could not read the feedback log.", err)
@@ -113,21 +118,27 @@ func (a *App) handleExportFeedbackLog(w http.ResponseWriter, r *http.Request) {
 			{DisplayName: "Feedback log", Pattern: "*.jsonl"},
 		},
 	}
-	path, outcome := a.guardedSaveFileDialog(guardedSaveFileDialogKey("feedback_log", opts), opts)
+	dupKey := guardedSaveFileDialogKey("feedback_log", opts)
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
 	switch outcome {
 	case SaveOutcomeDuplicated:
-		respondError(w, r, KindUnavailable, "Export already in progress; please wait for the save dialog.", nil)
+		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	case SaveOutcomeDialogAborted:
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
 		return
 	}
 
-	if err := copyFeedbackLog(sourcePath, path); err != nil {
-		respondInternal(w, r, "Could not write the feedback log.", err)
-		return
-	}
-	setToastHeader(w, fmt.Sprintf("Feedback log saved to %s", path))
+	// Issue #137: route the copy through enqueueExport so the UX
+	// matches every other export on /share — native save dialog →
+	// redirect to /jobs/{id} → progress card → final summary. The
+	// pre-existing direct-response path silently dropped the toast
+	// for non-redirect synthetic submits (dispatchDixieDataForm
+	// saved the toast to sessionStorage but never re-rendered it).
+	a.enqueueExport(dupKey, "feedback_log", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(10, "Reading feedback log")
+		return copyFeedbackLog(sourcePath, path)
+	}, path, w)
 }
 
 func appendFeedbackEntry(dataDir string, entry feedbackEntry) (string, error) {
