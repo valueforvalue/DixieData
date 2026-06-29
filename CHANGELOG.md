@@ -277,6 +277,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `feedback-save-hides-modal`, `feedback-save-clears-form`,
   `feedback-save-shows-toast`.
 
+- `docs/COMMON_BUGS.md` grown with five new sections from the
+  60-day UI fix survey: §1.10 `redirect-contract-drift` (7
+  instances), §1.11 `htmx-attr-strip-by-boot-js` /
+  `data-dixie-submit` opt-in (3 instances), §3.5
+  `stale-status-panel-after-submit` (4 instances), §4.11
+  `duplicate-job-handling` (3 instances), §4.12
+  `toast-encoding-mojibake` (2 instances), §4.13
+  `route-misregistered-or-wrong-verb` (2-3 instances), §4.14
+  `floating-dock-layout-overlap` (4 instances). §1.9 status
+  updated from “Eliminated” to “REGRESSION-PRONE” with a
+  pointer to the new §1.10. The “Bug class â†’ first place to
+  look” table at §11 grows rows for each new pattern. New file
+  `docs/agents/bug-pattern-grep.md` is the copy-paste grep
+  cookbook for all 8 patterns: one section per pattern with
+  the grep, the false-positive filter, and a link back to the
+  canonical recipe in `COMMON_BUGS.md`. No code change.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
