@@ -6,6 +6,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -57,7 +58,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 					</div>
 				</form>
 			</section>
-			<section class="rounded-3xl border border-slate-200 bg-white/85 p-5">
+			<section id={ uiids.PanelResearchCollectionsHub } class="rounded-3xl border border-slate-200 bg-white/85 p-5">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 					<div>
 						<h3 class="text-lg font-semibold text-slate-900">Collections</h3>
@@ -125,7 +126,7 @@ templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 					}
 				</div>
 			</div>
-			<section class="rounded-3xl border border-slate-200 bg-white/85 p-5">
+			<section id={ uiids.PanelResearchCollection } class="rounded-3xl border border-slate-200 bg-white/85 p-5">
 				<h3 class="text-lg font-semibold text-slate-900">Collection Members</h3>
 				if len(detail.PersonRecords) == 0 {
 					<p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">This collection does not contain any person records yet.</p>

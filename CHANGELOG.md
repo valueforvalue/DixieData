@@ -29,6 +29,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `data-soldier-or-widow-field` so its visibility follows the
   same JS rule. Issue #75.
 
+### Maintenance
+
+- Registered canonical `panel.*` DOM IDs for the 7 Research + Soldier
+  sub-view surfaces that were missing from `internal/uiids`:
+  `panel.research-collections.hub`,
+  `panel.research-collection.detail`,
+  `panel.research-log`,
+  `panel.research-pack`,
+  `panel.soldier.timeline`,
+  `panel.soldier.camaraderie`,
+  `panel.soldier.conflict-ledger`. Each surface's wrapping
+  element now references the new constant in the matching
+  `.templ` file. `TestRegistryIncludesResponsiveFoundationSurfaces`
+  extended to lock the contract. `docs/ui-map/surfaces.md`
+  Catalog table updated in lockstep. Closes #157.
+
 ### Fixed
 
 - `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).

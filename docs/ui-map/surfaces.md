@@ -71,12 +71,19 @@ table in sync when adding or renaming surfaces.
 | `page.review-queue.compare` | page | Review compare page |
 | `panel.review-queue.compare` | panel | Side-by-side compare panel |
 | `page.research-collections.hub` | page | Research collections hub |
+| `panel.research-collections.hub` | panel | Named collections list and create-collection section |
 | `page.research-collections.detail` | page | Research collection detail |
+| `panel.research-collection.detail` | panel | Items list and add-row section |
 | `page.research-log` | page | Research log page |
+| `panel.research-log` | panel | Log entries and task creation form |
 | `page.research-pack` | page | Research pack page |
+| `panel.research-pack` | panel | Pack contents |
 | `page.service-timeline` | page | Service timeline page |
+| `panel.soldier.timeline` | panel | Evidence-backed chronology (soldier detail HTMX swap) |
 | `page.unit-camaraderie` | page | Unit camaraderie page |
+| `panel.soldier.camaraderie` | panel | Unit camaraderie graph (soldier detail HTMX swap) |
 | `page.merge-review-ledger` | page | Merge review ledger page |
+| `panel.soldier.conflict-ledger` | panel | Local vs Incoming merge ledger (soldier detail HTMX swap) |
 | `page.insights.drilldown` | page | Insights drilldown page |
 | `page.settings` | page | Settings page |
 | `panel.settings.layout` | panel | Responsive layout controls |

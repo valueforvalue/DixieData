@@ -49,6 +49,13 @@ func TestRegistryIncludesResponsiveFoundationSurfaces(t *testing.T) {
 		OverlayFeedbackModal,
 		OverlayPrintConfigModal,
 		OverlayImageViewer,
+		PanelResearchCollectionsHub,
+		PanelResearchCollection,
+		PanelResearchLog,
+		PanelResearchPack,
+		PanelSoldierTimeline,
+		PanelSoldierCamaraderie,
+		PanelSoldierConflictLedger,
 	}
 
 	seen := map[string]bool{}
