@@ -29,25 +29,22 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					</div>
 					<div class="flex flex-col gap-3">
 						@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{
-							"hx-post": "/export/json",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/json",
+							"data-dixie-submit": "true",
 						}) {
 							<span class="font-bold">Export JSON</span>
 							<span class="text-xs text-slate-300">Hierarchical w/ version metadata</span>
 						}
 						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"hx-post": "/export/csv",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/csv",
+							"data-dixie-submit": "true",
 						}) {
 							<span class="font-bold">Export Excel (.xlsx)</span>
 							<span class="text-xs text-slate-500">Typed dates, linked spouse data</span>
 						}
 						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"hx-post": "/export/ical",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/ical",
+							"data-dixie-submit": "true",
 						}) {
 							<span class="font-bold">Export iCalendar</span>
 							<span class="text-xs text-slate-500">ICS w/ app and schema versions</span>
@@ -65,17 +62,15 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<span class="text-xs text-slate-500">Landscape, configurable scope/sort/group</span>
 						}
 						@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{
-							"hx-post": "/export/backup",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/backup",
+							"data-dixie-submit": "true",
 						}) {
 							<span class="font-bold">Export Backup (.ddbak)</span>
 							<span class="text-xs text-slate-300">Manifest, DB, all images</span>
 						}
 						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"hx-post": "/export/shared-archive",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/shared-archive",
+							"data-dixie-submit": "true",
 						}) {
 							<span class="font-bold">Export Shared Archive (.ddshare)</span>
 							<span class="text-xs text-slate-500">For sharing into another DixieData</span>
@@ -94,8 +89,8 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p>
 							<div class="mt-4">
 								@components.ButtonContent(components.ButtonPrimary, "justify-start text-left", templ.Attributes{
-									"hx-post": "/import/shared-archive",
-									"hx-target": "#share-status",
+									"data-action": "/import/shared-archive",
+									"data-dixie-submit": "true",
 								}) {
 									<div class="font-bold">Import Shared Archive (.ddshare)</div>
 									<div class="text-xs text-slate-300">Merge a shared archive into the current local archive using the bundled manifest, source identity, snapshot, and images</div>
@@ -107,8 +102,8 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<p class="mt-2 text-sm text-slate-600">Import Tampermonkey memorial JSON into basic person records using a dry-run preview before confirmation, then review the imported batch in Browse Last Import.</p>
 							<div class="mt-4">
 								@components.ButtonContent(components.ButtonSecondary, "justify-start text-left", templ.Attributes{
-									"hx-post": "/import/memorial-json/preview",
-									"hx-target": "#share-status",
+									"data-action": "/import/memorial-json/preview",
+									"data-dixie-submit": "true",
 								}) {
 									<div class="font-bold">Preview Memorial JSON Import (.json)</div>
 									<div class="text-xs text-slate-500">Run dry-run analysis first, then confirm import and view a post-import report</div>
@@ -120,9 +115,9 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<p class="mt-2 text-sm text-[#6f2c26]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
 							<div class="mt-4">
 								@components.ButtonContent(components.ButtonDanger, "justify-start text-left", templ.Attributes{
-									"hx-post": "/import/backup",
-									"hx-target": "#share-status",
-									"hx-confirm": "Load a backup archive and replace the current local archive?",
+									"data-action": "/import/backup",
+									"data-dixie-submit": "true",
+									"data-confirm": "Load a backup archive and replace the current local archive?",
 								}) {
 									<div class="font-bold">Load Backup (.ddbak)</div>
 									<div class="text-xs text-[#f6ddd6]">Restore a backup archive and replace the current local archive (legacy .zip backups still supported)</div>
@@ -142,17 +137,15 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 						@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-							"hx-post": "/export/feedback-log",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/feedback-log",
+							"data-dixie-submit": "true",
 						}) {
 							<div class="font-bold">Export Feedback Log</div>
 							<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
 						}
 						@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-							"hx-post": "/export/bug-report",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/export/bug-report",
+							"data-dixie-submit": "true",
 						}) {
 							<div class="font-bold">Export Bug Report Bundle</div>
 							<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
@@ -164,7 +157,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 			<div id="share-print-config-modal" role="dialog" aria-modal="true" aria-labelledby="share-print-config-modal-heading" data-print-config-modal class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
 				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
 					
-					<form id="share-print-config-form" hx-post={ templ.SafeURL(routebuilder.ExportDatabasePDFAsync()) } hx-target="this" hx-swap="none" data-pdf-pref-scope="archive" class="space-y-6">
+					<form id="share-print-config-form" action={ templ.SafeURL(routebuilder.ExportDatabasePDFAsync()) } data-dixie-submit="true" data-pdf-pref-scope="archive" class="space-y-6">
 						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
@@ -420,25 +413,22 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							})
 								@components.Button("Keep Local", components.ButtonSecondary, "", templ.Attributes{
 								"data-merge-review-action": "",
-								"hx-post": fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID),
-								"hx-target": "this",
-								"hx-swap": "none",
-								"hx-confirm": mergeReviewConfirmMessage("Keep Local", conflict),
+								"data-action": fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID),
+								"data-dixie-submit": "true",
+								"data-confirm": mergeReviewConfirmMessage("Keep Local", conflict),
 							})
 								@components.Button("Keep Incoming", components.ButtonPrimary, "", templ.Attributes{
 								"data-merge-review-action": "",
-								"hx-post": fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID),
-								"hx-target": "this",
-								"hx-swap": "none",
-								"hx-confirm": mergeReviewConfirmMessage("Keep Incoming", conflict),
+								"data-action": fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID),
+								"data-dixie-submit": "true",
+								"data-confirm": mergeReviewConfirmMessage("Keep Incoming", conflict),
 							})
 								if conflict.ConflictType == "display-id-collision" {
 									@components.Button("Keep Both", components.ButtonSecondary, "", templ.Attributes{
 										"data-merge-review-action": "",
-										"hx-post": fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID),
-										"hx-target": "this",
-										"hx-swap": "none",
-										"hx-confirm": mergeReviewConfirmMessage("Keep Both", conflict),
+										"data-action": fmt.Sprintf("/merge-review/%d/keep-both", conflict.ID),
+										"data-dixie-submit": "true",
+										"data-confirm": mergeReviewConfirmMessage("Keep Both", conflict),
 									})
 								}
 							</div>
@@ -497,50 +487,43 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<div class="responsive-two-col grid gap-4">
 					<div class="col-span-2 flex flex-wrap gap-3">
 						@components.Button("Connect Google Account", components.ButtonPrimary, "", templ.Attributes{
-							"hx-post": "/integrations/google/connect",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/integrations/google/connect",
+							"data-dixie-submit": "true",
 						})
 						@components.Button("Disconnect", components.ButtonSecondary, "", templ.Attributes{
-							"hx-post": "/integrations/google/disconnect",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/integrations/google/disconnect",
+							"data-dixie-submit": "true",
 						})
 					</div>
 					<div class="col-span-2 flex flex-wrap gap-3">
 						@components.Button("Upload Backup to Google Drive", components.ButtonPrimary, "", templ.Attributes{
-							"hx-post": "/integrations/google/backup",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/integrations/google/backup",
+							"data-dixie-submit": "true",
 						})
 						@components.Button("Export CSV to Google Sheets", components.ButtonSecondary, "", templ.Attributes{
-							"hx-post": "/integrations/google/sheets/export",
-							"hx-target": "this",
-							"hx-swap": "none",
+							"data-action": "/integrations/google/sheets/export",
+							"data-dixie-submit": "true",
 						})
 					</div>
 					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
 						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 							@components.Button("Use Calendar", components.ButtonSecondary, "", templ.Attributes{
-								"hx-post": "/integrations/google/calendar/use-managed",
-								"hx-target": "this",
-								"hx-swap": "none",
+								"data-action": "/integrations/google/calendar/use-managed",
+								"data-dixie-submit": "true",
 								"data-progress-label": "Configuring DixieData Calendar...",
 								"data-busy-group": "google-calendar-actions",
 							})
 							@components.Button("Sync", components.ButtonSecondary, "", templ.Attributes{
-								"hx-post": "/integrations/google/calendar/sync-managed",
-								"hx-target": "this",
-								"hx-swap": "none",
+								"data-action": "/integrations/google/calendar/sync-managed",
+								"data-dixie-submit": "true",
 								"data-progress-label": "Syncing DixieData Calendar...",
 								"data-busy-group": "google-calendar-actions",
 							})
 							@components.Button("Unsync", components.ButtonSecondary, "", templ.Attributes{
-								"hx-post": "/integrations/google/calendar/unsync-managed",
-								"hx-target": "this",
-								"hx-swap": "none",
-								"hx-confirm": "Remove all Google Calendar events previously created by DixieData?",
+								"data-action": "/integrations/google/calendar/unsync-managed",
+								"data-dixie-submit": "true",
+								"data-confirm": "Remove all Google Calendar events previously created by DixieData?",
 								"data-progress-label": "Unsyncing DixieData Calendar...",
 								"data-busy-group": "google-calendar-actions",
 							})
@@ -554,23 +537,20 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
 						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 							@components.Button("Use Test", components.ButtonSecondary, "", templ.Attributes{
-								"hx-post": "/integrations/google/calendar/use-test",
-								"hx-target": "this",
-								"hx-swap": "none",
+								"data-action": "/integrations/google/calendar/use-test",
+								"data-dixie-submit": "true",
 								"data-progress-label": "Configuring DixieData Test Calendar...",
 								"data-busy-group": "google-calendar-actions",
 							})
 							@components.Button("Test Sync", components.ButtonSecondary, "", templ.Attributes{
-								"hx-post": "/integrations/google/calendar/sync-test",
-								"hx-target": "this",
-								"hx-swap": "none",
+								"data-action": "/integrations/google/calendar/sync-test",
+								"data-dixie-submit": "true",
 								"data-progress-label": "Running DixieData Test Sync...",
 								"data-busy-group": "google-calendar-actions",
 							})
 							@components.Button("Test Unsync", components.ButtonSecondary, "", templ.Attributes{
-								"hx-post": "/integrations/google/calendar/unsync-test",
-								"hx-target": "this",
-								"hx-swap": "none",
+								"data-action": "/integrations/google/calendar/unsync-test",
+								"data-dixie-submit": "true",
 								"data-progress-label": "Removing DixieData Test events...",
 								"data-busy-group": "google-calendar-actions",
 							})
@@ -622,7 +602,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						"data-google-calendar-preferences-close": "",
 					})
 					</div>
-					<form class="mt-6 space-y-5" hx-post={ templ.SafeURL(routebuilder.GoogleCalendarPreferencesSave()) } hx-target="this" hx-swap="none">
+					<form class="mt-6 space-y-5" action={ templ.SafeURL(routebuilder.GoogleCalendarPreferencesSave()) } data-dixie-submit="true">
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-3">
 							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Title format</p>
 							<label class="flex items-start gap-3 text-sm text-slate-700">
