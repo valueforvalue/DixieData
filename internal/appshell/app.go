@@ -1952,7 +1952,33 @@ func (a *App) reloadServices() error {
 	a.images = archive.NewImageService(a.database)
 	a.export = archive.NewExportService(a.database, soldierSvc)
 	a.backup = archive.NewBackupService(a.database, soldierSvc)
-	a.jobs = jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
+	// Preserve the existing jobs Registry when one is already
+	// wired. reloadServices() runs in two contexts that MUST NOT
+	// clobber an in-flight job's registry:
+	//
+	//   1. lifecycle startup: openJobsRegistry(dataDir) has
+	//      already rehydrated the persistent jobs.jsonl into
+	//      a.jobs. Replacing it here would silently drop every
+	//      running/queued/interrupted job from the previous
+	//      session on every app start.
+	//
+	//   2. .ddbak restore worker: handleImportBackup calls
+	//      a.reopenDatabase() after the data dir is replaced.
+	//      That path runs reloadServices() while the backup_import
+	//      job is still in the registry. Replacing a.jobs here
+	//      makes the subsequent SetResult() and the /jobs/{id}
+	//      poll handler return 404 even though the import
+	//      succeeded — the page shows 404s instead of the
+	//      final report (issue observed in ddbak-import
+	//      regression, see CHANGELOG [Unreleased] Maintenance).
+	//
+	// Only allocate a fresh Registry on the very first call
+	// (NewApp() leaves a.jobs nil). Tests that bypass startup
+	// and call reloadServices() on a fresh App still get a
+	// working empty registry.
+	if a.jobs == nil {
+		a.jobs = jobs.NewWithConcurrency(jobsConcurrencyFromEnv())
+	}
 
 	// Wire the Typst-backed Registry into the export service. Per
 	// slice 7, the appshell uses Typst exclusively; if the binary
