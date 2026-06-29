@@ -31,6 +31,8 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).
+
 - Three pre-existing audit-workflow gaps closed together with the
   pkg/render build-tag fix (`8503f3a`):
     1. **Missing templ-generate step.** `internal/templates/*_templ.go`
