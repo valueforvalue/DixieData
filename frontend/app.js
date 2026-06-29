@@ -2778,7 +2778,8 @@
     setBusyState(submitter || form, true);
     setBusyGroupState(submitter || form, true);
     try {
-      const fetchOptions = { method: form.method || "POST" };
+      const explicitMethod = (form.getAttribute && form.getAttribute("method")) || "";
+      const fetchOptions = { method: explicitMethod ? form.method.toUpperCase() : "POST" };
       // Only attach a body for non-GET / non-HEAD requests. Bare-button
       // synthetic forms have no FormData to attach anyway.
       const methodUpper = String(fetchOptions.method).toUpperCase();
