@@ -36,7 +36,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 			}
 			<section class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
 				<h3 class="text-lg font-semibold text-slate-900">Create Collection</h3>
-				<form hx-post={ templ.SafeURL(routebuilder.ResearchCollectionsCreate()) } class="mt-4 grid gap-4 md:grid-cols-2">
+				<form action={ templ.SafeURL(routebuilder.ResearchCollectionsCreate()) } data-dixie-submit="true" class="mt-4 grid gap-4 md:grid-cols-2">
 					if hub.CurrentPersonRecord != nil {
 						<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 					}
@@ -84,7 +84,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 								<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 									<a href={ researchCollectionDetailHref(collection.ID, hub.CurrentPersonRecord) } class="pill-link w-full sm:w-auto">Open Collection</a>
 									if hub.CurrentPersonRecord != nil && !collection.ContainsCurrent {
-										<form hx-post={ templ.SafeURL(routebuilder.ResearchCollectionAdd(collection.ID)) }>
+										<form action={ templ.SafeURL(routebuilder.ResearchCollectionAdd(collection.ID)) } data-dixie-submit="true">
 											<input type="hidden" name="soldier_id" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 											<input type="hidden" name="from" value={ fmt.Sprintf("%d", hub.CurrentPersonRecord.ID) }/>
 											@components.Button("Add Current Person Record", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
