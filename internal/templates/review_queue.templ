@@ -24,7 +24,7 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 				if len(entries) == 0 {
 					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">The review queue is clear.</p>
 				} else {
-					<form hx-post={ templ.SafeURL(routebuilder.ReviewQueueBulk()) } hx-target="body" class="space-y-4">
+					<form action={ templ.SafeURL(routebuilder.ReviewQueueBulk()) } data-dixie-submit="true" class="space-y-4">
 						<div class="flex flex-col gap-3 rounded-2xl border border-[rgba(141,116,64,0.25)] bg-[rgba(246,241,228,0.72)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 							<label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
 								<input type="checkbox" data-select-all="review-queue" class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
@@ -35,13 +35,13 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 								"type": "submit",
 								"name": "bulk_action",
 								"value": "ignore",
-								"hx-confirm": bulkIgnoreConfirmMessage(len(entries)),
+								"data-confirm": bulkIgnoreConfirmMessage(len(entries)),
 							})
 								@components.Button("Delete Selected", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
 								"type": "submit",
 								"name": "bulk_action",
 								"value": "delete",
-								"hx-confirm": bulkDeleteConfirmMessage(len(entries)),
+								"data-confirm": bulkDeleteConfirmMessage(len(entries)),
 							})
 							</div>
 						</div>
@@ -74,9 +74,8 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 									<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 										<a href={ fmt.Sprintf("/soldiers/%d", entry.PersonRecord.ID) } class="pill-link w-full sm:w-auto">View Person Record</a>
 										@components.Button("Mark as Resolved", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
-										"hx-post": fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID),
-										"hx-target": fmt.Sprintf("#review-queue-item-%d", entry.PersonRecord.ID),
-										"hx-swap": "outerHTML",
+										"data-action": fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID),
+										"data-dixie-submit": "true",
 									})
 									</div>
 								</div>
@@ -124,7 +123,8 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 					>← { comparisonBackLabel(comparison) }</button>
 					if comparison.FindingID > 0 && comparison.Status != "resolved" {
 						@components.Button("Mark Match Resolved", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
-						"hx-post": fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID),
+						"data-action": fmt.Sprintf("/review-queue/compare/%d/resolve", comparison.FindingID),
+						"data-dixie-submit": "true",
 					})
 					}
 				</div>
