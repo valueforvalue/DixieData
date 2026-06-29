@@ -11,7 +11,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- Pension State, Pension ID, and Application ID fields on the
+  new-soldier form are now visible for the `wife` entry type
+  as well as `soldier` and `widow`. Previously, the JS handler
+  at `frontend/app.js` `syncEntryTypeFields` used
+  `isSoldierEntryType() || widowEntry` to decide whether to
+  show the `data-soldier-or-widow-field` sections, which
+  excluded `wife`. The handler now uses
+  `isSoldierEntryType() || spouseEntry` (where `spouseEntry`
+  already includes both `wife` and `widow`). Linked-person
+  remains hidden — that role is not a pensioner. Templ change
+  in `internal/templates/entry_form.templ`: the
+  `pension_state` `<div>` wrapper moved from
+  `data-soldier-only-field` to
+  `data-soldier-or-widow-field` so its visibility follows the
+  same JS rule. Issue #75.
+
 ### Fixed
+
 
 - CI `test` workflow started failing on
   `TestHandleJobArtifactAttachmentForDownloadTypes` (`.csv` case
