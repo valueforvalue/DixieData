@@ -499,6 +499,65 @@ async function main() {
     targetLen: qualityResultsHtml.length,
   });
 
+  // [7d] Feedback save flow: the floating-dock "Feedback" button
+  // opens the modal, the user types a message, clicks "Save
+  // Feedback", and the response carries X-DixieData-Close-Feedback
+  // + X-DixieData-Toast headers. The JS post-response path must
+  // (a) hide the modal, (b) clear the form fields, and (c) render
+  // the toast immediately — not queue it for the next page nav.
+  // This block catches the regression where the toast was queued
+  // and never displayed, leaving the user with a closed modal and
+  // no confirmation.
+  console.log('\n[7d] Feedback save flow confirmation');
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(300);
+  const feedbackOpenBtn = page.locator('[data-feedback-open]').first();
+  const feedbackOpenExists = await feedbackOpenBtn.count();
+  if (feedbackOpenExists > 0) {
+    await feedbackOpenBtn.click();
+    await page.waitForTimeout(200);
+    const feedbackForm = page.locator('#feedback-form').first();
+    const feedbackFormVisible = await feedbackForm.isVisible().catch(() => false);
+    record('feedback-modal-openable', feedbackFormVisible);
+    if (feedbackFormVisible) {
+      await page.fill('#feedback-form textarea[name="message"]', 'smoke test feedback');
+      const feedbackSubmitRespPromise = page.waitForResponse(
+        (r) => r.url().includes('/feedback/submit') && r.request().method() === 'POST'
+      );
+      await page.click('#feedback-form button[type="submit"]');
+      const feedbackResp = await feedbackSubmitRespPromise;
+      const closeHeader = feedbackResp.headers()['x-dixiedata-close-feedback'];
+      const toastHeader = feedbackResp.headers()['x-dixiedata-toast'];
+      record('feedback-save-sends-close-header', closeHeader === 'true', {
+        closeHeader,
+      });
+      record('feedback-save-sends-toast-header', !!toastHeader, {
+        toastHeader,
+      });
+      await page.waitForTimeout(400);
+      const modalHidden = await page.evaluate(() => {
+        const modal = document.querySelector('[data-feedback-modal]');
+        return modal instanceof HTMLElement && modal.classList.contains('hidden');
+      });
+      record('feedback-save-hides-modal', modalHidden);
+      const textareaValue = await page.evaluate(() => {
+        const ta = document.querySelector('#feedback-form textarea[name="message"]');
+        return ta instanceof HTMLTextAreaElement ? ta.value : null;
+      });
+      record('feedback-save-clears-form', textareaValue === '', {
+        textareaValue,
+      });
+      const toastVisible = await page.evaluate(() => {
+        const toast = document.querySelector('[data-toast-region]');
+        if (!(toast instanceof HTMLElement)) return false;
+        return !toast.classList.contains('hidden') && (toast.textContent || '').trim().length > 0;
+      });
+      record('feedback-save-shows-toast', toastVisible);
+    }
+  } else {
+    record('feedback-modal-openable', false, { reason: 'no [data-feedback-open] trigger' });
+  }
+
   // [8] Progress slot swap (commit b185f0e). The layout's
   // progress slot polls /jobs/active and uses hx-swap="innerHTML"
   // against the [data-jobs-progress-region] wrapper. Without the

@@ -2847,6 +2847,25 @@
       if (closeFeedback) {
         const modal = document.querySelector("[data-feedback-modal]");
         if (modal instanceof HTMLElement) { modal.classList.add("hidden"); }
+        // Clear the feedback form so the next time the user opens the
+        // modal they start from a blank slate, and so the act of saving
+        // is visible (textarea no longer has their message). The
+        // feedback form is identified by id="feedback-form" in
+        // internal/templates/layout.templ.
+        const feedbackForm = document.getElementById("feedback-form");
+        if (feedbackForm instanceof HTMLFormElement) {
+          feedbackForm.reset();
+        }
+        // Render the toast immediately rather than queueing it via
+        // savePendingToast. The previous code queued it, but no page
+        // nav fires after the close-feedback path so the queued toast
+        // never displayed — the user submitted feedback and saw
+        // nothing. Immediate showToast gives the confirmation the
+        // user expects. Issue: feedback save closed the modal but
+        // offered no confirmation.
+        if (toastMessage) {
+          showToast(toastMessage, toastKind);
+        }
       }
       if (refreshCalendarMonth) {
         refreshCalendarGrid(refreshCalendarMonth);
@@ -2854,7 +2873,7 @@
       if (button.closest("form") instanceof HTMLFormElement && response.ok) {
         clearDraftForForm(button.closest("form"));
       }
-      if (toastMessage) {
+      if (toastMessage && !closeFeedback) {
         savePendingToast({ message: toastMessage, kind: toastKind });
       }
       // Inline render: if the form opts into data-results-target and the
