@@ -108,8 +108,7 @@ func (a *App) setupRoutes() {
 
 	r.Post("/import/backup", a.handleImportBackup)
 	r.Post("/import/shared-archive", a.handleImportSharedArchive)
-	r.Post("/import/memorial-json/preview", a.handlePreviewMemorialJSONImport)
-	r.Post("/import/memorial-json/confirm", a.handleConfirmMemorialJSONImport)
+	r.Post("/import/memorial-json", a.handleImportMemorialJSON)
 
 	r.Post("/merge-review/*", a.handleMergeReviewConflict)
 

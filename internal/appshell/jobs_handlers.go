@@ -57,6 +57,12 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.openJobArtifact(w, r, id)
+	case "confirm":
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.confirmJob(w, r, id)
 	case "cancel":
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -141,8 +147,20 @@ func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
 		http.NotFound(w, r)
 		return
 	}
-	switch err := a.jobs.Cancel(id); {
+	// Manual jobs (e.g. Memorial import) live in StatusQueued until
+	// the user confirms. The registry's Cancel would mark them
+	// StatusCancelled without ever running the worker; we use
+	// the manual-job entry's cancel callback which does the same
+	// thing plus forgets the entry so a subsequent /confirm call
+	// returns ErrNotFound.
+	err := a.cancelManualJob(id)
+	if errors.Is(err, jobs.ErrNotFound) {
+		// Not a manual job; fall through to the registry.
+		err = a.jobs.Cancel(id)
+	}
+	switch {
 	case err == nil:
+		a.forgetManualJob(id)
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
 	case errors.Is(err, jobs.ErrNotFound):
 		http.NotFound(w, r)
@@ -150,6 +168,47 @@ func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
 	default:
 		respondInternal(w, r, "Could not cancel the export job.", err)
+	}
+}
+
+// confirmJob handles POST /jobs/{id}/confirm: releases the manual
+// trigger for a confirm-before-run job (Memorial import today),
+// flipping it from StatusQueued to StatusRunning. The page is the
+// same /jobs/{id} status page; the user clicks a Confirm button
+// instead of waiting for an external flow.
+func (a *App) confirmJob(w http.ResponseWriter, r *http.Request, id string) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
+	job, ok := a.jobs.Get(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if job.Status != jobs.StatusQueued {
+		// Defensive: already released (running / done / cancelled).
+		// The /jobs/{id} page renders the actual state, so we just
+		// bounce back with a friendly toast.
+		setToastHeaderWithType(w, "Job already started.", "info")
+		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+		return
+	}
+	err := a.releaseManualJob(id)
+	switch {
+	case err == nil:
+		a.forgetManualJob(id)
+		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+	case errors.Is(err, jobs.ErrNotFound):
+		// Not a manual job — the /confirm endpoint is bound to
+		// confirm-before-run kinds only. Send the user to the
+		// status page; the page itself won't show a Confirm
+		// button (toggled on a flag we set elsewhere) and will
+		// explain what's happening.
+		setToastHeaderWithType(w, "This job does not need confirmation.", "info")
+		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+	default:
+		respondInternal(w, r, "Could not confirm the export job.", err)
 	}
 }
 

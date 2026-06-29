@@ -73,6 +73,7 @@ type App struct {
 	openMultipleFilesDialogOverride func(opts any) ([]string, error)
 	inFlight               sync.Map // map[string]*inFlightEntry — dedupes in-flight native dialog calls
 	importInFlight         atomic.Bool // true while a .ddbak restore is replacing the data dir; handlers can 503 instead of crashing on a stale DB handle
+	manualJobs             sync.Map // map[string]*manualJobEntry — release/cancel callbacks for jobs.Registry.StartManual confirm-before-run jobs
 	startupErr              error
 	setupRequired           bool
 	debugMode               atomic.Bool // Phase 4: gated by DIXIEDATA_DEBUG=1 or settings toggle
@@ -82,8 +83,6 @@ type App struct {
 	dataDir                 string
 	scratchpads             scratchpadOpener
 	frontendAssets          fs.FS
-	previewMu               sync.Mutex
-	memorialPreview         map[string]string
 	jobs                    *jobs.Registry
 }
 
@@ -215,6 +214,59 @@ func (a *App) inFlightJobID(dupKey string) string {
 		}
 	}
 	return ""
+}
+
+// rememberManualJob stores the release/cancel callbacks for a
+// jobs.Registry.StartManual confirm-before-run job in a sync.Map
+// keyed by job ID. The /jobs/{id}/confirm and /jobs/{id}/cancel
+// endpoints look these up. Entries are kept until the job
+// transitions to a terminal status (worker goroutine clears it
+// on exit). /confirm and /cancel return jobs.ErrAlreadyTerminal
+// semantics if the entry has been cleared.
+func (a *App) rememberManualJob(jobID string, release func() error, cancel func() error) {
+	a.manualJobs.Store(jobID, &manualJobEntry{release: release, cancel: cancel})
+}
+
+// forgetManualJob drops the callbacks after the job reaches a
+// terminal status, so /confirm and /cancel can return a meaningful
+// "already terminal" response. Safe to call multiple times.
+func (a *App) forgetManualJob(jobID string) {
+	a.manualJobs.Delete(jobID)
+}
+
+// releaseManualJob invokes the StartManual release callback for
+// the given job ID, transitioning it from StatusQueued to
+// StatusRunning. Returns jobs.ErrNotFound if no manual-job entry
+// exists (e.g. the job was already released or never was manual).
+func (a *App) releaseManualJob(jobID string) error {
+	v, ok := a.manualJobs.Load(jobID)
+	if !ok {
+		return jobs.ErrNotFound
+	}
+	entry := v.(*manualJobEntry)
+	return entry.release()
+}
+
+// cancelManualJob invokes the StartManual cancel callback for the
+// given job ID, flipping StatusQueued to StatusCancelled without
+// running the worker.
+func (a *App) cancelManualJob(jobID string) error {
+	v, ok := a.manualJobs.Load(jobID)
+	if !ok {
+		// Not a manual job (or already terminal). Fall through to
+		// the registry's standard Cancel path.
+		return a.jobs.Cancel(jobID)
+	}
+	entry := v.(*manualJobEntry)
+	return entry.cancel()
+}
+
+// manualJobEntry bundles the two callbacks a StartManual job
+// exposes. The release/cancel fields are exactly-once; calling
+// them twice returns jobs.ErrAlreadyTerminal from the registry.
+type manualJobEntry struct {
+	release func() error
+	cancel  func() error
 }
 
 // respondDuplicateInFlight writes the response for a duplicate

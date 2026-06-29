@@ -756,7 +756,7 @@ func TestStartManualWaitsForRelease(t *testing.T) {
 	workerDone := make(chan struct{})
 	id, release, _ := func() (string, func() error, func() error) {
 		// Use a fresh registry per test invocation.
-		return reg.StartManual("test_confirm", nil, func(ctx context.Context, p *Progress) error {
+		return reg.StartManual("test_confirm", "", func(ctx context.Context, p *Progress) error {
 			defer close(workerDone)
 			close(workerStarted)
 			// Simulate light work so the test reliably observes
@@ -819,7 +819,7 @@ func TestStartManualWaitsForRelease(t *testing.T) {
 func TestStartManualCancelReleasesIndefinitelyStuckJob(t *testing.T) {
 	reg := New()
 	workerStarted := make(chan struct{}, 1)
-	id, _, cancel := reg.StartManual("test_confirm_cancel", nil, func(ctx context.Context, p *Progress) error {
+	id, _, cancel := reg.StartManual("test_confirm_cancel", "", func(ctx context.Context, p *Progress) error {
 		select {
 		case workerStarted <- struct{}{}:
 		default:
@@ -853,17 +853,11 @@ func TestStartManualCancelReleasesIndefinitelyStuckJob(t *testing.T) {
 }
 
 // TestStartManualSeedsProgress verifies the caller-supplied initial
-// Progress (e.g. a preflight summary) flows into the queued snapshot
+// message (e.g. a preflight summary) flows into the queued snapshot
 // so /jobs/{id} can render it before the user confirms.
 func TestStartManualSeedsProgress(t *testing.T) {
 	reg := New()
-	// Build a real Progress wired to a real Job so Set() actually
-	// writes; the StartManual call below transfers the values to
-	// its own internal Job.
-	seed := &Job{registry: reg}
-	seedProgress := &Progress{job: seed}
-	seedProgress.Set(0, "Awaiting confirmation: 50 rows will be added.")
-	id, release, _ := reg.StartManual("test_confirm_seed", seedProgress, func(ctx context.Context, p *Progress) error {
+	id, release, _ := reg.StartManual("test_confirm_seed", "Awaiting confirmation: 50 rows will be added.", func(ctx context.Context, p *Progress) error {
 		return nil
 	})
 	defer func() { _ = release() }()
