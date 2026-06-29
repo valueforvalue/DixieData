@@ -24,6 +24,37 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   dev-server smoke harness; Wails desktop smoke is manual — see
   `docs/adr/0004-option-c-dispatcher.md` for the rationale.)
 
+### Fixed
+
+- Web-mode (`cmd/dixiedata-web.exe`) save-dialog exports
+  (`/export/json`, `/export/csv`, `/export/ical`,
+  `/export/backup`, `/export/shared-archive`,
+  `/export/database-pdf`, `/export/bug-report`) silently
+  bounced users back to `/share` because the binary never
+  installed `SetSaveFileDialogOverride`. Wired the override
+  (commit `30ab8e7`) so the web-mode binary auto-routes every
+  export to `<DIXIE_SAVE_FILE_DIR>` (defaulting to
+  `<dataDir>/exports/`). The Wails desktop binary is
+  unaffected — it has a real native `SaveFileDialog`.
+- Split `guardedSaveFileDialog`'s outcome into three states:
+  `SaveOutcomeOK`, `SaveOutcomeDuplicated`,
+  `SaveOutcomeDialogAborted` (commit `14a2aa8`). The old
+  bool-shape collapsed "duplicate in flight" and "user
+  cancelled" into one branch, which was the proximate cause
+  of the misleading "Export already in progress" toast
+  surfaced on every cancel. Handlers updated for all 9
+  save-dialog-backed exports plus `handleExportFeedbackLog`.
+  The `(*App).inFlight` dedup map stays — the Wails v2.12.0
+  UI-thread crash from two simultaneous native dialogs is
+  still real even though the dual-JS-handler race is gone.
+- Audit smoke harness tightened to require `/jobs/{id}`
+  specifically for non-carve-out exports (commit `c9e5da3`),
+  with two documented carve-outs: `/export/static-archive`
+  (plain `<form method="post">` carve-out, follows 303
+  natively) and `/export/feedback-log` (no-data early
+  return). The previous `/share`-as-success acceptance
+  masked the missing save-dialog override.
+
 ### Maintenance
 
 - Replaced `frontend/app.js`'s custom htmx-clone dispatcher
