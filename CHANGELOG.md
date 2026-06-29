@@ -362,6 +362,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   change; the `memorial-import-flow` carve-out remains the
   only failure, unrelated.
 
+- `audit/run-interactive.mjs` grows a Phase 2 surface
+  `jobs-open-artifact` that exercises the new
+  BrowserOpenURL override hook end-to-end. Re-seeds a job via
+  `/export/json` from `/share`, navigates to `/jobs/{id}`,
+  polls until terminal, POSTs directly to `/jobs/{id}/open`
+  via `page.request.post()` to bypass the polling overlay,
+  then reads `DIXIE_BROWSER_OPEN_URL_LOG` and asserts a
+  `file://` URL was recorded. The summary line now reports
+  a 'skipped' count alongside pass/fail/manual. 19/0/4/0 after
+  the change. Phase 2 surface coverage closes the BrowserOpenURL
+  gap from the Wails-free test feasibility audit.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
