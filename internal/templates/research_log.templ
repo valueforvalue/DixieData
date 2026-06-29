@@ -52,7 +52,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 								<p class="text-sm text-slate-600">Track missing evidence, unresolved identity questions, or records still needing verification.</p>
 							</div>
 						</div>
-						<form hx-post={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } class="mt-4 grid gap-4 md:grid-cols-2">
+						<form action={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } data-dixie-submit="true" class="mt-4 grid gap-4 md:grid-cols-2">
 							<div class="md:col-span-2">
 								<label class="block text-sm font-medium text-slate-700">
 									Task Title
@@ -94,7 +94,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 							</div>
 							<div class="mt-4 grid gap-4 md:grid-cols-2">
 								for _, suggestion := range log.Suggestions {
-									<form hx-post={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/80 p-4">
+									<form action={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } data-dixie-submit="true" class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/80 p-4">
 										<input type="hidden" name="title" value={ suggestion.Title }/>
 										<input type="hidden" name="notes" value={ suggestion.Notes }/>
 										<input type="hidden" name="evidence_type" value={ suggestion.EvidenceType }/>
@@ -138,7 +138,8 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 											</div>
 											if !strings.EqualFold(strings.TrimSpace(task.Status), "resolved") {
 												@components.Button("Mark Resolved", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
-													"hx-post": fmt.Sprintf("/soldiers/%d/research-log/tasks/%d/resolve", log.SubjectPersonRecord.ID, task.ID),
+													"data-action": fmt.Sprintf("/soldiers/%d/research-log/tasks/%d/resolve", log.SubjectPersonRecord.ID, task.ID),
+													"data-dixie-submit": "true",
 												})
 											}
 										</div>
