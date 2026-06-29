@@ -1300,12 +1300,19 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 			if err := copySharedImageFile(sourceDataDir, targetDataDir, image.FilePath); err != nil {
 				return SharedImportSummary{}, err
 			}
-			existed, err := upsertSharedImage(tx, target.SoldierID, target.SoldierSync, image)
+			existed, changed, err := upsertSharedImage(tx, target.SoldierID, target.SoldierSync, image)
 			if err != nil {
 				return SharedImportSummary{}, err
 			}
 			if existed {
-				summary.ImagesUpdated++
+				// Issue #136: only count Updates when the mutable
+				// columns actually changed. An UPDATE that left
+				// every column at its prior value is not a
+				// meaningful update — it is just a no-op from
+				// the user's perspective.
+				if changed {
+					summary.ImagesUpdated++
+				}
 			} else {
 				summary.ImagesInserted++
 			}
@@ -1538,24 +1545,41 @@ func upsertSharedRecord(tx *sql.Tx, targetSoldierID int64, soldierSyncID string,
 	return false, err
 }
 
-func upsertSharedImage(tx *sql.Tx, targetSoldierID int64, soldierSyncID string, image models.Image) (bool, error) {
+func upsertSharedImage(tx *sql.Tx, targetSoldierID int64, soldierSyncID string, image models.Image) (existed bool, changed bool, err error) {
 	syncID := strings.TrimSpace(image.SyncID)
 	if syncID == "" {
-		return false, fmt.Errorf("shared database image missing sync_id")
+		return false, false, fmt.Errorf("shared database image missing sync_id")
 	}
-	var existingID int64
-	err := tx.QueryRow(`SELECT id FROM images WHERE sync_id = ?`, syncID).Scan(&existingID)
-	if err == nil {
-		_, err = tx.Exec(`UPDATE images SET soldier_id = ?, soldier_sync_id = ?, file_name = ?, file_path = ?, caption = ?, is_primary = ? WHERE id = ?`,
-			targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary, existingID)
-		return true, err
+	var existing struct {
+		id        int64
+		fileName  string
+		filePath  string
+		caption   string
+		isPrimary bool
 	}
-	if err != sql.ErrNoRows {
-		return false, err
+	row := tx.QueryRow(`SELECT id, file_name, file_path, caption, is_primary FROM images WHERE sync_id = ?`, syncID)
+	if scanErr := row.Scan(&existing.id, &existing.fileName, &existing.filePath, &existing.caption, &existing.isPrimary); scanErr == nil {
+		// Issue #136: only count as "updated" when at least one
+		// mutable column actually changed. The pre-existing logic
+		// re-ran the UPDATE unconditionally, which inflated
+		// ImagesUpdated on every full-duplicate import and made
+		// the job report misleading ("Imported 1140 images" on a
+		// no-op round-trip).
+		changed = existing.fileName != image.FileName ||
+			existing.filePath != image.FilePath ||
+			existing.caption != image.Caption ||
+			existing.isPrimary != image.IsPrimary
+		if _, updateErr := tx.Exec(`UPDATE images SET soldier_id = ?, soldier_sync_id = ?, file_name = ?, file_path = ?, caption = ?, is_primary = ? WHERE id = ?`,
+			targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary, existing.id); updateErr != nil {
+			return true, changed, updateErr
+		}
+		return true, changed, nil
+	} else if scanErr != sql.ErrNoRows {
+		return false, false, scanErr
 	}
 	_, err = tx.Exec(`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		syncID, targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary)
-	return false, err
+	return false, false, err
 }
 
 func copySharedImageFile(sourceDataDir, targetDataDir, relativePath string) error {
@@ -1564,13 +1588,26 @@ func copySharedImageFile(sourceDataDir, targetDataDir, relativePath string) erro
 		return nil
 	}
 	sourcePath := filepath.Join(sourceDataDir, filepath.FromSlash(normalized))
-	if _, err := os.Stat(sourcePath); err != nil {
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("shared database is missing image file %s", relativePath)
 		}
 		return err
 	}
 	targetPath := filepath.Join(targetDataDir, filepath.FromSlash(normalized))
+	// Issue #136: short-circuit when the target file already exists
+	// with the same byte count. Sharded image filenames are derived
+	// from content hashes, so size-equal means same content for any
+	// well-formed export. Avoids trashing the file on disk for every
+	// full-duplicate re-import and keeps mtimes stable.
+	if targetInfo, statErr := os.Stat(targetPath); statErr == nil {
+		if targetInfo.Size() == sourceInfo.Size() {
+			return nil
+		}
+	} else if !os.IsNotExist(statErr) {
+		return statErr
+	}
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		return err
 	}
@@ -1803,7 +1840,7 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 		if err := copySharedImageFile(sourceDataDir, targetDataDir, image.FilePath); err != nil {
 			return err
 		}
-		if _, err := upsertSharedImage(tx, targetID, sourceSnapshot.Soldier.SyncID, image); err != nil {
+		if _, _, err := upsertSharedImage(tx, targetID, sourceSnapshot.Soldier.SyncID, image); err != nil {
 			return err
 		}
 	}
