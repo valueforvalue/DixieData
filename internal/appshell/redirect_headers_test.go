@@ -197,3 +197,97 @@ func setsDixieRedirect(body string) bool {
 func formatOffender(pos token.Position, fnName string) string {
 	return pos.String() + " (" + fnName + ")"
 }
+
+// writesHXRedirect returns true if the function body contains a
+// Set call that writes the HX-Redirect header (either quoted or
+// backtick form). It does NOT match reads via Header().Get (e.g.
+// a debug report that lists headers for triage), which would be
+// legitimate even after Option C removes the writes.
+func writesHXRedirect(body string) bool {
+	const window = 60
+	for i := 0; i < len(body); i++ {
+		j := strings.Index(body[i:], "HX-Redirect")
+		if j < 0 {
+			return false
+		}
+		idx := i + j
+		lo := idx - window
+		if lo < 0 {
+			lo = 0
+		}
+		hi := idx + window
+		if hi > len(body) {
+			hi = len(body)
+		}
+		snippet := body[lo:hi]
+		// Match Set(...HX-Redirect...) with either quote style.
+		if strings.Contains(snippet, ".Set(") && (strings.Contains(snippet, "\"HX-Redirect\"") || strings.Contains(snippet, "`HX-Redirect`")) {
+			return true
+		}
+		i = idx
+	}
+	return false
+}
+// TestNoDeadHXRedirectWrites is the regression net for the
+// Option C housekeeping goal: HX-Redirect is dead code (the
+// custom dispatcher reads X-DixieData-Redirect, never HX-Redirect).
+// After the templ retag and handler migration land, no handler in
+// appshell should write HX-Redirect at all. The static archive
+// carve-out legitimately writes HX-Redirect in some flows; see
+// filesExempt and exemptFunctions for the carve-out list.
+//
+// This test enforces the post-Option-C invariant: every handler
+// that needs the dispatcher reads X-DixieData-Redirect; nobody
+// reaches for the dead header.
+func TestNoDeadHXRedirectWrites(t *testing.T) {
+	_, thisFile, _, _ := runtime.Caller(0)
+	thisDir := filepath.Dir(thisFile)
+	entries, err := os.ReadDir(thisDir)
+	if err != nil {
+		t.Fatalf("read appshell dir: %v", err)
+	}
+
+	var offenders []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		if filesExempt[name] {
+			continue
+		}
+		path := filepath.Join(thisDir, name)
+		src, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		fset := token.NewFileSet()
+		f, err := parser.ParseFile(fset, path, src, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv == nil {
+				continue
+			}
+			if fn.Body == nil {
+				continue
+			}
+			bodySrc := string(src[fset.Position(fn.Body.Lbrace).Offset:fset.Position(fn.Body.Rbrace).Offset])
+			if !writesHXRedirect(bodySrc) {
+				continue
+			}
+			if _, exempt := exemptFunctions[fn.Name.Name]; exempt {
+				continue
+			}
+			pos := fset.Position(fn.Pos())
+			offenders = append(offenders, formatOffender(pos, fn.Name.Name))
+		}
+	}
+
+	if len(offenders) > 0 {
+		t.Fatalf("%d handler(s) still write HX-Redirect, which is dead code in this codebase (dispatchDixieDataForm reads X-DixieData-Redirect, never HX-Redirect). Either migrate to writeExportRedirect(w, target) or add the function to exemptFunctions with a one-line reason:\n  %s",
+			len(offenders), strings.Join(offenders, "\n  "))
+	}
+}

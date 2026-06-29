@@ -71,6 +71,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (adding `HX-Redirect`) is documented as dead code so the
   next reader understands why the section was removed rather
   than assuming it was lost.
+- Added two source-scan regression nets that prevent the
+  Option C bug class from being reintroduced:
+  `internal/templates/hx_guard_test.go::TestNoPostThenNavigateHXXAttrs`
+  fails the build if any `.templ` file contains
+  `hx-post` / `hx-put` / `hx-delete` / `hx-confirm` (all four
+  are forbidden after the templ retag; replaced by
+  `data-dixie-submit` + `data-action` + `data-confirm`).
+  `internal/appshell/redirect_headers_test.go::TestNoDeadHXRedirectWrites`
+  fails the build if any handler in `appshell` writes the
+  `HX-Redirect` header (it's dead code; the dispatcher reads
+  `X-DixieData-Redirect`). Together with the inverted
+  `TestPostThenNavigateUsesDixieRedirect`, the three regression
+  nets form a tripwire: any author who tries to write the old
+  contract hits a build failure with a file:line citation.
 
 ### Added
 

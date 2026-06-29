@@ -733,7 +733,7 @@ templ SettingsOrphanedImages(orphans []viewmodel.OrphanedImage) {
 			</div>
 			@components.Button("Move Listed Files to Temp Trash", components.ButtonDanger, "", templ.Attributes{
 					"type": "submit",
-					data-confirm: "Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.",
+					"data-confirm": "Move the listed orphan image files to temp trash? They stay there for 30 days before permanent deletion. To recover, copy each file back to its original location before the 30-day window expires.",
 				})
 		</form>
 	}
@@ -780,7 +780,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 			}
 			@components.Button("Move Selected to Review Queue", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 				"type": "submit",
-				data-confirm: "Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.",
+				"data-confirm": "Apply the selected data-quality findings to the Review Queue? Each finding will create one review entry. You can resolve or ignore each from the Review Queue.",
 			})
 		</form>
 	}
