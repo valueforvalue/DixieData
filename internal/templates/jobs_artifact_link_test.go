@@ -304,3 +304,44 @@ func TestSharePageKeepsJobsOverlay(t *testing.T) {
 		t.Errorf("/share page must keep the floating jobs-progress popup; got HTML:\n%s", html)
 	}
 }
+
+// TestJobStatusViewRendersAwaitingConfirmationCard locks down the
+// Memorial-JSON confirm-before-run UX. When a job is in
+// StatusQueued + AwaitingConfirmation (set by Registry.StartManual),
+// /jobs/{id} renders a 'Confirm and proceed' + 'Cancel import'
+// card with the preflight summary, instead of the standard
+// progress widget.
+func TestJobStatusViewRendersAwaitingConfirmationCard(t *testing.T) {
+	j := jobs.NewJob("job-memorial-confirm", "memorial_import")
+	j.Status = jobs.StatusQueued
+	j.AwaitingConfirmation = true
+	j.Message = "Awaiting confirmation: will create 50, skip 12, fail 3 (of 65 rows)."
+
+	var buf bytes.Buffer
+	if err := JobStatusView(*j).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("JobStatusView render: %v", err)
+	}
+	html := buf.String()
+
+	if !strings.Contains(html, "Awaiting confirmation") {
+		t.Errorf("confirmation card must show the 'Awaiting confirmation' badge; got HTML:\n%s", html)
+	}
+	if !strings.Contains(html, j.Message) {
+		t.Errorf("confirmation card must include the seeded preflight Message %q; got HTML:\n%s", j.Message, html)
+	}
+	if !strings.Contains(html, `action="/jobs/job-memorial-confirm/confirm"`) {
+		t.Errorf("confirmation card must wire a POST to /jobs/{id}/confirm; got HTML:\n%s", html)
+	}
+	if !strings.Contains(html, "data-job-confirm") {
+		t.Errorf("confirmation card must expose data-job-confirm hook for tests; got HTML:\n%s", html)
+	}
+	if !strings.Contains(html, `action="/jobs/job-memorial-confirm/cancel"`) {
+		t.Errorf("confirmation card must wire a POST to /jobs/{id}/cancel; got HTML:\n%s", html)
+	}
+	if !strings.Contains(html, "data-job-cancel") {
+		t.Errorf("confirmation card must expose data-job-cancel hook; got HTML:\n%s", html)
+	}
+	if strings.Contains(html, "aria-label=\"Export progress\"") {
+		t.Errorf("confirmation card must NOT include the progress widget; got HTML:\n%s", html)
+	}
+}
