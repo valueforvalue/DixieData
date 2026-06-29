@@ -12,14 +12,16 @@ import (
 	"github.com/valueforvalue/DixieData/internal/jobs"
 )
 
-// TestJobStatusViewDdbakArtifactUsesDownload is the regression test
-// for issue #129. Before the fix, the "Open Backup" link used
-// target="_blank" + Content-Disposition: attachment, which left the
-// user on a blank tab after the browser kicked off a silent
-// download. The status page now renders a `download="..."` attribute
-// instead so the browser saves the file in the current tab and the
-// user never sees a blank tab.
-func TestJobStatusViewDdbakArtifactUsesDownload(t *testing.T) {
+// TestJobStatusViewArtifactOpenButtonNoTargetBlank is the regression
+// test for issue #129 (continued). The earlier fix replaced
+// target="_blank" with a download attribute, but that produced a
+// second, confusing download in the Wails desktop flow because the
+// file is already at the user's chosen destination. The current fix
+// wires the artifact to a POST form against /jobs/{id}/open (which
+// calls runtime.BrowserOpenURL in Wails) plus a Copy-path button.
+// The form must NOT carry target=_blank, href to /artifact, or a
+// download attribute — the bytes never re-stream to the browser.
+func TestJobStatusViewArtifactOpenButtonNoTargetBlank(t *testing.T) {
 	dir := t.TempDir()
 	resultPath := filepath.Join(dir, "june-2026.ddbak")
 	if err := os.WriteFile(resultPath, []byte("ddbak placeholder"), 0o644); err != nil {
@@ -37,45 +39,20 @@ func TestJobStatusViewDdbakArtifactUsesDownload(t *testing.T) {
 	}
 	html := buf.String()
 
-	if !strings.Contains(html, `download="june-2026.ddbak"`) {
-		t.Errorf("ddbak artifact must use download attribute; got HTML:\n%s", html)
+	if !strings.Contains(html, `action="/jobs/job-ddbak/open"`) {
+		t.Errorf("status page must wire artifact to POST /jobs/{id}/open; got HTML:\n%s", html)
+	}
+	if !strings.Contains(html, `data-copy-path=`) {
+		t.Errorf("status page must expose a Copy-path button (data-copy-path); got HTML:\n%s", html)
 	}
 	if strings.Contains(html, `target="_blank"`) {
-		t.Errorf("ddbak artifact must NOT use target=_blank (issue #129); got HTML:\n%s", html)
+		t.Errorf("status page must NOT use target=_blank for any artifact (issue #129); got HTML:\n%s", html)
 	}
-	if !strings.Contains(html, `href="/jobs/job-ddbak/artifact"`) {
-		t.Errorf("artifact href must still point at /jobs/{id}/artifact; got HTML:\n%s", html)
-	}
-}
-
-// TestJobStatusViewPDFArtifactKeepsBlankTarget pins down the inverse:
-// PDFs and other viewable artifacts must continue to render in a new
-// tab (commit 2f4d587). The status page distinguishes via
-// job.IsViewableArtifact() which maps extensions like .pdf / .jpg
-// to inline rendering.
-func TestJobStatusViewPDFArtifactKeepsBlankTarget(t *testing.T) {
-	dir := t.TempDir()
-	resultPath := filepath.Join(dir, "june-report.pdf")
-	if err := os.WriteFile(resultPath, []byte("%PDF-1.4 placeholder"), 0o644); err != nil {
-		t.Fatalf("seed pdf file: %v", err)
-	}
-	job := jobs.NewJob("job-pdf", "database_pdf")
-	job.Status = jobs.StatusDone
-	job.StartedAt = time.Now().Add(-2 * time.Second)
-	job.FinishedAt = time.Now()
-	job.ResultPath = resultPath
-
-	var buf bytes.Buffer
-	if err := JobStatusView(*job).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("JobStatusView render: %v", err)
-	}
-	html := buf.String()
-
-	if !strings.Contains(html, `target="_blank"`) {
-		t.Errorf("PDF artifact must use target=_blank to render inline in a new tab; got HTML:\n%s", html)
+	if strings.Contains(html, `href="/jobs/job-ddbak/artifact"`) {
+		t.Errorf("status page must NOT link to /jobs/{id}/artifact (downloads are confusing in Wails where the file is already at the chosen path); got HTML:\n%s", html)
 	}
 	if strings.Contains(html, `download="`) {
-		t.Errorf("PDF artifact must NOT use download attribute; got HTML:\n%s", html)
+		t.Errorf("status page must NOT carry download= (the file is already saved, not re-downloaded); got HTML:\n%s", html)
 	}
 }
 
@@ -152,11 +129,13 @@ func TestJobStatusViewStillShowsProgressWhileRunning(t *testing.T) {
 	}
 }
 
-// TestJobStatusFragmentDdbakArtifactUsesDownload is the
-// polling-fragment counterpart. The fragment is what htmx swaps in
-// every 2s while the page polls for terminal state, so it must
-// agree with the full view.
-func TestJobStatusFragmentDdbakArtifactUsesDownload(t *testing.T) {
+// TestJobStatusFragmentArtifactOpenForm is the polling-fragment
+// counterpart for the /jobs/{id} status page. The fragment is what
+// htmx swaps into the layout progress slot every 2s while the page
+// polls for terminal state, so it must agree with the full view:
+// a POST form against /jobs/{id}/open, no target=_blank, no
+// href to /artifact, no download attribute.
+func TestJobStatusFragmentArtifactOpenForm(t *testing.T) {
 	dir := t.TempDir()
 	resultPath := filepath.Join(dir, "june-2026.ddbak")
 	if err := os.WriteFile(resultPath, []byte("ddbak placeholder"), 0o644); err != nil {
@@ -174,11 +153,11 @@ func TestJobStatusFragmentDdbakArtifactUsesDownload(t *testing.T) {
 	}
 	html := buf.String()
 
-	if !strings.Contains(html, `download="june-2026.ddbak"`) {
-		t.Errorf("ddbak artifact in fragment must use download attribute; got HTML:\n%s", html)
+	if !strings.Contains(html, `action="/jobs/job-ddbak/open"`) {
+		t.Errorf("fragment must wire artifact to POST /jobs/{id}/open; got HTML:\n%s", html)
 	}
 	if strings.Contains(html, `target="_blank"`) {
-		t.Errorf("ddbak artifact in fragment must NOT use target=_blank; got HTML:\n%s", html)
+		t.Errorf("fragment must NOT use target=_blank; got HTML:\n%s", html)
 	}
 }
 

@@ -58,7 +58,14 @@ templ JobStatusSlotFragment(job jobs.Job) {
 			<p class="text-xs text-slate-600">{ job.Message }</p>
 		}
 		if job.Status == jobs.StatusDone && job.ResultPath != "" {
-			<a href={ templ.SafeURL("/jobs/" + job.ID + "/artifact") } target="_blank" rel="noopener" class="pill-link text-xs">Open result</a>
+			// Same pattern as JobStatusView: POST /jobs/{id}/open opens
+			// the file in the OS default app via runtime.BrowserOpenURL
+			// (Wails desktop); web-mode falls back to an info toast.
+			// Plain <form> so the badge stays inside the layout slot
+			// without needing the X-DixieData-Redirect dispatcher.
+			<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/open") } class="contents">
+				<button type="submit" class="pill-link text-xs">Open file</button>
+			</form>
 		}
 		if job.Status == jobs.StatusError {
 			<p class="break-words text-xs text-[#6f2c26]">{ job.Error }</p>

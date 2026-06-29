@@ -767,15 +767,15 @@ func formatBytes(n int64) string {
 // (issue #129) so the jobs package can decide whether a finished
 // job's ResultPath is something the browser will render inline.
 // Kept in sync with internal/appshell/jobs_handlers.go
-// jobArtifactMimeByExt; an entry here means "open in a new tab",
-// otherwise "download in the current tab".
+// jobArtifactMimeByExt; an entry here means the artifact endpoint
+// can serve the file with Content-Disposition: inline, otherwise
+// the endpoint sets Content-Disposition: attachment.
 //
-// JSON stays viewable on purpose: the export-to-JSON workflow is
-// developer-friendly and a developer often wants to inspect the
-// output inline. The non-viewable list (.ddbak, .ddshare, .zip,
-// .csv, .ics) covers the exports that are too large or binary for
-// the browser to render usefully and where the old "blank tab"
-// problem surfaced (issue #129).
+// The /jobs/{id} status page no longer renders an "Open {label}"
+// button that points at the artifact endpoint (a previous version
+// did this and produced the "blank tab after Open result"
+// complaint). IsViewableArtifact is preserved because the
+// artifact endpoint still uses it to choose a disposition.
 var jobArtifactMimeByExt = map[string]string{
 	".pdf":  "application/pdf",
 	".jpg":  "image/jpeg",
@@ -791,12 +791,10 @@ var jobArtifactMimeByExt = map[string]string{
 }
 
 // IsViewableArtifact reports whether the job's ResultPath is a file
-// the browser will render inline (PDF, image, HTML, plain text,
-// JSON). The /jobs/{id} status page uses this to choose between
-// target="_blank" (viewable: open in a new tab) and the download
-// attribute (non-viewable: trigger a save dialog in the current
-// tab so the user never sees a blank tab). Returns false when the
-// job has no ResultPath yet or the extension is unknown.
+// the artifact endpoint will serve inline (PDF, image, HTML, text,
+// JSON). The endpoint uses this to choose between inline and
+// attachment disposition. Returns false when the job has no
+// ResultPath yet or the extension is unknown.
 func (j Job) IsViewableArtifact() bool {
 	if j.ResultPath == "" {
 		return false

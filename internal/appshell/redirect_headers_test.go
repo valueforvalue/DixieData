@@ -70,6 +70,7 @@ var exemptFunctions = map[string]string{
 	"handleLegacyExportRedirect": "GET-only URL rename (/export -> /share); no body, no DixieData",
 	"handleSoldierByDisplayID":   "GET-only display-ID lookup; the two redirects are URL canonicalisation, no form submit",
 	"cancelJob":                  "POST /jobs/{id}/cancel is a plain <form method=\"post\"> (jobs.templ:153); native browser follows Location",
+	"openJobArtifact":            "POST /jobs/{id}/open is a plain <form method=\"post\"> (jobs.templ); it sets a toast header then 303's back to /jobs/{id}; native browser follows Location",
 }
 
 // filesExempt lists files where every function may write
