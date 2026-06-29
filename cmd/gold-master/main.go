@@ -22,7 +22,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 type checkResult struct {
@@ -108,11 +108,11 @@ func runOutputAudit(reportDir string) (report, error) {
 		return report{}, err
 	}
 
-	soldierSvc := services.NewSoldierService(database)
-	exportSvc := services.NewExportService(database, soldierSvc)
+	soldierSvc := records.NewSoldierService(database)
+	exportSvc := archive.NewExportService(database, soldierSvc)
 	exportSvc.SetDataDir(dataDir)
-	backupSvc := services.NewBackupService(database, soldierSvc)
-	analyticsSvc := services.NewAnalyticsService(database)
+	backupSvc := archive.NewBackupService(database, soldierSvc)
+	analyticsSvc := records.NewAnalyticsService(database)
 
 	fixture, err := seedFixture(dataDir, database, soldierSvc)
 	if err != nil {
@@ -141,7 +141,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err := exportSvc.ExportAnalyticsSummaryPDF(analyticsPDF, snapshot, archive.PDFOptions{}); err != nil {
 		return report{}, err
 	}
-	if err := exportSvc.ExportFullDatabasePDF(registryPDF, services.PrintSettings{}); err != nil {
+	if err := exportSvc.ExportFullDatabasePDF(registryPDF, archive.PrintSettings{}); err != nil {
 		return report{}, err
 	}
 	if _, err := backupSvc.Export(backupPath, dataDir); err != nil {
@@ -200,7 +200,7 @@ func runOutputAudit(reportDir string) (report, error) {
 		return report{}, err
 	}
 	defer restoredDB.Close()
-	restoredSvc := services.NewSoldierService(restoredDB)
+	restoredSvc := records.NewSoldierService(restoredDB)
 	restoredSoldier, err := restoredSvc.GetByID(fixture.Soldier.ID)
 	if err != nil {
 		return report{}, err
@@ -218,8 +218,8 @@ func runOutputAudit(reportDir string) (report, error) {
 	if _, err := targetDB.ConfigureUserIdentity("Local", "Merge", "Owner", 1911); err != nil {
 		return report{}, err
 	}
-	targetSoldierSvc := services.NewSoldierService(targetDB)
-	targetBackupSvc := services.NewBackupService(targetDB, targetSoldierSvc)
+	targetSoldierSvc := records.NewSoldierService(targetDB)
+	targetBackupSvc := archive.NewBackupService(targetDB, targetSoldierSvc)
 	sharedSummary, err := targetBackupSvc.ImportSharedBackup(sharedPath, targetDir)
 	if err != nil {
 		return report{}, err
@@ -308,10 +308,10 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 		return report{}, err
 	}
 
-	soldierSvc := services.NewSoldierService(database)
-	exportSvc := services.NewExportService(database, soldierSvc)
+	soldierSvc := records.NewSoldierService(database)
+	exportSvc := archive.NewExportService(database, soldierSvc)
 	exportSvc.SetDataDir(dataDir)
-	analyticsSvc := services.NewAnalyticsService(database)
+	analyticsSvc := records.NewAnalyticsService(database)
 
 	totalSoldiers, err := countRows(database.Conn(), "soldiers")
 	if err != nil {
@@ -338,7 +338,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 
 	pdfPath := filepath.Join(reportDir, "benchmark-full-archive.pdf")
 	exportStart := time.Now()
-	if err := exportSvc.ExportFullDatabasePDF(pdfPath, services.PrintSettings{}); err != nil {
+	if err := exportSvc.ExportFullDatabasePDF(pdfPath, archive.PrintSettings{}); err != nil {
 		return report{}, err
 	}
 	exportDuration := time.Since(exportStart)
@@ -368,7 +368,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 	}, nil
 }
 
-func seedFixture(dataDir string, database *db.DB, soldierSvc *services.SoldierService) (sampleFixture, error) {
+func seedFixture(dataDir string, database *db.DB, soldierSvc *records.SoldierService) (sampleFixture, error) {
 	soldier, err := soldierSvc.Create(models.Soldier{
 		FirstName:             "Thomas",
 		LastName:              "Carter",
@@ -485,29 +485,29 @@ func seedFixture(dataDir string, database *db.DB, soldierSvc *services.SoldierSe
 	}, nil
 }
 
-func readZipWithManifest(path string) (map[string][]byte, services.BackupManifest, error) {
+func readZipWithManifest(path string) (map[string][]byte, archive.BackupManifest, error) {
 	reader, err := zip.OpenReader(path)
 	if err != nil {
-		return nil, services.BackupManifest{}, err
+		return nil, archive.BackupManifest{}, err
 	}
 	defer reader.Close()
 
 	files := make(map[string][]byte, len(reader.File))
-	var manifest services.BackupManifest
+	var manifest archive.BackupManifest
 	for _, file := range reader.File {
 		rc, err := file.Open()
 		if err != nil {
-			return nil, services.BackupManifest{}, err
+			return nil, archive.BackupManifest{}, err
 		}
 		data, err := io.ReadAll(rc)
 		rc.Close()
 		if err != nil {
-			return nil, services.BackupManifest{}, err
+			return nil, archive.BackupManifest{}, err
 		}
 		files[file.Name] = data
 		if file.Name == "manifest.json" {
 			if err := json.Unmarshal(data, &manifest); err != nil {
-				return nil, services.BackupManifest{}, err
+				return nil, archive.BackupManifest{}, err
 			}
 		}
 	}

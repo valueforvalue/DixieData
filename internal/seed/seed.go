@@ -15,7 +15,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
-	"github.com/valueforvalue/DixieData/internal/services"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 const (
@@ -93,7 +93,7 @@ func Generate(options Options) (Summary, error) {
 	}
 	defer database.Close()
 
-	soldierSvc := services.NewSoldierService(database)
+	soldierSvc := records.NewSoldierService(database)
 	conn := database.Conn()
 	rng := rand.New(rand.NewSource(options.Seed))
 
