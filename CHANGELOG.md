@@ -204,6 +204,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the analytics re-aliases; that import is documented and
   load-bearing.
 
+- Architectural boundary test tightened (issue #141). Two new
+  layers of enforcement in `internal/architecture/architecture_test.go`:
+    1. `forbiddenByPackage` now covers the grey-box layer too:
+       `internal/viewmodel` is forbidden from `appshell`,
+       `a-h/templ`, `wails`, and `templates` (the delivery
+       surface); `internal/presentation` is forbidden from
+       `appshell` and `wails` (templ is allowed because
+       presentation IS the templ-rendering adapter). Both
+       packages are still allowed to import deeper modules
+       (`records`, `archive`, `models`, `jobs`, `update`, `debug`)
+       because that is their documented grey-box role.
+    2. New `TestPkgImportsAreAllowlisted` + the
+       `allowedInternalImportsPerPackage` table enforce that each
+       `pkg/*` package only imports the `internal/...` types it
+       genuinely needs. Allowlists mirror the current imports:
+       `pkg/render` → `{models, records}`, `pkg/exportbridge` →
+       `{archive, db, models}`, `pkg/encode` → `{buildinfo,
+       models}`, `pkg/templatespec` → `{}`. Any new `internal/`
+       import requires updating the allowlist in the same commit.
+  Also: `TestArchitectureMapsToContract` now requires
+  `internal/viewmodel` and `internal/presentation` to be in the
+  forbidden table. No production code changed.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
