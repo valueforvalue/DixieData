@@ -558,7 +558,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 								"data-action": fmt.Sprintf("/soldiers/%d/images/import", s.ID),
 								"data-dixie-submit": "true",
-								"data-progress-label": "Importing images\u2026",
+								"data-progress-label": "Importing images…",
 							})
 								if len(s.Images) > 0 {
 									@components.Button("Download Selected Images", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})

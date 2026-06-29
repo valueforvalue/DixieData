@@ -75,7 +75,7 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		_ = jobID
 		return nil
 	})
-	setInfoToastHeader(w, "Google Drive upload started\u2026")
+	setInfoToastHeader(w, "Google Drive upload started…")
 	// Option C: dispatchDixieDataForm in frontend/app.js reads
 	// X-DixieData-Redirect and navigates via window.location.assign.
 	// See appshell.exports_handlers.writeExportRedirect.
@@ -113,7 +113,7 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		_ = jobID
 		return nil
 	})
-	setInfoToastHeader(w, "Google Sheets export started\u2026")
+	setInfoToastHeader(w, "Google Sheets export started…")
 	// Option C: see handleGoogleBackup above.
 	writeExportRedirect(w, "/jobs/"+jobID)
 }

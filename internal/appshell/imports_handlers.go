@@ -194,7 +194,7 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		_ = jobID
 		return nil
 	})
-	setInfoToastHeader(w, "Shared archive import started\u2026")
+	setInfoToastHeader(w, "Shared archive import started…")
 	writeExportRedirect(w, "/jobs/"+jobID)
 }
 

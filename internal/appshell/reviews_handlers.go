@@ -99,7 +99,7 @@ func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
 		respondValidation(w, r, "Unknown bulk action. Use ignore or delete.", nil)
 		return
 	}
-	setInfoToastHeader(w, fmt.Sprintf("Bulk %s started\u2026", action))
+	setInfoToastHeader(w, fmt.Sprintf("Bulk %s started…", action))
 	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
 	writeExportRedirect(w, "/jobs/"+jobID)
 }

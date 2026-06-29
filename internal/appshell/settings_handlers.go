@@ -119,7 +119,7 @@ func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) 
 		_ = trashRoot
 		return nil
 	})
-	setInfoToastHeader(w, "Orphan cleanup started\u2026")
+	setInfoToastHeader(w, "Orphan cleanup started…")
 	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
 	writeExportRedirect(w, "/jobs/"+jobID)
 }
