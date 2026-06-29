@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 // TestJobStatusViewArtifactOpenButtonNoTargetBlank is the regression
@@ -263,4 +264,43 @@ func TestJobStatusViewPollsForUpdates(t *testing.T) {
 			t.Errorf("view and fragment must both wire hx-get=/jobs/job-aligned/status; viewPoll=%v fragPoll=%v\n--- view ---\n%s\n--- fragment ---\n%s", viewPoll, fragPoll, viewHTML, fragHTML)
 		}
 	})
+}
+
+// TestJobStatusViewOmitsJobsOverlay locks down the choice to hide
+// the floating jobs-progress popup on /jobs/{id}. The page renders
+// the job's progress bar inline; the popup would either duplicate
+// the data (when the active job matches) or poll silently for a
+// different job (when it doesn't). Layout has a variadic
+// omitJobsOverlay option; JobStatusView passes true so the popup
+// is stripped. Other call sites (@Layout("Browse"), @Layout(...))
+// continue to render the popup.
+func TestJobStatusViewOmitsJobsOverlay(t *testing.T) {
+	job := jobs.NewJob("job-overlay-omit", "static_archive")
+	job.Status = jobs.StatusRunning
+	job.Progress = 50
+
+	var buf bytes.Buffer
+	if err := JobStatusView(*job).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("JobStatusView render: %v", err)
+	}
+	html := buf.String()
+	if strings.Contains(html, "data-jobs-progress-region") {
+		t.Errorf("/jobs/{id} must omit the floating jobs-progress popup; got HTML:\n%s", html)
+	}
+}
+
+// TestSharePageKeepsJobsOverlay is the inverse pin: the share page
+// (and any other page that does NOT pass omitJobsOverlay) must
+// keep emitting the popup so the active background export's
+// progress card still appears. The audit smoke test
+// 'jobs-progress-overlay-survives-polls' exercises this end-to-end.
+func TestSharePageKeepsJobsOverlay(t *testing.T) {
+	var buf bytes.Buffer
+	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("ShareView render: %v", err)
+	}
+	html := buf.String()
+	if !strings.Contains(html, "data-jobs-progress-region") {
+		t.Errorf("/share page must keep the floating jobs-progress popup; got HTML:\n%s", html)
+	}
 }
