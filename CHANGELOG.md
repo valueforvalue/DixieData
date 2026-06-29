@@ -11,6 +11,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- Replaced `frontend/app.js`'s custom htmx-clone dispatcher
+  (`request()`, ~115 lines, plus all helper functions) with
+  a 50-line `dispatchDixieDataForm`. The new dispatcher reads
+  EITHER `X-DixieData-Redirect` (the new contract, after
+  handlers migrate in subsequent commits) OR follows a 303 +
+  `Location` response (legacy contract still in use). Net
+  delta: -411 lines from `frontend/app.js`. Regression net:
+  `audit/smoke.mjs` now asserts the user-visible contract
+  (page lands on `/jobs/{id}` or back at `/share` on dedup)
+  instead of asserting a specific response shape, so the
+  contract switch in subsequent commits can't silently
+  regress navigation.
+- Registered `htmx.on("htmx:load", ...)` to re-init swapped
+  subtrees. Polling fragments (`/jobs/active`, `/jobs/{id}`)
+  swap fresh DOM every 2–3s; without re-init, any JS handlers
+  on those subtrees would never re-bind.
+
 ### Added
 
 - `/jobs/{id}` summary cards now show per-kind stats so the
