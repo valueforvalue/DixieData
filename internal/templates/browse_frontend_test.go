@@ -628,20 +628,22 @@ for (const handler of listeners.change || []) {
   handler({ target: unitField });
 }
 
-// Drain pending timers so queueRequest's setTimeout(..., 0) callback
-// has a chance to fire before we assert.
+// Drain pending timers so the 200ms debounce in the browse-filter
+// change handler has a chance to fire before we assert. The debounce
+// exists so rapid filter changes (typing in a select) don't fire
+// a fetch storm.
 await new Promise((resolve) => setImmediate(resolve));
-await new Promise((resolve) => setTimeout(resolve, 50));
+await new Promise((resolve) => setTimeout(resolve, 300));
 
 // Behavior change (2026-06-27): browse filter changes now auto-apply.
-// The change handler in app.js calls queueRequest(form) so the form
-// fires its hx-get /browse/results request. Before this change the
-// filters only saved draft state and required an explicit submit;
-// users reported "browse alphabetically doesn't load results" and
-// "filter changes don't refresh the table" as bugs. The smoke test
-// in audit/smoke.mjs covers the new auto-apply behavior end-to-end.
+// The change handler in app.js debounces + fires the form's hx-get
+// /browse/results request after 200ms. Before this change the filters
+// only saved draft state and required an explicit submit; users
+// reported "browse alphabetically doesn't load results" and "filter
+// changes don't refresh the table" as bugs. The smoke test in
+// audit/smoke.mjs covers the new auto-apply behavior end-to-end.
 if (fetchCalls !== 1) {
-  throw new Error("changing browse filters should auto-apply once via queueRequest; got fetchCalls=" + fetchCalls);
+  throw new Error("changing browse filters should auto-apply once after debounce; got fetchCalls=" + fetchCalls);
 }
 if (pageField.value !== "1") {
   throw new Error("changing browse filters should reset the pending page to 1");

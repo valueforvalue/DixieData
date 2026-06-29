@@ -3614,28 +3614,32 @@
         // element but does not declare hx-trigger="change" on the
         // inputs. The change handler above resets paging + persists
         // state; we now also fire a fetch + swap into #browse-results
-        // to keep the panel refreshed. No debounce: the legacy
-        // queueRequest also fired immediately.
+        // to keep the panel refreshed. Debounce 200ms so rapid
+        // filter changes (e.g. typing in a select) don't fire a
+        // fetch storm; matches the legacy queueRequest delay.
         const url = form.getAttribute("hx-get") || form.action;
         const targetSelector = form.getAttribute("hx-target") || "#browse-results";
         if (!url) { return; }
-        (async () => {
-          const params = new URLSearchParams(new FormData(form));
-          try {
-            const response = await fetch(`${url}?${params.toString()}`, {
-              method: "GET",
-              headers: { "X-Requested-With": "DixieData" },
-            });
-            const html = await response.text();
-            const target = document.querySelector(targetSelector);
-            if (target instanceof HTMLElement) {
-              target.innerHTML = html;
-              initializeDynamicContent(target);
+        clearTimeout(window.__dixieBrowseFilterTimer);
+        window.__dixieBrowseFilterTimer = window.setTimeout(() => {
+          (async () => {
+            const params = new URLSearchParams(new FormData(form));
+            try {
+              const response = await fetch(`${url}?${params.toString()}`, {
+                method: "GET",
+                headers: { "X-Requested-With": "DixieData" },
+              });
+              const html = await response.text();
+              const target = document.querySelector(targetSelector);
+              if (target instanceof HTMLElement) {
+                target.innerHTML = html;
+                initializeDynamicContent(target);
+              }
+            } catch (error) {
+              showToast("Browse refresh failed.", "error");
             }
-          } catch (error) {
-            showToast("Browse refresh failed.", "error");
-          }
-        })();
+          })();
+        }, 200);
       }
       return;
     }
