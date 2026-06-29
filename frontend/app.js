@@ -583,83 +583,6 @@
     return form instanceof HTMLFormElement ? form : null;
   }
 
-  // hxAttr reads an hx-* attribute from the live DOM, falling back
-  // to its data-hx-* mirror if the original was stripped at boot.
-  //
-  // Why this exists: DOMContentLoaded strips hx-* attributes from
-  // every element to prevent htmx's auto-handling from double-firing
-  // alongside app.js's own request() / queueRequest() / triggerInputRequest
-  // handlers. But those same handlers read hx-* attrs to construct
-  // the fetch. Without a fallback, the reads returned empty / null
-  // and every click handler bailed out (the bug class fixed in
-  // 2026-06-27 — see CHANGELOG.md entry).
-  //
-  // Strip order at boot is: cache value to data-hx-*, then remove
-  // hx-*. Both paths return the same string here.
-  function hxAttr(el, name) {
-    // Duck-type the Element contract — `instanceof Element` is
-    // browser-only and breaks the Node test harness (which mocks
-    // HTMLElement but not Element).
-    if (!el || typeof el.getAttribute !== "function") {
-      return null;
-    }
-    const direct = el.getAttribute(name);
-    if (direct !== null) {
-      return direct;
-    }
-    return el.getAttribute("data-" + name);
-  }
-
-  function hxHas(el, name) {
-    if (!el || typeof el.hasAttribute !== "function") {
-      return false;
-    }
-    return el.hasAttribute(name) || el.hasAttribute("data-" + name);
-  }
-
-  function getMethod(el) {
-    if (hxHas(el, "hx-post")) {
-      return "POST";
-    }
-    if (hxHas(el, "hx-put")) {
-      return "PUT";
-    }
-    if (hxHas(el, "hx-delete")) {
-      return "DELETE";
-    }
-    const form = closestParentForm(el);
-    if (form) {
-      return getMethod(form);
-    }
-    return "GET";
-  }
-
-  function getUrl(el, method) {
-    const direct = hxAttr(el, `hx-${method.toLowerCase()}`);
-    if (direct) {
-      return direct;
-    }
-    const form = closestParentForm(el);
-    return form ? getUrl(form, method) : null;
-  }
-
-  function getTarget(el) {
-    const selector = el.getAttribute("hx-target");
-    if (!selector) {
-      const form = closestParentForm(el);
-      return form ? getTarget(form) : document.body;
-    }
-    if (selector === "body") {
-      return document.body;
-    }
-    return document.querySelector(selector);
-  }
-
-  function getSwap(el) {
-    const form = closestParentForm(el);
-    return el.getAttribute("hx-swap") || (form ? getSwap(form) : "innerHTML");
-  }
-
   function syncPrimaryImageSelection(primaryImageId) {
     document.querySelectorAll("[data-image-card]").forEach((card) => {
       if (!(card instanceof HTMLElement)) {
@@ -715,89 +638,6 @@
         status.textContent = `${selected[0].label} selected. Choose one more record to compare.`;
       }
     }
-  }
-
-  function parseDelay(trigger) {
-    const match = trigger.match(/delay:(\d+)ms/);
-    if (!match) {
-      return 0;
-    }
-    return Number.parseInt(match[1], 10);
-  }
-
-  function formDataFromElement(el) {
-    const data = new FormData();
-    if (el instanceof HTMLFormElement) {
-      return new FormData(el);
-    }
-    const form = closestParentForm(el);
-    if (form instanceof HTMLFormElement) {
-      const payload = new FormData(form);
-      if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) {
-        if (el.name) {
-          payload.append(el.name, el.value ?? "");
-        }
-      }
-      return payload;
-    }
-    if (el.name) {
-      data.append(el.name, el.value ?? "");
-    }
-    return data;
-  }
-
-  function toSearchParams(data) {
-    const params = new URLSearchParams();
-    for (const [key, value] of data.entries()) {
-      if (value instanceof File) {
-        continue;
-      }
-      params.append(key, String(value));
-    }
-    return params;
-  }
-
-  function hasFiles(data) {
-    for (const value of data.values()) {
-      if (value instanceof File && value.name) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function nativeMultipartMethodInput(form) {
-    return form.querySelector("input[data-native-method-override]");
-  }
-
-  function submitMultipartForm(form) {
-    if (!(form instanceof HTMLFormElement)) {
-      return false;
-    }
-    const method = getMethod(form);
-    const url = getUrl(form, method);
-    if (!url) {
-      return false;
-    }
-
-    let overrideInput = nativeMultipartMethodInput(form);
-    if (method !== "POST") {
-      if (!(overrideInput instanceof HTMLInputElement)) {
-        overrideInput = document.createElement("input");
-        overrideInput.type = "hidden";
-        overrideInput.name = "_method";
-        overrideInput.setAttribute("data-native-method-override", "true");
-        form.appendChild(overrideInput);
-      }
-      overrideInput.value = method;
-    } else if (overrideInput instanceof HTMLInputElement) {
-      overrideInput.remove();
-    }
-
-    form.method = "post";
-    form.action = url;
-    form.submit();
-    return true;
   }
 
   function activateTab(trigger) {
@@ -1484,13 +1324,18 @@
     }
     setBusyState(trigger, true);
     try {
+      const params = new URLSearchParams();
+      for (const [key, value] of data.entries()) {
+        if (value instanceof File) continue;
+        params.append(key, String(value));
+      }
       const response = await fetch("/scratchpad/open", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "DixieData"
         },
-        body: toSearchParams(data).toString(),
+        body: params.toString(),
       });
       const message = await response.text();
       setScratchpadStatus(trigger, message || "Scratch pad opened.", !response.ok);
@@ -2472,12 +2317,6 @@
     }
   }
 
-  function renderDocument(html) {
-    document.open();
-    document.write(html);
-    document.close();
-  }
-
   function normalizedRedirectPath(path) {
     if (path === "/export") {
       return "/share";
@@ -2686,90 +2525,6 @@
     });
   }
 
-  function applyResponse(el, html, requestState) {
-    const target = getTarget(el);
-    if (!target) {
-      return;
-    }
-
-    if (getSwap(el) === "none") {
-      initializeDynamicContent();
-      return;
-    }
-
-    const trimmed = html.trimStart().toLowerCase();
-    if (target === document.body && trimmed.startsWith("<!doctype html")) {
-      if (requestState) {
-        saveRedirectState({
-          path: window.location.pathname,
-          scrollX: requestState.scrollX,
-          scrollY: requestState.scrollY,
-          kind: "generic",
-          message: "",
-        });
-      }
-      renderDocument(html);
-      return;
-    }
-
-    if (target === document.body && trimmed.startsWith("<html")) {
-      if (requestState) {
-        saveRedirectState({
-          path: window.location.pathname,
-          scrollX: requestState.scrollX,
-          scrollY: requestState.scrollY,
-          kind: "generic",
-          message: "",
-        });
-      }
-      renderDocument(html);
-      return;
-    }
-
-    if (getSwap(el) === "outerHTML") {
-      target.outerHTML = html;
-      initializeDynamicContent();
-      scrollShareStatusIntoView(target);
-      return;
-    }
-
-    // htmx 2.0 swap semantics for the four positional values:
-    //   beforebegin / afterbegin — relative to target, BEFORE/AFTER first child
-    //   beforeend   / afterend   — relative to target, BEFORE/AFTER last child
-    // App.js's earlier implementation silently dropped into
-    // `target.innerHTML = html` for every non-outerHTML / non-none
-    // value, which replaced the entire target's contents instead of
-    // appending / prepending. Symptom: clicking the 🐞 Debug button
-    // (hx-get /debug/console, hx-target body, hx-swap beforeend)
-    // wiped the whole page; closing the stranded panel left an
-    // empty document.body.
-    const swap = getSwap(el);
-    if (swap === "beforebegin") {
-      target.insertAdjacentHTML("beforebegin", html);
-      initializeDynamicContent();
-      return;
-    }
-    if (swap === "afterbegin") {
-      target.insertAdjacentHTML("afterbegin", html);
-      initializeDynamicContent();
-      return;
-    }
-    if (swap === "beforeend" || swap === "") {
-      target.insertAdjacentHTML("beforeend", html);
-      initializeDynamicContent();
-      return;
-    }
-    if (swap === "afterend") {
-      target.insertAdjacentHTML("afterend", html);
-      initializeDynamicContent();
-      return;
-    }
-
-    target.innerHTML = html;
-    initializeDynamicContent();
-    scrollShareStatusIntoView(target);
-  }
-
   async function refreshCalendarGrid(monthValue) {
     const month = Number.parseInt(String(monthValue || ""), 10);
     if (!Number.isInteger(month) || month < 1 || month > 12) {
@@ -2944,28 +2699,6 @@
     saveBrowseState(currentBrowseStateFromForm(form));
   }
 
-  function showProgress(el) {
-    if (getSwap(el) === "none") {
-      return;
-    }
-    const target = getTarget(el);
-    if (!(target instanceof HTMLElement) || target === document.body) {
-      return;
-    }
-    const label = el.getAttribute("data-progress-label") || "Working...";
-    target.innerHTML = `
-      <div class="google-progress-shell">
-        <div class="google-progress-head">
-          <span>${label}</span>
-          <span>Please wait...</span>
-        </div>
-        <div class="google-progress-track">
-          <div class="google-progress-fill"></div>
-        </div>
-      </div>
-    `;
-  }
-
   function setBusyGroupState(el, busy) {
     if (!(el instanceof HTMLElement)) {
       return;
@@ -3003,134 +2736,93 @@
     }
   }
 
-  async function request(el) {
-    const form = ownerForm(el);
-    const method = getMethod(el);
-    const url = getUrl(el, method);
-    if (!url) {
-      return;
+  async function dispatchDixieDataForm(button) {
+    // Bare-button mode: some share-page buttons have hx-post /
+    // hx-delete but no enclosing <form>. Construct a synthetic form
+    // from the button's hx-* URL so the fetch+redirect logic stays
+    // uniform. This branch is dead code after the templ retag
+    // (Commits 6–14) — every click target will live inside a form
+    // with data-dixie-submit and a real action.
+    const form = button instanceof HTMLFormElement
+      ? button
+      : button.closest("form") || (() => {
+        const url = (button.getAttribute && (button.getAttribute("hx-post") || button.getAttribute("hx-delete") || button.getAttribute("data-hx-post") || button.getAttribute("data-hx-delete"))) || "";
+        if (!url) return null;
+        const synthetic = document.createElement("form");
+        synthetic.action = url;
+        synthetic.method = (button.getAttribute("hx-delete") || button.getAttribute("data-hx-delete")) ? "DELETE" : "POST";
+        return synthetic;
+      })();
+    if (!(form instanceof HTMLFormElement)) {
+      return false;
     }
-
-    const confirmMessage = hxAttr(el, "hx-confirm");
+    const submitter = button instanceof HTMLElement ? button : null;
+    const confirmMessage = (submitter && submitter.dataset && submitter.dataset.confirm)
+      || (form.dataset && form.dataset.confirm);
     if (confirmMessage && !window.confirm(confirmMessage)) {
-      return;
+      return false;
     }
-
-    const data = formDataFromElement(el);
-    const includesFiles = hasFiles(data);
-    if (includesFiles && form instanceof HTMLFormElement && submitMultipartForm(form)) {
-      return;
-    }
-    const transportMethod = includesFiles && method !== "GET" && method !== "POST" ? "POST" : method;
-    const options = {
-      method: transportMethod,
-      headers: {
-        "X-Requested-With": "DixieData"
-      }
-    };
-    if (transportMethod !== method) {
-      options.headers["X-HTTP-Method-Override"] = method;
-    }
-
-    let requestUrl = url;
-    if (method === "GET") {
-      const params = toSearchParams(data);
-      const query = params.toString();
-      if (query) {
-        requestUrl += (url.includes("?") ? "&" : "?") + query;
-      }
-    } else {
-      if (includesFiles) {
-        options.body = data;
-      } else {
-        options.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8";
-        options.body = toSearchParams(data).toString();
-      }
-    }
-
-    showProgress(el);
-    setBusyState(el, true);
-    setBusyGroupState(el, true);
-    const requestState = {
-      scrollX: window.scrollX,
-      scrollY: window.scrollY,
-    };
+    setBusyState(submitter || form, true);
+    setBusyGroupState(submitter || form, true);
     try {
-      const response = await fetch(requestUrl, options);
-      const html = await response.text();
-      const redirectTo = response.headers.get("X-DixieData-Redirect");
-      const toastMessage = response.headers.get("X-DixieData-Toast");
-      const toastKind = response.headers.get("X-DixieData-Toast-Type") || "success";
-      const closeFeedback = response.headers.get("X-DixieData-Close-Feedback");
-      const refreshCalendarMonth = response.headers.get("X-DixieData-Refresh-Calendar-Month");
-      if (redirectTo) {
-        if (form instanceof HTMLFormElement && response.ok) {
-          clearDraftForForm(form);
-        }
-        if (toastMessage) {
-          savePendingToast({ message: toastMessage, kind: toastKind });
-        }
-        rememberRedirectState(el, redirectTo, html, requestState);
-        window.location.assign(redirectTo);
-        return;
+      const fetchOptions = { method: form.method || "POST" };
+      // Only attach a body for non-GET / non-HEAD requests. Bare-button
+      // synthetic forms have no FormData to attach anyway.
+      const methodUpper = String(fetchOptions.method).toUpperCase();
+      if (methodUpper !== "GET" && methodUpper !== "HEAD") {
+        fetchOptions.body = button.closest("form")
+          ? new FormData(form)
+          : new FormData();
       }
-      // HTTP 303 (See Other) used by enqueueExport to redirect the
-      // browser to /jobs/{id} after queuing a background job. fetch
-      // follows the redirect by default, so response.redirected is
-      // true and response.url is the final (job status) URL. Without
-      // this branch, the export button silently bails: getTarget
-      // returns null for hx-target="this", applyResponse returns
-      // early, and the user has no feedback that the job started.
-      // The static archive's <form method="post"> works because the
-      // browser follows the 303 natively; this branch makes the
-      // hx-post exports behave the same way.
-      if (response.redirected && response.url !== requestUrl) {
-        if (form instanceof HTMLFormElement && response.ok) {
-          clearDraftForForm(form);
-        }
-        window.location.assign(response.url);
-        return;
+      const requestUrl = form.action || window.location.pathname;
+      const response = await fetch(requestUrl, fetchOptions);
+      // Two response shapes to handle during the Option C migration:
+      //   - 200 + X-DixieData-Redirect (new contract, after Commits 3–5)
+      //   - 303 + Location (legacy contract, still active until Commits 3–5)
+      // fetch() follows 303 by default; the response we see has status=200,
+      // type="basic", and url pointing to the followed target. Detect via
+      // response.url !== requestUrl (the legacy dispatcher did this too).
+      const followedRedirect = response.redirected === true && response.url && response.url !== requestUrl;
+      const dixieRedirect = !followedRedirect ? response.headers.get("X-DixieData-Redirect") : null;
+      const legacyLocation = followedRedirect
+        ? new URL(response.url).pathname + new URL(response.url).search
+        : null;
+      const redirectTo = dixieRedirect || legacyLocation;
+      const toastMessage = followedRedirect ? null : response.headers.get("X-DixieData-Toast");
+      const toastKind = followedRedirect ? "success" : (response.headers.get("X-DixieData-Toast-Type") || "success");
+      const closeFeedback = followedRedirect ? null : response.headers.get("X-DixieData-Close-Feedback");
+      const refreshCalendarMonth = followedRedirect ? null : response.headers.get("X-DixieData-Refresh-Calendar-Month");
+      const responseOk = followedRedirect || response.ok;
+      if (!responseOk && !redirectTo) {
+        showToast(toastMessage || "Request failed.", toastKind === "success" ? "error" : toastKind);
+        return false;
       }
-      if (form instanceof HTMLFormElement && response.ok && response.redirected) {
-        clearDraftForForm(form);
+      if (closeFeedback) {
+        const modal = document.querySelector("[data-feedback-modal]");
+        if (modal instanceof HTMLElement) { modal.classList.add("hidden"); }
       }
-      applyResponse(el, html, requestState);
-      if (response.ok && refreshCalendarMonth) {
-        await refreshCalendarGrid(refreshCalendarMonth);
+      if (refreshCalendarMonth) {
+        refreshCalendarGrid(refreshCalendarMonth);
       }
-      if (response.ok && closeFeedback === "true") {
-        closeFeedbackModal();
-      }
-      if (response.ok && el instanceof HTMLElement) {
-        const primaryImageId = el.getAttribute("data-primary-image-id");
-        if (primaryImageId) {
-          syncPrimaryImageSelection(primaryImageId);
-        }
+      if (button.closest("form") instanceof HTMLFormElement && response.ok) {
+        clearDraftForForm(button.closest("form"));
       }
       if (toastMessage) {
-        showToast(toastMessage, toastKind);
+        savePendingToast({ message: toastMessage, kind: toastKind });
       }
-    } catch (error) {
-      applyResponse(el, "Request failed.", requestState);
-      showToast("Request failed.", "error");
+      const requestState = {
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      };
+      rememberRedirectState(submitter || form, redirectTo || window.location.pathname, "", requestState);
+      if (redirectTo) {
+        window.location.assign(redirectTo);
+      }
+      return true;
     } finally {
-      setBusyState(el, false);
-      setBusyGroupState(el, false);
+      setBusyState(submitter || form, false);
+      setBusyGroupState(submitter || form, false);
     }
-  }
-
-  function queueRequest(el) {
-    const trigger = hxAttr(el, "hx-trigger") || "";
-    const delay = parseDelay(trigger);
-    const existingTimer = timers.get(el);
-    if (existingTimer) {
-      window.clearTimeout(existingTimer);
-    }
-    const timer = window.setTimeout(() => {
-      timers.delete(el);
-      request(el);
-    }, delay);
-    timers.set(el, timer);
   }
 
   async function openExternalLinkInChrome(href) {
@@ -3482,39 +3174,11 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    // htmx is loaded but its auto-handling of hx-* attributes is disabled
-    // by removing those attributes from the DOM at boot. The app's own
-    // request() / queueRequest() / triggerInputRequest handlers own all
-    // network round-trips and preventDefault on submit to avoid
-    // duplicate fetches. window.htmx is still defined (third-party code
-    // can check for it). See audit/reports/SLICES.md for context.
-    //
-    // BUGFIX (2026-06-27): the original implementation removed hx-* attrs
-    // directly, but app.js's handlers (request(), getMethod(), getUrl(),
-    // triggerInputRequest()) read those same attrs to construct the
-    // fetch. After stripping, every read returned empty / null, so
-    // every click handler bailed out and the button did nothing.
-    // Cache each attr into a data-* mirror before stripping, then read
-    // from data-* in the handlers below.
-    const cachedAttrs = ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-trigger", "hx-confirm", "hx-include"];
-    document.querySelectorAll("[hx-get], [hx-post], [hx-put], [hx-delete], [hx-trigger]").forEach((el) => {
-      // Cache hx-* attrs as data-* mirrors so app.js handlers can
-      // read them after the originals are stripped.
-      cachedAttrs.forEach((attr) => {
-        const value = el.getAttribute(attr);
-        if (value !== null) {
-          el.setAttribute("data-" + attr, value);
-        }
-        // Strip the trigger + URL attrs so htmx doesn't double-fire.
-        // Keep hx-target / hx-swap so htmx can resolve the swap target
-        // when it does fire the request from a cached config. Without
-        // hx-target, htmx falls back to swapping into the triggering
-        // element (the search form), which destroys the search input
-        // on every keystroke.
-        el.removeAttribute(attr);
-      });
-    });
-
+    // Option C: strip pass deleted. htmx keeps running for the GET
+    // polling fragments (/jobs/active, /jobs/{id}) — it doesn't
+    // double-fire because no hx-post / hx-get on a click handler
+    // exists. dispatchDixieDataForm intercepts form submits and
+    // data-dixie-submit / data-merge-review-action clicks.
     ensureResponsiveLayoutWatcher();
     applyResponsiveLayout(document);
     initializeTabs();
@@ -3535,9 +3199,15 @@
     hydrateRecentSearchResults();
     initializeBrowseView();
     openPrintConfigFromQuery();
-    document.querySelectorAll('[data-hx-trigger="load"]').forEach((el) => {
-      request(el);
-    });
+    // Re-init swapped subtrees after htmx polling swaps.
+    if (typeof window !== "undefined" && window.htmx && typeof window.htmx.on === "function") {
+      window.htmx.on("htmx:load", (evt) => {
+        const target = evt.detail && evt.detail.elt;
+        if (target instanceof HTMLElement) {
+          initializeDynamicContent(target);
+        }
+      });
+    }
     window.requestAnimationFrame(() => clampPopoutPanels(document));
   });
 
@@ -3808,18 +3478,17 @@
       window.location.assign(`/compare?id1=${encodeURIComponent(selected[0])}&id2=${encodeURIComponent(selected[1])}`);
       return;
     }
-    const mergeReviewAction = event.target.closest("[data-merge-review-action]");
-    if (mergeReviewAction) {
+    // Option C dispatcher: intercepts form submits and clicks on
+    // data-dixie-submit / data-merge-review-action. The legacy
+    // hx-post / hx-delete / data-hx-* selectors remain here during
+    // the templ retag (Commits 6–14); after the last templ file,
+    // they're dead-code matches and get removed in Commit 14.
+    const submitTrigger = event.target.closest("[data-dixie-submit], [data-merge-review-action], [hx-post], [hx-delete], [data-hx-post], [data-hx-delete]");
+    if (submitTrigger instanceof HTMLElement && !(submitTrigger instanceof HTMLFormElement)) {
       event.preventDefault();
-      request(mergeReviewAction);
+      dispatchDixieDataForm(submitTrigger);
       return;
     }
-    const el = event.target.closest("[hx-get],[hx-post],[hx-delete],[data-hx-get],[data-hx-post],[data-hx-delete]");
-    if (!el || el instanceof HTMLFormElement) {
-      return;
-    }
-    event.preventDefault();
-    request(el);
   });
 
   document.addEventListener("submit", (event) => {
@@ -3827,27 +3496,16 @@
     if (!(form instanceof HTMLFormElement)) {
       return;
     }
-    if (!hxHas(form, "hx-get") && !hxHas(form, "hx-post") && !hxHas(form, "hx-put")) {
+    if (!form.matches("[data-dixie-submit], [hx-post], [hx-delete], [data-hx-post], [data-hx-delete]")) {
       return;
     }
     event.preventDefault();
-    request(event.submitter instanceof HTMLElement ? event.submitter : form);
+    dispatchDixieDataForm(event.submitter instanceof HTMLElement ? event.submitter : form);
   });
 
-  const triggerInputRequest = (event) => {
-    const el = event.target.closest("[hx-trigger],[data-hx-trigger]");
-    if (!el) {
-      return;
-    }
-    const trigger = hxAttr(el, "hx-trigger") || "";
-    if (!trigger.includes("keyup") && !trigger.includes("input") && !trigger.includes("changed")) {
-      return;
-    }
-    queueRequest(el);
-  };
-
-  document.addEventListener("input", triggerInputRequest);
-  document.addEventListener("change", triggerInputRequest);
+  // triggerInputRequest removed in Option C — no hx-trigger="keyup" /
+  // "input" / "changed" use cases exist outside of polling fragments,
+  // and polling is owned by htmx.
   document.addEventListener("focusin", (event) => {
     if (event.target === quickSearchInput()) {
       invalidateRecentSearchHydration();
@@ -3948,15 +3606,29 @@
         // The browse filters form has hx-get / hx-target on the <form>
         // element but does not declare hx-trigger="change" on the
         // inputs. The change handler above resets paging + persists
-        // state; we now also fire the request via the app's own
-        // queueRequest so the results panel actually refreshes.
-        //
-        // We use queueRequest (not window.htmx.trigger) because
-        // DOMContentLoaded strips hx-trigger from the DOM, so
-        // htmx.trigger(form, "change") would see no hx-trigger attr
-        // and silently do nothing. queueRequest reads from
-        // data-hx-* mirrors that the strip preserved.
-        queueRequest(form);
+        // state; we now also fire a fetch + swap into #browse-results
+        // to keep the panel refreshed. No debounce: the legacy
+        // queueRequest also fired immediately.
+        const url = form.getAttribute("hx-get") || form.action;
+        const targetSelector = form.getAttribute("hx-target") || "#browse-results";
+        if (!url) { return; }
+        (async () => {
+          const params = new URLSearchParams(new FormData(form));
+          try {
+            const response = await fetch(`${url}?${params.toString()}`, {
+              method: "GET",
+              headers: { "X-Requested-With": "DixieData" },
+            });
+            const html = await response.text();
+            const target = document.querySelector(targetSelector);
+            if (target instanceof HTMLElement) {
+              target.innerHTML = html;
+              initializeDynamicContent(target);
+            }
+          } catch (error) {
+            showToast("Browse refresh failed.", "error");
+          }
+        })();
       }
       return;
     }
