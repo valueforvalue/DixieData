@@ -278,13 +278,34 @@ async function main() {
     if (expectsRedirect) {
       await page.waitForTimeout(200); // give the redirect a moment to settle
       const urlAfter = page.url();
-      // Success path: /jobs/{id}. Dedup path: back to /share (server
-      // returns 303 + HX-Redirect: / when a job is already in flight
-      // for the same dupKey). Either proves the dispatcher fired.
-      const navigated = urlAfter.includes('/jobs/') || urlAfter.endsWith('/share');
+      // All exports (except the carve-outs below) now route through
+      // enqueueExport -> X-DixieData-Redirect, which
+      // dispatchDixieDataForm reads and navigates to. The smoke that
+      // accepted /share as success was masking a real bug: the web-mode
+      // binary never installed SetSaveFileDialogOverride, so every save-
+      // dialog-backed export landed in the dedup branch and bounced the
+      // user back to /share. With the override wired in
+      // cmd/dixiedata-web, every export should land on /jobs/{id}.
+      //
+      // Two carve-outs:
+      //   - /export/static-archive: uses a plain <form method="post">
+      //     and the browser follows 303 + Location natively, so the
+      //     dispatcher never fires and the URL stays on /share.
+      //   - /export/feedback-log: the handler short-circuits to a
+      //     plain-text body when no feedback has been collected
+      //     (`No feedback has been saved yet.`). Acceptable since
+      //     there's no job to track.
+      const isExemptFromJobRedirect =
+        btn.path.startsWith('/export/static-archive') ||
+        btn.path === '/export/feedback-log';
+      const navigated = isExemptFromJobRedirect
+        ? urlAfter.endsWith('/share') || urlAfter.includes('/jobs/')
+        : urlAfter.includes('/jobs/');
       record(`share-${btn.path}-navigates-to-jobs`, navigated, {
         urlAfter,
-        expected: '/jobs/{id} or /share (dedup)',
+        expected: isExemptFromJobRedirect
+          ? '/share or /jobs/{id} (plain-form / no-data carve-out)'
+          : '/jobs/{id} (dispatcher must read X-DixieData-Redirect)',
       });
     }
   }
