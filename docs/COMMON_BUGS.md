@@ -216,50 +216,31 @@ warns about ad-hoc `#id` selectors that aren't in the
 
 ---
 
-### 1.9 POST-then-navigate handler ignored by htmx 2.x when `hx-swap="none"`
+### 1.9 [REMOVED in Option C] POST-then-navigate handler ignored by htmx 2.x when `hx-swap="none"`
 
-**Symptom:** User clicks the button. Network tab shows `303`
-+ `Location: /target`. Page does NOT navigate. User stays on
-the originating page; the work runs invisibly in the background.
+The original §1.9 documented the "export options status pages not
+landing" bug class: handlers wrote 303 + Location but the browser
++ custom dispatcher didn't navigate. The legacy fix was to add
+`HX-Redirect` (also dead code; htmx was never the dispatcher).
 
-**Why it happens:** htmx 2.x with `hx-swap="none"` suppresses
-both the swap AND the redirect handling. A plain `Location`
-header alone is ignored; the browser only navigates when the
-server also writes `HX-Redirect`. Native `<form method="post">`
-submits work because they bypass htmx entirely.
+**Status as of Option C:** Eliminated. The custom dispatcher
+(`dispatchDixieDataForm` in `frontend/app.js`) replaces the legacy
+parallel `request()` function. Handlers now return
+`200 OK + X-DixieData-Redirect`, the dispatcher reads the header,
+and `window.location.assign()` navigates the user. Templates use
+`data-dixie-submit` + `data-action` (or `action=`) instead of
+`hx-post` / `hx-put` / `hx-delete`. The static-archive export
+opts into `enqueueExportOpt{NativeRedirect: true}` to keep the
+303 + Location path because it's reached by a plain
+`<form method="post">` that the browser follows natively.
 
-**Real example:** commit `70878ac` added per-kind stats on
-`/jobs/{id}`. All six share-page exports landed server-side,
-but the export buttons stayed on `/share` until commit
-`3612dab` added `HX-Redirect`. `audit/smoke.mjs` had
-`share-${btn.path}-redirects-303` (header check only) and let
-it slip through.
+**Regression nets** that would catch any reintroduction:
+- `internal/appshell/redirect_headers_test.go::TestPostThenNavigateUsesDixieRedirect` — source-scan guard fails any handler writing 303 + HX-Redirect without X-DixieData-Redirect.
+- `internal/templates/hx_guard_test.go` — enforces that hx-get / hx-post URLs come from `routebuilder.X()` builders (defense in depth against the URL-drift class that caused §1.9's historical bugs).
+- `audit/smoke.mjs` `share-${btn.path}-navigates-to-jobs` — asserts `page.url()` after click, not just response headers.
 
-**Find it:**
-```bash
-grep -rn 'w.Header().Set("Location"' internal/appshell/*.go
-grep -rn 'StatusSeeOther' internal/appshell/*.go
-```
-Every 303 must have a sibling `HX-Redirect` set on the same
-handler.
-
-**Fix:** In every POST-then-navigate handler, after
-`w.Header().Set("Location", target)`, also call
-`w.Header().Set("HX-Redirect", target)`. Use the existing
-`(*App).enqueueExport` / `(*App).enqueueExportWithResult`
-helpers for export-style handlers; copy the two-line pattern
-for non-export cases. See
-`internal/templates/components/conventions.md`
-("Buttons that POST and expect navigation") for the canonical
-recipe.
-
-**Regression net:** `audit/smoke.mjs` records
-`share-${btn.path}-navigates-to-jobs` (asserts `page.url()`
-after click), not just `share-${btn.path}-redirects-303`.
-Any new POST-then-navigate handler should grow a matching
-`*-navigates-to-<dest>` assertion. Header-only checks are
-insufficient — they passed for a week while the user was
-stranded on `/share`.
+See `internal/templates/components/conventions.md` §"Buttons
+that POST and expect navigation" for the canonical recipe.
 
 ---
 

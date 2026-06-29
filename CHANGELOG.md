@@ -47,6 +47,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestPostThenNavigateUsesDixieRedirect` (in `redirect_headers_test.go`)
   now reports 0 offenders; the legacy 303-contract test
   inverted in commit 5800ea1 turns green.
+- Retagged 9 templ files (`calendar`, `calendar_day`, `entry_form`,
+  `insights`, `research_collections`, `research_log`,
+  `review_queue`, `share`, `soldier_card`) from
+  `hx-post`/`hx-put`/`hx-delete`/`hx-confirm` to
+  `action`/`data-action` + `data-dixie-submit` + `data-confirm`.
+  ~75 attribute changes. `audit/discover_export_buttons.mjs`
+  learned the new `data-action` literal so the auto-discovery
+  for smoke tests still finds every share-page button. The
+  translator (`[hx-post]` + `[hx-delete]` selectors in the
+  click/submit interceptors) is now dead-code but stays in
+  place for safety; a follow-up commit can delete it.
+- Rewrote `internal/templates/components/conventions.md` §"Buttons
+  that POST and expect navigation" to describe the Option C
+  contract (`writeExportRedirect` + `X-DixieData-Redirect` + the
+  static-archive carve-out) instead of the dead `HX-Redirect`
+  recipe. Without this rewrite, the next author would write the
+  same broken contract the bug class was built on.
+- Replaced `docs/COMMON_BUGS.md` §1.9 (the original
+  "export-options-status-pages-not-landing" bug postmortem)
+  with a short pointer to the new contract and the regression
+  nets that prevent reintroduction. The postmortem's "fix"
+  (adding `HX-Redirect`) is documented as dead code so the
+  next reader understands why the section was removed rather
+  than assuming it was lost.
 
 ### Added
 
