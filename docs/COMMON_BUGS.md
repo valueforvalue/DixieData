@@ -216,23 +216,28 @@ warns about ad-hoc `#id` selectors that aren't in the
 
 ---
 
-### 1.9 [REMOVED in Option C] POST-then-navigate handler ignored by htmx 2.x when `hx-swap="none"`
+### 1.9 [REGRESSION-PRONE] POST-then-navigate handler must use Option C contract
 
 The original §1.9 documented the "export options status pages not
 landing" bug class: handlers wrote 303 + Location but the browser
 + custom dispatcher didn't navigate. The legacy fix was to add
 `HX-Redirect` (also dead code; htmx was never the dispatcher).
 
-**Status as of Option C:** Eliminated. The custom dispatcher
-(`dispatchDixieDataForm` in `frontend/app.js`) replaces the legacy
-parallel `request()` function. Handlers now return
-`200 OK + X-DixieData-Redirect`, the dispatcher reads the header,
-and `window.location.assign()` navigates the user. Templates use
-`data-dixie-submit` + `data-action` (or `action=`) instead of
-`hx-post` / `hx-put` / `hx-delete`. The static-archive export
-opts into `enqueueExportOpt{NativeRedirect: true}` to keep the
-303 + Location path because it's reached by a plain
-`<form method="post">` that the browser follows natively.
+**Status as of Option C:** Contract stabilized but regressions
+continue to ship. The custom dispatcher (`dispatchDixieDataForm`
+in `frontend/app.js`) replaces the legacy parallel `request()`
+function. Handlers now return `200 OK + X-DixieData-Redirect`,
+the dispatcher reads the header, and `window.location.assign()`
+navigates the user. Templates use `data-dixie-submit` + `action=`
+(instead of `hx-post` / `hx-put` / `hx-delete` for click-driven
+forms). The static-archive export opts into
+`enqueueExportOpt{NativeRedirect: true}` to keep the 303 + Location
+path because it's reached by a plain `<form method="post">` that
+the browser follows natively.
+
+**BUT** new handlers keep forgetting the contract. See §1.10
+`redirect-contract-drift` for the recurring failure mode and
+recipe.
 
 **Regression nets** that would catch any reintroduction:
 - `internal/appshell/redirect_headers_test.go::TestPostThenNavigateUsesDixieRedirect` — source-scan guard fails any handler writing 303 + HX-Redirect without X-DixieData-Redirect.
@@ -241,6 +246,120 @@ opts into `enqueueExportOpt{NativeRedirect: true}` to keep the
 
 See `internal/templates/components/conventions.md` §"Buttons
 that POST and expect navigation" for the canonical recipe.
+
+### 1.10 `redirect-contract-drift` — handlers keep forgetting `X-DixieData-Redirect`
+
+**Symptom:** User clicks a button (save feedback, import backup,
+import shared archive, export single record PDF, export insights
+PDF, etc.). The handler runs (side effect happens — file is
+written, record is saved, job is enqueued), the response headers
+include `X-DixieData-Toast: "..."` (so the user *thinks* it
+worked), but the page never navigates. The user is stuck on the
+form page and re-clicks, producing duplicate work.
+
+**Why it happens:** Two flavours:
+
+1. *Handler-side*: a new POST handler returns 200 + toast header
+   but forgets to call `writeExportRedirect(w, "/jobs/{id}")` or
+   set `X-DixieData-Redirect` directly. The dispatcher's toast
+   branch fires, but the redirect branch does not → user stays
+   on the form page.
+2. *Templ-side*: a new form uses `hx-post=` + `hx-swap="none"`
+   instead of `data-dixie-submit` + `action=` + `method="post"`.
+   htmx fires the POST and ignores the response headers entirely
+   (htmx is not the dispatcher); the `X-DixieData-*` headers are
+   dropped on the floor. This is the bug that hid the feedback
+   save confirmation until the fix landed.
+
+**Find it:**
+```bash
+# All 303/redirect writers in appshell that bypass writeExportRedirect
+grep -rn 'StatusSeeOther\|http\.Redirect' internal/appshell/*.go \
+  | grep -v _test.go | grep -v writeExportRedirect
+
+# All 200-response handlers that set X-DixieData-Toast
+# without setting X-DixieData-Redirect (for click-driven flows)
+grep -rn 'X-DixieData-Toast' internal/appshell/*.go \
+  | grep -v _test.go | while read line; do
+    file=$(echo "$line" | cut -d: -f1)
+    if ! grep -q 'X-DixieData-Redirect' "$file"; then
+      echo "$line  # ← no X-DixieData-Redirect in same file"
+    fi
+  done
+
+# Templates shipping hx-post + hx-swap="none" (pre-Option-C residue)
+grep -rln 'hx-swap="none"' internal/templates/ | xargs grep -l 'hx-post='
+```
+
+**Fix:**
+- Handler side: call `writeExportRedirect(w, routebuilder.X(...))`
+  (or set the header directly) before writing the response body.
+- Templ side: replace `hx-post` + `hx-swap="none"` with
+  `action={ templ.SafeURL(routebuilder.X(...)) }` +
+  `method="post"` + `data-dixie-submit`. Use the canonical recipe
+  in `internal/templates/components/conventions.md`.
+
+**Real examples:**
+- `3612dab` — original POST-then-navigate bug, led to Option C
+  dispatcher
+- `4f561e6` — swept 13 handlers that forgot `X-DixieData-Redirect`
+- `11f1c01` — swept 5 more sites the previous sweep missed
+- `e5a7909` — replaced htmx-clone dispatcher with
+  `dispatchDixieDataForm`
+- `7a80f6d` (this session) — feedback form was htmx-only, headers
+  dropped, no confirmation
+
+**Regression nets:**
+- `appshell.TestAll303sWriteHXRedirect` (already exists)
+- `appshell.TestPostThenNavigateUsesDixieRedirect` (already exists)
+- `appshell.TestXxxHandlersWriteDixieRedirect` (per-handler suite,
+  grows as new handlers are added)
+- `audit/smoke.mjs` `share-${btn.path}-navigates-to-jobs` +
+  `[7d] feedback-save-*` block
+
+### 1.11 `htmx-attr-strip-by-boot-js` — form's `data-dixie-submit` is required for the dispatcher
+
+**Symptom:** A form submits, the network request fires, the
+server runs, but the dispatcher (`dispatchDixieDataForm` in
+`frontend/app.js`) never reads the response headers, so the
+toast doesn't display, the modal doesn't close, the form doesn't
+clear. The handler side is correct; the JS post-response path is
+bypassed entirely.
+
+**Why it happens:** `frontend/app.js` registers a single
+`document.addEventListener("submit", ...)` listener that filters
+by `event.target.matches("[data-dixie-submit]")`. Forms without
+`data-dixie-submit` are ignored by the dispatcher. htmx has its
+own submit listener that fires the POST and processes the
+response (with `hx-swap="none"` it just discards the body and
+any custom headers). The `X-DixieData-*` contract is only
+honoured by the dispatcher.
+
+**Find it:**
+```bash
+# Templ forms with hx-post/hx-get but no data-dixie-submit
+# (pre-Option-C residue or forgotten opt-in)
+for f in $(grep -rl 'hx-post=\|hx-get=' internal/templates/ --include="*.templ"); do
+  if ! grep -q 'data-dixie-submit' "$f"; then
+    echo "$f"
+  fi
+done
+
+# The single boot-JS submit listener + strip loop
+grep -n 'addEventListener.*"submit"\|matches.*data-dixie-submit\|removeAttribute.*hx-' frontend/app.js
+```
+
+**Fix:** Add `data-dixie-submit` to the form element. If the
+form has htmx-attrs (`hx-post` etc.) but no native `action=` /
+`method="post"`, also retag to use `action=` + `method="post"`
++ `data-dixie-submit` (the dispatcher reads `form.action`, not
+`hx-post`).
+
+**Real examples:**
+- `e5a7909` — Option C dispatcher landed; `data-dixie-submit`
+  became the new opt-in
+- `7a80f6d` (this session) — feedback form had htmx-attrs only,
+  was missed by the templ retag sweep
 
 ---
 
@@ -495,6 +614,85 @@ The bridge returned inline file-link markup. User never saw
 `/jobs/{id}`. Fixed by dropping the JS interceptor, dropping the
 shim, and routing the form through `handleExportDatabasePDF` like
 every other export button.
+
+---
+
+### 3.5 Stale status panel after submit (4 instances in 60 days)
+
+**Symptom:** User clicks a button. The handler runs, the side
+effect happens (record is saved, job is enqueued, file is
+written), the toast displays, but the **target panel** (status
+panel, list, scan results, etc.) **does not refresh**. The user
+sees the toast but no visible state change, and has to navigate
+away and back to confirm the action took effect.
+
+**Why it happens:** The 4 known instances in the last 60 days
+fall into 4 distinct sub-patterns:
+
+1. *Wrong `hx-target`*: form's `hx-target` points at a sibling
+   that doesn't exist, so htmx logs `htmx:targetError` and the
+   swap silently fails (Load Backup form, 7292f4f).
+2. *No redirect after success*: handler writes 200 +
+   `X-DixieData-Toast` but no `X-DixieData-Redirect` and no
+   `data-results-target` opt-in, so the dispatcher has no
+   follow-up action to take (handleImportBackup, 0f59909).
+3. *Response lands below the viewport fold*: form is at the top
+   of the page, status panel is below the fold, the user never
+   scrolls. The page IS refreshing; the user just can't see it
+   (2b492ee).
+4. *Scan/quality results render into wrong div*: form has
+   `data-results-target` but the value doesn't match an element
+   in the DOM, or the target element's id is a typo
+   (`#settings-orphan-results` vs `#orphan-results`)
+   (2bb145b).
+
+**Find it:**
+```bash
+# Forms with hx-swap="none" that should swap into a panel
+grep -rn 'hx-swap="none"' internal/templates/*.templ
+
+# Handlers writing X-DixieData-Toast but no X-DixieData-Redirect
+# in the same file (likely a 2 sub-pattern above)
+for f in $(grep -l 'X-DixieData-Toast' internal/appshell/*.go | grep -v _test.go); do
+  if ! grep -q 'X-DixieData-Redirect\|writeExportRedirect' "$f"; then
+    echo "$f"
+  fi
+done
+
+# data-results-target / data-status-target without matching target id
+for d in $(grep -rho 'data-results-target="[^"]*"' internal/templates/ | sort -u); do
+  target_id=$(echo "$d" | sed 's/data-results-target="//;s/"//')
+  if ! grep -rq "id=\"$target_id\"" internal/templates/; then
+    echo "missing target id: $target_id"
+  fi
+done
+```
+
+**Fix (per sub-pattern):**
+
+1. Verify the form's `hx-target` is an id that exists in the
+   DOM. `htmx:targetError` is your friend in DevTools console.
+2. Call `writeExportRedirect(w, routebuilder.X(...))` in the
+   handler. The dispatcher will navigate.
+3. Add a one-line `aria-live="polite"` + scroll the panel into
+   view on submit (`element.scrollIntoView({behavior:"smooth"})`
+   in `frontend/app.js`).
+4. Pin the id with a `routebuilder.X()` builder or
+   `internal/uiids` constant; assert in the test that
+   `data-results-target` and the matching id agree.
+
+**Real examples:**
+- `7292f4f` (Load Backup wrong hx-target)
+- `0f59909` (handleImportBackup missing redirect)
+- `2b492ee` (status panel below the fold)
+- `2bb145b` (scan/quality results, issue #134)
+
+**Regression nets:**
+- `audit/smoke.mjs` `[7c] orphan-scan-results-render` and
+  `quality-scan-results-render` — verify the target div
+  non-empty after submit
+- `audit/smoke.mjs` `[7d] feedback-save-shows-toast` — verifies
+  the toast is rendered (not queued) after submit
 
 ---
 
@@ -755,6 +953,247 @@ killing the process. Code review must reject new unguarded sites
 outright. See `CONTEXT.md` "Laws (non-negotiable)" and
 [`docs/agents/dialog-guard.md`](agents/dialog-guard.md) for the
 full law.
+
+### 4.11 `duplicate-job-handling` — dedup helper, in-flight slot, redirect on duplicate (3 instances in 60 days)
+
+**Symptom:** User clicks "Export Database PDF" twice in quick
+succession. The expected behaviour is one job is enqueued and
+the second click navigates to the existing `/jobs/{id}`. The
+actual failure modes have been:
+
+1. Second click produces a second job (dedup helper confuses
+   "user cancelled the save dialog" with "duplicate click").
+2. Reloading services mid-job clobbers the jobs registry and
+   `jobs.NewWithConcurrency` returns a new registry; the
+   duplicate check passes against the wrong registry.
+3. Second click returns an error body instead of redirecting
+   to the existing `/jobs/{id}` — the user has no way to find
+   the in-flight job from the error page.
+
+**Why it happens:** Three independent failure surfaces.
+
+*Dedup map*: the `inFlight` map in `internal/appshell` is keyed
+by `dupKey := guardedSaveFileDialogKey(kind, opts)`. The key
+is deleted on every code path *including* the `user cancelled`
+path. A genuine "user cancelled, then clicked again" is treated
+as a duplicate of the original click. The fix is to only
+delete the entry on success (or on handler return) — see
+`14a2aa8`.
+
+*Registry clobber*: `reloadServices` (called from the
+`/setup` POST handler) replaces the entire `jobs.Registry`
+with a fresh `NewWithConcurrency`. The in-flight slot is in
+the OLD registry, so the dedup check in the NEW registry
+returns "not in flight, proceed" and a second job is enqueued.
+The fix is to either (a) preserve the in-flight map across
+reload, or (b) drain before reload — see `ec451f4`.
+
+*Redirect on duplicate*: the second click is supposed to be a
+no-op + redirect. The handler must check `if dupJob != nil`
+and call `writeExportRedirect(w, routebuilder.Job(dupJob.ID))`
+before returning. Forgetting this makes the user think nothing
+happened — see `16cd4e4`.
+
+**Find it:**
+```bash
+# The dedup map / in-flight tracking
+grep -rn 'inFlight\|inFlightEntry\|alreadyInFlight' internal/appshell/*.go \
+  | grep -v _test.go
+
+# Handlers that should redirect to existing /jobs/{id} on duplicate
+grep -rn 'errExportInFlight\|Export already in progress' internal/appshell/
+
+# The jobs registry re-allocation site (single point of failure)
+grep -rn 'jobs\.NewWithConcurrency\|jobs\.New(' internal/appshell/
+
+# Reload sites that could clobber the registry
+grep -rn 'reloadServices\|a\.jobs' internal/appshell/*.go | grep -v _test.go
+```
+
+**Fix:**
+
+1. Only `defer a.inFlight.Delete(dupKey)` on the happy path
+   (no error returned), not on user-cancel.
+2. `reloadServices` must preserve the in-flight map; or
+   callers must not call `reloadServices` while a job is
+   in-flight.
+3. Add the `if dupJob != nil { writeExportRedirect(...); return }`
+   branch as the **first** thing the handler does after
+   dedup.
+
+**Real examples:**
+- `55414e0` (root cause for dialog-guard law)
+- `14a2aa8` (cancel-vs-duplicate fix)
+- `ec451f4` (reloadServices clobber fix)
+- `16cd4e4` (redirect on duplicate, issue #130)
+
+**Regression nets:**
+- `audit/smoke.mjs` `share-${btn.path}-navigates-to-jobs` —
+  fires two clicks in quick succession and asserts both land
+  on the same `/jobs/{id}` URL
+
+### 4.12 `toast-encoding-mojibake` (2 instances in 60 days)
+
+**Symptom:** A toast displays a Unicode character (ellipsis `…`,
+em-dash `—`, en-dash `–`, smart quotes `'`/`"`/`'`/`"`,
+non-breaking space `\u00A0`, arrow `→`, checkmark `✓`, etc.)
+in source, but on screen the user sees mojibake
+(`â€¦`/`â€"`/`Ã—`/`Â `). Most often visible when the toast
+appears via the `X-DixieData-Toast` HTTP header, not the in-page
+toast renderer.
+
+**Why it happens:** Chromium's WHATWG Fetch implementation
+decodes HTTP/1.x response headers as Windows-1252 (the legacy
+default), not UTF-8, when no explicit charset is provided. The
+Go `net/http` package does not set `charset=utf-8` on header
+values. Source files contain the polished Unicode; the wire
+bytes contain the polished Unicode; the browser decodes them
+as Windows-1252 and re-encodes as UTF-8 → mojibake.
+
+Two historical fixes:
+
+- `d91e32c` (fix(toasts+labels)) — replaced `"\u2026"` (a
+  Go escape sequence for the U+2026 ellipsis) in source with
+  the actual `\u2026` rune. The escape was a no-op and
+  produced `â€¦` in the rendered toast. The fix is "use the
+  real character."
+- `3052251` (fix(appshell)) — added the
+  `sanitiseToastForHeader` + `toastHeaderASCIIReplacements`
+  helper next to `setToastHeader` in
+  `internal/appshell/exports_handlers.go`. The helper
+  translates the polished Unicode to an ASCII twin (`…` → `...`,
+  `—` → `--`, `–` → `-`, etc.) only at the header boundary;
+  source keeps the polished characters. Captured in
+  `docs/adr/0005-toast-header-ascii-safe.md`.
+
+**Find it:**
+```bash
+# All toast header writers
+grep -rn 'X-DixieData-Toast\|setToastHeader' internal/appshell/*.go \
+  | grep -v _test.go
+
+# Test that guards against reintroduction of the escape
+grep -rn 'TestInProgressToastStringsContainActualEllipsis\|TestSetInfoToastHeaderWritesInfoKind\|TestSanitiseToastForHeader' internal/appshell/
+```
+
+**Fix:**
+
+- Source: use the actual Unicode rune, not a Go escape.
+- Header boundary: route every `X-DixieData-Toast` write
+  through `sanitiseToastForHeader` (or extend the replacement
+  table if a new character is needed).
+- For user-data toasts (e.g. names that may contain accented
+  Latin, CJK), the helper passes them through unchanged; only
+  the well-known punctuation characters are substituted.
+
+**Real examples:**
+- `d91e32c` (escape vs rune fix)
+- `3052251` (header sanitisation, ADR 0005)
+
+**Regression nets:**
+- `internal/appshell/toast_header_sanitise_test.go` —
+  unit tests the replacement table
+- `internal/appshell/in_progress_toast_test.go` — source
+  sweep for `\u2026` / `\u2014` etc.
+- `internal/appshell/exports_handlers_test.go` — wires
+  the ASCII twin assertion to the live handler
+
+### 4.13 `route-misregistered-or-wrong-verb` (2-3 instances in 60 days)
+
+**Symptom:** A clickable button or form posts and the server
+returns 405 (Method Not Allowed) with no error in the UI. Or:
+the button looks like it does nothing because the route is
+registered with a different HTTP method (e.g. `r.Get` on a
+POST-only handler).
+
+**Why it happens:** New routes are registered against the chi
+router in `internal/appshell/routes.go`. When a handler is
+refactored (e.g. POST → DELETE, or GET → POST) the route
+registration can drift. Also: a route is registered against
+the wrong path (`/share/feedback` vs `/feedback/submit`)
+and the templ still references the old path.
+
+**Find it:**
+```bash
+# Every chi route registration
+grep -rn 'r\.Get\|r\.Post\|r\.Put\|r\.Delete\|chi\.Route\|chi\.HandleFunc' \
+  internal/appshell/routes.go internal/appshell/*.go \
+  | grep -v _test.go
+
+# Cross-check verb against handler
+grep -rn 'http\.MethodPost\|http\.MethodGet\|http\.MethodDelete' \
+  internal/appshell/*_handlers.go | grep -v _test.go
+
+# Templ URLs that don't have a matching route
+for url in $(grep -rho 'hx-get="[^"]*"\|hx-post="[^"]*"\|action="[^"]*"' internal/templates/ | grep -oE '"[^"]+"' | tr -d '"' | sort -u); do
+  if ! grep -rq "\"$url\"" internal/appshell/routes.go internal/appshell/*.go; then
+    echo "templ uses $url but no route matches"
+  fi
+done
+```
+
+**Fix:**
+
+- Match the HTTP method to the handler's allowed methods. A
+  POST handler must be registered with `r.Post` (not
+  `r.Get` or `r.Handle`).
+- The chi router returns 405 when the path matches but the
+  method does not; fix the registration.
+- Update the templ URL to match the new path. Use a
+  `routebuilder.X()` builder so a route rename auto-propagates
+  to every templ.
+
+**Real examples:**
+- `10d0d46` (caught 16 mis-registered chi routes in a single
+  sweep)
+- `e3cd413` (removed an SSE route that was registered but
+  never reachable)
+
+**Regression nets:**
+- `internal/appshell/routes_test.go` — asserts the path/method
+  matrix
+- `internal/templates/hx_guard_test.go` — enforces that templ
+  URLs come from `routebuilder.X()` builders
+- `audit/smoke.mjs` `share-${btn.path}-fires-request` —
+  asserts every discovered button triggers a 2xx or 3xx
+
+### 4.14 `floating-dock-layout-overlap` (4 instances in 60 days)
+
+**Symptom:** The floating dock at the bottom of the screen
+covers content (anniversary list bottom, modal footer,
+toast region) at certain viewport widths. On mobile the
+dock overflows horizontally or pushes the feedback / menu
+buttons off-screen.
+
+**Why it happens:** The dock is `position: fixed; bottom: 0`
+and uses a flex layout. The bottom padding on `<main>` and
+on the toast region must be at least the dock height +
+spacer, but as content height changes (more nav items, more
+modal text), the dock height grows and the padding drifts.
+
+The 4 known fixes:
+- `db8db0b` — dock pinned to right edge
+- `d3a4c3e` — dock background strip
+- `03accbf` — dock inner padding
+- `f439a20` — dock overlap with content
+- `2bb78d7` — mobile overflow
+
+**Find it:**
+```bash
+grep -rn 'floating.dock\|floating-dock' frontend/app.css internal/templates/layout.templ
+grep -rn 'bottom-6\|right-6\|top-shell' frontend/app.css internal/templates/layout.templ
+```
+
+**Fix:** Add a `--floating-dock-height` CSS variable on `<html>`,
+set it in `applyResponsiveLayout` from JS (measure the dock
+height with `getBoundingClientRect()`), and reference it in
+the `<main>` bottom padding and the toast region's `bottom`
+offset. One source of truth, no drift.
+
+**Real examples:** see the 5 commits above.
+
+**Regression nets:** visual sweep via `audit/run-round3.mjs`
+at the 3 viewports (mobile / tablet / desktop).
 
 ---
 
@@ -1073,6 +1512,13 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Worked before, broken after navigation | Section 1.3 | listener destroyed by swap |
 | Stale results | Section 1.4 | hx-sync missing |
 | Progress bar keeps polling | Section 1.5 | terminal-state trigger |
+| Handler runs, toast shows, page doesn't navigate | Section 1.10 | `X-DixieData-Redirect` missing |
+| Form submits, server runs, JS post-response ignored | Section 1.11 | `data-dixie-submit` missing |
+| Submit OK but target panel never refreshes | Section 3.5 | stale status panel after submit |
+| Double-click produces duplicate job | Section 4.11 | dedup helper / in-flight slot |
+| Toast shows mojibake | Section 4.12 | HTTP/1.x header charset |
+| 405 from a clickable form | Section 4.13 | wrong HTTP method on route |
+| Floating dock covers content | Section 4.14 | dock height + `<main>` padding drift |
 | Panic on rare path | Section 4.3 | nil guard |
 | Goroutine leak | Section 4.1 | missing Unsubscribe |
 | Date wrong by 1 day | Section 2.3 | timezone |
@@ -1083,6 +1529,9 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Memory grows over time | Section 4.1, 4.2 | leak/race |
 | Works in dev, fails in release | Section 4.7 | hardcoded paths |
 | Tests crash on missing frontend | Section 4.8 | wails runtime nil |
+
+For copy-paste greps for each pattern, see
+[`docs/agents/bug-pattern-grep.md`](agents/bug-pattern-grep.md).
 
 ---
 
