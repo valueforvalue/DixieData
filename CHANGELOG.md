@@ -11,6 +11,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- Stopped `dixiedata-web.exe` from leaking across probe runs.
+  Three audit probes (`audit/probe-backup-status.mjs`,
+  `probe-full-restore.mjs`, `probe-share-status-scroll.mjs`)
+  used `go run ./cmd/dixiedata-web` + a `finally` cleanup that
+  could not reach the grandchild process tree on Windows, so a
+  Ctrl-C or thrown error left the server running and the next
+  `make debug` failed with `unlinkat ... dixiedata-web.exe: The
+  process cannot access the file`. Switched the probes to spawn
+  the prebuilt `build/bin/dixiedata-web.exe` directly and use a
+  new `audit/_lib/cleanup.mjs` helper that installs SIGINT /
+  SIGTERM / uncaughtException handlers and taskkills the named
+  exe as a safety net. Added `make probe-clean` to nuke any
+  straggler `dixiedata-web.exe` / `DixieData.exe` /
+  `seed-data.exe` / `gold-master.exe` processes; `make debug`
+  and `make build` now run it automatically before rebuilding
+  the sibling binaries.
+
 ### Changed
 
 - The recurring "export options status pages not landing" bug

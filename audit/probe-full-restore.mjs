@@ -30,6 +30,7 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { registerCleanup, runWithCleanup } from './_lib/cleanup.mjs';
 
 const PORT = process.env.PROBE_PORT || '8767';
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -46,7 +47,7 @@ async function waitForServer(url, maxMs = 30000) {
   throw new Error(`server at ${url} never came up`);
 }
 
-async function main() {
+async function main({ registerCleanup }) {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
   const scratchDir = '.scratch/probe-full-restore';
@@ -68,8 +69,13 @@ async function main() {
       console.log(`seeded ${scratchDir} with 5 soldiers`);
     }
 
-    proc = spawn('go', ['run', './cmd/dixiedata-web', '-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
+    // Spawn the prebuilt binary directly (not `go run`) so signals
+    // reach the real process tree and taskkill-by-name cleanup in
+    // audit/_lib/cleanup.mjs is reliable.
+    const webBin = path.join(repoRoot, 'build', 'bin', 'dixiedata-web.exe');
+    proc = spawn(webBin, ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
       { cwd: repoRoot, env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir, DIXIE_OPEN_FILE_DIALOG_PATH: ddbakPath } });
+    registerCleanup({ proc, processNames: ['dixiedata-web.exe'] });
     // also set on the test process so the binary picks it up after
     // Process spawning doesn't always pass env cleanly across shells.
     console.log(`DIXIE_OPEN_FILE_DIALOG_PATH=${ddbakPath}`);
@@ -186,22 +192,12 @@ async function main() {
       console.log(`\npage errors (${errors.length}):`);
       errors.forEach((e) => console.log(`  - ${e}`));
     }
+    return exitCode;
   } catch (e) {
     console.error('FATAL:', e);
-    exitCode = 2;
-  } finally {
-    if (proc) {
-      proc.kill('SIGTERM');
-      await sleep(500);
-      if (process.platform === 'win32') {
-        await new Promise((resolve) => {
-          spawn('taskkill', ['/F', '/IM', 'dixiedata-web.exe', '/T'], { stdio: 'ignore' }).on('exit', resolve);
-        });
-      }
-      await sleep(300);
-    }
-    process.exit(exitCode);
+    return 2;
   }
 }
 
-main();
+const exitCode = await runWithCleanup(main);
+process.exit(exitCode);
