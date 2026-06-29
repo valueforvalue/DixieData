@@ -227,6 +227,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `internal/viewmodel` and `internal/presentation` to be in the
   forbidden table. No production code changed.
 
+- `internal/services/` shim deleted (issue #142). The 89-line
+  shim was 55 type/func re-exports of `records`, `archive`,
+  `integrations`, and `db` symbols with zero behavioral
+  purpose. The three consumer files (`cmd/gold-master/main.go`,
+  `cmd/gold-master/portability.go`, `internal/seed/seed.go`) now
+  import the deep modules directly. `services.NewSoldierService`
+  → `records.NewSoldierService`,
+  `services.NewExportService` → `archive.NewExportService`,
+  `services.NewBackupService` → `archive.NewBackupService`,
+  `services.NewAnalyticsService` → `records.NewAnalyticsService`,
+  `services.PrintSettings` / `BackupManifest` /
+  `SharedImportSummary` / `SoldierService` → `archive.*` /
+  `records.*`. The boundary test from issue #141 now guarantees
+  no future re-introduction of `internal/services/` — if a new
+  file accidentally re-imports it, CI fails.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
