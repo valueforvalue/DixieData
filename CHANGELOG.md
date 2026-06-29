@@ -31,6 +31,49 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- CI audit workflow on ubuntu-latest was failing because
+  `pkg/render/renderers.go` referenced `syscall.SysProcAttr{
+  HideWindow: true, CreationFlags: 0x08000000}` directly. Those
+  fields only exist on Windows; the Linux build failed with
+  `unknown field HideWindow in struct literal of type
+  "syscall".SysProcAttr`. The runtime.GOOS check inside the
+  function body did NOT help \u2014 Go still type-checks the literal
+  on every platform, so the Linux compile unit failed even though
+  the function was never called on Linux.
+
+  Split `hideWindow` into two files with build tags, matching
+  the established convention in `internal/archive/pdfium_{windows,
+  nonwindows}.go`:
+    - `pkg/render/renderers_windows.go` (`//go:build windows`):
+      real Windows impl that sets `SysProcAttr{HideWindow: true,
+      CreationFlags: CREATE_NO_WINDOW}`.
+    - `pkg/render/renderers_nonwindows.go` (`//go:build !windows`):
+      no-op stub with the same signature, for Linux + macOS.
+
+  The cross-platform test `TestHideWindowExistsAllPlatforms` in
+  `pkg/render/renderers_build_tags_test.go` pins the contract
+  from the caller's perspective. A second Linux-only test
+  `TestRenderersBuildTagsLinux` in `renderers_build_tags_linux_test.go`
+  (`//go:build linux`) exists so a future contributor who
+  removes the `//go:build !windows` tag from the non-Windows
+  stub will see the file fail to compile on the audit workflow's
+  Linux runner. Verified: `GOOS=linux GOARCH=amd64 go build ./...`
+  succeeds; `go test ./... -short` on Windows passes.
+
+  Root cause pattern: a single commit (`6f096e9`) added
+  Windows-only code to a non-Windows-tagged file. The audit
+  workflow has been failing on every PR since then, but the
+  failure was masked because `test` and `build` workflows run
+  on Windows and pass. The fix is the `//go:build` split, but
+  the broader design principle is: any time you reach for
+  Windows-specific `syscall` fields, the call goes in a
+  `{name}_windows.go` file. `docs/agents/dialog-guard.md` and
+  the new `pkg/render/renderers_{windows,nonwindows}.go` files
+  make this explicit. Pattern: `internal/archive/pdfium_{windows,
+  nonwindows}.go` (added 2026-05-30 in `2839768`).
+
+### Fixed
+
 
 - CI `test` workflow started failing on
   `TestHandleJobArtifactAttachmentForDownloadTypes` (`.csv` case
