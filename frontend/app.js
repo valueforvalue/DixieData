@@ -2857,6 +2857,22 @@
       if (toastMessage) {
         savePendingToast({ message: toastMessage, kind: toastKind });
       }
+      // Inline render: if the form opts into data-results-target and the
+      // response has no redirect, write the response body into the target
+      // element and re-run the page-load initializers over that subtree.
+      // Mirrors the browse-view refresh pattern at ~L3678. Opt-in only —
+      // forms without the attribute keep the legacy toast-only path.
+      // Issue #134: scan/quality buttons render into #settings-orphan-results
+      // and #settings-quality-results via this convention.
+      const resultsTargetSelector = (form.dataset && form.dataset.resultsTarget) || "";
+      if (resultsTargetSelector && !redirectTo && responseOk) {
+        const target = document.querySelector(resultsTargetSelector);
+        if (target instanceof HTMLElement) {
+          const html = await response.text();
+          target.innerHTML = html;
+          initializeDynamicContent(target);
+        }
+      }
       const requestState = {
         scrollX: window.scrollX,
         scrollY: window.scrollY,

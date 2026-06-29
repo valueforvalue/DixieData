@@ -116,6 +116,48 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (`os.Chtimes` to a stable time, then `time.Time.Equal` after
   the second import).
 
+- Share → "Export Feedback Log" button appeared to do nothing on
+  click (issue #137). The handler returned a 200 response directly
+  while `dispatchDixieDataForm` only writes the response body into
+  a target div when the form opted into `data-results-target` (added
+  by the issue #134 fix). For every other click target the dispatcher
+  stashed the toast in `sessionStorage` but never re-rendered it
+  because the success path never invoked `initializeDynamicContent`.
+  The `/export/feedback-log` surface now mirrors the Bug Report
+  Bundle pattern (`handleExportBugReport`): the file copy runs
+  inside `enqueueExport` and the user lands on `/jobs/{id}` for a
+  progress card + final summary, matching every other export on
+  `/share`. The no-feedback-yet branch returns a 200 +
+  `X-DixieData-Toast` header so the dispatcher renders the
+  empty-state toast on the share page. Regression net: new
+  `TestHandleExportFeedbackLogEmptyState` pins the empty-state
+  response shape (toast header, info kind, no redirect), and the
+  existing smoke assertions on `/export/feedback-log` continue to
+  verify the success path through `enqueueExport`. The carve-out
+  comment in `audit/smoke.mjs` for the feedback-log path was
+  updated to reflect the new behaviour (the carve-out still
+  applies to the empty-log case, which legitimately stays on
+  `/share`).
+
+- Settings → "Scan for Orphaned Images" and "Run Data Quality Scan"
+  buttons appeared to do nothing on click (issue #134). The forms
+  used `data-dixie-submit` so the click hit `dispatchDixieDataForm`,
+  which read the response headers but discarded the response body.
+  The handlers were returning rendered HTML fragments
+  (`SettingsOrphanedImages`, `SettingsQualityScanResults`) that
+  never landed in `#settings-orphan-results` /
+  `#settings-quality-results`. Added a `data-results-target`
+  convention: when a form opts in via `data-results-target="#id"`,
+  the dispatcher writes the response body into the matched element
+  and re-runs `initializeDynamicContent` on the subtree (mirrors the
+  browse-view refresh pattern). Wired the convention onto both
+  scan forms in `entry_form.templ`. Regression net: new
+  `TestSettingsOrphanScanEndpointRendersResults` asserts the orphan
+  handler still returns 200 + the empty-state marker (no
+  `X-DixieData-Redirect` / `Location` header), and `audit/smoke.mjs`
+  now submits both scan forms against the live `dixiedata-web` server
+  and asserts the result divs are non-empty.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
