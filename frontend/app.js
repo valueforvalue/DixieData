@@ -2234,7 +2234,14 @@
       setSectionEnabled(section, isSoldierEntryType(select.value));
     });
     form.querySelectorAll("[data-soldier-or-widow-field]").forEach((section) => {
-      setSectionEnabled(section, isSoldierEntryType(select.value) || widowEntry);
+      // Show the pension fields (state, id, application id) for any
+      // entry type that can file for a pension: soldier, wife, or
+      // widow. Issue #75: pension_state was previously hidden for
+      // wife entry type because the JS read `widowEntry` only; wives
+      // can also file for their husband's pension while he's alive
+      // (in case he becomes disabled) or for widow's pension later.
+      // linked_person stays hidden — the role is non-pensioner.
+      setSectionEnabled(section, isSoldierEntryType(select.value) || spouseEntry);
     });
     syncConfederateHomeFields(form);
   }
