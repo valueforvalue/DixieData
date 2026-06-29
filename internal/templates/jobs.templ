@@ -29,7 +29,11 @@ import (
 // fast enough that the page almost always lands after the job
 // has already finished.
 templ JobStatusView(job jobs.Job) {
-	@Layout("Export in progress") {
+	// omitJobsOverlay: this page already renders the job's progress
+	// card inline, so the layout-level floating popup would duplicate
+	// the same data and create two htmx poll destinations fighting for
+	// the user's attention. See layout.templ:Layout docstring.
+	@Layout("Export in progress", true) {
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<div>
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Background Export</p>
