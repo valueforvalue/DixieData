@@ -294,6 +294,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the grep, the false-positive filter, and a link back to the
   canonical recipe in `COMMON_BUGS.md`. No code change.
 
+- Manual UI audit playbook (this slice). Three new artifacts:
+    1. `docs/agents/manual-audit-playbook.md` — guided protocol
+       for walking every UI surface by hand, capturing findings,
+       and filing them as GitHub issues. Includes a “what to look
+       for” checklist (visual / behaviour / a11y / performance /
+       data integrity), per-finding templates for [BUG] /
+       [FEATURE] / [CORRECTION], and a growth path.
+    2. `audit/run-interactive.mjs` — Playwright walker that
+       automates the deterministic parts (page loads, form
+       submits, network round trips, screenshot capture) and
+       flags `? (manual)` for the human-only checks. Writes
+       `audit/audit-interactive-report.json` (machine-readable
+       summary) + `audit/screenshots-interactive/<surface>-{before,after}.png`.
+       Surfaces covered: calendar, soldier-new, browse, share,
+       settings, feedback-modal, floating-dock-layout, jobs-page.
+       18 auto checks pass on the current `dev`.
+    3. `docs/agents/audit-notes-TEMPLATE.md` — drop-in template
+       for capturing findings during a manual audit round. One
+       block per finding. Links to COMMON_BUGS.md pattern
+       reference and to the playbook for the full protocol.
+  Phase 1 deliverable complete. Next: Phase 2 (smoke.mjs
+  expansion + Wails-free test path via OpenDirectoryDialog +
+  BrowserOpenURL override hooks).
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
