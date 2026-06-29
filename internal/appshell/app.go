@@ -985,6 +985,10 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 	var jobID string
 	jobID = a.jobs.Start("image_import", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, fmt.Sprintf("Importing %d image(s)", len(paths)))
+		// Image import iterates file by file; without sub-step
+		// granularity the bar would sit at 5 across many-image
+		// batches. Shimmer keeps the bar moving.
+		p.Shimmer(ctx, 5, 95, 60*time.Second, "Encoding images…")
 		imported, importErr := a.importImagePaths(*soldier, paths)
 		if importErr != nil {
 			if imported > 0 {
