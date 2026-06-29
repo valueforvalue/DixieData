@@ -9,6 +9,13 @@
 PWSH  := pwsh -NoLogo -NoProfile
 LOGDIR := build/log
 
+# GNUWin32 make (shipped under "C:/Program Files (x86)/GnuWin32") spawns a
+# shell that misparses a recursive $(MAKE) call when $(MAKE) itself lives
+# under "Program Files (x86)" — the parens break sh's tokenization and the
+# inner make exits with `e=87`. Dispatching the recursive call via PowerShell
+# sidesteps sh entirely: pwsh handles the quoted path fine.
+RECURSIVE_MAKE = $(PWSH) -NoLogo -NoProfile -Command "Set-Content -Path env:MAKE -Value '$(MAKE)'; & '$(MAKE)' --no-print-directory $(1)"
+
 .DEFAULT_GOAL := help
 
 .PHONY: help build debug release archive demo run dev test test-quiet \
@@ -49,7 +56,7 @@ build debug: TARGET := debug
 build debug: ARGS :=
 build debug: ## Debug build via scripts/build-debug.ps1
 	$(LOG_RECIPE)
-	@$(MAKE) --no-print-directory web seed gold tune-bin
+	@$(call RECURSIVE_MAKE,web seed gold tune-bin)
 
 # Web server (audit/smoke.mjs, ui-diff, render-round).
 web: ## Build cmd/dixiedata-web (web-mode server, audit harness target)
