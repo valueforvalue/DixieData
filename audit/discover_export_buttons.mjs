@@ -226,6 +226,19 @@ function scanForEligibleButtons(src, builders) {
       pathPrefix: path,
     });
   }
+  // Pattern 2b: literal `data-action="/some/path"` (Option C
+  // convention for bare buttons after the templ retag). Same
+  // shape as hx-post.
+  const dataActionRe = /(?:^|\s|")data-action":?\s*"(\/[^"]+)"/g;
+  while ((m = dataActionRe.exec(src)) !== null) {
+    const path = m[1];
+    if (!eligiblePrefixes.some((p) => path.startsWith(p))) continue;
+    out.push({
+      builderName: null,
+      callIndex: m.index,
+      pathPrefix: path,
+    });
+  }
   // Pattern 3: literal `action="/some/path"` on a <form method="post">.
   // The static-archive button uses this form. We need to match
   // the action attribute but skip the `hx-post` matches above so
