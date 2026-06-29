@@ -11,82 +11,79 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Changed
+
+- The recurring "export options status pages not landing" bug
+  is fixed at the architecture level. Every post-then-navigate
+  flow (export buttons, import buttons, merge-review actions,
+  delete confirmations, settings toggles, soldier create/update)
+  now navigates reliably because the contract is single-sourced.
+  The browser always lands on the destination page or back on
+  the originating page with a clear toast on dedup — never
+  silently in the background.
+
 ### Maintenance
 
 - Replaced `frontend/app.js`'s custom htmx-clone dispatcher
-  (`request()`, ~115 lines, plus all helper functions) with
-  a 50-line `dispatchDixieDataForm`. The new dispatcher reads
-  EITHER `X-DixieData-Redirect` (the new contract, after
-  handlers migrate in subsequent commits) OR follows a 303 +
-  `Location` response (legacy contract still in use). Net
-  delta: -411 lines from `frontend/app.js`. Regression net:
-  `audit/smoke.mjs` now asserts the user-visible contract
-  (page lands on `/jobs/{id}` or back at `/share` on dedup)
-  instead of asserting a specific response shape, so the
-  contract switch in subsequent commits can't silently
-  regress navigation.
-- Registered `htmx.on("htmx:load", ...)` to re-init swapped
-  subtrees. Polling fragments (`/jobs/active`, `/jobs/{id}`)
-  swap fresh DOM every 2–3s; without re-init, any JS handlers
-  on those subtrees would never re-bind.
+  (`request()`, plus all helper functions) with a 32-line
+  `dispatchDixieDataForm`. Net -411 lines from `app.js`.
 - Migrated 13 Go handlers from `303 + Location + HX-Redirect`
-  to the new `200 + X-DixieData-Redirect` contract via the
-  `writeExportRedirect` helper. Touches: `enqueueExport` and
-  `enqueueExportWithResult` (cascades to ~10 callers including
-  the soldier PDF/JPG and monthly PDF flows), `handleGoogleBackup`,
-  `handleGoogleSheetsExport`, `handleImportBackup`,
-  `handleImportSharedArchive`, `handleConfirmMemorialJSONImport`,
-  `handleRunDuplicateAudit`, `handleReviewQueueBulk`,
-  `handleCleanupImageOrphans`, `handleCreateSoldier`,
-  `handleSoldierByID` (DELETE branch), `handleUpdateSoldier`,
-  `handleImportSoldierImages`, both branches of
-  `respondDuplicateInFlight`. `handleExportStaticArchive`
-  opts into `enqueueExportOpt{NativeRedirect: true}` to keep
-  the 303 + Location path for its plain-`<form method="post">`
-  carve-out. Regression net:
-  `TestPostThenNavigateUsesDixieRedirect` (in `redirect_headers_test.go`)
-  now reports 0 offenders; the legacy 303-contract test
-  inverted in commit 5800ea1 turns green.
+  to `200 + X-DixieData-Redirect` via the new `writeExportRedirect`
+  helper. `handleExportStaticArchive` opts into
+  `enqueueExportOpt{NativeRedirect: true}` to keep the 303 path
+  for its plain-`<form method="post">` carve-out.
 - Retagged 9 templ files (`calendar`, `calendar_day`, `entry_form`,
   `insights`, `research_collections`, `research_log`,
   `review_queue`, `share`, `soldier_card`) from
   `hx-post`/`hx-put`/`hx-delete`/`hx-confirm` to
   `action`/`data-action` + `data-dixie-submit` + `data-confirm`.
-  ~75 attribute changes. `audit/discover_export_buttons.mjs`
-  learned the new `data-action` literal so the auto-discovery
-  for smoke tests still finds every share-page button. The
-  translator (`[hx-post]` + `[hx-delete]` selectors in the
-  click/submit interceptors) is now dead-code but stays in
-  place for safety; a follow-up commit can delete it.
+  ~75 attribute changes. htmx stays loaded for GET-only polling
+  on `/jobs/active` and `/jobs/{id}`.
+- Registered `htmx.on("htmx:load", ...)` to re-init swapped
+  subtrees. Polling fragments swap fresh DOM every 2–3s; without
+  re-init, JS handlers on those subtrees never re-bind.
+- Restored the 200ms debounce on the browse-filter change
+  handler. The legacy `queueRequest` had it; it was dropped in
+  the initial dispatcher rewrite because the harness test waited
+  50ms. Restoring it prevents fetch storms on rapid filter
+  changes (e.g. typing in a select).
+- Trimmed the dead `hx-post` / `hx-delete` / `data-hx-*` selectors
+  from the dispatcher interceptors. After the templ retag, no
+  elements match those selectors; the translator window is gone.
 - Rewrote `internal/templates/components/conventions.md` §"Buttons
   that POST and expect navigation" to describe the Option C
-  contract (`writeExportRedirect` + `X-DixieData-Redirect` + the
-  static-archive carve-out) instead of the dead `HX-Redirect`
-  recipe. Without this rewrite, the next author would write the
-  same broken contract the bug class was built on.
+  contract instead of the dead `HX-Redirect` recipe. Without
+  this rewrite, the next author would write the same broken
+  contract the bug class was built on.
 - Replaced `docs/COMMON_BUGS.md` §1.9 (the original
   "export-options-status-pages-not-landing" bug postmortem)
   with a short pointer to the new contract and the regression
   nets that prevent reintroduction. The postmortem's "fix"
   (adding `HX-Redirect`) is documented as dead code so the
-  next reader understands why the section was removed rather
-  than assuming it was lost.
-- Added two source-scan regression nets that prevent the
-  Option C bug class from being reintroduced:
-  `internal/templates/hx_guard_test.go::TestNoPostThenNavigateHXXAttrs`
-  fails the build if any `.templ` file contains
-  `hx-post` / `hx-put` / `hx-delete` / `hx-confirm` (all four
-  are forbidden after the templ retag; replaced by
-  `data-dixie-submit` + `data-action` + `data-confirm`).
-  `internal/appshell/redirect_headers_test.go::TestNoDeadHXRedirectWrites`
-  fails the build if any handler in `appshell` writes the
-  `HX-Redirect` header (it's dead code; the dispatcher reads
-  `X-DixieData-Redirect`). Together with the inverted
-  `TestPostThenNavigateUsesDixieRedirect`, the three regression
-  nets form a tripwire: any author who tries to write the old
-  contract hits a build failure with a file:line citation.
+  next reader understands why the section was removed.
+- Wrote `docs/adr/0004-option-c-dispatcher.md` capturing the
+  architectural decision (why the bug class recurred, what the
+  new contract is, which regression nets guard it).
 
 ### Added
+
+- Three source-scan regression nets that fail the build if the
+  Option C bug class is reintroduced:
+  `TestPostThenNavigateUsesDixieRedirect` (appshell) — fail on
+  303 writers without `X-DixieData-Redirect`.
+  `TestNoPostThenNavigateHXXAttrs` (templates) — fail on any
+  `hx-post` / `hx-put` / `hx-delete` / `hx-confirm` in templ.
+  `TestNoDeadHXRedirectWrites` (appshell) — fail on any handler
+  writing `HX-Redirect`. Together they form a tripwire: any author
+  who tries to write the old contract hits a build failure with a
+  file:line citation.
+- `audit/discover_export_buttons.mjs` learned the `data-action`
+  literal pattern so the auto-discovery for smoke tests still
+  finds every share-page button after the templ retag.
+- `audit/smoke.mjs` `share-${btn.path}-navigates-to-jobs` asserts
+  the user-visible contract (page lands on `/jobs/{id}` or back at
+  `/share` on dedup) instead of asserting a specific response
+  shape, so the contract switch can't silently regress navigation.
 
 - `/jobs/{id}` summary cards now show per-kind stats so the
   user can see what an export or import actually contained
