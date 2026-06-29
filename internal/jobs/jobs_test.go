@@ -745,3 +745,134 @@ func TestProgressShimmerRespectsCancel(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+// TestStartManualWaitsForRelease verifies the manual-start primitive
+// used by imports that need user confirmation (Memorial JSON, etc.).
+// The job must stay in StatusQueued + Progress=0 until release() is
+// called, then transition to StatusRunning and run the worker.
+func TestStartManualWaitsForRelease(t *testing.T) {
+	reg := New()
+	workerStarted := make(chan struct{})
+	workerDone := make(chan struct{})
+	id, release, _ := func() (string, func() error, func() error) {
+		// Use a fresh registry per test invocation.
+		return reg.StartManual("test_confirm", nil, func(ctx context.Context, p *Progress) error {
+			defer close(workerDone)
+			close(workerStarted)
+			// Simulate light work so the test reliably observes
+			// the running state.
+			p.Set(20, "working")
+			time.Sleep(50 * time.Millisecond)
+			p.Set(100, "done")
+			return nil
+		})
+	}()
+	defer func() { _ = release() }()
+
+	// Right after registration the job must be Queued + Progress=0.
+	snap, ok := reg.Get(id)
+	if !ok {
+		t.Fatalf("manual job not registered; Get returned ok=false")
+	}
+	if snap.Status != StatusQueued {
+		t.Errorf("before release: Status should be StatusQueued; got %s", snap.Status)
+	}
+	if snap.Progress != 0 {
+		t.Errorf("before release: Progress should be 0; got %d", snap.Progress)
+	}
+
+	// The worker must NOT have started yet.
+	select {
+	case <-workerStarted:
+		t.Fatal("worker started before release() was called")
+	case <-time.After(100 * time.Millisecond):
+		// OK — worker still waiting.
+	}
+
+	// Release. The worker must then run and finish.
+	if err := release(); err != nil {
+		t.Fatalf("release returned %v", err)
+	}
+	select {
+	case <-workerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("worker did not start within 1s of release()")
+	}
+	select {
+	case <-workerDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not complete within 2s of release()")
+	}
+
+	final, _ := reg.Get(id)
+	if final.Status != StatusDone {
+		t.Errorf("after release + run: Status should be StatusDone; got %s", final.Status)
+	}
+	if final.Progress != 100 {
+		t.Errorf("after run: Progress should be 100; got %d", final.Progress)
+	}
+}
+
+// TestStartManualCancelReleasesIndefinitelyStuckJob verifies that
+// cancel() flips a never-released manual job to StatusCancelled and
+// the worker is never invoked.
+func TestStartManualCancelReleasesIndefinitelyStuckJob(t *testing.T) {
+	reg := New()
+	workerStarted := make(chan struct{}, 1)
+	id, _, cancel := reg.StartManual("test_confirm_cancel", nil, func(ctx context.Context, p *Progress) error {
+		select {
+		case workerStarted <- struct{}{}:
+		default:
+		}
+		return nil
+	})
+
+	// Give the worker goroutine time to enter the select. It
+	// should still be blocked on either the release channel or
+	// ctx.Done.
+	time.Sleep(50 * time.Millisecond)
+
+	if err := cancel(); err != nil {
+		t.Fatalf("cancel returned %v", err)
+	}
+
+	snap, ok := reg.Get(id)
+	if !ok {
+		t.Fatalf("cancelled manual job missing from registry")
+	}
+	if snap.Status != StatusCancelled {
+		t.Errorf("after cancel: Status should be StatusCancelled; got %s", snap.Status)
+	}
+
+	select {
+	case <-workerStarted:
+		t.Fatal("worker started after cancel(); should never run")
+	case <-time.After(100 * time.Millisecond):
+		// OK — worker never entered.
+	}
+}
+
+// TestStartManualSeedsProgress verifies the caller-supplied initial
+// Progress (e.g. a preflight summary) flows into the queued snapshot
+// so /jobs/{id} can render it before the user confirms.
+func TestStartManualSeedsProgress(t *testing.T) {
+	reg := New()
+	// Build a real Progress wired to a real Job so Set() actually
+	// writes; the StartManual call below transfers the values to
+	// its own internal Job.
+	seed := &Job{registry: reg}
+	seedProgress := &Progress{job: seed}
+	seedProgress.Set(0, "Awaiting confirmation: 50 rows will be added.")
+	id, release, _ := reg.StartManual("test_confirm_seed", seedProgress, func(ctx context.Context, p *Progress) error {
+		return nil
+	})
+	defer func() { _ = release() }()
+
+	snap, _ := reg.Get(id)
+	if snap.Message != "Awaiting confirmation: 50 rows will be added." {
+		t.Errorf("expected seeded Message; got %q", snap.Message)
+	}
+	if snap.Status != StatusQueued {
+		t.Errorf("expected StatusQueued; got %s", snap.Status)
+	}
+}
