@@ -112,3 +112,4 @@ audit/reports/ui-diff/*.png
 
 # Bug Hunter skill working directory (per skill spec: 'Add .bug-hunter/ to your project's .gitignore')
 .bug-hunter/
+audit/manual-walk-report.json
