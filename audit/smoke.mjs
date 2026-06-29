@@ -338,6 +338,62 @@ async function main() {
   }
 
 
+  // ───────────────────────────────────────────────────────────────────
+  // Memorial JSON import: pick file -> queued /jobs/{id}
+  // -> confirm -> terminal status with the confirmation
+  // card visible.
+  // ───────────────────────────────────────────────────────────────────
+  console.log('\n[5c] Memorial JSON import confirmation flow');
+  // The harness cannot drive the OS file picker, so the dev
+  // binary's DIXIE_OPEN_FILE_DIALOG_PATH env (set by run.mjs
+  // before the binary boots) hands the file path directly to
+  // the open-dialog override. Without that env wiring, this
+  // block is skipped.
+  const memorialPath = process.env.MEMORIAL_JSON_PATH;
+  if (!memorialPath) {
+    record('memorial-import-flow', false, {
+      reason: 'MEMORIAL_JSON_PATH not set; run.mjs is expected to seed it',
+    });
+  } else {
+    await page.goto(`${BASE}/share`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(300);
+    const memorialBtn = page.locator('button[data-action="/import/memorial-json"]').first();
+    const memorialBtnCount = await memorialBtn.count();
+    if (memorialBtnCount === 0) {
+      record('memorial-import-button-rendered', false, {
+        reason: 'Memorial JSON button missing from share.templ',
+      });
+    } else {
+      record('memorial-import-button-rendered', true);
+      // Click + wait for navigation to /jobs/{id} (queued state).
+      const navP = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 4000 }).catch(() => null);
+      await memorialBtn.click({ timeout: 2000 }).catch(() => null);
+      await navP;
+      await page.waitForTimeout(400);
+      const queuedUrl = page.url();
+      record('memorial-import-redirects-to-job-page', /\/jobs\//.test(queuedUrl), {
+        urlAfter: queuedUrl,
+        expected: '/jobs/{id}',
+      });
+      // Awaiting-confirmation card must render with Confirm + Cancel.
+      const confirmBtn = page.locator('[data-job-confirm]').first();
+      const cancelBtn = page.locator('[data-job-cancel]').first();
+      const confirmCount = await confirmBtn.count();
+      const cancelCount = await cancelBtn.count();
+      record('memorial-import-confirmation-card-rendered', confirmCount > 0 && cancelCount > 0, {
+        confirmCount,
+        cancelCount,
+      });
+      // Click Cancel to dismiss the queued job so we don't leave
+      // it running across smoke runs.
+      if (cancelCount > 0) {
+        await cancelBtn.click({ timeout: 1500 }).catch(() => null);
+        await page.waitForTimeout(300);
+      }
+    }
+  }
+
+
   // ────────────────────────────────────────────────────────────────────
   // Settings → Debug Mode toggle (enables debug console)
   // ────────────────────────────────────────────────────────────────────

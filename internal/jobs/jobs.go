@@ -306,16 +306,17 @@ func (j *Job) Snapshot() Job {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return Job{
-		ID:         j.ID,
-		Kind:       j.Kind,
-		Status:     j.Status,
-		Progress:   j.Progress,
-		Message:    j.Message,
-		StartedAt:  j.StartedAt,
-		FinishedAt: j.FinishedAt,
-		Error:      j.Error,
-		ResultPath: j.ResultPath,
-		Result:     j.Result,
+		ID:                   j.ID,
+		Kind:                 j.Kind,
+		Status:               j.Status,
+		Progress:             j.Progress,
+		Message:              j.Message,
+		StartedAt:            j.StartedAt,
+		FinishedAt:           j.FinishedAt,
+		Error:                j.Error,
+		ResultPath:           j.ResultPath,
+		Result:               j.Result,
+		AwaitingConfirmation: j.AwaitingConfirmation,
 	}
 }
 
