@@ -189,6 +189,102 @@ func (p *Progress) Cancelled() bool {
 	return p.job.cancelled
 }
 
+// Shimmer animates the progress bar so the user sees continuous
+// motion during long-running exports where the worker doesn't
+// have natural sub-step granularity to report (e.g. a single
+// ExportJSONWithStats call doesn't know how much of the encode
+// pass is done). Without Shimmer the bar jumps from the worker's
+// last Set() (typically 5 or 20) straight to 100 when the work
+// completes, which the user reports as 'the progress bar never
+// moves'.
+//
+// Shimmer walks Progress monotonically from `from` toward `to-1`,
+// one tick every 250ms, for the duration the worker is busy.
+// The worker is expected to call Shimmer right after its last
+// pre-work Set() (e.g. p.Set(20, 'Writing JSON'); go p.Shimmer(ctx,
+// 20, 95, 30*time.Second)) and then immediately do the real work.
+// Real-progress calls (worker p.Set(100, 'Done')) win the last
+// write — Shimmer honours the lock and never overruns a higher
+// value.
+//
+// The `to` parameter should be < 100 so the worker reserves the
+// final 100 signal for itself. Pass 95 for most exports; pass a
+// lower value when there are multiple discrete sub-steps the
+// worker wants the user to see (e.g. 60 leaves 35 points of head
+// room for 'Finalising archive' / 'Writing preview' / etc.).
+//
+// Shimmer exits early when ctx is cancelled (worker shutdown).
+func (p *Progress) Shimmer(ctx context.Context, from, to int, duration time.Duration, message string) {
+	if p == nil || p.job == nil {
+		return
+	}
+	if from < 0 {
+		from = 0
+	}
+	if to > 99 {
+		to = 99
+	}
+	if to <= from+1 {
+		// No room to walk (to must be >= from+2 for at least one
+		// increment). Worker should just Set(100, ...) at the end.
+		return
+	}
+	if duration <= 0 {
+		duration = 30 * time.Second
+	}
+	// Number of integer steps to advance from `from` to `to-1`.
+	steps := to - 1 - from
+	// Per-step interval = duration / steps, clamped to a sensible
+	// range (250ms is the polling cadence floor; >2.5s feels sticky).
+	stepInterval := duration / time.Duration(steps)
+	if stepInterval < 250*time.Millisecond {
+		stepInterval = 250 * time.Millisecond
+	}
+	if stepInterval > 2*time.Second {
+		// Long-running exports step too slowly. Cap so the bar
+		// always makes visible motion every ~2s.
+		stepInterval = 2 * time.Second
+		duration = stepInterval * time.Duration(steps)
+	}
+	go func() {
+		timer := time.NewTimer(stepInterval)
+		defer timer.Stop()
+		current := from
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				p.job.mu.Lock()
+				// Never walk downward. If the worker called
+				// Set() with a higher value between our ticks,
+				// leave it there and exit so we don't fight
+				// the worker (a Shimmer that overshoots would
+				// be visible as a progress bar going
+				// backwards).
+				if p.job.Progress > current {
+					p.job.mu.Unlock()
+					return
+				}
+				if current < to-1 {
+					current++
+				}
+				p.job.Progress = current
+				if message != "" {
+					p.job.Message = message
+				}
+				snap := cloneJob(p.job)
+				p.job.registry.broadcast(p.job.ID, snap)
+				p.job.mu.Unlock()
+				if current >= to-1 {
+					return
+				}
+				timer.Reset(stepInterval)
+			}
+		}
+	}()
+}
+
 // NewJob constructs a Job value with the given ID and kind, leaving
 // runtime fields (Status, Progress, StartedAt, etc.) zero. The mutex
 // and other unexported fields are zero-initialised, so the result is
