@@ -243,6 +243,40 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   no future re-introduction of `internal/services/` — if a new
   file accidentally re-imports it, CI fails.
 
+- Feedback modal no longer silently swallows confirmation. Saving
+  feedback through the floating-dock modal used to close the
+  window and queue a toast for the next page nav — but no nav
+  fires on the close-feedback path, so the toast never displayed
+  and the user saw a closed modal with no acknowledgment. Two
+  coordinated changes:
+    1. `internal/templates/layout.templ`: the feedback form now
+       carries `data-dixie-submit` + native `action=`
+       + `method="post"` instead of relying on the htmx-only
+       `hx-post` / `hx-swap="none"` wiring. The htmx-attrs were
+       never read by the `app.js` dispatcher; without
+       `data-dixie-submit` the form was htmx-only, htmx fired
+       the POST, and the `X-DixieData-Close-Feedback` /
+       `X-DixieData-Toast` headers were dropped on the floor.
+       `action=` + `method="post"` + `data-dixie-submit` routes
+       through the existing dispatcher (matches the
+       calendar PDF export form pattern, the only
+       previously-working form of this shape).
+    2. `frontend/app.js`: when the dispatcher reads
+       `X-DixieData-Close-Feedback`, it (a) hides the modal
+       (existing), (b) **clears the form** via `form.reset()`
+       so the next open starts blank and the save is visible,
+       and (c) **renders the toast immediately** via
+       `showToast(...)` instead of queueing via
+       `savePendingToast(...)`. The trailing `savePendingToast`
+       is suppressed for the close-feedback path so the same
+       toast isn't queued for a nav that will never happen.
+  `audit/smoke.mjs` grows a `[7d]` block with six
+  end-to-end assertions: `feedback-modal-openable`,
+  `feedback-save-sends-close-header`,
+  `feedback-save-sends-toast-header`,
+  `feedback-save-hides-modal`, `feedback-save-clears-form`,
+  `feedback-save-shows-toast`.
+
 ### Maintenance
 
 - Stopped `dixiedata-web.exe` from leaking across probe runs.
