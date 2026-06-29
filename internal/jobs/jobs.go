@@ -79,20 +79,21 @@ func IsSilentKind(kind string) bool {
 // not write to this struct directly; it should use the Progress receiver
 // passed to the worker function.
 type Job struct {
-	ID          string
-	Kind        string
-	Status      string
-	Progress    int
-	Message     string
-	StartedAt   time.Time
-	FinishedAt  time.Time
-	Error       string
-	ResultPath  string
-	Result      JobResult
-	mu          sync.Mutex
-	cancelled   bool
-	cancelCause context.CancelFunc
-	registry    *Registry// set at registration so Progress can broadcast
+	ID                    string
+	Kind                  string
+	Status                string
+	Progress              int
+	Message               string
+	StartedAt             time.Time
+	FinishedAt            time.Time
+	Error                 string
+	ResultPath            string
+	Result                JobResult
+	AwaitingConfirmation  bool // true when StartManual registered this job; /jobs/{id} renders a Confirm/Cancel card
+	mu                    sync.Mutex
+	cancelled             bool
+	cancelCause           context.CancelFunc
+	registry              *Registry// set at registration so Progress can broadcast
 }
 
 // JobResult is the worker-supplied completion payload. Populated
@@ -596,12 +597,13 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 func (r *Registry) StartManual(kind string, initialMessage string, worker func(ctx context.Context, p *Progress) error) (id string, release func() error, cancel func() error) {
 	id = newID()
 	job := &Job{
-		ID:        id,
-		Kind:      kind,
-		Status:    StatusQueued,
-		StartedAt: time.Now(),
-		registry:  r,
-		Message:   initialMessage,
+		ID:                   id,
+		Kind:                 kind,
+		Status:               StatusQueued,
+		StartedAt:            time.Now(),
+		registry:             r,
+		Message:              initialMessage,
+		AwaitingConfirmation: true,
 	}
 	r.mu.Lock()
 	r.jobs[id] = job
@@ -656,6 +658,10 @@ func (r *Registry) StartManual(kind string, initialMessage string, worker func(c
 
 		job.mu.Lock()
 		job.Status = StatusRunning
+		// Clear the awaiting-confirmation flag so the /jobs/{id}
+		// page transitions cleanly from the confirmation card to
+		// the standard progress widget once the worker starts.
+		job.AwaitingConfirmation = false
 		snap := cloneJob(job)
 		job.mu.Unlock()
 		r.appendSnapshot(snap)
@@ -729,16 +735,17 @@ func (r *Registry) StartManual(kind string, initialMessage string, worker func(c
 // already hold the lock and need to snapshot without re-locking.
 func cloneJob(j *Job) Job {
 	return Job{
-		ID:         j.ID,
-		Kind:       j.Kind,
-		Status:     j.Status,
-		Progress:   j.Progress,
-		Message:    j.Message,
-		StartedAt:  j.StartedAt,
-		FinishedAt: j.FinishedAt,
-		Error:      j.Error,
-		ResultPath: j.ResultPath,
-		Result:     j.Result,
+		ID:                   j.ID,
+		Kind:                 j.Kind,
+		Status:               j.Status,
+		Progress:             j.Progress,
+		Message:              j.Message,
+		StartedAt:            j.StartedAt,
+		FinishedAt:           j.FinishedAt,
+		Error:                j.Error,
+		ResultPath:           j.ResultPath,
+		Result:               j.Result,
+		AwaitingConfirmation: j.AwaitingConfirmation,
 	}
 }
 

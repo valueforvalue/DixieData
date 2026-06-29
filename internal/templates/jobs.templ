@@ -140,7 +140,26 @@ templ jobStatusBody(job jobs.Job) {
 			hx-swap="outerHTML"
 			hx-target="#job-status-body"
 		}>
-		if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
+		if job.AwaitingConfirmation {
+			<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] p-4 space-y-3">
+				<div class="flex items-center gap-2 text-sm">
+					<span class="px-2 py-1 rounded-full bg-[#8d7440] text-white text-xs font-semibold uppercase tracking-[0.12em]">Awaiting confirmation</span>
+					<span class="text-slate-600">{ job.DisplayLabel() }</span>
+				</div>
+				if job.Message != "" {
+					<p class="text-sm text-[#22303d]">{ job.Message }</p>
+				}
+				<p class="text-xs text-slate-500">This action is irreversible. Confirm to start the import, or cancel to discard.</p>
+				<div class="flex flex-wrap items-center gap-2 pt-1">
+					<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/confirm") } class="contents">
+						<button type="submit" class="primary-button" data-job-confirm>Confirm and proceed</button>
+					</form>
+					<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/cancel") } class="contents">
+						<button type="submit" class="secondary-button" data-job-cancel>Cancel import</button>
+					</form>
+				</div>
+			</div>
+		} else if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
 			<div class="flex items-center justify-between text-sm text-slate-600">
 				<span>Status: <strong class="text-[#22303d]">{ job.Status }</strong></span>
 				if job.Message != "" {
