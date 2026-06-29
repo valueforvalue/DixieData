@@ -83,6 +83,22 @@ func (a *App) SetOpenFileDialogOverride(fn func(opts any) (string, error)) {
 	a.openFileDialogOverride = fn
 }
 
+// SetSaveFileDialogOverride installs a hook that replaces the
+// wailsruntime.SaveFileDialog call. Same role as
+// SetOpenFileDialogOverride but for the export side. Used by
+// the web-mode binary (cmd/dixiedata-web) to drive the export
+// flow end-to-end without a real OS file picker, so the audit
+// smoke harness and manual browser smoke tests can verify the
+// full handler → enqueueExport → /jobs/{id} redirect chain.
+//
+// The closure receives the SaveDialogOptions so callers can
+// inspect DefaultFilename / Filters and compute a destination
+// path. Returning ("", nil) signals "user cancelled" — handlers
+// translate that to a toast on the current page.
+func (a *App) SetSaveFileDialogOverride(fn func(opts any) (string, error)) {
+	a.saveFileDialogOverride = fn
+}
+
 // OpenMultipleFilesDialog wraps wailsruntime.OpenMultipleFilesDialog.
 func (a *App) OpenMultipleFilesDialog(opts wailsruntime.OpenDialogOptions) ([]string, error) {
 	if a.openMultipleFilesDialogOverride != nil {
