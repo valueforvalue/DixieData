@@ -105,6 +105,45 @@ func main() {
 	})
 	log.Printf("dixiedata-web: SaveFileDialog override wired to %s", saveDir)
 
+	// Optional: DIXIE_OPEN_DIRECTORY_DIALOG_PATH=/some/dir wires the
+	// directory-picker override so headless browser probes can drive
+	// the "Download images to folder" + "Choose where to copy record
+	// images" flows end-to-end. Without this, those handlers fall
+	// back to errWailsFrontendUnavailable and the user sees an
+	// uninformative toast. Used by audit/smoke.mjs Phase 2.
+	if dirPath := strings.TrimSpace(os.Getenv("DIXIE_OPEN_DIRECTORY_DIALOG_PATH")); dirPath != "" {
+		captured := dirPath
+		app.SetOpenDirectoryDialogOverride(func(_ any) (string, error) {
+			return captured, nil
+		})
+		log.Printf("dixiedata-web: OpenDirectoryDialog override wired to %s", captured)
+	}
+
+	// Optional: DIXIE_BROWSER_OPEN_URL_LOG=/path/to/log.txt makes
+	// BrowserOpenURL record the requested URL into the file (one
+	// URL per line) instead of failing in web-mode. Used by
+	// audit/smoke.mjs to verify the "Open result" + "Open log
+	// folder" flows land a file:// URL into the override file. The
+	// audit harness then reads the file and asserts the URL is the
+	// one the handler intended to open. Without this hook the user
+	// sees an info-toast "Open in OS file manager" fallback and
+	// the audit harness has no way to assert correctness.
+	if logPath := strings.TrimSpace(os.Getenv("DIXIE_BROWSER_OPEN_URL_LOG")); logPath != "" {
+		captured := logPath
+		app.SetBrowserOpenURLOverride(func(rawURL string) error {
+			f, err := os.OpenFile(captured, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			if _, err := f.WriteString(rawURL + "\n"); err != nil {
+				return err
+			}
+			return nil
+		})
+		log.Printf("dixiedata-web: BrowserOpenURL override logging to %s", captured)
+	}
+
 	app.Startup(context.Background())
 
 	mux := http.NewServeMux()

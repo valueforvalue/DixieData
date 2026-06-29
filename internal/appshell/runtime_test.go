@@ -93,3 +93,69 @@ func TestOpenMultipleFilesDialogWithoutOverrideStillReturnsFrontendSentinel(t *t
 	}
 }
 
+func TestOpenDirectoryDialogOverrideTakesPrecedenceOverGuard(t *testing.T) {
+	// Phase-2: web-mode binary needs a hook so the
+	// "Download images to folder" + "Choose where to copy record
+	// images" flows can run end-to-end without a real OS
+	// directory picker. The override must intercept BEFORE the
+	// frontend guard fires (otherwise httptest can't inject a
+	// destination path).
+	app := NewApp()
+	want := "/tmp/dixiedata-images-dest"
+	app.SetOpenDirectoryDialogOverride(func(opts any) (string, error) {
+		return want, nil
+	})
+	got, err := app.OpenDirectoryDialog(wailsruntime.OpenDialogOptions{})
+	if err != nil {
+		t.Fatalf("OpenDirectoryDialog via override: got %v want nil", err)
+	}
+	if got != want {
+		t.Fatalf("OpenDirectoryDialog via override: got %q want %q", got, want)
+	}
+}
+
+func TestOpenDirectoryDialogWithoutOverrideStillReturnsFrontendSentinel(t *testing.T) {
+	// Regression guard: without an override installed, the
+	// directory dialog must still reject ctx-less calls so the
+	// web-mode binary never panics through wailsruntime.
+	app := NewApp()
+	if _, err := app.OpenDirectoryDialog(wailsruntime.OpenDialogOptions{}); !errors.Is(err, errWailsFrontendUnavailable) {
+		t.Fatalf("OpenDirectoryDialog without override: got %v want errWailsFrontendUnavailable", err)
+	}
+}
+
+func TestBrowserOpenURLOverrideTakesPrecedenceOverGuard(t *testing.T) {
+	// Phase-2: web-mode binary needs a hook so the
+	// "Open result" + "Open log folder" flows can capture the
+	// file:// URL the handler wanted to open, instead of falling
+	// back to the "no frontend" sentinel that the user can't
+	// see. The override receives the raw URL and returns nil on
+	// success.
+	app := NewApp()
+	var captured string
+	app.SetBrowserOpenURLOverride(func(rawURL string) error {
+		captured = rawURL
+		return nil
+	})
+	if err := app.BrowserOpenURL("file:///tmp/example.pdf"); err != nil {
+		t.Fatalf("BrowserOpenURL via override: got %v want nil", err)
+	}
+	if captured != "file:///tmp/example.pdf" {
+		t.Fatalf("BrowserOpenURL via override: captured %q want %q", captured, "file:///tmp/example.pdf")
+	}
+}
+
+func TestBrowserOpenURLOverrideCanSurfaceError(t *testing.T) {
+	// The override is also the seam for surfacing "URL not
+	// openable" errors to the user. Verify the override's
+	// returned error propagates rather than being swallowed.
+	app := NewApp()
+	wantErr := errors.New("URL not openable in this environment")
+	app.SetBrowserOpenURLOverride(func(rawURL string) error {
+		return wantErr
+	})
+	if err := app.BrowserOpenURL("file:///tmp/example.pdf"); !errors.Is(err, wantErr) {
+		t.Fatalf("BrowserOpenURL via override: got %v want %v", err, wantErr)
+	}
+}
+

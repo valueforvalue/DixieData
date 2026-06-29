@@ -71,6 +71,8 @@ type App struct {
 	saveFileDialogOverride       func(opts any) (string, error)
 	openFileDialogOverride       func(opts any) (string, error)
 	openMultipleFilesDialogOverride func(opts any) ([]string, error)
+	openDirectoryDialogOverride func(opts any) (string, error)
+	browserOpenURLOverride      func(rawURL string) error
 	inFlight               sync.Map // map[string]*inFlightEntry — dedupes in-flight native dialog calls
 	importInFlight         atomic.Bool // true while a .ddbak restore is replacing the data dir; handlers can 503 instead of crashing on a stale DB handle
 	manualJobs             sync.Map // map[string]*manualJobEntry — release/cancel callbacks for jobs.Registry.StartManual confirm-before-run jobs

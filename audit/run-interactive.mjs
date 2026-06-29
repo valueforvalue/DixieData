@@ -44,6 +44,7 @@ const results = [];
 let pass = 0;
 let fail = 0;
 let manual = 0;
+let skipped = 0;
 
 function record(name, ok, details = {}) {
   results.push({ name, ok, ...details, ts: new Date().toISOString() });
@@ -58,6 +59,9 @@ function record(name, ok, details = {}) {
     manual++;
     console.log(`  ? ${name} (manual)`);
     if (details.prompt) console.log(`    ${details.prompt}`);
+  } else if (ok === 'skipped') {
+    skipped++;
+    console.log(`  - ${name} (skipped: ${details.reason || 'no env'})`);
   }
 }
 
@@ -405,6 +409,68 @@ const SURFACES = [
       },
     ],
   },
+
+  {
+    name: 'jobs-open-artifact',
+    path: '/jobs/active',
+    description: 'Phase 2: /jobs/{id}/open → BrowserOpenURL override (file:// URL recorded)',
+    checks: [
+      {
+        name: 'jobs-open-artifact-creates-file-url',
+        kind: 'auto',
+        run: async (page) => {
+          // Phase 2 harness: re-seed a /export/json job, then POST
+          // to /jobs/{id}/open via page.request.post() (bypasses the
+          // polling overlay) and assert the DIXIE_BROWSER_OPEN_URL_LOG
+          // file got a file:// URL.
+          const logPath = process.env.DIXIE_BROWSER_OPEN_URL_LOG;
+          if (!logPath) {
+            return { ok: 'skipped', reason: 'DIXIE_BROWSER_OPEN_URL_LOG not set' };
+          }
+          const fs = await import('node:fs/promises');
+          await fs.writeFile(logPath, '').catch(() => {});
+          await gotoSurface(page, '/share');
+          const btn = page.locator('button[data-action="/export/json"]').first();
+          if (await btn.count() === 0) {
+            return { ok: false, reason: 'no /export/json button on /share' };
+          }
+          await btn.click();
+          await page.waitForURL(/\/jobs\/[^/]+$/, { timeout: 8000 }).catch(() => {});
+          const jobId = (page.url().split('/jobs/').pop() || '').trim();
+          if (!jobId) {
+            return { ok: false, reason: 'did not land on /jobs/{id}' };
+          }
+          // Wait for terminal state.
+          for (let i = 0; i < 30; i++) {
+            const r = await page.request.get(`${BASE}/jobs/${jobId}`, {
+              headers: { 'HX-Request': 'true' },
+            });
+            if (r.ok()) {
+              const body = await r.text();
+              if (/completed|failed|cancelled/i.test(body) || body.includes('Open file')) break;
+            }
+            await page.waitForTimeout(500);
+          }
+          const openResp = await page.request.post(`${BASE}/jobs/${jobId}/open`, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: '',
+          });
+          await page.waitForTimeout(500);
+          let logContents = '';
+          try {
+            logContents = await fs.readFile(logPath, 'utf8');
+          } catch (e) {
+            logContents = '';
+          }
+          const hasFileUrl = /file:\/\/\/[^/].+/.test(logContents);
+          return {
+            ok: hasFileUrl && openResp.ok(),
+            reason: `openStatus=${openResp.status()} logLen=${logContents.length} logPreview=${JSON.stringify(logContents.slice(0, 80))}`,
+          };
+        },
+      },
+    ],
+  },
 ];
 
 async function main() {
@@ -425,6 +491,8 @@ async function main() {
         if (check.kind === 'manual') {
           record(`${surface.name}.${check.name}`, 'manual', { prompt: check.prompt });
         } else {
+          // Surface-runner can return 'skipped' to mark a check
+          // that depends on an env var the harness didn't set.
           record(`${surface.name}.${check.name}`, out?.ok, { reason: out?.reason });
         }
       } catch (e) {
@@ -436,7 +504,7 @@ async function main() {
 
   await writeFile(REPORT, JSON.stringify({ results, pass, fail, manual, ts: new Date().toISOString() }, null, 2));
   console.log(`\n============================================================`);
-  console.log(`INTERACTIVE AUDIT: ${pass} pass, ${fail} fail, ${manual} manual`);
+  console.log(`INTERACTIVE AUDIT: ${pass} pass, ${fail} fail, ${manual} manual, ${skipped} skipped`);
   console.log(`Report: ${REPORT}`);
   console.log(`Screenshots: ${SHOTS}`);
   console.log(`Notes template: docs/agents/audit-notes-TEMPLATE.md`);
