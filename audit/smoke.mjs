@@ -459,6 +459,46 @@ async function main() {
     after: panelCountAfter,
   });
 
+  // ────────────────────────────────────────────────────────────────────
+  // Settings → Scan for Orphaned Images + Data Quality Scan render
+  // into their result divs (issue #134). Both forms carry
+  // data-dixie-submit + data-results-target; the dispatcher writes
+  // the response body into the target div instead of dropping it.
+  // ────────────────────────────────────────────────────────────────────
+  console.log('\n[7c] Settings scan/quality results render');
+  await page.goto(`${BASE}/settings`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(400);
+
+  const orphanForm = page.locator('form[action*="/settings/images/orphans/scan"]').first();
+  const orphanBtn = orphanForm.locator('button[type="submit"]').first();
+  const orphanReq = await clickAndWaitForRequest(page, orphanBtn, '/settings/images/orphans/scan');
+  record('orphan-scan-form-submits', !!orphanReq, {
+    method: orphanReq?.method(),
+    url: orphanReq?.url(),
+  });
+  await page.waitForTimeout(400);
+  const orphanResultsHtml = await page.evaluate(
+    () => document.querySelector('#settings-orphan-results')?.innerHTML?.trim() || ''
+  );
+  record('orphan-scan-results-render', orphanResultsHtml.length > 0, {
+    targetLen: orphanResultsHtml.length,
+  });
+
+  const qualityForm = page.locator('form[action*="/settings/quality/scan"]').first();
+  const qualityBtn = qualityForm.locator('button[type="submit"]').first();
+  const qualityReq = await clickAndWaitForRequest(page, qualityBtn, '/settings/quality/scan');
+  record('quality-scan-form-submits', !!qualityReq, {
+    method: qualityReq?.method(),
+    url: qualityReq?.url(),
+  });
+  await page.waitForTimeout(400);
+  const qualityResultsHtml = await page.evaluate(
+    () => document.querySelector('#settings-quality-results')?.innerHTML?.trim() || ''
+  );
+  record('quality-scan-results-render', qualityResultsHtml.length > 0, {
+    targetLen: qualityResultsHtml.length,
+  });
+
   // [8] Progress slot swap (commit b185f0e). The layout's
   // progress slot polls /jobs/active and uses hx-swap="innerHTML"
   // against the [data-jobs-progress-region] wrapper. Without the

@@ -575,7 +575,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Image Maintenance</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan the sharded image library for orphaned files and move them into the temp trash retention folder for 30 days before permanent removal.</p>
 				</div>
-				<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } data-dixie-submit="true" class="space-y-4">
+				<form action={ templ.SafeURL(routebuilder.SettingsImagesOrphansScan()) } data-dixie-submit="true" data-results-target="#settings-orphan-results" class="space-y-4">
 					@components.Button("Scan for Orphaned Images", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 				</form>
 				<div id="settings-orphan-results" class="space-y-3"></div>
@@ -585,7 +585,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<h3 class="text-xl gold font-bold">Data Quality Scan</h3>
 					<p class="mt-2 text-sm text-slate-600">Scan person records for obvious malformed values and relationship mismatches, then move selected findings to Review Queue.</p>
 				</div>
-				<form action={ templ.SafeURL(routebuilder.SettingsQualityScan()) } data-dixie-submit="true" class="space-y-4">
+				<form action={ templ.SafeURL(routebuilder.SettingsQualityScan()) } data-dixie-submit="true" data-results-target="#settings-quality-results" class="space-y-4">
 					<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
 						<label class="inline-flex items-center gap-2">
 							<input type="radio" name="quality_mode" value="high-confidence" checked class="h-4 w-4 rounded-full border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
