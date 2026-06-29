@@ -42,14 +42,14 @@ func TestEnqueueExportWithResultPopulatesJobStats(t *testing.T) {
 		return jobs.JobResult{Records: 247, Images: 0, Sources: 18}, nil
 	}, outPath, rec)
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303, got %d", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (Option C contract), got %d", rec.Code)
 	}
-	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "/jobs/") {
-		t.Fatalf("expected Location=/jobs/{id}, got %q", loc)
+	dixie := rec.Header().Get("X-DixieData-Redirect")
+	if !strings.HasPrefix(dixie, "/jobs/") {
+		t.Fatalf("expected X-DixieData-Redirect=/jobs/{id}, got %q", dixie)
 	}
-	jobID := strings.TrimPrefix(loc, "/jobs/")
+	jobID := strings.TrimPrefix(dixie, "/jobs/")
 
 	// Wait for the worker to record its result. 2s is plenty for
 	// the trivial worker body above.
@@ -99,13 +99,13 @@ func TestEnqueueExportWithResultSetsHXRedirect(t *testing.T) {
 		return jobs.JobResult{Records: 1}, nil
 	}, "/tmp/example.json", rec)
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303, got %d", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 (Option C contract), got %d", rec.Code)
 	}
-	if loc := rec.Header().Get("Location"); !strings.HasPrefix(loc, "/jobs/") {
-		t.Errorf("missing Location=/jobs/{id}, got %q", loc)
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Errorf("expected no Location header (Option C: 200 + X-DixieData-Redirect); got %q", loc)
 	}
-	if hx := rec.Header().Get("HX-Redirect"); !strings.HasPrefix(hx, "/jobs/") {
-		t.Errorf("missing HX-Redirect=/jobs/{id} (htmx hx-swap=none buttons will sit on /share without this); got %q", hx)
+	if dixie := rec.Header().Get("X-DixieData-Redirect"); !strings.HasPrefix(dixie, "/jobs/") {
+		t.Errorf("missing X-DixieData-Redirect=/jobs/{id} (dispatchDixieDataForm navigates from this); got %q", dixie)
 	}
 }
