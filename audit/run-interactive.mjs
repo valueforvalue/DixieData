@@ -185,7 +185,12 @@ const SURFACES = [
         kind: 'auto',
         run: async (page) => {
           await gotoSurface(page, '/browse');
-          const links = await page.locator('a[href^="/soldiers/"]').count();
+          // Scope to actual soldier detail links. The /browse page also
+          // renders an "Add Person Record" button at href="/soldiers/new"
+          // which would inflate the count without telling us whether
+          // real records rendered. Exclude the /new path so the count
+          // reflects only soldier detail links (DXD-NNNNN).
+          const links = await page.locator('a[href^="/soldiers/"]:not([href$="/new"])').count();
           return { ok: links > 0, reason: `soldier links: ${links}` };
         },
       },

@@ -281,6 +281,30 @@ func (a *App) handleScrapeFindAGrave(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
+	// First-name OR last-name is required. Without this guard the
+	// handler accepted records with all-empty name fields, leaving
+	// anonymous entries in the archive. Discovered via the manual
+	// UI audit run (2026-06-29); the new-soldier form had no
+	// `required` attribute on either name input and the server
+	// never validated the parsed values either. Belt + suspenders:
+	// the browser tooltip via `required` covers the common path;
+	// this server-side check catches the bypass.
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the soldier form.", err)
+		return
+	}
+	firstName := strings.TrimSpace(r.FormValue("first_name"))
+	lastName := strings.TrimSpace(r.FormValue("last_name"))
+	if firstName == "" && lastName == "" {
+		defaults, defaultsErr := a.newSoldierDefaults()
+		if defaultsErr != nil {
+			http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		a.renderEntryForm(w, r, defaults, false, "First name or last name is required to save a new person record.", http.StatusBadRequest)
+		return
+	}
+
 	s, err := parseSoldierForm(r, 0)
 	if err != nil {
 		defaults, defaultsErr := a.newSoldierDefaults()
