@@ -523,8 +523,23 @@
     if (normalized.startsWith("/review-queue")) {
       return "Back to Review Queue";
     }
+    if (/^\/soldiers\/\d+/.test(normalized)) {
+      return "Back to Person Record";
+    }
     if (normalized.startsWith("/soldiers/search") || normalized.startsWith("/soldiers?") || normalized === "/soldiers") {
       return "Back to Results";
+    }
+    if (normalized.startsWith("/browse")) {
+      return "Back to Browse";
+    }
+    if (normalized.startsWith("/jobs")) {
+      return "Back to Jobs";
+    }
+    if (normalized.startsWith("/settings")) {
+      return "Back to Settings";
+    }
+    if (normalized.startsWith("/recovery")) {
+      return "Back to Recovery";
     }
     return "Back";
   }
