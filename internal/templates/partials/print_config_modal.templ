@@ -34,6 +34,33 @@ templ PrintConfigModal(exportRecords []viewmodel.ExportRecordOption) {
 	<div id="share-print-config-modal" role="dialog" aria-modal="true" aria-labelledby="share-print-config-modal-heading" data-print-config-modal class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
 		<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
 			<form id="share-print-config-form" action={ templ.SafeURL(routebuilder.ExportDatabasePDFAsync()) } data-dixie-submit="true" data-pdf-pref-scope="archive" class="space-y-6">
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+					<div class="flex items-center justify-between gap-3">
+						<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Saved Templates</div>
+						<span data-export-templates-status class="text-xs text-slate-500" aria-live="polite"></span>
+					</div>
+					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+						<select data-export-templates-select class="min-w-[14rem] flex-1 rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
+							<option value="">Load a saved template…</option>
+						</select>
+						@components.Button("Load", components.ButtonSecondary, "text-xs", templ.Attributes{
+							"type": "button",
+							"data-export-templates-load": "",
+						})
+						@components.Button("Delete", components.ButtonSecondary, "text-xs", templ.Attributes{
+							"type": "button",
+							"data-export-templates-delete": "",
+							"data-confirm": "Delete this saved template? This cannot be undone.",
+						})
+					</div>
+					<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+						<input type="text" name="template_name" placeholder="Name this template…" data-export-template-name-input class="min-w-[14rem] flex-1 rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700" autocomplete="off"/>
+						@components.Button("Save Current", components.ButtonPrimary, "text-xs", templ.Attributes{
+							"type": "button",
+							"data-export-templates-save": "",
+						})
+					</div>
+				</div>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>

@@ -3095,6 +3095,8 @@
     applyPrintBuriedFilter();
     installPrintConfigPreview();
     refreshPrintConfigPreview();
+    installExportTemplates();
+    refreshExportTemplates();
     showOverlayModal(modal);
   }
 
@@ -3175,6 +3177,266 @@
     } catch (error) {
       if (status instanceof HTMLElement) {
         status.textContent = "Preview failed.";
+      }
+    }
+  }
+
+  // Saved-templates wiring (issue #178). On open the dropdown is
+  // populated via GET /export/templates. Load populates every
+  // modal field from the JSON response. Save submits the modal's
+  // full FormData plus the template_name input. Delete confirms
+  // via the existing data-confirm handler then removes the row.
+  function installExportTemplates() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const form = modal.querySelector("form");
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (form.dataset.exportTemplatesInstalled === "true") {
+      return;
+    }
+    form.dataset.exportTemplatesInstalled = "true";
+    const loadButton = modal.querySelector("[data-export-templates-load]");
+    if (loadButton instanceof HTMLElement) {
+      loadButton.addEventListener("click", () => {
+        loadSelectedTemplate();
+      });
+    }
+    const saveButton = modal.querySelector("[data-export-templates-save]");
+    if (saveButton instanceof HTMLElement) {
+      saveButton.addEventListener("click", () => {
+        saveCurrentTemplate();
+      });
+    }
+    const deleteButton = modal.querySelector("[data-export-templates-delete]");
+    if (deleteButton instanceof HTMLElement) {
+      deleteButton.addEventListener("click", () => {
+        deleteSelectedTemplate();
+      });
+    }
+  }
+
+  async function refreshExportTemplates() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const select = modal.querySelector("[data-export-templates-select]");
+    const status = modal.querySelector("[data-export-templates-status]");
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    try {
+      const response = await fetch("/export/templates", { method: "GET" });
+      if (!response.ok) {
+        if (status instanceof HTMLElement) {
+          status.textContent = "Could not load templates.";
+        }
+        return;
+      }
+      const data = await response.json();
+      const templates = Array.isArray(data.templates) ? data.templates : [];
+      while (select.options.length > 1) {
+        select.remove(1);
+      }
+      for (const t of templates) {
+        if (!t || typeof t.id !== "number" || typeof t.name !== "string") {
+          continue;
+        }
+        const option = document.createElement("option");
+        option.value = String(t.id);
+        option.textContent = t.name;
+        select.appendChild(option);
+      }
+      if (status instanceof HTMLElement) {
+        status.textContent = templates.length === 0 ? "No saved templates yet." : "";
+      }
+    } catch (error) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Could not load templates.";
+      }
+    }
+  }
+
+  async function loadSelectedTemplate() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const form = modal.querySelector("form");
+    const select = modal.querySelector("[data-export-templates-select]");
+    const status = modal.querySelector("[data-export-templates-status]");
+    if (!(form instanceof HTMLFormElement) || !(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    const id = select.value;
+    if (!id) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Pick a template to load.";
+      }
+      return;
+    }
+    try {
+      const response = await fetch("/export/templates/" + encodeURIComponent(id) + "/apply", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        if (status instanceof HTMLElement) {
+          status.textContent = "Could not load template.";
+        }
+        return;
+      }
+      const t = await response.json();
+      applyTemplateToForm(form, t);
+      refreshPrintConfigPreview();
+      if (status instanceof HTMLElement) {
+        status.textContent = "Loaded \"" + (t.name || "") + "\".";
+      }
+    } catch (error) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Could not load template.";
+      }
+    }
+  }
+
+  function applyTemplateToForm(form, template) {
+    if (!template || typeof template !== "object") {
+      return;
+    }
+    const setValue = (name, value) => {
+      const element = form.elements.namedItem(name);
+      if (!element) {
+        return;
+      }
+      element.value = value == null ? "" : String(value);
+    };
+    const setChecked = (name, checked) => {
+      const element = form.elements.namedItem(name);
+      if (!element) {
+        return;
+      }
+      element.checked = Boolean(checked);
+    };
+    const setMultiChecked = (name, values) => {
+      const elements = form.elements.namedItem(name);
+      const list = Array.isArray(elements) ? elements : elements ? [elements] : [];
+      const wanted = new Set(Array.isArray(values) ? values.map((v) => String(v)) : []);
+      for (const el of list) {
+        el.checked = wanted.has(String(el.value));
+      }
+    };
+    if (typeof template.scope === "string") {
+      const radios = form.querySelectorAll('input[name="scope"]');
+      radios.forEach((r) => { r.checked = (r.value === template.scope); });
+    }
+    if (template.filters && typeof template.filters === "object") {
+      for (const [family, values] of Object.entries(template.filters)) {
+        setMultiChecked("filter_" + family, values);
+      }
+    }
+    if (typeof template.sort_by === "string") {
+      const radios = form.querySelectorAll('input[name="sort_by"]');
+      radios.forEach((r) => { r.checked = (r.value === template.sort_by); });
+    }
+    if (typeof template.orientation === "string") {
+      setValue("orientation", template.orientation);
+    }
+    setChecked("printer_friendly", template.printer_friendly);
+    setChecked("full_biography_page", template.full_biography_page);
+    const groups = new Set(Array.isArray(template.group_by) ? template.group_by : []);
+    setChecked("group_by_unit", groups.has("unit"));
+    setChecked("group_by_pension_state", groups.has("pension_state"));
+    setChecked("group_by_confederate_home_status", groups.has("confederate_home_status"));
+    setChecked("group_by_buried_in", groups.has("buried_in"));
+    syncPrintScopeState();
+  }
+
+  async function saveCurrentTemplate() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const form = modal.querySelector("form");
+    const nameInput = modal.querySelector("[data-export-template-name-input]");
+    const status = modal.querySelector("[data-export-templates-status]");
+    if (!(form instanceof HTMLFormElement) || !(nameInput instanceof HTMLInputElement)) {
+      return;
+    }
+    const name = (nameInput.value || "").trim();
+    if (!name) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Type a name first.";
+      }
+      nameInput.focus();
+      return;
+    }
+    try {
+      const response = await fetch("/export/templates", {
+        method: "POST",
+        body: new FormData(form),
+      });
+      if (response.status === 409) {
+        if (status instanceof HTMLElement) {
+          status.textContent = "That name is taken; pick another.";
+        }
+        return;
+      }
+      if (!response.ok) {
+        if (status instanceof HTMLElement) {
+          status.textContent = "Could not save template.";
+        }
+        return;
+      }
+      nameInput.value = "";
+      await refreshExportTemplates();
+      if (status instanceof HTMLElement) {
+        status.textContent = "Saved.";
+      }
+    } catch (error) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Could not save template.";
+      }
+    }
+  }
+
+  async function deleteSelectedTemplate() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const select = modal.querySelector("[data-export-templates-select]");
+    const status = modal.querySelector("[data-export-templates-status]");
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    const id = select.value;
+    if (!id) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Pick a template to delete.";
+      }
+      return;
+    }
+    try {
+      const response = await fetch("/export/templates/" + encodeURIComponent(id), {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        if (status instanceof HTMLElement) {
+          status.textContent = "Could not delete template.";
+        }
+        return;
+      }
+      select.value = "";
+      await refreshExportTemplates();
+      if (status instanceof HTMLElement) {
+        status.textContent = "Deleted.";
+      }
+    } catch (error) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Could not delete template.";
       }
     }
   }
