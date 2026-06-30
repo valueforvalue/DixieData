@@ -15,6 +15,14 @@ import (
 templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions) {
 	@Layout("Browse") {
 		<div data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
+			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+				<button type="button" data-history-back
+					data-fallback-href="/soldiers"
+					data-fallback-label="Back to Soldiers List"
+					class="inline-flex w-full items-center justify-center rounded-full border border-[rgba(141,116,64,0.85)] bg-[rgba(246,241,228,0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					← Back to Soldiers List
+				</button>
+			</div>
 			<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
 				<div>
 					<h2 class="text-2xl gold font-bold">Browse Local Archive</h2>
