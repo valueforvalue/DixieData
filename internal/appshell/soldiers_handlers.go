@@ -98,7 +98,17 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not run the browse query.", err)
 		return
 	}
-	presentation.BrowseView(soldiers, normalized, total, suggestions).Render(r.Context(), w)
+	// Load the full archive so the print-config modal (rendered in-
+	// place on /browse per issue #176) can populate its filter
+	// dropdowns. Cost is bounded — typical archives 100-2k records,
+	// single-digit ms. Stress-tested by TestHandleBrowseResponseUnder-
+	// Threshold (internal/appshell/browse_response_time_test.go).
+	exportRecords, err := a.listAllSoldiers()
+	if err != nil {
+		respondInternal(w, r, "Could not load printable export options.", err)
+		return
+	}
+	presentation.BrowseView(soldiers, normalized, total, suggestions, exportRecords).Render(r.Context(), w)
 }
 
 func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
