@@ -100,6 +100,7 @@ func (a *App) setupRoutes() {
 	r.Post("/export/ical", a.handleExportICalendar)
 	r.Post("/export/static-archive", a.handleExportStaticArchive)
 	r.Post("/export/database-pdf", a.handleExportDatabasePDF)
+	r.Post("/export/preview", a.handleExportPreview)
 	r.Post("/export/backup", a.handleExportBackup)
 	r.Post("/export/shared-archive", a.handleExportSharedArchive)
 	r.Post("/export/bug-report", a.handleExportBugReport)

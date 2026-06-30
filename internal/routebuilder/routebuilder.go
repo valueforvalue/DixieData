@@ -299,6 +299,14 @@ func ExportDatabasePDFAsync() string {
 	return "/export/database-pdf?async=1"
 }
 
+// ExportPreview returns the URL for the print-config live preview
+// endpoint. Returns a small HTML fragment describing what the
+// current modal selection would generate. Registered as POST
+// /export/preview in routes.go.
+func ExportPreview() string {
+	return "/export/preview"
+}
+
 // GoogleCalendarPreferencesSave returns the URL for the Google
 // Calendar preferences form. Registered as POST
 // /integrations/google/calendar/preferences/save in routes.go.

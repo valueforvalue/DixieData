@@ -313,6 +313,12 @@ func TestExportDatabasePDFAsync(t *testing.T) {
 	}
 }
 
+func TestExportPreview(t *testing.T) {
+	if ExportPreview() != "/export/preview" {
+		t.Fatalf("ExportPreview = %q", ExportPreview())
+	}
+}
+
 func TestGoogleCalendarPreferencesSave(t *testing.T) {
 	if GoogleCalendarPreferencesSave() != "/integrations/google/calendar/preferences/save" {
 		t.Fatalf("GoogleCalendarPreferencesSave = %q", GoogleCalendarPreferencesSave())
