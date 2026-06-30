@@ -31,20 +31,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
-- `jobSummaryCard` now renders a "Download log" button when
-  `job.Result.LogPath` is non-empty (memorial import error log).
-  New `streamJobLog` handler in `internal/appshell/jobs_handlers.go`
-  resolves the path, verifies it lives inside `os.TempDir()` via
-  `filepath.Rel` + prefix check, then streams the file with
-  `Content-Disposition: attachment` and `Content-Type: text/plain`.
-  Wired into the existing `/jobs/{id}/...` switch in
-  `handleJobStatus` (case `"log"`); no route registration change.
-  Route built through new `routebuilder.JobLog(jobID)` (per
-  `docs/ui-map/gaps.md` convention). Four regression tests in
-  `internal/appshell/jobs_handlers_test.go`: missing log → 404,
-  path outside `os.TempDir()` → 403, valid file → 200 with
-  expected bytes + headers, file removed between completion and
-  download → 410. Closes #159.
+- Floating dock (Scratch Pad / Feedback / Menu) no longer overlaps
+  page content on `/compare`, `/calendar`, `/browse`, or the deep
+  soldier routes. `applyResponsiveLayout` now measures the dock's
+  rendered height via `getBoundingClientRect()` and writes the
+  result to both the `--floating-dock-height` CSS variable on
+  `<html>` AND `.app-shell` `padding-bottom` directly. The CSS
+  variable is exposed in `frontend/index.html`'s inline `<style>`
+  (the Tailwind minifier strips unused `:root` variables, so the
+  declaration lives outside the scanned CSS bundle). The direct
+  `padding-bottom` write is the binding effect that prevents overlap
+  today; once the build pipeline gains CSS-variable awareness the
+  direct write becomes redundant. Historical baseline padding values
+  (7.5rem / 9rem / 9.5rem) preserved as the relaxed-mode default;
+  the JS measurement only kicks in when the dock grows (split-screen
+  wrap). Per `docs/COMMON_BUGS.md §4.14` this is the 6th attempt at
+  fixing dock-vs-content spacing; the JS-measured value is the
+  prescribed single source of truth. Closes #160 (audit r1 top-2).
 
 ### Fixed
 

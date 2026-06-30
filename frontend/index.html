@@ -7,6 +7,16 @@
   <script defer src="/htmx.min.js"></script>
   <script defer src="/app.js"></script>
   <style>
+    :root {
+      /* --floating-dock-height: measured at runtime by
+         app.js::measureFloatingDockHeight. Default matches the
+         relaxed dock height + 1rem breathing room, so pages without
+         JS render with the same spacing they had before. Per
+         docs/COMMON_BUGS.md §4.14, the previous hand-coded padding
+         regressed 5 times; this variable + JS measurement is the
+         prescribed fix. */
+      --floating-dock-height: 4.5rem;
+    }
     body {
       background:
         radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 26%),
