@@ -29,6 +29,43 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `data-soldier-or-widow-field` so its visibility follows the
   same JS rule. Issue #75.
 
+- Back button on the Browse screen (`/browse`) using the
+  existing `data-history-back` machinery. Default fallback
+  is `/soldiers`. Issue #172.
+- Back button on the Share / Export screen (`/share`)
+  using the existing `data-history-back` machinery. Default
+  fallback is `/`. Issue #169.
+- Styled "Back to Dashboard" exit button on the Jobs
+  status page (`/jobs/{id}`) using `data-history-back`.
+  Replaces the inline body-copy link that was easy to miss.
+  Issue #175.
+- `smartBackLabel` in `frontend/app.js` now recognizes
+  `/soldiers/{id}*` sub-routes (edit, timeline,
+  camaraderie, research-log, conflict-ledger, research-pack,
+  pdf, jpg) and returns "Back to Person Record" instead of
+  the generic "Back". Same coverage extension for `/browse`,
+  `/jobs`, `/settings`, `/recovery`. Issue #171.
+
+### Changed
+
+- Success toast now uses a distinct green border
+  (`rgba(41, 82, 45, 0.86)`) and faint green background
+  (`rgba(242, 252, 244, 0.99)`) instead of the same sepia
+  border as the default chrome. The previously-declared
+  `success-green` / `success-green-bg` tokens in
+  `tailwind.config.js` are now wired into use. Issue #174.
+- Body background gradient stops are now exposed as
+  `bg-sepia-top` / `bg-sepia-mid` / `bg-sepia-bottom`
+  tokens in `tailwind.config.js` (ADR-0003). The literal
+  hex values stay in `frontend/tailwind.css` because
+  tailwindcss `@apply` cannot reach custom gradient stops;
+  the CSS comment references the token names. Issue #170.
+
+### Removed
+
+- Dead `sepia-300` token removed from `tailwind.config.js`.
+  Zero matches in templates or CSS. Issue #168.
+
 ### Removed
 
 - "Open file" button removed from three surfaces: the
