@@ -39,6 +39,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   status page (`/jobs/{id}`) using `data-history-back`.
   Replaces the inline body-copy link that was easy to miss.
   Issue #175.
+- Live preview panel for the print-config modal. The
+  modal now shows count + first 5 records + active sort +
+  active group-by labels for the current scope/filter
+  selection, updated within ~200 ms of any form change
+  via a debounced `POST /export/preview` request. New
+  server handler in `internal/appshell/export_preview.go`
+  resolves the same scope/filter logic the actual PDF
+  generation uses. Issue #179.
 - `smartBackLabel` in `frontend/app.js` now recognizes
   `/soldiers/{id}*` sub-routes (edit, timeline,
   camaraderie, research-log, conflict-ledger, research-pack,
