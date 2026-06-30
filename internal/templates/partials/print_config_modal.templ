@@ -1,0 +1,234 @@
+// Print-config modal partial — extracted from share.templ as part of
+// issue #176 so the Browse screen can open the same modal in place
+// without navigating to /share. The partial is rendered in both
+// share.templ and browse.templ; the existing data-print-config-modal
+// selector + openPrintConfigModal() in frontend/app.js picks it up
+// on whichever page it's present.
+//
+// The modal's filter dropdowns need the full list of records
+// (exportRecords) to populate Burial Location / Unit / Entry Type /
+// Pension State / Confederate Home Status options. share.templ has
+// always populated this list; browse.templ now does too — see the
+// BrowseView handler in internal/appshell/app.go.
+//
+// Live preview (issue #179) and saved templates (issue #178) hook
+// into this modal in later PRs without further shape changes.
+package partials
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// PrintConfigModal renders the shared printable-export picker. Caller
+// supplies the records used to populate the filter dropdowns.
+//
+// The modal DOM id is "share-print-config-modal" — kept stable across
+// the partial extraction because share_test.go asserts the literal id,
+// and external deep-links (rare) may reference it.
+templ PrintConfigModal(exportRecords []viewmodel.ExportRecordOption) {
+	<div id="share-print-config-modal" role="dialog" aria-modal="true" aria-labelledby="share-print-config-modal-heading" data-print-config-modal class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+		<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+			<form id="share-print-config-form" action={ templ.SafeURL(routebuilder.ExportDatabasePDFAsync()) } data-dixie-submit="true" data-pdf-pref-scope="archive" class="space-y-6">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Printable Export Settings</p>
+						<h3 id="share-print-config-modal-heading" class="mt-2 text-xl gold font-bold">Configure the archive layout</h3>
+						<p class="mt-2 text-sm text-slate-600">Choose how the printable archive should be sorted and grouped before the printable PDF is generated.</p>
+						<details class="mt-3 inline-block">
+							<summary class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[rgba(141,116,64,0.35)] bg-white/85 text-sm font-bold text-[#8d7440]">?</summary>
+							<div class="mt-2 w-full max-w-md rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/90 p-4 text-xs leading-5 text-slate-600 shadow-[0_18px_32px_rgba(23,33,43,0.12)]">
+								<p class="font-semibold text-[#22303d]">Which export should I choose?</p>
+								<p class="mt-2"><strong>Single-record portrait</strong> is best when you want one person's image with a short biography excerpt.</p>
+								<p class="mt-2"><strong>Single-record landscape</strong> is best when you want a concise first page plus the full biography on page 2.</p>
+								<p class="mt-2"><strong>Full database printable PDF</strong> creates a landscape archive-wide report using scope, filters, sorting, and grouping instead of one person at a time.</p>
+							</div>
+						</details>
+					</div>
+					@components.Button("Close", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
+						"data-print-config-close": "",
+					})
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+					<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Export Scope</div>
+					<label class="flex items-start gap-3 text-sm text-slate-700">
+						<input type="radio" name="scope" value="all" checked data-print-scope-value class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span><strong class="text-[#22303d]">All records</strong><br/><span class="text-slate-500">Export the full archive without applying structured filters.</span></span>
+					</label>
+					<label class="flex items-start gap-3 text-sm text-slate-700">
+						<input type="radio" name="scope" value="filtered" data-print-scope-value class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span><strong class="text-[#22303d]">Filtered records</strong><br/><span class="text-slate-500">Filter by burial location, entry type, unit, pension state, and Confederate Home status. If no filters are selected, export falls back to all records.</span></span>
+					</label>
+					<label class="flex items-start gap-3 text-sm text-slate-700">
+						<input type="radio" name="scope" value="selected" data-print-scope-value class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span><strong class="text-[#22303d]">Manually selected records</strong><br/><span class="text-slate-500">Choose an explicit subset by display ID or person name.</span></span>
+					</label>
+					<div data-print-filter-panel class="space-y-4 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Burial Location</p>
+							<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440] mt-3">
+								Search burial locations
+								<input type="search" placeholder="Type a cemetery or location" data-print-buried-filter class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
+							</label>
+							<div class="mt-3 max-h-44 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+								<label data-print-buried-option data-print-buried-search="location unknown" class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<input type="checkbox" name="filter_buried_in" value={ exportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="buried-in" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+									<span>Location Unknown</span>
+								</label>
+								for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.BuriedIn }) {
+									<label data-print-buried-option data-print-buried-search={ strings.ToLower(value) } class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+										<input type="checkbox" name="filter_buried_in" value={ value } data-print-filter-checkbox data-print-filter-family="buried-in" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+										<span>{ value }</span>
+									</label>
+								}
+							</div>
+						</div>
+						<div class="grid gap-4 sm:grid-cols-2">
+							<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Entry Type</p>
+								<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<input type="checkbox" name="filter_entry_type" value={ exportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="entry-type" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+									<span>Entry Type Unknown</span>
+								</label>
+								for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.EntryType }) {
+									<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+										<input type="checkbox" name="filter_entry_type" value={ value } data-print-filter-checkbox data-print-filter-family="entry-type" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+										<span>{ exportRecordOptionEntryTypeLabel(value) }</span>
+									</label>
+								}
+							</div>
+							<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Unit</p>
+								<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<input type="checkbox" name="filter_unit" value={ exportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="unit" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+									<span>Unit Unknown</span>
+								</label>
+								for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.Unit }) {
+									<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+										<input type="checkbox" name="filter_unit" value={ value } data-print-filter-checkbox data-print-filter-family="unit" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+										<span>{ value }</span>
+									</label>
+								}
+							</div>
+							<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Pension State</p>
+								<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<input type="checkbox" name="filter_pension_state" value={ exportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="pension-state" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+									<span>N/A</span>
+								</label>
+								for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.PensionState }) {
+									<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+										<input type="checkbox" name="filter_pension_state" value={ value } data-print-filter-checkbox data-print-filter-family="pension-state" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+										<span>{ value }</span>
+									</label>
+								}
+							</div>
+							<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Confederate Home Status</p>
+								<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<input type="checkbox" name="filter_confederate_home_status" value={ exportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="confederate-home-status" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+									<span>N/A</span>
+								</label>
+								for _, value := range exportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.ConfederateHomeStatus }) {
+									<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+										<input type="checkbox" name="filter_confederate_home_status" value={ value } data-print-filter-checkbox data-print-filter-family="confederate-home-status" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+										<span>{ value }</span>
+									</label>
+								}
+							</div>
+						</div>
+					</div>
+					<div data-print-record-picker class="space-y-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4">
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+							Find records
+							<input type="search" placeholder="Type a display ID or name" data-print-record-filter class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
+						</label>
+						<div class="text-xs text-slate-500">Choose which person records to include when exporting a manually selected subset.</div>
+						<div data-print-record-options class="max-h-52 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3 sm:max-h-64">
+							for _, record := range exportRecords {
+								<label data-print-record-option data-print-record-search={ exportRecordOptionSearchText(record) } class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", record.ID) } data-print-record-checkbox class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+									<span>{ exportRecordOptionLabel(record) }</span>
+								</label>
+							}
+						</div>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+					<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Page Setup</div>
+					<div class="flex flex-col items-stretch gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+						<label class="text-sm text-slate-700">
+							<span class="mr-2 font-semibold text-[#22303d]">Orientation</span>
+							<select name="orientation" data-pdf-pref-key="orientation" class="rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
+								<option value="L" selected>Landscape</option>
+								<option value="P">Portrait</option>
+							</select>
+						</label>
+						<label class="inline-flex items-center gap-2 text-sm text-slate-700">
+							<input type="checkbox" name="printer_friendly" value="1" data-pdf-pref-key="printerFriendly" class="h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Printer-friendly</strong> removes links, export metadata, and empty placeholder fields.</span>
+						</label>
+					</div>
+					<label class="flex items-start gap-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-700">
+						<input type="checkbox" name="full_biography_page" value="1" data-pdf-pref-key="fullBiographyPage" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span><strong class="text-[#22303d]">Append full biography page</strong><br/><span class="text-slate-500">Keep concise first page, then add text-friendly full biography appendix when a record has biography content.</span></span>
+					</label>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+					<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Sort Options</div>
+					<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/60 p-3">
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="radio" name="sort_by" value="last_name" checked class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Alphabetical by Last Name</strong><br/><span class="text-slate-500">Standard registry ordering for browsing by surname.</span></span>
+						</label>
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="radio" name="sort_by" value="birth_year" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Chronological by Birth Year</strong><br/><span class="text-slate-500">Oldest to youngest, using stored birth years when available.</span></span>
+						</label>
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="radio" name="sort_by" value="death_year" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Chronological by Death Year</strong><br/><span class="text-slate-500">Earliest to latest death year for timeline-style printing.</span></span>
+						</label>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-white/70 p-4 space-y-3">
+					<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Group By</div>
+					<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/60 p-3">
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="checkbox" name="group_by_unit" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Unit</strong><br/><span class="text-slate-500">Create printable sections by military unit.</span></span>
+						</label>
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="checkbox" name="group_by_pension_state" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Pension State</strong><br/><span class="text-slate-500">Create printable sections by pension-state filing location.</span></span>
+						</label>
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="checkbox" name="group_by_confederate_home_status" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Confederate Home Status</strong><br/><span class="text-slate-500">Create printable sections by home status such as Inmate, Staffer, Trustee, or N/A.</span></span>
+						</label>
+						<label class="flex items-start gap-3 text-sm text-slate-700">
+							<input type="checkbox" name="group_by_buried_in" value="1" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span><strong class="text-[#22303d]">Group by Burial Location (Buried In)</strong><br/><span class="text-slate-500">Create printable sections by cemetery or burial location, with unknown locations gathered at the end.</span></span>
+						</label>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
+					The printable layout keeps one concise first page per record by default. Group selections add divider pages, primary images stay captioned on record pages, and the optional full biography appendix only appears when you opt in.
+				</div>
+				<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+					@components.Button("Cancel", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
+						"data-print-config-close": "",
+					})
+					@components.Button("Generate Printable PDF", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+						"type": "submit",
+						"data-print-config-submit": "",
+					})
+				</div>
+			</form>
+		</div>
+	</div>
+}
