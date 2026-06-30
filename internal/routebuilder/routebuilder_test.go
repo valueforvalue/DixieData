@@ -319,6 +319,30 @@ func TestExportPreview(t *testing.T) {
 	}
 }
 
+func TestExportTemplatesList(t *testing.T) {
+	if ExportTemplatesList() != "/export/templates" {
+		t.Fatalf("ExportTemplatesList = %q", ExportTemplatesList())
+	}
+}
+
+func TestExportTemplateSave(t *testing.T) {
+	if ExportTemplateSave() != "/export/templates" {
+		t.Fatalf("ExportTemplateSave = %q", ExportTemplateSave())
+	}
+}
+
+func TestExportTemplateDelete(t *testing.T) {
+	if ExportTemplateDelete(42) != "/export/templates/42" {
+		t.Fatalf("ExportTemplateDelete = %q", ExportTemplateDelete(42))
+	}
+}
+
+func TestExportTemplateApply(t *testing.T) {
+	if ExportTemplateApply(7) != "/export/templates/7/apply" {
+		t.Fatalf("ExportTemplateApply = %q", ExportTemplateApply(7))
+	}
+}
+
 func TestGoogleCalendarPreferencesSave(t *testing.T) {
 	if GoogleCalendarPreferencesSave() != "/integrations/google/calendar/preferences/save" {
 		t.Fatalf("GoogleCalendarPreferencesSave = %q", GoogleCalendarPreferencesSave())
