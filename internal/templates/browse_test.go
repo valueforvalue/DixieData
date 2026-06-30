@@ -17,13 +17,13 @@ func TestBrowseViewShowsSelectionHelperAndPrintAction(t *testing.T) {
 		PageSize: 100,
 		Scope:    "all",
 		Sort:     "display_id_asc",
-	}, viewmodel.PersonRecordFormSuggestions{}).Render(context.Background(), &buf)
+	}, viewmodel.PersonRecordFormSuggestions{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 
 	content := buf.String()
-	for _, needle := range []string{"Print/Export Selected", "Use the Select checkboxes to build a working set across pages", "/share?openPrintConfig=1", "data-browse-reset"} {
+	for _, needle := range []string{"Print/Export Selected", "Use the Select checkboxes to build a working set across pages", "data-print-config-open", "data-browse-reset"} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("browse view missing %s", needle)
 		}
@@ -52,6 +52,7 @@ func TestBrowseViewTableHeadersDeclareScopeCol(t *testing.T) {
 		[]viewmodel.PersonRecord{{ID: 1, DisplayID: "STC38-00001", FirstName: "John", LastName: "Carter"}},
 		viewmodel.BrowseState{Page: 1, PageSize: 100, Scope: "all", Sort: "display_id_asc"},
 		viewmodel.PersonRecordFormSuggestions{},
+		nil,
 	).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -78,7 +79,7 @@ func TestBrowseViewShowsBuriedInFilter(t *testing.T) {
 		BuriedIn: "Oak Hill Cemetery",
 	}, viewmodel.PersonRecordFormSuggestions{
 		BuriedIn: []string{"Oak Hill Cemetery"},
-	}).Render(context.Background(), &buf)
+	}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

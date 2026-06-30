@@ -9,10 +9,11 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions) {
+templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions, exportRecords []viewmodel.ExportRecordOption) {
 	@Layout("Browse") {
 		<div data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -144,7 +145,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 							<p data-browse-selection-status>Select records across pages to keep a working set while you browse.</p>
 						</div>
 						<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-							<a href="/share?openPrintConfig=1" class="primary-button w-full sm:w-auto">Print/Export Selected</a>
+							<button type="button" data-print-config-open class="primary-button w-full sm:w-auto">Print/Export Selected</button>
 							@components.Button("Clear Selection", components.ButtonSecondary, "w-full sm:w-auto", templ.Attributes{
 								"data-browse-clear-selection": "",
 							})
@@ -159,6 +160,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 			</div>
 		</div>
 	}
+	@partials.PrintConfigModal(exportRecords)
 }
 
 templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState) {

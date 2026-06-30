@@ -45,11 +45,12 @@ func SoldierList(soldiers []models.Soldier, page, total int, query string, sugge
 	return templates.SoldierList(viewmodel.PersonRecordsFromModels(soldiers), page, total, query, viewmodel.PersonRecordFormSuggestionsFromModel(suggestions))
 }
 
-func BrowseView(soldiers []models.Soldier, state records.BrowseRequest, total int, suggestions models.SoldierFormSuggestions) templ.Component {
+func BrowseView(soldiers []models.Soldier, state records.BrowseRequest, total int, suggestions models.SoldierFormSuggestions, exportRecords []models.Soldier) templ.Component {
 	return templates.BrowseView(
 		viewmodel.PersonRecordsFromModels(soldiers),
 		viewmodel.BrowseStateFromDomain(state, total),
 		viewmodel.PersonRecordFormSuggestionsFromModel(suggestions),
+		viewmodel.ExportRecordOptionsFromModels(exportRecords),
 	)
 }
 
