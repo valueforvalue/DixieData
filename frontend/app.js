@@ -2616,7 +2616,6 @@
     hydrateRecentSearchResults();
     initializeBrowseView();
     applyCalendarAnniversaryDensity();
-    openPrintConfigFromQuery();
     initializeCopyPathButtons();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
   }
@@ -3227,18 +3226,6 @@
     }
   }
 
-  function openPrintConfigFromQuery() {
-    const params = new URLSearchParams(window.location.search || "");
-    if (params.get("openPrintConfig") !== "1") {
-      return;
-    }
-    openPrintConfigModal();
-    params.delete("openPrintConfig");
-    const query = params.toString();
-    const nextURL = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash || ""}`;
-    window.history.replaceState(window.history.state, "", nextURL);
-  }
-
   function syncPrintScopeState() {
     const form = printConfigForm();
     if (!(form instanceof HTMLFormElement)) {
@@ -3334,7 +3321,6 @@
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
     initializeBrowseView();
-    openPrintConfigFromQuery();
     // Re-init swapped subtrees after htmx polling swaps.
     if (typeof window !== "undefined" && window.htmx && typeof window.htmx.on === "function") {
       window.htmx.on("htmx:load", (evt) => {
