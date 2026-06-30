@@ -29,6 +29,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `data-soldier-or-widow-field` so its visibility follows the
   same JS rule. Issue #75.
 
+### Maintenance
+
+- Registered canonical `panel.*` DOM IDs for the 7 Research + Soldier
+  sub-view surfaces that were missing from `internal/uiids`:
+  `panel.research-collections.hub`,
+  `panel.research-collection.detail`,
+  `panel.research-log`,
+  `panel.research-pack`,
+  `panel.soldier.timeline`,
+  `panel.soldier.camaraderie`,
+  `panel.soldier.conflict-ledger`. Each surface's wrapping
+  element now references the new constant in the matching
+  `.templ` file. `TestRegistryIncludesResponsiveFoundationSurfaces`
+  extended to lock the contract. `docs/ui-map/surfaces.md`
+  Catalog table updated in lockstep. Closes #157.
+
 ### Fixed
 
 - `handleImportBackup` (`internal/appshell/imports_handlers.go:43`)

@@ -7,12 +7,13 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ResearchLogView(log viewmodel.ResearchLog) {
 	@Layout("Research Log") {
-		<div class="relative mx-auto max-w-6xl">
+		<div id={ uiids.PanelResearchLog } class="relative mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
 					type="button"

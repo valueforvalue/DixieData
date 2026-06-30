@@ -46,6 +46,28 @@ const (
 	PageServiceTimeline         = "page.service-timeline"
 	PageUnitCamaraderie         = "page.unit-camaraderie"
 	PageMergeReviewLedger       = "page.merge-review-ledger"
+	// PanelResearchCollectionsHub is the named-research-collections
+	// list/table on the Research Collections Hub page.
+	PanelResearchCollectionsHub = "panel.research-collections.hub"
+	// PanelResearchCollection is the items + add-row section on a
+	// single Research Collection detail page.
+	PanelResearchCollection     = "panel.research-collection.detail"
+	// PanelResearchLog wraps the log entries + task creation form
+	// on the per-soldier Research Log page.
+	PanelResearchLog            = "panel.research-log"
+	// PanelResearchPack wraps the pack contents on the county/state
+	// scoped Research Pack page.
+	PanelResearchPack           = "panel.research-pack"
+	// PanelSoldierTimeline wraps the evidence-backed chronology
+	// rendered inside the soldier detail page (Timeline HTMX swap).
+	PanelSoldierTimeline        = "panel.soldier.timeline"
+	// PanelSoldierCamaraderie wraps the unit-graph view rendered
+	// inside the soldier detail page (Camaraderie HTMX swap).
+	PanelSoldierCamaraderie     = "panel.soldier.camaraderie"
+	// PanelSoldierConflictLedger wraps the Local-vs-Incoming merge
+	// ledger rendered inside the soldier detail page (Conflict Ledger
+	// HTMX swap).
+	PanelSoldierConflictLedger  = "panel.soldier.conflict-ledger"
 	PageInsightsDrilldown       = "page.insights.drilldown"
 	PageSettings                = "page.settings"
 	PanelSettingsLayout         = "panel.settings.layout"
@@ -131,6 +153,13 @@ var Registry = []Surface{
 	{ID: OverlayGoogleCalendarPrefs, Kind: "overlay", Description: "Google managed calendar event preferences modal overlay."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
 	{ID: OverlayJobsProgress, Kind: "overlay", Description: "Global fixed-position popup region that renders the most recent active background job's progress card (polled via /jobs/active every 3s)."},
+	{ID: PanelResearchCollectionsHub, Kind: "panel", Description: "Named research collections list and create-collection section on the Research Collections Hub page."},
+	{ID: PanelResearchCollection, Kind: "panel", Description: "Items list and add-row section on a Research Collection detail page."},
+	{ID: PanelResearchLog, Kind: "panel", Description: "Research log entries and task creation form on the per-soldier Research Log page."},
+	{ID: PanelResearchPack, Kind: "panel", Description: "Pack contents on the county/state scoped Research Pack page."},
+	{ID: PanelSoldierTimeline, Kind: "panel", Description: "Evidence-backed chronology rendered inside the soldier detail page (Timeline HTMX swap)."},
+	{ID: PanelSoldierCamaraderie, Kind: "panel", Description: "Unit camaraderie graph rendered inside the soldier detail page (Camaraderie HTMX swap)."},
+	{ID: PanelSoldierConflictLedger, Kind: "panel", Description: "Local vs Incoming merge ledger rendered inside the soldier detail page (Conflict Ledger HTMX swap)."},
 }
 
 

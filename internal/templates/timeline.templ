@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 	@Layout("Service Timeline") {
-		<div class="relative mx-auto max-w-6xl">
+		<div id={ uiids.PanelSoldierTimeline } class="relative mx-auto max-w-6xl">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
 				<button
 					type="button"
