@@ -3289,11 +3289,26 @@
         }
         return;
       }
-      const t = await response.json();
-      applyTemplateToForm(form, t);
+      const envelope = await response.json();
+      const template = envelope && envelope.template ? envelope.template : envelope;
+      const warnings = Array.isArray(envelope && envelope.warnings) ? envelope.warnings : [];
+      applyTemplateToForm(form, template);
       refreshPrintConfigPreview();
       if (status instanceof HTMLElement) {
-        status.textContent = "Loaded \"" + (t.name || "") + "\".";
+        status.textContent = "Loaded \"" + (template.name || "") + "\".";
+      }
+      // Issue #181: surface stale filter values / selected IDs as
+      // toasts. One warning → one toast with detail. Many warnings
+      // → one summary toast + full list in console so the user is
+      // not spammed when an archive has been heavily refactored.
+      if (warnings.length === 1) {
+        showToast(warnings[0], "warning");
+      } else if (warnings.length > 1) {
+        showToast(
+          warnings.length + " stale filter values; see browser console for details.",
+          "warning"
+        );
+        console.warn("Template load warnings:", warnings);
       }
     } catch (error) {
       if (status instanceof HTMLElement) {

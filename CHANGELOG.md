@@ -72,6 +72,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   from any page without per-render DB load. A new
   `CountNeedsReview` method on `SoldierService`
   backs the endpoint. Issue #180.
+- Stale-template warnings when loading a saved
+  template (issue #181). The apply endpoint now
+  cross-checks each stored filter value and selected
+  ID against the current archive and returns a
+  `warnings` array alongside the template. The
+  client surfaces one warning per stale value as a
+  toast; for many warnings it pops a single summary
+  toast and logs the full list to the browser console.
+  Stored SelectedIDs are persisted in a new
+  `selected_ids_json` column on `export_templates`
+  (schema v57) so scope=selected templates can also
+  detect deleted record IDs. Issue #181.
 - `smartBackLabel` in `frontend/app.js` now recognizes
   `/soldiers/{id}*` sub-routes (edit, timeline,
   camaraderie, research-log, conflict-ledger, research-pack,
