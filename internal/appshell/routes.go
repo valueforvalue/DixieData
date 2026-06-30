@@ -105,6 +105,7 @@ func (a *App) setupRoutes() {
 	r.Post("/export/templates", a.handleSaveExportTemplate)
 	r.Delete("/export/templates/{id}", a.handleDeleteExportTemplate)
 	r.Post("/export/templates/{id}/apply", a.handleApplyExportTemplate)
+	r.Get("/layout/review-count", a.handleLayoutReviewCount)
 	r.Post("/export/backup", a.handleExportBackup)
 	r.Post("/export/shared-archive", a.handleExportSharedArchive)
 	r.Post("/export/bug-report", a.handleExportBugReport)

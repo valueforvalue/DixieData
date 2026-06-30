@@ -343,6 +343,12 @@ func TestExportTemplateApply(t *testing.T) {
 	}
 }
 
+func TestLayoutReviewCount(t *testing.T) {
+	if LayoutReviewCount() != "/layout/review-count" {
+		t.Fatalf("LayoutReviewCount = %q", LayoutReviewCount())
+	}
+}
+
 func TestGoogleCalendarPreferencesSave(t *testing.T) {
 	if GoogleCalendarPreferencesSave() != "/integrations/google/calendar/preferences/save" {
 		t.Fatalf("GoogleCalendarPreferencesSave = %q", GoogleCalendarPreferencesSave())

@@ -335,6 +335,13 @@ func ExportTemplateApply(id int64) string {
 	return fmt.Sprintf("/export/templates/%d/apply", id)
 }
 
+// LayoutReviewCount returns the URL for the layout's review-queue
+// badge fragment. Registered as GET /layout/review-count in
+// routes.go. Polled by the layout at 30s cadence via htmx.
+func LayoutReviewCount() string {
+	return "/layout/review-count"
+}
+
 // GoogleCalendarPreferencesSave returns the URL for the Google
 // Calendar preferences form. Registered as POST
 // /integrations/google/calendar/preferences/save in routes.go.
