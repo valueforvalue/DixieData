@@ -336,7 +336,7 @@ None open. Share bugs with New/Detail where applicable.
 ### Improvement log
 
 - **2026-06-29**: **Run dedicated dialog-guard audit** on all export/import handlers (per gaps.md).
-- **2026-06-29**: Wire Memorial import log download button — `jobSummaryCard` should branch on `job.Result.LogPath != ""`.
+- **2026-06-29**: Wire Memorial import log download button — `jobSummaryCard` should branch on `job.Result.LogPath != ""`. ✅ **Fixed in commit on `fix/jobs-wire-memorial-log-download`** — added `streamJobLog` handler with `os.TempDir()` containment check, route via `routebuilder.JobLog(jobID)`, button in `jobSummaryCard`, 4 regression tests.
 - **2026-06-29**: Add deep-link pill on shared-import summary card when `Conflicts > 0` (per gaps.md).
 - **2026-06-29**: Share page is the most action-dense screen — consider progressive disclosure (Export / Import / Merge as separate tabs).
 
@@ -652,7 +652,7 @@ None open.
 | fixed | high | Memorial confirmation flow missing | #137 | `331b58d`, `00f0ba9`, `3748db7` | — |
 | fixed | high | `Job.Snapshot` returned stale AwaitingConfirmation | — | `331b58d` | — |
 | fixed | high | Shared import log not exported via enqueueExport | #137 | `4a9b275` | — |
-| open | high | Memorial import log download button not wired in `jobSummaryCard` | — | — | gaps.md |
+| fixed | high | Memorial import log download button not wired in `jobSummaryCard` | — | (commit on `fix/jobs-wire-memorial-log-download`) | — |
 
 ### Improvement log
 
@@ -859,8 +859,8 @@ Themes that span multiple services. Track here until they graduate to per-servic
 
 ### Panel ID coverage (uiids)
 
-- **2026-06-29**: Research services (13, 14, 15, 16) have no panel IDs registered — add `panel.research-collections.hub`, `panel.research-collection.detail`, `panel.research-log`, `panel.research-pack`. ✅ **Fixed in commit (fix #157)** — registered in `internal/uiids`, wrapped each surface in matching `.templ`, extended `TestRegistryIncludesResponsiveFoundationSurfaces`, updated `docs/ui-map/surfaces.md` Catalog.
-- **2026-06-29**: Soldier sub-views (17, 18, 19) have no panel IDs — add `panel.soldier.{timeline,camaraderie,conflict-ledger}`. ✅ **Fixed in same commit (fix #157)** — registered in `internal/uiids`, wrapped each surface in matching `.templ`, extended test, updated surfaces.md Catalog.
+- **2026-06-29**: Research services (13, 14, 15, 16) have no panel IDs registered — add `panel.research-collections.hub`, `panel.research-collection.detail`, `panel.research-log`, `panel.research-pack`.
+- **2026-06-29**: Soldier sub-views (17, 18, 19) have no panel IDs — add `panel.soldier.{timeline,camaraderie,conflict-ledger}`.
 
 ### Component cleanup
 

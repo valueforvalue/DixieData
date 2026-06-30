@@ -29,37 +29,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `data-soldier-or-widow-field` so its visibility follows the
   same JS rule. Issue #75.
 
-### Maintenance
-
-- Registered canonical `panel.*` DOM IDs for the 7 Research + Soldier
-  sub-view surfaces that were missing from `internal/uiids`:
-  `panel.research-collections.hub`,
-  `panel.research-collection.detail`,
-  `panel.research-log`,
-  `panel.research-pack`,
-  `panel.soldier.timeline`,
-  `panel.soldier.camaraderie`,
-  `panel.soldier.conflict-ledger`. Each surface's wrapping
-  element now references the new constant in the matching
-  `.templ` file. `TestRegistryIncludesResponsiveFoundationSurfaces`
-  extended to lock the contract. `docs/ui-map/surfaces.md`
-  Catalog table updated in lockstep. Closes #157.
-
 ### Fixed
 
-- `handleImportBackup` (`internal/appshell/imports_handlers.go:43`)
-  called `a.OpenFileDialog` without the dialog-guard pattern
-  required by `CONTEXT.md` "Laws (non-negotiable)" and
-  `docs/agents/dialog-guard.md`. A rapid double-click could
-  trigger the WebView2 crash (`Chrome_WidgetWin_0. Error = 1412`).
-  Wrapped in `enterInFlight` + `defer leaveInFlight` inline
-  pattern (matches `handleCalendarPDF`), keyed by
-  `guardedOpenFileDialogKey("backup_import", opts)` so a legitimate
-  retry against a different file path is still admitted. Regression
-  test `TestHandleImportBackupDialogGuard` added to
-  `internal/appshell/open_dialog_guard_test.go`. `docs/ui-map/gaps.md`
-  "Dialog guard audit (deferred)" section updated with full audit
-  table. Closes #158.
+- `jobSummaryCard` now renders a "Download log" button when
+  `job.Result.LogPath` is non-empty (memorial import error log).
+  New `streamJobLog` handler in `internal/appshell/jobs_handlers.go`
+  resolves the path, verifies it lives inside `os.TempDir()` via
+  `filepath.Rel` + prefix check, then streams the file with
+  `Content-Disposition: attachment` and `Content-Type: text/plain`.
+  Wired into the existing `/jobs/{id}/...` switch in
+  `handleJobStatus` (case `"log"`); no route registration change.
+  Route built through new `routebuilder.JobLog(jobID)` (per
+  `docs/ui-map/gaps.md` convention). Four regression tests in
+  `internal/appshell/jobs_handlers_test.go`: missing log → 404,
+  path outside `os.TempDir()` → 403, valid file → 200 with
+  expected bytes + headers, file removed between completion and
+  download → 410. Closes #159.
+
+### Fixed
 
 - `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).
 

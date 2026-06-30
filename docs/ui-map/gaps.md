@@ -57,15 +57,24 @@ here only for the lookup table.
 
 ## Missing summary-card affordances
 
-### Memorial import log download button (added in commit `70878ac`, not wired)
+### Memorial import log download button (WIRED — closes #159)
 
 `JobResult.LogPath` is populated by
 `handleConfirmMemorialJSONImport` (`internal/appshell/imports_handlers.go`)
-and `jobs.go` even documents the intent in a comment that points
+and `jobs.go` documents the intent in a comment that points
 at `jobs.templ::jobSummaryCard` for the secondary download action.
-But `jobSummaryCard` still renders only the artifact (Open/Save)
+Originally `jobSummaryCard` rendered only the artifact (Open/Save)
 based on `Summary().ResultPath`, which stays empty for memorial
 imports.
+
+**Fix landed on `fix/jobs-wire-memorial-log-download`**: `jobSummaryCard`
+now branches on `job.Result.LogPath != ""` and renders a
+"Download log" anchor linking to `/jobs/{id}/log` via the new
+`routebuilder.JobLog(jobID)` helper. Backend handler
+`streamJobLog` (in `internal/appshell/jobs_handlers.go`) resolves
+the path, verifies containment inside `os.TempDir()` via
+`filepath.Rel` + prefix check, then streams the file with
+`Content-Disposition: attachment`.
 
 **Effect**: the summary card itself loads fine — this is a missing
 **affordance**, not a load failure. When a memorial import completes

@@ -537,3 +537,121 @@ func renderJobBody(t *testing.T, app *App, id string) string {
 	}
 	return rec.Body.String()
 }
+// TestStreamJobLogMissingReturns404 covers the case where the user
+// hits /jobs/{id}/log for a job whose worker never populated
+// Result.LogPath. The endpoint must respond 404 so the user
+// sees a clear "no log available" instead of a 200 with an
+// empty body. Closes #159 regression net.
+func TestStreamJobLogMissingReturns404(t *testing.T) {
+	app := newStressApp(t)
+	id := app.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error { return nil })
+	// Drain the job so the SetResult doesn't fight the test.
+	waitJobDone(t, app, id)
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/log", nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for missing LogPath, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+}
+
+// TestStreamJobLogRejectsPathOutsideTempDir covers the path-traversal
+// defence: even if the job registry is tricked into storing an
+// attacker-controlled LogPath (which the current code paths
+// prevent — only the backend writes it via writeMemorialImportErrorLog
+// in os.TempDir()), the handler must refuse to stream files outside
+// os.TempDir(). Returning 403 (not 404) makes the rejection visible
+// to the user without leaking the path.
+func TestStreamJobLogRejectsPathOutsideTempDir(t *testing.T) {
+	app := newStressApp(t)
+	id := app.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error { return nil })
+	waitJobDone(t, app, id)
+
+	// Seed an out-of-tempdir path. Pick a path that is guaranteed
+	// outside os.TempDir() regardless of platform — the repo's own
+	// go.mod lives at the repo root, well above any temp
+	// directory on Windows or POSIX.
+	repoRoot, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	app.jobs.SetResult(id, jobs.JobResult{LogPath: filepath.Join(repoRoot, "go.mod")})
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/log", nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for path outside os.TempDir(), got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+}
+
+// TestStreamJobLogStreamsFile is the happy path: a job with a
+// LogPath inside os.TempDir() must return 200 + the file bytes +
+// Content-Disposition: attachment header. This is the net for
+// the missing-affordance bug in docs/ui-map/gaps.md: the
+// backend had the data, only the route + handler were missing.
+func TestStreamJobLogStreamsFile(t *testing.T) {
+	app := newStressApp(t)
+	id := app.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error { return nil })
+	waitJobDone(t, app, id)
+
+	// Write a real temp file and seed the job with its path.
+	tmpFile, err := os.CreateTemp("", "dixiedata-memorial-import-*.log")
+	if err != nil {
+		t.Fatalf("CreateTemp: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	want := "row=1 memorial_id=\"abc\" name=\"John\" error=\"bad date\"\nrow=2 memorial_id=\"def\" name=\"Jane\" error=\"missing unit\"\n"
+	if _, err := tmpFile.WriteString(want); err != nil {
+		t.Fatalf("WriteString: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	app.jobs.SetResult(id, jobs.JobResult{LogPath: tmpFile.Name()})
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/log", nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+	if got := rec.Body.String(); got != want {
+		t.Errorf("body mismatch:\nwant=%q\ngot=%q", want, got)
+	}
+	disp := rec.Header().Get("Content-Disposition")
+	if !strings.HasPrefix(disp, "attachment;") {
+		t.Errorf("Content-Disposition should be attachment; got %q", disp)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/plain") {
+		t.Errorf("Content-Type should be text/plain; got %q", ct)
+	}
+}
+
+// TestStreamJobLogRejectsMissingFileOnDisk returns 410 (Gone) when
+// LogPath is set but the file has been removed (e.g. temp cleanup
+// between job completion and user clicking the link).
+func TestStreamJobLogRejectsMissingFileOnDisk(t *testing.T) {
+	app := newStressApp(t)
+	id := app.jobs.Start("memorial_import", func(ctx context.Context, p *jobs.Progress) error { return nil })
+	waitJobDone(t, app, id)
+
+	// Create + immediately delete so the path looks valid but the
+	// file is gone.
+	tmpFile, err := os.CreateTemp("", "dixiedata-memorial-import-gone-*.log")
+	if err != nil {
+		t.Fatalf("CreateTemp: %v", err)
+	}
+	gonePath := tmpFile.Name()
+	tmpFile.Close()
+	os.Remove(gonePath)
+	app.jobs.SetResult(id, jobs.JobResult{LogPath: gonePath})
+
+	req := httptest.NewRequest(http.MethodGet, "/jobs/"+id+"/log", nil)
+	rec := httptest.NewRecorder()
+	app.handleJobStatus(rec, req)
+	if rec.Code != http.StatusGone {
+		t.Fatalf("expected 410 for missing file, got %d (body=%q)", rec.Code, rec.Body.String())
+	}
+}

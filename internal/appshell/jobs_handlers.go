@@ -7,6 +7,7 @@ package appshell
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -57,6 +58,12 @@ func (a *App) handleJobStatus(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.openJobArtifact(w, r, id)
+	case "log":
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.streamJobLog(w, r, id)
 	case "confirm":
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -308,6 +315,68 @@ func (a *App) openJobArtifact(w http.ResponseWriter, r *http.Request, id string)
 	// status page with a success toast.
 	setToastHeaderWithType(w, "Opening "+filepath.Base(path), "success")
 	http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
+}
+
+// streamJobLog streams the optional companion log file at
+// job.Result.LogPath back to the browser with a
+// Content-Disposition: attachment header so the file downloads.
+// Used by jobSummaryCard's "Download log" button when LogPath is
+// set (memorial import error logs).
+//
+// Path-traversal protection: the backend writes memorial logs to
+// os.TempDir() via os.CreateTemp in writeMemorialImportErrorLog.
+// We resolve the absolute path and verify it lives inside
+// os.TempDir(); anything else returns 403. Combined with the
+// job-lookup gate (only valid job IDs reach this handler), the
+// user cannot pivot this endpoint into reading arbitrary files
+// by manipulating LogPath.
+func (a *App) streamJobLog(w http.ResponseWriter, r *http.Request, id string) {
+	if a.jobs == nil {
+		http.NotFound(w, r)
+		return
+	}
+	job, ok := a.jobs.Get(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	logPath := strings.TrimSpace(job.Result.LogPath)
+	if logPath == "" {
+		http.Error(w, "job has no companion log", http.StatusNotFound)
+		return
+	}
+	absPath, err := filepath.Abs(logPath)
+	if err != nil {
+		respondInternal(w, r, "Could not resolve the log path.", err)
+		return
+	}
+	tempDir, err := filepath.Abs(os.TempDir())
+	if err != nil {
+		respondInternal(w, r, "Could not resolve the temp directory.", err)
+		return
+	}
+	// Containment check: the resolved path must live inside
+	// os.TempDir() (where the backend writes memorial logs). Use
+	// filepath.Rel + prefix check rather than HasPrefix to avoid
+	// /tmp vs /tmp2 style collisions.
+	rel, err := filepath.Rel(tempDir, absPath)
+	if err != nil || strings.HasPrefix(rel, "..") || rel == ".." {
+		http.Error(w, "log path is outside the allowed directory", http.StatusForbidden)
+		return
+	}
+	info, statErr := os.Stat(absPath)
+	if statErr != nil {
+		if errors.Is(statErr, os.ErrNotExist) {
+			http.Error(w, "log file is missing on disk", http.StatusGone)
+			return
+		}
+		respondInternal(w, r, "Could not open the log file.", statErr)
+		return
+	}
+	w.Header().Set("Content-Length", formatContentLength(info.Size()))
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filepath.Base(absPath)))
+	http.ServeFile(w, r, absPath)
 }
 
 // jobArtifactHeaders returns the Content-Disposition and
