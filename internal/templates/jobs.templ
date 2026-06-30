@@ -89,6 +89,20 @@ templ jobSummaryCard(job jobs.Job) {
 				</form>
 				<button type="button" class="secondary-button px-3 py-1 text-xs" data-copy-path={ job.ResultPath }>Copy path</button>
 			}
+			if job.Result.LogPath != "" {
+				// Secondary download affordance for companion logs
+				// (memorial import error log). Backend writes the log
+				// to os.TempDir(); the handler resolves + verifies
+				// the path lives inside os.TempDir() before streaming.
+				// Plain GET link (no POST needed); the form POST/303
+				// pattern is reserved for Option C dispatches.
+				<a
+					href={ templ.SafeURL(routebuilder.JobLog(job.ID)) }
+					class="secondary-button px-3 py-1 text-xs"
+					aria-label={ fmt.Sprintf("Download error log for job %s", job.ID) }
+					data-job-log-download
+				>Download log</a>
+			}
 		</div>
 	</div>
 }

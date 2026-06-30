@@ -47,6 +47,16 @@ func JobStatusSlot(jobID string) string {
 	return JobStatus(jobID) + "?slot=1"
 }
 
+// JobLog returns the URL for downloading a job's optional companion
+// log file (memorial import error log, etc.). The endpoint serves
+// the file from job.Result.LogPath with a Content-Disposition
+// attachment header so the browser saves rather than renders.
+// Registered as GET /jobs/{id}/log in jobs_handlers.go via the
+// handleJobStatus sub-router switch.
+func JobLog(jobID string) string {
+	return "/jobs/" + url.PathEscape(strings.TrimSpace(jobID)) + "/log"
+}
+
 // Anniversary returns the URL for the anniversary list endpoint for a
 // given calendar month/day. Registered as GET /anniversary/{m}/{d} in
 // routes.go.
