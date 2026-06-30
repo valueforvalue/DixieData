@@ -47,6 +47,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   server handler in `internal/appshell/export_preview.go`
   resolves the same scope/filter logic the actual PDF
   generation uses. Issue #179.
+- Save / reuse printable-export templates. Users can now
+  persist a print-config snapshot as a named local
+  template and recall it later via the modal's new
+  Templates section. Storage is a new SQLite table
+  `export_templates` (schema v56) with named, JSON-
+  encoded filter + group-by columns. CRUD lives in
+  `internal/records/export_templates.go`; HTTP routes
+  in `internal/appshell/export_templates_handlers.go`.
+  The print-config modal gains a Saved Templates
+  section at the top: dropdown + Load / Delete +
+  name input + Save Current buttons. Load applies
+  every field from the JSON response; Save posts the
+  modal's full form plus the new template_name input;
+  Delete uses the existing data-confirm convention.
+  Issue #178.
 - `smartBackLabel` in `frontend/app.js` now recognizes
   `/soldiers/{id}*` sub-routes (edit, timeline,
   camaraderie, research-log, conflict-ledger, research-pack,
