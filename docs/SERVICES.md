@@ -760,12 +760,12 @@ These are not services themselves but render on every page. Bug fixes here have 
 
 | status | severity | summary | issue# | fix-commit | audit-ref |
 |---|---|---|---|---|---|
-| open | high | Overlaps content on every page (audit r1 top-2, r2 confirmed) | — | — | r2 #2 |
+| fixed | high | Overlaps content on every page (audit r1 top-2, r2 confirmed) | — | (commit on `fix/layout-floating-dock-overlap`) | r2 #2 |
 | fixed | medium | Floating-nav toggle bound via `addEventListener` died after htmx swap | — | `46a10cc` | — |
 
 **Improvement log**
 
-- **2026-06-29**: Move dock to left edge OR collapse to single icon that expands on hover — top-priority visual fix per audit.
+- **2026-06-29**: Move dock to left edge OR collapse to single icon that expands on hover — top-priority visual fix per audit. ✅ **Fixed in commit on `fix/layout-floating-dock-overlap`** (neither option chosen — the actual root cause was content-vs-dock padding, not dock positioning). Implemented the JS-measured `--floating-dock-height` + direct `padding-bottom` write per `docs/COMMON_BUGS.md §4.14` prescription.
 
 ### Top nav (8 pill-links + primary CTA)
 

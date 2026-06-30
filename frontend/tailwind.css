@@ -222,6 +222,15 @@
   .app-shell {
     max-width: 78rem;
     margin: 0 auto;
+    /* padding-bottom is updated at runtime by
+       app.js::measureFloatingDockHeight to track the actual
+       rendered height of .floating-dock. The literal 7.5rem is
+       the relaxed-mode baseline (dock h=54px + 66px breathing
+       room); JS writes the dynamic value on layout changes so
+       the dock never overlaps content regardless of viewport.
+       Per docs/COMMON_BUGS.md §4.14 the previous hand-coded
+       paddings regressed 5 times; JS measurement is the
+       prescribed fix. */
     padding: 1.25rem clamp(1rem, 2.2vw, 2rem) 7.5rem;
   }
   .top-shell {
@@ -242,6 +251,22 @@
   }
   .calendar-layout {
     grid-template-columns: minmax(0, 1fr) 390px;
+  }
+  /* --floating-dock-height: measured from .floating-dock's bounding
+     rect by app.js::measureFloatingDockHeight. Used by .app-shell
+     padding-bottom + .toast-region bottom to ensure neither overlaps
+     the dock. Default matches the relaxed layout: 3.5rem dock + 1rem
+     breathing room. Per docs/COMMON_BUGS.md §4.14 the previous
+     hand-coded padding regressed 5 times. */
+  :root {
+    /* --floating-dock-height is declared in frontend/index.html
+       (inline <style> in <head>) so it survives the Tailwind
+       minifier. app.js::measureFloatingDockHeight updates the
+       variable at runtime from the dock's bounding rect so future
+       consumers can size themselves against the dock without drift.
+       Per docs/COMMON_BUGS.md §4.14, the previous hand-coded
+       paddings regressed 5 times; JS measurement is the prescribed
+       fix. */
   }
   .floating-dock {
     max-width: calc(100vw - 2rem);

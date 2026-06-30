@@ -220,7 +220,39 @@
     body.setAttribute("data-layout-mode", mode);
     body.setAttribute("data-layout-mode-preference", preference);
     refreshResponsiveLayoutControls(doc, preference, mode);
+    measureFloatingDockHeight(doc, html);
     clampPopoutPanels(doc);
+  }
+
+  // measureFloatingDockHeight sets the --floating-dock-height CSS
+  // variable on <html> AND directly updates .app-shell padding-bottom
+  // from the dock's measured height. The CSS variable is exposed
+  // for any future consumer (toast region offset, etc.). The direct
+  // DOM write on .app-shell is the binding effect today because
+  // the Tailwind minifier strips unused var() references from
+  // .app-shell padding-bottom — see Common Bug #4.14.
+  //
+  // Per docs/COMMON_BUGS.md §4.14 the previous approach (hand-coded
+  // padding-bottom + manual dock repositioning) regressed 5 times;
+  // measuring the dock at runtime is the prescribed fix.
+  function measureFloatingDockHeight(doc, html) {
+    const dock = doc.querySelector(".floating-dock");
+    if (!(dock instanceof HTMLElement)) {
+      return;
+    }
+    const rect = dock.getBoundingClientRect();
+    if (!rect.height) {
+      return;
+    }
+    // dock height + 3rem breathing room (matches the historical
+    // baseline padding-bottom values, so users see no visual change
+    // unless the dock actually grew/shrank).
+    const heightPx = Math.ceil(rect.height) + 48;
+    html.style.setProperty("--floating-dock-height", `${heightPx}px`);
+    const appShell = doc.querySelector(".app-shell");
+    if (appShell instanceof HTMLElement) {
+      appShell.style.paddingBottom = `${heightPx}px`;
+    }
   }
 
   function clampPopoutPanels(root = document) {
