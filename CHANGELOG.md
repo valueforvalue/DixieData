@@ -45,6 +45,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   pdf, jpg) and returns "Back to Person Record" instead of
   the generic "Back". Same coverage extension for `/browse`,
   `/jobs`, `/settings`, `/recovery`. Issue #171.
+- "Print/Export Selected" on the Browse screen now opens
+  the printable-export picker modal **in place** instead of
+  navigating to `/share`. The Browse screen's working set
+  (filters, page, sort, selection) is preserved across the
+  modal open/close cycle. The modal markup is extracted to
+  `internal/templates/partials/print_config_modal.templ`
+  and rendered by both `share.templ` and `browse.templ`;
+  `BrowseView` now also loads `exportRecords` so the modal's
+  filter dropdowns populate when opened from Browse. A new
+  stress test `TestHandleBrowseResponseUnderThreshold`
+  asserts a 1000-record archive's `/browse` GET stays under
+  500 ms so the extra list query never causes perceived
+  slowdown. Issue #176.
 
 ### Changed
 
@@ -77,6 +90,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - Dead `sepia-300` token removed from `tailwind.config.js`.
   Zero matches in templates or CSS. Issue #168.
+- `openPrintConfigFromQuery` and its two call sites
+  removed from `frontend/app.js`. The Browse screen no
+  longer uses the `?openPrintConfig=1` query-string
+  trigger (the in-place button opens directly), so the
+  helper had zero callers. Issue #176.
 
 ### Removed
 
