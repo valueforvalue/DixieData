@@ -307,6 +307,34 @@ func ExportPreview() string {
 	return "/export/preview"
 }
 
+// ExportTemplatesList returns the URL for the saved-templates
+// listing endpoint. Registered as GET /export/templates in
+// routes.go.
+func ExportTemplatesList() string {
+	return "/export/templates"
+}
+
+// ExportTemplateSave returns the URL for the saved-templates
+// creation endpoint. Registered as POST /export/templates in
+// routes.go.
+func ExportTemplateSave() string {
+	return "/export/templates"
+}
+
+// ExportTemplateDelete returns the URL for deleting one saved
+// template. Caller appends the {id} segment. Registered as DELETE
+// /export/templates/{id} in routes.go.
+func ExportTemplateDelete(id int64) string {
+	return fmt.Sprintf("/export/templates/%d", id)
+}
+
+// ExportTemplateApply returns the URL for loading one saved
+// template back into the modal. Caller appends the {id} segment.
+// Registered as POST /export/templates/{id}/apply in routes.go.
+func ExportTemplateApply(id int64) string {
+	return fmt.Sprintf("/export/templates/%d/apply", id)
+}
+
 // GoogleCalendarPreferencesSave returns the URL for the Google
 // Calendar preferences form. Registered as POST
 // /integrations/google/calendar/preferences/save in routes.go.
