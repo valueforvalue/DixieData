@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
@@ -72,9 +73,16 @@ func TestExportTemplateHandlers_SaveAndApply(t *testing.T) {
 	if applyResp.StatusCode != http.StatusOK {
 		t.Fatalf("apply status %d, want 200", applyResp.StatusCode)
 	}
-	var template map[string]any
-	if err := json.NewDecoder(applyResp.Body).Decode(&template); err != nil {
+	var applyEnvelope struct {
+		Template map[string]any `json:"template"`
+		Warnings []string      `json:"warnings"`
+	}
+	if err := json.NewDecoder(applyResp.Body).Decode(&applyEnvelope); err != nil {
 		t.Fatalf("decode apply response: %v", err)
+	}
+	template := applyEnvelope.Template
+	if applyEnvelope.Warnings == nil {
+		t.Errorf("warnings field missing from response (should be empty array)")
 	}
 	if template["name"] != "Co. A 5VA" {
 		t.Errorf("apply name = %v, want Co. A 5VA", template["name"])
@@ -163,3 +171,180 @@ func TestExportTemplateHandlers_ApplyNotFound404(t *testing.T) {
 }
 
 // (no helper needed; strconv.FormatInt is used inline above)
+// TestExportTemplateHandlers_StaleFilterWarning seeds a record,
+// saves a template that filters on its unit, deletes the record
+// (so the filter value is now stale), calls apply, and asserts the
+// response carries a warning naming the stale value. Issue #181.
+func TestExportTemplateHandlers_StaleFilterWarning(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	soldier, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "STALE-001",
+		FirstName: "Stale",
+		LastName:  "Record",
+		Unit:      "Vanishing Regiment",
+	})
+	if err != nil {
+		t.Fatalf("seed Create: %v", err)
+	}
+
+	form := url.Values{}
+	form.Set("template_name", "Stale Test")
+	form.Set("scope", "filtered")
+	form.Set("filter_unit", "Vanishing Regiment")
+	saveResp, err := http.PostForm(server.URL+"/export/templates", form)
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	defer saveResp.Body.Close()
+	var saveResult map[string]any
+	if err := json.NewDecoder(saveResp.Body).Decode(&saveResult); err != nil {
+		t.Fatalf("decode save: %v", err)
+	}
+	tid := int64(saveResult["id"].(float64))
+
+	// Delete the only matching record to make the filter stale.
+	if err := app.soldiers.Delete(soldier.ID); err != nil {
+		t.Fatalf("Delete seed: %v", err)
+	}
+
+	applyResp, err := http.PostForm(server.URL+"/export/templates/"+strconv.FormatInt(tid, 10)+"/apply", url.Values{})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	defer applyResp.Body.Close()
+	var envelope struct {
+		Template map[string]any `json:"template"`
+		Warnings []string      `json:"warnings"`
+	}
+	if err := json.NewDecoder(applyResp.Body).Decode(&envelope); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(envelope.Warnings) != 1 {
+		t.Fatalf("warnings = %v, want 1 stale-unit warning", envelope.Warnings)
+	}
+	if !strings.Contains(envelope.Warnings[0], "Vanishing Regiment") {
+		t.Errorf("warning %q should name the stale value", envelope.Warnings[0])
+	}
+	if !strings.Contains(envelope.Warnings[0], "Unit") {
+		t.Errorf("warning %q should label the filter family", envelope.Warnings[0])
+	}
+}
+
+// TestExportTemplateHandlers_CleanTemplateNoWarnings is the
+// regression net — a template whose filter values still match
+// records in the archive should produce no warnings.
+func TestExportTemplateHandlers_CleanTemplateNoWarnings(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	_, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CLEAN-001",
+		FirstName: "Clean",
+		LastName:  "Tester",
+		Unit:      "Enduring Regiment",
+	})
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	form := url.Values{}
+	form.Set("template_name", "Clean Test")
+	form.Set("scope", "filtered")
+	form.Set("filter_unit", "Enduring Regiment")
+	saveResp, err := http.PostForm(server.URL+"/export/templates", form)
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	defer saveResp.Body.Close()
+	var saveResult map[string]any
+	if err := json.NewDecoder(saveResp.Body).Decode(&saveResult); err != nil {
+		t.Fatalf("decode save: %v", err)
+	}
+	tid := int64(saveResult["id"].(float64))
+
+	applyResp, err := http.PostForm(server.URL+"/export/templates/"+strconv.FormatInt(tid, 10)+"/apply", url.Values{})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	defer applyResp.Body.Close()
+	var envelope struct {
+		Template map[string]any `json:"template"`
+		Warnings []string      `json:"warnings"`
+	}
+	if err := json.NewDecoder(applyResp.Body).Decode(&envelope); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(envelope.Warnings) != 0 {
+		t.Errorf("warnings = %v, want empty (clean template)", envelope.Warnings)
+	}
+}
+
+// TestExportTemplateHandlers_StaleSelectedIDWarning is the
+// scope=selected stale-ID variant. Saves a template with explicit
+// selected_ids, deletes those records, calls apply, asserts the
+// response carries one warning per missing ID.
+func TestExportTemplateHandlers_StaleSelectedIDWarning(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	a, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "SEL-001",
+		FirstName: "Sel",
+		LastName:  "One",
+	})
+	if err != nil {
+		t.Fatalf("seed a: %v", err)
+	}
+	b, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "SEL-002",
+		FirstName: "Sel",
+		LastName:  "Two",
+	})
+	if err != nil {
+		t.Fatalf("seed b: %v", err)
+	}
+
+	form := url.Values{}
+	form.Set("template_name", "Selected Test")
+	form.Set("scope", "selected")
+	form.Add("selected_ids", strconv.FormatInt(a.ID, 10))
+	form.Add("selected_ids", strconv.FormatInt(b.ID, 10))
+	saveResp, err := http.PostForm(server.URL+"/export/templates", form)
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	defer saveResp.Body.Close()
+	var saveResult map[string]any
+	if err := json.NewDecoder(saveResp.Body).Decode(&saveResult); err != nil {
+		t.Fatalf("decode save: %v", err)
+	}
+	tid := int64(saveResult["id"].(float64))
+
+	if err := app.soldiers.Delete(a.ID); err != nil {
+		t.Fatalf("Delete a: %v", err)
+	}
+
+	applyResp, err := http.PostForm(server.URL+"/export/templates/"+strconv.FormatInt(tid, 10)+"/apply", url.Values{})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	defer applyResp.Body.Close()
+	var envelope struct {
+		Template map[string]any `json:"template"`
+		Warnings []string      `json:"warnings"`
+	}
+	if err := json.NewDecoder(applyResp.Body).Decode(&envelope); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(envelope.Warnings) != 1 {
+		t.Fatalf("warnings = %v, want 1 stale-id warning", envelope.Warnings)
+	}
+	if !strings.Contains(envelope.Warnings[0], strconv.FormatInt(a.ID, 10)) {
+		t.Errorf("warning %q should name the missing ID %d", envelope.Warnings[0], a.ID)
+	}
+}

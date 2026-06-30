@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/pkg/render"
 )
 
@@ -78,6 +80,7 @@ func (a *App) handleSaveExportTemplate(w http.ResponseWriter, r *http.Request) {
 		SortBy:            settings.SortBy,
 		GroupBy:           collectExportGroupBy(settings),
 		Orientation:       settings.Orientation,
+		SelectedIDs:       settings.SelectedIDs,
 		PrinterFriendly:   settings.PrinterFriendly,
 		FullBiographyPage: settings.FullBiographyPage,
 	}
@@ -119,8 +122,15 @@ func (a *App) handleDeleteExportTemplate(w http.ResponseWriter, r *http.Request)
 }
 
 // handleApplyExportTemplate returns the stored fields as JSON so
-// the modal can populate its form. Also bumps last_used_at.
-// POST /export/templates/{id}/apply.
+// the modal can populate its form, wrapped in a response that also
+// lists any "stale" filter values or selected IDs that no longer
+// exist in the current archive (issue #181). Bumps last_used_at.
+//
+// Response shape: {"template": {...ExportTemplate fields...},
+// "warnings": ["Filter Unit no longer matches any record: ..."]}
+//
+// The frontend reads data.template and applies the fields to the
+// form, then pops a toast per warning (batched).
 func (a *App) handleApplyExportTemplate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -145,9 +155,90 @@ func (a *App) handleApplyExportTemplate(w http.ResponseWriter, r *http.Request) 
 		respondInternal(w, r, fmt.Sprintf("Could not update last_used_at for template %d.", id), err)
 		return
 	}
+	warnings := a.computeExportTemplateStale(template)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if err := json.NewEncoder(w).Encode(template); err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"template": template,
+		"warnings": warnings,
+	}); err != nil {
 		return
+	}
+}
+
+// computeExportTemplateStale cross-checks a loaded template's
+// filter values and selected IDs against the current archive and
+// returns one warning per stale entry. Filters out unknown-value
+// sentinels (the "__unknown__" marker the modal uses for "show
+// records with this field blank") — those are still meaningful
+// even if no current record uses them.
+func (a *App) computeExportTemplateStale(template records.ExportTemplate) []string {
+	familyLabels := map[string]string{
+		"buried_in":                "Burial Location",
+		"entry_type":               "Entry Type",
+		"unit":                     "Unit",
+		"pension_state":            "Pension State",
+		"confederate_home_status":  "Confederate Home Status",
+	}
+	current, err := a.listAllSoldiers()
+	if err != nil {
+		// Without the current archive we can't decide what's stale.
+		// Return no warnings rather than misleading the user.
+		return nil
+	}
+	exportRecords := viewmodel.ExportRecordOptionsFromModels(current)
+	warnings := []string{}
+	for family, values := range template.Filters {
+		have := map[string]bool{}
+		for _, v := range partials.ExportUniqueFilterValues(exportRecords, exportFieldAccessor(family)) {
+			if v == "" {
+				continue
+			}
+			have[strings.ToLower(v)] = true
+		}
+		for _, v := range values {
+			if v == "" || strings.TrimSpace(v) == partials.ExportFilterUnknownValue {
+				continue
+			}
+			if !have[strings.ToLower(strings.TrimSpace(v))] {
+				warnings = append(warnings, fmt.Sprintf(
+					"Filter %s no longer matches any record: %q.",
+					familyLabels[family], v,
+				))
+			}
+		}
+	}
+	if template.Scope == render.PrintScopeSelected {
+		idSet := map[int64]bool{}
+		for _, s := range current {
+			idSet[s.ID] = true
+		}
+		for _, id := range template.SelectedIDs {
+			if !idSet[id] {
+				warnings = append(warnings, fmt.Sprintf(
+					"Selected ID %d no longer exists in the archive.", id,
+				))
+			}
+		}
+	}
+	return warnings
+}
+
+// exportFieldAccessor returns the field-extraction function for the
+// given filter family, suitable for exportUniqueFilterValues.
+func exportFieldAccessor(family string) func(viewmodel.ExportRecordOption) string {
+	switch family {
+	case "buried_in":
+		return func(r viewmodel.ExportRecordOption) string { return r.BuriedIn }
+	case "entry_type":
+		return func(r viewmodel.ExportRecordOption) string { return r.EntryType }
+	case "unit":
+		return func(r viewmodel.ExportRecordOption) string { return r.Unit }
+	case "pension_state":
+		return func(r viewmodel.ExportRecordOption) string { return r.PensionState }
+	case "confederate_home_status":
+		return func(r viewmodel.ExportRecordOption) string { return r.ConfederateHomeStatus }
+	default:
+		return func(r viewmodel.ExportRecordOption) string { return "" }
 	}
 }
 
