@@ -13,7 +13,6 @@ module.exports = {
       colors: {
         gold: "#a88a46",
         "sepia-500": "#8d7440",
-        "sepia-300": "#cfb77a",
         parchment: "rgba(246,241,228,0.98)",
         "parchment-soft": "rgba(246,241,228,0.72)",
         ink: "#22303d",
