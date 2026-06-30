@@ -262,3 +262,106 @@ func TestGuardedOpenDialogRecorders(t *testing.T) {
 		t.Errorf("dup-hit must set X-DixieData-Redirect; got empty")
 	}
 }
+
+// TestHandleImportBackupDialogGuard covers the bug found in
+// audit pass for issue #158: handleImportBackup used to call
+// a.OpenFileDialog directly with no guard. A rapid
+// double-click on the "Restore from backup" button could land
+// two OpenFileDialog calls on the Wails UI thread; WebView2
+// loses focus and crashes with Chrome_WidgetWin_0. Error = 1412.
+//
+// The fix wraps the OpenFileDialog call in enterInFlight +
+// defer leaveInFlight (the inline pattern, same as
+// handleCalendarPDF), keyed by guardedOpenFileDialogKey so a
+// legitimate retry against a different file is still admitted.
+//
+// This test exercises the HTTP handler directly. The
+// importInFlight atomic.Bool is left at its zero value so the
+// first branch (the importInFlight.Load() check) does not
+// short-circuit before we hit the dialog.
+func TestHandleImportBackupDialogGuard(t *testing.T) {
+	app := NewApp()
+
+	var invocations atomic.Int32
+	// Block the first dialog so the second POST has time to
+	// race past the dup check while the slot is held.
+	release := make(chan struct{})
+	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
+		invocations.Add(1)
+		<-release
+		return "", nil // empty path → handler returns cancelled toast
+	})
+
+	opts := runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
+		},
+	}
+	dupKey := guardedOpenFileDialogKey("backup_import", opts)
+	if dupKey == "" {
+		t.Fatal("guardedOpenFileDialogKey must produce a non-empty key")
+	}
+
+	// Two concurrent POSTs to /import/backup.
+	var wg sync.WaitGroup
+	statuses := make(chan int, 2)
+	headers := make(chan string, 2)
+	wg.Add(2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/import/backup", nil)
+			app.handleImportBackup(rec, req)
+			statuses <- rec.Code
+			headers <- rec.Header().Get("X-DixieData-Redirect")
+		}()
+	}
+
+	// Wait until the first handler reaches the dialog override
+	// (proves the dup-check has fired for the second goroutine
+	// before the slot is released).
+	for invocations.Load() == 0 {
+		time.Sleep(time.Millisecond)
+	}
+	close(release)
+	wg.Wait()
+	close(statuses)
+	close(headers)
+
+	// First call: cancelled (200 with cancel toast — but we don't
+	// assert on body). Second call: dup-hit → respondDuplicateInFlight
+	// → 200 with X-DixieData-Redirect header (Option C contract).
+	//
+	// Either order is valid (we don't pin which goroutine wins);
+	// what matters is:
+	//   * exactly one X-DixieData-Redirect header across both responses
+	//   * OpenFileDialog invoked exactly once
+	var redirectCount int
+	for h := range headers {
+		if h != "" {
+			redirectCount++
+		}
+	}
+	if redirectCount != 1 {
+		t.Fatalf("exactly one response must set X-DixieData-Redirect (the dup-hit); got %d", redirectCount)
+	}
+	if got := invocations.Load(); got != 1 {
+		t.Fatalf("OpenFileDialog must be invoked exactly once; got %d", got)
+	}
+
+	// And the guard slot must be released: a subsequent POST
+	// (after the first returned) must not be blocked. The
+	// third call hits OpenFileDialog which returns "" (cancel),
+	// which the handler turns into a 400 with toast. What matters
+	// is that it is NOT a dup-hit (no X-DixieData-Redirect).
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/import/backup", nil)
+	app.handleImportBackup(rec, req)
+	if rec.Code == http.StatusOK {
+		t.Errorf("third POST returns cancel-toast 400; got 200 (unexpected happy path)")
+	}
+	if rec.Header().Get("X-DixieData-Redirect") != "" {
+		t.Errorf("third POST must not be a dup-hit; got X-DixieData-Redirect=%q", rec.Header().Get("X-DixieData-Redirect"))
+	}
+}

@@ -15,6 +15,7 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -40,12 +41,30 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path, err := a.OpenFileDialog( runtime.OpenDialogOptions{
+	// Dialog-guard per CONTEXT.md "Laws (non-negotiable)" and
+	// docs/agents/dialog-guard.md: a rapid double-click on the
+	// "Restore from backup" button can land two OpenFileDialog
+	// calls on the Wails UI thread; WebView2 loses focus and
+	// crashes with Chrome_WidgetWin_0. Error = 1412. Reject the
+	// second request before it reaches the native dialog.
+	// The key includes the file pattern so a legitimate retry
+	// against a different file path can still be admitted.
+	dialogOpts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
 			{DisplayName: "Legacy backup archive", Pattern: "*.zip"},
 		},
-	})
+	}
+	dupKey := guardedOpenFileDialogKey("backup_import", dialogOpts)
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
+		debug.FromContext(r.Context()).Debug("handleImportBackup duplicate request rejected")
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	defer a.leaveInFlight(dupKey, entry)
+
+	path, err := a.OpenFileDialog(dialogOpts)
 	if err != nil || path == "" {
 		respondError(w, r, KindValidation, "Backup import cancelled.", nil)
 		return
