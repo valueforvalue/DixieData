@@ -18,6 +18,7 @@ type personRecordSuggestions = models.SoldierFormSuggestions
 
 type personRecordsFacade interface {
 	ArchiveCounts() (models.ArchiveCounts, error)
+	CountNeedsReview() (int, error)
 	FormSuggestions() (personRecordSuggestions, error)
 	List(page, pageSize int) ([]personRecord, int, error)
 	BrowsePage(request records.BrowseRequest) ([]personRecord, int, records.BrowseRequest, error)

@@ -1800,3 +1800,49 @@ func TestSoldierService_ManualComparison(t *testing.T) {
 		t.Fatalf("expected differing fields to be highlighted: %#v", comparison.Fields)
 	}
 }
+
+func TestSoldierService_CountNeedsReview(t *testing.T) {
+	svc := NewSoldierService(newTestDB(t))
+
+	// Empty archive: count is 0.
+	count, err := svc.CountNeedsReview()
+	if err != nil {
+		t.Fatalf("CountNeedsReview (empty): %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("empty archive count = %d, want 0", count)
+	}
+
+	// Flag 3 records.
+	for i := 0; i < 3; i++ {
+		_, err := svc.Create(models.Soldier{
+			DisplayID:   fmt.Sprintf("CNT-%03d", i),
+			FirstName:   "Count",
+			LastName:    "Test",
+			NeedsReview: true,
+		})
+		if err != nil {
+			t.Fatalf("Create %d: %v", i, err)
+		}
+	}
+
+	// Add 2 unflagged records (should not count).
+	for i := 0; i < 2; i++ {
+		_, err := svc.Create(models.Soldier{
+			DisplayID: fmt.Sprintf("OK-%03d", i),
+			FirstName: "Ok",
+			LastName:  "Test",
+		})
+		if err != nil {
+			t.Fatalf("Create %d: %v", i, err)
+		}
+	}
+
+	count, err = svc.CountNeedsReview()
+	if err != nil {
+		t.Fatalf("CountNeedsReview (with mixed): %v", err)
+	}
+	if count != 3 {
+		t.Errorf("count = %d, want 3 (only flagged records)", count)
+	}
+}

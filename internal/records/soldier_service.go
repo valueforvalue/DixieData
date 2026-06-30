@@ -440,6 +440,18 @@ func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
 	return &image, nil
 }
 
+// CountNeedsReview returns the number of records currently flagged
+// for review. Used by the layout's top-nav badge (issue #180) so
+// users see pending review work from any page without navigating
+// to /review-queue. Single-digit ms with a partial index on
+// needs_review; no caching (count changes whenever any page
+// flags or resolves a record).
+func (s *SoldierService) CountNeedsReview() (int, error) {
+	var count int
+	err := s.db.Conn().QueryRow(`SELECT COUNT(*) FROM soldiers WHERE needs_review = 1`).Scan(&count)
+	return count, err
+}
+
 func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
 	row := s.db.Conn().QueryRow(`
 		SELECT
