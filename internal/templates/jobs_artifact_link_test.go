@@ -17,11 +17,12 @@ import (
 // test for issue #129 (continued). The earlier fix replaced
 // target="_blank" with a download attribute, but that produced a
 // second, confusing download in the Wails desktop flow because the
-// file is already at the user's chosen destination. The current fix
-// wires the artifact to a POST form against /jobs/{id}/open (which
-// calls runtime.BrowserOpenURL in Wails) plus a Copy-path button.
-// The form must NOT carry target=_blank, href to /artifact, or a
-// download attribute — the bytes never re-stream to the browser.
+// file is already at the user's chosen destination. The 2026-06-30
+// revision (issue #166) removed the 'Open file' button entirely
+// because runtime.BrowserOpenURL does nothing in the user's
+// runtime; the Copy-path button is the only artifact affordance.
+// The page must NOT carry target=_blank, href to /artifact, a
+// download attribute, or the POST form against /jobs/{id}/open.
 func TestJobStatusViewArtifactOpenButtonNoTargetBlank(t *testing.T) {
 	dir := t.TempDir()
 	resultPath := filepath.Join(dir, "june-2026.ddbak")
@@ -40,8 +41,11 @@ func TestJobStatusViewArtifactOpenButtonNoTargetBlank(t *testing.T) {
 	}
 	html := buf.String()
 
-	if !strings.Contains(html, `action="/jobs/job-ddbak/open"`) {
-		t.Errorf("status page must wire artifact to POST /jobs/{id}/open; got HTML:\n%s", html)
+	if strings.Contains(html, `action="/jobs/job-ddbak/open"`) {
+		t.Errorf("status page must NOT wire artifact to POST /jobs/{id}/open (issue #166 — button removed); got HTML:\n%s", html)
+	}
+	if strings.Contains(html, ">Open file<") {
+		t.Errorf("status page must NOT render 'Open file' button (issue #166); got HTML:\n%s", html)
 	}
 	if !strings.Contains(html, `data-copy-path=`) {
 		t.Errorf("status page must expose a Copy-path button (data-copy-path); got HTML:\n%s", html)
@@ -133,9 +137,11 @@ func TestJobStatusViewStillShowsProgressWhileRunning(t *testing.T) {
 // TestJobStatusFragmentArtifactOpenForm is the polling-fragment
 // counterpart for the /jobs/{id} status page. The fragment is what
 // htmx swaps into the layout progress slot every 2s while the page
-// polls for terminal state, so it must agree with the full view:
-// a POST form against /jobs/{id}/open, no target=_blank, no
-// href to /artifact, no download attribute.
+// polls for terminal state. The 2026-06-30 revision (issue #166)
+// removed the 'Open file' button from the layout slot because
+// runtime.BrowserOpenURL does nothing in the user's runtime.
+// Fragment must NOT carry the POST form against /jobs/{id}/open,
+// target=_blank, href to /artifact, or a download attribute.
 func TestJobStatusFragmentArtifactOpenForm(t *testing.T) {
 	dir := t.TempDir()
 	resultPath := filepath.Join(dir, "june-2026.ddbak")
@@ -154,8 +160,11 @@ func TestJobStatusFragmentArtifactOpenForm(t *testing.T) {
 	}
 	html := buf.String()
 
-	if !strings.Contains(html, `action="/jobs/job-ddbak/open"`) {
-		t.Errorf("fragment must wire artifact to POST /jobs/{id}/open; got HTML:\n%s", html)
+	if strings.Contains(html, `action="/jobs/job-ddbak/open"`) {
+		t.Errorf("fragment must NOT wire artifact to POST /jobs/{id}/open (issue #166 — button removed); got HTML:\n%s", html)
+	}
+	if strings.Contains(html, ">Open file<") {
+		t.Errorf("fragment must NOT render 'Open file' button (issue #166); got HTML:\n%s", html)
 	}
 	if strings.Contains(html, `target="_blank"`) {
 		t.Errorf("fragment must NOT use target=_blank; got HTML:\n%s", html)

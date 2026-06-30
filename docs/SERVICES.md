@@ -653,12 +653,14 @@ None open.
 | fixed | high | `Job.Snapshot` returned stale AwaitingConfirmation | — | `331b58d` | — |
 | fixed | high | Shared import log not exported via enqueueExport | #137 | `4a9b275` | — |
 | fixed | high | Memorial import log download button not wired in `jobSummaryCard` | — | (commit on `fix/jobs-wire-memorial-log-download`) | — |
+| fixed | medium | Dead "Open file" button on `/jobs/{id}`, `/jobs/{id}/report`, and layout progress slot | #166 | (commit on `fix/jobs-remove-open-file-button`) | — |
 
 ### Improvement log
 
 - **2026-06-29**: Wire `jobSummaryCard` to render log download when `job.Result.LogPath != ""` (per gaps.md).
 - **2026-06-29**: Add a deep-link pill to Merge Review on shared-import summary when `Conflicts > 0`.
 - **2026-06-29**: Jobs progress overlay (3s poll) could throttle when window not focused.
+- **2026-06-30**: "Open file" button removed (does nothing in user's runtime; Copy path is the reliable fallback). ✅ **Done in commit on `fix/jobs-remove-open-file-button`** — three surfaces cleaned (`jobSummaryCard`, report artifact section, layout slot), two regression tests inverted, backend handler kept for future callers.
 
 ---
 
