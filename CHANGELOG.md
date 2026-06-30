@@ -54,6 +54,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   border as the default chrome. The previously-declared
   `success-green` / `success-green-bg` tokens in
   `tailwind.config.js` are now wired into use. Issue #174.
+- The off-brand Tailwind `blue-*` classes on the
+  research / relationship screens (Camaraderie, Conflict
+  Ledger, Research Log / Pack / Collections, Service
+  Timeline, plus the matching side-cards on Soldier Detail)
+  are replaced with semantic `research-bg`,
+  `research-border-soft`, `research-border`,
+  `research-accent`, `research-text` tokens added to
+  `tailwind.config.js`. Visual output unchanged
+  (hex values map to the same Tailwind defaults), but the
+  intent ("research-derived content") is now named in code
+  and the off-brand classes are no longer the source of
+  truth. Issue #173.
 - Body background gradient stops are now exposed as
   `bg-sepia-top` / `bg-sepia-mid` / `bg-sepia-bottom`
   tokens in `tailwind.config.js` (ADR-0003). The literal

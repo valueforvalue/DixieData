@@ -247,7 +247,7 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 						data-history-back
 						data-fallback-href={ strings.TrimSpace(s.BackLinkURL) }
 						data-fallback-label={ backButtonLabel(s) }
-						class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+						class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text"
 					>← { backButtonLabel(s) }</button>
 				</div>
 				<div class="relative card rounded-3xl p-5 sm:p-8">
@@ -395,8 +395,8 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 								</div>
 							}
 							if soldierHasCamaraderie(s) {
-								<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
-									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Unit Camaraderie</p>
+								<div class="rounded-2xl border border-research-border bg-research-bg/80 p-4">
+									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Unit Camaraderie</p>
 									<p class="mt-2 text-sm text-slate-700">Trace nearby service connections from this person record to the same unit, regiment family, and company variants without losing your place in the local archive.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
 										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/camaraderie", s.ID)) } class="secondary-button">Open Unit Graph</a>
@@ -419,8 +419,8 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-log", s.ID)) } class="secondary-button">Open Research Log</a>
 								</div>
 							</div>
-							<div class="rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Merge Review Ledger</p>
+							<div class="rounded-2xl border border-research-border bg-research-bg/80 p-4">
+								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Merge Review Ledger</p>
 								<p class="mt-2 text-sm text-slate-700">Review shared-import conflicts tied to this person record, including which fields differed and how each disagreement was resolved.</p>
 								<div class="mt-4 flex flex-wrap gap-3">
 									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/conflict-ledger", s.ID)) } class="secondary-button">Open Merge Review Ledger</a>
