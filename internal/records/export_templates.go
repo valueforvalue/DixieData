@@ -24,6 +24,11 @@ import (
 // Filters + GroupBy slices are JSON-decoded from the *_json
 // columns on read. JSON tags match the modal's field naming so
 // the apply endpoint can return the row directly with no rename.
+//
+// SelectedIDs is populated only when scope == "selected" (issue
+// #181); other scopes store an empty slice. The apply handler
+// cross-checks each ID against the current archive and emits a
+// stale-id warning for any that no longer exist.
 type ExportTemplate struct {
 	ID                int64                `json:"id"`
 	Name              string               `json:"name"`
@@ -32,6 +37,7 @@ type ExportTemplate struct {
 	SortBy            string               `json:"sort_by"`
 	GroupBy           []string             `json:"group_by"`
 	Orientation       string               `json:"orientation"`
+	SelectedIDs       []int64              `json:"selected_ids"`
 	PrinterFriendly   bool                 `json:"printer_friendly"`
 	FullBiographyPage bool                 `json:"full_biography_page"`
 	CreatedAt         time.Time            `json:"created_at"`
@@ -65,6 +71,9 @@ func (s *ExportTemplateService) Create(t ExportTemplate) (ExportTemplate, error)
 	if t.GroupBy == nil {
 		t.GroupBy = []string{}
 	}
+	if t.SelectedIDs == nil {
+		t.SelectedIDs = []int64{}
+	}
 	if strings.TrimSpace(t.SortBy) == "" {
 		t.SortBy = "last_name"
 	}
@@ -79,17 +88,22 @@ func (s *ExportTemplateService) Create(t ExportTemplate) (ExportTemplate, error)
 	if err != nil {
 		return ExportTemplate{}, fmt.Errorf("encode group_by: %w", err)
 	}
+	selectedIDsJSON, err := json.Marshal(t.SelectedIDs)
+	if err != nil {
+		return ExportTemplate{}, fmt.Errorf("encode selected_ids: %w", err)
+	}
 	res, err := s.db.Exec(`
 		INSERT INTO export_templates (
 			name, scope, filters_json, sort_by, group_by_json,
-			orientation, printer_friendly, full_biography_page
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			orientation, selected_ids_json, printer_friendly, full_biography_page
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.TrimSpace(t.Name),
 		strings.TrimSpace(t.Scope),
 		string(filtersJSON),
 		t.SortBy,
 		string(groupByJSON),
 		t.Orientation,
+		string(selectedIDsJSON),
 		boolToInt(t.PrinterFriendly),
 		boolToInt(t.FullBiographyPage),
 	)
@@ -111,7 +125,7 @@ func (s *ExportTemplateService) Create(t ExportTemplate) (ExportTemplate, error)
 func (s *ExportTemplateService) Get(id int64) (ExportTemplate, error) {
 	row := s.db.QueryRow(`
 		SELECT id, name, scope, filters_json, sort_by, group_by_json,
-			orientation, printer_friendly, full_biography_page,
+			orientation, selected_ids_json, printer_friendly, full_biography_page,
 			created_at, last_used_at
 		FROM export_templates WHERE id = ?`, id)
 	return scanExportTemplate(row)
@@ -123,7 +137,7 @@ func (s *ExportTemplateService) Get(id int64) (ExportTemplate, error) {
 func (s *ExportTemplateService) List() ([]ExportTemplate, error) {
 	rows, err := s.db.Query(`
 		SELECT id, name, scope, filters_json, sort_by, group_by_json,
-			orientation, printer_friendly, full_biography_page,
+			orientation, selected_ids_json, printer_friendly, full_biography_page,
 			created_at, last_used_at
 		FROM export_templates
 		ORDER BY datetime(last_used_at) DESC, name COLLATE NOCASE ASC`)
@@ -161,17 +175,18 @@ func scanExportTemplate(scanner interface {
 	Scan(dest ...any) error
 }) (ExportTemplate, error) {
 	var (
-		t            ExportTemplate
-		filtersJSON  string
-		groupByJSON  string
-		printer      int
-		fullBio      int
-		createdAt    string
-		lastUsedAt   string
+		t              ExportTemplate
+		filtersJSON    string
+		groupByJSON    string
+		selectedIDsJSON string
+		printer        int
+		fullBio        int
+		createdAt      string
+		lastUsedAt     string
 	)
 	if err := scanner.Scan(
 		&t.ID, &t.Name, &t.Scope, &filtersJSON, &t.SortBy, &groupByJSON,
-		&t.Orientation, &printer, &fullBio, &createdAt, &lastUsedAt,
+		&t.Orientation, &selectedIDsJSON, &printer, &fullBio, &createdAt, &lastUsedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ExportTemplate{}, ErrExportTemplateNotFound
@@ -189,6 +204,12 @@ func scanExportTemplate(scanner interface {
 	}
 	if t.GroupBy == nil {
 		t.GroupBy = []string{}
+	}
+	if err := json.Unmarshal([]byte(selectedIDsJSON), &t.SelectedIDs); err != nil {
+		return ExportTemplate{}, fmt.Errorf("decode selected_ids: %w", err)
+	}
+	if t.SelectedIDs == nil {
+		t.SelectedIDs = []int64{}
 	}
 	t.PrinterFriendly = printer != 0
 	t.FullBiographyPage = fullBio != 0

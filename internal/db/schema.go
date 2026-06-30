@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS export_templates (
     sort_by       TEXT NOT NULL DEFAULT 'last_name',
     group_by_json TEXT NOT NULL DEFAULT '[]',
     orientation   TEXT NOT NULL DEFAULT 'L',
+    selected_ids_json TEXT NOT NULL DEFAULT '[]',
     printer_friendly     INTEGER NOT NULL DEFAULT 0,
     full_biography_page  INTEGER NOT NULL DEFAULT 0,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
