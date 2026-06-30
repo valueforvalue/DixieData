@@ -52,10 +52,17 @@ SEED_BIN := build/bin/seed-data.exe
 GOLD_BIN := build/bin/gold-master.exe
 TUNE_BIN := tools/tune/bin/dixiedata-tune.exe
 
-build debug: SCRIPT := scripts/build-debug.ps1
-build debug: TARGET := debug
-build debug: ARGS :=
-build debug: ## Debug build via scripts/build-debug.ps1
+build: SCRIPT := scripts/build-debug.ps1
+build: TARGET := build
+build: ARGS :=
+build: ## Build via scripts/build-debug.ps1
+	$(LOG_RECIPE)
+	@$(call RECURSIVE_MAKE,probe-clean web seed gold tune-bin)
+
+debug: SCRIPT := scripts/build-debug.ps1
+debug: TARGET := debug
+debug: ARGS :=
+debug: ## Debug build via scripts/build-debug.ps1 (chains web+seed+gold+tune-bin)
 	$(LOG_RECIPE)
 	@$(call RECURSIVE_MAKE,probe-clean web seed gold tune-bin)
 
@@ -115,7 +122,10 @@ dev: ## wails dev (interactive — no log capture)
 # --- Test targets ---
 
 # Go test default mode is non-verbose; -short skips integration tests that flood logs.
-test test-quiet: ## Go test ./... with -short -count=1
+test: ## Go test ./... with -short -count=1
+	go test ./... -short -count=1
+
+test-quiet: ## Alias of `make test`
 	go test ./... -short -count=1
 
 stress: SCRIPT := scripts/run-stress-tests.ps1
