@@ -62,6 +62,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   modal's full form plus the new template_name input;
   Delete uses the existing data-confirm convention.
   Issue #178.
+- Pending-review badge on the Review Queue nav link.
+  When one or more records are flagged `NeedsReview`,
+  a small review-red badge with the count appears
+  next to the link in the top nav. Counts >= 100
+  render as "99+". Populated via a new
+  `GET /layout/review-count` endpoint that the layout
+  polls every 30s with htmx, so the count surfaces
+  from any page without per-render DB load. A new
+  `CountNeedsReview` method on `SoldierService`
+  backs the endpoint. Issue #180.
 - `smartBackLabel` in `frontend/app.js` now recognizes
   `/soldiers/{id}*` sub-routes (edit, timeline,
   camaraderie, research-log, conflict-ledger, research-pack,
