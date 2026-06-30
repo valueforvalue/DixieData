@@ -70,23 +70,12 @@ templ jobSummaryCard(job jobs.Job) {
 			@components.Button("Dismiss", components.ButtonPrimary, "", templ.Attributes{"type": "button", "onclick": "window.location.assign(" + quoteAttr(job.DismissTargetPath()) + ")"})
 			@components.Button("Show report", components.ButtonSecondary, "", templ.Attributes{"type": "button", "onclick": "window.location.assign('/jobs/" + job.ID + "/report')"})
 			if job.ResultPath != "" {
-				// One POST form → /jobs/{id}/open. The handler calls
-				// runtime.BrowserOpenURL("file:///<path>") in the Wails
-				// desktop, which asks the OS shell to open the file in
-				// its default application (Notepad for .json, Excel
-				// for .xlsx, Adobe Reader for .pdf, etc.). In web-mode
-				// the handler returns an info toast telling the user
-				// to use Copy Path. The file is already at the user's
-				// chosen destination (from the SaveFileDialog earlier
-				// in the flow), so we don't stream the bytes again —
-				// that would be a confusing extra download.
-				//
-				// Plain <form method="post"> because /jobs/{id}/open is
-				// not part of the enqueueExport surface (legitimate
-				// 303 + Location use case, see ADR 0004).
-				<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/open") } class="contents">
-					<button type="submit" class="secondary-button px-3 py-1 text-xs">Open file</button>
-				</form>
+				// Copy-path button is the user-facing affordance for
+				// locating the saved artifact. Removed the previous
+				// 'Open file' button (POST /jobs/{id}/open +
+				// runtime.BrowserOpenURL) because it does nothing in
+				// the user's runtime; Copy path + the OS file
+				// manager is the reliable fallback. Closes #166.
 				<button type="button" class="secondary-button px-3 py-1 text-xs" data-copy-path={ job.ResultPath }>Copy path</button>
 			}
 			if job.Result.LogPath != "" {
@@ -303,16 +292,11 @@ templ JobReportView(job jobs.Job) {
 						</div>
 					</dl>
 					<div class="mt-3 flex flex-wrap items-center gap-2">
-						// Same as the JobStatusView block above: a single
-						// "Open file" form posting to /jobs/{id}/open plus
-						// a "Copy path" button so the user can find the
-						// file in either runtime. See JobStatusView for
-						// the rationale on why we don't render an inline
-						// "Open {label}" link against the artifact
-						// endpoint.
-						<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/open") } class="contents">
-							<button type="submit" class="secondary-button px-3 py-1 text-xs">Open file</button>
-						</form>
+						// Copy-path button only. The previous 'Open file'
+						// button (POST /jobs/{id}/open + runtime.BrowserOpenURL)
+						// was removed because it does nothing in the user's
+						// runtime. Copy path + the OS file manager is the
+						// reliable fallback. Closes #166.
 						<button type="button" class="secondary-button px-3 py-1 text-xs" data-copy-path={ job.ResultPath }>Copy path</button>
 					</div>
 				</section>

@@ -58,14 +58,12 @@ templ JobStatusSlotFragment(job jobs.Job) {
 			<p class="text-xs text-slate-600">{ job.Message }</p>
 		}
 		if job.Status == jobs.StatusDone && job.ResultPath != "" {
-			// Same pattern as JobStatusView: POST /jobs/{id}/open opens
-			// the file in the OS default app via runtime.BrowserOpenURL
-			// (Wails desktop); web-mode falls back to an info toast.
-			// Plain <form> so the badge stays inside the layout slot
-			// without needing the X-DixieData-Redirect dispatcher.
-			<form method="post" action={ templ.SafeURL("/jobs/" + job.ID + "/open") } class="contents">
-				<button type="submit" class="pill-link text-xs">Open file</button>
-			</form>
+			// The 'Open file' button (POST /jobs/{id}/open +
+			// runtime.BrowserOpenURL) was removed from the layout
+			// slot because it does nothing in the user's runtime.
+			// The user can still open the file from the full
+			// /jobs/{id} status page (which renders the file path
+			// prominently + has Copy path). Closes #166.
 		}
 		if job.Status == jobs.StatusError {
 			<p class="break-words text-xs text-[#6f2c26]">{ job.Error }</p>

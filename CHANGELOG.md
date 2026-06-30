@@ -29,6 +29,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `data-soldier-or-widow-field` so its visibility follows the
   same JS rule. Issue #75.
 
+### Removed
+
+- "Open file" button removed from three surfaces: the
+  `jobSummaryCard` on `/jobs/{id}`, the artifact section of
+  `/jobs/{id}/report`, and the layout progress slot
+  (`job_slot_fragment`). The button POSTed to `/jobs/{id}/open`,
+  which calls `runtime.BrowserOpenURL("file:///<path>")` in Wails
+  desktop and returns an info toast in web mode. Per user bug
+  report, the button does nothing in their runtime. The "Copy
+  path" button next to the original (already wired via
+  `data-copy-path`) is the reliable fallback in both runtimes.
+  Backend handler `openJobArtifact` (`internal/appshell/jobs_handlers.go:269`)
+  is kept for any future callers / debug entry points. Two
+  regression tests in `internal/templates/jobs_artifact_link_test.go`
+  inverted: they now assert the POST form + button are NOT
+  rendered. Closes #166.
+
 ### Fixed
 
 - Floating dock (Scratch Pad / Feedback / Menu) no longer overlaps
