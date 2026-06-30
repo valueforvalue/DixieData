@@ -20,18 +20,18 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 					data-history-back
 					data-fallback-href={ fmt.Sprintf("/soldiers/%d", log.SubjectPersonRecord.ID) }
 					data-fallback-label="Back to Person Record"
-					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
+					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text sm:w-auto"
 				>← Back to Person Record</button>
 				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", log.SubjectPersonRecord.ID)) } class="pill-link w-full sm:w-auto">Open Person Record</a>
 			</div>
 			<div class="grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
 				<aside class="card rounded-3xl p-6">
-					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Research Log &amp; Missing Evidence</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Research Log &amp; Missing Evidence</p>
 					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(log.SubjectPersonRecord) }</h2>
 					<p class="mt-2 text-sm text-slate-600">{ log.SubjectPersonRecord.DisplayID }</p>
 					<div class="mt-5 space-y-3">
-						<div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Open Tasks</p>
+						<div class="rounded-2xl border border-research-border-soft bg-research-bg/70 p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-research-accent">Open Tasks</p>
 							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", log.OpenCount) }</p>
 						</div>
 						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.8)] p-4">
@@ -46,7 +46,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 					<p class="mt-5 text-sm leading-6 text-slate-600">Use this log to turn missing evidence into explicit follow-up tasks instead of leaving open questions buried inside notes.</p>
 				</aside>
 				<div class="space-y-5">
-					<section class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+					<section class="rounded-3xl border border-research-border bg-research-bg/70 p-5">
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 							<div>
 								<h3 class="text-lg font-semibold text-slate-900">Add Research Task</h3>
@@ -126,7 +126,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 											<div>
 												<div class="flex flex-wrap gap-2">
 													<span class={ researchTaskStatusClass(task.Status) }>{ researchTaskStatusLabel(task.Status) }</span>
-													<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ researchEvidenceTypeLabel(task.EvidenceType) }</span>
+													<span class="rounded-full border border-research-border-soft bg-research-bg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-research-text">{ researchEvidenceTypeLabel(task.EvidenceType) }</span>
 												</div>
 												<p class="mt-3 text-lg font-semibold text-slate-900">{ task.Title }</p>
 												if strings.TrimSpace(task.Notes) != "" {

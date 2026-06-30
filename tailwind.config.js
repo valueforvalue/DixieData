@@ -29,6 +29,17 @@ module.exports = {
         "success-green-bg": "rgba(242,252,244,0.95)",
         "error-red": "#7a2d2d",
         "error-red-bg": "rgba(255,245,245,0.95)",
+        // Research / relationship accent palette — used on the
+        // Camaraderie, Conflict Ledger, Research Log / Pack /
+        // Collections, Service Timeline, and the matching side-cards
+        // on Soldier Detail. Hex literals map to Tailwind's default
+        // blue-50 / 100 / 200 / 600 / 700. Tokenized in issue #173
+        // so the intent ("research content") is named in code.
+        "research-bg": "#eff6ff",
+        "research-border-soft": "#dbeafe",
+        "research-border": "#bfdbfe",
+        "research-accent": "#2563eb",
+        "research-text": "#1d4ed8",
       },
       borderRadius: {
         surface: "1.7rem",

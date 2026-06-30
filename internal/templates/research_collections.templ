@@ -24,18 +24,18 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 						data-history-back
 						data-fallback-href={ fmt.Sprintf("/soldiers/%d", hub.CurrentPersonRecord.ID) }
 						data-fallback-label="Back to Person Record"
-						class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
+						class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text sm:w-auto"
 					>← Back to Person Record</button>
 				}
 			</div>
 			if hub.CurrentPersonRecord != nil {
-				<div class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
-					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Current Person Record</p>
+				<div class="rounded-3xl border border-research-border bg-research-bg/70 p-5">
+					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-research-accent">Current Person Record</p>
 					<p class="mt-2 text-lg font-semibold text-slate-900">{ detailHeading(*hub.CurrentPersonRecord) }</p>
 					<p class="mt-1 text-sm text-slate-600">{ hub.CurrentPersonRecord.DisplayID }</p>
 				</div>
 			}
-			<section class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+			<section class="rounded-3xl border border-research-border bg-research-bg/70 p-5">
 				<h3 class="text-lg font-semibold text-slate-900">Create Collection</h3>
 				<form action={ templ.SafeURL(routebuilder.ResearchCollectionsCreate()) } data-dixie-submit="true" class="mt-4 grid gap-4 md:grid-cols-2">
 					if hub.CurrentPersonRecord != nil {
@@ -77,7 +77,7 @@ templ ResearchCollectionsHubView(hub viewmodel.ResearchCollectionHub) {
 									<p class="mt-2 text-sm leading-6 text-slate-700">{ collection.Description }</p>
 								}
 								<div class="mt-3 flex flex-wrap gap-2">
-									<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ fmt.Sprintf("%d person records", collection.ItemCount) }</span>
+									<span class="rounded-full border border-research-border-soft bg-research-bg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-research-text">{ fmt.Sprintf("%d person records", collection.ItemCount) }</span>
 									if collection.ContainsCurrent {
 										<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Current person record added</span>
 									}
@@ -110,17 +110,17 @@ templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 					data-history-back
 					data-fallback-href={ researchCollectionFallbackHref(detail.CurrentPersonRecord) }
 					data-fallback-label={ researchCollectionBackLabel(detail.CurrentPersonRecord) }
-					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
+					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text sm:w-auto"
 					>← { researchCollectionBackLabel(detail.CurrentPersonRecord) }</button>
 			</div>
 			<div class="card rounded-3xl p-6">
-				<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Research Collection</p>
+				<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Research Collection</p>
 				<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detail.Collection.Name }</h2>
 				if strings.TrimSpace(detail.Collection.Description) != "" {
 					<p class="mt-2 text-sm leading-6 text-slate-700">{ detail.Collection.Description }</p>
 				}
 				<div class="mt-4 flex flex-wrap gap-3">
-					<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ fmt.Sprintf("%d person records", detail.Collection.ItemCount) }</span>
+					<span class="rounded-full border border-research-border-soft bg-research-bg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-research-text">{ fmt.Sprintf("%d person records", detail.Collection.ItemCount) }</span>
 					if detail.CurrentPersonRecord != nil && detail.Collection.ContainsCurrent {
 						<span class="rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Current person record included</span>
 					}

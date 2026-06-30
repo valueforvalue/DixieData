@@ -17,18 +17,18 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 					data-history-back
 					data-fallback-href={ fmt.Sprintf("/soldiers/%d", timeline.SubjectPersonRecord.ID) }
 					data-fallback-label="Back to Person Record"
-					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 sm:w-auto"
+					class="inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text sm:w-auto"
 				>← Back to Person Record</button>
 				<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", timeline.SubjectPersonRecord.ID)) } class="pill-link w-full sm:w-auto">Open Person Record</a>
 			</div>
 			<div class="grid gap-5 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
 				<aside class="card rounded-3xl p-6">
-					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">Auto-Built Service Timeline</p>
+					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Auto-Built Service Timeline</p>
 					<h2 class="mt-3 text-2xl font-bold text-slate-900">{ detailHeading(timeline.SubjectPersonRecord) }</h2>
 					<p class="mt-2 text-sm text-slate-600">{ timeline.SubjectPersonRecord.DisplayID }</p>
 					<div class="mt-5 space-y-3 text-sm text-slate-700">
-						<div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Service Profile</p>
+						<div class="rounded-2xl border border-research-border-soft bg-research-bg/70 p-4">
+							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-research-accent">Service Profile</p>
 							<p class="mt-2 font-medium text-slate-900">{ emptyDetail(timeline.SubjectPersonRecord.Unit) }</p>
 							if strings.TrimSpace(detailDisplayRank(timeline.SubjectPersonRecord)) != "" {
 								<p class="mt-1 text-slate-600">Rank out: { detailDisplayRank(timeline.SubjectPersonRecord) }</p>
@@ -42,8 +42,8 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Timed Events</p>
 								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(timeline.TimelineEvents)) }</p>
 							</div>
-							<div class="rounded-2xl border border-blue-200 bg-blue-50/80 px-4 py-3">
-								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Exact</p>
+							<div class="rounded-2xl border border-research-border bg-research-bg/80 px-4 py-3">
+								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-research-accent">Exact</p>
 								<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", timeline.ExactEventCount) }</p>
 							</div>
 							<div class="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
@@ -66,7 +66,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 					</div>
 				</aside>
 				<div class="space-y-5">
-					<div class="rounded-3xl border border-blue-200 bg-blue-50/70 p-5">
+					<div class="rounded-3xl border border-research-border bg-research-bg/70 p-5">
 						<p class="text-sm text-slate-700">The timeline is assembled from structured birth and death fields plus date clues found inside attached source record details such as muster, parole, pension, or memorial notes.</p>
 					</div>
 					if len(timeline.TimelineEvents) == 0 {
@@ -84,7 +84,7 @@ templ ServiceTimelineView(timeline viewmodel.ServiceTimeline) {
 										<div class="flex flex-wrap gap-2">
 											<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{ event.ConfidenceLabel }</span>
 											if strings.TrimSpace(event.SourceLabel) != "" {
-												<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">{ event.SourceLabel }</span>
+												<span class="rounded-full border border-research-border-soft bg-research-bg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-research-text">{ event.SourceLabel }</span>
 											}
 										</div>
 									</div>
@@ -147,7 +147,7 @@ func serviceTimelineCategoryClass(category string) string {
 	case "life":
 		return "text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]"
 	case "service":
-		return "text-xs font-semibold uppercase tracking-[0.2em] text-blue-600"
+		return "text-xs font-semibold uppercase tracking-[0.2em] text-research-accent"
 	case "pension":
 		return "text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]"
 	case "burial":
