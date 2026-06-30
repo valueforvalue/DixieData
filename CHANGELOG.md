@@ -1717,6 +1717,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   — were silently hidden. Split each into single-target rules with their
   own `## doc` line. No behavior change; `make -n` confirms identical
   recipes.
+- `internal/jobs/jobs_test.go` `TestSetResultBroadcastsSnapshot` had a race
+  that surfaced intermittently under `go test ./...`: the worker goroutine
+  from `Start` broadcasts StatusRunning before the test could call
+  `Subscribe`, so the channel received the wrong snapshot on the next read
+  and the assertion against `SetResult`'s broadcast saw
+  `ReplacedRecords=0` / `MigrationRan=false`. Drain the channel until the
+  `SetResult` snapshot arrives (identified by `MigrationRan=true`), with
+  the same 1s deadline. Verified stable over 10 standalone runs and 3
+  consecutive `go test ./...` invocations.
 
 ## v1.2.55 - 2026-06-25
 

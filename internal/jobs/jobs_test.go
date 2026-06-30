@@ -191,32 +191,39 @@ func TestSetResultUnknownJobIsNoop(t *testing.T) {
 // /jobs/{id}/status page (issue #131 poll wiring) sees the final
 // counts without a page reload. Without this the stats would only
 // land on the next /jobs/{id} poll, defeating the "live" promise.
+//
+// The worker is forced to block on ctx.Done() so we control timing:
+// Start flips the job to StatusRunning and broadcasts, but the
+// StatusDone broadcast does not land until Cancel() releases the
+// worker. That keeps the test deterministic regardless of how fast
+// the runtime schedules goroutines; the previous version had a
+// flaky 1s-timeout race where the worker's StatusDone broadcast
+// could land before Subscribe registered the channel.
 func TestSetResultBroadcastsSnapshot(t *testing.T) {
 	reg := New()
-	id := reg.Start("backup_import", func(ctx context.Context, p *Progress) error { return nil })
+	id := reg.Start("backup_import", func(ctx context.Context, p *Progress) error {
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	t.Cleanup(func() { reg.Cancel(id) })
 	sub := reg.Subscribe(id)
 	t.Cleanup(func() { reg.Unsubscribe(id, sub) })
-	// Drain any pre-existing snapshot the subscriber may have
-	// queued before SetResult lands.
-	for {
+	reg.SetResult(id, JobResult{ReplacedRecords: 99, BackupSchema: 5, CurrentSchema: 7, MigrationRan: true})
+	// Drain snapshots until we see the SetResult broadcast. The
+	// StatusRunning snapshot from Start lands first; SetResult's
+	// broadcast is the one we actually want to assert on.
+	deadline := time.After(time.Second)
+	var got JobResult
+	for !got.MigrationRan {
 		select {
-		case <-sub:
-		default:
-			goto publish
+		case snap := <-sub:
+			got = snap.Result
+		case <-deadline:
+			t.Fatalf("SetResult broadcast not received within 1s")
 		}
 	}
-publish:
-	reg.SetResult(id, JobResult{ReplacedRecords: 99, BackupSchema: 5, CurrentSchema: 7, MigrationRan: true})
-	select {
-	case snap := <-sub:
-		if snap.Result.ReplacedRecords != 99 {
-			t.Errorf("broadcast Result.ReplacedRecords = %d, want 99", snap.Result.ReplacedRecords)
-		}
-		if !snap.Result.MigrationRan {
-			t.Error("broadcast Result.MigrationRan = false, want true")
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("SetResult did not broadcast within 1s")
+	if got.ReplacedRecords != 99 {
+		t.Errorf("broadcast Result.ReplacedRecords = %d, want 99", got.ReplacedRecords)
 	}
 }
 
