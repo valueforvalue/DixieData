@@ -18,6 +18,13 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   distinct from the Review Queue. Backs the subset-export flow
   landing in upcoming commits (issue #182).
 
+- `SoldierService.ByIDs(ids []int64) ([]models.Soldier, error)` for
+  explicit-id ordered lookup. Slimmed "recent" projection, same as
+  `RecentByIDs`; callers that need full per-record enrichment
+  (Records / Images) follow up with `GetByID` per result, mirroring
+  `listAllSoldiers`. Dedupes input, silently skips missing ids, no
+  implicit limit clamp. Issue #182.
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

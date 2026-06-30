@@ -1032,6 +1032,112 @@ func TestSoldierService_RecentByIDsPreservesOrder(t *testing.T) {
 	}
 }
 
+func TestSoldierService_ByIDsPreservesOrder(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	first, err := svc.Create(models.Soldier{DisplayID: "BID-0001", FirstName: "First", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := svc.Create(models.Soldier{DisplayID: "BID-0002", FirstName: "Second", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+	third, err := svc.Create(models.Soldier{DisplayID: "BID-0003", FirstName: "Third", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create third: %v", err)
+	}
+
+	// Reverse order to prove the SQL result order does not win.
+	results, err := svc.ByIDs([]int64{third.ID, first.ID, second.ID})
+	if err != nil {
+		t.Fatalf("ByIDs: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("ByIDs returned %d results, want 3", len(results))
+	}
+	if results[0].ID != third.ID || results[1].ID != first.ID || results[2].ID != second.ID {
+		t.Fatalf("ByIDs did not preserve caller order: %d, %d, %d", results[0].ID, results[1].ID, results[2].ID)
+	}
+}
+
+func TestSoldierService_ByIDsEmpty(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	results, err := svc.ByIDs(nil)
+	if err != nil {
+		t.Fatalf("ByIDs(nil): %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("ByIDs(nil) returned %d results, want 0", len(results))
+	}
+
+	results, err = svc.ByIDs([]int64{})
+	if err != nil {
+		t.Fatalf("ByIDs([]): %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("ByIDs([]) returned %d results, want 0", len(results))
+	}
+}
+
+func TestSoldierService_ByIDsMissingSilentlySkipped(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	real, err := svc.Create(models.Soldier{DisplayID: "BID-0004", FirstName: "Real", LastName: "Record"})
+	if err != nil {
+		t.Fatalf("Create real: %v", err)
+	}
+
+	results, err := svc.ByIDs([]int64{real.ID, 999999, real.ID, 888888})
+	if err != nil {
+		t.Fatalf("ByIDs: %v", err)
+	}
+	// 1 distinct real id; the duplicates dedupe; the missing ids
+	// are silently dropped. Caller's order is preserved.
+	if len(results) != 1 {
+		t.Fatalf("ByIDs returned %d results, want 1 (deduped real only)", len(results))
+	}
+	if results[0].ID != real.ID {
+		t.Fatalf("ByIDs returned id %d, want %d", results[0].ID, real.ID)
+	}
+}
+
+func TestSoldierService_ByIDsLargeBatch(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	const total = 750
+	ids := make([]int64, 0, total)
+	for i := 0; i < total; i++ {
+		s, err := svc.Create(models.Soldier{
+			DisplayID: fmt.Sprintf("BID-%04d", i+1),
+			FirstName: fmt.Sprintf("F%04d", i),
+			LastName:  "Batch",
+		})
+		if err != nil {
+			t.Fatalf("Create %d: %v", i, err)
+		}
+		ids = append(ids, s.ID)
+	}
+
+	results, err := svc.ByIDs(ids)
+	if err != nil {
+		t.Fatalf("ByIDs large: %v", err)
+	}
+	if len(results) != total {
+		t.Fatalf("ByIDs large returned %d, want %d", len(results), total)
+	}
+	for i, got := range results {
+		if got.ID != ids[i] {
+			t.Fatalf("ByIDs large order broken at %d: got %d want %d", i, got.ID, ids[i])
+		}
+	}
+}
+
 func TestSoldierService_UnitCamaraderieGraph(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)

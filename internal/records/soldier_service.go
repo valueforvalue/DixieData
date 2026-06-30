@@ -1080,6 +1080,65 @@ func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, 
 	return ordered, nil
 }
 
+// ByIDs returns the slimmed "recent" projection of the soldiers whose
+// IDs appear in ids, in the caller-supplied order. Missing IDs are
+// silently skipped (callers should not treat the result length as a
+// validation signal). The result is intentionally a flat []Soldier,
+// not enriched with Records / Images / SpouseName — callers that
+// need full records (e.g. the shared-archive export pipeline) should
+// follow up with GetByID per result, mirroring listAllSoldiers in
+// internal/archive/backup_service.go.
+//
+// Backs the Share Queue subset export (issue #182). Differs from
+// RecentByIDs in that it has no implicit limit clamp; the caller
+// is responsible for not passing arbitrarily large slices. For
+// export-size batches, see listAllSoldiers's chunking strategy.
+func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
+	if len(ids) == 0 {
+		return []models.Soldier{}, nil
+	}
+	// Dedupe while preserving first-occurrence order. The
+	// caller's order is the contract; the SQL result order
+	// is irrelevant.
+	seen := make(map[int64]struct{}, len(ids))
+	ordered := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ordered = append(ordered, id)
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(ordered)), ",")
+	args := make([]interface{}, 0, len(ordered))
+	for _, id := range ordered {
+		args = append(args, id)
+	}
+	rows, err := s.db.Conn().Query(
+		"SELECT "+recentSelectColumns+" FROM soldiers WHERE id IN ("+placeholders+")",
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	soldiers, err := scanRecentSoldiers(rows)
+	if err != nil {
+		return nil, err
+	}
+	index := make(map[int64]models.Soldier, len(soldiers))
+	for _, soldier := range soldiers {
+		index[soldier.ID] = soldier
+	}
+	out := make([]models.Soldier, 0, len(ordered))
+	for _, id := range ordered {
+		if soldier, ok := index[id]; ok {
+			out = append(out, soldier)
+		}
+	}
+	return out, nil
+}
+
 func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderieGraph, error) {
 	central, err := s.GetByID(soldierID)
 	if err != nil {
