@@ -1,6 +1,7 @@
 package appshell
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -363,5 +364,39 @@ func TestHandleImportBackupDialogGuard(t *testing.T) {
 	}
 	if rec.Header().Get("X-DixieData-Redirect") != "" {
 		t.Errorf("third POST must not be a dup-hit; got X-DixieData-Redirect=%q", rec.Header().Get("X-DixieData-Redirect"))
+	}
+}
+
+// TestExportSharedArchiveSubsetDoesNotDedupWithWhole guards the
+// dialog-guard key shape used by the Share Queue subset branch
+// (issue #182). A user who kicks off a whole-archive export and
+// then immediately kicks off a subset export must NOT have the
+// second click rejected as a duplicate of the first; the two
+// flows have different intent even if the underlying SaveFileDialog
+// options are identical.
+//
+// The subset branch folds "|subset|<count>|<firstID>" into the
+// base dupKey produced by guardedSaveFileDialogKey. This test
+// asserts that two such keys (different ids) and the base key all
+// remain distinct.
+func TestExportSharedArchiveSubsetDoesNotDedupWithWhole(t *testing.T) {
+	opts := runtime.SaveDialogOptions{
+		DefaultFilename: "archive.ddshare",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
+		},
+	}
+	base := guardedSaveFileDialogKey("shared_archive", opts)
+	subset1 := fmt.Sprintf("%s|subset|%d|%d", base, 3, 42)
+	subset2 := fmt.Sprintf("%s|subset|%d|%d", base, 5, 99)
+
+	if base == subset1 {
+		t.Fatalf("subset dupKey collided with whole-archive dupKey")
+	}
+	if subset1 == subset2 {
+		t.Fatalf("two distinct subset exports share the same dupKey: %q", subset1)
+	}
+	if base == subset2 {
+		t.Fatalf("second subset dupKey collided with whole-archive dupKey")
 	}
 }

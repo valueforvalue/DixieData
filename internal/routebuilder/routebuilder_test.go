@@ -354,3 +354,27 @@ func TestGoogleCalendarPreferencesSave(t *testing.T) {
 		t.Fatalf("GoogleCalendarPreferencesSave = %q", GoogleCalendarPreferencesSave())
 	}
 }
+
+func TestShareQueueModal(t *testing.T) {
+	if ShareQueueModal() != "/share/queue/modal" {
+		t.Fatalf("ShareQueueModal = %q", ShareQueueModal())
+	}
+}
+
+func TestShareQueuePreview(t *testing.T) {
+	if ShareQueuePreview() != "/share/queue/preview" {
+		t.Fatalf("ShareQueuePreview = %q", ShareQueuePreview())
+	}
+}
+
+func TestShareQueueClear(t *testing.T) {
+	if ShareQueueClear() != "/share/queue/clear" {
+		t.Fatalf("ShareQueueClear = %q", ShareQueueClear())
+	}
+}
+
+func TestExportSharedArchiveSubset(t *testing.T) {
+	if ExportSharedArchiveSubset() != "/export/shared-archive?subset=1" {
+		t.Fatalf("ExportSharedArchiveSubset = %q", ExportSharedArchiveSubset())
+	}
+}

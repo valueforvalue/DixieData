@@ -348,3 +348,39 @@ func LayoutReviewCount() string {
 func GoogleCalendarPreferencesSave() string {
 	return "/integrations/google/calendar/preferences/save"
 }
+
+// ShareQueueModal returns the URL for the Share Queue modal
+// fragment endpoint. Registered as GET /share/queue/modal in
+// routes.go. The handler renders an HTML fragment intended to be
+// swapped into the showOverlayModal slot in frontend/app.js; not
+// a full-page navigation target. Issue #182.
+func ShareQueueModal() string {
+	return "/share/queue/modal"
+}
+
+// ShareQueuePreview returns the URL for the Share Queue live
+// preview endpoint. Registered as POST /share/queue/preview in
+// routes.go. The handler accepts a selected_ids repeating form
+// field and returns a small HTML fragment showing
+// Person Records / Source Records / Images counts for the queue,
+// matching the printable-PDF preview endpoint shape from
+// issue #179. Issue #182.
+func ShareQueuePreview() string {
+	return "/share/queue/preview"
+}
+
+// ShareQueueClear returns the URL for the explicit "Clear queue"
+// button on the Share Queue modal. Registered as POST
+// /share/queue/clear in routes.go. Issue #182.
+func ShareQueueClear() string {
+	return "/share/queue/clear"
+}
+
+// ExportSharedArchiveSubset returns the URL for the subset branch
+// of /export/shared-archive. The query param ?subset=1 is the
+// trigger for the handler to read selected_ids and call
+// BackupService.ExportSharedSubset instead of ExportShared. Issue
+// #182.
+func ExportSharedArchiveSubset() string {
+	return "/export/shared-archive?subset=1"
+}

@@ -57,6 +57,9 @@ var postOnlyPaths = []string{
 	"/integrations/google/sheets/export",
 	"/images/screenshot",
 	"/open-link",
+	// Share Queue (issue #182).
+	"/share/queue/preview",
+	"/share/queue/clear",
 }
 
 // TestPostOnlyHandlersRejectGET is the integration assertion that

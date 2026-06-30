@@ -748,6 +748,32 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Share Queue subset branch (issue #182). The query param
+	// ?subset=1 plus a selected_ids repeating form field selects
+	// the Share Build path. Validate BEFORE opening the native
+	// dialog so an empty queue never reaches the user.
+	var (
+		subsetIDs []int64
+		isSubset  bool
+	)
+	if r.URL.Query().Get("subset") == "1" {
+		isSubset = true
+		if err := r.ParseForm(); err != nil {
+			respondError(w, r, KindValidation, "Could not read the Share Queue selection.", err)
+			return
+		}
+		ids, err := parseSelectedSoldierIDs(r.Form["selected_ids"])
+		if err != nil {
+			respondError(w, r, KindValidation, "Invalid Share Queue selection.", err)
+			return
+		}
+		if len(ids) == 0 {
+			respondError(w, r, KindValidation, "Add at least one Person Record to the Share queue before exporting.", nil)
+			return
+		}
+		subsetIDs = ids
+	}
+
 	opts := runtime.SaveDialogOptions{
 		DefaultFilename: sharedArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
@@ -755,6 +781,13 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		},
 	}
 	dupKey := guardedSaveFileDialogKey("shared_archive", opts)
+	// For the subset branch, fold subset|count|firstID into the
+	// dupKey so a whole-archive export and a subset export can
+	// run concurrently without dedup-collision. The base key
+	// (filename + filters) is the same for both.
+	if isSubset {
+		dupKey = fmt.Sprintf("%s|subset|%d|%d", dupKey, len(subsetIDs), subsetIDs[0])
+	}
 	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
 	switch outcome {
 	case SaveOutcomeDuplicated:
@@ -762,6 +795,27 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	case SaveOutcomeDialogAborted:
 		respondError(w, r, KindValidation, "Export cancelled.", nil)
+		return
+	}
+
+	// The job kind stays "shared_archive" so the job queue UI
+	// shows both flows as Shared Archive exports; the audit
+	// manifest likewise treats them as the same export button.
+	// The subset branch is differentiated at the dupKey level
+	// (for the dialog guard) and inside the work func (for
+	// which service method runs).
+	if isSubset {
+		ids := subsetIDs
+		a.enqueueExportWithResult(dupKey, "shared_archive", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
+			p.Set(10, "Building shared archive (subset)")
+			p.Shimmer(ctx, 10, 95, 45*time.Second, "Staging shared archive…")
+			manifest, err := a.backup.ExportSharedSubset(path, a.dataDir, ids)
+			return jobs.JobResult{
+				Records: manifest.Soldiers,
+				Images:  manifest.Images,
+				Sources: manifest.Records,
+			}, err
+		}, path, w)
 		return
 	}
 

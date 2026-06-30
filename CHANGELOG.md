@@ -34,6 +34,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `SoldierService.ByIDs`. Backs the Share Queue subset-export flow
   landing in upcoming commits (issue #182).
 
+- `POST /export/shared-archive?subset=1` accepts a `selected_ids`
+  repeating form field and packages only the requested Person
+  Records. Validates the selection BEFORE opening the native
+  SaveFileDialog so an empty queue never reaches the user. Folds
+  `subset|<count>|<firstID>` into the dialog-guard dupKey so a
+  whole-archive export and a subset export can run concurrently
+  without dedup-collision. The job kind stays "shared_archive" so
+  the job queue UI and audit manifest continue to treat both
+  flows as Shared Archive exports. New `ShareQueueModal`,
+  `ShareQueuePreview`, `ShareQueueClear`, and
+  `ExportSharedArchiveSubset` route builders land the Share
+  Build modal envelope (UI surfaces in the next commit). Issue
+  #182.
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

@@ -108,6 +108,14 @@ func (a *App) setupRoutes() {
 	r.Get("/layout/review-count", a.handleLayoutReviewCount)
 	r.Post("/export/backup", a.handleExportBackup)
 	r.Post("/export/shared-archive", a.handleExportSharedArchive)
+
+	// Share Queue (issue #182). The modal/preview/clear endpoints
+	// back the Share Build modal landing in commit 5; the
+	// ?subset=1 branch on /export/shared-archive (handled inside
+	// handleExportSharedArchive) is the user-facing export path.
+	r.Get("/share/queue/modal", a.handleShareQueueModal)
+	r.Post("/share/queue/preview", a.handleShareQueuePreview)
+	r.Post("/share/queue/clear", a.handleShareQueueClear)
 	r.Post("/export/bug-report", a.handleExportBugReport)
 	r.Post("/export/feedback-log", a.handleExportFeedbackLog)
 	r.Post("/insights/report/pdf", a.handleExportInsightsPDF)
