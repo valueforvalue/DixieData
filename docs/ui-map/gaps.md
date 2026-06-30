@@ -87,20 +87,29 @@ missing the branch.
 The user has to navigate back to Share to find the Merge Review
 section. Add a deep-link pill on the summary card.
 
-## Dialog guard audit (deferred)
+## Dialog guard audit (complete — 2026-06-29)
 
 Per `docs/agents/dialog-guard.md`, every export/import handler that
 opens a native `SaveFileDialog` / `OpenFileDialog` MUST guard with
-`a.inFlight.LoadOrStore`. Candidates:
+`a.inFlight.LoadOrStore` (or the inline `enterInFlight` /
+`defer leaveInFlight` pattern). Audit re-checked the 5 candidates
+originally listed here against the current handler names:
 
-- `ExportBackup`
-- `ExportDatabasePDFAsync`
-- `SettingsImagesOrphansCleanup`
-- `SettingsQualityApply`
-- `SettingsUpdateApply`
+| Original name | Current handler | Dialog? | Guarded? |
+| --- | --- | --- | --- |
+| `ExportBackup` | `handleExportBackup` (`exports_handlers.go:703`) | `guardedSaveFileDialog` | ✅ |
+| `ExportDatabasePDFAsync` | `handleExportDatabasePDF` (`exports_handlers.go:381`) | `guardedSaveFileDialog` | ✅ |
+| `SettingsImagesOrphansCleanup` | `handleCleanupImageOrphans` (`settings_handlers.go:96`) | none (starts job) | n/a |
+| `SettingsQualityApply` | `handleApplyDataQuality` (`settings_handlers.go:68`) | none (DB op) | n/a |
+| `SettingsUpdateApply` | `handleApplyLatestUpdate` (`app_update.go:58`) | none (PowerShell exec) | n/a |
 
-**Action**: full audit deferred to dedicated pass. Run a dedicated
-bug-hunter session with the dialog-guard checklist.
+**Real bug found in adjacent scan**: `handleImportBackup`
+(`imports_handlers.go:43`) was missing from the original candidate
+list. It called `a.OpenFileDialog` directly with no guard. Wrapped
+in the inline `enterInFlight` + `defer leaveInFlight` pattern,
+keyed by `guardedOpenFileDialogKey("backup_import", opts)`.
+Regression test `TestHandleImportBackupDialogGuard` added to
+`internal/appshell/open_dialog_guard_test.go`. Closes #158.
 
 ## Screen inventory: candidate deletions
 
