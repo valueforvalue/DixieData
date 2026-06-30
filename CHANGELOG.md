@@ -25,6 +25,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `listAllSoldiers`. Dedupes input, silently skips missing ids, no
   implicit limit clamp. Issue #182.
 
+- `BackupService.ExportSharedSubset(outputPath, dataDir, ids)` writes
+  a Shared Archive (`.ddshare`) containing only the requested Person
+  Records in caller-supplied order. Mirrors `ExportShared`'s zip
+  layout (manifest.json + data/soldiers.json + referenced images)
+  without walking the whole archive. Empty ids is a programmer error
+  and returns an error; missing ids are silently dropped via
+  `SoldierService.ByIDs`. Backs the Share Queue subset-export flow
+  landing in upcoming commits (issue #182).
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

@@ -230,6 +230,166 @@ func TestBackupService_ExportSharedIncludesReferencedImagesOnly(t *testing.T) {
 	}
 }
 
+func TestBackupService_ExportSharedSubsetWritesOnlyRequestedIDs(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	backupSvc := NewBackupService(d, soldierSvc)
+
+	dataDir := t.TempDir()
+
+	keepA, err := soldierSvc.Create(models.Soldier{DisplayID: "SUB-0001", FirstName: "Keep", LastName: "A"})
+	if err != nil {
+		t.Fatalf("Create A: %v", err)
+	}
+	keepB, err := soldierSvc.Create(models.Soldier{DisplayID: "SUB-0002", FirstName: "Keep", LastName: "B"})
+	if err != nil {
+		t.Fatalf("Create B: %v", err)
+	}
+	skip, err := soldierSvc.Create(models.Soldier{DisplayID: "SUB-0003", FirstName: "Skip", LastName: "Me"})
+	if err != nil {
+		t.Fatalf("Create skip: %v", err)
+	}
+
+	// Attach a single image to keepA so we can assert it's included
+	// and the orphaned image on `skip` is not.
+	imageA := filepath.Join(dataDir, "images", "sub-1", "a.png")
+	if err := os.MkdirAll(filepath.Dir(imageA), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(imageA, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile A: %v", err)
+	}
+	if err := soldierSvc.AddImage(keepA.ID, "a.png", `images\sub-1\a.png`, "A"); err != nil {
+		t.Fatalf("AddImage A: %v", err)
+	}
+	imageSkip := filepath.Join(dataDir, "images", "sub-3", "skip.png")
+	if err := os.MkdirAll(filepath.Dir(imageSkip), 0o755); err != nil {
+		t.Fatalf("MkdirAll skip: %v", err)
+	}
+	if err := os.WriteFile(imageSkip, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile skip: %v", err)
+	}
+	if err := soldierSvc.AddImage(skip.ID, "skip.png", `images\sub-3\skip.png`, "Skip"); err != nil {
+		t.Fatalf("AddImage skip: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "subset.ddshare")
+	// Call in reverse order to prove the caller's order is the contract.
+	if _, err := backupSvc.ExportSharedSubset(outPath, dataDir, []int64{keepB.ID, keepA.ID}); err != nil {
+		t.Fatalf("ExportSharedSubset: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	var dataRaw []byte
+	for _, f := range reader.File {
+		if f.Name == "data/soldiers.json" {
+			rc, err := f.Open()
+			if err != nil {
+				t.Fatalf("open data file: %v", err)
+			}
+			dataRaw, err = io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				t.Fatalf("read data file: %v", err)
+			}
+		}
+	}
+	if dataRaw == nil {
+		t.Fatalf("subset archive missing data/soldiers.json")
+	}
+	var got []models.Soldier
+	if err := json.Unmarshal(dataRaw, &got); err != nil {
+		t.Fatalf("unmarshal soldiers: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("subset archive holds %d soldiers, want 2", len(got))
+	}
+	if got[0].ID != keepB.ID || got[1].ID != keepA.ID {
+		t.Fatalf("subset archive did not preserve caller order: %d, %d (want %d, %d)",
+			got[0].ID, got[1].ID, keepB.ID, keepA.ID)
+	}
+
+	names := make([]string, 0, len(reader.File))
+	for _, f := range reader.File {
+		names = append(names, f.Name)
+	}
+	joined := strings.Join(names, "\n")
+	if !strings.Contains(joined, "images/sub-1/a.png") {
+		t.Fatalf("subset archive missing image for keepA: %s", joined)
+	}
+	if strings.Contains(joined, "images/sub-3/skip.png") {
+		t.Fatalf("subset archive should not include image for skipped record: %s", joined)
+	}
+}
+
+func TestBackupService_ExportSharedSubsetRejectsEmpty(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	backupSvc := NewBackupService(d, soldierSvc)
+
+	outPath := filepath.Join(t.TempDir(), "empty.ddshare")
+	if _, err := backupSvc.ExportSharedSubset(outPath, t.TempDir(), nil); err == nil {
+		t.Fatalf("ExportSharedSubset(nil ids) returned no error, want error")
+	}
+	if _, err := backupSvc.ExportSharedSubset(outPath, t.TempDir(), []int64{}); err == nil {
+		t.Fatalf("ExportSharedSubset([] ids) returned no error, want error")
+	}
+}
+
+func TestBackupService_ExportSharedSubsetSkipsMissingIDs(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	backupSvc := NewBackupService(d, soldierSvc)
+
+	real, err := soldierSvc.Create(models.Soldier{DisplayID: "SUB-REAL", FirstName: "Real", LastName: "Only"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	phantom := int64(999999)
+
+	outPath := filepath.Join(t.TempDir(), "partial.ddshare")
+	manifest, err := backupSvc.ExportSharedSubset(outPath, t.TempDir(), []int64{phantom, real.ID})
+	if err != nil {
+		t.Fatalf("ExportSharedSubset: %v", err)
+	}
+	if manifest.ArchiveKind != "shared" {
+		t.Fatalf("manifest kind = %q, want shared", manifest.ArchiveKind)
+	}
+
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	for _, f := range reader.File {
+		if f.Name != "data/soldiers.json" {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open data: %v", err)
+		}
+		raw, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			t.Fatalf("read data: %v", err)
+		}
+		var got []models.Soldier
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if len(got) != 1 || got[0].ID != real.ID {
+			t.Fatalf("subset archive holds %d soldiers, want 1 with id %d", len(got), real.ID)
+		}
+	}
+}
+
 func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 	sourceDB := newTestDB(t)
 	sourceSvc := NewSoldierService(sourceDB)

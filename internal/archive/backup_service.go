@@ -170,6 +170,59 @@ func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest
 	return manifest, nil
 }
 
+// ExportSharedSubset writes a Shared Archive (.ddshare) containing
+// only the Person Records whose IDs are listed in ids, in the
+// caller-supplied order. Empty ids is a programmer error and
+// returns an error (the HTTP handler is responsible for the
+// user-facing 400). Missing ids are silently skipped via
+// SoldierService.ByIDs; callers that need a validation signal
+// should call ByIDs themselves first.
+//
+// Backs the Share Queue subset-export flow (issue #182). Differs
+// from ExportShared in that it does not walk the whole archive;
+// the zip's data/soldiers.json is exactly the requested subset.
+func (b *BackupService) ExportSharedSubset(outputPath, dataDir string, ids []int64) (BackupManifest, error) {
+	if len(ids) == 0 {
+		return BackupManifest{}, fmt.Errorf("ExportSharedSubset requires at least one id")
+	}
+	manifest, err := b.loadBackupData(archiveKindShared)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	// Slimmed projection first (single query, validates existence +
+	// dedupes + preserves order). Per-record enrichment follows
+	// the listAllSoldiers pattern.
+	slim, err := b.soldier.ByIDs(ids)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	soldiers := make([]models.Soldier, 0, len(slim))
+	for _, item := range slim {
+		full, err := b.soldier.GetByID(item.ID)
+		if err != nil {
+			return BackupManifest{}, err
+		}
+		soldiers = append(soldiers, *full)
+	}
+	manifest.DataFormat = "json"
+	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
+	manifest.DatabaseFile = ""
+
+	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
+		if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+			return err
+		}
+		if err := writeBackupJSON(zipWriter, manifest.DataFile, soldiers); err != nil {
+			return err
+		}
+		return addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers))
+	}); err != nil {
+		return BackupManifest{}, err
+	}
+
+	return manifest, nil
+}
+
 func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (BackupManifest, error) {
 	manifest, err := b.loadBackupData(archiveKind)
 	if err != nil {
