@@ -163,8 +163,8 @@
     padding: 0.95rem 1.1rem;
   }
   .toast-card[data-toast-kind="success"] {
-    border-color: rgba(141, 116, 64, 0.86);
-    background: rgba(255, 248, 230, 0.99);
+    border-color: rgba(41, 82, 45, 0.86);
+    background: rgba(242, 252, 244, 0.99);
   }
   .toast-card[data-toast-kind="error"] {
     border-color: rgba(111, 44, 38, 0.86);
