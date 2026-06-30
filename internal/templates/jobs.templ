@@ -41,7 +41,15 @@ templ JobStatusView(job jobs.Job) {
 				<p class="mt-2 text-sm text-slate-600">Job ID <code class="rounded bg-slate-100 px-1.5 py-0.5">{ job.ID }</code></p>
 			</div>
 			@jobStatusBody(job)
-			<p class="text-xs text-slate-500">Status updates automatically. Leave this page open or return to <a href="/" class="text-[#8d7440] underline">the dashboard</a>.</p>
+			<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+				<button type="button" data-history-back
+					data-fallback-href="/"
+					data-fallback-label="Back to Dashboard"
+					class="inline-flex w-full items-center justify-center rounded-full border border-[rgba(141,116,64,0.85)] bg-[rgba(246,241,228,0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					← Back to Dashboard
+				</button>
+				<p class="text-xs text-slate-500 sm:ml-2">Status updates automatically. Leave this page open to keep watching.</p>
+			</div>
 		</div>
 	}
 }
