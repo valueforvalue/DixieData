@@ -15,7 +15,13 @@ import (
 
 // exportFilterUnknownValue is the sentinel value used to represent
 // records with an unknown value for a given filter dimension.
-const exportFilterUnknownValue = "__unknown__"
+// ExportFilterUnknownValue is the sentinel value the print-config
+// modal uses to represent records with an unknown value for a
+// given filter dimension. Exported so appshell handlers can
+// cross-check stored template filter values against current
+// archive values (issue #181) without reaching into private
+// partials-package state.
+const ExportFilterUnknownValue = "__unknown__"
 
 func exportRecordOptionLabel(record viewmodel.ExportRecordOption) string {
 	name := strings.TrimSpace(record.DisplayName)
@@ -61,7 +67,10 @@ func isExportMissingValue(value string) bool {
 	}
 }
 
-func exportUniqueFilterValues(records []viewmodel.ExportRecordOption, valueFor func(viewmodel.ExportRecordOption) string) []string {
+// ExportUniqueFilterValues is the exported form of
+// exportUniqueFilterValues — needed by appshell handlers
+// (issue #181) that compute stale-template warnings.
+func ExportUniqueFilterValues(records []viewmodel.ExportRecordOption, valueFor func(viewmodel.ExportRecordOption) string) []string {
 	seen := map[string]bool{}
 	values := make([]string, 0, len(records))
 	for _, record := range records {
