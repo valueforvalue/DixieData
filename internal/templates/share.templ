@@ -16,6 +16,14 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 			if counts.TotalRecords() == 0 {
 				@partials.EmptyStateCard("share", counts)
 			}
+			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+				<button type="button" data-history-back
+					data-fallback-href="/"
+					data-fallback-label="Back to Dashboard"
+					class="inline-flex w-full items-center justify-center rounded-full border border-[rgba(141,116,64,0.85)] bg-[rgba(246,241,228,0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					← Back to Dashboard
+				</button>
+			</div>
 			<div>
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
 				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
