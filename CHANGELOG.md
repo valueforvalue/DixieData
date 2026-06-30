@@ -13,6 +13,11 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Glossary term **Share Queue** for the in-memory list of Person
+  Records staged for inclusion in a Shared Archive (`.ddshare`),
+  distinct from the Review Queue. Backs the subset-export flow
+  landing in upcoming commits (issue #182).
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

@@ -32,6 +32,10 @@ _Avoid_: Temp backup, update backup
 A read-only browser-viewable archive export.
 _Avoid_: Archive, website
 
+**Share Queue**:
+The in-memory list of Person Records a researcher has staged for inclusion in a Shared Archive (`.ddshare`) before exporting. Distinct from the Review Queue, which holds records that need human attention before being treated as clean archive data; the Share Queue holds records the researcher has already curated and is ready to share.
+_Avoid_: share list, export set, staging area
+
 **Source Record**:
 An attached evidence item that documents or supports a Person Record, such as a pension or application record.
 _Avoid_: Record, attachment
@@ -135,6 +139,7 @@ _Avoid_: Spouse
 - A **Research Pack** packages archive material for a defined scope
 - A **Unit Membership** may contribute evidence to a **Unit Camaraderie Graph**
 - A **Local Archive** may be exported as a **Shared Archive**, **Backup Archive**, or **Static Archive**
+- A **Person Record** may be staged in a **Share Queue** for export as a **Shared Archive**
 - A **Restore Point** preserves a pre-update recovery state for a **Local Archive**
 - A **Duplicate Audit** may place a **Person Record** into the **Review Queue**
 - A **Merge Review** resolves conflicts created by importing a **Shared Archive** into a **Local Archive**
