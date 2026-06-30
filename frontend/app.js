@@ -3093,6 +3093,8 @@
     syncPrintScopeState();
     applyPrintRecordFilter();
     applyPrintBuriedFilter();
+    installPrintConfigPreview();
+    refreshPrintConfigPreview();
     showOverlayModal(modal);
   }
 
@@ -3102,6 +3104,79 @@
       return;
     }
     hideOverlayModal(modal);
+  }
+
+  // Live preview panel wiring (issue #179). On open we install a
+  // single delegated change/input listener on the modal form so
+  // rapid checkbox toggles collapse to one debounced server fetch.
+  // The Refresh Preview button forces an immediate fetch. The server
+  // returns an HTML fragment we inject into [data-print-config-preview].
+  let printConfigPreviewDebounceTimer = null;
+  function installPrintConfigPreview() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const form = modal.querySelector("form");
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (form.dataset.printConfigPreviewInstalled === "true") {
+      return;
+    }
+    form.dataset.printConfigPreviewInstalled = "true";
+    const trigger = () => {
+      window.clearTimeout(printConfigPreviewDebounceTimer);
+      printConfigPreviewDebounceTimer = window.setTimeout(() => {
+        refreshPrintConfigPreview();
+      }, 150);
+    };
+    form.addEventListener("change", trigger);
+    form.addEventListener("input", trigger);
+    const refreshButton = modal.querySelector("[data-print-config-preview-refresh]");
+    if (refreshButton instanceof HTMLElement) {
+      refreshButton.addEventListener("click", () => {
+        window.clearTimeout(printConfigPreviewDebounceTimer);
+        refreshPrintConfigPreview();
+      });
+    }
+  }
+
+  async function refreshPrintConfigPreview() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const form = modal.querySelector("form");
+    const target = modal.querySelector("[data-print-config-preview]");
+    const status = modal.querySelector("[data-print-config-preview-status]");
+    if (!(form instanceof HTMLFormElement) || !(target instanceof HTMLElement)) {
+      return;
+    }
+    if (status instanceof HTMLElement) {
+      status.textContent = "Refreshing…";
+    }
+    try {
+      const response = await fetch("/export/preview", {
+        method: "POST",
+        body: new FormData(form),
+      });
+      if (!response.ok) {
+        if (status instanceof HTMLElement) {
+          status.textContent = "Preview failed.";
+        }
+        return;
+      }
+      const html = await response.text();
+      target.innerHTML = html;
+      if (status instanceof HTMLElement) {
+        status.textContent = "";
+      }
+    } catch (error) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Preview failed.";
+      }
+    }
   }
 
   function openGoogleCalendarPreferencesModal() {
