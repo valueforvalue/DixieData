@@ -786,6 +786,28 @@ async function main() {
     });
   }
 
+  // Issue #192: Share Queue preset endpoints are reachable
+  // through the appshell's HTTP surface. Boot the dev binary
+  // to exercise them; gated behind SHAREQUEUE_PRESETS_E2E_BASE
+  // so unit-style smokes can skip.
+  console.log('\n[5h] Share Queue preset endpoints (issue #192)');
+  if (process.env.SHAREQUEUE_PRESETS_E2E_BASE) {
+    const base3 = process.env.SHAREQUEUE_PRESETS_E2E_BASE;
+    try {
+      const listResp = await fetch(`${base3}/share/queue/presets`);
+      const listJson = await listResp.json();
+      record('share-queue-presets-list', listResp.ok && Array.isArray(listJson.presets), {
+        why: `status=${listResp.status} presets=${Array.isArray(listJson.presets) ? listJson.presets.length : 'n/a'}`,
+      });
+    } catch (err) {
+      record('share-queue-presets-list', false, { why: err.message });
+    }
+  } else {
+    record('share-queue-presets-list', 'skipped', {
+      why: 'set SHAREQUEUE_PRESETS_E2E_BASE to a live dixiedata-web URL to run this block',
+    });
+  }
+
   await browser.close();
   process.exit(fail > 0 ? 1 : 0);
 }

@@ -176,6 +176,28 @@ CREATE TABLE IF NOT EXISTS export_templates (
     last_used_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Issue #192: saved Share Queue presets. Stores the (soldier_id,
+-- display_id) pairs that make up a reusable subset for the
+-- .ddshare export pipeline. Local-only like export_templates;
+-- no sync_id since these don't migrate between archives. The
+-- soldier_ids list is a JSON array; v1 keeps the schema simple
+-- (no separate join table) since preset membership is small
+-- (a few dozen rows at most) and we never need to query
+-- membership reverse-direction (find all presets that contain
+-- a given soldier). The Display IDs are denormalized into
+-- the payload so the modal can render names without joining
+-- back to soldiers on every Apply click -- a soldier that's
+-- deleted post-save is silently dropped on Apply, with the
+-- missing row recorded in the response so the JS can show a
+-- warning rather than a hard error.
+CREATE TABLE IF NOT EXISTS share_queue_presets (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,
+    soldier_ids_json TEXT NOT NULL DEFAULT '[]',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS research_collections (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     name          TEXT NOT NULL UNIQUE,

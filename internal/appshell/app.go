@@ -59,6 +59,7 @@ type App struct {
 	analytics               analyticsFacade
 	audit                   reviewFacade
 	exportTemplates         *records.ExportTemplateService
+	shareQueuePresets       *records.ShareQueuePresetService
 	tags                    *records.TagService
 	archiveMeta             *records.ArchiveMetaService
 	images                  imageFacade
@@ -1955,6 +1956,7 @@ func (a *App) reloadServices() error {
 	a.analytics = records.NewAnalyticsService(a.database)
 	a.audit = records.NewAuditService(a.database)
 	a.exportTemplates = records.NewExportTemplateService(a.database.Conn())
+	a.shareQueuePresets = records.NewShareQueuePresetService(a.database.Conn())
 	a.tags = records.NewTagService(a.database.Conn())
 	a.archiveMeta = records.NewArchiveMetaService(a.database.Conn())
 	a.images = archive.NewImageService(a.database)

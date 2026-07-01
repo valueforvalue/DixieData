@@ -453,6 +453,27 @@ func ShareQueueClear() string {
 	return "/share/queue/clear"
 }
 
+// ShareQueuePresets (issue #192) returns the URL for the
+// saved-presets endpoints. The {id} is appended by the caller
+// via fmt.Sprintf since chi needs the literal segment to win
+// over the wildcard /share/queue/presets/{id:[0-9]+} route.
+func ShareQueuePresets() string {
+	return "/share/queue/presets"
+}
+
+// ShareQueuePresetDelete (issue #192) returns the URL for
+// deleting a saved preset. Caller substitutes {id}.
+func ShareQueuePresetDelete(id int64) string {
+	return fmt.Sprintf("/share/queue/presets/%d", id)
+}
+
+// ShareQueuePresetApply (issue #192) returns the URL for
+// loading a saved preset into the modal's localStorage queue.
+// Caller substitutes {id}.
+func ShareQueuePresetApply(id int64) string {
+	return fmt.Sprintf("/share/queue/presets/%d/apply", id)
+}
+
 // ExportSharedArchiveSubset returns the URL for the subset
 // export entrypoint. Caller appends the form's selected_ids
 // fields; the handler is the existing /export/shared-archive
