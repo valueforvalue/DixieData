@@ -88,6 +88,46 @@ func TestHandleExportPreview_SelectedScopeWithNoIDs(t *testing.T) {
 	}
 }
 
+// TestHandleExportPreview_StaleFilterWarning (issue #185) asserts
+// the preview fragment surfaces a stale-filter warning when the
+// user submits a filter value that does not exist on any row.
+// Mirrors what the Load handler emits so the preview counter and
+// the eventual Generate cannot silently disagree.
+func TestHandleExportPreview_StaleFilterWarning(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	for i := 0; i < 3; i++ {
+		_, err := app.soldiers.Create(models.Soldier{
+			DisplayID: fmt.Sprintf("PRV-STALE-%03d", i),
+			FirstName: fmt.Sprintf("Stale-%d", i),
+			LastName:  "Worker",
+			Unit:      "5th Virginia Infantry",
+		})
+		if err != nil {
+			t.Fatalf("seed Create %d: %v", i, err)
+		}
+	}
+
+	form := url.Values{}
+	form.Set("scope", "filtered")
+	form.Set("filter_unit", "No-Such-Unit") // does not exist
+	resp, err := http.PostForm(server.URL+"/export/preview", form)
+	if err != nil {
+		t.Fatalf("POST /export/preview: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	content := string(body)
+	if !strings.Contains(content, "stale filter value") {
+		t.Errorf("preview body missing stale warning line:\n%s", content)
+	}
+}
+
 // TestHandleExportPreview_FilteredScope verifies the preview
 // filter logic returns only matching records.
 func TestHandleExportPreview_FilteredScope(t *testing.T) {
