@@ -275,8 +275,25 @@ func TestBackupService_ExportSharedSubsetWritesOnlyRequestedIDs(t *testing.T) {
 
 	outPath := filepath.Join(t.TempDir(), "subset.ddshare")
 	// Call in reverse order to prove the caller's order is the contract.
-	if _, err := backupSvc.ExportSharedSubset(outPath, dataDir, []int64{keepB.ID, keepA.ID}); err != nil {
+	manifest, err := backupSvc.ExportSharedSubset(outPath, dataDir, []int64{keepB.ID, keepA.ID})
+	if err != nil {
 		t.Fatalf("ExportSharedSubset: %v", err)
+	}
+	// Manifest counts must reflect the subset, not the whole
+	// archive (issue #182, review C-1). The /jobs/{id} summary
+	// card renders these numbers; a 500-record archive exporting
+	// 2 records would otherwise show "Soldiers: 500".
+	if manifest.Soldiers != 2 {
+		t.Fatalf("manifest.Soldiers = %d, want 2 (subset count, not whole-archive)", manifest.Soldiers)
+	}
+	// keepA has no Source Records attached in this test; keepB
+	// has none either. So Records == 0. Images == 1 (keepA's
+	// portrait.png).
+	if manifest.Records != 0 {
+		t.Fatalf("manifest.Records = %d, want 0", manifest.Records)
+	}
+	if manifest.Images != 1 {
+		t.Fatalf("manifest.Images = %d, want 1 (keepA's portrait.png)", manifest.Images)
 	}
 
 	reader, err := zip.OpenReader(outPath)

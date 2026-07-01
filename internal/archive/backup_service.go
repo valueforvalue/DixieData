@@ -204,6 +204,18 @@ func (b *BackupService) ExportSharedSubset(outputPath, dataDir string, ids []int
 		}
 		soldiers = append(soldiers, *full)
 	}
+	// loadBackupData walks the whole archive to populate the count
+	// fields, so the manifest we just loaded reports whole-archive
+	// totals. Overwrite the counts from the actual subset so the
+	// /jobs/{id} summary card and any future preview show the
+	// numbers that match the zip contents (issue #182 fix).
+	manifest.Soldiers = len(soldiers)
+	manifest.Records = 0
+	manifest.Images = 0
+	for _, s := range soldiers {
+		manifest.Records += len(s.Records)
+		manifest.Images += len(s.Images)
+	}
 	manifest.DataFormat = "json"
 	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
 	manifest.DatabaseFile = ""
