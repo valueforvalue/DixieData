@@ -171,6 +171,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   block that fetches `/share/export-options` and verifies the
   X-DixieData-Redirect target is `/share` (the Option C contract
   for the toggle form).
+- **Share Queue** added to the glossary as the in-memory list
+  of Person Records a researcher has staged for inclusion in a
+  Shared Archive (.ddshare) before exporting. Stored in the
+  browser's `localStorage` under the `dixiedata.share-queue`
+  key so the queue survives navigation, reloads, and app
+  restarts; distinct from the existing
+  `dixiedata.browse.selection` (print/export-selection) key
+  to keep the two domains disjoint. Issue #182.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
