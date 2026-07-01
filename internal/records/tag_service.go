@@ -540,3 +540,46 @@ func scanTagRow(row tagScanner) (Tag, error) {
 func scanTagRowInto(row *sql.Row, t *Tag) error {
 	return row.Scan(&t.ID, &t.Name, &t.NormalizedName, &t.CreatedAt)
 }
+
+// TagMemberView is the row shape used by /tags/{id} and the Browse
+// tag chip column. It is a small denormalized struct that joins
+// the binding table to soldiers so the templates can render Name
+// + Unit without a second round trip per row.
+type TagMemberView struct {
+	PersonRecordID int64  `json:"person_id"`
+	DisplayID      string `json:"display_id"`
+	Name           string `json:"name"`
+	Unit           string `json:"unit"`
+}
+
+// MembersWithDetails returns Members() results enriched with
+// the Person Record summary fields the /tags/{id} template needs.
+// Capped at 500 rows so the page render stays bounded; the UI
+// surfaces a "showing first 500" note when the cap kicks in.
+func (s *TagService) MembersWithDetails(ctx context.Context, tagID int64, limit int) ([]TagMemberView, error) {
+	if limit <= 0 {
+		limit = 500
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT s.id, s.display_id,
+		       COALESCE(NULLIF(TRIM(s.first_name || ' ' || COALESCE(s.middle_name, '') || ' ' || s.last_name), ''), '(unnamed)'),
+		       COALESCE(s.unit, '')
+		FROM person_record_tags prt
+		JOIN soldiers s ON s.id = prt.person_id
+		WHERE prt.tag_id = ?
+		ORDER BY prt.created_at DESC
+		LIMIT ?`, tagID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []TagMemberView
+	for rows.Next() {
+		var m TagMemberView
+		if err := rows.Scan(&m.PersonRecordID, &m.DisplayID, &m.Name, &m.Unit); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}

@@ -56,6 +56,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   in `tags_handlers_test.go` cover happy paths + 400/404/409
   branches; `route_wildcard_test.go` extended with three new
   shadow pairs.
+- Person Record tagging UI (issue #183): `internal/templates/tags.templ`
+  renders the `/tags` management table (rename / merge / delete
+  forms) and the `/tags/{id}` detail table with a View-in-Browse
+  deep link. `internal/templates/tag_picker.templ` renders the
+  per-soldier picker page reachable by the `/soldiers/{id}/tags`
+  GET handler. New uiids surface constants `PageTagsManagement`,
+  `PanelTagsList`, `PanelTagDetail`, `OverlayTagPicker` registered
+  in `internal/uiids/uiids.go`. `internal/records/tag_service.go`
+  gains `MembersWithDetails` for the detail page. Forms use
+  `data-dixie-submit="true"` per the Option C retag (no `hx-post`
+  / `hx-delete`).
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

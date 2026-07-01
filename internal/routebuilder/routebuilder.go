@@ -198,6 +198,14 @@ func SoldierEdit(id int64) string {
 	return fmt.Sprintf("/soldiers/%d/edit", id)
 }
 
+// SoldierDetail returns the URL for the soldier detail page.
+// Registered as GET /soldiers/{id} in routes.go (matched by the
+// catch-all /soldiers/* handler that dispatches on the {id}
+// suffix).
+func SoldierDetail(id int64) string {
+	return fmt.Sprintf("/soldiers/%d", id)
+}
+
 // SettingsDebugMode returns the URL for toggling debug mode. Registered
 // as POST /settings/debug-mode in routes.go.
 func SettingsDebugMode() string {
