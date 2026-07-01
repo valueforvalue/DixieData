@@ -108,7 +108,18 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load printable export options.", err)
 		return
 	}
-	presentation.BrowseView(soldiers, normalized, total, suggestions, exportRecords).Render(r.Context(), w)
+	// Available tags power the Browse sidebar's AND-filter chip
+	// cloud (issue #183). Cheap — reads the tags table + an index
+	// on person_record_tags.tag_id.
+	availableTags, tagErr := a.tags.List(r.Context())
+	if tagErr != nil {
+		respondInternal(w, r, "Could not load tag suggestions.", tagErr)
+		return
+	}
+	if availableTags == nil {
+		availableTags = []records.Tag{}
+	}
+	presentation.BrowseView(soldiers, normalized, total, suggestions, exportRecords, availableTags).Render(r.Context(), w)
 }
 
 func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +147,25 @@ func parseBrowseRequest(values url.Values) records.BrowseRequest {
 		PensionState:          values.Get("pension_state"),
 		ReviewStatus:          values.Get("review_status"),
 		ConfederateHomeStatus: values.Get("confederate_home_status"),
+		Tags:                  parseTagFilter(values.Get("tags")),
 	}
+}
+
+// parseTagFilter splits a comma-separated tag list (the canonical
+// ?tags=vc-shiloh,unit-4th-al URL form) into a string slice. Empty
+// strings and blank-only entries are dropped; ordering is preserved
+// so deep links round-trip the original display order.
+func parseTagFilter(raw string) []string {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		cleaned := strings.TrimSpace(p)
+		if cleaned == "" {
+			continue
+		}
+		out = append(out, cleaned)
+	}
+	return out
 }
 
 func parsePageSize(raw string, fallback int) int {

@@ -13,7 +13,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions, exportRecords []viewmodel.ExportRecordOption) {
+templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, suggestions viewmodel.PersonRecordFormSuggestions, exportRecords []viewmodel.ExportRecordOption, availableTags []viewmodel.TagOption) {
 	@Layout("Browse") {
 		<div data-browse-page data-browse-current-page={ fmt.Sprintf("%d", state.Page) } data-browse-current-page-size={ fmt.Sprintf("%d", state.PageSize) } data-browse-current-scope={ state.Scope } data-browse-current-sort={ state.Sort } class="mx-auto max-w-7xl space-y-6">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -112,6 +112,22 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 								<option value={ status } if state.ConfederateHomeStatus == status { selected }>{ status }</option>
 							}
 						</select>
+					</div>
+					<div class="md:col-span-2 xl:col-span-2" data-browse-tags-filter>
+						<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Tags</label>
+						if len(availableTags) == 0 {
+							<p class="mt-2 text-xs text-slate-500">No tags defined yet. Apply one from a Person Record to start grouping.</p>
+						} else {
+							<div class="mt-2 flex max-h-28 flex-wrap gap-2 overflow-y-auto rounded-lg border border-[rgba(141,116,64,0.25)] bg-white/70 p-2">
+								for _, t := range availableTags {
+									<label class={ browseTagPillClass(t.NormalizedName, state.SelectedTagSet) }>
+										<input type="checkbox" name="tags" value={ t.NormalizedName } checked={ browseTagIsSelected(t.NormalizedName, state.SelectedTagSet) } class="sr-only"/>
+										<span class="text-xs font-semibold">{ t.Name }</span>
+									</label>
+								}
+							</div>
+							<p class="mt-1 text-[11px] text-slate-500">AND logic: select multiple to find records tagged with all of them.</p>
+						}
 					</div>
 					<div class="md:col-span-2 xl:col-span-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
 						@components.Button("Apply Filters", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
@@ -415,6 +431,25 @@ func browseSummary(state viewmodel.BrowseState) string {
 		scope = "Last import"
 	}
 	return fmt.Sprintf("%s | %s", scope, browseSortLabel(state.Sort))
+}
+
+// browseTagPillClass returns the chip-cloud pill class for a tag
+// row, toggled to the "selected" treatment when the tag is in the
+// active SelectedTagSet. Keeping this in a helper keeps the
+// template readable.
+func browseTagPillClass(_ string, selected map[string]bool) string {
+	if len(selected) == 0 {
+		return "cursor-pointer rounded-full border border-[rgba(141,116,64,0.35)] bg-white/70 px-3 py-1 text-slate-700 transition hover:border-[rgba(141,116,64,0.7)] hover:bg-white"
+	}
+	return "cursor-pointer rounded-full border border-[#6f2c26] bg-[rgba(111,44,38,0.12)] px-3 py-1 text-[#6f2c26]"
+}
+
+// browseTagIsSelected reports whether the supplied normalized name
+// is present in the active set. templates need a bool so the
+// checkbox's `checked` attribute can render without branching at
+// the call site.
+func browseTagIsSelected(normalized string, selected map[string]bool) bool {
+	return selected[normalized]
 }
 
 func browseActiveFilters(state viewmodel.BrowseState) []string {

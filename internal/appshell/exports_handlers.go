@@ -18,6 +18,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/pkg/exportbridge"
 )
 
@@ -767,11 +768,19 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 
 	a.enqueueExportWithResult(dupKey, "shared_archive", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
 		p.Set(10, "Building shared archive")
+		// Issue #183: read the archive_meta.include_tags toggle
+		// at run-time so the user-controlled PATCH handler on
+		// /share/export-options changes the next export's payload
+		// without restarting the app.
+		includeTags := false
+		if a.archiveMeta != nil {
+			includeTags = a.archiveMeta.IncludeTags(ctx, records.ArchiveKindShared)
+		}
 		// Shimmer to keep the bar visible during the merge-review
 		// compare pass + zip write. enqueueExportWithResult's
 		// Set(100, 'Done') wins the last write.
 		p.Shimmer(ctx, 10, 95, 45*time.Second, "Staging shared archive…")
-		manifest, err := a.backup.ExportShared(path, a.dataDir)
+		manifest, err := a.backup.ExportSharedWithTags(path, a.dataDir, includeTags)
 		return jobs.JobResult{
 			Records: manifest.Soldiers,
 			Images:  manifest.Images,

@@ -2,6 +2,7 @@ package archive
 
 import (
 	"archive/zip"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 const backupFormatName = "dixiedata-backup"
@@ -143,6 +145,20 @@ func (b *BackupService) Export(outputPath, dataDir string) (BackupManifest, erro
 }
 
 func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest, error) {
+	return b.ExportSharedWithTags(outputPath, dataDir, false)
+}
+
+// ExportSharedWithTags mirrors ExportShared but adds an includeTags
+// switch that mirrors archive_meta.include_tags. When true, every
+// soldier in the JSON payload grows a `tags: []string` field
+// (issue #183). Callers (the App.handleExportSharedArchive handler
+// and the test suite) read archive_meta via the ArchiveMetaService
+// rather than hard-coding the switch.
+//
+// The shared archive zip only adds the tags array — never Source
+// Record / Claim / Finding tags in v1 — and the import side uses
+// TagService.AttachAdditive so existing local tags stay additive.
+func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, includeTags bool) (BackupManifest, error) {
 	manifest, err := b.loadBackupData(archiveKindShared)
 	if err != nil {
 		return BackupManifest{}, err
@@ -150,6 +166,28 @@ func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest
 	soldiers, err := listAllSoldiers(b.soldier)
 	if err != nil {
 		return BackupManifest{}, err
+	}
+	if includeTags {
+		tagSvc := records.NewTagService(b.db.Conn())
+		ids := make([]int64, 0, len(soldiers))
+		for _, s := range soldiers {
+			ids = append(ids, s.ID)
+		}
+		tagMap, terr := tagSvc.TagsForSoldiers(context.Background(), ids)
+		if terr != nil {
+			return BackupManifest{}, fmt.Errorf("load tags for export: %w", terr)
+		}
+		for i := range soldiers {
+			tags := tagMap[soldiers[i].ID]
+			if len(tags) == 0 {
+				continue
+			}
+			names := make([]string, 0, len(tags))
+			for _, t := range tags {
+				names = append(names, t.Name)
+			}
+			soldiers[i].Tags = names
+		}
 	}
 	manifest.DataFormat = "json"
 	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
@@ -436,6 +474,34 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 	}
 	if err != nil {
 		return SharedImportSummary{}, fmt.Errorf("merge shared backup: %w", err)
+	}
+	// Issue #183: attach incoming tags additively. We reuse the
+	// already-loaded `contents.Soldiers` snapshot (which carries
+	// the optional `tags` array when the source archive had
+	// archive_meta.include_tags enabled). The match uses display_id
+	// since mergeSharedSoldiers may have inserted new rows, leaving
+	// the imported soldier ID unreliable. Idempotent — re-running
+	// the import adds no duplicate bindings.
+	if b.db != nil && len(contents.Soldiers) > 0 {
+		tagSvc := records.NewTagService(b.db.Conn())
+		for _, incoming := range contents.Soldiers {
+			if len(incoming.Tags) == 0 {
+				continue
+			}
+			var localID int64
+			if err := b.db.Conn().QueryRow(
+				`SELECT id FROM soldiers WHERE display_id = ?`,
+				incoming.DisplayID).Scan(&localID); err != nil {
+				continue
+			}
+			for _, tagName := range incoming.Tags {
+				if _, terr := tagSvc.AttachAdditive(context.Background(), localID, tagName); terr != nil {
+					if logger != nil {
+						logger.Printf("warn tag attach failed display_id=%q tag=%q err=%v", incoming.DisplayID, tagName, terr)
+					}
+				}
+			}
+		}
 	}
 	if summary.PendingConflicts == 0 {
 		sessionActive = false

@@ -82,7 +82,7 @@ func TestPageSnapshotBrowse(t *testing.T) {
 	suggestions := viewmodel.PersonRecordFormSuggestions{}
 
 	doc := renderIntoDoc(t, "Browse", func(ctx context.Context, w *bytes.Buffer) error {
-		return BrowseView(records, state, suggestions, nil).Render(ctx, w)
+		return BrowseView(records, state, suggestions, nil, nil).Render(ctx, w)
 	})
 
 	if doc.Find("#browse-results").Length() == 0 {

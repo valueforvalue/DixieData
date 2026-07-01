@@ -13,6 +13,92 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Person Record tagging: new `tags` and `person_record_tags`
+  tables back the upcoming `/tags` management surface and
+  Browse chip filter. Tags are flat, free-text labels with
+  case-insensitive uniqueness and travel with `.ddshare`
+  archives on opt-in. Issue #183 (schema migration v58;
+  service + UI land in the following commits).
+- **Tag** added to the glossary as a user-defined free-text
+  label grouping Person Records. Adds Relationships ("A
+  Person Record may have zero or more Tags" / "A Tag may be
+  applied to zero or more Person Records") and a flagged
+  ambiguity that retires "virtual cemetery" as a generic term.
+  Issue #183.
+- `internal/records/tag_service.go` (TagService) provides
+  UpsertByName (case-insensitive dedup), Attach/Detach,
+  AttachMany, Rename (UNIQUE-collision reject), MergeInto
+  (moves memberships, deletes source, rejects same-name merge),
+  Delete, Get/List, Autocomplete (substring match on
+  normalized_name), TagsForSoldier, TagsForSoldiers,
+  AttachAdditive, ByIDsPreservesOrder.
+- `internal/records/archive_meta.go` (ArchiveMetaService)
+  provides Get / SetIncludeTags / IncludeTags on the seeded
+  `archive_meta` rows (shared/backup/static). Used by the
+  upcoming export-pipeline opt-in (commit 8).
+- 13 new unit tests across `tag_service_test.go` and
+  `archive_meta_test.go`. Issue #183.
+- HTTP surface for tagging (issue #183): 11 endpoints under
+  `/soldiers/{id}/tags[/...]`, `/tags[/{id}/...]`, `/browse/bulk-tag`,
+  and `/share/export-options`. New handlers in
+  `internal/appshell/tags_handlers.go` cover attach/detach,
+  bulk-tag, rename, merge, delete, autocomplete fragment, and
+  archive_meta toggle. Routes registered in
+  `internal/appshell/routes.go` using chi's regex-constrained
+  `{id:[0-9]+}` syntax so static patterns precede the existing
+  `/soldiers/*` and `/tags/*` wildcards. Every POST writes
+  `X-DixieData-Redirect` per issue #130; locked by the existing
+  `TestPostThenNavigateUsesDixieRedirect` regression net. New
+  typed builders in `internal/routebuilder/routebuilder.go`
+  (`TagsPage`, `TagDetail`, `TagRename`, `TagMerge`, `TagDelete`,
+  `SoldierTagAutocomplete`, `SoldierTagAttach`, `SoldierTagDetach`,
+  `BrowseBulkTag`, `ShareExportOptions`). 11 new handler tests
+  in `tags_handlers_test.go` cover happy paths + 400/404/409
+  branches; `route_wildcard_test.go` extended with three new
+  shadow pairs.
+- Person Record tagging UI (issue #183): `internal/templates/tags.templ`
+  renders the `/tags` management table (rename / merge / delete
+  forms) and the `/tags/{id}` detail table with a View-in-Browse
+  deep link. `internal/templates/tag_picker.templ` renders the
+  per-soldier picker page reachable by the `/soldiers/{id}/tags`
+  GET handler. New uiids surface constants `PageTagsManagement`,
+  `PanelTagsList`, `PanelTagDetail`, `OverlayTagPicker` registered
+  in `internal/uiids/uiids.go`. `internal/records/tag_service.go`
+  gains `MembersWithDetails` for the detail page. Forms use
+  `data-dixie-submit="true"` per the Option C retag (no `hx-post`
+  / `hx-delete`).
+- Browse sidebar tag filter (issue #183): multi-select chip cloud
+  inside the existing browse filter row, AND-logic HAVING filter
+  (`GROUP BY person_id HAVING COUNT(DISTINCT tag_id) = N`). Deep
+  link `?tags=vc-shiloh,unit-4th-al` parses through
+  `parseTagFilter` → `BrowseRequest.Tags` and normalises on the
+  service layer (TrimSpace + dedupe-by-normalized). New
+  `BrowseState.SelectedTagSet` + `viewmodel.TagOption` + `BrowseView`
+  surface extended with `availableTags`. 4 regression tests in
+  `internal/records/browse_filter_test.go` cover AND logic across
+  1/2 tags, unknown-tag no-op, and normalisation dedup.
+- Shared Archive tag opt-in (issue #183): `models.Soldier` gains
+  a `tags []string` field (`json:",omitempty"` so static archive
+  HTML stays unchanged). `ExportSharedWithTags(outputPath, dataDir,
+  includeTags)` reads `archive_meta.include_tags` for the shared
+  kind and writes the tags array per soldier when on. The shared
+  import pipeline gains an additive post-pass that walks the source
+  archive and calls `TagService.AttachAdditive` per soldier per
+  tag, matching by display_id (inserted rows from merge get a new
+  id; matching by the immutable display_id keeps the binding
+  deterministic). `backupFacade` interface grew the new method;
+  `handleExportSharedArchive` reads `archiveMeta.IncludeTags` at
+  dispatch time so a PATCH on `/share/export-options` (issue #183
+  c4) takes effect on the next export without restarting.
+  Static archive HTML output does not change (Tags is omitempty).
+- Audit coverage (issue #183): `audit/discover_export_buttons.mjs`
+  registers the four new tag surfaces (`TagsPage`, `TagDetail`,
+  `BrowseBulkTag`, `ShareExportOptions`) in both the builder
+  prefix map and the literal-path allow-list. `audit/smoke.mjs`
+  grows a `[5e]` block asserting `/tags` renders and a `[5f]`
+  block that fetches `/share/export-options` and verifies the
+  X-DixieData-Redirect target is `/share` (the Option C contract
+  for the toggle form).
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
