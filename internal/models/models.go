@@ -7,6 +7,13 @@ import (
 )
 
 type Soldier struct {
+	// Tags is populated on the shared archive export path
+	// (issue #183) when archive_meta.include_tags is true.
+	// Other export paths leave it nil; the json:",omitempty"
+	// keeps the static archive HTML output unchanged. Source
+	// Records / Claims / Findings inherit tags via their
+	// parent Person Record and are not directly tagged in v1.
+	Tags                  []string `json:"tags,omitempty"`
 	ID                    int64    `json:"id"`
 	DisplayID             string   `json:"display_id"`
 	SyncID                string   `json:"sync_id"`

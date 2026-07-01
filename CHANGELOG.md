@@ -77,6 +77,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   surface extended with `availableTags`. 4 regression tests in
   `internal/records/browse_filter_test.go` cover AND logic across
   1/2 tags, unknown-tag no-op, and normalisation dedup.
+- Shared Archive tag opt-in (issue #183): `models.Soldier` gains
+  a `tags []string` field (`json:",omitempty"` so static archive
+  HTML stays unchanged). `ExportSharedWithTags(outputPath, dataDir,
+  includeTags)` reads `archive_meta.include_tags` for the shared
+  kind and writes the tags array per soldier when on. The shared
+  import pipeline gains an additive post-pass that walks the source
+  archive and calls `TagService.AttachAdditive` per soldier per
+  tag, matching by display_id (inserted rows from merge get a new
+  id; matching by the immutable display_id keeps the binding
+  deterministic). `backupFacade` interface grew the new method;
+  `handleExportSharedArchive` reads `archiveMeta.IncludeTags` at
+  dispatch time so a PATCH on `/share/export-options` (issue #183
+  c4) takes effect on the next export without restarting.
+  Static archive HTML output does not change (Tags is omitempty).
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
