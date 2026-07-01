@@ -179,6 +179,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue preset service (issue #192): new
+  `records.ShareQueuePresetService` provides CRUD over the
+  v59 share_queue_presets table -- Create / Get / List /
+  Delete / TouchLastUsed. Mirrors the printable-export
+  template service shape from issue #178 so power users get
+  a consistent save/reuse surface across both subset
+  pipelines. Create trims the name (leading/trailing
+  whitespace can never silently create a "different"
+  preset), drops non-positive IDs defensively, and surfaces
+  ErrShareQueuePresetNameTaken / ErrShareQueuePresetNotFound
+  for the handler to map to 409 / 404. List orders by
+  last_used_at DESC, name ASC so recently-loaded presets
+  float to the top of the modal. 9 unit tests cover all
+  paths including whitespace handling, duplicate names, and
+  missing-row semantics.
 - Schema v59 — saved Share Queue presets (issue #192):
   new `share_queue_presets` table carries the (soldier_id)
   JSON payload that names a reusable Share Queue. Local-only
