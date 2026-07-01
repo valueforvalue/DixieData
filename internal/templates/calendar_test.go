@@ -148,3 +148,78 @@ func TestCalendarGridDaysUseActualMonthLength(t *testing.T) {
 		}
 	}
 }
+
+// TestCalendarEmptyStateSwapsDetailsPane (#213) — when TotalRecords == 0
+// the EmptyStateCard must occupy the right (390px) column, not shove the
+// CalendarGrid into it. Layout is verified by checking that the rendered
+// DOM order is CalendarGrid first (column 1 of the 2-col grid) and the
+// welcome panel renders in the right column, with no details-pane
+// element present (it would be orphaned in row 2 col 1 of a broken grid).
+func TestCalendarEmptyStateSwapsDetailsPane(t *testing.T) {
+	var buf bytes.Buffer
+	err := Calendar(5, map[int]viewmodel.CalendarDaySummary{}, viewmodel.ArchiveCounts{
+		SoldierCount:      0,
+		SpouseRecordCount: 0,
+		PersonRecordCount: 0,
+	}, viewmodel.Quote{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+
+	for _, needle := range []string{"Welcome to DixieData", "calendar-layout"} {
+		if !strings.Contains(content, needle) {
+			t.Fatalf("empty-state calendar missing %s", needle)
+		}
+	}
+	if strings.Contains(content, `id="details-pane"`) {
+		t.Fatalf("empty-state calendar must not render details-pane (would orphan into row 2 col 1)")
+	}
+
+	// CalendarGrid must render BEFORE the EmptyStateCard in DOM order
+	// so CSS Grid places it in column 1 (1fr), not column 2 (390px).
+	calendarIdx := strings.Index(content, `id="calendar-grid-panel"`)
+	welcomeIdx := strings.Index(content, "Welcome to DixieData")
+	if calendarIdx < 0 || welcomeIdx < 0 {
+		t.Fatalf("missing calendar grid panel (%d) or welcome panel (%d)", calendarIdx, welcomeIdx)
+	}
+	if calendarIdx >= welcomeIdx {
+		t.Fatalf("calendar grid (idx %d) must precede welcome panel (idx %d) so CSS Grid places it in column 1", calendarIdx, welcomeIdx)
+	}
+}
+
+// TestCalendarPopulatedRendersDetailsPane (#213) — when TotalRecords > 0
+// the details-pane renders in column 2 and the welcome panel is hidden.
+// This is the normal post-load layout and must not regress when the
+// empty-state branch swaps the column-2 child.
+func TestCalendarPopulatedRendersDetailsPane(t *testing.T) {
+	var buf bytes.Buffer
+	err := Calendar(5, map[int]viewmodel.CalendarDaySummary{}, viewmodel.ArchiveCounts{
+		SoldierCount:      12,
+		SpouseRecordCount: 5,
+		PersonRecordCount: 1,
+	}, viewmodel.Quote{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+
+	if !strings.Contains(content, `id="details-pane"`) {
+		t.Fatalf("populated calendar must render details-pane in column 2")
+	}
+	if strings.Contains(content, "Welcome to DixieData") {
+		t.Fatalf("populated calendar must not render EmptyStateCard welcome panel")
+	}
+
+	// CalendarGrid must still render first (column 1) before details-pane.
+	calendarIdx := strings.Index(content, `id="calendar-grid-panel"`)
+	detailsIdx := strings.Index(content, `id="details-pane"`)
+	if calendarIdx < 0 || detailsIdx < 0 {
+		t.Fatalf("missing calendar grid panel (%d) or details-pane (%d)", calendarIdx, detailsIdx)
+	}
+	if calendarIdx >= detailsIdx {
+		t.Fatalf("calendar grid (idx %d) must precede details-pane (idx %d)", calendarIdx, detailsIdx)
+	}
+}

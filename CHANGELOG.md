@@ -2527,6 +2527,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the same 1s deadline. Verified stable over 10 standalone runs and 3
   consecutive `go test ./...` invocations.
 
+### Fixed
+
+- Landing-page calendar layout when the Local Archive has zero Person
+  Records (issue #213). The `EmptyStateCard` (welcome panel) previously
+  rendered as a sibling before `CalendarGrid` in the `.calendar-layout`
+  two-column grid, so CSS Grid auto-placement put it in column 1 (1fr)
+  and shoved the calendar into column 2 (390px) — smashed against the
+  right edge. Swap the conditional so the EmptyStateCard replaces the
+  `details-pane` slot in column 2 instead of sitting alongside it; the
+  `CalendarGrid` now lands in column 1 at full width in both the empty
+  and populated states. The `details-pane` div only renders when
+  `TotalRecords > 0`, matching the column count. Two regression tests
+  in `internal/templates/calendar_test.go` (`TestCalendarEmptyStateSwapsDetailsPane`,
+  `TestCalendarPopulatedRendersDetailsPane`) assert DOM ordering and the
+  presence/absence of the welcome panel + details-pane for both states.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
