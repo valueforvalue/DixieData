@@ -179,6 +179,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Audit coverage for Share Queue presets (issue #192):
+  audit/smoke.mjs gains a [5h] block that GETs
+  /share/queue/presets on a live dev binary and asserts the
+  response is a JSON object with a presets array, gated
+  behind SHAREQUEUE_PRESETS_E2E_BASE so unit-style smokes
+  can skip. audit/discover_export_buttons.mjs registers
+  the three new preset paths (literal /share/queue/presets,
+  /share/queue/presets/1, /share/queue/presets/1/apply) in
+  the literal-path allow-list so the discover test doesn't
+  fire false-orphan assertions for them.
 - Share Queue Saved Queues JS wiring (issue #192): the
   modal's save form / load / delete are now wired.
   refreshShareQueuePresets() runs on openShareQueueModal
