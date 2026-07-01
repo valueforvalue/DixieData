@@ -211,6 +211,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   via GET /share/queue/presets. New uiids constant
   PanelShareQueuePresets. New test asserts every shell
   attribute renders.
+- Audit + templ coverage for /share/queue (issue #193):
+  audit/discover_export_buttons.mjs registers
+  /share/queue in the literal-path allow-list; audit/smoke.mjs
+  gains a [5i] block that asserts the page renders
+  (GET /share/queue includes "Manage your staged subset"),
+  gated behind SHAREQUEUE_PAGE_E2E_BASE so unit-style
+  smokes can skip when no live binary is booted.
+  internal/templates/share_queue_test.go: 2 templ tests
+  (empty-state copy + per-row attributes + counts).
 - Share Queue management page JS wiring (issue #193):
   frontend/app.js grows installShareQueuePage --
   select-all checkbox toggles every row's

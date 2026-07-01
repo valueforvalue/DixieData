@@ -808,6 +808,28 @@ async function main() {
     });
   }
 
+  // Issue #193: /share/queue management page reachable
+  // from the layout nav. Boot the dev binary to exercise
+  // the SSR path; gated behind SHAREQUEUE_PAGE_E2E_BASE
+  // so unit-style smokes can skip.
+  console.log('\n[5i] Share Queue management page (issue #193)');
+  if (process.env.SHAREQUEUE_PAGE_E2E_BASE) {
+    const base4 = process.env.SHAREQUEUE_PAGE_E2E_BASE;
+    try {
+      const pageResp = await fetch(`${base4}/share/queue`);
+      const pageBody = await pageResp.text();
+      record('share-queue-page-renders', pageResp.ok && pageBody.includes('Manage your staged subset'), {
+        why: `status=${pageResp.status} bodyBytes=${pageBody.length}`,
+      });
+    } catch (err) {
+      record('share-queue-page-renders', false, { why: err.message });
+    }
+  } else {
+    record('share-queue-page-renders', 'skipped', {
+      why: 'set SHAREQUEUE_PAGE_E2E_BASE to a live dixiedata-web URL to run this block',
+    });
+  }
+
   await browser.close();
   process.exit(fail > 0 ? 1 : 0);
 }
