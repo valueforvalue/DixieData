@@ -48,6 +48,12 @@ var wildcardShadowPairs = []struct {
 	{"/soldiers/42/tags/7", "/soldiers/*"},
 	{"/tags", "/tags/*"},
 	{"/tags/7", "/tags/*"},
+	// Issue #182: /share/queue/modal is GET only and must not be
+	// shadowed by the /share/* branch. The /share/queue/preview
+	// + /share/queue/clear POSTs aren't asserted here because
+	// route_wildcard_test does GETs (chi returns 405 for
+	// GET-on-POST endpoints; that's not a shadow indicator).
+	{"/share/queue/modal", "/share"},
 }
 
 // TestWildcardRoutesDoNotShadowSpecific guards against route-order

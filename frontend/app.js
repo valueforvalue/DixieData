@@ -3142,6 +3142,14 @@
     installExportTemplates();
     refreshExportTemplates();
     showOverlayModal(modal);
+    // Issue #182: install Share Queue globals so the
+    // persistent pill + per-row [+ Queue] buttons + /share
+    // Build Share button work on first paint. The pill's
+    // hidden state mirrors the queue contents from
+    // localStorage at every entry point so a refresh
+    // remembers the user's staged set.
+    installShareQueueGlobals();
+    updateShareQueuePill(readShareQueue());
   }
 
   function closePrintConfigModal() {
@@ -3150,6 +3158,217 @@
       return;
     }
     hideOverlayModal(modal);
+  }
+
+  // ----- Share Queue modal (issue #182) -----
+  // The queue lives in localStorage under
+  // dixiedata.share-queue. The server-rendered modal body is
+  // the shell; JS hydrates the staged-records list from
+  // localStorage on open, keeps the persistent pill in sync,
+  // and submits the modal's selected_ids to
+  // /export/shared-archive?subset=1.
+  const SHARE_QUEUE_STORAGE_KEY = "dixiedata.share-queue";
+  const SHARE_QUEUE_BROWSE_SELECTION_KEY = "dixiedata.browse.selection";
+  function readShareQueue() {
+    try {
+      const raw = window.localStorage && window.localStorage.getItem(SHARE_QUEUE_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((n) => typeof n === "number" && Number.isFinite(n) && n > 0);
+    } catch (err) {
+      return [];
+    }
+  }
+  function writeShareQueue(ids) {
+    try {
+      if (!window.localStorage) return;
+      window.localStorage.setItem(SHARE_QUEUE_STORAGE_KEY, JSON.stringify(ids));
+    } catch (err) {
+      // Localstorage may be disabled (private mode); ignore so
+      // the UX degrades silently rather than throwing.
+    }
+    updateShareQueuePill(ids);
+  }
+  function updateShareQueuePill(ids) {
+    const pill = document.querySelector("[data-share-queue-pill]");
+    if (!(pill instanceof HTMLElement)) return;
+    if (!ids || ids.length === 0) {
+      pill.classList.add("hidden");
+      return;
+    }
+    pill.classList.remove("hidden");
+    const counter = pill.querySelector("[data-share-queue-pill-count]");
+    if (counter instanceof HTMLElement) {
+      counter.textContent = String(ids.length);
+    }
+  }
+  function shareQueueModal() {
+    const modal = document.querySelector("[data-share-queue-modal],[id='overlay.share-queue.modal']");
+    return modal instanceof HTMLElement ? modal : null;
+  }
+  function refreshShareQueueModal() {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    const ids = readShareQueue();
+    const list = modal.querySelector("[data-share-queue-list]");
+    const empty = modal.querySelector("[data-share-queue-empty]");
+    const count = modal.querySelector("[data-share-queue-count]");
+    if (list instanceof HTMLElement) {
+      while (list.firstChild) list.removeChild(list.firstChild);
+      for (const id of ids) {
+        const li = document.createElement("li");
+        li.className = "flex items-center justify-between gap-2 rounded border border-[rgba(141,116,64,0.2)] bg-white/80 px-2 py-1";
+        const label = document.createElement("span");
+        label.className = "font-mono text-xs text-[#6f2c26]";
+        label.textContent = "#" + id;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "text-xs text-[#8d7440] underline-offset-2 hover:underline";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => removeFromShareQueue(id));
+        li.appendChild(label);
+        li.appendChild(remove);
+        list.appendChild(li);
+      }
+    }
+    if (empty instanceof HTMLElement) {
+      empty.classList.toggle("hidden", ids.length > 0);
+    }
+    if (count instanceof HTMLElement) {
+      count.textContent = String(ids.length);
+    }
+    // Inject the staged ids into the form as repeating fields
+    // so the existing POST dispatches them as selected_ids.
+    const form = modal.querySelector("form");
+    if (form instanceof HTMLFormElement) {
+      // Drop any prior queued-ids fields to avoid duplicates.
+      const prior = form.querySelectorAll("input[type=hidden][data-share-queue-staged-id]");
+      prior.forEach((el) => el.remove());
+      for (const id of ids) {
+        const inp = document.createElement("input");
+        inp.type = "hidden";
+        inp.name = "selected_ids";
+        inp.value = String(id);
+        inp.dataset.shareQueueStagedId = "1";
+        form.appendChild(inp);
+      }
+    }
+    refreshShareQueuePreview(ids);
+  }
+  async function refreshShareQueuePreview(ids) {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    const previewHost = modal.querySelector("[data-share-queue-preview]");
+    if (!(previewHost instanceof HTMLElement)) return;
+    if (!ids || ids.length === 0) {
+      previewHost.textContent = "Pick at least one Person Record.";
+      previewHost.classList.add("text-slate-500");
+      return;
+    }
+    previewHost.classList.remove("text-slate-500");
+    previewHost.textContent = "Loading preview\u2026";
+    try {
+      const fd = new FormData();
+      for (const id of ids) fd.append("selected_ids", String(id));
+      const response = await fetch("/share/queue/preview", { method: "POST", body: fd });
+      if (!response.ok) {
+        previewHost.textContent = `Preview unavailable (${response.status}).`;
+        return;
+      }
+      previewHost.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.innerHTML = await response.text();
+      previewHost.appendChild(wrap);
+    } catch (err) {
+      previewHost.textContent = "Preview unavailable.";
+    }
+  }
+  function addToShareQueue(id) {
+    if (typeof id !== "number" || id <= 0) return;
+    const ids = readShareQueue();
+    if (ids.indexOf(id) !== -1) return;
+    ids.push(id);
+    writeShareQueue(ids);
+    refreshShareQueueModal();
+  }
+  function removeFromShareQueue(id) {
+    const ids = readShareQueue().filter((n) => n !== id);
+    writeShareQueue(ids);
+    refreshShareQueueModal();
+  }
+  function clearShareQueue() {
+    writeShareQueue([]);
+    refreshShareQueueModal();
+  }
+  function installShareQueueModal() {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    if (modal.dataset.shareQueueInstalled === "true") return;
+    modal.dataset.shareQueueInstalled = "true";
+    const close = modal.querySelector("[data-share-queue-modal-close]");
+    if (close instanceof HTMLElement) {
+      close.addEventListener("click", () => {
+        hideOverlayModal(modal);
+      });
+    }
+    const exportBtn = modal.querySelector("[data-share-queue-export]");
+    // Export is dispatched by dispatchDixieDataForm on the
+    // inner form's submit. The button is type=submit, so no
+    // explicit click handler is needed.
+    if (exportBtn instanceof HTMLElement) void exportBtn;
+    const clearBtn = modal.querySelector("[data-share-queue-clear]");
+    if (clearBtn instanceof HTMLElement) {
+      clearBtn.addEventListener("click", () => {
+        if (window.confirm("Clear the Share Queue? This cannot be undone.")) {
+          clearShareQueue();
+        }
+      });
+    }
+  }
+  function openShareQueueModal() {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    installShareQueueModal();
+    refreshShareQueueModal();
+    showOverlayModal(modal);
+  }
+  function installShareQueueGlobals() {
+    // Persistent pill click.
+    const pill = document.querySelector("[data-share-queue-pill]");
+    if (pill instanceof HTMLElement) {
+      pill.addEventListener("click", () => {
+        openShareQueueModal();
+      });
+    }
+    // Per-row [+] Queue buttons.
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const addBtn = target.closest("[data-share-queue-add]");
+      if (addBtn instanceof HTMLElement) {
+        const idAttr = addBtn.getAttribute("data-share-queue-add");
+        const id = idAttr ? parseInt(idAttr, 10) : 0;
+        if (id > 0) {
+          addToShareQueue(id);
+          // Visual feedback: brief "Added" pulse.
+          const original = addBtn.textContent;
+          addBtn.textContent = "Added";
+          setTimeout(() => {
+            if (addBtn.textContent === "Added") addBtn.textContent = original;
+          }, 800);
+        }
+        event.preventDefault();
+        return;
+      }
+    });
+    // Pill open from /share Build Share button.
+    const shareBtn = document.querySelector("[data-share-queue-open]");
+    if (shareBtn instanceof HTMLElement) {
+      shareBtn.addEventListener("click", () => {
+        openShareQueueModal();
+      });
+    }
   }
 
   // Live preview panel wiring (issue #179). On open we install a

@@ -2878,6 +2878,56 @@ func canonicalRank(soldier models.Soldier) string {
 	return strings.TrimSpace(soldier.RankIn)
 }
 
+// ByIDs (issue #182) returns the soldiers whose IDs are in the
+// supplied slice, preserving the caller's order. Unknown IDs
+// are silently dropped. Empty input returns an empty (non-nil)
+// slice so callers can index without nil checks. Used by the
+// Share Queue subset export to materialise a single staged
+// shipment; mirrors RecentByIDs without the limit.
+func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
+	if len(ids) == 0 {
+		return []models.Soldier{}, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(ids)), ",")
+	args := make([]interface{}, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	rows, err := s.db.Conn().Query(
+		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE id IN ("+placeholders+")",
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var found []models.Soldier
+	for rows.Next() {
+		var soldier models.Soldier
+		if err := rows.Scan(soldierListScanDest(&soldier)...); err != nil {
+			return nil, err
+		}
+		hydrateLegacyDeathParts(&soldier)
+		soldier.PensionState = pensionstate.Normalize(soldier.PensionState)
+		normalizeConfederateHomeFields(&soldier)
+		found = append(found, soldier)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	index := map[int64]models.Soldier{}
+	for _, s := range found {
+		index[s.ID] = s
+	}
+	out := make([]models.Soldier, 0, len(ids))
+	for _, id := range ids {
+		if s, ok := index[id]; ok {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
 func searchableFirstName(soldier models.Soldier) string {
 	return strings.TrimSpace(strings.TrimSpace(soldier.FirstName) + " " + strings.TrimSpace(soldier.MiddleName))
 }

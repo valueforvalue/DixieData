@@ -88,6 +88,10 @@ _Avoid_: Roster, unit membership
 The holding area for Person Records that need human attention before they should be treated as clean archive data.
 _Avoid_: Audit, merge review
 
+**Share Queue**:
+The in-memory list of Person Records a researcher has staged for inclusion in a Shared Archive (.ddshare) before exporting. Distinct from the Review Queue, which tracks records needing human attention; the Share Queue is the explicit staging surface for a deliberate subset export. Persisted in the browser's localStorage so the queue survives navigation, reloads, and app restarts.
+_Avoid_: share list, export set
+
 **Duplicate Audit**:
 An archive-wide scan that detects likely duplicate Person Records for human review.
 _Avoid_: Review queue, merge review

@@ -83,6 +83,12 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<span class="font-bold">Export Shared Archive (.ddshare)</span>
 							<span class="text-xs text-slate-500">For sharing into another DixieData</span>
 						}
+						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
+							"data-share-queue-open": "",
+						}) {
+							<span class="font-bold">Build Share Archive</span>
+							<span class="text-xs text-slate-500">Open the Share Queue modal (issue #182)</span>
+						}
 					</div>
 				</section>
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">

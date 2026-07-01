@@ -148,6 +148,109 @@ func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest
 	return b.ExportSharedWithTags(outputPath, dataDir, false)
 }
 
+// ExportSharedSubset (issue #182) writes a Shared Archive
+// containing only the Person Records whose IDs are in the
+// supplied slice. Mirrors ExportSharedWithTags: same archive
+// kind, same JSON payload shape, same image-set semantics —
+// just a filtered soldier slice. The manifest carries
+// Notes describing the subset ("subset export of N Person
+// Records selected from the Local Archive") so a recipient
+// can tell at a glance that the archive is not full.
+//
+// IDs that do not exist in the Local Archive at export time
+// are silently dropped (SoldierService.ByIDs contract) so
+// a long-running session can stage ids, then drop a few rows,
+// then export — no manual cleanup needed.
+//
+// Source Records, Images, and the merged Tags array all
+// filter alongside the soldier selection: the image-set
+// collection walks the subset only, never the full archive.
+func (b *BackupService) ExportSharedSubset(outputPath, dataDir string, ids []int64) (BackupManifest, error) {
+	if len(ids) == 0 {
+		return BackupManifest{}, fmt.Errorf("subset export requires at least one selected_ids entry")
+	}
+	manifest, err := b.loadBackupData(archiveKindShared)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	soldiers, err := b.soldier.ByIDs(ids)
+	if err != nil {
+		return BackupManifest{}, fmt.Errorf("load subset soldiers: %w", err)
+	}
+	if len(soldiers) == 0 {
+		return BackupManifest{}, fmt.Errorf("subset export contains no existing soldiers (supplied %d ids)", len(ids))
+	}
+	// Tag opt-in mirrors ExportSharedWithTags so a subset export
+	// inherits the same archive_meta.include_tags setting.
+	includeTags := false
+	tagSvc := records.NewTagService(b.db.Conn())
+	tagMeta, terr := b.archiveMetaIncludeTags()
+	if terr != nil {
+		return BackupManifest{}, terr
+	}
+	includeTags = tagMeta
+	if includeTags {
+		soldierIDs := make([]int64, 0, len(soldiers))
+		for _, s := range soldiers {
+			soldierIDs = append(soldierIDs, s.ID)
+		}
+		tagMap, terr := tagSvc.TagsForSoldiers(context.Background(), soldierIDs)
+		if terr != nil {
+			return BackupManifest{}, fmt.Errorf("load tags for subset export: %w", terr)
+		}
+		for i := range soldiers {
+			tags := tagMap[soldiers[i].ID]
+			if len(tags) == 0 {
+				continue
+			}
+			names := make([]string, 0, len(tags))
+			for _, t := range tags {
+				names = append(names, t.Name)
+			}
+			soldiers[i].Tags = names
+		}
+	}
+	manifest.DataFormat = "json"
+	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
+	manifest.DatabaseFile = ""
+	manifest.SourceLabel = fmt.Sprintf(
+		"%s -- subset of %d Person Records selected from the Local Archive",
+		strings.TrimSpace(manifest.SourceLabel), len(soldiers),
+	)
+
+	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
+		if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+			return err
+		}
+		if err := writeBackupJSON(zipWriter, manifest.DataFile, soldiers); err != nil {
+			return err
+		}
+		return addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers))
+	}); err != nil {
+		return BackupManifest{}, err
+	}
+	manifest.Soldiers = len(soldiers)
+	return manifest, nil
+}
+
+// archiveMetaIncludeTags reads archive_meta.include_tags for the
+// shared_archive kind (issue #183). Returns false on any error so
+// the export pipeline never blocks on a stale archive_meta row.
+// Reads via a direct SQL because backup_service.go can't import
+// records.ArchiveMetaService without an import cycle today; the
+// direct read keeps the dependency surface flat.
+func (b *BackupService) archiveMetaIncludeTags() (bool, error) {
+	var include int
+	err := b.db.Conn().QueryRow(
+		`SELECT include_tags FROM archive_meta WHERE archive_kind = ?`,
+		records.ArchiveKindShared,
+	).Scan(&include)
+	if err != nil {
+		return false, nil // treat missing row / read error as "no tags"
+	}
+	return include != 0, nil
+}
+
 // ExportSharedWithTags mirrors ExportShared but adds an includeTags
 // switch that mirrors archive_meta.include_tags. When true, every
 // soldier in the JSON payload grows a `tags: []string` field

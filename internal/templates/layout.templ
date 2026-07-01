@@ -104,7 +104,17 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					@components.Button("Feedback", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-feedback-open": ""})
 					@components.Button("Menu", components.ButtonPrimary, "floating-dock-button", templ.Attributes{"data-floating-nav-toggle": "", "onclick": "document.querySelector('[data-floating-nav-panel]')?.classList.toggle('hidden')"})
 				</div>
-				<div data-floating-nav-panel class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
+				<!-- Issue #182: persistent Share Queue status pill.
+			     Lives outside the floating dock per the spec (no
+			     z-index collision with the recent overlay fix).
+			     Hidden when the queue is empty so the layout stays
+			     quiet for users who never touched the queue. -->
+			<button type="button" data-share-queue-pill class="fixed bottom-[6.5rem] left-1/2 z-30 hidden -translate-x-1/2 rounded-full border border-[#8d7440] bg-[rgba(36,48,61,0.96)] px-5 py-2 text-sm font-semibold text-[#f2ede1] shadow-[0_18px_32px_rgba(23,33,43,0.28)] hover:bg-[rgba(36,48,61,1)]">
+				<span data-share-queue-pill-label>Share queue:</span>
+				<span data-share-queue-pill-count class="ml-2 rounded-full bg-[#8d7440] px-2 py-0.5 text-xs font-mono">0</span>
+				<span class="ml-3 text-xs uppercase tracking-[0.18em] text-[#cfb77a]">Review &amp; export</span>
+			</button>
+			<div data-floating-nav-panel class="floating-nav-panel fixed bottom-[5.5rem] right-4 z-50 hidden w-[24rem] max-w-[calc(100vw-2rem)] min-w-[15rem] rounded-[1.5rem] border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-4 shadow-[0_24px_44px_rgba(23,33,43,0.28)] sm:right-6">
 					<p class="text-xs uppercase tracking-[0.28em] text-[#cfb77a]">Quick Navigation</p>
 					<nav class="mt-3 flex flex-col gap-2">
 						<a href="/calendar" class="pill-link justify-start">Calendar</a>
