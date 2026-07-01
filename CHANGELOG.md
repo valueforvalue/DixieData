@@ -723,6 +723,35 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- Polling fragments no longer cascade during `pendingRecovery` and
+  `startupErr` blocks. Same shape as the #212 setup-required fix.
+  In `internal/appshell/lifecycle.go`, the `pendingRecovery` branch
+  (`a.pendingRecovery != nil && !recoveryRequestAllowed(r.URL.Path)`)
+  used to 303 every non-allowlisted path to `/recovery`; the
+  browser's XHR followed, the full recovery HTML doc got
+  innerHTML-swapped into the badge wrapper (`hx-target="this"`),
+  and the wrapper's innerHTML became a copy of the recovery form on
+  every poll. Same class for `startupErr`: every request returned
+  `http.Error(..., 500)` with a `text/plain` body containing the
+  raw Go error message; htmx fragments swapped the error text into
+  the badge wrapper. Two-part fix in both branches: detect
+  `HX-Request: true` and return `204 No Content` with
+  `X-DixieData-Redirect: /recovery` so the swap target stays put.
+  Full-page nav (no `HX-Request`) still gets the 303 (recovery) or
+  the 500 (startupErr) — existing behavior unchanged. Forward-
+  compatible: any future polling fragment automatically gets the
+  204 behavior without needing a `recoveryRequestAllowed` allowlist
+  entry. Regression net: two new tests in
+  `internal/appshell/app_test.go` — `TestAppServeHTTPRecoveryFragmentReturns204WithRedirectHint`
+  (6 cases incl. allowlist sanity + priority over setupRequired)
+  and `TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint`
+  (4 cases). Acceptance verified by removing each guard in turn:
+  each test fails with the bug-class name in the failure message.
+  `docs/COMMON_BUGS.md §1.13` extended with the multi-branch
+  pattern. Closes #214.
+
+### Fixed
+
 - `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).
 
 - Three pre-existing audit-workflow gaps closed together with the

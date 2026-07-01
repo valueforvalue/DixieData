@@ -339,10 +339,44 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.pendingRecovery != nil && !recoveryRequestAllowed(r.URL.Path) {
+		// Issue #214: a polling fragment (e.g. /layout/review-count)
+		// that isn't in the recoveryRequestAllowed allowlist used to
+		// 303 to /recovery. The browser's XHR followed the redirect,
+		// the full recovery HTML doc got innerHTML-swapped into the
+		// badge wrapper (which has hx-target="this"), and the
+		// wrapper's innerHTML became a copy of the recovery form on
+		// every poll. Return 204 with the X-DixieData-Redirect hint
+		// for htmx fragment requests so the swap target stays put.
+		// htmx's XHR doesn't run the dispatcher (X-DixieData-Redirect
+		// is the form-submit contract from docs/COMMON_BUGS.md §1.10,
+		// not an htmx-recognised header), so the hint is informational
+		// for htmx but consistent with the existing redirect contract.
+		// Full-page nav still gets the 303. See #212 for the same
+		// fix shape applied to the setupRequired branch below.
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("X-DixieData-Redirect", "/recovery")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		http.Redirect(w, r, "/recovery", http.StatusSeeOther)
 		return
 	}
 	if a.startupErr != nil {
+		// Issue #214: an htmx fragment request during a startupErr
+		// state used to get a 500 with a text/plain body containing
+		// the raw Go error message. htmx would swap it into the swap
+		// target's innerHTML, showing the error text in the badge
+		// wrapper. Return 204 with the X-DixieData-Redirect hint
+		// pointing at /recovery (where the user can read the error
+		// and act on it). The hint is informational for htmx but
+		// consistent with the existing redirect contract. Full-page
+		// nav still gets the 500 with the error text. See #212 for
+		// the same fix shape applied to the setupRequired branch.
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("X-DixieData-Redirect", "/recovery")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		http.Error(w, a.startupErr.Error(), http.StatusInternalServerError)
 		return
 	}

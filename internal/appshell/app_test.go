@@ -263,6 +263,203 @@ func TestAppServeHTTPAllowsFrontendJSWhenRecoveryPending(t *testing.T) {
 	}
 }
 
+// TestAppServeHTTPRecoveryFragmentReturns204WithRedirectHint is the
+// regression net for issue #214 (recovery branch). When
+// pendingRecovery != nil and a polling fragment request (HX-Request:
+// true) hits a path that is NOT in recoveryRequestAllowed (e.g.
+// /layout/review-count), the previous behavior was to 303 to
+// /recovery. The browser's XHR followed the redirect, the full
+// recovery HTML doc got innerHTML-swapped into the badge wrapper
+// (hx-target="this"), and the wrapper's innerHTML became a copy of
+// the recovery form on every poll. Same cascade class as #212
+// (setupRequired branch) and #209 (pre-mux placeholder).
+//
+// Fix: in the pendingRecovery branch of App.ServeHTTP, when the
+// request is an htmx fragment, return 204 No Content with
+// X-DixieData-Redirect: /recovery. The swap target stays put; the
+// user finishes the recovery, the next poll sees the real badge.
+// Full-page nav still gets the 303 redirect to /recovery.
+//
+// Acceptance:
+//   - Remove the new HX-Request → 204 branch → case (a) fails.
+//   - Remove the X-DixieData-Redirect header → case (a) fails.
+//   - Add /layout/review-count to recoveryRequestAllowed → the new
+//     branch becomes dead code for that path; test still passes
+//     because we assert behavior, not implementation.
+//   - Set both pendingRecovery and setupRequired → case (f) pins
+//     that recovery wins (recovery is checked first).
+func TestAppServeHTTPRecoveryFragmentReturns204WithRedirectHint(t *testing.T) {
+	app := NewApp()
+	app.pendingRecovery = &update.RestorePointRecord{ID: "restore-point-1"}
+	app.setupRoutes()
+
+	// Case (a): htmx fragment request to a non-allowlisted path.
+	// Returns 204 + X-DixieData-Redirect: /recovery.
+	fragmentReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fragmentReq.Header.Set("HX-Request", "true")
+	fragmentRec := httptest.NewRecorder()
+	app.ServeHTTP(fragmentRec, fragmentReq)
+
+	if fragmentRec.Code != http.StatusNoContent {
+		t.Fatalf("fragment status=%d want %d (htmx fragment during pending-recovery must get 204, not 303 to /recovery); issue #214", fragmentRec.Code, http.StatusNoContent)
+	}
+	if fragmentRec.Body.Len() != 0 {
+		t.Fatalf("fragment body must be empty for 204; got %d bytes: %q", fragmentRec.Body.Len(), fragmentRec.Body.String())
+	}
+	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
+		t.Fatalf("fragment X-DixieData-Redirect header=%q want %q", got, "/recovery")
+	}
+
+	// Case (b): same path without HX-Request → 303 to /recovery
+	// (existing behavior unchanged for full-page nav).
+	fullPageReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fullPageRec := httptest.NewRecorder()
+	app.ServeHTTP(fullPageRec, fullPageReq)
+	if fullPageRec.Code != http.StatusSeeOther {
+		t.Fatalf("full-page status=%d want %d (full-page nav must still 303 to /recovery)", fullPageRec.Code, http.StatusSeeOther)
+	}
+	if loc := fullPageRec.Header().Get("Location"); loc != "/recovery" {
+		t.Fatalf("full-page Location=%q want %q", loc, "/recovery")
+	}
+
+	// Case (c): arbitrary non-allowlisted path with HX-Request →
+	// 204 + hint (forward-compat).
+	arbitraryReq := httptest.NewRequest(http.MethodGet, "/some/future/fragment", nil)
+	arbitraryReq.Header.Set("HX-Request", "true")
+	arbitraryRec := httptest.NewRecorder()
+	app.ServeHTTP(arbitraryRec, arbitraryReq)
+	if arbitraryRec.Code != http.StatusNoContent {
+		t.Fatalf("arbitrary fragment status=%d want %d (forward-compat: any fragment should 204, not 303)", arbitraryRec.Code, http.StatusNoContent)
+	}
+	if got := arbitraryRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
+		t.Fatalf("arbitrary fragment X-DixieData-Redirect=%q want %q", got, "/recovery")
+	}
+
+	// Case (d): arbitrary non-allowlisted path without HX-Request
+	// still gets the 303. /calendar is a good proxy: the real
+	// handler would 404 in this test but the pendingRecovery
+	// branch fires first and the 303 wins.
+	calendarReq := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	calendarRec := httptest.NewRecorder()
+	app.ServeHTTP(calendarRec, calendarReq)
+	if calendarRec.Code != http.StatusSeeOther {
+		t.Fatalf("/calendar status=%d want %d (full-page nav must still 303 to /recovery)", calendarRec.Code, http.StatusSeeOther)
+	}
+
+	// Case (e): sanity check — allowlisted paths (e.g. /recovery
+	// itself) do NOT hit the new 204 branch. They pass through to
+	// the real handler. We don't assert the real handler's exact
+	// status (depends on test setup), only that the pendingRecovery
+	// branch didn't intercept the request.
+	recoveryReq := httptest.NewRequest(http.MethodGet, "/recovery", nil)
+	recoveryReq.Header.Set("HX-Request", "true")
+	recoveryRec := httptest.NewRecorder()
+	app.ServeHTTP(recoveryRec, recoveryReq)
+	if recoveryRec.Code == http.StatusSeeOther {
+		t.Errorf("/recovery returned 303 to %s; allowlisted paths must pass through to the real handler (recoveryRequestAllowed returned true; the new branch was never reached)", recoveryRec.Header().Get("Location"))
+	}
+	if got := recoveryRec.Header().Get("X-DixieData-Redirect"); got == "/recovery" {
+		t.Errorf("/recovery got X-DixieData-Redirect: /recovery; the new branch was reached for an allowlisted path; recoveryRequestAllowed should have short-circuited before the new branch")
+	}
+
+	// Case (f): priority order — both pendingRecovery and
+	// setupRequired true → recovery wins (recovery is checked
+	// first in lifecycle.go). Asserts the redirect hint points at
+	// /recovery, not /setup.
+	prioApp := NewApp()
+	prioApp.pendingRecovery = &update.RestorePointRecord{ID: "restore-point-1"}
+	prioApp.setupRequired = true
+	prioApp.setupRoutes()
+	prioReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	prioReq.Header.Set("HX-Request", "true")
+	prioRec := httptest.NewRecorder()
+	prioApp.ServeHTTP(prioRec, prioReq)
+	if prioRec.Code != http.StatusNoContent {
+		t.Fatalf("priority test: fragment status=%d want %d", prioRec.Code, http.StatusNoContent)
+	}
+	if got := prioRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
+		t.Fatalf("priority test: X-DixieData-Redirect=%q want %q (recovery must win over setupRequired when both are set)", got, "/recovery")
+	}
+}
+
+// TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint is
+// the regression net for issue #214 (startupErr branch). When
+// a.startupErr != nil, every request used to return 500 with a
+// text/plain body containing the raw Go error message. htmx fragments
+// saw the error text and innerHTML-swapped it into the badge wrapper.
+// Not a full-doc cascade (plaintext, no nested hx-trigger), but the
+// badge showed the raw error and htmx logged the 500.
+//
+// Fix: in the startupErr branch of App.ServeHTTP, when the request
+// is an htmx fragment, return 204 No Content with
+// X-DixieData-Redirect: /recovery. The hint points at /recovery where
+// the user can read the error and act on it. Full-page nav still
+// gets the 500 with the error text.
+//
+// Out of scope: assets like /app.js don't go through the startupErr
+// branch (the pre-mux asset path at the top of ServeHTTP short-circuits
+// when mux is nil; with mux ready, asset paths go through a.mux). So
+// case (e) "allowlisted path passes through" doesn't apply here — the
+// startupErr branch intercepts everything when it's set.
+func TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint(t *testing.T) {
+	app := NewApp()
+	app.startupErr = errors.New("bootstrap failed: db open")
+	app.setupRoutes()
+
+	// Case (a): htmx fragment → 204 + X-DixieData-Redirect: /recovery.
+	fragmentReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fragmentReq.Header.Set("HX-Request", "true")
+	fragmentRec := httptest.NewRecorder()
+	app.ServeHTTP(fragmentRec, fragmentReq)
+
+	if fragmentRec.Code != http.StatusNoContent {
+		t.Fatalf("fragment status=%d want %d (htmx fragment during startupErr must get 204, not 500); issue #214", fragmentRec.Code, http.StatusNoContent)
+	}
+	if fragmentRec.Body.Len() != 0 {
+		t.Fatalf("fragment body must be empty for 204; got %d bytes: %q", fragmentRec.Body.Len(), fragmentRec.Body.String())
+	}
+	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
+		t.Fatalf("fragment X-DixieData-Redirect header=%q want %q", got, "/recovery")
+	}
+
+	// Case (b): same path without HX-Request → 500 with the error
+	// text (existing behavior unchanged for full-page nav).
+	fullPageReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fullPageRec := httptest.NewRecorder()
+	app.ServeHTTP(fullPageRec, fullPageReq)
+	if fullPageRec.Code != http.StatusInternalServerError {
+		t.Fatalf("full-page status=%d want %d (full-page nav must still get the 500 with error text)", fullPageRec.Code, http.StatusInternalServerError)
+	}
+	if !strings.Contains(fullPageRec.Body.String(), "bootstrap failed: db open") {
+		t.Fatalf("full-page body must contain the error text; got %q", fullPageRec.Body.String())
+	}
+
+	// Case (c): arbitrary path with HX-Request → 204 + hint
+	// (forward-compat).
+	arbitraryReq := httptest.NewRequest(http.MethodGet, "/some/future/fragment", nil)
+	arbitraryReq.Header.Set("HX-Request", "true")
+	arbitraryRec := httptest.NewRecorder()
+	app.ServeHTTP(arbitraryRec, arbitraryReq)
+	if arbitraryRec.Code != http.StatusNoContent {
+		t.Fatalf("arbitrary fragment status=%d want %d (forward-compat: any fragment should 204, not 500)", arbitraryRec.Code, http.StatusNoContent)
+	}
+	if got := arbitraryRec.Header().Get("X-DixieData-Redirect"); got != "/recovery" {
+		t.Fatalf("arbitrary fragment X-DixieData-Redirect=%q want %q", got, "/recovery")
+	}
+
+	// Case (d): arbitrary path without HX-Request → 500 with the
+	// error text.
+	arbitraryFullReq := httptest.NewRequest(http.MethodGet, "/some/future/path", nil)
+	arbitraryFullRec := httptest.NewRecorder()
+	app.ServeHTTP(arbitraryFullRec, arbitraryFullReq)
+	if arbitraryFullRec.Code != http.StatusInternalServerError {
+		t.Fatalf("arbitrary full-page status=%d want %d", arbitraryFullRec.Code, http.StatusInternalServerError)
+	}
+	if !strings.Contains(arbitraryFullRec.Body.String(), "bootstrap failed: db open") {
+		t.Fatalf("arbitrary full-page body must contain the error text; got %q", arbitraryFullRec.Body.String())
+	}
+}
+
 func TestHandleRecoveryRendersRestorePointPrompt(t *testing.T) {
 	app := NewApp()
 	app.pendingRecovery = &update.RestorePointRecord{
