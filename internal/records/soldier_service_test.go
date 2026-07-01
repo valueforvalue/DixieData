@@ -1089,6 +1089,84 @@ func TestSoldierService_ByIDs(t *testing.T) {
 	}
 }
 
+// TestSoldierService_ByIDs_PopulatesCounts (issue #190) asserts
+// the per-row RecordCount + ImageCount are populated by the
+// same single round-trip -- the soldierListSelectColumns
+// correlated subqueries already do this work, and the issue's
+// proposed CountForIDs helper would be a redundant trip. The
+// share-queue preview handler sums these fields directly, so
+// this test guards against a future refactor that swaps
+// soldierListSelectColumns for a lighter projection without
+// realising the preview depends on it.
+func TestSoldierService_ByIDs_PopulatesCounts(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	first, err := svc.Create(models.Soldier{DisplayID: "SQC-0001", FirstName: "Alpha", LastName: "Counts"})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := svc.Create(models.Soldier{DisplayID: "SQC-0002", FirstName: "Beta", LastName: "Counts"})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+	conn := d.Conn()
+
+	// first: 2 records + 1 image.
+	for i := 0; i < 2; i++ {
+		if _, err := conn.Exec(
+			`INSERT INTO records (soldier_id, record_type, app_id, details) VALUES (?, ?, ?, ?)`,
+			first.ID, "pension", fmt.Sprintf("APP-%d", i), fmt.Sprintf("details %d", i),
+		); err != nil {
+			t.Fatalf("insert first record: %v", err)
+		}
+	}
+	if _, err := conn.Exec(
+		`INSERT INTO images (soldier_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
+		first.ID, "a.jpg", "/tmp/a.jpg", "cap",
+	); err != nil {
+		t.Fatalf("insert first image: %v", err)
+	}
+
+	// second: 0 records + 5 images.
+	for i := 0; i < 5; i++ {
+		if _, err := conn.Exec(
+			`INSERT INTO images (soldier_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
+			second.ID, fmt.Sprintf("b-%d.jpg", i), fmt.Sprintf("/tmp/b-%d.jpg", i), fmt.Sprintf("cap %d", i),
+		); err != nil {
+			t.Fatalf("insert second image: %v", err)
+		}
+	}
+
+	results, err := svc.ByIDs([]int64{first.ID, second.ID})
+	if err != nil {
+		t.Fatalf("ByIDs: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("ByIDs returned %d rows, want 2", len(results))
+	}
+	wantCounts := []struct {
+		id           int64
+		recordCount  int
+		imageCount   int
+	}{
+		{first.ID, 2, 1},
+		{second.ID, 0, 5},
+	}
+	for i, want := range wantCounts {
+		got := results[i]
+		if got.ID != want.id {
+			t.Errorf("row %d: id = %d, want %d", i, got.ID, want.id)
+		}
+		if got.RecordCount != want.recordCount {
+			t.Errorf("row %d (%d): RecordCount = %d, want %d", i, want.id, got.RecordCount, want.recordCount)
+		}
+		if got.ImageCount != want.imageCount {
+			t.Errorf("row %d (%d): ImageCount = %d, want %d", i, want.id, got.ImageCount, want.imageCount)
+		}
+	}
+}
+
 func TestSoldierService_UnitCamaraderieGraph(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
