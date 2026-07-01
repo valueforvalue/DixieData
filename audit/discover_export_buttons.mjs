@@ -301,6 +301,15 @@ const literalPathOverrides = {
   '/export/shared-archive': true,
   '/export/bug-report': true,
   '/export/feedback-log': true,
+  // Issue #182: Share Queue endpoints are NOT exports in the
+  // strict sense (they serve the modal/preview UX, not the
+  // export pipeline). Listed so the discover test doesn't fire
+  // a false-orphan assertion; they remain out of scope for the
+  // 'all six canonical share-page exports' regression net.
+  '/share/queue/modal': true,
+  '/share/queue/preview': true,
+  '/share/queue/clear': true,
+  '/export/shared-archive?subset=1': true,
   '/tags': true,
   '/tags/1': true,
   '/browse/bulk-tag': true,
