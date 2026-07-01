@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -155,24 +154,31 @@ func seedArtifactJob(t *testing.T, app *App, kind, artifactPath string) string {
 	if err := os.WriteFile(artifactPath, []byte("seed"), 0o644); err != nil {
 		t.Fatalf("seed artifact: %v", err)
 	}
-	// Bind jobID into the closure by value. Without this the goroutine
-	// captures `id` by reference and races against the assignment below:
-	// on a fast worker pool the goroutine can fire while `id` is still
-	// empty, SetResultPath is called with id="" and becomes a no-op,
-	// and the handler returns 409 because the snapshot has no
-	// ResultPath. Pre-fix this was rare on CI runners with slower
-	// goroutine scheduling; after my reloadServices() change the
-	// registry re-allocation pattern changed enough that .csv hit the
-	// race on the GitHub Actions runner. See commit ec451f4's
-	// follow-up for the regression net.
-	var jobIDHolder atomic.Value // string
+	// Bind jobID into the closure via a buffered channel. The worker
+	// blocks on a channel receive until the test goroutine has the
+	// id from Start() and writes it to the channel. This eliminates
+	// the race where the worker goroutine fires before Start returns
+	// and `id` is still empty — pre-fix this manifested as either
+	// a panic in the worker (`Load().(string)` on a nil atomic.Value)
+// or a 409 in the handler (ResultPath was set against an empty id
+	// and became a silent no-op, so the snapshot had no ResultPath).
+	// See commit ec451f4's follow-up for the original regression net;
+	// the channel-based approach is simpler than atomic.Value polling
+	// and avoids the nil-load panic that started surfacing on the
+	// GitHub Actions runner after the reloadServices() change.
+	idCh := make(chan string, 1)
 	id := app.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
-		id := jobIDHolder.Load().(string)
+		var id string
+		select {
+		case id = <-idCh:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		p.Set(100, "Done")
 		app.jobs.SetResultPath(id, artifactPath)
 		return nil
 	})
-	jobIDHolder.Store(id)
+	idCh <- id
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		snap, _ := app.jobs.Get(id)
