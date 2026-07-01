@@ -121,6 +121,68 @@ func (a *App) handleDeleteExportTemplate(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleUpdateExportTemplate (issue #186) replaces the mutable
+// fields on a saved template. Accepts PATCH or POST (templates
+// work with the standard Option C dispatcher and HTML forms do
+// not natively issue PATCH). On 200 returns {id, name} JSON. On
+// 404 (missing) or 409 (name collision) surfaces the issue code
+// via the existing respond-error shape so the modal's
+// templates-status slot can render an inline message.
+func (a *App) handleUpdateExportTemplate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch && r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := parseExportTemplateIDFromPath(r.URL.Path, "")
+	if err != nil {
+		http.Error(w, "invalid template id", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the template form.", err)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("template_name"))
+	if name == "" {
+		respondValidation(w, r, "Template name is required.", errors.New("missing template_name"))
+		return
+	}
+	settings, err := parsePrintSettingsRequest(r)
+	if err != nil {
+		respondValidation(w, r, "Could not read the print settings.", err)
+		return
+	}
+	updated, err := a.exportTemplates.Update(id, records.ExportTemplate{
+		Name:              name,
+		Scope:             settings.Scope,
+		Filters:           collectExportFilters(r),
+		SortBy:            settings.SortBy,
+		GroupBy:           collectExportGroupBy(settings),
+		Orientation:       settings.Orientation,
+		SelectedIDs:       settings.SelectedIDs,
+		PrinterFriendly:   settings.PrinterFriendly,
+		FullBiographyPage: settings.FullBiographyPage,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, records.ErrExportTemplateNotFound):
+			respondNotFound(w, r, fmt.Sprintf("Template %d not found.", id), err)
+		case errors.Is(err, records.ErrExportTemplateNameTaken):
+			http.Error(w, "A template with that name already exists. Pick a different name.", http.StatusConflict)
+		default:
+			respondInternal(w, r, fmt.Sprintf("Could not update template %d.", id), err)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"id":   updated.ID,
+		"name": updated.Name,
+	}); err != nil {
+		return
+	}
+}
+
 // handleApplyExportTemplate returns the stored fields as JSON so
 // the modal can populate its form, wrapped in a response that also
 // lists any "stale" filter values or selected IDs that no longer

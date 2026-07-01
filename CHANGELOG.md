@@ -13,6 +13,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Saved-templates "Save Changes" button (issue #186): PATCH
+  /export/templates/{id} handler + ExportTemplateService.Update
+  method (preserves created_at + last_used_at; rejects name
+  collision with ErrExportTemplateNameTaken, missing id with
+  ErrExportTemplateNotFound). Modal grows a hidden Save Changes
+  button that becomes visible after a successful Load;
+  selecting a template from the dropdown re-uses Load's id
+  (option.dataset.templateId). Frontend JS refreshes the
+  dropdown after a successful update so renames surface in the
+  sort order without a modal close/reopen. Route registered
+  `r.Patch("/export/templates/{id}", a.handleUpdateExportTemplate)`
+  in routes.go; typed builder `ExportTemplateUpdate(id)` added.
+  Regression net: 3 new service tests (`Update`, `UpdateMissing`,
+  `UpdateNameCollision`).
 - New-soldier empty-name save is now a soft warning rather
   than a hard 400 (issue #151, follow-up to PR #149). The
   browser-side `required` attribute is removed from both name
