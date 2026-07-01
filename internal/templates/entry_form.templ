@@ -222,7 +222,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<div>
 							<label class="block text-sm text-slate-500 mb-1" for="ef-first_name">First Name</label>
 							<input type="text" name="first_name" value={ s.FirstName }
-								class="field-input" id="ef-first_name" if !isEdit { required }/>
+								class="field-input" id="ef-first_name"/>
 						</div>
 						<div>
 							<label class="block text-sm text-slate-500 mb-1" for="ef-middle_name">Middle Name</label>
@@ -232,7 +232,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<div>
 							<label class="block text-sm text-slate-500 mb-1" for="ef-last_name">Last Name</label>
 							<input type="text" name="last_name" value={ s.LastName }
-								class="field-input" id="ef-last_name" if !isEdit { required }/>
+								class="field-input" id="ef-last_name"/>
 						</div>
 						<div>
 							<label class="block text-sm text-slate-500 mb-1" for="ef-suffix">Suffix</label>

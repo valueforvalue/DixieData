@@ -13,6 +13,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- New-soldier empty-name save is now a soft warning rather
+  than a hard 400 (issue #151, follow-up to PR #149). The
+  browser-side `required` attribute is removed from both name
+  inputs; a JS interceptor in `dispatchDixieDataForm` surfaces
+  a single `window.confirm` for empty-name submits and, on
+  accept, appends `confirm_empty_name=1` to the FormData.
+  `handleCreateSoldier` routes confirmed empty-name saves
+  through to a successful INSERT with `NeedsReview=true` and
+  `ReviewReason="Saved with no name; researcher should fill
+  in."` so the row lands in the review queue. Empty names with
+  no confirm marker still return 400 (catches the bypass).
+  `handleUpdateSoldier` mirrors the behaviour on the edit path:
+  clearing both names on a row that previously had a name sets
+  `NeedsReview` with reason "Name cleared during edit".
+  Linked-person / wife / widow entry types all carry the same
+  logic — the review queue is the single triage surface.
+  Regression net: `TestHandleCreateSoldier_EmptyNameMarksForReview`
+  with four sub-tests (empty+confirm, first-only, last-only,
+  empty+no-marker).
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

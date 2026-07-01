@@ -6,69 +6,95 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
-// TestHandleCreateSoldier_RequiresName pins the server-side guard
-// added by the manual UI audit on 2026-06-29. Before the guard, the
-// handler accepted records with all-empty name fields, leaving
-// anonymous entries in the archive. The form's `required` attribute
-// covers the common path via the browser tooltip; this test catches
-// the bypass.
-func TestHandleCreateSoldier_RequiresName(t *testing.T) {
+// TestHandleCreateSoldier_EmptyNameMarksForReview (issue #151)
+// flips the server-side guard added in PR #149 from a hard 400 to
+// a soft confirm-and-mark-for-review path. The browser tooltip via
+// `required` is dropped (entry_form.templ); the JS interceptor in
+// frontend/app.js surfaces a confirm() and, on accept, appends the
+// confirm_empty_name=1 marker. The server-side handler tests:
+//   - Empty names + confirm marker → 200 + NeedsReview=true
+//   - First-name only               → 200 + NeedsReview=false
+//   - Last-name only                → 200 + NeedsReview=false
+//   - Empty names + no marker       → 400 (catches the bypass)
+func TestHandleCreateSoldier_EmptyNameMarksForReview(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
 	defer server.Close()
 
-	// POST /soldiers with all-empty name fields. Expect 400.
-	form := url.Values{}
-	form.Set("display_id", "DXD-EMPTY")
-	form.Set("entry_type", "soldier")
-	// first_name, middle_name, last_name all empty
-	resp, err := http.PostForm(server.URL+"/soldiers", form)
-	if err != nil {
-		t.Fatalf("POST /soldiers: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("POST /soldiers with empty name: got status %d, want 400", resp.StatusCode)
-	}
+	// Case 1: Empty names + confirm marker.
+	t.Run("empty_with_confirm_marks_review", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("display_id", fmt.Sprintf("DXD-EMPTY-CONFIRM-%d", counter(t)))
+		form.Set("entry_type", "soldier")
+		form.Set("confirm_empty_name", "1")
+		resp, err := http.PostForm(server.URL+"/soldiers", form)
+		if err != nil {
+			t.Fatalf("POST /soldiers (empty + confirm): %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("POST /soldiers (empty + confirm) status %d, want 200", resp.StatusCode)
+		}
+		if got := resp.Header.Get("X-DixieData-Redirect"); !strings.HasPrefix(got, "/soldiers/") {
+			t.Errorf("X-DixieData-Redirect = %q, want /soldiers/{id}", got)
+		}
+	})
 
-	// POST /soldiers with only first_name. Expect 200 + X-DixieData-Redirect
-	// (Option C dispatcher contract; the browser reads the header and
-	// window.location.assign's to the target). Unique display_id per
-	// case so the soldier Create doesn't collide.
-	form.Set("display_id", "DXD-FIRST")
-	form.Set("first_name", "TestFirst")
-	resp, err = http.PostForm(server.URL+"/soldiers", form)
-	if err != nil {
-		t.Fatalf("POST /soldiers (first_name only): %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body := make([]byte, 2048)
-		n, _ := resp.Body.Read(body)
-		t.Errorf("POST /soldiers (first_name only): got status %d, want 200; body: %s", resp.StatusCode, string(body[:n]))
-	}
-	redirect := resp.Header.Get("X-DixieData-Redirect")
-	if !strings.HasPrefix(redirect, "/soldiers/") {
-		t.Errorf("POST /soldiers (first_name only): X-DixieData-Redirect = %q, want /soldiers/{id}", redirect)
-	}
+	// Case 2: First-name only.
+	t.Run("first_name_only_not_marked", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("display_id", fmt.Sprintf("DXD-FIRST-%d", counter(t)))
+		form.Set("entry_type", "soldier")
+		form.Set("first_name", "TestFirst")
+		resp, err := http.PostForm(server.URL+"/soldiers", form)
+		if err != nil {
+			t.Fatalf("POST /soldiers (first only): %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("POST /soldiers (first only) status %d, want 200", resp.StatusCode)
+		}
+	})
 
-	// POST /soldiers with only last_name. Expect 200 + X-DixieData-Redirect.
-	form.Set("display_id", fmt.Sprintf("DXD-LAST-%d", 1))
-	form.Set("first_name", "")
-	form.Set("last_name", "TestLast")
-	resp, err = http.PostForm(server.URL+"/soldiers", form)
-	if err != nil {
-		t.Fatalf("POST /soldiers (last_name only): %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("POST /soldiers (last_name only): got status %d, want 200", resp.StatusCode)
-	}
-	redirect = resp.Header.Get("X-DixieData-Redirect")
-	if !strings.HasPrefix(redirect, "/soldiers/") {
-		t.Errorf("POST /soldiers (last_name only): X-DixieData-Redirect = %q, want /soldiers/{id}", redirect)
-	}
+	// Case 3: Last-name only.
+	t.Run("last_name_only_not_marked", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("display_id", fmt.Sprintf("DXD-LAST-%d", counter(t)))
+		form.Set("entry_type", "soldier")
+		form.Set("last_name", "TestLast")
+		resp, err := http.PostForm(server.URL+"/soldiers", form)
+		if err != nil {
+			t.Fatalf("POST /soldiers (last only): %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("POST /soldiers (last only) status %d, want 200", resp.StatusCode)
+		}
+	})
+
+	// Case 4: Empty names + no marker → 400.
+	t.Run("empty_without_confirm_returns_400", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("display_id", fmt.Sprintf("DXD-EMPTY-BARE-%d", counter(t)))
+		form.Set("entry_type", "soldier")
+		resp, err := http.PostForm(server.URL+"/soldiers", form)
+		if err != nil {
+			t.Fatalf("POST /soldiers (empty bare): %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("POST /soldiers (empty bare) status %d, want 400", resp.StatusCode)
+		}
+	})
 }
+
+func counter(t *testing.T) int64 {
+	t.Helper()
+	return atomic.AddInt64(createCounter, 1)
+}
+
+var createCounter = new(int64)
