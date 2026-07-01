@@ -91,6 +91,63 @@ cascade of the layout chrome before the fix landed.
 
 ---
 
+### 1.14 Polling fragment cascades during setup / recovery / startupErr blocks
+
+**Symptom:** During any "blocked" state (setup-required, pending
+recovery, fatal startup error), polling fragments that aren't in
+the corresponding allowlist (`setupRequestAllowed`,
+`recoveryRequestAllowed`) get redirected (303) or errored (500)
+on every poll. The browser's XHR follows the 303 to the block
+page (`/setup` or `/recovery` — both full HTML documents), and
+htmx innerHTML-swaps that doc into the badge wrapper
+(`hx-target="this"`). After ~30s the badge wrapper's innerHTML
+is a copy of the setup or recovery form. Same class as §1.13
+but via the post-mux blocked-state branches. The startupErr
+variant is slightly different: the response is `text/plain` 500
+with the raw Go error message, not a full HTML doc, so the
+cascade doesn't stack — but the badge shows the error text and
+htmx logs the 500 to the console.
+
+**Why it happens:** Every blocked-state branch in
+`App.ServeHTTP` (`setupRequired`, `pendingRecovery`, `startupErr`)
+returns a redirect or error unconditionally. The pre-mux window
+is handled (§1.13) but the post-mux blocked-state branches were
+not.
+
+**Find it:** Search the blocked branches in
+`internal/appshell/lifecycle.go` for `http.Redirect` or
+`http.Error` calls that fire before any `HX-Request` check:
+
+```bash
+grep -n 'http.Redirect\|http.Error' internal/appshell/lifecycle.go
+```
+
+Every block branch must check `r.Header.Get("HX-Request") == "true"`
+and return `204 + X-DixieData-Redirect` before falling through to
+the redirect/error.
+
+**Fix:** Same shape as #212 and #214: detect `HX-Request: true`
+in each blocked branch and return `204 No Content` with
+`X-DixieData-Redirect` pointing at the destination page
+(`/setup`, `/recovery`). Full-page nav still gets the 303 / 500.
+
+**Regression net:** one test per blocked branch in
+`internal/appshell/app_test.go`:
+- `TestAppServeHTTPSetupRequiredFragmentReturns204WithRedirectHint` (5 cases)
+- `TestAppServeHTTPRecoveryFragmentReturns204WithRedirectHint` (6 cases, incl. priority over setupRequired)
+- `TestAppServeHTTPStartupErrFragmentReturns204WithRedirectHint` (4 cases)
+
+Each test asserts: (a) fragment gets 204 + correct redirect hint,
+(b) full-page nav still gets the existing 303 / 500, (c) sanity
+check that allowlisted paths pass through to the real handler.
+
+**Real example:** captured during the issue #212 follow-up. The
+user saw the badge wrapper's innerHTML become a copy of the
+setup form on every poll. Issues #212 (setup), #214 (recovery +
+startupErr) closed with the fix shape above.
+
+---
+
 ### 1.1 Button doesn't submit because `type="submit"` is missing
 
 **Symptom:** User clicks button. Nothing happens. Network tab shows
