@@ -179,6 +179,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Audit coverage for Share Queue (issue #182):
+  audit/smoke.mjs gains a [5g] block that asserts
+  /share/queue/modal renders (gated behind SHAREQUEUE_E2E_BASE
+  so unit-style smokes can skip). audit/discover_export_buttons.mjs
+  registers the four new Share Queue paths in the literal-path
+  allow-list so the discover test doesn't fire a
+  false-orphan assertion for them; they remain out of scope
+  for the 'all six canonical share-page exports' regression
+  net as the spec requires.
 - Share Queue UI (issue #182): the c4 handler stub is
   replaced with the real Share Build modal
   (internal/templates/share_queue_modal.templ). Layout.templ
