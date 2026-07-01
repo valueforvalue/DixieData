@@ -2831,6 +2831,35 @@
     }
   }
 
+  // formIsNewSoldierWithEmptyNames detects the new-soldier form
+  // (action targets /soldiers or /soldiers/new + carries the
+  // ef-first_name and ef-last_name inputs) with both names empty
+  // after trim. The check is intentionally narrow so the create
+  // gate doesn't fire on edit forms (which carry the same input
+  // ids via the entry_form.templ partial) or on synthetic forms.
+  function formIsNewSoldierWithEmptyNames(button, form) {
+    if (!(form instanceof HTMLFormElement)) {
+      return false;
+    }
+    const action = (form.getAttribute("action") || "").toLowerCase();
+    const isCreateAction = action === "/soldiers" || action === "/soldiers/new" || action.endsWith("/soldiers/new");
+    if (!isCreateAction) {
+      return false;
+    }
+    const method = String(form.method || "GET").toUpperCase();
+    if (method !== "POST") {
+      return false;
+    }
+    const first = form.querySelector("#ef-first_name");
+    const last = form.querySelector("#ef-last_name");
+    if (!first || !last) {
+      return false;
+    }
+    const firstEmpty = String(first.value || "").trim() === "";
+    const lastEmpty = String(last.value || "").trim() === "";
+    return firstEmpty && lastEmpty;
+  }
+
   async function dispatchDixieDataForm(button) {
     // Bare-button mode: some share-page buttons have hx-post /
     // hx-delete but no enclosing <form>. Construct a synthetic form
@@ -2860,6 +2889,21 @@
       || (form.dataset && form.dataset.confirm);
     if (confirmMessage && !window.confirm(confirmMessage)) {
       return false;
+    }
+    // Issue #151: soft confirm for empty-name new-soldier saves.
+    // The form's #ef-first_name + #ef-last_name both empty after
+    // trim means the user wants to capture an unknown-nam record
+    // (genealogical data is fuzzy). Surface a single window.confirm
+    // and, on accept, append confirm_empty_name=1 to the FormData
+    // so the server's handleCreateSoldier routes the row into the
+    // review queue with NeedsReview=true + ReviewReason set.
+    if (formIsNewSoldierWithEmptyNames(button, form)) {
+      if (!window.confirm("Saving a record with no name. It will be marked for review. Continue?")) {
+        return false;
+      }
+      if (fetchOptions.body instanceof FormData) {
+        fetchOptions.body.append("confirm_empty_name", "1");
+      }
     }
     setBusyState(submitter || form, true);
     setBusyGroupState(submitter || form, true);
