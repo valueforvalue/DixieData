@@ -38,6 +38,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   upcoming export-pipeline opt-in (commit 8).
 - 13 new unit tests across `tag_service_test.go` and
   `archive_meta_test.go`. Issue #183.
+- HTTP surface for tagging (issue #183): 11 endpoints under
+  `/soldiers/{id}/tags[/...]`, `/tags[/{id}/...]`, `/browse/bulk-tag`,
+  and `/share/export-options`. New handlers in
+  `internal/appshell/tags_handlers.go` cover attach/detach,
+  bulk-tag, rename, merge, delete, autocomplete fragment, and
+  archive_meta toggle. Routes registered in
+  `internal/appshell/routes.go` using chi's regex-constrained
+  `{id:[0-9]+}` syntax so static patterns precede the existing
+  `/soldiers/*` and `/tags/*` wildcards. Every POST writes
+  `X-DixieData-Redirect` per issue #130; locked by the existing
+  `TestPostThenNavigateUsesDixieRedirect` regression net. New
+  typed builders in `internal/routebuilder/routebuilder.go`
+  (`TagsPage`, `TagDetail`, `TagRename`, `TagMerge`, `TagDelete`,
+  `SoldierTagAutocomplete`, `SoldierTagAttach`, `SoldierTagDetach`,
+  `BrowseBulkTag`, `ShareExportOptions`). 11 new handler tests
+  in `tags_handlers_test.go` cover happy paths + 400/404/409
+  branches; `route_wildcard_test.go` extended with three new
+  shadow pairs.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
