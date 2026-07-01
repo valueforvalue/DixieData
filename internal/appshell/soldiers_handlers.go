@@ -291,14 +291,15 @@ func (a *App) handleScrapeFindAGrave(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
-	// First-name OR last-name is required. Without this guard the
-	// handler accepted records with all-empty name fields, leaving
-	// anonymous entries in the archive. Discovered via the manual
-	// UI audit run (2026-06-29); the new-soldier form had no
-	// `required` attribute on either name input and the server
-	// never validated the parsed values either. Belt + suspenders:
-	// the browser tooltip via `required` covers the common path;
-	// this server-side check catches the bypass.
+	// Issue #151: soft confirm-and-mark-for-review replacement
+	// for PR #149's hard 400 guard. Genealogical data is fuzzy;
+	// the soft path lets an empty-name record land in the archive
+	// but flags it for the review queue. The browser tooltip via
+	// `required` is dropped (entry_form.templ) so the JS-side
+	// data-confirm interceptor can surface a single confirm()
+	// dialog before submit. The marker below distinguishes
+	// "user confirmed the empty save" (proceed) from "user bypassed
+	// the confirm but lost network race" (still 400).
 	if err := r.ParseForm(); err != nil {
 		respondValidation(w, r, "Could not read the soldier form.", err)
 		return
@@ -306,13 +307,16 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 	firstName := strings.TrimSpace(r.FormValue("first_name"))
 	lastName := strings.TrimSpace(r.FormValue("last_name"))
 	if firstName == "" && lastName == "" {
-		defaults, defaultsErr := a.newSoldierDefaults()
-		if defaultsErr != nil {
-			http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+		confirmed := r.FormValue("confirm_empty_name") == "1"
+		if !confirmed {
+			defaults, defaultsErr := a.newSoldierDefaults()
+			if defaultsErr != nil {
+				http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			a.renderEntryForm(w, r, defaults, false, "First name or last name is required to save a new person record.", http.StatusBadRequest)
 			return
 		}
-		a.renderEntryForm(w, r, defaults, false, "First name or last name is required to save a new person record.", http.StatusBadRequest)
-		return
 	}
 
 	s, err := parseSoldierForm(r, 0)
@@ -324,6 +328,17 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 		}
 		a.renderEntryForm(w, r, defaults, false, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Carry the confirm flag into the create payload so the
+	// service-layer flag flip lands in the same transaction as the
+	// INSERT. parseSoldierForm copies NeedsReview / ReviewReason
+	// verbatim, so overwriting here (in the confirmed-empty-name
+	// branch only) gives us review-queue routing without altering
+	// parseSoldierForm's signature.
+	if firstName == "" && lastName == "" {
+		s.NeedsReview = true
+		s.ReviewReason = "Saved with no name; researcher should fill in."
 	}
 
 	created, err := a.soldiers.Create(s)
@@ -464,6 +479,24 @@ func (a *App) handleUpdateSoldier(w http.ResponseWriter, r *http.Request, id int
 	if err != nil {
 		a.renderEntryForm(w, r, models.Soldier{ID: id}, true, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Issue #151: when an edit clears both first_name and
+	// last_name on a record that previously had at least one, the
+	// record gets flagged for the review queue. This keeps the
+	// soft-warning UX consistent across the create + edit paths.
+	// The pre-update fetch avoids a spurious flag for rows that
+	// were already empty-named on creation (the create handler
+	// already routed them through review queue if confirmed).
+	if strings.TrimSpace(s.FirstName) == "" && strings.TrimSpace(s.LastName) == "" {
+		existing, fetchErr := a.soldiers.GetByID(id)
+		if fetchErr == nil {
+			hadName := strings.TrimSpace(existing.FirstName) != "" || strings.TrimSpace(existing.LastName) != ""
+			if hadName {
+				s.NeedsReview = true
+				s.ReviewReason = "Name cleared during edit; researcher should re-enter."
+			}
+		}
 	}
 
 	if err := a.soldiers.Update(s); err != nil {
