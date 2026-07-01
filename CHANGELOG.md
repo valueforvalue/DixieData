@@ -569,6 +569,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- Main screen no longer blanks out on first load. The review-queue
+  badge wrapper in the top nav (`<span data-layout-review-count
+  hx-get="/layout/review-count" hx-trigger="load, every 30s"
+  hx-swap="innerHTML">`) inherited `hx-target="body"` from the
+  shell `<body>` element because `frontend/index.html`'s load
+  trigger left `hx-target="body" hx-swap="outerHTML"` on body and
+  innerHTML replacement preserves body attrs across the swap.
+  When the badge's load trigger fired during the initial
+  `/calendar` swap, htmx walked up the DOM and resolved the
+  target to `<body>` — then the badge's innerHTML swap replaced
+  the entire body's contents with just the badge fragment. User
+  saw a blank page with only the small "2" pill in the top-left.
+  Two-part fix: (a) drop `hx-target="body" hx-swap="outerHTML"`
+  from the shell `<body>` in `frontend/index.html` — htmx's
+  default `innerHTML` swap on the trigger element achieves the
+  same visual result (outerHTML on body upgrades to innerHTML
+  per the htmx docs anyway) without leaving a polluting
+  `hx-target` attr on body; (b) declare `hx-target="this"` on
+  the badge wrapper so it never inherits from any future shell
+  change. Regression net: `TestLayoutReviewCountBadgeTargetsItself`
+  in `internal/templates/layout_test.go` pins both invariants on
+  the rendered HTML — fails with the exact wrapper snippet if
+  (b) regresses, and fails with the offending body tag snippet
+  if (a) regresses. `docs/COMMON_BUGS.md` §1.12 documents the
+  pattern. Issue #180 follow-up.
+
 - Main screen no longer cascades into an infinite stack of layout
   shells when the local archive is still starting up. The startup
   placeholder (`renderStartupPlaceholder` in

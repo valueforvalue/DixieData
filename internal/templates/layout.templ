@@ -86,7 +86,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					<a href="/browse" class="pill-link top-nav-link">Browse</a>
 					<a href="/review-queue" class="pill-link top-nav-link inline-flex items-center gap-2">
 							Review Queue
-							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML"></span>
+							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this"></span>
 						</a>
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
 					<a href="/share" class="pill-link top-nav-link">Share</a>

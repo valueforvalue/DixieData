@@ -287,6 +287,59 @@ warns about ad-hoc `#id` selectors that aren't in the
 
 ---
 
+### 1.12 Polling fragment wipes the whole layout because `hx-target` inherits from `<body>`
+
+**Symptom:** Page loads briefly with the full layout, then blanks
+out. Only a small `<span>` remains in the top-left where the layout
+chrome used to be. Body's child list shrinks from ~10 nodes to 1.
+Console is clean; no JS error.
+
+**Why it happens:** `frontend/index.html` declared
+`<body hx-get="/calendar" hx-trigger="load" hx-target="body"
+hx-swap="outerHTML">`. The htmx swap replaces body's children
+with the layout response (header, nav, main, dock), but leaves
+the `<body>` element itself in place — so the body retains its
+`hx-target="body"` attribute after the swap.
+
+Inside the layout is a polling fragment like
+`<span data-layout-review-count hx-get="/layout/review-count"
+hx-trigger="load, every 30s" hx-swap="innerHTML">`. When this
+span enters the DOM during the swap, htmx walks up the tree to
+resolve its `hx-target`. Default `hx-target` for an unboosted
+element is the element itself, but htmx's `getClosestAttributeValue`
+finds the inherited `hx-target="body"` on the parent `<body>`
+first and uses that.
+
+When the polling response comes back, htmx does an innerHTML swap
+against `<body>`. The badge fragment replaces everything inside
+`<body>`, leaving only the badge.
+
+**Find it:**
+```bash
+grep -rn 'hx-trigger' internal/templates/*.templ | grep -v 'hx-target'
+```
+Every polling element must declare `hx-target="this"` (or a stable
+ID) so it does not inherit from `<body>`.
+
+**Fix:** Add `hx-target="this"` to the polling wrapper. The wrapper
+itself becomes the swap target; the badge fragment fills its
+innerHTML. The rest of the layout stays put.
+
+**Regression net:** `internal/templates/layout_test.go` →
+`TestLayoutReviewCountBadgeTargetsItself` pins the contract on
+the rendered output: the badge wrapper open tag must contain
+`hx-target="this"` AND `hx-swap="innerHTML"`. Test fails with the
+exact symptom (showing the wrapper without the attribute).
+
+**Real example:** introduced in `89372a2 feat(ui): review-queue
+count badge via htmx poll (issue #180)`. Discovered via
+`git bisect`: app boots normally on `87a18c9`, broken on `38b5c14`,
+so the suspect window was 27 commits. Bisection to a single
+commit + Playwright reproduction against a minimal mirror server
+isolated the swap target as the cause.
+
+---
+
 ### 1.9 [REGRESSION-PRONE] POST-then-navigate handler must use Option C contract
 
 The original §1.9 documented the "export options status pages not
