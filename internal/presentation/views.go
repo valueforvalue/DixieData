@@ -187,3 +187,11 @@ func viewmodelCountsFromModels(counts models.ArchiveCounts) viewmodel.ArchiveCou
 		PersonRecordCount: counts.TotalLinkedPeople,
 	}
 }
+
+// ShareQueuePage (issue #193) wraps the
+// templates.ShareQueuePage component so the handler can call
+// it through the same presentation facade the rest of the
+// app uses.
+func ShareQueuePage(rows []viewmodel.ShareQueueRow) templ.Component {
+	return templates.ShareQueuePage(rows)
+}

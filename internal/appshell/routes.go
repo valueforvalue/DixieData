@@ -143,6 +143,11 @@ func (a *App) setupRoutes() {
 	r.Post("/share/queue/presets", a.handleSaveShareQueuePreset)
 	r.Delete("/share/queue/presets/{id:[0-9]+}", a.handleDeleteShareQueuePreset)
 	r.Get("/share/queue/presets/{id:[0-9]+}/apply", a.handleApplyShareQueuePreset)
+	// Issue #193: /share/queue management page. The literal
+	// route must register before the existing /share wildcard
+	// handler so chi resolves this URL rather than the
+	// generic Share page.
+	r.Get("/share/queue", a.handleShareQueuePage)
 
 	r.Post("/integrations/google/connect", a.handleGoogleConnect)
 	r.Post("/integrations/google/disconnect", a.handleGoogleDisconnect)

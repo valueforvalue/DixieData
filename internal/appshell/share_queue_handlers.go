@@ -33,8 +33,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/templates"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 // handleShareQueueModal renders the Share Build modal fragment.
@@ -163,3 +166,49 @@ func buildShareQueuePreviewFragment(soldiers, records, images int) string {
 var _ = errors.New
 var _ = context.Background
 var _ = records.ExportTemplate{}
+
+// handleShareQueuePage (issue #193) renders the
+// /share/queue management page. The queue itself lives in
+// the browser's localStorage; the client sends the staged
+// ids as a comma-separated `?ids=1,2,3` query string so the
+// server can look up the soldier rows + counts. Unknown ids
+// are dropped silently (mirrors ByIDs's ErrNoRows-tolerance).
+// If `?ids=` is missing or empty, the page renders with no
+// rows + an empty-state message -- the JS hydrates the page
+// from localStorage on load and re-fetches /share/queue?ids=
+// with the live queue.
+func (a *App) handleShareQueuePage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	rawIDs := strings.Split(r.URL.Query().Get("ids"), ",")
+	ids := parseShareQueueIDs(rawIDs)
+	var rows []viewmodel.ShareQueueRow
+	if len(ids) > 0 {
+		soldiers, err := a.soldiers.ByIDs(ids)
+		if err != nil {
+			respondInternal(w, r, "Could not load the staged soldiers.", err)
+			return
+		}
+		// Rebuild the rows in caller order so the table
+		// mirrors the localStorage queue. ByIDs preserves
+		// caller order (issue #182 contract).
+		byID := make(map[int64]models.Soldier, len(soldiers))
+		for _, s := range soldiers {
+			byID[s.ID] = s
+		}
+		rows = make([]viewmodel.ShareQueueRow, 0, len(ids))
+		for i, id := range ids {
+			s, ok := byID[id]
+			if !ok {
+				continue
+			}
+			rows = append(rows, viewmodel.ShareQueueRow{
+				Order:        i + 1,
+				PersonRecord: viewmodel.PersonRecordFromModel(s),
+			})
+		}
+	}
+	presentation.ShareQueuePage(rows).Render(r.Context(), w)
+}
