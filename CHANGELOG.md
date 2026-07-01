@@ -70,6 +70,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   single-slot mock at `browse_frontend_test.go` continues to
   work. Issue #182.
 
+- Audit coverage for the Share Queue subset flow:
+  `audit/share_queue_subset.test.mjs` (new) — 7 unit tests
+  pinning the static wiring (route builder URL, modal
+  fragment, form action, browse row hook, handler-side
+  validation-before-dialog ordering). Pre-merge coverage that
+  catches a refactor that drops the subset URL, removes the
+  Add button, or regresses the validation-before-dialog
+  invariant. Run with `node audit/share_queue_subset.test.mjs`.
+  Issue #182.
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
