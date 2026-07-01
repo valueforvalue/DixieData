@@ -179,6 +179,31 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue preset HTTP surface (issue #192): four
+  new endpoints on the appshell --
+  - GET /share/queue/presets — returns the saved presets
+    as a JSON array ordered by last_used_at DESC, name
+    ASC. Emits `[]` instead of `null` for an empty
+    database so the modal's JS can iterate without a
+    null-guard.
+  - POST /share/queue/presets — saves the current
+    queue contents under a `name` field plus a
+    repeating `soldier_ids` field. 400 on missing
+    name or empty soldier_ids; 409 on duplicate name.
+  - DELETE /share/queue/presets/{id} — removes a
+    preset. 404 on unknown id; 204 on success.
+  - GET /share/queue/presets/{id}/apply — returns the
+    preset's soldier_ids array as JSON so the modal's
+    Load handler can write it back to localStorage.
+    Also bumps last_used_at so the preset floats to
+    the top of the Saved Queues section next time the
+    modal opens.
+  Wired through app.go + routes.go + three new
+  routebuilder entries (ShareQueuePresets,
+  ShareQueuePresetDelete, ShareQueuePresetApply).
+  10 handler tests cover happy paths, duplicate
+  names, empty payloads, missing rows, and the
+  literal-vs-wildcard route ordering.
 - Share Queue preset service (issue #192): new
   `records.ShareQueuePresetService` provides CRUD over the
   v59 share_queue_presets table -- Create / Get / List /
