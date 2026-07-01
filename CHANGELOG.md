@@ -91,6 +91,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   dispatch time so a PATCH on `/share/export-options` (issue #183
   c4) takes effect on the next export without restarting.
   Static archive HTML output does not change (Tags is omitempty).
+- Audit coverage (issue #183): `audit/discover_export_buttons.mjs`
+  registers the four new tag surfaces (`TagsPage`, `TagDetail`,
+  `BrowseBulkTag`, `ShareExportOptions`) in both the builder
+  prefix map and the literal-path allow-list. `audit/smoke.mjs`
+  grows a `[5e]` block asserting `/tags` renders and a `[5f]`
+  block that fetches `/share/export-options` and verifies the
+  X-DixieData-Redirect target is `/share` (the Option C contract
+  for the toggle form).
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
