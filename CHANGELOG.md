@@ -211,6 +211,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   via GET /share/queue/presets. New uiids constant
   PanelShareQueuePresets. New test asserts every shell
   attribute renders.
+- Share Queue management page (issue #193): new
+  `/share/queue` page reachable from the layout nav
+  (next to Share). Server-renders a table of staged
+  Person Records ordered by the `?ids=` query the
+  client populates from localStorage; columns include
+  Display ID, Name, Unit, Source Records count,
+  Images count, Order index, and per-row Remove.
+  Empty state mirrors the modal's copy so users who
+  haven't staged anything see the same friendly hint.
+  Bulk Remove Selected + Export Selected controls
+  mirror the modal's UX via the existing
+  `data-dixie-submit` path. Route registered BEFORE
+  the `/share` wildcard per the existing static-
+  before-wildcard rule; 4 handler tests cover empty,
+  populated, all-unknown, and route-shadowing paths.
 - Share Queue preset HTTP surface (issue #192): four
   new endpoints on the appshell --
   - GET /share/queue/presets — returns the saved presets

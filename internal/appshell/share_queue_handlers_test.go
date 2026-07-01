@@ -164,6 +164,116 @@ func TestShareQueueModal(t *testing.T) {
 	}
 }
 
+// TestShareQueuePage (issue #193) asserts the
+// /share/queue management page renders with a 200 and the
+// expected empty-state copy when the queue is empty.
+// ?ids= is optional -- the JS populates it on load.
+func TestShareQueuePage_Empty(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/share/queue")
+	if err != nil {
+		t.Fatalf("GET page: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("page status %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	content := string(body)
+	for _, needle := range []string{
+		"Manage your staged subset",
+		"No Person Records staged",
+		"Remove Selected",
+		"Export Selected as .ddshare",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("page missing %s; got %s", needle, content)
+		}
+	}
+}
+
+// TestShareQueuePage_WithIDs (issue #193) seeds two
+// Person Records, hits /share/queue?ids=X,Y, and asserts the
+// table renders both rows with Display ID + Name. The page
+// drops unknown ids silently (mirrors ByIDs's
+// ErrNoRows-tolerance).
+func TestShareQueuePage_WithIDs(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	pid1 := seedPersonRecord(t, app)
+	pid2 := seedPersonRecord(t, app)
+
+	resp, err := http.Get(server.URL + fmt.Sprintf("/share/queue?ids=%d,%d", pid1, pid2))
+	if err != nil {
+		t.Fatalf("GET page: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("page status %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	content := string(body)
+	for _, needle := range []string{
+		fmt.Sprintf("data-share-queue-page-row-id=\"%d\"", pid1),
+		fmt.Sprintf("data-share-queue-page-row-id=\"%d\"", pid2),
+		"Order",
+		"Source Records",
+		"Images",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("page missing %s; got %s", needle, content)
+		}
+	}
+}
+
+// TestShareQueuePage_DropsUnknownIDs (issue #193) asserts the
+// handler silently drops ids that don't resolve to soldiers
+// rather than 500-ing.
+func TestShareQueuePage_DropsUnknownIDs(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/share/queue?ids=99998,99999")
+	if err != nil {
+		t.Fatalf("GET page: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("page status %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), "No Person Records staged") {
+		t.Errorf("page should render empty state for all-unknown ids")
+	}
+}
+
+// TestShareQueuePage_RouteWildcardNotShadowed (issue #193)
+// asserts the new literal /share/queue route wins over the
+// existing /share wildcard. A GET should return the
+// management page chrome (Manage your staged subset), not
+// the Share page chrome.
+func TestShareQueuePage_RouteWildcardNotShadowed(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/share/queue")
+	if err != nil {
+		t.Fatalf("GET page: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), "Manage your staged subset") {
+		t.Errorf("page is being shadowed by /share wildcard; got %s", string(body))
+	}
+}
+
 // TestShareQueueModalRendersSavedQueuesSection (issue #192)
 // asserts the modal now carries the Saved Queues UI shell:
 // the save form (name input + Save button), the preset list,
