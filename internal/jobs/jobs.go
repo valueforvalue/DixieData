@@ -340,6 +340,15 @@ type Registry struct {
 	// runs and wg.Done() in its defer.
 	workerWG sync.WaitGroup
 
+	// shutdownOnce serialises the Shutdown Wait goroutine so the
+	// second-and-later callers attach to the same done channel
+	// instead of racing a fresh WaitGroup.Wait against a late Add.
+	// Without this, a test that calls Shutdown once explicitly and
+	// again from t.Cleanup trips Go's
+	// 'WaitGroup is reused before previous Wait has returned'
+	// runtime check.
+	shutdownOnce sync.Once
+
 	// logMu guards logWriter + logCloser. logWriter is appended to
 	// on every job state change so the Registry survives a webview
 	// reload or app restart. nil disables persistence.
@@ -522,8 +531,12 @@ func (r *Registry) Start(kind string, worker func(ctx context.Context, p *Progre
 	// Acquire a worker slot before launching the goroutine. If the pool
 // is saturated the semaphore blocks until another worker exits, so
 // the job stays in StatusQueued (set at registration) until then.
+// workerWG.Add must land BEFORE the goroutine is spawned so a
+// concurrent Shutdown() can never observe WaitGroup counter == 0
+// followed by a fresh Add (which Go's sync runtime rejects with
+// 'WaitGroup is reused before previous Wait has returned').
+	r.workerWG.Add(1)
 	go func() {
-		r.workerWG.Add(1)
 		defer r.workerWG.Done()
 		r.sem <- struct{}{}
 		defer func() { <-r.sem }()
@@ -625,9 +638,11 @@ func (r *Registry) StartManual(kind string, initialMessage string, worker func(c
 	// Run the worker goroutine. It blocks on the release channel
 	// (or ctx if cancelled) before doing anything visible. The
 	// worker is responsible for honouring ctx so cancel() unblocks
-	// it cleanly.
+	// it cleanly. workerWG.Add must land BEFORE the goroutine is
+	// spawned to keep Shutdown's Wait safe (see Start above for the
+	// 'WaitGroup reused' rationale).
+	r.workerWG.Add(1)
 	go func() {
-		r.workerWG.Add(1)
 		defer r.workerWG.Done()
 
 		select {
@@ -1195,6 +1210,11 @@ func (r *Registry) MostRecentActive() *Job {
 // appendSnapshot race fix in 271149a made file-handle ownership
 // explicit; this method is the matching exit-side guarantee that
 // those handles are actually released.
+//
+// Safe to call multiple times: the second-and-later callers attach to
+// the same WaitGroup Wait via sync.Once, so test cleanup patterns
+// (one Shutdown in the test body + one in t.Cleanup) cannot race the
+// WaitGroup reuse check that the sync runtime enforces.
 func (r *Registry) Shutdown(ctx context.Context) error {
 	r.mu.Lock()
 	for _, j := range r.jobs {
@@ -1203,11 +1223,14 @@ func (r *Registry) Shutdown(ctx context.Context) error {
 		}
 	}
 	r.mu.Unlock()
-	done := make(chan struct{})
-	go func() {
-		r.workerWG.Wait()
-		close(done)
-	}()
+	var done chan struct{}
+	r.shutdownOnce.Do(func() {
+		done = make(chan struct{})
+		go func() {
+			r.workerWG.Wait()
+			close(done)
+		}()
+	})
 	select {
 	case <-done:
 		return nil
