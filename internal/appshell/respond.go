@@ -25,11 +25,13 @@ package appshell
 // representative sample of replacements.
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/debug"
+	"github.com/valueforvalue/DixieData/internal/templates"
 )
 
 // ErrorKind is the user-facing category for an error response. The kind
@@ -206,4 +208,57 @@ func requestMethod(r *http.Request) string {
 		return "<no-request>"
 	}
 	return r.Method
+}
+
+// respondErrorPage renders a user-facing error through the Layout
+// wrapper for full-page (non-htmx) requests. For htmx fragments it
+// delegates to respondError (toast header only).
+//
+// Use this instead of respondError when the handler wants the full
+// Layout chrome (nav, CSS, recovery link) on error — typically for
+// handlers that serve full-page routes. Handlers that only serve
+// htmx fragments should keep using respondError directly.
+func (a *App) respondErrorPage(w http.ResponseWriter, r *http.Request, kind ErrorKind, userMessage string, err error) {
+	if w == nil {
+		return
+	}
+	// htmx fragment: toast header only (existing behaviour).
+	if r != nil && r.Header.Get("HX-Request") == "true" {
+		respondError(w, r, kind, userMessage, err)
+		return
+	}
+	message := strings.TrimSpace(userMessage)
+	if message == "" {
+		message = defaultMessageForKind(kind)
+	}
+	status := statusForKind(kind)
+
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+		var log = debug.FromContext(nil)
+		if r != nil {
+			log = debug.FromContext(r.Context())
+		}
+		log.Error("appshell: request failed",
+			"component", "http",
+			"audit", "respond-error",
+			"kind", string(kind),
+			"path", requestPath(r),
+			"method", requestMethod(r),
+			"err", errStr,
+		)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+
+	var buf bytes.Buffer
+	renderErr := templates.ErrorPage("Something went wrong", message, errStr, a.recoveryLink()).Render(r.Context(), &buf)
+	if renderErr != nil {
+		// Fall back to bare text if even the error page fails.
+		_, _ = fmt.Fprint(w, message)
+		return
+	}
+	_, _ = w.Write(buf.Bytes())
 }

@@ -2185,14 +2185,78 @@ func (a *App) initializeLocalData() error {
 	if filepath.Base(a.dataDir) != ".dixiedata" {
 		return fmt.Errorf("refusing to initialize unexpected data directory: %s", a.dataDir)
 	}
+	parent := filepath.Dir(a.dataDir)
+	backupDir, err := os.MkdirTemp(parent, ".dixiedata-backup-*")
+	if err != nil {
+		return err
+	}
 	if a.database != nil {
 		a.database.Close()
 		a.database = nil
 	}
-	if err := os.RemoveAll(a.dataDir); err != nil {
-		return err
+	// MkdirTemp guarantees a unique name; no collision with
+	// stale backups from prior failed inits.
+	if _, err := os.Stat(a.dataDir); err == nil {
+		// Issue #216: retry the rename with exponential backoff
+		// so transient Windows handle conflicts (WAL/SHM files,
+		// antivirus) have time to release. 5 attempts, 4 sleep
+		// periods of 200/400/800/1600ms = 3s total wait.
+		if err := renameWithRetry(a.dataDir, backupDir, 5, 200*time.Millisecond); err != nil {
+			// os.Rename on Windows may fail persistently when file
+			// handles in the data dir are still held. Fall back to
+			// os.RemoveAll (old destructive behavior) — the user
+			// already confirmed this is a destructive operation.
+			slog.Warn("appshell: initialize: rename failed, falling back to RemoveAll", "err", err)
+			_ = os.RemoveAll(backupDir)
+			if err := os.RemoveAll(a.dataDir); err != nil {
+				return err
+			}
+			// Skip the rollback: no backup dir exists to restore from.
+			return a.reopenDatabase()
+		}
 	}
-	return a.reopenDatabase()
+	if err := a.reopenDatabase(); err != nil {
+		// Restore the old data dir from backup so the user
+		// doesn't lose data. setupRequired=true sends every
+		// blocked branch in App.ServeHTTP to /setup.
+		_ = os.Rename(backupDir, a.dataDir)
+		a.setupRequired = true
+		return fmt.Errorf("reopen after rename: %w", err)
+	}
+	_ = os.RemoveAll(backupDir)
+	return nil
+}
+
+// recoveryLink returns the destination for error-page recovery
+// navigation. /setup when the DB is gone or setup is required,
+// /calendar otherwise.
+func (a *App) recoveryLink() string {
+	if a.setupRequired || a.database == nil {
+		return "/setup"
+	}
+	return "/calendar"
+}
+
+// renameWithRetry calls os.Rename with exponential backoff so
+// transient Windows handle conflicts (SQLite WAL/SHM, antivirus,
+// OneDrive) have time to release. Pattern from #216 (replaceDataDir).
+func renameWithRetry(src, dst string, attempts int, baseDelay time.Duration) error {
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		if i > 0 {
+			time.Sleep(baseDelay * time.Duration(1<<(i-1)))
+		}
+		// os.Rename on Windows may fail if any file in src is
+		// still held by another process (WAL/SHM handles left
+		// behind by sql.DB.Close). Each subsequent attempt waits
+		// longer for those handles to be released.
+		if err := os.Rename(src, dst); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+	}
+	return lastErr
 }
 
 func (a *App) reopenDatabase() error {

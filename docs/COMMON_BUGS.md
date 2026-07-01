@@ -1443,6 +1443,56 @@ at the 3 viewports (mobile / tablet / desktop).
 
 ---
 
+### 4.15 `init-failure-recovery` — destructive initialise, bare-text 500s, white screen (issue #219)
+
+**Symptom:** After "Initialize Data" fails on `/settings`, clicking
+"Back" lands on `/calendar` which shows a black page with one line
+of text: "Could not load the current month calendar." A fresh app
+load in this state shows a white screen with the same bare text.
+The user is stranded — no nav, no CSS, no recovery link.
+
+**Why it happens:** Three causally-linked bugs:
+
+1. `initializeLocalData` used `os.RemoveAll` before `db.Open` — if
+   `db.Open` failed, the data dir was already destroyed. No
+   `setupRequired` flag was set, so `ServeHTTP` didn't redirect
+   to `/setup`. Every downstream handler hit a non-functional DB
+   and returned 500.
+
+2. `handleSettingsInitialize` set a toast header on error and
+   returned without re-rendering the page or redirecting. The
+   user saw an error toast on the same broken form.
+
+3. `respondError` wrote bare text with `fmt.Fprint(w, message)`
+   for full-page requests. No Layout wrapper, no `<html>`, no
+   nav, no CSS. The browser rendered this as the entire document
+   — black/white screen.
+
+**Fix:**
+- `initializeLocalData`: transactional rename→reopen→cleanup with
+  rollback. On reopen failure, restore the old data dir and set
+  `setupRequired = true`. On Windows where `os.Rename` may fail
+  due to persistent file handles, fall back to `os.RemoveAll`
+  (log warning, continue — the user already confirmed a
+  destructive operation).
+- `handleSettingsInitialize`: htmx POSTs redirect to `/setup` via
+  `blockIfFragment`, full-page requests render through
+  `respondErrorPage`.
+- New `respondErrorPage` method on `*App`: renders full-page
+  errors through the Layout wrapper with DB-free
+  `internal/templates/error.templ` and a "Back to Setup" recovery
+  link when `a.database == nil || a.setupRequired`.
+
+**Find it:**
+```bash
+grep -rn 'respondError\|initializeLocalData\|handleSettingsInitialize' internal/appshell/
+grep -rn 'error.templ\|ErrorPage' internal/templates/
+```
+
+**Real example:** issue #219 (this entry).
+
+---
+
 ## 5. Typst PDF rendering bugs
 
 (See section 2.1 for most typst-related patterns — they overlap.)

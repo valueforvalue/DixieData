@@ -750,6 +750,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `docs/COMMON_BUGS.md §1.13` extended with the multi-branch
   pattern. Closes #214.
 
+- Initialisation failure recovery: three coordinated fixes for the init
+  path (issue #219). (A) `initializeLocalData` is now transactional:
+  rename → reopen → cleanup with rollback on failure. If `reopenDatabase`
+  fails, the old data dir is restored and `setupRequired = true` redirects
+  every subsequent request to `/setup`. On Windows where `os.Rename`
+  may fail due to persistent file handles, the init falls back to the
+  old `os.RemoveAll` (log-and-continue). (B) `handleSettingsInitialize`
+  re-renders on error: htmx form POSTs redirect to `/setup` via
+  `X-DixieData-Redirect`, full-page requests get a Layout-wrapped error
+  page via `respondErrorPage`. (C) New `respondErrorPage` method on `*App`
+  renders full-page errors through the Layout wrapper with a "Back to
+  Setup" recovery link when the DB is gone. New `internal/templates/
+  error.templ` template is DB-free (no `models.*` or service calls).
+  Regression net: 5 new tests in `internal/appshell/app_test.go` —
+  `TestInitializeLocalData_RestoresDataDirOnOpenFailure` (Unix only),
+  `TestHandleSettingsInitializeErrorReRendersPage`,
+  `TestHandleSettingsInitializeErrorHtmxRedirects`,
+  `TestRespondErrorPageFullPageRendersLayout`,
+  `TestRespondErrorPageFragmentToastOnly`. Closes #219.
+
 ### Maintenance
 
 - Extracted `blockIfFragment` helper for the HX-Request

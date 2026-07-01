@@ -13,7 +13,6 @@ package appshell
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strings"
 
@@ -138,9 +137,17 @@ func (a *App) handleSettingsInitialize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.initializeLocalData(); err != nil {
-		setToastHeaderWithType(w, "Initialisation failed. The local archive was not changed.", "error")
-		slog.Error("appshell: initialise local data", "audit", "respond-error", "err", err.Error())
+		// For htmx requests, redirect to /setup so the user isn't
+		// stranded on the broken form. For full-page nav, render
+		// the error through the Layout wrapper.
+		if blockIfFragment(w, r, "/setup") {
+			return
+		}
+		a.respondErrorPage(w, r, KindInternal,
+			"Initialisation failed. The local archive was not changed.",
+			err)
 		return
 	}
-	setToastHeader(w, "Local archive reset. A fresh database and folder tree were created.")
+	setInfoToastHeader(w, "Local archive initialised successfully.")
+	writeExportRedirect(w, "/calendar")
 }
