@@ -428,6 +428,39 @@ func ShareExportOptions() string {
 	return "/share/export-options"
 }
 
+// SharePage (issue #182) returns the URL for the Share
+// landing page. Registered as GET /share in routes.go.
+func SharePage() string {
+	return "/share"
+}
+
+// ShareQueueModal returns the URL for the Share Build modal
+// fragment. Registered as GET /share/queue/modal in routes.go.
+func ShareQueueModal() string {
+	return "/share/queue/modal"
+}
+
+// ShareQueuePreview returns the URL for the live preview
+// fragment endpoint. Registered as POST /share/queue/preview
+// in routes.go.
+func ShareQueuePreview() string {
+	return "/share/queue/preview"
+}
+
+// ShareQueueClear returns the URL for the Clear Queue action.
+// Registered as POST /share/queue/clear in routes.go.
+func ShareQueueClear() string {
+	return "/share/queue/clear"
+}
+
+// ExportSharedArchiveSubset returns the URL for the subset
+// export entrypoint. Caller appends the form's selected_ids
+// fields; the handler is the existing /export/shared-archive
+// with a `?subset=1` discriminator.
+func ExportSharedArchiveSubset() string {
+	return "/export/shared-archive?subset=1"
+}
+
 // GoogleCalendarPreferencesSave returns the URL for the Google
 // Calendar preferences form. Registered as POST
 // /integrations/google/calendar/preferences/save in routes.go.
