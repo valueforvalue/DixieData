@@ -178,6 +178,11 @@ type BrowseState struct {
 	PensionState          string
 	ReviewStatus          string
 	ConfederateHomeStatus string
+	// SelectedTagSet is the normalised-name set of the active
+	// tag filter; used by the chip cloud to render the
+	// checked-state pill. Always at least an empty (not-nil) map
+	// so templates can index without nil checks.
+	SelectedTagSet map[string]bool
 }
 
 type PersonRecordFormSuggestions struct {
@@ -191,6 +196,16 @@ type PersonRecordFormSuggestions struct {
 	ConfederateHome   []string
 	SourceRecordType  []string
 	RelationshipLabel []string
+}
+
+// TagOption is the browse-side view of a tag for the chip cloud:
+// minimal payload so 10k-tag rows do not balloon the page payload.
+// NormalisedName is what the URL carries; Name is the
+// display-cased value.
+type TagOption struct {
+	ID             int64
+	Name           string
+	NormalizedName string
 }
 
 type ScrapedRelative struct {
