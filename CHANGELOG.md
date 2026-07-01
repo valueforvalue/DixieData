@@ -211,6 +211,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   via GET /share/queue/presets. New uiids constant
   PanelShareQueuePresets. New test asserts every shell
   attribute renders.
+- Share Queue management page JS wiring (issue #193):
+  frontend/app.js grows installShareQueuePage --
+  select-all checkbox toggles every row's
+  per-row checkbox; per-row Remove drops the id from
+  localStorage and re-fetches /share/queue?ids= so
+  the table stays in sync with the queue; bulk Remove
+  Selected confirm()-gates a multi-id drop; bulk
+  Export injects the selected rows into the existing
+  form as repeating selected_ids hidden fields so the
+  existing dispatchDixieDataForm picks up the submit.
+  The pill + bulk-button enabled state mirror the
+  current selection so users see at a glance whether
+  their action will fire.
 - Share Queue management page (issue #193): new
   `/share/queue` page reachable from the layout nav
   (next to Share). Server-renders a table of staged
