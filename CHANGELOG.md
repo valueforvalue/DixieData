@@ -25,6 +25,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   applied to zero or more Person Records") and a flagged
   ambiguity that retires "virtual cemetery" as a generic term.
   Issue #183.
+- `internal/records/tag_service.go` (TagService) provides
+  UpsertByName (case-insensitive dedup), Attach/Detach,
+  AttachMany, Rename (UNIQUE-collision reject), MergeInto
+  (moves memberships, deletes source, rejects same-name merge),
+  Delete, Get/List, Autocomplete (substring match on
+  normalized_name), TagsForSoldier, TagsForSoldiers,
+  AttachAdditive, ByIDsPreservesOrder.
+- `internal/records/archive_meta.go` (ArchiveMetaService)
+  provides Get / SetIncludeTags / IncludeTags on the seeded
+  `archive_meta` rows (shared/backup/static). Used by the
+  upcoming export-pipeline opt-in (commit 8).
+- 13 new unit tests across `tag_service_test.go` and
+  `archive_meta_test.go`. Issue #183.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
