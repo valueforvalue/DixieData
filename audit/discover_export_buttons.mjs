@@ -272,6 +272,11 @@ const builderPrefixOverrides = {
   ExportDatabasePDFAsync: '/export/database-pdf?async=1',
   ExportBugReport: '/export/bug-report',
   ExportFeedbackLog: '/export/feedback-log',
+  // Issue #183: tag surfaces + share export-options toggle.
+  TagsPage: '/tags',
+  TagDetail: '/tags/1',
+  BrowseBulkTag: '/browse/bulk-tag',
+  ShareExportOptions: '/share/export-options',
   GoogleBackup: '/integrations/google/backup',
   GoogleSheetsExport: '/integrations/google/sheets/export',
   ImportBackup: '/import/backup',
@@ -296,6 +301,10 @@ const literalPathOverrides = {
   '/export/shared-archive': true,
   '/export/bug-report': true,
   '/export/feedback-log': true,
+  '/tags': true,
+  '/tags/1': true,
+  '/browse/bulk-tag': true,
+  '/share/export-options': true,
   '/integrations/google/backup': true,
   '/integrations/google/sheets/export': true,
 };

@@ -719,6 +719,44 @@ async function main() {
     }
   }
 
+  console.log('\n[5e] Tag management surface smoke (issue #183)');
+  await page.goto(`${BASE}/tags`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(300);
+  const tagsHeading = await page.locator('h2:has-text("Tags")').count();
+  record('tags-page-renders', tagsHeading > 0, {
+    why: tagsHeading > 0
+      ? '/tags renders the management heading'
+      : 'expected /tags to render h2 with text "Tags"',
+  });
+
+  // Issue #183: share-page include-tags toggle. The toggle's form
+  // target is /share/export-options (PATCH). When the checkbox is
+  // present in the share page (a follow-up UI commit lands it; the
+  // route was registered in c4) the smoke tests POST toggles it
+  // and asserts the X-DixieData-Redirect target is /share.
+  console.log('\n[5f] Share export-options toggle (issue #183)');
+  await page.goto(`${BASE}/share`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(300);
+  // Submit a POST form directly so the smoke is independent of
+  // whether the share.templ UI checkbox has landed yet (UI polish
+  // is a follow-up; the route + handler are wired).
+  const patchResp = await page.evaluate(async () => {
+    const fd = new FormData();
+    fd.set('include_tags', '1');
+    const res = await fetch('/share/export-options', {
+      method: 'POST', // /share/export-options accepts both POST/PATCH.
+      body: fd,
+    });
+    return {
+      ok: res.ok,
+      redirect: res.headers.get('X-DixieData-Redirect'),
+    };
+  });
+  record('share-export-options-toggle-redirects',
+    patchResp.ok && patchResp.redirect === '/share', {
+      why: `resp.ok=${patchResp.ok} X-DixieData-Redirect=${patchResp.redirect}`,
+    });
+
   await browser.close();
   process.exit(fail > 0 ? 1 : 0);
 }
