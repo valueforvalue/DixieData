@@ -41,6 +41,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   without duplicating logic. The preview counter and the
   eventual Generate can no longer silently disagree on stale
   filter values. Regression net: TestHandleExportPreview_StaleFilterWarning.
+- Live preview response-time stress test (issue #188, measurement
+  only). TestHandleExportPreviewResponseUnderThreshold seeds
+  5,000 rows (the chosen upper bound for a v1 DixieData
+  archive), warms up one POST /export/preview, then measures
+  the second request against a 500ms ceiling. First run
+  measured 444ms -- within budget but borderline; if this ever
+  crosses, that's the signal to invest in caching
+  listAllSoldiers or push preview to a background worker
+  (per the issue's "if this fails, optimize" instruction).
+  Skipped under -short; run via `go test
+  ./internal/appshell/...` without -short.
 - Saved-templates "Save Changes" button (issue #186): PATCH
   /export/templates/{id} handler + ExportTemplateService.Update
   method (preserves created_at + last_used_at; rejects name
