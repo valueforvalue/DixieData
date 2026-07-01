@@ -179,6 +179,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- `BackupService.ExportSharedSubset` (issue #182): writes a
+  Shared Archive containing only the Person Records whose IDs
+  are in the supplied slice. Mirrors `ExportSharedWithTags`:
+  same archive kind, same JSON payload shape, same image-set
+  semantics — just a filtered soldier slice. Inherits the
+  `archive_meta.include_tags` opt-in for free (subset exports
+  honour the same per-kind flag). `manifest.SourceLabel`
+  carries a "subset of N Person Records" annotation so the
+  recipient can see the archive is not full at a glance.
+  IDs that no longer exist are silently dropped (the ByIDs
+  contract). `EmptyIDsRejected` + `Roundtrip` regression
+  tests cover the guard and a 500-row archive filtered
+  down to 5 rows in caller order via the resulting zip.
 - `SoldierService.ByIDs` (issue #182): returns the soldiers
   whose IDs are in the supplied slice in caller order, drops
   unknowns silently, and returns a non-nil empty slice for
