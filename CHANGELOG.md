@@ -60,6 +60,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `/share/queue/modal` route land in the next commit. Issue
   #182.
 
+- Browse row `[Add to Share Queue]` button (`+ Queue`) on both
+  the mobile card and the desktop table. Distinct visual
+  channel from the existing `data-browse-select` checkbox so
+  the print set and the share queue stay disjoint; clicking
+  the button stages the row's Person Record id and toasts a
+  confirmation. JS handler is in the same delegated click
+  listener as the rest of Browse so the test harness's
+  single-slot mock at `browse_frontend_test.go` continues to
+  work. Issue #182.
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

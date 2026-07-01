@@ -4311,6 +4311,23 @@
       applyBrowseColumns(document);
       return;
     }
+    // Share Queue row button (issue #182). Distinct from
+    // data-browse-select so the print-set and the share-queue
+    // stay disjoint. Handled in the big click listener (not a
+    // separate addEventListener) so the test harness's single-
+    // slot mock at browse_frontend_test.go continues to work.
+    const addToQueue = event.target.closest("[data-share-queue-add]");
+    if (addToQueue instanceof HTMLElement) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = Number.parseInt(addToQueue.getAttribute("data-share-queue-add") || "", 10);
+      if (Number.isInteger(id) && id > 0) {
+        addToShareQueue(id);
+        const label = addToQueue.getAttribute("aria-label") || "Person Record";
+        showToast(`${label.replace(/^Add /, "").replace(/ to Share Queue$/, "")} added to Share Queue.`, "success");
+      }
+      return;
+    }
     const browseSelect = event.target.closest("[data-browse-select]");
     if (browseSelect instanceof HTMLInputElement) {
       const id = Number.parseInt(browseSelect.value || "", 10);
