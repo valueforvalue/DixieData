@@ -47,6 +47,10 @@ templ PrintConfigModal(exportRecords []viewmodel.ExportRecordOption) {
 							"type": "button",
 							"data-export-templates-load": "",
 						})
+						@components.Button("Save Changes", components.ButtonSecondary, "text-xs hidden", templ.Attributes{
+							"type": "button",
+							"data-export-templates-update": "",
+						})
 						@components.Button("Delete", components.ButtonSecondary, "text-xs", templ.Attributes{
 							"type": "button",
 							"data-export-templates-delete": "",

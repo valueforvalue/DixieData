@@ -131,6 +131,83 @@ func (s *ExportTemplateService) Get(id int64) (ExportTemplate, error) {
 	return scanExportTemplate(row)
 }
 
+// Update (issue #186) replaces the mutable fields on an existing
+// template, preserving created_at + last_used_at. The caller is the
+// "Save Changes" button on the print-config modal. The same
+// normalisation as Create applies (trim, default sort/orientation),
+// so the only difference from Create is the SQL statement (UPDATE
+// instead of INSERT) + the existence check.
+//
+// Returns ErrExportTemplateNotFound when no row matches the id;
+// ErrExportTemplateNameTaken when the supplied name collides with
+// another row's normalised name. errors.Is checks both.
+func (s *ExportTemplateService) Update(id int64, fields ExportTemplate) (ExportTemplate, error) {
+	if strings.TrimSpace(fields.Name) == "" {
+		return ExportTemplate{}, errors.New("template name is required")
+	}
+	if strings.TrimSpace(fields.Scope) == "" {
+		return ExportTemplate{}, errors.New("template scope is required")
+	}
+	if fields.Filters == nil {
+		fields.Filters = map[string][]string{}
+	}
+	if fields.GroupBy == nil {
+		fields.GroupBy = []string{}
+	}
+	if fields.SelectedIDs == nil {
+		fields.SelectedIDs = []int64{}
+	}
+	if strings.TrimSpace(fields.SortBy) == "" {
+		fields.SortBy = "last_name"
+	}
+	if strings.TrimSpace(fields.Orientation) == "" {
+		fields.Orientation = "L"
+	}
+	filtersJSON, err := json.Marshal(fields.Filters)
+	if err != nil {
+		return ExportTemplate{}, fmt.Errorf("encode filters: %w", err)
+	}
+	groupByJSON, err := json.Marshal(fields.GroupBy)
+	if err != nil {
+		return ExportTemplate{}, fmt.Errorf("encode group_by: %w", err)
+	}
+	selectedIDsJSON, err := json.Marshal(fields.SelectedIDs)
+	if err != nil {
+		return ExportTemplate{}, fmt.Errorf("encode selected_ids: %w", err)
+	}
+	res, err := s.db.Exec(`
+		UPDATE export_templates SET
+			name = ?, scope = ?, filters_json = ?, sort_by = ?,
+			group_by_json = ?, orientation = ?, selected_ids_json = ?,
+			printer_friendly = ?, full_biography_page = ?
+		WHERE id = ?`,
+		strings.TrimSpace(fields.Name),
+		strings.TrimSpace(fields.Scope),
+		string(filtersJSON),
+		fields.SortBy,
+		string(groupByJSON),
+		fields.Orientation,
+		string(selectedIDsJSON),
+		boolToInt(fields.PrinterFriendly),
+		boolToInt(fields.FullBiographyPage),
+		id,
+	)
+	if err != nil {
+		if isUniqueConstraintError(err) {
+			return ExportTemplate{}, ErrExportTemplateNameTaken
+		}
+		return ExportTemplate{}, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return ExportTemplate{}, err
+	}
+	if n == 0 {
+		return ExportTemplate{}, ErrExportTemplateNotFound
+	}
+	return s.Get(id)
+}
+
 // List returns all templates ordered by last-used then name. Cheap
 // enough that pagination isn't needed (typical archives have <50
 // saved templates).

@@ -107,6 +107,7 @@ func (a *App) setupRoutes() {
 	r.Post("/export/preview", a.handleExportPreview)
 	r.Get("/export/templates", a.handleListExportTemplates)
 	r.Post("/export/templates", a.handleSaveExportTemplate)
+	r.Patch("/export/templates/{id}", a.handleUpdateExportTemplate)
 	r.Delete("/export/templates/{id}", a.handleDeleteExportTemplate)
 	r.Post("/export/templates/{id}/apply", a.handleApplyExportTemplate)
 	r.Get("/layout/review-count", a.handleLayoutReviewCount)
