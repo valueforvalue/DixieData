@@ -786,6 +786,10 @@ var (
 
 // DisplayLabel returns a friendly display label for the job's Kind. The
 // template uses it both for the page heading and for the artifact link.
+// See also `FailedVerb` (jobverbs.go) for the kind → error/cancel
+// verb mapping. New kinds must be added to BOTH helpers, otherwise
+// they fall through to "Operation failed." which is the correct
+// fallback for unrecognised kinds.
 func (j Job) DisplayLabel() string {
 	switch j.Kind {
 	case "static_archive":

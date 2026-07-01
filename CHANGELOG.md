@@ -801,6 +801,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   new section (added in this commit) documents the Windows
   rename-handle pattern. Closes #216.
 
+- Jobs status page no longer says "Export failed." for an
+  import error. `internal/templates/jobs.templ:190,196` printed
+  the literal "Export failed." / "Export cancelled." for ANY
+  errored or cancelled job, regardless of `job.Kind`. After
+  the `replaceDataDir` rename failure in #216, the user saw
+  "Export failed. import failed: rename …" — confusing
+  because the second line is the real error but the first
+  line claims the export was the failing operation. Fix: new
+  `FailedVerb(kind, cancelled)` helper in
+  `internal/jobs/jobverbs.go` returns the right verb based on
+  kind — imports → "Import failed." / "Import cancelled.",
+  exports → "Export failed." / "Export cancelled.", unknown
+  → "Operation failed." / "Operation cancelled." The kind
+  list mirrors the existing `DisplayLabel` helper with a
+  cross-reference comment in both docstrings so kind-list
+  drift is caught in code review. Regression net:
+  `TestFailedVerb` (36-case table-driven test in
+  `internal/jobs/jobverbs_test.go` covering 17 known kinds × 2
+  states + 2 unknown-kind cases) pins the helper's contract;
+  `TestJobStatusViewErrorLabelByKind` (5-case integration
+  test in `internal/templates/jobs_error_label_test.go`)
+  exercises the templ end-to-end and asserts that
+  `backup_import` does NOT render "Export failed." in the
+  HTML. Acceptance verified by changing the helper's switch
+  to misclassify imports as exports: the integration test
+  fails with the bug-class name. Closes #217.
+
 - `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).
 
 - Three pre-existing audit-workflow gaps closed together with the
