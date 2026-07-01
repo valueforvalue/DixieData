@@ -27,7 +27,7 @@ Underlying PowerShell scripts (for advanced use):
 
 - This is a Windows-first Wails desktop app with a Go backend and SQLite storage. `main.go` is the repo entrypoint, and `internal\appshell\app.go` serves the UI through `http.ServeMux` handlers rather than a separate API + SPA split.
 - `internal\appshell\app.go` is the delivery surface. It wires facade interfaces from `internal\appshell\app_facades.go`, parses requests, and delegates rendering through `internal\presentation`; keep business logic out of it.
-- The frontend is server-rendered. `internal\templates\*.templ` defines the HTML, generated `*_templ.go` files are checked in, and `frontend\app.js` is a custom HTMX-style request/swap layer that drives navigation, form submissions, Smart Back, toasts, tabs, and other rich interactions.
+- The frontend is server-rendered. `internal\templates\*.templ` defines the HTML; generated `*_templ.go` files are **gitignored** and regenerated locally by `make tpl` and in CI by the test/audit workflows. `frontend\app.js` is a custom HTMX-style request/swap layer that drives navigation, form submissions, Smart Back, toasts, tabs, and other rich interactions.
 - `internal\presentation\views.go` is the grey-box adapter between domain objects and rendered templates. `internal\viewmodel` holds display-ready DTOs that templates consume.
 - Runtime behavior is split into deep domain packages: `internal\records` owns record/search/review/analytics/research workflows, `internal\archive` owns exports/backups/diagnostics/images, and `internal\integrations` owns Google integration logic.
 - `internal\services` is now a compatibility shim over those deeper packages, not the architectural center.
@@ -47,6 +47,6 @@ Underlying PowerShell scripts (for advanced use):
 - The release/app version is schema-driven. `internal\db\schema.go` defines `CurrentSchemaVersion`, `db.GetAppVersion()` derives the app version from it, and the PowerShell build scripts package releases from that value.
 - Record images are stored on disk in a sharded path under `.dixiedata\images\<A>\<B>\<sanitized-display-id>\...`. Scratch pad bridge/window-state files may appear under `.dixiedata\scratchpads\...`, but canonical scratch pad content lives in SQLite.
 - UI surface IDs are a real project convention, not just test-only metadata. The canonical registry is `internal\uiids\uiids.go`, the human reference is `docs\ui-ids.md`. Use the constants (e.g. `uiids.PageSoldierDetail`) instead of string literals in templates and HTMX attributes.
-- Template changes are two-part changes: edit the `.templ` file and regenerate the checked-in `*_templ.go` output.
+- Template changes are two-part changes: edit the `.templ` file and run `make tpl` to regenerate the gitignored `*_templ.go` output. CI regenerates from the committed `.templ` source before `go test` and `audit` runs.
 - Public delivery boundaries and facade contracts should stay covered by fast automated tests. Before closing out code changes, run `go test ./...` and rely on module-seam tests to catch leaks across the facade boundary.
 - Many higher-level tests create a full temp app via `newStressApp(t)` and then call `configureTestIdentity(t, app)` so features that depend on initialized identity and `.dixiedata` layout behave like the real app.
