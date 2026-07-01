@@ -13,6 +13,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Person Record tagging: new `tags` and `person_record_tags`
+  tables back the upcoming `/tags` management surface and
+  Browse chip filter. Tags are flat, free-text labels with
+  case-insensitive uniqueness and travel with `.ddshare`
+  archives on opt-in. Issue #183 (schema migration v58;
+  service + UI land in the following commits).
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
