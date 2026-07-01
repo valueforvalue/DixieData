@@ -13,6 +13,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Per-template stale count badge in the Saved Templates
+  dropdown (issue #187). `/export/templates` LIST response
+  grows `stale_warning_count` per row, computed in-process
+  via the existing `computeExportTemplateStale` helper
+  (sub-50ms for typical ≤20-template archives). The frontend
+  dropdown appends "(N stale)" to the option text when the
+  count is > 0 so users spot stale templates before clicking
+  Load. Same refresh helper used post-Update keeps the badge
+  in sync after a rename or Save Changes.
 - Saved-templates "Save Changes" button (issue #186): PATCH
   /export/templates/{id} handler + ExportTemplateService.Update
   method (preserves created_at + last_used_at; rejects name

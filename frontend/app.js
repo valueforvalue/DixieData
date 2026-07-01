@@ -3302,7 +3302,15 @@
         // updateSelectedTemplate() can address the right row via
         // select.selectedOptions[0].dataset.templateId.
         option.dataset.templateId = String(t.id);
-        option.textContent = t.name;
+        let label = t.name;
+        // Issue #187: render "(N stale)" next to the option name
+        // so the user sees which templates need attention before
+        // clicking Load. The count comes from the LIST handler
+        // (issue #187 inline approach).
+        if (typeof t.stale_warning_count === "number" && t.stale_warning_count > 0) {
+          label += " (" + t.stale_warning_count + " stale)";
+        }
+        option.textContent = label;
         select.appendChild(option);
       }
       if (status instanceof HTMLElement) {
@@ -3519,7 +3527,12 @@
         const option = document.createElement("option");
         option.value = String(t.id);
         option.dataset.templateId = String(t.id);
-        option.textContent = t.name;
+        let label = t.name;
+        // Issue #187: stale count badge in the dropdown.
+        if (typeof t.stale_warning_count === "number" && t.stale_warning_count > 0) {
+          label += " (" + t.stale_warning_count + " stale)";
+        }
+        option.textContent = label;
         select.appendChild(option);
       }
       if (previousSelected) {
