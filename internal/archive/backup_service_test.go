@@ -3,6 +3,7 @@ package archive
 import (
 	"archive/zip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -1869,4 +1870,334 @@ func TestBackupService_ImportRejectsSharedArchive(t *testing.T) {
 	if _, err := backupSvc.Import(sharedPath, restoreDir); err == nil || !strings.Contains(err.Error(), "backup archive") {
 		t.Fatalf("expected backup archive rejection, got %v", err)
 	}
+}
+
+// TestReplaceDataDir_HandlesEmptyAndLockedTargets is the
+// regression net for issue #216. The Windows
+// `Access is denied` failure mode is non-deterministic — a
+// transient handle conflict from OneDrive / SearchHost / the
+// asset-server watcher makes `os.Rename` fail. The previous
+// behavior was to return the error immediately, leaving the
+// data dir in an inconsistent state (target renamed away,
+// staging not promoted). The fix has two layers:
+//
+//  1. Skip the rename when the target is logically empty (no
+//     DB, or DB < 64KB = schema-only). The user has nothing
+//     to back up; moving stagingDir → targetDir directly
+//     avoids the rename entirely.
+//  2. Retry the rename with exponential backoff when the
+//     target is non-empty. 5 attempts, 4 sleep periods of
+//     200/400/800/1600ms = 3s total wait time.
+//
+// Acceptance:
+//   - Remove the isLogicallyEmpty short-circuit → cases (2)
+//     and (3) fail (the empty-target case is no longer
+//     handled).
+//   - Remove the renameWithRetry call → case (5) fails
+//     (transient failures don't recover).
+//   - Set retry attempts to 0 → case (5) fails.
+//   - Remove the %w from the wrapped error → errors.Is
+//     detection fails for case (6).
+//   - Remove the rollback rename (case 7) → target isn't
+//     restored after staging rename fails.
+func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
+	// (1) Target doesn't exist — no rename needed, staging
+	// promoted directly. No backup dir created.
+	t.Run("target does not exist", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+		marker := filepath.Join(staging, "staging-only.txt")
+		if err := os.WriteFile(marker, []byte("staging"), 0o644); err != nil {
+			t.Fatalf("WriteFile marker: %v", err)
+		}
+
+		if err := replaceDataDir(target, staging); err != nil {
+			t.Fatalf("replaceDataDir: %v", err)
+		}
+
+		if _, err := os.Stat(filepath.Join(target, "staging-only.txt")); err != nil {
+			t.Fatalf("staging marker should now be at target: %v", err)
+		}
+		// No .dixiedata-previous-* should exist.
+		entries, _ := os.ReadDir(parent)
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), ".dixiedata-previous-") {
+				t.Fatalf("unexpected backup dir created: %s", e.Name())
+			}
+		}
+	})
+
+	// (2) Target exists but has no DB → skip rename, staging
+	// promoted directly. The first renameOS call (target → backup)
+	// must NOT happen because the target is empty and there's
+	// nothing to back up.
+	t.Run("target exists without DB", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		// No dixiedata.db in target.
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+		marker := filepath.Join(staging, "staging-only.txt")
+		if err := os.WriteFile(marker, []byte("staging"), 0o644); err != nil {
+			t.Fatalf("WriteFile marker: %v", err)
+		}
+
+		origRenameOS := renameOS
+		t.Cleanup(func() { renameOS = origRenameOS })
+
+		// Track every renameOS call. For an empty target, the
+		// first call (target → backup) must be skipped.
+		var targetBackupCalled bool
+		renameOS = func(src, dst string) error {
+			if !strings.HasSuffix(src, ".dixiedata-import-test") {
+				targetBackupCalled = true
+			}
+			return origRenameOS(src, dst)
+		}
+
+		if err := replaceDataDir(target, staging); err != nil {
+			t.Fatalf("replaceDataDir: %v", err)
+		}
+
+		if targetBackupCalled {
+			t.Fatalf("empty target case should NOT call renameOS for target → backup; replaceDataDir must skip the rename when target is empty")
+		}
+		if _, err := os.Stat(filepath.Join(target, "staging-only.txt")); err != nil {
+			t.Fatalf("staging marker should now be at target: %v", err)
+		}
+	})
+
+	// (3) Target has a small (schema-only) DB → skip rename.
+	// The first renameOS call (target → backup) must NOT happen
+	// because there's no real data to back up.
+	t.Run("target exists with empty DB", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		// Write a 1KB file — well under the 64KB threshold.
+		if err := os.WriteFile(filepath.Join(target, "dixiedata.db"), make([]byte, 1024), 0o644); err != nil {
+			t.Fatalf("WriteFile DB: %v", err)
+		}
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+		marker := filepath.Join(staging, "staging-only.txt")
+		if err := os.WriteFile(marker, []byte("staging"), 0o644); err != nil {
+			t.Fatalf("WriteFile marker: %v", err)
+		}
+
+		origRenameOS := renameOS
+		t.Cleanup(func() { renameOS = origRenameOS })
+
+		var targetBackupCalled bool
+		renameOS = func(src, dst string) error {
+			if !strings.HasSuffix(src, ".dixiedata-import-test") {
+				targetBackupCalled = true
+			}
+			return origRenameOS(src, dst)
+		}
+
+		if err := replaceDataDir(target, staging); err != nil {
+			t.Fatalf("replaceDataDir: %v", err)
+		}
+
+		if targetBackupCalled {
+			t.Fatalf("schema-only target case should NOT call renameOS for target → backup; replaceDataDir must skip the rename when target is logically empty")
+		}
+		if _, err := os.Stat(filepath.Join(target, "staging-only.txt")); err != nil {
+			t.Fatalf("staging marker should now be at target: %v", err)
+		}
+	})
+
+	// (4) Target has a large DB → first rename succeeds,
+	// backup dir created.
+	t.Run("target exists with non-empty DB, first rename succeeds", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		// Write a 128KB file — over the 64KB threshold.
+		if err := os.WriteFile(filepath.Join(target, "dixiedata.db"), make([]byte, 128*1024), 0o644); err != nil {
+			t.Fatalf("WriteFile DB: %v", err)
+		}
+		targetMarker := filepath.Join(target, "original.txt")
+		if err := os.WriteFile(targetMarker, []byte("original"), 0o644); err != nil {
+			t.Fatalf("WriteFile targetMarker: %v", err)
+		}
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+		stagingMarker := filepath.Join(staging, "staging-only.txt")
+		if err := os.WriteFile(stagingMarker, []byte("staging"), 0o644); err != nil {
+			t.Fatalf("WriteFile stagingMarker: %v", err)
+		}
+
+		// Inject failing rename for the first 2 attempts to
+		// exercise the retry path.
+		origRenameOS := renameOS
+		t.Cleanup(func() { renameOS = origRenameOS })
+
+		failCount := 0
+		renameOS = func(src, dst string) error {
+			if !strings.HasSuffix(src, ".dixiedata-import-test") {
+				failCount++
+				if failCount <= 2 {
+					return fmt.Errorf("synthetic access denied (fail #%d)", failCount)
+				}
+			}
+			return origRenameOS(src, dst)
+		}
+
+		if err := replaceDataDir(target, staging); err != nil {
+			t.Fatalf("replaceDataDir: %v (after %d synthetic fails)", err, failCount)
+		}
+		if failCount != 3 {
+			t.Fatalf("expected 3 rename calls (2 fails + 1 success), got %d", failCount)
+		}
+		// Staging content should now be at target.
+		if _, err := os.Stat(filepath.Join(target, "staging-only.txt")); err != nil {
+			t.Fatalf("staging marker should be at target: %v", err)
+		}
+		// Backup dir should be removed.
+		entries, _ := os.ReadDir(parent)
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), ".dixiedata-previous-") {
+				t.Fatalf("backup dir should be cleaned up: %s", e.Name())
+			}
+		}
+	})
+
+	// (5) Transient failure with retry — first 2 rename
+	// attempts fail, 3rd succeeds. Renames use real os.Rename
+	// for the 3rd call.
+	t.Run("transient failure recovers via retry", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(target, "dixiedata.db"), make([]byte, 128*1024), 0o644); err != nil {
+			t.Fatalf("WriteFile DB: %v", err)
+		}
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+
+		origRenameOS := renameOS
+		t.Cleanup(func() { renameOS = origRenameOS })
+
+		failCount := 0
+		renameOS = func(src, dst string) error {
+			if !strings.HasSuffix(src, ".dixiedata-import-test") {
+				failCount++
+				if failCount <= 2 {
+					return fmt.Errorf("synthetic access denied (fail #%d)", failCount)
+				}
+			}
+			return origRenameOS(src, dst)
+		}
+
+		if err := replaceDataDir(target, staging); err != nil {
+			t.Fatalf("replaceDataDir: %v (after %d synthetic fails)", err, failCount)
+		}
+		if failCount != 3 {
+			t.Fatalf("expected 3 rename calls (2 fails + 1 success), got %d", failCount)
+		}
+	})
+
+	// (6) All retries fail → wrapped error returned with
+	// rename target named.
+	t.Run("all retries fail", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(target, "dixiedata.db"), make([]byte, 128*1024), 0o644); err != nil {
+			t.Fatalf("WriteFile DB: %v", err)
+		}
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+
+		origRenameOS := renameOS
+		t.Cleanup(func() { renameOS = origRenameOS })
+
+		renameOS = func(src, dst string) error {
+			return fmt.Errorf("synthetic permanent failure")
+		}
+
+		err := replaceDataDir(target, staging)
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "failed after 5 attempts") {
+			t.Fatalf("error must mention retry count: %v", err)
+		}
+		if !strings.Contains(err.Error(), target) {
+			t.Fatalf("error must mention target: %v", err)
+		}
+		// errors.Is should still work via %w wrapping.
+		if !strings.Contains(err.Error(), "synthetic permanent failure") {
+			t.Fatalf("error must preserve the underlying cause: %v", err)
+		}
+	})
+
+	// (7) Rollback — target rename succeeds, staging rename
+	// fails, target is restored from backup.
+	t.Run("rollback when staging rename fails", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(target, "dixiedata.db"), make([]byte, 128*1024), 0o644); err != nil {
+			t.Fatalf("WriteFile DB: %v", err)
+		}
+		targetMarker := filepath.Join(target, "original.txt")
+		if err := os.WriteFile(targetMarker, []byte("original"), 0o644); err != nil {
+			t.Fatalf("WriteFile targetMarker: %v", err)
+		}
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+
+		origRenameOS := renameOS
+		t.Cleanup(func() { renameOS = origRenameOS })
+
+		// Fail the second rename (staging → target).
+		renameOS = func(src, dst string) error {
+			if strings.HasSuffix(src, ".dixiedata-import-test") {
+				return fmt.Errorf("synthetic staging rename failure")
+			}
+			return origRenameOS(src, dst)
+		}
+
+		err := replaceDataDir(target, staging)
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+		// Target should have been restored to its original
+		// location with the original marker intact.
+		if _, err := os.Stat(targetMarker); err != nil {
+			t.Fatalf("target marker should be restored after rollback: %v", err)
+		}
+	})
 }

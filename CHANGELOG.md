@@ -773,6 +773,34 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- `.ddbak` import no longer fails with `Access is denied` on
+  Windows when a transient handle is held to the target data
+  dir. `replaceDataDir` (`internal/archive/backup_service.go:1182`)
+  used to call `os.Rename(targetDir, backupDir)` once and return
+  the error on failure. On Windows the rename is blocked when
+  OneDrive (`OneDrive.exe`), Windows Search (`SearchHost.exe` /
+  `SearchIndexer.exe`), the Wails asset-server watcher, or an
+  editor preview tab has any descendant open. Two-part fix:
+  (a) skip the rename entirely when the target is logically
+  empty (no DB, or DB < 64KB = schema-only) — the user has
+  nothing to back up; the empty target is `os.RemoveAll`'d and
+  staging is promoted directly. (b) retry the rename with
+  exponential backoff (5 attempts, 4 sleep periods of
+  200/400/800/1600ms = 3s total wait time) so transient handle
+  conflicts have time to release. Each failed attempt is logged
+  via `log.Printf` so an extended retry shows up in the JSONL
+  log as a chain of "rename attempt N/M failed" entries.
+  Regression net: `TestReplaceDataDir_HandlesEmptyAndLockedTargets`
+  in `internal/archive/backup_service_test.go`, 7-case table-
+  driven test exercising empty/non-empty targets, transient
+  retry, all-retries-fail, and rollback. The retry uses a
+  package-level `renameOS` var so the test can inject synthetic
+  failures without needing real Windows handle conflicts.
+  Acceptance verified by removing each piece in turn: each
+  test case fails with the bug-class name. `docs/COMMON_BUGS.md`
+  new section (added in this commit) documents the Windows
+  rename-handle pattern. Closes #216.
+
 - `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).
 
 - Three pre-existing audit-workflow gaps closed together with the

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1192,20 +1193,94 @@ func replaceDataDir(targetDir, stagingDir string) error {
 		targetExists = false
 	}
 	if targetExists {
-		if err := os.Rename(targetDir, backupDir); err != nil {
+		// Issue #216: skip the rename when the target is logically
+		// empty. There's nothing to back up — removing the empty
+		// target and promoting stagingDir to targetDir avoids the
+		// Windows rename that fails when OneDrive / SearchHost /
+		// the asset-server watcher holds a transient handle to
+		// the target. isLogicallyEmpty uses the DB file size as
+		// a proxy: < 64KB means schema-only (no records). See
+		// isLogicallyEmpty for the exact thresholds. After
+		// RemoveAll, targetExists is flipped to false so the
+		// subsequent os.Rename(stagingDir, targetDir) finds no
+		// pre-existing destination and succeeds.
+		if isLogicallyEmpty(targetDir) {
+			if err := os.RemoveAll(targetDir); err != nil {
+				return fmt.Errorf("remove empty target %s: %w", targetDir, err)
+			}
+			targetExists = false
+			_ = os.RemoveAll(backupDir)
+			backupDir = ""
+		}
+	}
+	if targetExists {
+		// Issue #216: retry the rename with exponential backoff so
+		// transient Windows handle conflicts (OneDrive, SearchHost,
+		// asset watcher) have time to release. 5 attempts, 4 sleep
+		// periods of 200/400/800/1600ms between them = 3s total
+		// wait time before the final attempt fails.
+		if err := renameWithRetry(targetDir, backupDir, 5, 200*time.Millisecond); err != nil {
 			return err
 		}
 	}
-	if err := os.Rename(stagingDir, targetDir); err != nil {
+	if err := renameOS(stagingDir, targetDir); err != nil {
 		if targetExists {
-			_ = os.Rename(backupDir, targetDir)
+			_ = renameOS(backupDir, targetDir)
 		}
 		return err
 	}
-	if targetExists {
+	if backupDir != "" {
 		return os.RemoveAll(backupDir)
 	}
-	return os.RemoveAll(backupDir)
+	return nil
+}
+
+// isLogicallyEmpty reports whether the target data directory has
+// no data to back up. The size threshold is a proxy for "no
+// records" — an empty DixieData DB is schema-only, typically
+// 200-300KB. A DB > 64KB is presumed to have data. If the DB
+// file doesn't exist at all, the directory has no data. This
+// is a heuristic; the precise check would require opening the
+// SQLite file, which is closed by the caller before the rename
+// phase runs (see importInFlightJobIDSet/importInFlight).
+func isLogicallyEmpty(dir string) bool {
+	dbPath := filepath.Join(dir, "dixiedata.db")
+	info, err := os.Stat(dbPath)
+	if err != nil {
+		return true // no DB → no data
+	}
+	return info.Size() < 64*1024 // schema-only
+}
+
+// renameOS is the rename function used by renameWithRetry.
+// Exposed as a package-level var so tests can inject a failing
+// rename to exercise the retry logic without needing real
+// Windows handle conflicts.
+var renameOS = os.Rename
+
+// renameWithRetry retries os.Rename with exponential backoff.
+// attempts is the total number of tries (5 = 4 sleeps between
+// attempts: 200ms, 400ms, 800ms, 1600ms = 3s total). Each failed
+// attempt is logged via debug.Log so an extended retry window
+// shows up in the JSONL log as a chain of "rename attempt N/M
+// failed" entries — visible signal that Windows is fighting the
+// rename, not a silent wait.
+func renameWithRetry(src, dst string, attempts int, baseDelay time.Duration) error {
+	var lastErr error
+	delay := baseDelay
+	for i := 0; i < attempts; i++ {
+		if err := renameOS(src, dst); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+		if i < attempts-1 {
+			log.Printf("archive: replaceDataDir rename %s → %s attempt %d/%d failed: %v; retrying in %v", src, dst, i+1, attempts, lastErr, delay)
+			time.Sleep(delay)
+			delay *= 2
+		}
+	}
+	return fmt.Errorf("rename %s → %s failed after %d attempts: %w", src, dst, attempts, lastErr)
 }
 
 func copyBackupFile(sourcePath, destinationPath string) error {

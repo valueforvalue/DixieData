@@ -148,6 +148,71 @@ startupErr) closed with the fix shape above.
 
 ---
 
+### 1.15 Windows rename fails with `Access is denied` on transient handle conflicts
+
+**Symptom:** `os.Rename` returns `Access is denied` on Windows
+when any process holds an open handle to the source or
+destination directory or any descendant. Common holders:
+
+- `OneDrive.exe` — auto-syncs anything recently touched.
+- `SearchHost.exe` / `SearchIndexer.exe` — Windows Search
+  indexer holds the `$I30` index stream on every indexed dir.
+- The Wails asset-server watcher on `.dixiedata/`.
+- Editor preview tabs that had the dir open.
+
+This affects any code path that calls `os.Rename` on a
+directory: the `.ddbak` import's `replaceDataDir` (issue #216)
+is the canonical case. Two failures on the user's machine
+~93s apart (jobs.jsonl entries
+`54e147a793d6209686a3a67589f45e96` and
+`eea907637227bc911c631006759e6498`) showed the bug is
+non-deterministic — depends on which process holds the handle
+at the moment of the rename. A clean probe (`mv .dixiedata
+.dixiedata-previous-test-rename` with no DixieData process
+running) succeeds every time, confirming the handle-held cause.
+
+**Why it happens:** Windows blocks `MoveFileEx` (which
+`os.Rename` calls) when a directory handle is open. The
+failure is NOT content-dependent — the rename fails on a
+zero-byte dir just as readily as on a full archive.
+
+**Find it:** Search for `os.Rename` calls in import/export
+flows and verify each has retry + empty-handling:
+
+```bash
+grep -rn 'os.Rename' internal/archive/ internal/appshell/
+```
+
+Every `os.Rename` of a directory that's user-reachable (data
+dir, download dir, etc.) must retry with backoff AND skip
+when the source is logically empty.
+
+**Fix:** Two-part, in `replaceDataDir`
+(`internal/archive/backup_service.go:1182`):
+- (a) `isLogicallyEmpty(dir)` uses the DB file size as a
+  proxy: < 64KB = schema-only = no records = safe to skip
+  the rename. The empty target is `os.RemoveAll`'d and
+  staging is promoted directly.
+- (b) `renameWithRetry(src, dst, attempts, baseDelay)` retries
+  the rename with exponential backoff. 5 attempts, 4 sleep
+  periods of 200/400/800/1600ms = 3s total wait time. Each
+  failed attempt is logged via `log.Printf` so an extended
+  retry window shows up in the JSONL log.
+
+**Regression net:** `TestReplaceDataDir_HandlesEmptyAndLockedTargets`
+in `internal/archive/backup_service_test.go`, 7 cases
+including transient retry, all-retries-fail, and rollback.
+The retry uses a package-level `renameOS` var so tests can
+inject synthetic failures without needing real Windows
+handle conflicts.
+
+**Real example:** captured in issue #216. The user's
+`.dixiedata/jobs.jsonl` showed two identical `Access is
+denied` failures at `progress: 33` "Restoring records…". The
+fix lands in `286a941`...`06cca39` series. Closes #216.
+
+---
+
 ### 1.1 Button doesn't submit because `type="submit"` is missing
 
 **Symptom:** User clicks button. Nothing happens. Network tab shows
