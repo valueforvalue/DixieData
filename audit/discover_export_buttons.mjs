@@ -310,6 +310,13 @@ const literalPathOverrides = {
   '/share/queue/preview': true,
   '/share/queue/clear': true,
   '/export/shared-archive?subset=1': true,
+  // Issue #192: saved Share Queue presets. The literal list +
+  // save + delete + apply endpoints are not 'exports' in the
+  // strict sense (they're preset CRUD); listed so the discover
+  // test doesn't fire a false-orphan assertion.
+  '/share/queue/presets': true,
+  '/share/queue/presets/1': true,
+  '/share/queue/presets/1/apply': true,
   '/tags': true,
   '/tags/1': true,
   '/browse/bulk-tag': true,

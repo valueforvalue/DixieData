@@ -135,6 +135,14 @@ func (a *App) setupRoutes() {
 	r.Get("/share/queue/modal", a.handleShareQueueModal)
 	r.Post("/share/queue/preview", a.handleShareQueuePreview)
 	r.Post("/share/queue/clear", a.handleShareQueueClear)
+	// Issue #192: saved Share Queue presets. /share/queue/presets
+	// is a literal prefix; the /{id} and /{id}/apply routes
+	// register below and chi matches in order so the literal
+	// GET/POST/DELETE win over the wildcard /{id:[0-9]+} ones.
+	r.Get("/share/queue/presets", a.handleListShareQueuePresets)
+	r.Post("/share/queue/presets", a.handleSaveShareQueuePreset)
+	r.Delete("/share/queue/presets/{id:[0-9]+}", a.handleDeleteShareQueuePreset)
+	r.Get("/share/queue/presets/{id:[0-9]+}/apply", a.handleApplyShareQueuePreset)
 
 	r.Post("/integrations/google/connect", a.handleGoogleConnect)
 	r.Post("/integrations/google/disconnect", a.handleGoogleDisconnect)

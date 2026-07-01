@@ -3325,12 +3325,170 @@
         }
       });
     }
+    // Issue #192: Saved Queues section. The save form
+    // submits via fetch (no nav). Load + Delete use
+    // per-row buttons rendered by refreshShareQueuePresets.
+    const saveForm = modal.querySelector("[data-share-queue-preset-save]");
+    if (saveForm instanceof HTMLFormElement) {
+      saveForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        saveCurrentQueueAsPreset(saveForm);
+      });
+    }
+  }
+
+  // ----- Saved Share Queue presets (issue #192) -----
+  // Round-trips the modal's localStorage queue through the
+  // share_queue_presets table. Load writes the preset's
+  // soldier_ids back to localStorage + refreshes the modal.
+  // Save posts the current localStorage queue to
+  // /share/queue/presets. Delete issues DELETE on the
+  // per-row href.
+  function shareQueuePresetStatus(modal, text) {
+    if (!(modal instanceof HTMLElement)) return;
+    const slot = modal.querySelector("[data-share-queue-preset-status]");
+    if (!(slot instanceof HTMLElement)) return;
+    if (!text) {
+      slot.textContent = "";
+      slot.classList.add("hidden");
+      return;
+    }
+    slot.textContent = text;
+    slot.classList.remove("hidden");
+  }
+  async function saveCurrentQueueAsPreset(form) {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    const ids = readShareQueue();
+    if (ids.length === 0) {
+      shareQueuePresetStatus(modal, "Stage at least one Person Record before saving.");
+      return;
+    }
+    const nameInput = form.querySelector("input[name=name]");
+    const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
+    if (!name) {
+      shareQueuePresetStatus(modal, "Give the preset a name first.");
+      return;
+    }
+    try {
+      const fd = new FormData();
+      fd.set("name", name);
+      for (const id of ids) fd.append("soldier_ids", String(id));
+      const response = await fetch("/share/queue/presets", { method: "POST", body: fd });
+      if (response.status === 409) {
+        shareQueuePresetStatus(modal, "A preset with that name already exists. Pick a different name.");
+        return;
+      }
+      if (!response.ok) {
+        shareQueuePresetStatus(modal, "Could not save the preset.");
+        return;
+      }
+      if (nameInput instanceof HTMLInputElement) nameInput.value = "";
+      shareQueuePresetStatus(modal, "Saved.");
+      await refreshShareQueuePresets();
+    } catch (err) {
+      shareQueuePresetStatus(modal, "Could not save the preset.");
+    }
+  }
+  async function loadShareQueuePreset(id) {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    const ids = readShareQueue();
+    if (ids.length > 0) {
+      if (!window.confirm("Replace the current Share Queue with the preset's contents?")) {
+        return;
+      }
+    }
+    try {
+      const response = await fetch(`/share/queue/presets/${id}/apply`, { method: "GET" });
+      if (response.status === 404) {
+        shareQueuePresetStatus(modal, "That preset no longer exists.");
+        await refreshShareQueuePresets();
+        return;
+      }
+      if (!response.ok) {
+        shareQueuePresetStatus(modal, "Could not load the preset.");
+        return;
+      }
+      const data = await response.json();
+      const newIds = Array.isArray(data && data.soldier_ids) ? data.soldier_ids : [];
+      writeShareQueue(newIds);
+      refreshShareQueueModal();
+      shareQueuePresetStatus(modal, "Loaded preset.");
+    } catch (err) {
+      shareQueuePresetStatus(modal, "Could not load the preset.");
+    }
+  }
+  async function deleteShareQueuePreset(id) {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    if (!window.confirm("Delete this saved preset? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`/share/queue/presets/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        shareQueuePresetStatus(modal, "Could not delete the preset.");
+        return;
+      }
+      shareQueuePresetStatus(modal, "Deleted.");
+      await refreshShareQueuePresets();
+    } catch (err) {
+      shareQueuePresetStatus(modal, "Could not delete the preset.");
+    }
+  }
+  async function refreshShareQueuePresets() {
+    const modal = shareQueueModal();
+    if (!(modal instanceof HTMLElement)) return;
+    const list = modal.querySelector("[data-share-queue-preset-list]");
+    const empty = modal.querySelector("[data-share-queue-preset-empty]");
+    if (!(list instanceof HTMLElement)) return;
+    while (list.firstChild) list.removeChild(list.firstChild);
+    let presets = [];
+    try {
+      const response = await fetch("/share/queue/presets", { method: "GET" });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.presets)) presets = data.presets;
+      }
+    } catch (err) {
+      // Network blip -- show the empty state rather than
+      // throwing so the modal stays interactive.
+    }
+    for (const preset of presets) {
+      const li = document.createElement("li");
+      li.className = "flex items-center justify-between gap-2 rounded border border-[rgba(141,116,64,0.2)] bg-white/80 px-2 py-1";
+      const label = document.createElement("span");
+      label.className = "truncate font-semibold text-[#22303d]";
+      label.textContent = preset.name;
+      const right = document.createElement("div");
+      right.className = "flex shrink-0 items-center gap-1";
+      const load = document.createElement("button");
+      load.type = "button";
+      load.className = "rounded border border-[rgba(141,116,64,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white";
+      load.textContent = "Load";
+      load.addEventListener("click", () => loadShareQueuePreset(preset.id));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "rounded border border-[rgba(111,44,38,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white";
+      del.textContent = "Delete";
+      del.addEventListener("click", () => deleteShareQueuePreset(preset.id));
+      right.appendChild(load);
+      right.appendChild(del);
+      li.appendChild(label);
+      li.appendChild(right);
+      list.appendChild(li);
+    }
+    if (empty instanceof HTMLElement) {
+      empty.classList.toggle("hidden", presets.length > 0);
+    }
   }
   function openShareQueueModal() {
     const modal = shareQueueModal();
     if (!(modal instanceof HTMLElement)) return;
     installShareQueueModal();
     refreshShareQueueModal();
+    refreshShareQueuePresets();
     showOverlayModal(modal);
   }
   function installShareQueueGlobals() {

@@ -164,6 +164,41 @@ func TestShareQueueModal(t *testing.T) {
 	}
 }
 
+// TestShareQueueModalRendersSavedQueuesSection (issue #192)
+// asserts the modal now carries the Saved Queues UI shell:
+// the save form (name input + Save button), the preset list,
+// the empty state, and the status message slot. JS hydrates
+// the list from GET /share/queue/presets on modal open.
+func TestShareQueueModalRendersSavedQueuesSection(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/share/queue/modal")
+	if err != nil {
+		t.Fatalf("GET modal: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("modal status %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	content := string(body)
+	for _, needle := range []string{
+		"Saved Queues",
+		`data-share-queue-preset-save`,
+		`data-share-queue-preset-list`,
+		`data-share-queue-preset-empty`,
+		`data-share-queue-preset-status`,
+		`name="name"`,
+		"Save current queue",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("modal missing %s; got %s", needle, content)
+		}
+	}
+}
+
 // TestExportSharedArchiveSubset_Roundtrip (issue #182) seeds
 // multiple soldiers, POSTs /export/shared-archive?subset=1 with
 // selected_ids, and verifies the X-DixieData-Redirect target

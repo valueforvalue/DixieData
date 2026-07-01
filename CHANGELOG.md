@@ -179,6 +179,86 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Audit coverage for Share Queue presets (issue #192):
+  audit/smoke.mjs gains a [5h] block that GETs
+  /share/queue/presets on a live dev binary and asserts the
+  response is a JSON object with a presets array, gated
+  behind SHAREQUEUE_PRESETS_E2E_BASE so unit-style smokes
+  can skip. audit/discover_export_buttons.mjs registers
+  the three new preset paths (literal /share/queue/presets,
+  /share/queue/presets/1, /share/queue/presets/1/apply) in
+  the literal-path allow-list so the discover test doesn't
+  fire false-orphan assertions for them.
+- Share Queue Saved Queues JS wiring (issue #192): the
+  modal's save form / load / delete are now wired.
+  refreshShareQueuePresets() runs on openShareQueueModal
+  and GETs /share/queue/presets to hydrate the
+  per-row Load + Delete buttons. saveCurrentQueueAsPreset
+  POSTs the current localStorage queue under the form's
+  name field with a 409-conflict message for the modal's
+  status slot. loadShareQueuePreset warns-and-confirms
+  when the current queue is non-empty, GETs the apply
+  endpoint, and writes the returned soldier_ids back to
+  localStorage. deleteShareQueuePreset confirms, DELETEs
+  the row, and re-fetches the list so the empty state
+  re-surfaces.
+- Share Queue Saved Queues UI shell (issue #192): the
+  Share Build modal grows a "Saved Queues" section above
+  the Staged Records panel. Server-rendered shell carries
+  the save form (name input + Save current queue
+  button), the preset list, the empty-state hint, and the
+  status message slot -- all JS-hydrated on modal open
+  via GET /share/queue/presets. New uiids constant
+  PanelShareQueuePresets. New test asserts every shell
+  attribute renders.
+- Share Queue preset HTTP surface (issue #192): four
+  new endpoints on the appshell --
+  - GET /share/queue/presets — returns the saved presets
+    as a JSON array ordered by last_used_at DESC, name
+    ASC. Emits `[]` instead of `null` for an empty
+    database so the modal's JS can iterate without a
+    null-guard.
+  - POST /share/queue/presets — saves the current
+    queue contents under a `name` field plus a
+    repeating `soldier_ids` field. 400 on missing
+    name or empty soldier_ids; 409 on duplicate name.
+  - DELETE /share/queue/presets/{id} — removes a
+    preset. 404 on unknown id; 204 on success.
+  - GET /share/queue/presets/{id}/apply — returns the
+    preset's soldier_ids array as JSON so the modal's
+    Load handler can write it back to localStorage.
+    Also bumps last_used_at so the preset floats to
+    the top of the Saved Queues section next time the
+    modal opens.
+  Wired through app.go + routes.go + three new
+  routebuilder entries (ShareQueuePresets,
+  ShareQueuePresetDelete, ShareQueuePresetApply).
+  10 handler tests cover happy paths, duplicate
+  names, empty payloads, missing rows, and the
+  literal-vs-wildcard route ordering.
+- Share Queue preset service (issue #192): new
+  `records.ShareQueuePresetService` provides CRUD over the
+  v59 share_queue_presets table -- Create / Get / List /
+  Delete / TouchLastUsed. Mirrors the printable-export
+  template service shape from issue #178 so power users get
+  a consistent save/reuse surface across both subset
+  pipelines. Create trims the name (leading/trailing
+  whitespace can never silently create a "different"
+  preset), drops non-positive IDs defensively, and surfaces
+  ErrShareQueuePresetNameTaken / ErrShareQueuePresetNotFound
+  for the handler to map to 409 / 404. List orders by
+  last_used_at DESC, name ASC so recently-loaded presets
+  float to the top of the modal. 9 unit tests cover all
+  paths including whitespace handling, duplicate names, and
+  missing-row semantics.
+- Schema v59 — saved Share Queue presets (issue #192):
+  new `share_queue_presets` table carries the (soldier_id)
+  JSON payload that names a reusable Share Queue. Local-only
+  storage (no sync_id, no merge protocol). Pattern mirrors
+  the printable-export templates table from v58 so power
+  users get a consistent save/reuse shape across the two
+  subset surfaces. Bumps CurrentSchemaVersion 58 → 59;
+  see docs/migrations/v59.md.
 - Share Queue [+] Queue button coverage (issue #191):
   extends the Browse row entry point to three more surfaces:
   the Person Record detail page header (next to Edit /
