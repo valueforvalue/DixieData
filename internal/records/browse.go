@@ -34,6 +34,7 @@ type BrowseRequest struct {
 	PensionState          string
 	ReviewStatus          string
 	ConfederateHomeStatus string
+	Tags                  []string
 }
 
 func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {
@@ -69,6 +70,20 @@ func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {
 		request.ReviewStatus = ""
 	}
 	request.ConfederateHomeStatus = normalizeOptionalConfederateHomeStatus(request.ConfederateHomeStatus)
+	// Tag filter: trim + dedupe + drop blanks; the SQL adds the
+	// AND-logic HAVING clause because normalised-name collisions are
+	// prevented by the tags.normalized_name UNIQUE column.
+	cleaned := make([]string, 0, len(request.Tags))
+	seen := map[string]bool{}
+	for _, t := range request.Tags {
+		normalized := NormalizeTagName(t)
+		if normalized == "" || seen[normalized] {
+			continue
+		}
+		seen[normalized] = true
+		cleaned = append(cleaned, normalized)
+	}
+	request.Tags = cleaned
 	return request
 }
 
@@ -110,6 +125,38 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 	if request.ConfederateHomeStatus != "" {
 		whereParts = append(whereParts, normalizedConfederateHomeStatusExpr+` = ?`)
 		args = append(args, request.ConfederateHomeStatus)
+	}
+
+	// Tag AND-filter: Build a HAVING clause that counts distinct tag
+	// ids present on the soldier's binding rows so a query for 3
+	// tags returns only Person Records that have all three attached.
+	// The HAVING is applied to the CTE filtered set so it composes
+	// with every WHERE filter above; a soldier with 0 matching tags
+	// never enters the count aggregation, dropping them. Tags with
+	// no resolved row in tags (legacy / typo) are dropped silently
+	// here via NOT IN (id NULL) — the HAVING count then never sees
+	// them, so the filter behaves like an ordinary existential.
+	//
+	// See internal/records/browse_filter_test.go (issue #183).
+	if len(request.Tags) > 0 {
+		tagPlaceholders := make([]string, len(request.Tags))
+		tagArgs := make([]interface{}, len(request.Tags))
+		for i, name := range request.Tags {
+			tagPlaceholders[i] = "?"
+			tagArgs[i] = name
+		}
+		subquery := fmt.Sprintf(
+			`id IN (
+				SELECT prt.person_id
+				FROM person_record_tags prt
+				JOIN tags t ON t.id = prt.tag_id
+				WHERE t.normalized_name IN (%s)
+				GROUP BY prt.person_id
+				HAVING COUNT(DISTINCT t.id) = ?
+			)`, strings.Join(tagPlaceholders, ","))
+		whereParts = append(whereParts, subquery)
+		args = append(args, tagArgs...)
+		args = append(args, len(request.Tags))
 	}
 
 	whereClause := ""

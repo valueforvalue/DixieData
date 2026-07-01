@@ -67,6 +67,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   gains `MembersWithDetails` for the detail page. Forms use
   `data-dixie-submit="true"` per the Option C retag (no `hx-post`
   / `hx-delete`).
+- Browse sidebar tag filter (issue #183): multi-select chip cloud
+  inside the existing browse filter row, AND-logic HAVING filter
+  (`GROUP BY person_id HAVING COUNT(DISTINCT tag_id) = N`). Deep
+  link `?tags=vc-shiloh,unit-4th-al` parses through
+  `parseTagFilter` → `BrowseRequest.Tags` and normalises on the
+  service layer (TrimSpace + dedupe-by-normalized). New
+  `BrowseState.SelectedTagSet` + `viewmodel.TagOption` + `BrowseView`
+  surface extended with `availableTags`. 4 regression tests in
+  `internal/records/browse_filter_test.go` cover AND logic across
+  1/2 tags, unknown-tag no-op, and normalisation dedup.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

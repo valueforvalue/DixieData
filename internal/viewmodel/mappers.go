@@ -284,6 +284,10 @@ func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch 
 }
 
 func BrowseStateFromDomain(input records.BrowseRequest, total int) BrowseState {
+	selected := make(map[string]bool, len(input.Tags))
+	for _, t := range input.Tags {
+		selected[records.NormalizeTagName(t)] = true
+	}
 	return BrowseState{
 		Page:                  input.Page,
 		PageSize:              input.PageSize,
@@ -296,7 +300,27 @@ func BrowseStateFromDomain(input records.BrowseRequest, total int) BrowseState {
 		PensionState:          normalizeOptionalText(input.PensionState),
 		ReviewStatus:          input.ReviewStatus,
 		ConfederateHomeStatus: input.ConfederateHomeStatus,
+		SelectedTagSet:        selected,
 	}
+}
+
+// TagsFromModels maps records.Tag slice into the minimal
+// Browse-side payload (TagOption). The browse chip cloud only
+// needs id, name, normalized name so the rendered page payload
+// stays under a few KB even with thousands of tags.
+func TagsFromModels(input []records.Tag) []TagOption {
+	if len(input) == 0 {
+		return []TagOption{}
+	}
+	out := make([]TagOption, 0, len(input))
+	for _, t := range input {
+		out = append(out, TagOption{
+			ID:             t.ID,
+			Name:           t.Name,
+			NormalizedName: t.NormalizedName,
+		})
+	}
+	return out
 }
 
 func normalizeOptionalText(value string) string {
