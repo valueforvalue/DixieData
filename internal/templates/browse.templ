@@ -210,7 +210,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 								<div class="mt-1 font-mono text-xs text-[#6f2c26]">{ record.DisplayID }</div>
 							</div>
 							<input type="checkbox" value={ fmt.Sprintf("%d", record.ID) } data-browse-select data-browse-label={ record.DisplayID } aria-label={ fmt.Sprintf("Select %s", record.DisplayID) } class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" id={ fmt.Sprintf("browse-card-%d", record.ID) }/>
-							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", record.ID) } class="rounded border border-[rgba(141,116,64,0.45)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white">+ Queue</button>
+							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", record.ID) } title={ fmt.Sprintf("Add %s to share queue", record.DisplayID) } class="min-h-[44px] min-w-[44px] rounded border border-[rgba(141,116,64,0.45)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white">+ Queue</button>
 						</div>
 						<dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-slate-600">
 							<div>

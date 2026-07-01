@@ -586,6 +586,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   wrap). Per `docs/COMMON_BUGS.md §4.14` this is the 6th attempt at
   fixing dock-vs-content spacing; the JS-measured value is the
   prescribed single source of truth. Closes #160 (audit r1 top-2).
+- Browse mobile `[+ Queue]` button now meets the WCAG 2.5.5
+  44×44 minimum tap target and carries a `title="Add <DisplayID>
+  to share queue"` hover/AT label (issue #202). The desktop table
+  row already had the `title`; this adds `min-h-[44px] min-w-[44px]`
+  and the title to the mobile card to match. The button still
+  inherits its 11px label size; the tap region is the invisible
+  hit area, not the visible glyph, so the visual density is
+  unchanged on small screens.
 
 ### Fixed
 
