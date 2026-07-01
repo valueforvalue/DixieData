@@ -32,6 +32,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   count is > 0 so users spot stale templates before clicking
   Load. Same refresh helper used post-Update keeps the badge
   in sync after a rename or Save Changes.
+- Live preview reflects stale-filter values (issue #185). The
+  preview handler now runs the same computeExportTemplateStale
+  check the Load handler does, surfaces a one-line warning
+  above the count when stale values are present (e.g. "1 stale
+  filter value — adjust or remove before generating."), and
+  reuses `templateFromSettings` to feed the existing helper
+  without duplicating logic. The preview counter and the
+  eventual Generate can no longer silently disagree on stale
+  filter values. Regression net: TestHandleExportPreview_StaleFilterWarning.
 - Saved-templates "Save Changes" button (issue #186): PATCH
   /export/templates/{id} handler + ExportTemplateService.Update
   method (preserves created_at + last_used_at; rejects name
