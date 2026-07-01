@@ -790,3 +790,31 @@ func TestSoldierDetailGroupsAdvancedToolsUnderAccordion(t *testing.T) {
 		}
 	}
 }
+
+// TestSoldierDetailHasShareQueueButton (issue #191) asserts the
+// Person Record detail page header now exposes a [+] Queue
+// button next to the existing Edit / Export Record actions.
+// The button uses the same data-share-queue-add hook as the
+// Browse row button so frontend/app.js needs no new wiring.
+func TestSoldierDetailHasShareQueueButton(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.PersonRecord{
+		ID:        87,
+		DisplayID: "JCM87-00087",
+		FirstName: "James",
+		LastName:  "Carter",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, needle := range []string{
+		`data-share-queue-add="87"`,
+		"+ Queue",
+		"Add JCM87-00087 to the Share Queue",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("soldier detail missing %s; got %s", needle, content)
+		}
+	}
+}

@@ -146,8 +146,11 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 								<span class="rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
 							}
 						</div>
-						<div class="mt-4">
+						<div class="mt-4 flex flex-wrap items-center gap-2">
 							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.LeftPersonRecord.ID)) } class="pill-link">Open Left Person Record</a>
+							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", comparison.LeftPersonRecord.ID) } class="rounded-full border border-[rgba(141,116,64,0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + comparison.LeftPersonRecord.DisplayID + " to the Share Queue" }>
+								+ Queue
+							</button>
 						</div>
 					</div>
 					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
@@ -165,8 +168,11 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 								<span class="rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
 							}
 						</div>
-						<div class="mt-4">
+						<div class="mt-4 flex flex-wrap items-center gap-2">
 							<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", comparison.RightPersonRecord.ID)) } class="pill-link">Open Right Person Record</a>
+							<button type="button" data-share-queue-add={ fmt.Sprintf("%d", comparison.RightPersonRecord.ID) } class="rounded-full border border-[rgba(141,116,64,0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + comparison.RightPersonRecord.DisplayID + " to the Share Queue" }>
+								+ Queue
+							</button>
 						</div>
 					</div>
 				</div>

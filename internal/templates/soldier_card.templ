@@ -260,6 +260,9 @@ templ SoldierDetail(s viewmodel.PersonRecord) {
 						</div>
 					<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
 						<span class="gold self-start rounded-full border border-[rgba(141,116,64,0.4)] bg-white/70 px-4 py-2 text-sm font-mono">{ s.DisplayID }</span>
+						<button type="button" data-share-queue-add={ fmt.Sprintf("%d", s.ID) } class="self-start rounded-full border border-[rgba(141,116,64,0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + s.DisplayID + " to the Share Queue" }>
+							+ Queue
+						</button>
 						<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/edit", s.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Person Record</a>
 						<details class="relative w-full sm:w-auto">
 							<summary class="secondary-button w-full list-none cursor-pointer justify-center gap-2 sm:w-auto">
