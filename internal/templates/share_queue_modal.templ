@@ -1,0 +1,25 @@
+// Share Queue modal stub (issue #182). The full implementation
+// lands in commit 5 (templates + uiids + JS wiring); this stub
+// keeps the route handler in c4 compilable so the regression
+// nets (route_wildcard, redirect_headers) run cleanly. The
+// 501-modal renders a "the feature isn't ready yet" message
+// the dispatcher doesn't navigate to \u2014 the client pops a
+// window.confirm-style "feature shipping in c5" toast for the
+// duration of the gap.
+package templates
+
+import "github.com/valueforvalue/DixieData/internal/routebuilder"
+
+templ ShareQueueModal() {
+	@Layout("Share Queue") {
+		<div class="relative mx-auto max-w-3xl space-y-4">
+			<h2 class="text-2xl gold font-bold">Share Queue</h2>
+			<p class="text-sm text-slate-600">The Share Queue modal lands in commit 5 of the
+				Share Queue feature (issue #182). The route + handler are wired here so the
+				linker doesn't break; the visible UI ships with the templ + JS wiring.</p>
+			<div class="text-sm">
+				<a href={ templ.SafeURL(routebuilder.SharePage()) } class="underline-offset-2 hover:underline">\u2190 Back to Share</a>
+			</div>
+		</div>
+	}
+}

@@ -179,6 +179,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue HTTP surface (issue #182): four new endpoints
+  on the appshell, two of which are unique to #182 and two of
+  which extend existing pipelines:
+  - GET /share/queue/modal — renders the Share Build modal
+    fragment (templates.ShareQueueModal; the c4 stub ships in
+    this commit, the full UI in c5).
+  - POST /share/queue/preview — given a `selected_ids`
+    repeated form, returns an HTML fragment carrying the
+    Soldiers/Source Records/Images count summary the modal's
+    live-preview pane swaps via showOverlayModal.
+  - POST /share/queue/clear — explicit Clear Queue anchor so
+    dispatchDixieDataForm has a single 200/OK +
+    X-DixieData-Redirect=/share target. The queue itself lives
+    in localStorage, so the server side is intentionally a
+    no-op.
+  - POST /export/shared-archive?subset=1 — new subset branch
+    inside handleExportSharedArchive. Parses selected_ids,
+    refuses empty (400), runs BackupService.ExportSharedSubset
+    on a background job (job kind = "shared_archive_subset"),
+    writes X-DixieData-Redirect=/jobs/{id} per Option C
+    (issue #130), guarded by a distinct inFlight
+    dupKey=`subset|count|firstID` so it never collides with the
+    whole-archive export (per docs/agents/dialog-guard.md).
 - `BackupService.ExportSharedSubset` (issue #182): writes a
   Shared Archive containing only the Person Records whose IDs
   are in the supplied slice. Mirrors `ExportSharedWithTags`:

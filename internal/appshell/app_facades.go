@@ -21,6 +21,7 @@ type personRecordsFacade interface {
 	CountNeedsReview() (int, error)
 	FormSuggestions() (personRecordSuggestions, error)
 	List(page, pageSize int) ([]personRecord, int, error)
+	ByIDs(ids []int64) ([]personRecord, error)
 	BrowsePage(request records.BrowseRequest) ([]personRecord, int, records.BrowseRequest, error)
 	SearchPage(query string, page, pageSize int) ([]personRecord, int, error)
 	RecentByIDs(ids []int64, limit int) ([]personRecord, error)

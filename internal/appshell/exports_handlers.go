@@ -749,6 +749,16 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Issue #182: the subset branch ships Share Queue exports
+	// through the same handler with a `?subset=1` discriminator.
+	// The branch carries its own dupKey + dialog filter so the
+	// whole-archive path is untouched (regression net: block [5]
+	// of audit/smoke.mjs continues to pass).
+	if r.URL.Query().Get("subset") == "1" {
+		a.handleExportSharedArchiveSubset(w, r)
+		return
+	}
+
 	opts := runtime.SaveDialogOptions{
 		DefaultFilename: sharedArchiveName(time.Now()),
 		Filters: []runtime.FileFilter{
@@ -786,6 +796,62 @@ func (a *App) handleExportSharedArchive(w http.ResponseWriter, r *http.Request) 
 			Images:  manifest.Images,
 			Sources: manifest.Records,
 		}, err
+	}, path, w)
+}
+
+// handleExportSharedArchiveSubset is the Share Queue subset
+// export (issue #182). Reads `selected_ids` from the form
+// (repeated), runs BackupService.ExportSharedSubset through
+// a background job so the modal sees the standard /jobs/{id}
+// progress card, and writes X-DixieData-Redirect so the
+// dispatcher navigates.
+func (a *App) handleExportSharedArchiveSubset(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the share-queue export form.", err)
+		return
+	}
+	raw := r.Form["selected_ids"]
+	ids := parseShareQueueIDs(raw)
+	if len(ids) == 0 {
+		respondValidation(w, r, "Pick at least one Person Record before exporting the share queue.", nil)
+		return
+	}
+	firstID := ids[0]
+	opts := runtime.SaveDialogOptions{
+		DefaultFilename: sharedArchiveName(time.Now()),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "DixieData shared archive (subset)", Pattern: "*.ddshare"},
+		},
+	}
+	// Distinct dupKey: `subset|count|firstID` collapses duplicate
+	// clicks on the same staging set but never collides with the
+	// whole-archive export (which only carries kind+filename).
+	// Per docs/agents/dialog-guard.md: every native-dialog call
+	// MUST be guard-keyed; this satisfies the contract.
+	dupKey := guardedSaveFileDialogKey(
+		fmt.Sprintf("shared_archive_subset|%d|%d", len(ids), firstID), opts)
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Export cancelled.", nil)
+		return
+	}
+
+	a.enqueueExportWithResult(dupKey, "shared_archive_subset", func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error) {
+		p.Set(10, "Building subset archive")
+		p.Shimmer(ctx, 10, 95, 45*time.Second, "Staging subset archive…")
+		manifest, err := a.backup.ExportSharedSubset(path, a.dataDir, ids)
+		if err != nil {
+			return jobs.JobResult{}, err
+		}
+		return jobs.JobResult{
+			Records: manifest.Soldiers,
+			Images:  manifest.Images,
+			Sources: manifest.Records,
+		}, nil
 	}, path, w)
 }
 
