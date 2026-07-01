@@ -1011,6 +1011,126 @@ func TestAppServeHTTPAllowsFrontendCSSWhenSetupRequired(t *testing.T) {
 	}
 }
 
+// TestAppServeHTTPSetupRequiredFragmentReturns204WithRedirectHint is
+// the regression net for issue #212. When setupRequired=true and a
+// polling fragment request (HX-Request: true) hits a path that is NOT
+// in setupRequestAllowed (e.g. /layout/review-count, the badge
+// wrapper's polling endpoint added in #210), the previous behavior
+// was to 303 to /setup. The browser's XHR followed the redirect, the
+// full setup HTML doc got innerHTML-swapped into the badge wrapper
+// (which has hx-target="this"), and the wrapper's innerHTML became a
+// copy of the setup form on every poll. The badge effectively became
+// a giant invisible setup form on every page load while the user
+// was trying to complete the initial setup.
+//
+// Fix: in the setupRequired branch of App.ServeHTTP, when the
+// request is an htmx fragment, return 204 No Content with the
+// X-DixieData-Redirect: /setup header. htmx's XHR doesn't run the
+// dispatcher (X-DixieData-Redirect is the form-submit contract from
+// docs/COMMON_BUGS.md §1.10, not an htmx-recognised header), so the
+// hint is informational for htmx — but it keeps the swap target
+// stable and consistent with the existing redirect contract.
+//
+// Acceptance:
+//   - Remove the new HX-Request → 204 branch from lifecycle.go's
+//     setupRequired handler → case (a) fails (returns 303 to /setup
+//     instead of 204).
+//   - Remove the X-DixieData-Redirect header → case (a) fails (still
+//     returns 204 but the redirect hint is gone).
+//   - Add /layout/review-count to setupRequestAllowed → the new
+//     branch becomes dead code for that path; the test still passes
+//     because the bug case is /layout/review-count and the test only
+//     asserts the BEHAVIOR (204 + hint), not the implementation
+//     (the setupRequestAllowed allowlist entry).
+//   - Future polling fragment authors who forget setupRequestAllowed
+//     are protected automatically: any new /fragment polled while
+//     setup is required now gets 204 instead of 303, so the bug
+//     class closes.
+//
+// Out of scope:
+//   - recoveryRequestAllowed has the same 303-redirect pattern for
+//     the recovery flow. A future issue should cover it.
+func TestAppServeHTTPSetupRequiredFragmentReturns204WithRedirectHint(t *testing.T) {
+	app := NewApp()
+	app.setupRequired = true
+	app.setupRoutes()
+
+	// Case (a): htmx fragment request to a non-allowlisted path.
+	// /layout/review-count is the known case (badge wrapper polling
+	// added in #210). Returns 204 + X-DixieData-Redirect: /setup
+	// so the badge wrapper's innerHTML stays empty while setup is
+	// incomplete.
+	fragmentReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fragmentReq.Header.Set("HX-Request", "true")
+	fragmentRec := httptest.NewRecorder()
+	app.ServeHTTP(fragmentRec, fragmentReq)
+
+	if fragmentRec.Code != http.StatusNoContent {
+		t.Fatalf("fragment status=%d want %d (htmx fragment during setup-required must get 204, not 303 to /setup); issue #212", fragmentRec.Code, http.StatusNoContent)
+	}
+	if fragmentRec.Body.Len() != 0 {
+		t.Fatalf("fragment body must be empty for 204; got %d bytes: %q", fragmentRec.Body.Len(), fragmentRec.Body.String())
+	}
+	if got := fragmentRec.Header().Get("X-DixieData-Redirect"); got != "/setup" {
+		t.Fatalf("fragment X-DixieData-Redirect header=%q want %q", got, "/setup")
+	}
+
+	// Case (b): same path without HX-Request. Full-page nav still
+	// gets the 303 redirect to /setup (existing behavior, unchanged).
+	fullPageReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fullPageRec := httptest.NewRecorder()
+	app.ServeHTTP(fullPageRec, fullPageReq)
+	if fullPageRec.Code != http.StatusSeeOther {
+		t.Fatalf("full-page status=%d want %d (full-page nav must still 303 to /setup)", fullPageRec.Code, http.StatusSeeOther)
+	}
+	if loc := fullPageRec.Header().Get("Location"); loc != "/setup" {
+		t.Fatalf("full-page Location=%q want %q", loc, "/setup")
+	}
+
+	// Case (c): arbitrary non-allowlisted path with HX-Request. The
+	// new branch is forward-compatible — any future polling fragment
+	// automatically gets the 204 behavior without needing a
+	// setupRequestAllowed allowlist entry.
+	arbitraryReq := httptest.NewRequest(http.MethodGet, "/some/future/fragment", nil)
+	arbitraryReq.Header.Set("HX-Request", "true")
+	arbitraryRec := httptest.NewRecorder()
+	app.ServeHTTP(arbitraryRec, arbitraryReq)
+	if arbitraryRec.Code != http.StatusNoContent {
+		t.Fatalf("arbitrary fragment status=%d want %d (forward-compat: any fragment should 204, not 303)", arbitraryRec.Code, http.StatusNoContent)
+	}
+	if got := arbitraryRec.Header().Get("X-DixieData-Redirect"); got != "/setup" {
+		t.Fatalf("arbitrary fragment X-DixieData-Redirect=%q want %q", got, "/setup")
+	}
+
+	// Case (d): arbitrary non-allowlisted path without HX-Request
+	// still gets the 303. /soldiers is a good proxy: the real handler
+	// would 404 in this test (no soldier data) but the setupRequired
+	// branch fires first and the 303 wins.
+	soldiersReq := httptest.NewRequest(http.MethodGet, "/soldiers", nil)
+	soldiersRec := httptest.NewRecorder()
+	app.ServeHTTP(soldiersRec, soldiersReq)
+	if soldiersRec.Code != http.StatusSeeOther {
+		t.Fatalf("/soldiers status=%d want %d (full-page nav must still 303 to /setup)", soldiersRec.Code, http.StatusSeeOther)
+	}
+
+	// Case (e): sanity check — allowlisted paths (e.g. /jobs/active)
+	// do NOT hit the new 204 branch. They pass through to the real
+	// handler. We don't assert the real handler's exact status
+	// (depends on test setup), only that the setupRequired branch
+	// didn't intercept the request. The handler is exercised in
+	// other tests.
+	jobsReq := httptest.NewRequest(http.MethodGet, "/jobs/active", nil)
+	jobsReq.Header.Set("HX-Request", "true")
+	jobsRec := httptest.NewRecorder()
+	app.ServeHTTP(jobsRec, jobsReq)
+	if jobsRec.Code == http.StatusSeeOther {
+		t.Errorf("/jobs/active returned 303 to %s; allowlisted paths must pass through to the real handler (setupRequestAllowed returned true; the new branch was never reached)", jobsRec.Header().Get("Location"))
+	}
+	if got := jobsRec.Header().Get("X-DixieData-Redirect"); got == "/setup" {
+		t.Errorf("/jobs/active got X-DixieData-Redirect: /setup; the new branch was reached for an allowlisted path; setupRequestAllowed should have short-circuited before the new branch")
+	}
+}
+
 // TestAppServeHTTPAllowsJobsEndpointsWhenSetupRequired prevents the
 // "stacked setup page" bug. The layout progress slot polls
 // /jobs/active every 3s via htmx. When setup is required, every poll
