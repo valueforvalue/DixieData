@@ -200,3 +200,73 @@ func readCompiledAppCSS(t *testing.T) string {
 	t.Fatalf("frontend/app.css not found; run `make css` (or `npm run build:css`) before running this test")
 	return ""
 }
+
+// TestLayoutReviewCountBadgeTargetsItself pins the htmx-target
+// discipline on the review-count badge wrapper.
+//
+// Symptom when regressed (commit 89372a2 introduced the badge
+// wrapper without considering htmx target resolution): the badge's
+// hx-trigger="load" fires when the wrapper enters the DOM during
+// the initial /calendar swap. htmx walks up the DOM to resolve
+// hx-target via getClosestAttributeValue. If a shell <body>
+// carries hx-target="body" (from frontend/index.html's load
+// trigger that survived the swap because innerHTML replacement
+// preserves body attrs), the badge inherits it. The badge's
+// innerHTML swap then targets <body>, which wipes the entire
+// layout chrome and leaves only the badge fragment as a direct
+// child of <body>. The user sees a blank page with just a small
+// "2" pill in the top-left.
+//
+// Two-pronged fix: (a) the shell <body> trigger must NOT carry
+// hx-target="body" or hx-swap="outerHTML" (default innerHTML on
+// the trigger element achieves the same visual result, since
+// htmx 1.x/2.x note that outerHTML on body upgrades to
+// innerHTML anyway); (b) the badge wrapper must declare an
+// explicit hx-target so it never inherits from a future shell
+// change. This test pins both invariants on the rendered output.
+//
+// See docs/COMMON_BUGS.md §1.12 for the full pattern.
+func TestLayoutReviewCountBadgeTargetsItself(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+
+	// (a) Layout body must not carry hx-target or hx-swap attrs.
+	// (templ writes them as `hx-target=` / `hx-swap=` on the body tag.)
+	const bodyOpenTag = `<body class="min-h-screen"`
+	bodyIdx := strings.Index(content, bodyOpenTag)
+	if bodyIdx < 0 {
+		t.Fatalf("layout body open tag not found")
+	}
+	bodyCloseIdx := strings.Index(content[bodyIdx:], `>`)
+	if bodyCloseIdx < 0 {
+		t.Fatalf("layout body close not found")
+	}
+	bodyTag := content[bodyIdx : bodyIdx+bodyCloseIdx+1]
+	if strings.Contains(bodyTag, "hx-target") {
+		t.Fatalf("layout <body> must not declare hx-target; nested elements would inherit it and target body instead of themselves. Got body tag:\n%s", bodyTag)
+	}
+	if strings.Contains(bodyTag, "hx-swap") {
+		t.Fatalf("layout <body> must not declare hx-swap; nested elements would inherit it. Got body tag:\n%s", bodyTag)
+	}
+
+	// (b) Badge wrapper must declare an explicit hx-target.
+	const openTag = `<span data-layout-review-count hx-get="`
+	idx := strings.Index(content, openTag)
+	if idx < 0 {
+		t.Fatalf("layout should render the review-count badge wrapper %q", openTag)
+	}
+	closeIdx := strings.Index(content[idx:], `></span>`)
+	if closeIdx < 0 {
+		t.Fatalf("wrapper close tag not found")
+	}
+	wrapperTag := content[idx : idx+closeIdx+len(`></span>`)]
+	if !strings.Contains(wrapperTag, `hx-target="this"`) {
+		t.Fatalf("review-count badge wrapper must declare hx-target=\"this\" so its innerHTML swap does not inherit hx-target from any future shell change; got wrapper:\n%s", wrapperTag)
+	}
+	if !strings.Contains(wrapperTag, `hx-swap="innerHTML"`) {
+		t.Fatalf("review-count badge wrapper must declare hx-swap=\"innerHTML\"; got wrapper:\n%s", wrapperTag)
+	}
+}
