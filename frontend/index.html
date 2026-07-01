@@ -28,7 +28,7 @@
     }
   </style>
 </head>
-<body hx-get="/calendar" hx-trigger="load" hx-target="body" hx-swap="outerHTML">
+<body hx-get="/calendar" hx-trigger="load">
   <!-- Loading card is rendered by internal/appshell/app.go::renderStartupPlaceholder
        so that copy and styling stay in one place. This shell exists for the
        brief window before the Go handler responds. -->
