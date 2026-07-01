@@ -42,6 +42,12 @@ var wildcardShadowPairs = []struct {
 	{"/review-queue/compare/42", "/review-queue/*"},
 	// /research-collections/* must not shadow any sibling
 	{"/research-collections/123", "/research-collections/*"},
+	// /soldiers/{id}/tags[/...] (issue #183) must not be shadowed
+	// by /soldiers/*; /tags/{id} must not be shadowed by /tags/*.
+	{"/soldiers/42/tags", "/soldiers/*"},
+	{"/soldiers/42/tags/7", "/soldiers/*"},
+	{"/tags", "/tags/*"},
+	{"/tags/7", "/tags/*"},
 }
 
 // TestWildcardRoutesDoNotShadowSpecific guards against route-order

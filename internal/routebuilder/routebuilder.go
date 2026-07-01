@@ -342,6 +342,75 @@ func LayoutReviewCount() string {
 	return "/layout/review-count"
 }
 
+// TagsPage returns the URL for the /tags management page.
+// Registered as GET /tags in routes.go.
+func TagsPage() string {
+	return "/tags"
+}
+
+// TagDetail returns the URL for a single tag's detail / member
+// list. Registered as GET /tags/{id} in routes.go.
+func TagDetail(id int64) string {
+	return fmt.Sprintf("/tags/%d", id)
+}
+
+// TagRename returns the URL for the rename form target. Caller
+// appends the {id} segment. Registered as POST /tags/{id}/rename
+// in routes.go.
+func TagRename(id int64) string {
+	return fmt.Sprintf("/tags/%d/rename", id)
+}
+
+// TagMerge returns the URL for the merge form target. Caller
+// appends the {id} segment. Registered as POST /tags/{id}/merge
+// in routes.go.
+func TagMerge(id int64) string {
+	return fmt.Sprintf("/tags/%d/merge", id)
+}
+
+// TagDelete returns the URL for the DELETE form target (used
+// with `data-dixie-submit` and a hidden _method=DELETE override
+// because HTML forms do not natively issue DELETE). Caller
+// appends the {id} segment. Registered as DELETE /tags/{id} in
+// routes.go.
+func TagDelete(id int64) string {
+	return fmt.Sprintf("/tags/%d", id)
+}
+
+// SoldierTagAutocomplete returns the URL for the picker
+// autocomplete fragment. Registered as GET
+// /soldiers/{id}/tags?autocomplete={q} in routes.go.
+func SoldierTagAutocomplete(id int64) string {
+	return fmt.Sprintf("/soldiers/%d/tags", id)
+}
+
+// SoldierTagAttach returns the URL for the attach form. Caller
+// appends the {id} segment. Registered as POST /soldiers/{id}/tags
+// in routes.go.
+func SoldierTagAttach(id int64) string {
+	return fmt.Sprintf("/soldiers/%d/tags", id)
+}
+
+// SoldierTagDetach returns the URL for the detach form. Caller
+// appends the {id} and {tagId} segments. Registered as POST
+// /soldiers/{id}/tags/{tagId} in routes.go.
+func SoldierTagDetach(id, tagId int64) string {
+	return fmt.Sprintf("/soldiers/%d/tags/%d", id, tagId)
+}
+
+// BrowseBulkTag returns the URL for the bulk-tag form target.
+// Registered as POST /browse/bulk-tag in routes.go.
+func BrowseBulkTag() string {
+	return "/browse/bulk-tag"
+}
+
+// ShareExportOptions returns the URL for the include-tags
+// toggle on the share page. Registered as PATCH
+// /share/export-options in routes.go.
+func ShareExportOptions() string {
+	return "/share/export-options"
+}
+
 // GoogleCalendarPreferencesSave returns the URL for the Google
 // Calendar preferences form. Registered as POST
 // /integrations/google/calendar/preferences/save in routes.go.
