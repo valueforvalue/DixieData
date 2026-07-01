@@ -2556,3 +2556,178 @@ func imageDimensions(path string) (int, int, error) {
 	}
 	return img.Width, img.Height, nil
 }
+
+// TestInitializeLocalData_RestoresDataDirOnOpenFailure verifies the
+// transactional init: when db.Open fails after the rename, the
+// original data dir is restored and setupRequired is set to true.
+// Requires Unix filesystem semantics (chmod blocks MkdirAll but not
+// same-filesystem rename); skipped on Windows.
+func TestInitializeLocalData_RestoresDataDirOnOpenFailure(t *testing.T) {
+	baseDir := t.TempDir()
+	dataDir := filepath.Join(baseDir, ".dixiedata")
+
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(dataDir, "sentinel.txt")
+	if err := os.WriteFile(sentinel, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// chmod blocks MkdirAll but allows same-filesystem rename on Unix.
+	// On Windows chmod is advisory; skip to avoid false positives.
+	if err := os.Chmod(baseDir, 0o555); err != nil {
+		t.Skipf("chmod not supported: %v", err)
+	}
+	defer os.Chmod(baseDir, 0o755)
+
+	// Verify chmod actually blocks writes (skip if platform doesn't enforce).
+	testFile := filepath.Join(baseDir, ".chmod-probe")
+	if err := os.WriteFile(testFile, []byte("x"), 0o644); err == nil {
+		os.Remove(testFile)
+		t.Skip("chmod did not block file creation — platform likely Windows; skipping rollback test")
+	}
+
+	app := NewApp()
+	app.dataDir = dataDir
+
+	err := app.initializeLocalData()
+	if err == nil {
+		t.Fatal("expected initializeLocalData to fail, got nil")
+	}
+	if !app.setupRequired {
+		t.Fatal("expected setupRequired=true after init failure")
+	}
+
+	// Sentinel file must survive the rollback.
+	if _, err := os.Stat(sentinel); os.IsNotExist(err) {
+		t.Fatal("sentinel file missing after rollback — data dir was not restored")
+	}
+}
+
+// TestHandleSettingsInitializeErrorReRendersPage verifies that when
+// initialization fails for a full-page (non-htmx) POST, the handler
+// returns a 500 with HTML content rendered through the Layout wrapper.
+func TestHandleSettingsInitializeErrorReRendersPage(t *testing.T) {
+	app := NewApp()
+	// Use a dataDir whose parent does not exist so os.MkdirTemp fails
+	// inside initializeLocalData, triggering the error path.
+	app.dataDir = filepath.Join(t.TempDir(), "nonexistent", ".dixiedata")
+	app.setupRoutes()
+
+	form := url.Values{"confirmation_word": {"INITIALIZE"}}
+	req := httptest.NewRequest(http.MethodPost, "/settings/initialize", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/html") {
+		t.Fatalf("Content-Type: got %q, want text/html", ct)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Something went wrong") {
+		t.Fatal("response body missing error page title")
+	}
+	if !strings.Contains(body, "Initialisation failed") {
+		t.Fatal("response body missing user-facing message")
+	}
+	if !strings.Contains(body, "Back to Setup") {
+		t.Fatal("response body missing recovery link")
+	}
+}
+
+// TestHandleSettingsInitializeErrorHtmxRedirects verifies that an
+// htmx form POST during init failure redirects to /setup instead of
+// showing a toast-only response that strands the user.
+func TestHandleSettingsInitializeErrorHtmxRedirects(t *testing.T) {
+	app := NewApp()
+	// Use a dataDir whose parent does not exist so initializeLocalData fails.
+	app.dataDir = filepath.Join(t.TempDir(), "nonexistent", ".dixiedata")
+	app.setupRoutes()
+
+	form := url.Values{"confirmation_word": {"INITIALIZE"}}
+	req := httptest.NewRequest(http.MethodPost, "/settings/initialize", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d (204 No Content)", rec.Code, http.StatusNoContent)
+	}
+	if redirect := rec.Header().Get("X-DixieData-Redirect"); redirect != "/setup" {
+		t.Fatalf("X-DixieData-Redirect: got %q, want /setup", redirect)
+	}
+}
+
+// TestRespondErrorPageFullPageRendersLayout verifies that
+// respondErrorPage renders through the Layout wrapper for non-htmx
+// requests and includes a recovery link when the DB is gone.
+func TestRespondErrorPageFullPageRendersLayout(t *testing.T) {
+	app := NewApp()
+	app.database = nil // simulate broken DB
+	app.setupRequired = true
+
+	req := httptest.NewRequest(http.MethodGet, "/calendar", nil)
+	rec := httptest.NewRecorder()
+
+	app.respondErrorPage(rec, req, KindInternal, "Could not load calendar.", nil)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	ct := rec.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/html") {
+		t.Fatalf("Content-Type: got %q, want text/html", ct)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "<!doctype html>") {
+		t.Fatal("response body missing Layout DOCTYPE")
+	}
+	if !strings.Contains(body, "Could not load calendar.") {
+		t.Fatal("response body missing error message")
+	}
+	if !strings.Contains(body, "Back to Setup") {
+		t.Fatal("response body missing recovery link")
+	}
+	// Recovery link must point to /setup when DB is gone.
+	if !strings.Contains(body, `href="/setup"`) {
+		t.Fatal("response body missing /setup recovery link")
+	}
+}
+
+// TestRespondErrorPageFragmentToastOnly verifies that respondErrorPage
+// delegates to respondError (toast header only) for htmx fragment
+// requests, keeping the existing fragment behaviour.
+func TestRespondErrorPageFragmentToastOnly(t *testing.T) {
+	app := NewApp()
+
+	req := httptest.NewRequest(http.MethodPost, "/some-fragment", nil)
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	app.respondErrorPage(rec, req, KindInternal, "boom", nil)
+
+	// htmx branch delegates to respondError, which sets the toast
+	// header and writes the message to the body.
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	if got := rec.Header().Get("X-DixieData-Toast"); got != "boom" {
+		t.Fatalf("X-DixieData-Toast: got %q, want boom", got)
+	}
+	body := rec.Body.String()
+	if body != "boom" {
+		t.Fatalf("body: got %q, want boom", body)
+	}
+	// Fragment response must NOT contain Layout chrome.
+	if strings.Contains(body, "<!doctype html>") {
+		t.Fatal("htmx fragment response must not contain Layout")
+	}
+}
