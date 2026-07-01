@@ -179,6 +179,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue [+] Queue button coverage (issue #191):
+  extends the Browse row entry point to three more surfaces:
+  the Person Record detail page header (next to Edit /
+  Export Record), the Calendar Anniversary compact row (next
+  to Open Record), and the Review Queue compare row (next to
+  Open Left/Right Person Record). All three use the same
+  `data-share-queue-add="{id}"` hook that frontend/app.js
+  already handles; no JS changes. Visual style matches the
+  Browse row pill (uppercase tracking, thin gold border,
+  white-tinted background). Title attribute uses the
+  Display ID so the tooltip is informative on hover. Three
+  unit tests in internal/templates assert the hook renders
+  on each surface.
 - Share Queue preview counts hardening (issue #190): the
   preview fragment already summed real per-row RecordCount +
   ImageCount from the soldierListSelectColumns subqueries;

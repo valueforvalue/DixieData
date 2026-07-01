@@ -208,3 +208,33 @@ func TestReviewQueueCompareViewSupportsManualComparison(t *testing.T) {
 		t.Fatalf("manual comparison should not show resolve action: %s", content)
 	}
 }
+
+// TestReviewQueueCompareViewHasShareQueueButtons (issue #191)
+// asserts both side-by-side person records in the compare
+// view expose a [+] Queue button. Researchers frequently
+// want to stage both records for sharing while resolving a
+// duplicate-audit conflict.
+func TestReviewQueueCompareViewHasShareQueueButtons(t *testing.T) {
+	var buf bytes.Buffer
+	err := ReviewQueueCompareView(viewmodel.DuplicateAuditComparison{
+		FindingID:         4,
+		FindingType:       "fuzzy-first-name",
+		Reason:            "duplicate",
+		LeftPersonRecord:  viewmodel.Soldier{ID: 4, DisplayID: "JCM87-00004", FirstName: "John", LastName: "Kerns"},
+		RightPersonRecord: viewmodel.Soldier{ID: 8, DisplayID: "JCM87-00008", FirstName: "Jon", LastName: "Kerns"},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, needle := range []string{
+		`data-share-queue-add="4"`,
+		`data-share-queue-add="8"`,
+		"Add JCM87-00004 to the Share Queue",
+		"Add JCM87-00008 to the Share Queue",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("compare view missing %s; got %s", needle, content)
+		}
+	}
+}

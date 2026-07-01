@@ -145,7 +145,12 @@ templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
 					}
 				</div>
 			</div>
-			<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="ghost-link px-3 py-2">Open Record</a>
+			<div class="flex items-center gap-2">
+				<button type="button" data-share-queue-add={ fmt.Sprintf("%d", soldier.ID) } class="rounded-full border border-[rgba(141,116,64,0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + soldier.DisplayID + " to the Share Queue" }>
+					+ Queue
+				</button>
+				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="ghost-link px-3 py-2">Open Record</a>
+			</div>
 		</div>
 	</div>
 }
