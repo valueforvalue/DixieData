@@ -17,15 +17,27 @@ import (
 // TestShareQueuePreview (issue #182) seeds three soldiers via
 // the facade, POSTs /share/queue/preview with the corresponding
 // selected_ids, and asserts the returned fragment carries the
-// right Soldiers / Source Records / Images counts.
+// right Soldiers / Source Records / Images counts. Issue #190
+// hardens the assertion: with seedPersonRecordWithCounts
+// attaching a known number of records/images to each staged
+// row, the preview fragment must report the *exact* sum (not
+// the prior substring check that passed even with the
+// pre-enrichment stubbed counts of 0).
 func TestShareQueuePreview(t *testing.T) {
 	app := newTagTestApp(t)
 	server := httptest.NewServer(app)
 	defer server.Close()
 
-	pid1 := seedPersonRecord(t, app)
-	pid2 := seedPersonRecord(t, app)
-	pid3 := seedPersonRecord(t, app)
+	// Mix: one row with records only, one with images only,
+	// one with both. Confirms per-row attribution is summed
+	// across all three categories -- a missing join would
+	// surface as a 0 in at least one column.
+	pid1 := seedPersonRecordWithCounts(t, app, 2, 0)
+	pid2 := seedPersonRecordWithCounts(t, app, 0, 3)
+	pid3 := seedPersonRecordWithCounts(t, app, 1, 4)
+	wantSoldiers := 3
+	wantRecords := 3 // 2 + 0 + 1
+	wantImages := 7  // 0 + 3 + 4
 
 	form := url.Values{}
 	form.Add("selected_ids", fmt.Sprintf("%d", pid1))
@@ -41,15 +53,45 @@ func TestShareQueuePreview(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	content := string(body)
-	if !strings.Contains(content, "3 soldiers will ship") {
-		t.Errorf("preview body missing 3-soldiers line; got %s", content)
+
+	wantLines := []string{
+		fmt.Sprintf("%d soldiers will ship", wantSoldiers),
+		fmt.Sprintf("Source Records: %d", wantRecords),
+		fmt.Sprintf("Images: %d", wantImages),
 	}
-	if !strings.Contains(content, "Source Records:") {
-		t.Errorf("preview body missing Source Records line")
+	for _, want := range wantLines {
+		if !strings.Contains(content, want) {
+			t.Errorf("preview body missing line %q; got %s", want, content)
+		}
 	}
-	if !strings.Contains(content, "Images:") {
-		t.Errorf("preview body missing Images line")
+}
+
+// seedPersonRecordWithCounts creates a fresh soldier row plus
+// `recordCount` Source Record rows and `imageCount` Image rows
+// linked back to the soldier. Used by issue #190's hardened
+// TestShareQueuePreview so the assertion can target real
+// counts rather than the prior 0-by-default behavior.
+func seedPersonRecordWithCounts(t *testing.T, app *App, recordCount, imageCount int) int64 {
+	t.Helper()
+	soldierID := seedPersonRecord(t, app)
+	conn := app.database.Conn()
+	for i := 0; i < recordCount; i++ {
+		if _, err := conn.Exec(
+			`INSERT INTO records (soldier_id, record_type, app_id, details) VALUES (?, ?, ?, ?)`,
+			soldierID, "pension", fmt.Sprintf("TEST-RECORD-%d", i), fmt.Sprintf("details %d", i),
+		); err != nil {
+			t.Fatalf("insert record: %v", err)
+		}
 	}
+	for i := 0; i < imageCount; i++ {
+		if _, err := conn.Exec(
+			`INSERT INTO images (soldier_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
+			soldierID, fmt.Sprintf("img-%d.jpg", i), fmt.Sprintf("/tmp/img-%d.jpg", i), fmt.Sprintf("caption %d", i),
+		); err != nil {
+			t.Fatalf("insert image: %v", err)
+		}
+	}
+	return soldierID
 }
 
 // TestShareQueuePreview_NoIDs (issue #182) asserts the preview
