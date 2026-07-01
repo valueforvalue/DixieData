@@ -578,6 +578,10 @@ function Invoke-DixieDataBuild {
             # but the user may have left it in the default.
             $effectiveWailsArguments = $effectiveWailsArguments | Where-Object { $_ -ne "-trimpath" }
             $effectiveWailsArguments += "-debug"
+            # -tags debug gates //go:build debug files (trace.Log,
+            # debug-only tests) so release binaries carry zero
+            # dead weight from debug instrumentation.
+            $effectiveWailsArguments += @("-tags", "debug")
         }
         $effectiveWailsArguments += @("-ldflags", $buildLdFlags)
 

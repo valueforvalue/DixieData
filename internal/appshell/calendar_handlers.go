@@ -15,12 +15,14 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 )
 
 
 func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
+	trace.Log("handleCalendar_start")
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -40,6 +42,7 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load archive counts for the calendar.", err)
 		return
 	}
+	trace.Log("handleCalendar_render", "totalRecords", counts.TotalRecords(), "totalSoldiers", counts.TotalSoldiers)
 	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
 }
 
