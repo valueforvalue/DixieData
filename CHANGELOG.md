@@ -179,7 +179,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
-- Audit coverage for Share Queue (issue #182):
+- Share Queue preview counts hardening (issue #190): the
+  preview fragment already summed real per-row RecordCount +
+  ImageCount from the soldierListSelectColumns subqueries;
+  the prior substring-only test passed even with stubbed
+  zeros. This commit replaces the substring check with exact
+  integer assertions (e.g. `Source Records: 3`) by attaching
+  a known mix of records + images to each staged soldier via
+  the new seedPersonRecordWithCounts test helper. Also adds
+  TestSoldierService_ByIDs_PopulatesCounts at the service
+  layer so a future soldierListSelectColumns refactor that
+  swaps the projection for a lighter one gets caught before
+  the preview silently drops to zero. **The
+  SoldierService.CountForIDs helper described in the issue's
+  Implementation sketch was intentionally NOT added**: the
+  handler already sums per-row counts from a single round
+  trip; introducing a second helper would be a redundant
+  query on every modal open and a YAGNI divergence from the
+  ByIDs shape the rest of the preview pipeline relies on.
   audit/smoke.mjs gains a [5g] block that asserts
   /share/queue/modal renders (gated behind SHAREQUEUE_E2E_BASE
   so unit-style smokes can skip). audit/discover_export_buttons.mjs
