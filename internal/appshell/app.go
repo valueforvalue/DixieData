@@ -43,6 +43,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
+	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -746,7 +747,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 }
 
 func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthValue string) {
-	debug.FromContext(r.Context()).Debug("handleCalendarPDF ENTER")
+	trace.Log("handleCalendarPDF ENTER")
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -761,17 +762,16 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		respondValidation(w, r, "Invalid month.", err)
 		return
 	}
-	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF month=%d form=%v", month, r.Form))
+	trace.Log("handleCalendarPDF", "month", month)
 	calendar, err := a.anniversary.GetMonthCalendar(month)
 	if err != nil {
 		respondInternal(w, r, "Could not load the monthly calendar.", err)
 		return
 	}
-	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF calendar days=%d", len(calendar)))
+	trace.Log("handleCalendarPDF", "days", len(calendar))
 	options := parsePDFOptionsRequest(r, "P", false)
-	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF options=%+v", options))
-	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF pre-dialog ctx_nil=%v frontend=%v",
-		a.ctx == nil, ctxHasFrontend(a.ctx)))
+	trace.Log("handleCalendarPDF", "options", fmt.Sprintf("%+v", options))
+	trace.Log("handleCalendarPDF", "ctx_nil", a.ctx == nil, "frontend", ctxHasFrontend(a.ctx))
 
 	// Reject rapid duplicate POSTs before we hit the native dialog.
 	// A double-click queues two dialog requests on the Wails main
@@ -782,7 +782,7 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 	dupKey := fmt.Sprintf("cal-pdf|%d|%s|%s", month, options.Orientation, monthPDFName(month, options))
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(r.Context()).Debug("handleCalendarPDF duplicate request rejected")
+		trace.Log("handleCalendarPDF dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
@@ -795,16 +795,16 @@ func (a *App) handleCalendarPDF(w http.ResponseWriter, r *http.Request, monthVal
 		},
 	})
 	if err != nil || path == "" {
-		debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog cancelled err=%v path=%q", err, path))
+		trace.Log("handleCalendarPDF dialog_cancelled", "err", err != nil)
 		respondError(w, r, KindValidation, "Monthly PDF export cancelled.", nil)
 		return
 	}
-	debug.FromContext(r.Context()).Debug(fmt.Sprintf("handleCalendarPDF dialog returned path=%q", path))
+	trace.Log("handleCalendarPDF dialog_returned")
 	a.enqueueExport(dupKey, "monthly_pdf", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(20, "Rendering monthly PDF")
 		return a.export.ExportMonthlyAnniversaryPDF(path, month, calendar, options)
 	}, path, w)
-	debug.FromContext(r.Context()).Debug("handleCalendarPDF EXIT")
+	trace.Log("handleCalendarPDF EXIT")
 }
 
 func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
