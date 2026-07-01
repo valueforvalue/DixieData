@@ -84,6 +84,35 @@ func TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux(t *testing.T) {
 	if !strings.Contains(body, `window.location.replace("/calendar?_dd_boot=1\u0026scope=recent")`) {
 		t.Fatalf("expected inline auto-refresh script, got %q", body)
 	}
+
+	// Regression: the startup placeholder body must NOT carry htmx
+	// triggers (hx-get, hx-trigger, hx-target, hx-swap).  During the
+	// pre-mux window, layout polling elements (jobs-progress-region,
+	// review-count badge) would innerHTML-swap the full placeholder
+	// into small target regions.  The placeholder body's hx-target=
+	// "body" hx-swap="outerHTML" would then fire and replace the
+	// shell body, stacking fresh placeholders on every poll — the
+	// cascading reload bug (uibug.png / uibug2.png).
+	for _, attr := range []string{"hx-get=", "hx-trigger=", "hx-target=", "hx-swap="} {
+		if strings.Contains(body, attr) {
+			t.Fatalf("startup placeholder body must not contain htmx trigger %q; cascade bug regression", attr)
+		}
+	}
+}
+
+func TestRenderStartupPlaceholderReturns204ForHtmxFragmentRequests(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/jobs/active", nil)
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	renderStartupPlaceholder(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d want %d (htmx fragment must get 204, not full HTML cascade)", rec.Code, http.StatusNoContent)
+	}
+	if rec.Body.Len() != 0 {
+		t.Fatalf("body must be empty for 204; got %d bytes", rec.Body.Len())
+	}
 }
 
 func TestAppServeHTTPStartupServesFrontendAssetsWithoutMux(t *testing.T) {
