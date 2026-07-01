@@ -115,6 +115,7 @@ type backupFacade interface {
 	Export(outputPath, dataDir string) (archive.BackupManifest, error)
 	ExportShared(outputPath, dataDir string) (archive.BackupManifest, error)
 	ExportSharedWithTags(outputPath, dataDir string, includeTags bool) (archive.BackupManifest, error)
+	ExportSharedSubset(outputPath, dataDir string, ids []int64) (archive.BackupManifest, error)
 	ImportWithLocalIdentity(backupPath, dataDir string, localIdentity models.UserIdentity, preserveLocalIdentity bool) (archive.BackupManifest, error)
 	ImportSharedBackup(backupPath, dataDir string) (archive.SharedImportSummary, error)
 	ResolveMergeConflict(conflictID int64, decision, dataDir string) error
