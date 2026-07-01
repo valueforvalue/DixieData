@@ -214,7 +214,7 @@ Cross-cutting (any screen):
 | status | severity | summary | issue# | fix-commit | audit-ref |
 |---|---|---|---|---|---|
 | fixed | high | `confederatehomestatus.Normalize` silently rewrote unknown values to N/A | #23 | `4359c1f` | — |
-| open | medium | Browse-row text labels render <24×24 on mobile (WCAG 2.5.5) | — | — | r3 (carried) |
+| fixed | medium | Browse-row text labels render <24×24 on mobile (WCAG 2.5.5) — framing was inaccurate; elements are non-interactive `<dt>` labels, so the real defect was readability. Fixed by bumping `<dt>` from 0.65rem → 0.75rem | — | this branch | r3 (PASS) |
 | fixed | low | Browse-filter debounce regressed to 0ms | — | `e7ece2c` | — |
 | fixed | low | `browse-filter-persists-from-url` flow | — | — | r3 (PASS) |
 
@@ -836,7 +836,7 @@ Sortable by severity. Re-run quarterly.
 | Export | open | high | Dialog guard audit not yet run on Export handlers | — | — | gaps.md |
 | Jobs | open | high | Memorial import log download button not wired in `jobSummaryCard` | — | — | gaps.md |
 | Floating dock | open | high | Overlaps content on every page | — | — | r2 #2 |
-| Browse | open | medium | Browse-row text labels <24×24 on mobile (WCAG 2.5.5) | — | — | r3 |
+| Browse | fixed | medium | Browse-row text labels <24×24 on mobile (WCAG 2.5.5) — see audit finding note above; readability fix landed | — | this branch | r3 |
 | Jobs | open | low | Polls even when window not focused | — | — | — |
 | Calendar | open | low | `/calendar` not probed by smoke `routes_registered` | — | — | — |
 | Compare | open | low | Cell padding tight (6px vs 8px) | — | — | r3 |
