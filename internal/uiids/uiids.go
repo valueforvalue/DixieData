@@ -87,6 +87,11 @@ const (
 	// static_archive) are filtered out by MostRecentActive so
 	// this region stays empty for them.
 	OverlayJobsProgress = "overlay.jobs.progress"
+	// Issue #183: Person Record tagging surfaces.
+	PageTagsManagement       = "page.tags.management"
+	PanelTagsList            = "panel.tags.list"
+	PanelTagDetail           = "panel.tags.detail"
+	OverlayTagPicker         = "overlay.tag.picker"
 )
 
 type Surface struct {
@@ -160,6 +165,10 @@ var Registry = []Surface{
 	{ID: PanelSoldierTimeline, Kind: "panel", Description: "Evidence-backed chronology rendered inside the soldier detail page (Timeline HTMX swap)."},
 	{ID: PanelSoldierCamaraderie, Kind: "panel", Description: "Unit camaraderie graph rendered inside the soldier detail page (Camaraderie HTMX swap)."},
 	{ID: PanelSoldierConflictLedger, Kind: "panel", Description: "Local vs Incoming merge ledger rendered inside the soldier detail page (Conflict Ledger HTMX swap)."},
+	{ID: PageTagsManagement, Kind: "page", Description: "Tag management surface listing all Tags with rename / merge / delete actions."},
+	{ID: PanelTagsList, Kind: "panel", Description: "Tag table on the /tags management page."},
+	{ID: PanelTagDetail, Kind: "panel", Description: "Single tag detail page showing the membership list with Remove buttons."},
+	{ID: OverlayTagPicker, Kind: "overlay", Description: "Inline tag-picker overlay used on the soldier detail page and in the Browse bulk-tag toolbar."},
 }
 
 

@@ -17,7 +17,7 @@ func TestBrowseViewShowsSelectionHelperAndPrintAction(t *testing.T) {
 		PageSize: 100,
 		Scope:    "all",
 		Sort:     "display_id_asc",
-	}, viewmodel.PersonRecordFormSuggestions{}, nil).Render(context.Background(), &buf)
+	}, viewmodel.PersonRecordFormSuggestions{}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -53,6 +53,7 @@ func TestBrowseViewTableHeadersDeclareScopeCol(t *testing.T) {
 		viewmodel.BrowseState{Page: 1, PageSize: 100, Scope: "all", Sort: "display_id_asc"},
 		viewmodel.PersonRecordFormSuggestions{},
 		nil,
+		nil,
 	).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
@@ -79,7 +80,7 @@ func TestBrowseViewShowsBuriedInFilter(t *testing.T) {
 		BuriedIn: "Oak Hill Cemetery",
 	}, viewmodel.PersonRecordFormSuggestions{
 		BuriedIn: []string{"Oak Hill Cemetery"},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
