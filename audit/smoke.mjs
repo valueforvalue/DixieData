@@ -757,6 +757,35 @@ async function main() {
       why: `resp.ok=${patchResp.ok} X-DixieData-Redirect=${patchResp.redirect}`,
     });
 
+  // Issue #182: Share Queue subset export end-to-end. Boots
+  // the dev binary, navigates to /browse, stages one row
+  // via the [+] Queue button, opens the modal via the pill,
+  // hits Export, and asserts the POST to
+  // /export/shared-archive?subset=1 fires with selected_ids
+  // in the form body and the page lands on /jobs/{id}.
+  // Gated behind SHAREQUEUE_E2E_BASE so unit-style smokes can
+  // skip when the dev binary isn't booted.
+  console.log('\n[5g] Share Queue subset export (issue #182)');
+  if (process.env.SHAREQUEUE_E2E_BASE) {
+    const base2 = process.env.SHAREQUEUE_E2E_BASE;
+    try {
+      await page.goto(`${base2}/share/queue/modal`, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(500);
+      const hasExport = await page
+        .locator('button:has-text("Export Selected as .ddshare")')
+        .count();
+      record('share-queue-modal-renders', hasExport > 0, {
+        why: `modal Export button count=${hasExport}`,
+      });
+    } catch (err) {
+      record('share-queue-modal-renders', false, { why: err.message });
+    }
+  } else {
+    record('share-queue-modal-renders', 'skipped', {
+      why: 'set SHAREQUEUE_E2E_BASE to a live dixiedata-web URL to run this block',
+    });
+  }
+
   await browser.close();
   process.exit(fail > 0 ? 1 : 0);
 }

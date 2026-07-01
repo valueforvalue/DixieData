@@ -171,6 +171,85 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   block that fetches `/share/export-options` and verifies the
   X-DixieData-Redirect target is `/share` (the Option C contract
   for the toggle form).
+- **Share Queue** added to the glossary as the in-memory list
+  of Person Records a researcher has staged for inclusion in a
+  Shared Archive (.ddshare) before exporting. Stored in the
+  browser's `localStorage` under the `dixiedata.share-queue`
+  key so the queue survives navigation, reloads, and app
+  restarts; distinct from the existing
+  `dixiedata.browse.selection` (print/export-selection) key
+  to keep the two domains disjoint. Issue #182.
+- Audit coverage for Share Queue (issue #182):
+  audit/smoke.mjs gains a [5g] block that asserts
+  /share/queue/modal renders (gated behind SHAREQUEUE_E2E_BASE
+  so unit-style smokes can skip). audit/discover_export_buttons.mjs
+  registers the four new Share Queue paths in the literal-path
+  allow-list so the discover test doesn't fire a
+  false-orphan assertion for them; they remain out of scope
+  for the 'all six canonical share-page exports' regression
+  net as the spec requires.
+- Share Queue UI (issue #182): the c4 handler stub is
+  replaced with the real Share Build modal
+  (internal/templates/share_queue_modal.templ). Layout.templ
+  gains a persistent Share Queue pill that opens the modal on
+  click; visible only when localStorage
+  `dixiedata.share-queue` has entries. Browse rows add a
+  small `[+ Queue]` button next to the existing checkbox
+  (separate visual channel -- does not collide with
+  `data-browse-select`). The /share page grows a Build
+  Share Archive button that opens the same modal directly.
+  frontend/app.js adds the localStorage round-trip, the pill
+  visibility toggle, the per-row add/remove handlers, the
+  live preview refresh via POST /share/queue/preview, and the
+  Clear Queue confirm() wire. The modal's form submits via
+  the existing dispatchDixieDataForm + data-dixie-submit path
+  to /export/shared-archive?subset=1. New uiids:
+  OverlayShareQueue, PanelShareQueueList,
+  PanelShareQueuePreview.
+- Share Queue HTTP surface (issue #182): four new endpoints
+  on the appshell, two of which are unique to #182 and two of
+  which extend existing pipelines:
+  - GET /share/queue/modal — renders the Share Build modal
+    fragment (templates.ShareQueueModal; the c4 stub ships in
+    this commit, the full UI in c5).
+  - POST /share/queue/preview — given a `selected_ids`
+    repeated form, returns an HTML fragment carrying the
+    Soldiers/Source Records/Images count summary the modal's
+    live-preview pane swaps via showOverlayModal.
+  - POST /share/queue/clear — explicit Clear Queue anchor so
+    dispatchDixieDataForm has a single 200/OK +
+    X-DixieData-Redirect=/share target. The queue itself lives
+    in localStorage, so the server side is intentionally a
+    no-op.
+  - POST /export/shared-archive?subset=1 — new subset branch
+    inside handleExportSharedArchive. Parses selected_ids,
+    refuses empty (400), runs BackupService.ExportSharedSubset
+    on a background job (job kind = "shared_archive_subset"),
+    writes X-DixieData-Redirect=/jobs/{id} per Option C
+    (issue #130), guarded by a distinct inFlight
+    dupKey=`subset|count|firstID` so it never collides with the
+    whole-archive export (per docs/agents/dialog-guard.md).
+- `BackupService.ExportSharedSubset` (issue #182): writes a
+  Shared Archive containing only the Person Records whose IDs
+  are in the supplied slice. Mirrors `ExportSharedWithTags`:
+  same archive kind, same JSON payload shape, same image-set
+  semantics — just a filtered soldier slice. Inherits the
+  `archive_meta.include_tags` opt-in for free (subset exports
+  honour the same per-kind flag). `manifest.SourceLabel`
+  carries a "subset of N Person Records" annotation so the
+  recipient can see the archive is not full at a glance.
+  IDs that no longer exist are silently dropped (the ByIDs
+  contract). `EmptyIDsRejected` + `Roundtrip` regression
+  tests cover the guard and a 500-row archive filtered
+  down to 5 rows in caller order via the resulting zip.
+- `SoldierService.ByIDs` (issue #182): returns the soldiers
+  whose IDs are in the supplied slice in caller order, drops
+  unknowns silently, and returns a non-nil empty slice for
+  empty / all-unknown input. Used by the Share Queue subset
+  export to materialise a single staged shipment. Mirrors
+  `RecentByIDs` without the implicit limit.
+  `TestSoldierService_ByIDs` covers order preservation,
+  empty input, and all-unknown input.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

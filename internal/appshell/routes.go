@@ -128,6 +128,13 @@ func (a *App) setupRoutes() {
 	r.Post("/import/memorial-json", a.handleImportMemorialJSON)
 
 	r.Post("/merge-review/*", a.handleMergeReviewConflict)
+	// Issue #182: Share Queue endpoints. static-before-wildcard;
+	// the /share/queue/* paths must register before the existing
+	// /share wildcard so the modal/preview/clear routes are
+	// resolved by chi rather than the generic /share handler.
+	r.Get("/share/queue/modal", a.handleShareQueueModal)
+	r.Post("/share/queue/preview", a.handleShareQueuePreview)
+	r.Post("/share/queue/clear", a.handleShareQueueClear)
 
 	r.Post("/integrations/google/connect", a.handleGoogleConnect)
 	r.Post("/integrations/google/disconnect", a.handleGoogleDisconnect)

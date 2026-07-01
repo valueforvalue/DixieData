@@ -21,6 +21,7 @@ type personRecordsFacade interface {
 	CountNeedsReview() (int, error)
 	FormSuggestions() (personRecordSuggestions, error)
 	List(page, pageSize int) ([]personRecord, int, error)
+	ByIDs(ids []int64) ([]personRecord, error)
 	BrowsePage(request records.BrowseRequest) ([]personRecord, int, records.BrowseRequest, error)
 	SearchPage(query string, page, pageSize int) ([]personRecord, int, error)
 	RecentByIDs(ids []int64, limit int) ([]personRecord, error)
@@ -115,6 +116,7 @@ type backupFacade interface {
 	Export(outputPath, dataDir string) (archive.BackupManifest, error)
 	ExportShared(outputPath, dataDir string) (archive.BackupManifest, error)
 	ExportSharedWithTags(outputPath, dataDir string, includeTags bool) (archive.BackupManifest, error)
+	ExportSharedSubset(outputPath, dataDir string, ids []int64) (archive.BackupManifest, error)
 	ImportWithLocalIdentity(backupPath, dataDir string, localIdentity models.UserIdentity, preserveLocalIdentity bool) (archive.BackupManifest, error)
 	ImportSharedBackup(backupPath, dataDir string) (archive.SharedImportSummary, error)
 	ResolveMergeConflict(conflictID int64, decision, dataDir string) error
