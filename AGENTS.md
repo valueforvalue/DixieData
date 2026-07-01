@@ -27,6 +27,8 @@ See `CONTEXT.md` for the full glossary and anti-patterns.
 |---|---|
 | `main.go` | Wails app entry point (also handles `--smoke` headless boot) |
 | `internal/appshell/` | App bootstrap + request handlers + stress tests |
+| `internal/debug/` | Structured slog harness — `Configure`, `SetDebugMode`, `IsEnabled`, `FromContext`, `GetRingBuffer`, sink registry (file + ring + stderr mirror). Read this when touching anything that calls `slog.Debug` or the Debug Console |
+| `internal/debug/trace/` | Build-tag-gated zero-cost instrumentation (`//go:build debug` + no-op stub). Use `trace.Log()` for entry/exit/branch markers; reach for ADR 0006 for the slog-vs-trace rule |
 | `internal/db/` | SQLite schema, migrations, `GetAppVersion()` |
 | `internal/htmxattr/` | Typed `htmxattr.Mux` builder — use instead of raw `hx-*` strings |
 | `internal/routebuilder/` | Typed URL builders — use instead of string route literals |

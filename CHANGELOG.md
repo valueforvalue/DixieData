@@ -13,6 +13,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Build-tag-gated zero-cost trace instrumentation (issue #218).
+  New `internal/debug/trace` package with `trace.Log(msg, attrs...)`
+  emits `slog.Debug` calls in `-tags debug` builds and is a
+  literal no-op in release (Go compiler dead-code-eliminates
+  every call site). Reuses the existing `debug.Configure` handler
+  pipeline so trace entries flow into the JSONL log file, the
+  in-memory ring buffer, and the Debug Console panel without
+  any new infrastructure. Used for high-volume instrumentation
+  (entry/exit markers, branch decisions, dup-rejection) where
+  the call would lose diagnostic value at `-tags debug` builds
+  but has zero narrative value at INFO+ (where `slog.Debug`
+  belongs instead). See ADR 0006 for the decision rule. Initial
+  proof-of-pattern call sites are in
+  `handleCalendar` (`handleCalendar_start`, `handleCalendar_render`).
+  Build wiring: `scripts/build-common.ps1` adds `-tags debug` to
+  `wails build -debug`; `Makefile` adds `-tags debug` to the
+  `web`, `seed`, `gold`, and `tune-bin` targets. CI gains a
+  parallel `go test -tags debug ./internal/debug/...` step
+  so the no-op stub cannot silently rot.
+
 - Inline expandable stale-template warning list (issue #184).
   When a Load produces ≥2 stale warnings, the modal grows an
   inline `<ul>` next to the templates-status span with a
