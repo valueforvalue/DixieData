@@ -750,6 +750,27 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `docs/COMMON_BUGS.md §1.13` extended with the multi-branch
   pattern. Closes #214.
 
+### Maintenance
+
+- Extracted `blockIfFragment` helper for the HX-Request
+  fragment-204 contract (`internal/appshell/fragment_guard.go`).
+  Four call sites collapsed from inline `r.Header.Get("HX-Request")
+  == "true"` blocks to single-line calls: `renderStartupPlaceholder`
+  (`internal/appshell/app.go`, pre-mux, no redirect hint),
+  `setupRequired` branch (`internal/appshell/lifecycle.go`, hint
+  `/setup`), `pendingRecovery` branch (`lifecycle.go`, hint
+  `/recovery`), and `startupErr` branch (`lifecycle.go`, hint
+  `/recovery`). The helper is the single source of truth for the
+  contract — a future contributor adding a fifth blocked branch
+  can grep `blockIfFragment` and see every guarded branch in
+  one hit. Regression net: `TestBlockIfFragment` (7-case table-
+  driven test in `internal/appshell/fragment_guard_test.go`)
+  pins the helper's contract (HX-Request → 204, no header → no
+  change, nil request → no change, empty redirectTo → no header,
+  caller pre-set header → helper overwrites). All four existing
+  integration tests for the blocked branches still pass without
+  modification. Closes #215.
+
 ### Fixed
 
 - `internal/confederatehomestatus.Normalize` used to silently rewrite any unknown status value to "N/A" (the default branch fell through to the N/A case). Real bug, surfaced while reviewing issue #23 (schema-level normalization cleanup). Effect: (a) a user filtering browse by a non-canonical value like "Resident" got 0 results because the filter got normalized to "N/A"; (b) any non-canonical stored value (legacy data, imported backups, direct SQL) was silently re-bucketed as "N/A" on the next browse. Mirrored the pattern in `internal/pensionstate/pensionstate.Normalize` which was already correct: unknown values now pass through (trimmed); only the documented legacy "not applicable" variants ("", "none", "na", "n/a", "not recorded") collapse to the canonical N/A bucket. Three new tests in `internal/confederatehomestatus/confederatehomestatus_test.go` pin the contract for canonical, legacy, and unknown values. `go test ./... -short` passes; the existing browse filter test (which inserts a "Resident" row and expects 3 N/A matches out of 4) still passes because the SQL CASE was already correctly preserving stored values \u2014 only the Go function on the filter-input path was wrong. Issue #23 (partial).

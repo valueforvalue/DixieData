@@ -343,8 +343,10 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
 	// gets innerHTML-swapped into a small target region, its body
 	// triggers fire, and each response stacks another placeholder
 	// body — the cascading reload bug (uibug.png / uibug2.png).
-	if r != nil && r.Header.Get("HX-Request") == "true" {
-		w.WriteHeader(http.StatusNoContent)
+	// See blockIfFragment in fragment_guard.go for the contract;
+	// this branch is just the "no redirect hint" case (pre-mux
+	// has no destination to hint at).
+	if blockIfFragment(w, r, "") {
 		return
 	}
 
