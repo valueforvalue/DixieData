@@ -1,0 +1,98 @@
+// Share Queue modal partial — the Share Build surface for the
+// Share Queue subset export flow (issue #182). Mirrors the
+// print-config modal pattern (issue #176) so the same showOverlayModal
+// focus-trap / ESC-close behaviour applies. Distinct visual channel
+// from the printable-PDF picker: this modal is for staging a subset
+// of Person Records, the printable-PDF modal is for picking scope/
+// sort/columns for a printable export.
+//
+// The modal body is a server-rendered shell. The queue list and
+// counts are populated client-side from localStorage (the
+// dixiedata.share-queue key) because the queue is a per-browser
+// working set; no server round-trip is needed to render it. The
+// "Export Selected as .ddshare" submit posts the queue as
+// selected_ids to /export/shared-archive?subset=1 via the
+// data-dixie-submit dispatcher.
+//
+// The "Live preview" pane shows Person Records / Source Records /
+// Images counts computed by POST /share/queue/preview (an HTML
+// fragment endpoint), refreshed on modal open. This matches the
+// printable-PDF preview shape from issue #179.
+//
+// Templ generation step (`make tpl`) emits the .go file alongside
+// this file. The generated file is git-tracked; do not hand-edit.
+package partials
+
+import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+)
+
+// ShareQueueModal renders the Share Build modal. Empty state copy
+// is shown when the queue has zero Person Records; JS toggles
+// between the empty state and the queue list on every add/remove.
+// The "Live preview" counts are populated by the preview endpoint
+// after the modal opens; initial render shows a placeholder.
+templ ShareQueueModal() {
+	<div id="share-queue-modal" role="dialog" aria-modal="true" aria-labelledby="share-queue-modal-heading" data-share-queue-modal class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+		<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
+			<form id="share-queue-form" action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } data-dixie-submit="true" data-share-queue-form class="space-y-6">
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Share Build</p>
+						<h2 id="share-queue-modal-heading" class="mt-1 text-2xl font-bold text-[#22303d]">Export Selected as .ddshare</h2>
+						<p class="mt-1 text-sm text-slate-600">Review the Person Records you've staged, then export a curated Shared Archive.</p>
+					</div>
+					@components.Button("Close", components.ButtonSecondary, "shrink-0", templ.Attributes{
+						"type":          "button",
+						"data-share-queue-close": "",
+					})
+				</div>
+				<section class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4 space-y-3">
+					<div class="flex items-center justify-between gap-3">
+						<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Queue</div>
+						<span data-share-queue-count class="text-xs text-slate-500" aria-live="polite">0 Person Records</span>
+					</div>
+					<div data-share-queue-empty class="rounded-xl border border-dashed border-[rgba(141,116,64,0.45)] bg-white/60 p-4 text-sm text-slate-600">
+						The queue is empty. Use the "Add to Share Queue" button on a Browse row, or open the queue from the persistent pill, to stage Person Records.
+					</div>
+					<ul data-share-queue-list class="hidden flex flex-col gap-2"></ul>
+					<div class="flex items-center justify-end gap-2">
+						@components.Button("Clear Queue", components.ButtonSecondary, "text-xs", templ.Attributes{
+							"type":                  "button",
+							"data-share-queue-clear-button": "",
+							"data-confirm":          "Clear the Share Queue? This does not delete any records.",
+						})
+					</div>
+				</section>
+				<section class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4 space-y-3">
+					<div class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Live preview</div>
+					<div data-share-queue-preview class="grid grid-cols-3 gap-3 text-center text-xs text-slate-600">
+						<div>
+							<div data-share-queue-preview-records class="text-lg font-semibold text-[#22303d]">0</div>
+							<div>Person Records</div>
+						</div>
+						<div>
+							<div data-share-queue-preview-sources class="text-lg font-semibold text-[#22303d]">0</div>
+							<div>Source Records</div>
+						</div>
+						<div>
+							<div data-share-queue-preview-images class="text-lg font-semibold text-[#22303d]">0</div>
+							<div>Images</div>
+						</div>
+					</div>
+					<p class="text-xs text-slate-500">Each Person Record ships with its Source Records, Claims, and Findings. The recipient's Merge Review adds incoming tags additively; local tags are preserved.</p>
+				</section>
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+					@components.Button("Cancel", components.ButtonSecondary, "", templ.Attributes{
+						"type":               "button",
+						"data-share-queue-close": "",
+					})
+					@components.Button("Export Selected as .ddshare", components.ButtonPrimary, "", templ.Attributes{
+						"type": "submit",
+					})
+				</div>
+			</form>
+		</div>
+	</div>
+}

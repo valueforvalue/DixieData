@@ -48,6 +48,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Build modal envelope (UI surfaces in the next commit). Issue
   #182.
 
+- Share Build modal (`partials/share_queue_modal.templ`) and
+  Share Queue persistent pill in the floating dock. The pill
+  shows the current queue depth; the modal lists the queued
+  Person Records, runs a live preview count, and submits the
+  selection to `/export/shared-archive?subset=1`. Queue state
+  lives in `localStorage["dixiedata.share-queue"]`, distinct
+  from the existing `dixiedata.browse.selection` so a print
+  set doesn't accidentally ship as a shared archive. The
+  Browse row `[Add to Share Queue]` button and a dedicated
+  `/share/queue/modal` route land in the next commit. Issue
+  #182.
+
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

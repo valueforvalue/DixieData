@@ -83,6 +83,12 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<span class="font-bold">Export Shared Archive (.ddshare)</span>
 							<span class="text-xs text-slate-500">For sharing into another DixieData</span>
 						}
+						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
+							"data-share-queue-modal-open": "",
+						}) {
+							<span class="font-bold">Build Share Archive (.ddshare)</span>
+							<span class="text-xs text-slate-500">Export a curated subset from your Share Queue</span>
+						}
 					</div>
 				</section>
 				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
@@ -163,6 +169,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"><p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">Import + export status messages appear here.</p></div>
 			</div>
 			@partials.PrintConfigModal(exportRecords)
+			@partials.ShareQueueModal()
 
 						if len(conflicts) > 0 {
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">

@@ -79,6 +79,16 @@ const (
 	OverlayPrintConfigModal     = "overlay.print-config.modal"
 	OverlayGoogleCalendarPrefs  = "overlay.google-calendar-prefs.modal"
 	OverlayImageViewer          = "overlay.image.viewer"
+	// OverlayShareQueue is the Share Build modal opened from the
+	// persistent Share Queue pill on the layout or the Build Share
+	// Archive button on /share. Hosts the selected_ids form that
+	// posts to /export/shared-archive?subset=1. Issue #182.
+	OverlayShareQueue = "overlay.share-queue.modal"
+	// PanelShareQueueStatus is the persistent pill in the floating
+	// dock that shows the current Share Queue depth. Hidden when
+	// the queue is empty; click opens the Share Build modal. Issue
+	// #182.
+	PanelShareQueueStatus = "panel.share-queue.status"
 	// OverlayJobsProgress is the fixed-position popup region that
 	// shows a progress card for the most recent active background
 	// job (polled via /jobs/active every 3s). Lives once in
@@ -152,11 +162,13 @@ var Registry = []Surface{
 	{ID: OverlayPrintConfigModal, Kind: "overlay", Description: "Printable export settings modal overlay."},
 	{ID: OverlayGoogleCalendarPrefs, Kind: "overlay", Description: "Google managed calendar event preferences modal overlay."},
 	{ID: OverlayImageViewer, Kind: "overlay", Description: "Full-screen image preview overlay."},
+	{ID: OverlayShareQueue, Kind: "overlay", Description: "Share Build modal for the Share Queue subset export (issue #182)."},
 	{ID: OverlayJobsProgress, Kind: "overlay", Description: "Global fixed-position popup region that renders the most recent active background job's progress card (polled via /jobs/active every 3s)."},
 	{ID: PanelResearchCollectionsHub, Kind: "panel", Description: "Named research collections list and create-collection section on the Research Collections Hub page."},
 	{ID: PanelResearchCollection, Kind: "panel", Description: "Items list and add-row section on a Research Collection detail page."},
 	{ID: PanelResearchLog, Kind: "panel", Description: "Research log entries and task creation form on the per-soldier Research Log page."},
 	{ID: PanelResearchPack, Kind: "panel", Description: "Pack contents on the county/state scoped Research Pack page."},
+	{ID: PanelShareQueueStatus, Kind: "panel", Description: "Persistent Share Queue depth pill in the floating dock; hidden when the queue is empty. Click opens the Share Build modal (issue #182)."},
 	{ID: PanelSoldierTimeline, Kind: "panel", Description: "Evidence-backed chronology rendered inside the soldier detail page (Timeline HTMX swap)."},
 	{ID: PanelSoldierCamaraderie, Kind: "panel", Description: "Unit camaraderie graph rendered inside the soldier detail page (Camaraderie HTMX swap)."},
 	{ID: PanelSoldierConflictLedger, Kind: "panel", Description: "Local vs Incoming merge ledger rendered inside the soldier detail page (Conflict Ledger HTMX swap)."},

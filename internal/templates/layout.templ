@@ -100,6 +100,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 			<div class="floating-dock fixed inset-x-0 bottom-0 z-40">
 				<div class="floating-dock-inner flex items-center justify-end gap-3 pl-4 pr-0 py-3 sm:pl-6 sm:pr-0">
 					<p data-floating-scratchpad-status class="mr-auto text-xs text-slate-300" aria-live="polite"></p>
+					<button type="button" data-share-queue-status data-share-queue-modal-open class="hidden mr-2 rounded-full border border-[rgba(207,183,122,0.6)] bg-[rgba(36,48,61,0.85)] px-3 py-1 text-xs font-semibold text-[#cfb77a] hover:bg-[rgba(36,48,61,1)]" aria-live="polite">Share queue: 0</button>
 					@components.Button("Scratch Pad", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-scratchpad-open": ""})
 					@components.Button("Feedback", components.ButtonSecondary, "floating-dock-button", templ.Attributes{"data-feedback-open": ""})
 					@components.Button("Menu", components.ButtonPrimary, "floating-dock-button", templ.Attributes{"data-floating-nav-toggle": "", "onclick": "document.querySelector('[data-floating-nav-panel]')?.classList.toggle('hidden')"})

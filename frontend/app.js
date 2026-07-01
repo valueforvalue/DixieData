@@ -8,6 +8,12 @@
   const browseStateStorageKey = "dixiedata.browse.state";
   const browseColumnsStorageKey = "dixiedata.browse.columns";
   const browseSelectionStorageKey = "dixiedata.browse.selection";
+  // Share Queue (issue #182). Distinct from browse.selection so
+  // a print-set built on Saturday doesn't accidentally ship as
+  // a shared archive on Monday. The localStorage key is the
+  // single source of truth for the modal; the server holds no
+  // queue state.
+  const shareQueueStorageKey = "dixiedata.share-queue";
   const calendarAnniversaryDensityStorageKey = "dixiedata.calendar.anniversaryDensity";
   const layoutModeStorageKey = "dixiedata.layout.mode";
   const pdfPreferencesStoragePrefix = "dixiedata.pdfPrefs.";
@@ -310,6 +316,156 @@
   function saveBrowseSelection(ids) {
     const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0)));
     saveJSONStorage(browseSelectionStorageKey, normalized);
+  }
+
+  // Share Queue helpers (issue #182). Mirrors the
+  // load/save Browse selection pair, but on its own storage
+  // key so the two domains stay disjoint.
+  function loadShareQueue() {
+    const value = loadJSONStorage(shareQueueStorageKey, []);
+    return Array.isArray(value) ? value.filter((entry) => Number.isInteger(entry) && entry > 0) : [];
+  }
+  function saveShareQueue(ids) {
+    const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0)));
+    saveJSONStorage(shareQueueStorageKey, normalized);
+  }
+  function addToShareQueue(id) {
+    if (!Number.isInteger(id) || id <= 0) return loadShareQueue();
+    const current = loadShareQueue();
+    if (!current.includes(id)) {
+      current.push(id);
+      saveShareQueue(current);
+      updateShareQueueStatus(document);
+    }
+    return current;
+  }
+  function removeFromShareQueue(id) {
+    const current = loadShareQueue();
+    const next = current.filter((entry) => entry !== id);
+    saveShareQueue(next);
+    updateShareQueueStatus(document);
+    return next;
+  }
+  function clearShareQueue() {
+    saveShareQueue([]);
+    updateShareQueueStatus(document);
+  }
+  // The persistent pill in the floating dock. Hidden when the
+  // queue is empty; shows "Share queue: N" otherwise. Mirrors
+  // updateBrowseSelectionStatus (app.js:2718).
+  function updateShareQueueStatus(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const queue = loadShareQueue();
+    scope.querySelectorAll("[data-share-queue-status]").forEach((node) => {
+      if (queue.length === 0) {
+        node.classList.add("hidden");
+        node.textContent = "Share queue: 0";
+      } else {
+        node.classList.remove("hidden");
+        const noun = queue.length === 1 ? "Person Record" : "Person Records";
+        node.textContent = `Share queue: ${queue.length} ${noun} — Review & export`;
+      }
+    });
+  }
+  // Fetch the modal fragment and open it via showOverlayModal.
+  // Mirrors openPrintConfigModal (app.js:3087). The modal shell
+  // is server-rendered; the queue list and counts are populated
+  // client-side once the modal is mounted.
+  async function openShareQueueModal() {
+    const root = document;
+    let modal = root.querySelector("[data-share-queue-modal]");
+    if (!(modal instanceof HTMLElement)) {
+      try {
+        const response = await fetch("/share/queue/modal", { headers: { "Accept": "text/html" } });
+        if (!response.ok) {
+          return;
+        }
+        const html = await response.text();
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = html;
+        modal = wrapper.firstElementChild;
+        if (modal instanceof HTMLElement) {
+          document.body.appendChild(modal);
+        }
+      } catch (e) {
+        return;
+      }
+    }
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    // Populate the queue list inside the modal.
+    const queue = loadShareQueue();
+    const list = modal.querySelector("[data-share-queue-list]");
+    const empty = modal.querySelector("[data-share-queue-empty]");
+    if (list instanceof HTMLElement && empty instanceof HTMLElement) {
+      list.innerHTML = "";
+      if (queue.length === 0) {
+        list.classList.add("hidden");
+        empty.classList.remove("hidden");
+      } else {
+        list.classList.remove("hidden");
+        empty.classList.add("hidden");
+        queue.forEach((id) => {
+          const li = document.createElement("li");
+          li.className = "flex items-center justify-between gap-2 rounded-xl border border-[rgba(141,116,64,0.35)] bg-white/80 px-3 py-2 text-sm text-slate-700";
+          li.dataset.shareQueueRowId = String(id);
+          const label = document.createElement("span");
+          label.textContent = `Person Record #${id}`;
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100";
+          remove.dataset.shareQueueRemove = String(id);
+          remove.textContent = "Remove";
+          li.appendChild(label);
+          li.appendChild(remove);
+          list.appendChild(li);
+        });
+      }
+    }
+    // Populate the count badge.
+    const countNode = modal.querySelector("[data-share-queue-count]");
+    if (countNode instanceof HTMLElement) {
+      const noun = queue.length === 1 ? "Person Record" : "Person Records";
+      countNode.textContent = `${queue.length} ${noun}`;
+    }
+    // Refresh live preview from the server.
+    try {
+      const form = new FormData();
+      queue.forEach((id) => form.append("selected_ids", String(id)));
+      const response = await fetch("/share/queue/preview", { method: "POST", body: form });
+      if (response.ok) {
+        const html = await response.text();
+        const target = modal.querySelector("[data-share-queue-preview]");
+        if (target instanceof HTMLElement) {
+          target.outerHTML = html;
+        }
+      }
+    } catch (e) {
+      // preview is best-effort; the modal still works without it.
+    }
+    // Populate the selected_ids hidden inputs the form will post.
+    const formEl = modal.querySelector("[data-share-queue-form]");
+    if (formEl instanceof HTMLFormElement) {
+      formEl.querySelectorAll("[data-share-queue-hidden]").forEach((n) => n.remove());
+      queue.forEach((id) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "selected_ids";
+        input.value = String(id);
+        input.dataset.shareQueueHidden = "true";
+        formEl.appendChild(input);
+      });
+    }
+    if (typeof showOverlayModal === "function") {
+      showOverlayModal(modal);
+    }
+  }
+  function closeShareQueueModal() {
+    const modal = document.querySelector("[data-share-queue-modal]");
+    if (modal instanceof HTMLElement && typeof hideOverlayModal === "function") {
+      hideOverlayModal(modal);
+    }
   }
 
   function loadPDFPreferences(scope) {
@@ -3673,6 +3829,7 @@
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
     initializeBrowseView();
+    updateShareQueueStatus(document);
     // Re-init swapped subtrees after htmx polling swaps.
     if (typeof window !== "undefined" && window.htmx && typeof window.htmx.on === "function") {
       window.htmx.on("htmx:load", (evt) => {
@@ -3959,6 +4116,39 @@
     // Option C: intercept clicks on data-dixie-submit + data-merge-review-action.
 // hx-post / hx-delete / data-hx-* selectors dropped after the templ
 // retag (every template uses data-dixie-submit now).
+    // Share Queue (issue #182). Open/close/remove/clear delegated
+    // handlers. The pill and the Build Share Archive button both
+    // open the modal; the modal's Remove buttons remove a single
+    // id; the Clear button empties the queue.
+    const shareQueueOpen = event.target.closest("[data-share-queue-modal-open]");
+    if (shareQueueOpen instanceof HTMLElement) {
+      event.preventDefault();
+      openShareQueueModal();
+      return;
+    }
+    const shareQueueClose = event.target.closest("[data-share-queue-close]");
+    if (shareQueueClose instanceof HTMLElement) {
+      event.preventDefault();
+      closeShareQueueModal();
+      return;
+    }
+    const shareQueueRemove = event.target.closest("[data-share-queue-remove]");
+    if (shareQueueRemove instanceof HTMLElement) {
+      event.preventDefault();
+      const id = Number.parseInt(shareQueueRemove.getAttribute("data-share-queue-remove") || "", 10);
+      if (Number.isInteger(id) && id > 0) {
+        removeFromShareQueue(id);
+        openShareQueueModal();
+      }
+      return;
+    }
+    const shareQueueClear = event.target.closest("[data-share-queue-clear-button]");
+    if (shareQueueClear instanceof HTMLElement) {
+      event.preventDefault();
+      clearShareQueue();
+      openShareQueueModal();
+      return;
+    }
     const submitTrigger = event.target.closest("[data-dixie-submit], [data-merge-review-action]");
     if (submitTrigger instanceof HTMLElement && !(submitTrigger instanceof HTMLFormElement)) {
       event.preventDefault();
@@ -4178,6 +4368,12 @@
     const modal = printConfigModal();
     if (modal && event.target === modal) {
       closePrintConfigModal();
+      return;
+    }
+    // Share Queue modal backdrop click closes the modal (issue #182).
+    const shareModal = event.target instanceof HTMLElement && event.target.closest ? event.target.closest("[data-share-queue-modal]") : null;
+    if (shareModal && event.target === shareModal) {
+      closeShareQueueModal();
       return;
     }
     const feedback = feedbackModal();
