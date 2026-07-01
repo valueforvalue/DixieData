@@ -569,6 +569,8 @@ DixieData emits a single structured log file at `.dixiedata-logs/app.log.jsonl` 
 
 When debug mode is on, the slog level drops to Debug, output also mirrors to stderr, and the 🐞 button opens the **Debug Console** panel showing the most recent 500 in-memory log entries with a level filter, copy, open-folder (reveals `~/.dixiedata-logs/` in the OS file manager), and clear controls. The frontend's own console output, `window.onerror`, and `unhandledrejection` events are batched and posted back to Go every 2 s (or every 50 entries / 32 KB) under `source=frontend`.
 
+Debug builds produced by `make debug` (or any binary built with `-tags debug`) additionally emit `trace.Log()` entries — entry/exit markers, branch decisions, and dispatch routing from `internal/debug/trace`. These appear in the Debug Console at the **DEBUG** level filter and in the JSONL log file. They cost zero bytes and zero nanoseconds in a release build (the compiler strips the no-op stub). See ADR 0006 for the slog-vs-trace decision rule.
+
 **Reading the log**
 
 ```bash

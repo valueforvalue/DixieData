@@ -165,6 +165,8 @@ The runtime log console is a different feature, do not touch:
 | `internal/debug/handler.go` | Log handler |
 | `internal/debug/requestid.go` | Request ID propagation |
 | `internal/debug/uictx.go` | UI context |
+| `internal/debug/trace/trace.go` | Build-tag-gated zero-cost trace instrumentation (`//go:build debug`); see ADR 0006 |
+| `internal/debug/trace/trace_nodebug.go` | Release-only no-op stub (`//go:build !debug`) |
 | `internal/appshell/debug_handlers.go` | `/debug/console` route handlers |
 | `internal/presentation/debug_console.templ` | Console panel UI |
 | `internal/templates/entry_form.templ:802-803` | Settings → Debug panel |

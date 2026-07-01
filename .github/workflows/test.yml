@@ -61,6 +61,17 @@ jobs:
           go test ./... -short -count=1
         timeout-minutes: 15
 
+      # Mirror the trace harness across both build-tag modes so the
+      # //go:build debug and //go:build !debug files stay in sync.
+      # Without this the no-op stub in trace_nodebug.go could rot
+      # silently and release builds could carry dead code from any
+      # future file added with //go:build debug.
+      - name: Go test (debug tag — trace harness)
+        shell: pwsh
+        run: |
+          go test -tags debug ./internal/debug/... -short -count=1
+        timeout-minutes: 5
+
       - name: Bump-verify (no version drift)
         if: hashFiles('internal/versioninfo/versioninfo.go') != ''
         shell: pwsh
