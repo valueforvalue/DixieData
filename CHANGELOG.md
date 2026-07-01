@@ -2723,5 +2723,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - Fixed the static web archive detail view so exported `index.html` and `viewer.html` can open a selected person without leaving the expanded data area blank.
 - Carried the release line forward to `v1.1.17` so the runtime metadata, Wails title, exported artifacts, and docs stay aligned.
+- Migrated `handleCalendarPDF`'s nine `slog.Debug` entry/exit/branch
+  calls to `trace.Log` per ADR 0006 (issue #221). Each call loses
+  zero value at INFO+ (structural only) and gains structured
+  attributes that render in the Debug Console and JSONL log under
+  `-tags debug` builds. Path PII drops from `dialog_cancelled`
+  and `dialog_returned`; form-payload dump drops from `month`
+  (operator-noise). `fmt` import retained for `dupKey` sprintf;
+  `debug` import retained for other handlers in the file.
+  Regression net: `go build ./...`, `go build -tags debug ./...`,
+  `go test ./... -short -count=1` (22 packages green),
+  `go test -tags debug ./internal/debug/...` (2 packages green).
 
 ## v1.1.16 - Gold Master
