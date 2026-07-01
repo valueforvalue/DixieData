@@ -108,6 +108,10 @@ _Avoid_: Shared record, new record
 A Person Record subtype for the servicemember being researched.
 _Avoid_: Record, main record
 
+**Tag**:
+A user-defined free-text label applied to a Person Record for ad-hoc grouping. Common patterns include a FindAGrave "virtual cemetery" or a research-project scope. A Tag has zero or more Person Records; a Person Record has zero or more Tags. Tag names are case-insensitive and unique across the Local Archive; display preserves the original casing.
+_Avoid_: label, category, virtual cemetery (when used generically)
+
 **Spouse Record**:
 A Person Record for the spouse linked to a Soldier, regardless of whether her subtype is Wife or Widow.
 _Avoid_: Wife record, widow record, dependent record
@@ -143,6 +147,8 @@ _Avoid_: Spouse
 - A **Spouse Record** is a kind of **Person Record**
 - A **Spouse Record** may be linked to exactly one **Soldier**
 - A **Wife** and a **Widow** are subtypes of **Spouse Record**
+- A **Person Record** may have zero or more **Tags**
+- A **Tag** may be applied to zero or more **Person Records**
 
 ## Example dialogue
 
@@ -166,6 +172,7 @@ _Avoid_: Spouse
 - "review" was used for queueing, duplicate detection, and merge conflict handling — resolved: use **Review Queue**, **Duplicate Audit**, and **Merge Review** for those separate workflows.
 - "soldier" was used both for one subtype and for the whole main table — resolved: use **Soldier** only for that subtype and **Person Record** for the umbrella.
 - "spouse", "wife", and "widow" were used interchangeably — resolved: use **Spouse Record** as the umbrella term, with **Wife** and **Widow** as specific subtypes when the distinction matters.
+- "virtual cemetery" was used generically for any Person Record grouping — resolved: use **Tag** as the generic term; reserve "virtual cemetery" for a specific FindAGrave pattern that the user explicitly names.
 
 ## Laws (non-negotiable)
 

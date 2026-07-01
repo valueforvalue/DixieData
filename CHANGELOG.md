@@ -19,6 +19,12 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   case-insensitive uniqueness and travel with `.ddshare`
   archives on opt-in. Issue #183 (schema migration v58;
   service + UI land in the following commits).
+- **Tag** added to the glossary as a user-defined free-text
+  label grouping Person Records. Adds Relationships ("A
+  Person Record may have zero or more Tags" / "A Tag may be
+  applied to zero or more Person Records") and a flagged
+  ambiguity that retires "virtual cemetery" as a generic term.
+  Issue #183.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler
