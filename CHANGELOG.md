@@ -179,6 +179,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- `SoldierService.ByIDs` (issue #182): returns the soldiers
+  whose IDs are in the supplied slice in caller order, drops
+  unknowns silently, and returns a non-nil empty slice for
+  empty / all-unknown input. Used by the Share Queue subset
+  export to materialise a single staged shipment. Mirrors
+  `RecentByIDs` without the implicit limit.
+  `TestSoldierService_ByIDs` covers order preservation,
+  empty input, and all-unknown input.
 - Pension State, Pension ID, and Application ID fields on the
   new-soldier form are now visible for the `wife` entry type
   as well as `soldier` and `widow`. Previously, the JS handler

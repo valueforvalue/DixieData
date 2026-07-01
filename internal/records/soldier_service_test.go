@@ -1032,6 +1032,63 @@ func TestSoldierService_RecentByIDsPreservesOrder(t *testing.T) {
 	}
 }
 
+// TestSoldierService_ByIDs (issue #182) mirrors
+// TestSoldierService_RecentByIDsPreservesOrder minus the limit:
+// ByIDs returns every requested row in caller order, drops
+// unknowns silently, and never returns nil so callers can .Len()
+// without a guard.
+func TestSoldierService_ByIDs(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	first, err := svc.Create(models.Soldier{DisplayID: "SQB-0001", FirstName: "Alpha", LastName: "ByIDs"})
+	if err != nil {
+		t.Fatalf("Create first: %v", err)
+	}
+	second, err := svc.Create(models.Soldier{DisplayID: "SQB-0002", FirstName: "Beta", LastName: "ByIDs"})
+	if err != nil {
+		t.Fatalf("Create second: %v", err)
+	}
+	third, err := svc.Create(models.Soldier{DisplayID: "SQB-0003", FirstName: "Gamma", LastName: "ByIDs"})
+	if err != nil {
+		t.Fatalf("Create third: %v", err)
+	}
+
+	// Caller order: third, first, second, plus a phantom id.
+	results, err := svc.ByIDs([]int64{third.ID, first.ID, second.ID, 99999})
+	if err != nil {
+		t.Fatalf("ByIDs: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("ByIDs returned %d, want 3 (phantom 99999 dropped)", len(results))
+	}
+	if results[0].ID != third.ID || results[1].ID != first.ID || results[2].ID != second.ID {
+		t.Fatalf("ByIDs did not preserve order: got %v, want [3rd, 1st, 2nd]",
+			[]int64{results[0].ID, results[1].ID, results[2].ID})
+	}
+
+	// Empty input returns a non-nil empty slice.
+	empty, err := svc.ByIDs(nil)
+	if err != nil {
+		t.Fatalf("ByIDs(nil): %v", err)
+	}
+	if empty == nil {
+		t.Errorf("ByIDs(nil) should return non-nil empty slice")
+	}
+	if len(empty) != 0 {
+		t.Errorf("ByIDs(nil) returned %d rows, want 0", len(empty))
+	}
+
+	// All-unknown input returns empty without error.
+	unknown, err := svc.ByIDs([]int64{88888, 77777})
+	if err != nil {
+		t.Fatalf("ByIDs(unknown): %v", err)
+	}
+	if len(unknown) != 0 {
+		t.Errorf("ByIDs(all-unknown) returned %d rows, want 0", len(unknown))
+	}
+}
+
 func TestSoldierService_UnitCamaraderieGraph(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
