@@ -179,6 +179,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Schema v59 — saved Share Queue presets (issue #192):
+  new `share_queue_presets` table carries the (soldier_id)
+  JSON payload that names a reusable Share Queue. Local-only
+  storage (no sync_id, no merge protocol). Pattern mirrors
+  the printable-export templates table from v58 so power
+  users get a consistent save/reuse shape across the two
+  subset surfaces. Bumps CurrentSchemaVersion 58 → 59;
+  see docs/migrations/v59.md.
 - Share Queue [+] Queue button coverage (issue #191):
   extends the Browse row entry point to three more surfaces:
   the Person Record detail page header (next to Edit /
