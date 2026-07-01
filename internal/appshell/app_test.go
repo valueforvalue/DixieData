@@ -100,6 +100,96 @@ func TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux(t *testing.T) {
 	}
 }
 
+// TestAppServeHTTPMuxNotReadyFragment204PlaceholderFullContract is the
+// end-to-end boundary test for the pre-mux window. It exercises
+// App.ServeHTTP directly with a.mux == nil (the state during the
+// Wails boot window between OnStartup being called and
+// setupRoutes() returning) and pins the full contract:
+//
+//	(a) An htmx fragment request (HX-Request: true) gets 204 No
+//	    Content with an empty body. Without this guard, the full
+//	    placeholder HTML doc gets innerHTML-swapped into a tiny
+//	    target region, the placeholder body fires its own htmx
+//	    triggers, and the cycle stacks another .app-shell inside
+//	    the previous one — the cascading reload bug captured in
+//	    uibug.png / uibug2.png.
+//	(b) A full-doc request (no HX-Request) gets 202 Accepted
+//	    with the styled placeholder HTML, the Refresh response
+//	    header, the meta refresh tag, the inline
+//	    window.location.replace script, and NO htmx trigger
+//	    attrs on the body.
+//	(c) The placeholder body MUST NOT contain hx-get=, hx-trigger=,
+//	    hx-target=, or hx-swap=. A future contributor who re-adds
+//	    any of these reintroduces the cascade.
+//
+// TestRenderStartupPlaceholderReturns204ForHtmxFragmentRequests
+// covers case (a) by calling renderStartupPlaceholder directly.
+// This test covers case (a) AND (b) AND (c) through the real
+// App.ServeHTTP entry point, which exercises the recoverMiddleware
+// + the request-routing logic that the direct-call test bypasses.
+//
+// Acceptance:
+//   - Remove the HX-Request → 204 guard from renderStartupPlaceholder →
+//     case (a) fails.
+//   - Add any htmx trigger attr to the placeholder body → case (c) fails.
+//   - Remove the Refresh response header or the meta refresh tag →
+//     case (b) fails.
+func TestAppServeHTTPMuxNotReadyFragment204PlaceholderFullContract(t *testing.T) {
+	app := NewApp()
+
+	// Case (a): htmx fragment request during pre-mux window.
+	fragmentReq := httptest.NewRequest(http.MethodGet, "/layout/review-count", nil)
+	fragmentReq.Header.Set("HX-Request", "true")
+	fragmentRec := httptest.NewRecorder()
+
+	app.ServeHTTP(fragmentRec, fragmentReq)
+
+	if fragmentRec.Code != http.StatusNoContent {
+		t.Fatalf("fragment status=%d want %d (htmx fragment must get 204, not full HTML cascade); uibug.png / uibug2.png regression", fragmentRec.Code, http.StatusNoContent)
+	}
+	if fragmentRec.Body.Len() != 0 {
+		t.Fatalf("fragment body must be empty for 204; got %d bytes: %q", fragmentRec.Body.Len(), fragmentRec.Body.String())
+	}
+	if got := fragmentRec.Header().Get("Content-Type"); strings.HasPrefix(got, "text/html") {
+		t.Fatalf("fragment Content-Type=%q; 204 must not advertise HTML", got)
+	}
+
+	// Case (b): full-doc request gets the styled placeholder.
+	docReq := httptest.NewRequest(http.MethodGet, "/calendar?scope=recent", nil)
+	docRec := httptest.NewRecorder()
+
+	app.ServeHTTP(docRec, docReq)
+
+	if docRec.Code != http.StatusAccepted {
+		t.Fatalf("full-doc status=%d want %d", docRec.Code, http.StatusAccepted)
+	}
+	body := docRec.Body.String()
+	if !strings.Contains(body, "Loading DixieData...") {
+		t.Fatalf("full-doc body missing 'Loading DixieData...' placeholder; got %q", body)
+	}
+	if !strings.Contains(body, `<meta http-equiv="refresh" content="1;url=/calendar?_dd_boot=1&amp;scope=recent">`) {
+		t.Fatalf("full-doc body missing meta refresh tag; got %q", body)
+	}
+	if !strings.Contains(body, `window.location.replace("/calendar?_dd_boot=1\u0026scope=recent")`) {
+		t.Fatalf("full-doc body missing inline auto-refresh script; got %q", body)
+	}
+	if got := docRec.Header().Get("Refresh"); got != "1; url=/calendar?_dd_boot=1&scope=recent" {
+		t.Fatalf("full-doc Refresh header=%q", got)
+	}
+	if got := docRec.Header().Get("Cache-Control"); got != "no-store, no-cache, must-revalidate" {
+		t.Fatalf("full-doc Cache-Control header=%q", got)
+	}
+
+	// Case (c): the placeholder body MUST NOT contain htmx trigger
+	// attrs. A future contributor who re-adds hx-get=, hx-trigger=,
+	// hx-target=, or hx-swap= to the body reintroduces the cascade.
+	for _, attr := range []string{"hx-get=", "hx-trigger=", "hx-target=", "hx-swap="} {
+		if strings.Contains(body, attr) {
+			t.Fatalf("placeholder body contains htmx trigger %q; cascade bug regression (uibug.png / uibug2.png); see docs/COMMON_BUGS.md §1.13", attr)
+		}
+	}
+}
+
 func TestRenderStartupPlaceholderReturns204ForHtmxFragmentRequests(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/jobs/active", nil)
 	req.Header.Set("HX-Request", "true")
