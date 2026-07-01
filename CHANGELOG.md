@@ -171,6 +171,54 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   500 ms so the extra list query never causes perceived
   slowdown. Issue #176.
 
+### Fixed
+
+- Share Queue modal now lists each queued Person Record by
+  Display ID (with the DB id as a fallback) instead of
+  `Person Record #<id>`. The queue storage layer carries
+  `{id, displayId}` entries so the modal has the
+  user-facing identifier available without a per-row DB
+  round-trip. The Browse `[+ Queue]` button carries the
+  row's Display ID through a new `data-share-queue-add-label`
+  attribute (issue #182 review C-1).
+
+- Share Queue modal's "Clear Queue" button now prompts for
+  confirmation via `window.confirm()`. Previously the
+  button wiped the entire staged subset on a single click
+  with no warning; the `data-confirm` attribute is read
+  by the Option C form-submit dispatcher and did not fire
+  for this `type="button"` click handler. Issue #182 review
+  C-2.
+
+- Share Queue modal opener is now race-safe. A rapid
+  double-click on the persistent pill or the Build Share
+  Archive button previously fired two fetches and appended
+  two modals to `document.body`; the first became an
+  orphan. The opener now coalesces concurrent calls into a
+  single in-flight fetch promise and shows an error toast
+  on fetch failure (which was previously silent). Issue
+  #182 review S-1.
+
+- Floating-dock Share Queue pill no longer carries the
+  redundant `mr-2` margin that doubled the spacing inside
+  the parent's `gap-3` flex row. Issue #182 review S-3.
+
+- Browse `[+ Queue]` button meets the 44x44 mobile a11y tap
+  target via `min-h-[2.25rem] min-w-[2.25rem]` and carries a
+  `title="Add to Share Queue"` for desktop hover. Issue
+  #182 review S-5/S-6.
+
+- Share Queue subset exports now report correct
+  Person Records / Source Records / Images counts on the
+  `/jobs/{id}` summary card. `BackupService.ExportSharedSubset`
+  previously returned the whole-archive counts (from
+  `loadBackupData`) instead of the actual subset, so a
+  3-record subset from a 500-record archive showed
+  "Soldiers: 500". The manifest counts are now overwritten
+  from the enriched soldiers slice after `loadBackupData`.
+  Fix landed in commit `ec38435`; recorded here for
+  changelog completeness (issue #182).
+
 ### Changed
 
 - Success toast now uses a distinct green border

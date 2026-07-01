@@ -320,20 +320,40 @@
 
   // Share Queue helpers (issue #182). Mirrors the
   // load/save Browse selection pair, but on its own storage
-  // key so the two domains stay disjoint.
+  // key so the two domains stay disjoint. Entries are objects
+  // {id, displayId} so the modal can render Display IDs without
+  // an extra lookup; older number[] entries (if a user upgrades
+  // from a pre-fix build) are normalized on read.
   function loadShareQueue() {
     const value = loadJSONStorage(shareQueueStorageKey, []);
-    return Array.isArray(value) ? value.filter((entry) => Number.isInteger(entry) && entry > 0) : [];
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const entry of value) {
+      if (!entry || typeof entry !== "object") continue;
+      const id = Number(entry.id);
+      if (!Number.isInteger(id) || id <= 0) continue;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push({
+        id,
+        displayId: typeof entry.displayId === "string" && entry.displayId !== "" ? entry.displayId : `#${id}`,
+      });
+    }
+    return out;
   }
-  function saveShareQueue(ids) {
-    const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0)));
+  function saveShareQueue(entries) {
+    const normalized = (Array.isArray(entries) ? entries : []).filter((entry) => entry && Number.isInteger(entry.id) && entry.id > 0);
     saveJSONStorage(shareQueueStorageKey, normalized);
   }
-  function addToShareQueue(id) {
+  function addToShareQueue(id, displayId) {
     if (!Number.isInteger(id) || id <= 0) return loadShareQueue();
     const current = loadShareQueue();
-    if (!current.includes(id)) {
-      current.push(id);
+    if (!current.some((entry) => entry.id === id)) {
+      current.push({
+        id,
+        displayId: typeof displayId === "string" && displayId !== "" ? displayId : `#${id}`,
+      });
       saveShareQueue(current);
       updateShareQueueStatus(document);
     }
@@ -341,7 +361,7 @@
   }
   function removeFromShareQueue(id) {
     const current = loadShareQueue();
-    const next = current.filter((entry) => entry !== id);
+    const next = current.filter((entry) => entry.id !== id);
     saveShareQueue(next);
     updateShareQueueStatus(document);
     return next;
@@ -370,28 +390,44 @@
   // Fetch the modal fragment and open it via showOverlayModal.
   // Mirrors openPrintConfigModal (app.js:3087). The modal shell
   // is server-rendered; the queue list and counts are populated
-  // client-side once the modal is mounted.
+  // client-side once the modal is mounted. The in-flight promise
+  // cache coalesces rapid double-clicks on the pill or the
+  // Build Share Archive button (without it, two clicks fire two
+  // fetches and append two modals to document.body; the first
+  // becomes an orphan).
+  let shareQueueModalFetchPromise = null;
   async function openShareQueueModal() {
     const root = document;
     let modal = root.querySelector("[data-share-queue-modal]");
     if (!(modal instanceof HTMLElement)) {
-      try {
-        const response = await fetch("/share/queue/modal", { headers: { "Accept": "text/html" } });
-        if (!response.ok) {
-          return;
-        }
-        const html = await response.text();
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = html;
-        modal = wrapper.firstElementChild;
-        if (modal instanceof HTMLElement) {
-          document.body.appendChild(modal);
-        }
-      } catch (e) {
-        return;
+      if (!shareQueueModalFetchPromise) {
+        shareQueueModalFetchPromise = (async () => {
+          try {
+            const response = await fetch("/share/queue/modal", { headers: { "Accept": "text/html" } });
+            if (!response.ok) {
+              return null;
+            }
+            const html = await response.text();
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = html;
+            const m = wrapper.firstElementChild;
+            if (m instanceof HTMLElement) {
+              document.body.appendChild(m);
+            }
+            return m;
+          } catch (e) {
+            return null;
+          } finally {
+            shareQueueModalFetchPromise = null;
+          }
+        })();
       }
+      modal = await shareQueueModalFetchPromise;
     }
     if (!(modal instanceof HTMLElement)) {
+      if (typeof showToast === "function") {
+        showToast("Could not open the Share Queue modal.", "error");
+      }
       return;
     }
     // Populate the queue list inside the modal.
@@ -406,16 +442,19 @@
       } else {
         list.classList.remove("hidden");
         empty.classList.add("hidden");
-        queue.forEach((id) => {
+        queue.forEach((entry) => {
           const li = document.createElement("li");
           li.className = "flex items-center justify-between gap-2 rounded-xl border border-[rgba(141,116,64,0.35)] bg-white/80 px-3 py-2 text-sm text-slate-700";
-          li.dataset.shareQueueRowId = String(id);
+          li.dataset.shareQueueRowId = String(entry.id);
           const label = document.createElement("span");
-          label.textContent = `Person Record #${id}`;
+          // Display ID is the user-facing identifier; falls back
+          // to `#<id>` only if the Browse row didn't carry one
+          // (e.g. a Soldier detail page add button lands in v2).
+          label.textContent = entry.displayId;
           const remove = document.createElement("button");
           remove.type = "button";
           remove.className = "rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100";
-          remove.dataset.shareQueueRemove = String(id);
+          remove.dataset.shareQueueRemove = String(entry.id);
           remove.textContent = "Remove";
           li.appendChild(label);
           li.appendChild(remove);
@@ -432,7 +471,7 @@
     // Refresh live preview from the server.
     try {
       const form = new FormData();
-      queue.forEach((id) => form.append("selected_ids", String(id)));
+      queue.forEach((entry) => form.append("selected_ids", String(entry.id)));
       const response = await fetch("/share/queue/preview", { method: "POST", body: form });
       if (response.ok) {
         const html = await response.text();
@@ -448,11 +487,11 @@
     const formEl = modal.querySelector("[data-share-queue-form]");
     if (formEl instanceof HTMLFormElement) {
       formEl.querySelectorAll("[data-share-queue-hidden]").forEach((n) => n.remove());
-      queue.forEach((id) => {
+      queue.forEach((entry) => {
         const input = document.createElement("input");
         input.type = "hidden";
         input.name = "selected_ids";
-        input.value = String(id);
+        input.value = String(entry.id);
         input.dataset.shareQueueHidden = "true";
         formEl.appendChild(input);
       });
@@ -4145,6 +4184,15 @@
     const shareQueueClear = event.target.closest("[data-share-queue-clear-button]");
     if (shareQueueClear instanceof HTMLElement) {
       event.preventDefault();
+      // The data-confirm attribute is read by the Option C form
+      // submit dispatcher, not by this type="button" click
+      // handler, so we must confirm explicitly here. Without
+      // this guard a single misclick wipes the entire staged
+      // subset (issue #182 review C-2).
+      const message = shareQueueClear.getAttribute("data-confirm") || "Clear the Share Queue?";
+      if (!window.confirm(message)) {
+        return;
+      }
       clearShareQueue();
       openShareQueueModal();
       return;
@@ -4322,9 +4370,16 @@
       event.stopPropagation();
       const id = Number.parseInt(addToQueue.getAttribute("data-share-queue-add") || "", 10);
       if (Number.isInteger(id) && id > 0) {
-        addToShareQueue(id);
-        const label = addToQueue.getAttribute("aria-label") || "Person Record";
-        showToast(`${label.replace(/^Add /, "").replace(/ to Share Queue$/, "")} added to Share Queue.`, "success");
+        // Display ID is read from data-share-queue-add-label (a
+        // data attribute the Browse row carries). Fallback to
+        // the aria-label if a future surface adds the button
+        // without a label attribute.
+        const displayId = addToQueue.getAttribute("data-share-queue-add-label")
+          || addToQueue.getAttribute("aria-label")
+          || "";
+        addToShareQueue(id, displayId);
+        const friendlyName = (displayId || addToQueue.getAttribute("aria-label") || "Person Record").replace(/^Add /, "").replace(/ to Share Queue$/, "");
+        showToast(`${friendlyName} added to Share Queue.`, "success");
       }
       return;
     }
