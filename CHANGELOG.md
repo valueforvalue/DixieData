@@ -594,6 +594,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   inherits its 11px label size; the tap region is the invisible
   hit area, not the visible glyph, so the visual density is
   unchanged on small screens.
+- Browse mobile card `<dt>` labels (Type, Rank Out, Unit,
+  Pension State) bumped from `text-[0.65rem]` (≈10.4px) to
+  `text-[0.75rem]` (12px). The audit r3 finding
+  ('Browse-row text labels render <24×24 on mobile') tracked
+  in `docs/SERVICES.md:217,839` labelled the issue as a tap-target
+  concern (WCAG 2.5.5), but the elements are non-interactive
+  `<dt>` labels so the real defect was readability. The fix
+  addresses the actual readability problem; the audit finding
+  can be retired after this lands. The `<dd>` values remain
+  at the inherited `text-xs` (12px) so label/value contrast
+  is preserved.
 
 ### Fixed
 
