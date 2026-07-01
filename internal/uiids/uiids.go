@@ -92,6 +92,10 @@ const (
 	PanelTagsList            = "panel.tags.list"
 	PanelTagDetail           = "panel.tags.detail"
 	OverlayTagPicker         = "overlay.tag.picker"
+	// Issue #182: Share Queue surfaces.
+	OverlayShareQueue         = "overlay.share-queue.modal"
+	PanelShareQueueList       = "panel.share-queue.list"
+	PanelShareQueuePreview    = "panel.share-queue.preview"
 )
 
 type Surface struct {
@@ -169,6 +173,9 @@ var Registry = []Surface{
 	{ID: PanelTagsList, Kind: "panel", Description: "Tag table on the /tags management page."},
 	{ID: PanelTagDetail, Kind: "panel", Description: "Single tag detail page showing the membership list with Remove buttons."},
 	{ID: OverlayTagPicker, Kind: "overlay", Description: "Inline tag-picker overlay used on the soldier detail page and in the Browse bulk-tag toolbar."},
+	{ID: OverlayShareQueue, Kind: "overlay", Description: "Share Build modal listing the user's queued Person Records (issue #182); opens from the persistent Share Queue pill on the layout shell."},
+	{ID: PanelShareQueueList, Kind: "panel", Description: "Per-row queued Person Records list inside the Share Build modal; each row carries a remove button + a per-row checkbox."},
+	{ID: PanelShareQueuePreview, Kind: "panel", Description: "Live preview pane inside the Share Build modal showing the Soldiers / Source Records / Images count summary."},
 }
 
 
