@@ -202,6 +202,42 @@ CREATE TABLE IF NOT EXISTS calendar_items (
     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Issue #183: Person Record tagging. Flat, free-text labels
+-- for ad-hoc research scopes (virtual cemeteries, project
+-- groups). Person Record only; Source Records inherit via the
+-- parent row. Tags are an opt-in for .ddshare, never shipped
+-- in Static Archives, always included in Backup Archives
+-- (full SQLite snapshot).
+CREATE TABLE IF NOT EXISTS tags (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL COLLATE NOCASE,
+    normalized_name TEXT NOT NULL UNIQUE,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS person_record_tags (
+    person_id  INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    tag_id     INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (person_id, tag_id)
+);
+
+-- Per-archive-kind toggles for export-side behaviour that is
+-- not derivable from the row data alone. Seeded with three rows
+-- on every upgrade so the share/backup/static export pipelines
+-- can SELECT their default without an ad-hoc CASE.
+CREATE TABLE IF NOT EXISTS archive_meta (
+    archive_kind TEXT PRIMARY KEY,
+    include_tags INTEGER NOT NULL DEFAULT 0
+                  CHECK (include_tags IN (0, 1)),
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES
+    ('shared_archive', 0),
+    ('backup_archive', 1),
+    ('static_archive', 0);
+
 CREATE INDEX IF NOT EXISTS idx_soldiers_death ON soldiers(death_month, death_day);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_session ON merge_review_conflicts(session_id);
 CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review_conflicts(resolution);
@@ -213,6 +249,8 @@ CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit
 CREATE INDEX IF NOT EXISTS idx_research_tasks_soldier ON research_tasks(soldier_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_research_collection_items_soldier ON research_collection_items(soldier_id, collection_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_items_day ON calendar_items(month, day, item_type, title);
+CREATE INDEX IF NOT EXISTS idx_person_record_tags_tag    ON person_record_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_person_record_tags_person ON person_record_tags(person_id);
 `
 
 const phase1DistributedMergeMigration = `
@@ -429,6 +467,13 @@ func applySchema(db *DB) error {
 	if err := ensureSoldierFTS(tx); err != nil {
 		return err
 	}
+	// v58 (issue #183): seed archive_meta rows for legacy archives
+	// that predate the table. Tags themselves need no backfill (no
+	// rows exist yet), but the export pipelines SELECT their
+	// default from archive_meta and must get a row per archive kind.
+	if err := ensureArchiveMetaSeed(tx); err != nil {
+		return err
+	}
 	// v55 (issue #106): enforce entry_type discipline + rename evidence_type
 	// 'archive' -> 'local_archive' so the value matches the glossary. SQLite
 	// doesn't support ALTER TABLE ... ADD CONSTRAINT, so the CHECK is applied
@@ -636,6 +681,25 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
 		FROM soldiers s
 		LEFT JOIN scratchpad_cache c ON c.soldier_id = s.id`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensureArchiveMetaSeed (issue #183) backfills the three
+// archive_meta rows on legacy archives that predate v58. The
+// schema const's INSERT OR IGNORE handles fresh installs; this
+// helper closes the gap for archives that skipped from <v58
+// straight to the new version. Idempotent — INSERT OR IGNORE.
+func ensureArchiveMetaSeed(tx *sql.Tx) error {
+	statements := []string{
+		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('shared_archive', 0)`,
+		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('backup_archive', 1)`,
+		`INSERT OR IGNORE INTO archive_meta (archive_kind, include_tags) VALUES ('static_archive', 0)`,
 	}
 	for _, statement := range statements {
 		if _, err := tx.Exec(statement); err != nil {
