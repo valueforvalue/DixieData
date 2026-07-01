@@ -211,6 +211,43 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   via GET /share/queue/presets. New uiids constant
   PanelShareQueuePresets. New test asserts every shell
   attribute renders.
+- Audit + templ coverage for /share/queue (issue #193):
+  audit/discover_export_buttons.mjs registers
+  /share/queue in the literal-path allow-list; audit/smoke.mjs
+  gains a [5i] block that asserts the page renders
+  (GET /share/queue includes "Manage your staged subset"),
+  gated behind SHAREQUEUE_PAGE_E2E_BASE so unit-style
+  smokes can skip when no live binary is booted.
+  internal/templates/share_queue_test.go: 2 templ tests
+  (empty-state copy + per-row attributes + counts).
+- Share Queue management page JS wiring (issue #193):
+  frontend/app.js grows installShareQueuePage --
+  select-all checkbox toggles every row's
+  per-row checkbox; per-row Remove drops the id from
+  localStorage and re-fetches /share/queue?ids= so
+  the table stays in sync with the queue; bulk Remove
+  Selected confirm()-gates a multi-id drop; bulk
+  Export injects the selected rows into the existing
+  form as repeating selected_ids hidden fields so the
+  existing dispatchDixieDataForm picks up the submit.
+  The pill + bulk-button enabled state mirror the
+  current selection so users see at a glance whether
+  their action will fire.
+- Share Queue management page (issue #193): new
+  `/share/queue` page reachable from the layout nav
+  (next to Share). Server-renders a table of staged
+  Person Records ordered by the `?ids=` query the
+  client populates from localStorage; columns include
+  Display ID, Name, Unit, Source Records count,
+  Images count, Order index, and per-row Remove.
+  Empty state mirrors the modal's copy so users who
+  haven't staged anything see the same friendly hint.
+  Bulk Remove Selected + Export Selected controls
+  mirror the modal's UX via the existing
+  `data-dixie-submit` path. Route registered BEFORE
+  the `/share` wildcard per the existing static-
+  before-wildcard rule; 4 handler tests cover empty,
+  populated, all-unknown, and route-shadowing paths.
 - Share Queue preset HTTP surface (issue #192): four
   new endpoints on the appshell --
   - GET /share/queue/presets — returns the saved presets

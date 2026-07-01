@@ -1,0 +1,86 @@
+// /share/queue management page (issue #193). The queue
+// itself lives in the browser's localStorage under
+// dixiedata.share-queue; the page reads it as a comma-
+// separated ?ids=1,2,3 query string the client populates
+// on load + after every queue mutation. The server re-
+// hydrates the soldier rows from the archive so the table
+// can show Display ID + Name + Unit + Source Records
+// counts without re-running the heavy browse pipeline.
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
+	@Layout("Share Queue Management") {
+		<div class="relative mx-auto max-w-6xl space-y-6">
+			<div class="card rounded-3xl p-5 sm:p-8">
+				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Share Queue</p>
+				<h1 class="mt-2 text-2xl gold font-bold">Manage your staged subset</h1>
+				<p class="mt-2 text-sm text-slate-600">Re-order, remove, or bulk-export the Person Records you have staged for sharing. This page mirrors the Share Build modal queue so changes sync back to localStorage on every action.</p>
+				<form action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-page-form class="mt-4 flex flex-wrap items-center gap-3">
+					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-[rgba(111,44,38,0.45)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#6f2c26] hover:bg-white" disabled>
+						Remove Selected
+					</button>
+					<button type="submit" data-share-queue-page-bulk-export class="inline-flex items-center rounded-2xl border border-[#8d7440] bg-[#8d7440] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]" disabled>
+						Export Selected as .ddshare
+					</button>
+					<span data-share-queue-page-status class="ml-auto text-xs text-slate-500" aria-live="polite"></span>
+				</form>
+			</div>
+			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueueList }>
+				if len(rows) == 0 {
+					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4 text-sm text-slate-600">
+						No Person Records staged. Use the <strong>[+ Queue]</strong> button on
+						Browse rows, the Soldier detail page, the Calendar Anniversary compact row,
+						or the Review Queue compare row to start a queue. The queue persists across navigation.
+					</div>
+				} else {
+					<div class="overflow-x-auto">
+						<table class="w-full border-collapse text-sm">
+							<thead>
+								<tr class="border-b border-[rgba(141,116,64,0.4)] text-left text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">
+									<th class="px-2 py-2 w-10">
+										<input type="checkbox" data-share-queue-page-select-all aria-label="Select all"/>
+									</th>
+									<th class="px-2 py-2 w-12">Order</th>
+									<th class="px-2 py-2">Display ID</th>
+									<th class="px-2 py-2">Name</th>
+									<th class="px-2 py-2">Unit</th>
+									<th class="px-2 py-2 w-24">Source Records</th>
+									<th class="px-2 py-2 w-24">Images</th>
+									<th class="px-2 py-2 w-28">Actions</th>
+								</tr>
+							</thead>
+							<tbody data-share-queue-page-body>
+								for i, row := range rows {
+									<tr data-share-queue-page-row-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="border-b border-[rgba(141,116,64,0.18)]">
+										<td class="px-2 py-3 align-top">
+											<input type="checkbox" value={ fmt.Sprintf("%d", row.PersonRecord.ID) } data-share-queue-page-select data-share-queue-page-label={ row.PersonRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" aria-label={ "Select " + row.PersonRecord.DisplayID }/>
+										</td>
+										<td class="px-2 py-3 align-top font-mono text-xs text-slate-500" data-share-queue-page-order>{ i + 1 }</td>
+										<td class="px-2 py-3 align-top font-mono text-[#6f2c26]">
+											<a href={ templ.SafeURL(routebuilder.SoldierDetail(row.PersonRecord.ID)) } class="hover:underline">{ row.PersonRecord.DisplayID }</a>
+										</td>
+										<td class="px-2 py-3 align-top font-semibold text-[#22303d]">{ detailHeading(row.PersonRecord) }</td>
+										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.Unit }</td>
+										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.SourceRecordCount }</td>
+										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.ImageCount }</td>
+										<td class="px-2 py-3 align-top">
+											<button type="button" data-share-queue-page-remove-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="rounded border border-[rgba(111,44,38,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white">Remove</button>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+		</div>
+	}
+}

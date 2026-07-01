@@ -3527,6 +3527,185 @@
         openShareQueueModal();
       });
     }
+    installShareQueuePage();
+  }
+
+  // ----- /share/queue management page (issue #193) -----
+  // The page hydrates from localStorage on load. We render
+  // the table client-side (since the localStorage queue is
+  // client-side truth) AND keep the server-rendered stub in
+  // sync: any Remove or Bulk-Remove clicks update the
+  // localStorage queue, re-render the table, and update the
+  // pill. The bulk-export form submits via dispatchDixieDataForm
+  // to /export/shared-archive?subset=1 with the selected rows
+  // injected as hidden selected_ids fields.
+  function getSelectedIdsOnPage() {
+    const inputs = document.querySelectorAll("input[type=checkbox][data-share-queue-page-select]:checked");
+    const ids = [];
+    inputs.forEach((el) => {
+      const v = el.value ? parseInt(el.value, 10) : 0;
+      if (v > 0) ids.push(v);
+    });
+    return ids;
+  }
+  function pageSetStatus(text) {
+    const slot = document.querySelector("[data-share-queue-page-status]");
+    if (!(slot instanceof HTMLElement)) return;
+    slot.textContent = text || "";
+  }
+  function syncShareQueuePageButtons() {
+    const ids = getSelectedIdsOnPage();
+    const removeBtn = document.querySelector("[data-share-queue-page-bulk-remove]");
+    const exportBtn = document.querySelector("[data-share-queue-page-bulk-export]");
+    const enabled = ids.length > 0;
+    if (removeBtn instanceof HTMLButtonElement) removeBtn.disabled = !enabled;
+    if (exportBtn instanceof HTMLButtonElement) exportBtn.disabled = !enabled;
+  }
+  function shareQueuePageRowTemplate(row, index) {
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-share-queue-page-row-id", String(row.id));
+    tr.className = "border-b border-[rgba(141,116,64,0.18)]";
+    tr.innerHTML = `
+      <td class="px-2 py-3 align-top">
+        <input type="checkbox" value="${row.id}" data-share-queue-page-select data-share-queue-page-label="${row.display_id}" class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" aria-label="Select ${row.display_id}"/>
+      </td>
+      <td class="px-2 py-3 align-top font-mono text-xs text-slate-500" data-share-queue-page-order>${index + 1}</td>
+      <td class="px-2 py-3 align-top font-mono text-[#6f2c26]"><a href="/soldiers/${row.id}" class="hover:underline">${row.display_id}</a></td>
+      <td class="px-2 py-3 align-top font-semibold text-[#22303d]">${row.heading || ""}</td>
+      <td class="px-2 py-3 align-top text-slate-600">${row.unit || ""}</td>
+      <td class="px-2 py-3 align-top text-slate-600">${row.records || 0}</td>
+      <td class="px-2 py-3 align-top text-slate-600">${row.images || 0}</td>
+      <td class="px-2 py-3 align-top"><button type="button" data-share-queue-page-remove-id="${row.id}" class="rounded border border-[rgba(111,44,38,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white">Remove</button></td>`;
+    return tr;
+  }
+  async function renderShareQueuePage() {
+    const tbody = document.querySelector("[data-share-queue-page-body]");
+    if (!(tbody instanceof HTMLElement)) return;
+    const ids = readShareQueue();
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    if (ids.length === 0) {
+      // Re-render empty-state by re-fetching the page with
+      // no ids so the templ body emits the empty card.
+      try {
+        const response = await fetch("/share/queue", { method: "GET" });
+        if (response.ok) {
+          const html = await response.text();
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const freshSection = doc.querySelector("[data-share-queue-page-body], section[id='panel.share-queue.list']");
+          const currentSection = document.querySelector("[data-share-queue-page-body], section[id='panel.share-queue.list']");
+          if (freshSection && currentSection && currentSection.parentElement) {
+            const wrapper = currentSection.parentElement;
+            while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
+            const fallbackEmpty = doc.querySelector("[data-share-queue-empty], section[id='panel.share-queue.list'] > div");
+            if (fallbackEmpty) wrapper.appendChild(fallbackEmpty.cloneNode(true));
+          }
+        }
+      } catch (err) {
+        // Stay quiet -- the pill count update is enough
+        // signal that the queue changed.
+      }
+      updateShareQueuePill(ids);
+      syncShareQueuePageButtons();
+      return;
+    }
+    // Populate rows from the server-rendered page (which
+    // already has Display ID + Name + Unit + counts), then
+    // fall back to a placeholder if the server omitted a row.
+    const response = await fetch(`/share/queue?ids=${ids.join(",")}`, { method: "GET" });
+    if (!response.ok) {
+      ids.forEach((id, i) => tbody.appendChild(shareQueuePageRowTemplate({ id, display_id: "#" + id }, i)));
+      syncShareQueuePageButtons();
+      return;
+    }
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const freshRows = doc.querySelectorAll("[data-share-queue-page-row-id]");
+    freshRows.forEach((row) => tbody.appendChild(row.cloneNode(true)));
+    updateShareQueuePill(ids);
+    syncShareQueuePageButtons();
+  }
+  function installShareQueuePage() {
+    const body = document.querySelector("[data-share-queue-page-body]");
+    if (!(body instanceof HTMLElement)) return;
+    if (body.dataset.shareQueuePageInstalled === "true") return;
+    body.dataset.shareQueuePageInstalled = "true";
+
+    // Select-all checkbox: when present, toggles every row.
+    const selectAll = document.querySelector("[data-share-queue-page-select-all]");
+    if (selectAll instanceof HTMLInputElement) {
+      selectAll.addEventListener("change", () => {
+        const checked = selectAll.checked;
+        document.querySelectorAll("input[type=checkbox][data-share-queue-page-select]").forEach((el) => {
+          if (el instanceof HTMLInputElement) el.checked = checked;
+        });
+        syncShareQueuePageButtons();
+      });
+    }
+
+    // Per-row checkbox change -> update bulk buttons.
+    body.addEventListener("change", (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (target.matches("input[type=checkbox][data-share-queue-page-select]")) {
+        syncShareQueuePageButtons();
+      }
+    });
+
+    // Per-row Remove button.
+    body.addEventListener("click", (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLElement)) return;
+      const remove = target.closest("[data-share-queue-page-remove-id]");
+      if (remove instanceof HTMLElement) {
+        const idAttr = remove.getAttribute("data-share-queue-page-remove-id");
+        const id = idAttr ? parseInt(idAttr, 10) : 0;
+        if (id > 0) {
+          removeFromShareQueue(id);
+          renderShareQueuePage();
+          pageSetStatus(`Removed #${id}.`);
+        }
+      }
+    });
+
+    // Bulk Remove Selected.
+    const bulkRemove = document.querySelector("[data-share-queue-page-bulk-remove]");
+    if (bulkRemove instanceof HTMLElement) {
+      bulkRemove.addEventListener("click", () => {
+        const ids = getSelectedIdsOnPage();
+        if (ids.length === 0) return;
+        if (!window.confirm(`Remove ${ids.length} row(s) from the Share Queue?`)) return;
+        const remaining = readShareQueue().filter((n) => ids.indexOf(n) === -1);
+        writeShareQueue(remaining);
+        renderShareQueuePage();
+        pageSetStatus(`Removed ${ids.length} row(s).`);
+      });
+    }
+
+    // Bulk Export: inject the selected rows into the form
+    // as repeating selected_ids hidden fields before the
+    // existing dispatchDixieDataForm picks up the submit.
+    const exportForm = document.querySelector("[data-share-queue-page-form]");
+    if (exportForm instanceof HTMLFormElement) {
+      exportForm.addEventListener("submit", () => {
+        const ids = getSelectedIdsOnPage();
+        // Drop any prior injected ids to avoid duplicates
+        // (the form might be reused across multiple submits).
+        const prior = exportForm.querySelectorAll("input[type=hidden][data-share-queue-page-staged-id]");
+        prior.forEach((el) => el.remove());
+        for (const id of ids) {
+          const inp = document.createElement("input");
+          inp.type = "hidden";
+          inp.name = "selected_ids";
+          inp.value = String(id);
+          inp.dataset.shareQueuePageStagedId = "1";
+          exportForm.appendChild(inp);
+        }
+      });
+    }
+
+    // Initial render: replace the server stub with the
+    // localStorage-backed table.
+    renderShareQueuePage();
   }
 
   // Live preview panel wiring (issue #179). On open we install a

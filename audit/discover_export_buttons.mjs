@@ -317,6 +317,11 @@ const literalPathOverrides = {
   '/share/queue/presets': true,
   '/share/queue/presets/1': true,
   '/share/queue/presets/1/apply': true,
+  // Issue #193: /share/queue management page (GET only;
+  // the export happens via the form's data-dixie-submit
+  // pipeline already registered as
+  // /export/shared-archive?subset=1).
+  '/share/queue': true,
   '/tags': true,
   '/tags/1': true,
   '/browse/bulk-tag': true,
