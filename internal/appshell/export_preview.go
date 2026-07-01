@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/pkg/render"
 )
 
@@ -58,11 +59,32 @@ func (a *App) handleExportPreview(w http.ResponseWriter, r *http.Request) {
 
 	matched := filterAndSortPreview(allSoldiers, settings)
 
+	// Issue #185: surface the same stale-filter warning count the
+	// Load handler produces, so the preview counter and the
+	// eventual Generate cannot silently disagree on a stale
+	// filter value. We synthesise an ExportTemplate-shape from
+	// the live form fields and run it through the existing
+	// computeExportTemplateStale helper; the warning count is
+	// the single source of truth across both code paths.
+	staleCount := 0
+	staleSummary := ""
+	staleRefs := a.computeExportTemplateStale(templateFromSettings(r, settings))
+	if len(staleRefs) > 0 {
+		staleCount = len(staleRefs)
+		staleSummary = fmt.Sprintf("%d stale filter value", staleCount)
+		if staleCount != 1 {
+			staleSummary += "s"
+		}
+		staleSummary += " — adjust or remove before generating."
+	}
+
 	view := exportPreviewView{
-		Count:   len(matched),
-		Sort:    previewSortLabel(settings.SortBy),
-		GroupBy: previewGroupLabels(settings),
-		First:   previewFirstRecords(matched),
+		Count:        len(matched),
+		Sort:         previewSortLabel(settings.SortBy),
+		GroupBy:      previewGroupLabels(settings),
+		First:        previewFirstRecords(matched),
+		StaleCount:   staleCount,
+		StaleSummary: staleSummary,
 	}
 	switch settings.Scope {
 	case render.PrintScopeAll:
@@ -78,12 +100,39 @@ func (a *App) handleExportPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 type exportPreviewView struct {
-	Count    int
-	Sort     string
-	GroupBy  []string
-	First    []previewRecordLine
-	Note     string
-	HasError bool
+	Count        int
+	Sort         string
+	GroupBy      []string
+	First        []previewRecordLine
+	Note         string
+	HasError     bool
+	// Issue #185: stale count + a one-line summary the modal can
+	// render above the count without devtools. Computed via
+	// computeExportTemplateStale, so the preview counter and
+	// the eventual Generate can't silently disagree on a stale
+	// filter value.
+	StaleCount   int
+	StaleSummary string
+}
+
+// templateFromSettings (issue #185) packs a parsed
+// PrintSettings + the original request form into a
+// records.ExportTemplate-like struct so the existing
+// computeExportTemplateStale helper can be reused unchanged.
+// The ExportTemplate's Filters field is a map of family → values
+// and the request form carries one `filter_<family>` field per
+// value; we collect both. SelectedIDs on the form uses
+// `selected_ids` repeated keys, identical to
+// collectExportFilters' assumption.
+func templateFromSettings(r *http.Request, settings render.PrintSettings) records.ExportTemplate {
+	filters := collectExportFilters(r)
+	return records.ExportTemplate{
+		Scope:       settings.Scope,
+		Filters:     filters,
+		SortBy:      settings.SortBy,
+		Orientation: settings.Orientation,
+		SelectedIDs: settings.SelectedIDs,
+	}
 }
 
 type previewRecordLine struct {
@@ -187,6 +236,13 @@ func writeExportPreviewFragment(w http.ResponseWriter, view exportPreviewView) {
 		b.WriteByte('s')
 	}
 	b.WriteString(` match this configuration.</p>`)
+	// Issue #185: stale-filter warning line above the count so
+	// the preview and the eventual Generate can't disagree about
+	// whether the modal selection will produce any output.
+	if view.StaleCount > 0 {
+		fmt.Fprintf(&b, `<p class="text-xs text-[#6f2c26]">%s</p>`,
+			html.EscapeString(view.StaleSummary))
+	}
 	if view.Note != "" {
 		fmt.Fprintf(&b, `<p class="text-xs text-slate-500">%s</p>`, html.EscapeString(view.Note))
 	}

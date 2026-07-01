@@ -13,6 +13,59 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Inline expandable stale-template warning list (issue #184).
+  When a Load produces ≥2 stale warnings, the modal grows an
+  inline `<ul>` next to the templates-status span with a
+  "Show details" toggle button. The collapse-and-show pattern is
+  the issue's Option A — keeps toasts as the transient signal
+  and makes the detail persistent in the modal until the user
+  closes it. Single-warning cases still use the single toast
+  (no list). JS wires the install-time toggle so the click
+  flips aria-expanded + button text between "Show details" /
+  "Hide details".
+- Per-template stale count badge in the Saved Templates
+  dropdown (issue #187). `/export/templates` LIST response
+  grows `stale_warning_count` per row, computed in-process
+  via the existing `computeExportTemplateStale` helper
+  (sub-50ms for typical ≤20-template archives). The frontend
+  dropdown appends "(N stale)" to the option text when the
+  count is > 0 so users spot stale templates before clicking
+  Load. Same refresh helper used post-Update keeps the badge
+  in sync after a rename or Save Changes.
+- Live preview reflects stale-filter values (issue #185). The
+  preview handler now runs the same computeExportTemplateStale
+  check the Load handler does, surfaces a one-line warning
+  above the count when stale values are present (e.g. "1 stale
+  filter value — adjust or remove before generating."), and
+  reuses `templateFromSettings` to feed the existing helper
+  without duplicating logic. The preview counter and the
+  eventual Generate can no longer silently disagree on stale
+  filter values. Regression net: TestHandleExportPreview_StaleFilterWarning.
+- Live preview response-time stress test (issue #188, measurement
+  only). TestHandleExportPreviewResponseUnderThreshold seeds
+  5,000 rows (the chosen upper bound for a v1 DixieData
+  archive), warms up one POST /export/preview, then measures
+  the second request against a 500ms ceiling. First run
+  measured 444ms -- within budget but borderline; if this ever
+  crosses, that's the signal to invest in caching
+  listAllSoldiers or push preview to a background worker
+  (per the issue's "if this fails, optimize" instruction).
+  Skipped under -short; run via `go test
+  ./internal/appshell/...` without -short.
+- Saved-templates "Save Changes" button (issue #186): PATCH
+  /export/templates/{id} handler + ExportTemplateService.Update
+  method (preserves created_at + last_used_at; rejects name
+  collision with ErrExportTemplateNameTaken, missing id with
+  ErrExportTemplateNotFound). Modal grows a hidden Save Changes
+  button that becomes visible after a successful Load;
+  selecting a template from the dropdown re-uses Load's id
+  (option.dataset.templateId). Frontend JS refreshes the
+  dropdown after a successful update so renames surface in the
+  sort order without a modal close/reopen. Route registered
+  `r.Patch("/export/templates/{id}", a.handleUpdateExportTemplate)`
+  in routes.go; typed builder `ExportTemplateUpdate(id)` added.
+  Regression net: 3 new service tests (`Update`, `UpdateMissing`,
+  `UpdateNameCollision`).
 - New-soldier empty-name save is now a soft warning rather
   than a hard 400 (issue #151, follow-up to PR #149). The
   browser-side `required` attribute is removed from both name

@@ -343,6 +343,15 @@ func ExportTemplateApply(id int64) string {
 	return fmt.Sprintf("/export/templates/%d/apply", id)
 }
 
+// ExportTemplateUpdate returns the URL for the Save Changes
+// form target on a loaded template (issue #186). Caller appends
+// the {id} segment. Registered as PATCH /export/templates/{id}
+// in routes.go; the handler also accepts POST (HTML forms do
+// not natively issue PATCH).
+func ExportTemplateUpdate(id int64) string {
+	return fmt.Sprintf("/export/templates/%d", id)
+}
+
 // LayoutReviewCount returns the URL for the layout's review-queue
 // badge fragment. Registered as GET /layout/review-count in
 // routes.go. Polled by the layout at 30s cadence via htmx.
