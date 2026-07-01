@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/templates"
 )
 
 // parseSoldierIDFromPath extracts the {id} segment from URLs of
@@ -376,25 +377,71 @@ func (a *App) handleDeleteTag(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleTagsManagementPage renders the /tags management surface.
-// Stubbed at 501 until commit 5 lands the templ; the route must
-// exist from day one so the /share/export-options PATCH can
-// link there without 404s in tests.
+// Lists every tag with rename / merge / delete affordances. On a
+// fresh archive (zero tags) the layout's empty state renders
+// plus a Tailwind-tailored hint pointing at the soldier detail
+// page where the first tag can be applied.
 func (a *App) handleTagsManagementPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	http.Error(w, "tag management page is not yet rendered", http.StatusNotImplemented)
+	ctx := r.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	tagsList, err := a.tags.List(ctx)
+	if err != nil {
+		respondInternal(w, r, "Could not list tags.", err)
+		return
+	}
+	if tagsList == nil {
+		tagsList = []records.Tag{}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := templates.TagsManagementPage(tagsList).Render(ctx, w); err != nil {
+		respondInternal(w, r, "Could not render the tags page.", err)
+	}
 }
 
-// handleTagDetailPage renders /tags/{id} (member list). Stub at
-// 501 until commit 5.
+// handleTagDetailPage renders /tags/{id} (member list). Returns
+// 404 on a missing tag id so the user gets a clear error rather
+// than a blank page.
 func (a *App) handleTagDetailPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	http.Error(w, "tag detail page is not yet rendered", http.StatusNotImplemented)
+	tagID, err := parseTagIDFromTagPath(r.URL.Path)
+	if err != nil {
+		http.Error(w, "invalid tag id", http.StatusBadRequest)
+		return
+	}
+	ctx := r.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	tag, err := a.tags.Get(ctx, tagID)
+	if err != nil {
+		if errors.Is(err, records.ErrTagNotFound) {
+			respondNotFound(w, r, fmt.Sprintf("Tag %d not found.", tagID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not load tag %d.", tagID), err)
+		return
+	}
+	members, err := a.tags.MembersWithDetails(ctx, tagID, 500)
+	if err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not list members for tag %d.", tagID), err)
+		return
+	}
+	if members == nil {
+		members = []records.TagMemberView{}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := templates.TagDetailPage(tag, members).Render(ctx, w); err != nil {
+		respondInternal(w, r, "Could not render the tag detail page.", err)
+	}
 }
 
 // handleShareExportOptions toggles the archive_meta.include_tags

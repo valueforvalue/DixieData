@@ -1,0 +1,149 @@
+// Person Record tagging management surface (issue #183).
+// Renders the /tags page (top-level tag list with rename / merge /
+// delete affordances) and the /tags/{id} detail page (members + Remove
+// buttons). Both pages live under the same Layout convention as the
+// rest of the management surfaces. Forms use data-dixie-submit (no
+// raw form-method attrs) per the Option C retag.
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// TagsManagementPage renders the /tags list with rename / merge /
+// delete affordances. Sorted alphabetically (case-insensitive),
+// backstopped by an empty-state card when the archive has no tags.
+templ TagsManagementPage(tags []records.Tag) {
+	@Layout("Tags") {
+		<div class="relative mx-auto max-w-5xl space-y-6">
+			<div>
+				<h2 class="text-2xl gold font-bold">Tags</h2>
+				<p class="mt-2 text-sm text-slate-600">
+					Free-text labels grouping Person Records for ad-hoc
+					research scopes (virtual cemeteries, project groups).
+					Tag names are case-insensitive and unique across the
+					Local Archive.
+				</p>
+			</div>
+			<section id={ uiids.PanelTagsList } class="card rounded-3xl p-5 sm:p-8">
+				if len(tags) == 0 {
+					@partials.EmptyStateCard("tags", viewmodel.ArchiveCounts{})
+					<p class="mt-4 text-sm text-slate-600">
+						No tags yet. Apply a tag from any Person Record
+						detail page to create the first one.
+					</p>
+				} else {
+					<table class="w-full table-fixed border-separate border-spacing-y-2 text-left text-sm">
+						<thead>
+							<tr class="text-xs uppercase tracking-[0.18em] text-slate-500">
+								<th class="w-1/2 px-3 py-2">Name</th>
+								<th class="w-1/6 px-3 py-2 text-right">Members</th>
+								<th class="w-1/3 px-3 py-2 text-right">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, t := range tags {
+								@tagsRow(t)
+							}
+						</tbody>
+					</table>
+				}
+			</section>
+		</div>
+	}
+}
+
+// tagsRow renders one tag row with the inline rename + merge
+// form and a Delete button. All three forms target the same /tags
+// endpoint family registered in internal/appshell/routes.go.
+templ tagsRow(t records.Tag) {
+	<tr id={ fmt.Sprintf("tag-row-%d", t.ID) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70">
+		<td class="px-3 py-2 align-top font-semibold text-slate-900">
+			<a href={ templ.SafeURL(routebuilder.TagDetail(t.ID)) } class="underline-offset-2 hover:underline">
+				{ t.Name }
+			</a>
+		</td>
+		<td class="px-3 py-2 align-top text-right text-slate-700">
+			{ fmt.Sprintf("%d", t.MemberCount) }
+		</td>
+		<td class="px-3 py-2 align-top">
+			<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+				<form action={ templ.SafeURL(routebuilder.TagRename(t.ID)) } method="post" data-dixie-submit="true" class="flex items-center gap-1">
+					<input type="text" name="tag_name" value={ t.Name } class="w-32 rounded border border-slate-300 px-2 py-1 text-sm" aria-label={ fmt.Sprintf("Rename tag %s", t.Name) }/>
+					@components.Button("Rename", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+				</form>
+				<form action={ templ.SafeURL(routebuilder.TagMerge(t.ID)) } method="post" data-dixie-submit="true" class="flex items-center gap-1">
+					<input type="number" name="survivor_id" placeholder="merge into id" class="w-28 rounded border border-slate-300 px-2 py-1 text-sm" aria-label={ fmt.Sprintf("Merge tag %s into tag id", t.Name) }/>
+					@components.Button("Merge", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+				</form>
+				<form action={ templ.SafeURL(routebuilder.TagDelete(t.ID)) } method="post" data-dixie-submit="true" data-confirm={ fmt.Sprintf("Delete tag %q and detach it from every Person Record?", t.Name) }>
+					@components.Button("Delete", components.ButtonDanger, "", templ.Attributes{"type": "submit"})
+				</form>
+			</div>
+		</td>
+	</tr>
+}
+
+// TagDetailPage renders /tags/{id}: members list with Remove
+// buttons + a "View in Browse" deep link that targets
+// /browse?tags=<normalized_name>.
+templ TagDetailPage(t records.Tag, members []records.TagMemberView) {
+	@Layout(fmt.Sprintf("Tag: %s", t.Name)) {
+		<div class="relative mx-auto max-w-5xl space-y-6">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<div>
+					<h2 class="text-2xl gold font-bold">Tag: { t.Name }</h2>
+					<p class="mt-2 text-sm text-slate-600">
+						{ fmt.Sprintf("%d members. Deep link: ?tags=%s", t.MemberCount, t.NormalizedName) }
+					</p>
+				</div>
+				<a href={ templ.SafeURL(fmt.Sprintf("/browse?tags=%s", t.NormalizedName)) } class="inline-flex items-center justify-center rounded-2xl border border-[#8d7440] bg-[#8d7440] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]">
+					View in Browse
+				</a>
+			</div>
+			<section id={ uiids.PanelTagDetail } class="card rounded-3xl p-5 sm:p-8">
+				if len(members) == 0 {
+					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+						This tag has no members. Apply it from a Person Record detail page to start grouping.
+					</p>
+				} else {
+					<table class="w-full table-fixed border-separate border-spacing-y-2 text-left text-sm">
+						<thead>
+							<tr class="text-xs uppercase tracking-[0.18em] text-slate-500">
+								<th class="w-1/6 px-3 py-2">Display ID</th>
+								<th class="w-2/5 px-3 py-2">Name</th>
+								<th class="w-1/4 px-3 py-2">Unit</th>
+								<th class="w-1/6 px-3 py-2 text-right">Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, m := range members {
+								<tr class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70">
+									<td class="px-3 py-2 align-top font-mono text-xs text-slate-600">{ m.DisplayID }</td>
+									<td class="px-3 py-2 align-top font-semibold text-slate-900">
+										<a href={ templ.SafeURL(routebuilder.SoldierDetail(m.PersonRecordID)) } class="underline-offset-2 hover:underline">
+											{ m.Name }
+										</a>
+									</td>
+									<td class="px-3 py-2 align-top text-slate-700">{ m.Unit }</td>
+									<td class="px-3 py-2 align-top text-right">
+										<form action={ templ.SafeURL(routebuilder.SoldierTagDetach(m.PersonRecordID, t.ID)) } method="post" data-dixie-submit="true">
+											@components.Button("Remove", components.ButtonDanger, "", templ.Attributes{"type": "submit"})
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+			</section>
+		</div>
+	}
+}

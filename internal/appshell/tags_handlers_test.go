@@ -338,7 +338,7 @@ func TestShareExportOptionsToggle(t *testing.T) {
 	}
 }
 
-func TestTagsManagementPageStub(t *testing.T) {
+func TestTagsManagementPageRenders(t *testing.T) {
 	app := newTagTestApp(t)
 	server := httptest.NewServer(app)
 	defer server.Close()
@@ -347,9 +347,52 @@ func TestTagsManagementPageStub(t *testing.T) {
 		t.Fatalf("GET /tags: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotImplemented {
-		t.Errorf("/tags status %d, want 501 (pending commit 5 templ)", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/tags status %d, want 200", resp.StatusCode)
 	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), "Tags") {
+		t.Errorf("expected /tags page to mention Tags; body=%s", string(body)[:min(200, len(body))])
+	}
+}
+
+func TestTagDetailPageRenders(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+	tag, err := app.tags.UpsertByName(context.Background(), "page-test-tag")
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	resp, err := http.Get(server.URL + "/tags/" + tagItoa(t, tag.ID))
+	if err != nil {
+		t.Fatalf("GET /tags/{id}: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/tags/{id} status %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestTagDetailPageNotFound(t *testing.T) {
+	app := newTagTestApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+	resp, err := http.Get(server.URL + "/tags/99999")
+	if err != nil {
+		t.Fatalf("GET /tags/{id}: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("/tags/99999 status %d, want 404", resp.StatusCode)
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func TestMethodNotAllowed(t *testing.T) {
