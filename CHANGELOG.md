@@ -211,6 +211,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   via GET /share/queue/presets. New uiids constant
   PanelShareQueuePresets. New test asserts every shell
   attribute renders.
+- Share Queue e2e smoke (issue #194): audit/smoke.mjs
+  gains a [5j] block that walks the full Share Queue
+  subset export flow against a live dev binary --
+  navigate to /browse, click [+ Queue] on the first
+  row, open the modal via the persistent pill, click
+  Export Selected, assert the POST to
+  /export/shared-archive?subset=1 fires with
+  selected_ids, assert the page lands on /jobs/{id},
+  and assert the summary card shows a `Soldiers:` line
+  (regression net for commit 342de6b's manifest-counts
+  fix). Gated behind SHAREQUEUE_E2E_BASE so unit-style
+  smokes can skip when no live binary is booted. The
+  dixiedata-web binary's existing SaveFileDialog
+  override (cmd/dixiedata-web/main.go) auto-accepts
+  the OS picker to DIXIE_SAVE_FILE_DIR so the browser
+  never blocks on a real dialog during the e2e walk.
 - Audit + templ coverage for /share/queue (issue #193):
   audit/discover_export_buttons.mjs registers
   /share/queue in the literal-path allow-list; audit/smoke.mjs
