@@ -12,7 +12,7 @@ DixieData is a Wails-based desktop archive for managing Civil War person records
 - import/export and merge workflows
 - review queue and duplicate auditing
 
-The current release line is **v1.2.55**.
+The current release line is **v1.2.59**.
 
 ## 2. Technical stack
 

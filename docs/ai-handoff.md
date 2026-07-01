@@ -12,7 +12,7 @@
 ## Project snapshot
 
 - **App:** DixieData
-- **Version:** `1.2.55`
+- **Version:** `1.2.59`
 - **Schema version:** `55`
 - **Platform:** Wails desktop app (Windows-first workflow)
 - **Backend:** Go + SQLite

@@ -211,6 +211,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   via GET /share/queue/presets. New uiids constant
   PanelShareQueuePresets. New test asserts every shell
   attribute renders.
+- Maintenance: bring the three CI-checked docs into sync
+  with the current schema (v1.2.55 -> v1.2.59). The
+  bump-version.ps1 -VerifyOnly CI step expects
+  user-manual.md, implementation-and-features.md, and
+  ai-handoff.md to all reference the current
+  1.2.{CurrentSchemaVersion} line; the docs had been
+  drifting since v1.2.55 so the last several pushes
+  failed the bump-verify check without breaking the
+  build. This commit catches the docs back up.
 - Share Queue e2e smoke (issue #194): audit/smoke.mjs
   gains a [5j] block that walks the full Share Queue
   subset export flow against a live dev binary --
