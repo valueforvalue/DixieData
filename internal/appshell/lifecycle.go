@@ -347,6 +347,24 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.setupRequired && !setupRequestAllowed(r.URL.Path) {
+		// Issue #212: a polling fragment (e.g. /layout/review-count)
+		// that isn't in the setupRequestAllowed allowlist used to 303
+		// to /setup. The browser's XHR followed the redirect, the
+		// full setup HTML doc got innerHTML-swapped into the badge
+		// wrapper (which has hx-target="this"), and the wrapper's
+		// innerHTML became a copy of the setup form on every poll.
+		// Return 204 with the X-DixieData-Redirect hint for htmx
+		// fragment requests so the swap target stays put. htmx's XHR
+		// doesn't run the dispatcher (X-DixieData-Redirect is the
+		// form-submit contract from docs/COMMON_BUGS.md §1.10, not
+		// an htmx-recognised header), so the hint is informational
+		// for htmx but consistent with the existing redirect
+		// contract. Full-page nav still gets the 303.
+		if r.Header.Get("HX-Request") == "true" {
+			w.Header().Set("X-DixieData-Redirect", "/setup")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		http.Redirect(w, r, "/setup", http.StatusSeeOther)
 		return
 	}
