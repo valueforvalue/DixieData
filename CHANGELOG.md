@@ -569,6 +569,46 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- Main screen no longer cascades into an infinite stack of layout
+  shells when the local archive is still starting up. The startup
+  placeholder (`renderStartupPlaceholder` in
+  `internal/appshell/app.go`) is what `App.ServeHTTP` returns when
+  `a.mux == nil` — the brief window between the Wails process
+  starting and the chi router being ready. The placeholder is a
+  full HTML document, so any htmx fragment request that landed
+  during this window (`/jobs/active`, `/layout/review-count`,
+  `/jobs/{id}/status`) innerHTML-swapped the full placeholder into
+  a tiny target region. The placeholder body carried
+  `hx-get="..." hx-trigger="load delay:700ms" hx-target="body"
+  hx-swap="outerHTML"`. htmx processed the inner body's triggers,
+  fired a GET, and — if mux was still nil — outerHTML-swapped yet
+  another placeholder on top, whose own triggers fired 700ms
+  later. Each cycle stacked a fresh `<div class="app-shell">`
+  inside the previous one, eventually producing 77 nested copies
+  of the entire layout and 738KB of body innerHTML. The user saw
+  the layout chrome cascading diagonally across the screen with
+  the scrollbars shrinking toward zero until the system ran out
+  of memory. Two-part fix in `renderStartupPlaceholder`:
+  (a) detect the fragment request via the `HX-Request` header
+  and return `204 No Content` instead of the full HTML doc, so
+  fragment polls become harmless no-ops during the pre-mux
+  window; (b) drop the `hx-get` / `hx-trigger` / `hx-target` /
+  `hx-swap` attributes from the placeholder's `<body>` so the
+  full-page request path (initial `/` load, meta refresh
+  fallbacks) also cannot cascade — the meta refresh header and
+  the inline `window.location.replace` script already cover the
+  retry mechanism. Regression net:
+  `TestRenderStartupPlaceholderReturns204ForHtmxFragmentRequests`
+  in `internal/appshell/app_test.go` pins the 204 status on
+  htmx-fragment requests; the existing
+  `TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux`
+  gained a new block that asserts none of the four htmx
+  trigger attrs appear in the placeholder body, with the
+  cascade bug named in the failure message.
+  `docs/COMMON_BUGS.md` §1.13 documents the pattern. Artifacts:
+  `uibug.png`, `uibug2.png` (in repo root, captured during the
+  debugging session).
+
 - Floating dock (Scratch Pad / Feedback / Menu) no longer overlaps
   page content on `/compare`, `/calendar`, `/browse`, or the deep
   soldier routes. `applyResponsiveLayout` now measures the dock's

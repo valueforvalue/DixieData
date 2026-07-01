@@ -336,6 +336,18 @@ type scratchpadOpener interface {
 const initializeDataConfirmationWord = "INITIALIZE"
 
 func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
+	// When the request is an htmx fragment (polling job progress,
+	// review counts, etc.) during the pre-mux window, return 204
+	// instead of a full HTML document.  Without this guard the
+	// placeholder's <body> (with hx-target="body" hx-swap="outerHTML")
+	// gets innerHTML-swapped into a small target region, its body
+	// triggers fire, and each response stacks another placeholder
+	// body — the cascading reload bug (uibug.png / uibug2.png).
+	if r != nil && r.Header.Get("HX-Request") == "true" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	target := "/calendar"
 	if r != nil && r.URL != nil {
 		if requestPath := strings.TrimSpace(r.URL.RequestURI()); requestPath != "" && requestPath != "/" {
@@ -363,7 +375,7 @@ func renderStartupPlaceholder(w http.ResponseWriter, r *http.Request) {
 <meta http-equiv="expires" content="0">
 <title>Loading DixieData...</title>
 </head>
-<body hx-get="%s" hx-trigger="load delay:700ms" hx-target="body" hx-swap="outerHTML" class="min-h-screen" style="background: linear-gradient(180deg, #d7d2c9 0%%, #c9c2b5 42%%, #b9b1a3 100%%);">
+<body class="min-h-screen" style="background: linear-gradient(180deg, #d7d2c9 0%%, #c9c2b5 42%%, #b9b1a3 100%%);">
 <div class="flex min-h-screen items-center justify-center px-6">
   <div class="rounded-3xl border border-[#8d7440] bg-[rgba(36,48,61,0.92)] px-8 py-6 shadow-[0_18px_34px_rgba(21,29,38,0.2)]">
     <p class="mb-2 text-sm uppercase tracking-[0.24em] text-[#cfb77a]">Local Archive</p>
@@ -377,7 +389,7 @@ window.setTimeout(function() {
 }, 700);
 </script>
 </body>
-</html>`, html.EscapeString(retryTarget), html.EscapeString(retryTarget), string(targetJS))
+</html>`, html.EscapeString(retryTarget), string(targetJS))
 }
 
 func startupPlaceholderRetryTarget(target string) string {

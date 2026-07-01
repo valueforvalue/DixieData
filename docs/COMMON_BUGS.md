@@ -20,6 +20,77 @@ These are the highest-frequency bug class in the codebase
 right but the request never fires, or fires twice, or fires against
 a stale target.
 
+### 1.13 Pre-mux placeholder cascades into an infinite layout stack
+
+**Symptom:** During the brief window between the Wails process
+starting and the chi router being ready, the layout's polling
+fragments (`/jobs/active` every 3s, `/layout/review-count` every
+30s, `/jobs/{id}/status` while jobs run) all return a full HTML
+document — the startup placeholder from
+`renderStartupPlaceholder`. htmx innerHTML-swaps that into the
+small target region. The placeholder body carries
+`hx-get="..." hx-trigger="load delay:700ms" hx-target="body"
+hx-swap="outerHTML"`, so htmx processes the inner body's
+triggers, fires a GET, and — if mux is still nil — receives
+another placeholder, outerHTML-swaps it onto `<body>`, and the
+new body's own triggers fire 700ms later. Each cycle stacks a
+fresh `<div class="app-shell">` inside the previous one. After
+~30s the user sees 77 nested copies of the entire layout, 738KB
+of body innerHTML, and a diagonal cascade of `<header class="top-shell">`
+cards across the screen. Scrollbars shrink toward zero until the
+system runs out of memory.
+
+**Why it happens:** `App.ServeHTTP` falls through to
+`renderStartupPlaceholder` whenever `a.mux == nil`. The placeholder
+is a full HTML doc, not a fragment, because the Wails assetServer
+sometimes receives requests before the chi router has been
+mounted. The placeholder's body attributes were added when the
+shell page (frontend/index.html) was modeled — the assumption
+was that the placeholder would be replaced by the layout
+response within one htmx cycle, so the body triggers would fire
+once and stop. That assumption breaks when mux is nil because
+the next request also returns the placeholder.
+
+**Find it:**
+```bash
+grep -n 'hx-get\|hx-trigger\|hx-target\|hx-swap' internal/appshell/app.go
+```
+The placeholder's HTML body must contain none of these. Search
+for the same attrs on `<body>` in any other code path that
+returns a full HTML document during startup.
+
+**Fix:** Two-part, in `renderStartupPlaceholder`:
+- (a) Detect htmx fragment requests via the `HX-Request` header
+  and return `204 No Content`. Fragment polls become harmless
+  no-ops during the pre-mux window. (The Layout's `setupRequestAllowed`
+  allowlist already exempts `/jobs/active` and
+  `/jobs/{id}/status` from the setup-required 303 redirect, but
+  that allowlist is irrelevant when `a.mux == nil` because
+  `ServeHTTP` short-circuits to the placeholder BEFORE the
+  allowlist check runs.)
+- (b) Drop the `hx-get` / `hx-trigger` / `hx-target` / `hx-swap`
+  attributes from the placeholder's `<body>`. The meta refresh
+  header and the inline `window.location.replace` script already
+  cover the full-page retry mechanism; the htmx body trigger adds
+  no value but creates the cascade. (a) handles the fragment-poll
+  path; (b) handles the initial `/` load and any meta-refresh
+  fallbacks.
+
+**Regression net:** two tests in `internal/appshell/app_test.go`:
+- `TestRenderStartupPlaceholderReturns204ForHtmxFragmentRequests` —
+  a 204 No Content with empty body when the request carries
+  `HX-Request: true`.
+- `TestAppServeHTTPStartupPlaceholderAutoRefreshesWithoutMux` — the
+  existing placeholder test grew a new block that asserts none of
+  the four htmx trigger attrs appear in the placeholder body,
+  with the cascade bug named in the failure message.
+
+**Real example:** captured during the issue #180 follow-up. Artifacts:
+`uibug.png` and `uibug2.png` in repo root, showing the diagonal
+cascade of the layout chrome before the fix landed.
+
+---
+
 ### 1.1 Button doesn't submit because `type="submit"` is missing
 
 **Symptom:** User clicks button. Nothing happens. Network tab shows
