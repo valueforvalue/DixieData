@@ -547,3 +547,14 @@ type SoldierFormSuggestions = PersonRecordFormSuggestions
 type ServiceTimelineEvent = TimelineEvent
 type SourceConflictLedger = MergeReviewLedger
 type SourceConflictLedgerEntry = MergeReviewLedgerEntry
+
+// ShareQueueRow (issue #193) is the per-row view shape used by
+// the /share/queue management page. The Order field is the
+// stable 1-based index in the queue so the user can sort or
+// move rows visually without disturbing the underlying
+// localStorage order (the JS re-applies its own user-rearranged
+// order on save).
+type ShareQueueRow struct {
+	Order        int
+	PersonRecord PersonRecord
+}

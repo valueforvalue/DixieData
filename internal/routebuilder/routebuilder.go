@@ -453,6 +453,14 @@ func ShareQueueClear() string {
 	return "/share/queue/clear"
 }
 
+// ShareQueuePage (issue #193) returns the URL for the
+// management page reachable from the layout nav. The caller
+// appends the ?ids=1,2,3 query string the client populates
+// from localStorage on page load.
+func ShareQueuePage() string {
+	return "/share/queue"
+}
+
 // ShareQueuePresets (issue #192) returns the URL for the
 // saved-presets endpoints. The {id} is appended by the caller
 // via fmt.Sprintf since chi needs the literal segment to win
