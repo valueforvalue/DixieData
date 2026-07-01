@@ -179,6 +179,15 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue Saved Queues UI shell (issue #192): the
+  Share Build modal grows a "Saved Queues" section above
+  the Staged Records panel. Server-rendered shell carries
+  the save form (name input + Save current queue
+  button), the preset list, the empty-state hint, and the
+  status message slot -- all JS-hydrated on modal open
+  via GET /share/queue/presets. New uiids constant
+  PanelShareQueuePresets. New test asserts every shell
+  attribute renders.
 - Share Queue preset HTTP surface (issue #192): four
   new endpoints on the appshell --
   - GET /share/queue/presets — returns the saved presets

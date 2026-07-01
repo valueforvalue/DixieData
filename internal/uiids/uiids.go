@@ -96,6 +96,7 @@ const (
 	OverlayShareQueue         = "overlay.share-queue.modal"
 	PanelShareQueueList       = "panel.share-queue.list"
 	PanelShareQueuePreview    = "panel.share-queue.preview"
+	PanelShareQueuePresets    = "panel.share-queue.presets"
 )
 
 type Surface struct {
@@ -176,6 +177,7 @@ var Registry = []Surface{
 	{ID: OverlayShareQueue, Kind: "overlay", Description: "Share Build modal listing the user's queued Person Records (issue #182); opens from the persistent Share Queue pill on the layout shell."},
 	{ID: PanelShareQueueList, Kind: "panel", Description: "Per-row queued Person Records list inside the Share Build modal; each row carries a remove button + a per-row checkbox."},
 	{ID: PanelShareQueuePreview, Kind: "panel", Description: "Live preview pane inside the Share Build modal showing the Soldiers / Source Records / Images count summary."},
+	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues section inside the Share Build modal (issue #192) listing named presets with Load + Delete per row."},
 }
 
 
