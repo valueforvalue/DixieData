@@ -17,6 +17,13 @@ import (
 // handleListExportTemplates returns the saved templates as a small
 // JSON array used by the modal's Load dropdown. GET
 // /export/templates.
+//
+// Issue #187: each row grows a stale_warning_count field that
+// mirrors the warning list the modal would surface on Load.
+// Computation is in-process at list time — typical archives have
+// ≤20 templates so the per-row stale check is well under 50ms.
+// For larger archives a follow-up can lazy-fetch counts when the
+// dropdown opens; the spec recommends inline-first.
 func (a *App) handleListExportTemplates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -29,12 +36,14 @@ func (a *App) handleListExportTemplates(w http.ResponseWriter, r *http.Request) 
 	}
 	out := make([]exportTemplateSummary, 0, len(templates))
 	for _, t := range templates {
+		staleCount := len(a.computeExportTemplateStale(t))
 		out = append(out, exportTemplateSummary{
-			ID:          t.ID,
-			Name:        t.Name,
-			Scope:       t.Scope,
-			LastUsedAt:  t.LastUsedAt,
-			Orientation: t.Orientation,
+			ID:                t.ID,
+			Name:              t.Name,
+			Scope:             t.Scope,
+			LastUsedAt:        t.LastUsedAt,
+			Orientation:       t.Orientation,
+			StaleWarningCount: staleCount,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -45,11 +54,16 @@ func (a *App) handleListExportTemplates(w http.ResponseWriter, r *http.Request) 
 }
 
 type exportTemplateSummary struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Scope       string `json:"scope"`
-	LastUsedAt  any    `json:"last_used_at"`
-	Orientation string `json:"orientation"`
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Scope             string `json:"scope"`
+	LastUsedAt        any    `json:"last_used_at"`
+	Orientation       string `json:"orientation"`
+	// StaleWarningCount (issue #187) is the number of warnings
+	// that would surface on Load right now. The modal renders
+	// "(N stale)" next to the option text when > 0 so users
+	// spot stale templates before clicking.
+	StaleWarningCount int `json:"stale_warning_count"`
 }
 
 // handleSaveExportTemplate reads the modal's form fields plus a
@@ -119,6 +133,68 @@ func (a *App) handleDeleteExportTemplate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleUpdateExportTemplate (issue #186) replaces the mutable
+// fields on a saved template. Accepts PATCH or POST (templates
+// work with the standard Option C dispatcher and HTML forms do
+// not natively issue PATCH). On 200 returns {id, name} JSON. On
+// 404 (missing) or 409 (name collision) surfaces the issue code
+// via the existing respond-error shape so the modal's
+// templates-status slot can render an inline message.
+func (a *App) handleUpdateExportTemplate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch && r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := parseExportTemplateIDFromPath(r.URL.Path, "")
+	if err != nil {
+		http.Error(w, "invalid template id", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the template form.", err)
+		return
+	}
+	name := strings.TrimSpace(r.FormValue("template_name"))
+	if name == "" {
+		respondValidation(w, r, "Template name is required.", errors.New("missing template_name"))
+		return
+	}
+	settings, err := parsePrintSettingsRequest(r)
+	if err != nil {
+		respondValidation(w, r, "Could not read the print settings.", err)
+		return
+	}
+	updated, err := a.exportTemplates.Update(id, records.ExportTemplate{
+		Name:              name,
+		Scope:             settings.Scope,
+		Filters:           collectExportFilters(r),
+		SortBy:            settings.SortBy,
+		GroupBy:           collectExportGroupBy(settings),
+		Orientation:       settings.Orientation,
+		SelectedIDs:       settings.SelectedIDs,
+		PrinterFriendly:   settings.PrinterFriendly,
+		FullBiographyPage: settings.FullBiographyPage,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, records.ErrExportTemplateNotFound):
+			respondNotFound(w, r, fmt.Sprintf("Template %d not found.", id), err)
+		case errors.Is(err, records.ErrExportTemplateNameTaken):
+			http.Error(w, "A template with that name already exists. Pick a different name.", http.StatusConflict)
+		default:
+			respondInternal(w, r, fmt.Sprintf("Could not update template %d.", id), err)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"id":   updated.ID,
+		"name": updated.Name,
+	}); err != nil {
+		return
+	}
 }
 
 // handleApplyExportTemplate returns the stored fields as JSON so

@@ -3255,10 +3255,29 @@
         saveCurrentTemplate();
       });
     }
+    const updateButton = modal.querySelector("[data-export-templates-update]");
+    if (updateButton instanceof HTMLElement) {
+      updateButton.addEventListener("click", () => {
+        updateSelectedTemplate();
+      });
+    }
     const deleteButton = modal.querySelector("[data-export-templates-delete]");
     if (deleteButton instanceof HTMLElement) {
       deleteButton.addEventListener("click", () => {
         deleteSelectedTemplate();
+      });
+    }
+    // Issue #184: install the inline "Show details" toggle
+    // for stale-template warning lists. Click toggles the
+    // <ul> visibility; the JS state is captured on the
+    // wrapper's dataset so future toggles don't re-render.
+    const warningsToggle = modal.querySelector("[data-export-templates-warnings-toggle]");
+    const warningsWrap = modal.querySelector("[data-export-templates-warnings-wrap]");
+    if (warningsToggle instanceof HTMLElement && warningsWrap instanceof HTMLElement) {
+      warningsToggle.addEventListener("click", () => {
+        const expanded = warningsWrap.classList.toggle("hidden");
+        warningsToggle.setAttribute("aria-expanded", String(!expanded));
+        warningsToggle.textContent = expanded ? "Show details" : "Hide details";
       });
     }
   }
@@ -3292,7 +3311,19 @@
         }
         const option = document.createElement("option");
         option.value = String(t.id);
-        option.textContent = t.name;
+        // Issue #186: attach the template id to the option so
+        // updateSelectedTemplate() can address the right row via
+        // select.selectedOptions[0].dataset.templateId.
+        option.dataset.templateId = String(t.id);
+        let label = t.name;
+        // Issue #187: render "(N stale)" next to the option name
+        // so the user sees which templates need attention before
+        // clicking Load. The count comes from the LIST handler
+        // (issue #187 inline approach).
+        if (typeof t.stale_warning_count === "number" && t.stale_warning_count > 0) {
+          label += " (" + t.stale_warning_count + " stale)";
+        }
+        option.textContent = label;
         select.appendChild(option);
       }
       if (status instanceof HTMLElement) {
@@ -3341,6 +3372,20 @@
       if (status instanceof HTMLElement) {
         status.textContent = "Loaded \"" + (template.name || "") + "\".";
       }
+      // Issue #186: surface the Save Changes button only after
+      // a successful Load so accidental Update clicks can't
+      // happen on an unselected dropdown.
+      const updateBtn = modal.querySelector("[data-export-templates-update]");
+      if (updateBtn instanceof HTMLElement) {
+        updateBtn.classList.remove("hidden");
+      }
+      // Mirror the template id onto the name input so Update
+      // can PATCH the right row even after the form's other
+      // fields have been edited.
+      const nameInput = modal.querySelector("[data-export-template-name-input]");
+      if (nameInput instanceof HTMLInputElement) {
+        nameInput.value = template.name || "";
+      }
       // Issue #181: surface stale filter values / selected IDs as
       // toasts. One warning → one toast with detail. Many warnings
       // → one summary toast + full list in console so the user is
@@ -3349,10 +3394,36 @@
         showToast(warnings[0], "warning");
       } else if (warnings.length > 1) {
         showToast(
-          warnings.length + " stale filter values; see browser console for details.",
+          warnings.length + " stale filter values; click 'Show details' for the list.",
           "warning"
         );
         console.warn("Template load warnings:", warnings);
+      }
+
+      // Issue #184: when there are ≥2 warnings, populate the
+      // inline expandable list inside the modal so users
+      // without devtools open can read the full text. The
+      // single-warning case is the simple toast above; the
+      // collapse-and-show pattern is the spec's Option A.
+      const warningsWrap = modal.querySelector("[data-export-templates-warnings-wrap]");
+      const warningsList = modal.querySelector("[data-export-templates-warnings]");
+      const warningsToggle = modal.querySelector("[data-export-templates-warnings-toggle]");
+      if (warningsWrap instanceof HTMLElement && warningsList instanceof HTMLElement) {
+        while (warningsList.firstChild) warningsList.removeChild(warningsList.firstChild);
+        if (warnings.length >= 2) {
+          for (const w of warnings) {
+            const li = document.createElement("li");
+            li.textContent = w;
+            warningsList.appendChild(li);
+          }
+          warningsWrap.classList.remove("hidden");
+          if (warningsToggle instanceof HTMLElement) {
+            warningsToggle.textContent = "Show details";
+            warningsToggle.setAttribute("aria-expanded", "false");
+          }
+        } else {
+          warningsWrap.classList.add("hidden");
+        }
       }
     } catch (error) {
       if (status instanceof HTMLElement) {
@@ -3457,6 +3528,111 @@
     } catch (error) {
       if (status instanceof HTMLElement) {
         status.textContent = "Could not save template.";
+      }
+    }
+  }
+
+  // refreshPrintConfigTemplateDropdown re-pulls /export/templates
+  // and re-populates the dropdown. Used by updateSelectedTemplate
+  // to surface a renamed template in its new sort position.
+  // Mirrors the install-time fetch block (kept inline because the
+  // install block + later-on refresh share fetch + populate code
+  // but differ in error reporting).
+  async function refreshPrintConfigTemplateDropdown() {
+    const modal = printConfigModal();
+    if (!(modal instanceof HTMLElement)) return;
+    const select = modal.querySelector("[data-export-templates-select]");
+    const status = modal.querySelector("[data-export-templates-status]");
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    try {
+      const response = await fetch("/export/templates", { method: "GET" });
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      const templates = Array.isArray(data.templates) ? data.templates : [];
+      // Preserve the currently-selected template id across the
+      // refresh so Save Changes doesn't accidentally re-init.
+      const previousSelected = select.value;
+      while (select.options.length > 1) {
+        select.remove(1);
+      }
+      for (const t of templates) {
+        if (!t || typeof t.id !== "number" || typeof t.name !== "string") {
+          continue;
+        }
+        const option = document.createElement("option");
+        option.value = String(t.id);
+        option.dataset.templateId = String(t.id);
+        let label = t.name;
+        // Issue #187: stale count badge in the dropdown.
+        if (typeof t.stale_warning_count === "number" && t.stale_warning_count > 0) {
+          label += " (" + t.stale_warning_count + " stale)";
+        }
+        option.textContent = label;
+        select.appendChild(option);
+      }
+      if (previousSelected) {
+        select.value = previousSelected;
+      }
+      if (status instanceof HTMLElement && templates.length === 0) {
+        status.textContent = "No saved templates yet.";
+      }
+    } catch (error) {
+      // Refresh is best-effort; the user can still save with a
+      // duplicate name conflict reported via the inline 409.
+    }
+  }
+
+  // updateSelectedTemplate (issue #186) pushes the modal's
+  // current form values back to the loaded template id. The
+  // dropdown's selected option carries the template id via
+  // data-template-id, set when we populated the dropdown from
+  // /export/templates. The server returns {id, name} on success
+  // or surfaces 404/409 inline via the existing respond-error
+  // shape; the templates-status slot carries the message.
+  async function updateSelectedTemplate() {
+    const modal = printConfigModal();
+    const form = modal && modal.querySelector("#share-print-config-form");
+    if (!form) return;
+    const select = modal.querySelector("[data-export-templates-select]");
+    const status = modal.querySelector("[data-export-templates-status]");
+    const option = select && select.selectedOptions && select.selectedOptions[0];
+    const templateID = option && option.dataset && option.dataset.templateId;
+    if (!templateID) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Load a template first.";
+      }
+      return;
+    }
+    const templateNameInput = modal.querySelector("[data-export-template-name-input]");
+    const fd = new FormData(form);
+    if (templateNameInput instanceof HTMLInputElement && templateNameInput.value) {
+      fd.set("template_name", templateNameInput.value);
+    }
+    try {
+      const response = await fetch(`/export/templates/${encodeURIComponent(templateID)}`, {
+        method: "POST", // handler accepts POST as well as PATCH
+        body: fd,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (status instanceof HTMLElement) {
+          status.textContent = (body && body.error) || `Could not update template. (${response.status})`;
+        }
+        return;
+      }
+      if (status instanceof HTMLElement) {
+        status.textContent = `Updated ${(body && body.name) || "template"}.`;
+      }
+      // Refresh the dropdown so the renamed template moves in
+      // sort order if the user renamed it.
+      await refreshPrintConfigTemplateDropdown();
+    } catch (error) {
+      if (status instanceof HTMLElement) {
+        status.textContent = "Could not update template.";
       }
     }
   }
