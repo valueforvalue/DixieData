@@ -187,13 +187,13 @@ templ jobStatusBody(job jobs.Job) {
 		}
 		if job.Status == jobs.StatusError {
 			<div class="rounded-2xl border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.08)] p-4 text-sm text-[#6f2c26]">
-				<p class="font-semibold">Export failed.</p>
+				<p class="font-semibold">{ jobs.FailedVerb(job.Kind, false) }</p>
 				<p class="mt-1 break-words">{ job.Error }</p>
 			</div>
 		}
 		if job.Status == jobs.StatusCancelled {
 			<div class="rounded-2xl border border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-				<p class="font-semibold">Export cancelled.</p>
+				<p class="font-semibold">{ jobs.FailedVerb(job.Kind, true) }</p>
 			</div>
 		}
 		if job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning {
