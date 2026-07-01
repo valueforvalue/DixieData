@@ -12,8 +12,14 @@ func TestServeHTTPRecoversPanic(t *testing.T) {
 	app := NewApp()
 	app.muxRaw = http.NewServeMux()
 	app.mux = recoverMiddleware(app.muxRaw)
+	// The panic value carries the test id so that grepping a stack
+	// dump across the appshell test suite for `synthetic calendar
+	// PDF crash` cannot mistakenly attribute this test's panic to
+	// any other test that happens to log a calendar PDF message
+	// (the string was previously shared with a calendar-export
+	// error log path, which made cross-test grep ambiguous).
 	app.muxRaw.HandleFunc("/boom", func(w http.ResponseWriter, r *http.Request) {
-		panic("synthetic calendar PDF crash")
+		panic("synthetic calendar PDF crash [recover_test]")
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/boom", nil)
@@ -29,12 +35,12 @@ func TestServeHTTPRecoversPanic(t *testing.T) {
 	}
 
 	// Verify the crash log received an entry.
-	path := LogCrash(req, "synthetic calendar PDF crash")
+	path := LogCrash(req, "synthetic calendar PDF crash [recover_test]")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("crash log not written: %v (path=%s)", err, path)
 	}
-	if !strings.Contains(string(data), "synthetic calendar PDF crash") {
+	if !strings.Contains(string(data), "synthetic calendar PDF crash [recover_test]") {
 		t.Fatalf("crash log missing panic value: %s", data)
 	}
 	if !strings.Contains(string(data), "/boom") {

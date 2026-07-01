@@ -613,6 +613,47 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   both already invoke `templ generate`; the docs now match the
   reality so AI agents and humans don't try to commit the
   generated output.
+- `internal/jobs` Registry Shutdown is now safe against
+  re-entrant calls (test cleanup patterns call Shutdown once
+  in the test body and once in `t.Cleanup`). The previous
+  implementation launched a fresh `Wait` goroutine on every
+  call; when the second call hit Wait after the first Wait
+  goroutine returned but a new `Start` was still landing its
+  `workerWG.Add(1)`, the sync runtime panicked with
+  'WaitGroup is reused before previous Wait has returned'.
+  Two changes: (a) `workerWG.Add(1)` now lands in the
+  caller goroutine *before* `go func()` is spawned, in both
+  `Start` and `StartManual`, so the WaitGroup counter is
+  incremented synchronously with Start and a concurrent
+  Shutdown's Wait always sees the correct count; (b) a
+  `sync.Once` in Registry ensures only one Wait goroutine
+  ever runs across the registry's lifetime, and second-and-
+  later Shutdown callers attach to the same done channel.
+  Regression net: `go test -count=20 ./internal/appshell/...`
+  passes consistently; previously failed with the WaitGroup
+  panic ~1-in-3 on CI.
+- `internal/appshell/jobs_handlers_test.go` `seedArtifactJob`
+  helper rewrote its jobID handoff from `atomic.Value` to a
+  buffered channel. The old pattern raced: the worker
+  goroutine could fire before `Start` returned, in which case
+  `jobIDHolder.Load()` returned `nil` and the unconditional
+  `.(string)` type assertion panicked. After the first
+  attempt at a fix (nil-guard + early return), the worker
+  silently completed without setting `ResultPath`, and the
+  downstream test got 409 instead of 200 with a missing
+  Content-Disposition header. The channel-based fix has the
+  worker block on `<-idCh` until the test goroutine writes
+  the id after `Start` returns — synchronised by construction
+  and impossible to lose. Regression net:
+  `TestHandleJobArtifactAttachmentForDownloadTypes` (the test
+  that surfaces this race most reliably) now passes 20/20.
+- `internal/appshell/recover_test.go` panic value tagged
+  with `[recover_test]` so cross-test log grep is unambiguous.
+  The previous `'synthetic calendar PDF crash'` literal could
+  be mistaken for a real calendar-export error log entry from
+  a sibling test in the same package run. The panic itself is
+  always recovered by `recoverMiddleware` (no leak); the tag
+  is for log-readability only.
 
 ### Fixed
 
