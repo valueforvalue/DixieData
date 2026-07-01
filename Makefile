@@ -66,25 +66,34 @@ debug: ## Debug build via scripts/build-debug.ps1 (chains web+seed+gold+tune-bin
 	$(LOG_RECIPE)
 	@$(call RECURSIVE_MAKE,probe-clean web seed gold tune-bin)
 
+# Debug-only binaries (audit harness, render-round, smoke) carry
+# the -tags debug build flag so internal/debug/trace.Log() calls
+# emit to the JSONL log + ring buffer + Debug Console. The
+# no-op stub in trace_nodebug.go keeps the cost at zero in
+# release builds (Wails wails build in scripts/build-common.ps1
+# gates the same flag on -DebugBuild). These targets are debug-
+# only by definition — `make release` does NOT invoke them — so
+# always-on -tags debug is appropriate.
+#
 # Web server (audit/smoke.mjs, ui-diff, render-round).
 web: ## Build cmd/dixiedata-web (web-mode server, audit harness target)
 	@mkdir -p build/bin
-	go build -o $(WEB_BIN) ./cmd/dixiedata-web
+	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
 
 # Seed tool (bootstraps .scratch/webmode for audit harness).
 seed: ## Build cmd/seed-data (audit harness fixture seeder)
 	@mkdir -p build/bin
-	go build -o $(SEED_BIN) ./cmd/seed-data
+	go build -tags debug -o $(SEED_BIN) ./cmd/seed-data
 
 # Gold-master regression runner (`make goldmaster`).
 gold: ## Build cmd/gold-master
 	@mkdir -p build/bin
-	go build -o $(GOLD_BIN) ./cmd/gold-master
+	go build -tags debug -o $(GOLD_BIN) ./cmd/gold-master
 
 # Tune harness (`make render-round`, `make render-round-ONE`).
 tune-bin: ## Build tools/tune (render-round PDF harness)
 	@mkdir -p tools/tune/bin
-	cd tools/tune && go build -o bin/dixiedata-tune.exe .
+	cd tools/tune && go build -tags debug -o bin/dixiedata-tune.exe .
 
 # `make tune` is the existing run target (renders a PDF against
 # the live archive). Add `tune-bin` for the build-only step so
