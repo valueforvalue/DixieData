@@ -84,14 +84,15 @@ templ Calendar(month int, calendar map[int]viewmodel.CalendarDaySummary, counts 
 				}
 			</div>
 			<div class="calendar-layout grid gap-8 items-start">
+				@CalendarGrid(month, calendar)
 				if counts.TotalRecords() == 0 {
 					@partials.EmptyStateCard("calendar", counts)
+				} else {
+					<div id="details-pane" class="relative card min-h-[300px] rounded-2xl p-6">
+						<h3 class="gold text-4xl leading-none">Select a day</h3>
+						<p class="mt-6 max-w-sm text-xl leading-relaxed text-[#445260]">Click any day to add holidays or events and review matching anniversaries.</p>
+					</div>
 				}
-				@CalendarGrid(month, calendar)
-				<div id="details-pane" class="relative card min-h-[300px] rounded-2xl p-6">
-					<h3 class="gold text-4xl leading-none">Select a day</h3>
-					<p class="mt-6 max-w-sm text-xl leading-relaxed text-[#445260]">Click any day to add holidays or events and review matching anniversaries.</p>
-				</div>
 			</div>
 		</div>
 	}
