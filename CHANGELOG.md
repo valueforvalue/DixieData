@@ -179,6 +179,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue Saved Queues JS wiring (issue #192): the
+  modal's save form / load / delete are now wired.
+  refreshShareQueuePresets() runs on openShareQueueModal
+  and GETs /share/queue/presets to hydrate the
+  per-row Load + Delete buttons. saveCurrentQueueAsPreset
+  POSTs the current localStorage queue under the form's
+  name field with a 409-conflict message for the modal's
+  status slot. loadShareQueuePreset warns-and-confirms
+  when the current queue is non-empty, GETs the apply
+  endpoint, and writes the returned soldier_ids back to
+  localStorage. deleteShareQueuePreset confirms, DELETEs
+  the row, and re-fetches the list so the empty state
+  re-surfaces.
 - Share Queue Saved Queues UI shell (issue #192): the
   Share Build modal grows a "Saved Queues" section above
   the Staged Records panel. Server-rendered shell carries
