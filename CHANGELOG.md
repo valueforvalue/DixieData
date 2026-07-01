@@ -13,6 +13,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Inline expandable stale-template warning list (issue #184).
+  When a Load produces ≥2 stale warnings, the modal grows an
+  inline `<ul>` next to the templates-status span with a
+  "Show details" toggle button. The collapse-and-show pattern is
+  the issue's Option A — keeps toasts as the transient signal
+  and makes the detail persistent in the modal until the user
+  closes it. Single-warning cases still use the single toast
+  (no list). JS wires the install-time toggle so the click
+  flips aria-expanded + button text between "Show details" /
+  "Hide details".
 - Per-template stale count badge in the Saved Templates
   dropdown (issue #187). `/export/templates` LIST response
   grows `stale_warning_count` per row, computed in-process

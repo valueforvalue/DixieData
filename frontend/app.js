@@ -3267,6 +3267,19 @@
         deleteSelectedTemplate();
       });
     }
+    // Issue #184: install the inline "Show details" toggle
+    // for stale-template warning lists. Click toggles the
+    // <ul> visibility; the JS state is captured on the
+    // wrapper's dataset so future toggles don't re-render.
+    const warningsToggle = modal.querySelector("[data-export-templates-warnings-toggle]");
+    const warningsWrap = modal.querySelector("[data-export-templates-warnings-wrap]");
+    if (warningsToggle instanceof HTMLElement && warningsWrap instanceof HTMLElement) {
+      warningsToggle.addEventListener("click", () => {
+        const expanded = warningsWrap.classList.toggle("hidden");
+        warningsToggle.setAttribute("aria-expanded", String(!expanded));
+        warningsToggle.textContent = expanded ? "Show details" : "Hide details";
+      });
+    }
   }
 
   async function refreshExportTemplates() {
@@ -3381,10 +3394,36 @@
         showToast(warnings[0], "warning");
       } else if (warnings.length > 1) {
         showToast(
-          warnings.length + " stale filter values; see browser console for details.",
+          warnings.length + " stale filter values; click 'Show details' for the list.",
           "warning"
         );
         console.warn("Template load warnings:", warnings);
+      }
+
+      // Issue #184: when there are ≥2 warnings, populate the
+      // inline expandable list inside the modal so users
+      // without devtools open can read the full text. The
+      // single-warning case is the simple toast above; the
+      // collapse-and-show pattern is the spec's Option A.
+      const warningsWrap = modal.querySelector("[data-export-templates-warnings-wrap]");
+      const warningsList = modal.querySelector("[data-export-templates-warnings]");
+      const warningsToggle = modal.querySelector("[data-export-templates-warnings-toggle]");
+      if (warningsWrap instanceof HTMLElement && warningsList instanceof HTMLElement) {
+        while (warningsList.firstChild) warningsList.removeChild(warningsList.firstChild);
+        if (warnings.length >= 2) {
+          for (const w of warnings) {
+            const li = document.createElement("li");
+            li.textContent = w;
+            warningsList.appendChild(li);
+          }
+          warningsWrap.classList.remove("hidden");
+          if (warningsToggle instanceof HTMLElement) {
+            warningsToggle.textContent = "Show details";
+            warningsToggle.setAttribute("aria-expanded", "false");
+          }
+        } else {
+          warningsWrap.classList.add("hidden");
+        }
       }
     } catch (error) {
       if (status instanceof HTMLElement) {
