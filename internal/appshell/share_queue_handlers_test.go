@@ -97,7 +97,9 @@ func TestShareQueueClear(t *testing.T) {
 }
 
 // TestShareQueueModal (issue #182) asserts the modal route
-// renders the templ (currently the c4 stub) with a 200.
+// renders the templ with a 200. Commit 5 replaced the c4 stub
+// with the full Share Build modal carrying the Export Selected
+// CTA + the persistent queue list shell.
 func TestShareQueueModal(t *testing.T) {
 	app := newTagTestApp(t)
 	server := httptest.NewServer(app)
@@ -114,6 +116,9 @@ func TestShareQueueModal(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	if !strings.Contains(string(body), "Share Queue") {
 		t.Errorf("modal body missing 'Share Queue' heading; got %s", string(body))
+	}
+	if !strings.Contains(string(body), "Export Selected as .ddshare") {
+		t.Errorf("modal body missing the Export Selected CTA; got %s", string(body))
 	}
 }
 

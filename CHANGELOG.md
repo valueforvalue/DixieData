@@ -179,6 +179,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   restarts; distinct from the existing
   `dixiedata.browse.selection` (print/export-selection) key
   to keep the two domains disjoint. Issue #182.
+- Share Queue UI (issue #182): the c4 handler stub is
+  replaced with the real Share Build modal
+  (internal/templates/share_queue_modal.templ). Layout.templ
+  gains a persistent Share Queue pill that opens the modal on
+  click; visible only when localStorage
+  `dixiedata.share-queue` has entries. Browse rows add a
+  small `[+ Queue]` button next to the existing checkbox
+  (separate visual channel -- does not collide with
+  `data-browse-select`). The /share page grows a Build
+  Share Archive button that opens the same modal directly.
+  frontend/app.js adds the localStorage round-trip, the pill
+  visibility toggle, the per-row add/remove handlers, the
+  live preview refresh via POST /share/queue/preview, and the
+  Clear Queue confirm() wire. The modal's form submits via
+  the existing dispatchDixieDataForm + data-dixie-submit path
+  to /export/shared-archive?subset=1. New uiids:
+  OverlayShareQueue, PanelShareQueueList,
+  PanelShareQueuePreview.
 - Share Queue HTTP surface (issue #182): four new endpoints
   on the appshell, two of which are unique to #182 and two of
   which extend existing pipelines:
