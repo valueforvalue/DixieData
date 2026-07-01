@@ -17,6 +17,13 @@ import (
 // handleListExportTemplates returns the saved templates as a small
 // JSON array used by the modal's Load dropdown. GET
 // /export/templates.
+//
+// Issue #187: each row grows a stale_warning_count field that
+// mirrors the warning list the modal would surface on Load.
+// Computation is in-process at list time — typical archives have
+// ≤20 templates so the per-row stale check is well under 50ms.
+// For larger archives a follow-up can lazy-fetch counts when the
+// dropdown opens; the spec recommends inline-first.
 func (a *App) handleListExportTemplates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -29,12 +36,14 @@ func (a *App) handleListExportTemplates(w http.ResponseWriter, r *http.Request) 
 	}
 	out := make([]exportTemplateSummary, 0, len(templates))
 	for _, t := range templates {
+		staleCount := len(a.computeExportTemplateStale(t))
 		out = append(out, exportTemplateSummary{
-			ID:          t.ID,
-			Name:        t.Name,
-			Scope:       t.Scope,
-			LastUsedAt:  t.LastUsedAt,
-			Orientation: t.Orientation,
+			ID:                t.ID,
+			Name:              t.Name,
+			Scope:             t.Scope,
+			LastUsedAt:        t.LastUsedAt,
+			Orientation:       t.Orientation,
+			StaleWarningCount: staleCount,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -45,11 +54,16 @@ func (a *App) handleListExportTemplates(w http.ResponseWriter, r *http.Request) 
 }
 
 type exportTemplateSummary struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Scope       string `json:"scope"`
-	LastUsedAt  any    `json:"last_used_at"`
-	Orientation string `json:"orientation"`
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Scope             string `json:"scope"`
+	LastUsedAt        any    `json:"last_used_at"`
+	Orientation       string `json:"orientation"`
+	// StaleWarningCount (issue #187) is the number of warnings
+	// that would surface on Load right now. The modal renders
+	// "(N stale)" next to the option text when > 0 so users
+	// spot stale templates before clicking.
+	StaleWarningCount int `json:"stale_warning_count"`
 }
 
 // handleSaveExportTemplate reads the modal's form fields plus a
