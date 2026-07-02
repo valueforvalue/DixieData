@@ -177,6 +177,36 @@ func TestParseAdminArgs_RestorePointApplyDryRun(t *testing.T) {
 	}
 }
 
+// TestParseAdminArgs_DataDirPathWithSpaces verifies that
+// --data-dir accepts a path with embedded spaces. Issue #276.
+// We don't boot the app here — that requires a temp archive
+// and the path is what's under test, not the boot. We do
+// assert that the parser stores the path verbatim (no
+// shell-style splitting, no trim).
+func TestParseAdminArgs_DataDirPathWithSpaces(t *testing.T) {
+	cases := []string{
+		"/Users/Jane Doe/AppData/Local/DixieData",
+		`C:\Users\Jane Doe\AppData\Local\DixieData`,
+		"/path/with space",
+		"  /leading/space",
+		"/trailing/space  ",
+		`/path/with"quote`,
+	}
+	for _, p := range cases {
+		t.Run(p, func(t *testing.T) {
+			opts, err := ParseAdminArgs([]string{
+				"config", "show", "--data-dir=" + p,
+			})
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			if opts.DataDir != p {
+				t.Errorf("DataDir = %q, want %q", opts.DataDir, p)
+			}
+		})
+	}
+}
+
 func TestParseAdminArgs_LogsPath(t *testing.T) {
 	opts, err := ParseAdminArgs([]string{"logs", "path"})
 	if err != nil {
