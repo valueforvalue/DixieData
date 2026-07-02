@@ -248,7 +248,7 @@ func runQuerySubcommand() int {
 	opts.App = a
 	code, err := appshell.RunQuery(ctx, opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 	}
 	return code
 }
@@ -263,7 +263,7 @@ func runExportSubcommand() int {
 	}
 	opts, err := appshell.ParseExportArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 		return 3
 	}
 	a := appshell.NewApp()
@@ -273,7 +273,7 @@ func runExportSubcommand() int {
 	opts.App = a
 	code, err := appshell.RunExport(ctx, opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 	}
 	return code
 }
@@ -287,7 +287,7 @@ func runImportSubcommand() int {
 	}
 	opts, err := appshell.ParseImportArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 		return 3
 	}
 	a := appshell.NewApp()
@@ -297,7 +297,7 @@ func runImportSubcommand() int {
 	opts.App = a
 	code, err := appshell.RunImport(ctx, opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 	}
 	return code
 }
@@ -314,7 +314,7 @@ func runAdminSubcommand() int {
 	}
 	opts, err := appshell.ParseAdminArgs(args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 		return 3
 	}
 	a := appshell.NewApp()
@@ -324,7 +324,7 @@ func runAdminSubcommand() int {
 	opts.App = a
 	code, err := appshell.RunAdmin(ctx, opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 	}
 	return code
 }
@@ -341,11 +341,11 @@ func runAdminSubcommand() int {
 func runDebugSubcommand() int {
 	opts, err := appshell.ParseDebugArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 		return 3
 	}
 	if err := appshell.ApplyDebugDataDirOverride(opts.DataDir); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 		return 3
 	}
 	a := appshell.NewApp()
@@ -355,7 +355,7 @@ func runDebugSubcommand() int {
 	opts.App = a
 	code, err := appshell.RunDebug(ctx, opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		writeError(os.Stderr, err.Error())
 	}
 	return code
 }

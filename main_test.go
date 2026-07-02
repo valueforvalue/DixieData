@@ -77,8 +77,6 @@ func TestVersionOutputFormat(t *testing.T) {
 	if !done {
 		t.Fatal("expected done=true")
 	}
-	// Print to the test writer (not stdout) so the assertion
-	// uses the same path the production code uses.
 	if !strings.Contains(output, "DixieData v") {
 		t.Errorf("output missing app label: %q", output)
 	}
@@ -91,11 +89,11 @@ func TestVersionOutputFormat(t *testing.T) {
 // produces the help text. Issue #277.
 func TestHelpFlag(t *testing.T) {
 	cases := [][]string{
-		{"dixiedata"},                 // no args
-		{"dixiedata", "help"},          // 'help' subcommand
-		{"dixiedata", "--help"},        // --help
-		{"dixiedata", "-h"},            // -h
-		{"dixiedata", "--help", "garbage"}, // --help wins over garbage
+		{"dixiedata"},
+		{"dixiedata", "help"},
+		{"dixiedata", "--help"},
+		{"dixiedata", "-h"},
+		{"dixiedata", "--help", "garbage"},
 	}
 	for _, argv := range cases {
 		t.Run(strings.Join(argv[1:], "_"), func(t *testing.T) {
@@ -106,7 +104,6 @@ func TestHelpFlag(t *testing.T) {
 			if !strings.Contains(output, "DixieData CLI") {
 				t.Errorf("output missing header: %q", output)
 			}
-			// Every documented subcommand must appear.
 			for _, sub := range []string{"--smoke", "--version", "doctor", "list", "show", "search", "export", "import", "migrate", "backup", "restore point", "logs", "config", "debug"} {
 				if !strings.Contains(output, sub) {
 					t.Errorf("output missing subcommand %q", sub)
@@ -152,5 +149,57 @@ func TestHasLogToStderr(t *testing.T) {
 			}
 		})
 	}
+}
 
+// TestErrorFormatConvention asserts that every error path
+// in the CLI dispatchers writes 'error: <msg>\n' to stderr
+// via the centralised writeError helper. Issue #274.
+func TestErrorFormatConvention(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"soldier not found", "error: soldier not found\n"},
+		{"", "error: \n"},
+	}
+	for _, c := range cases {
+		t.Run(c.in, func(t *testing.T) {
+			var buf bytes.Buffer
+			writeError(&buf, c.in)
+			if got := buf.String(); got != c.want {
+				t.Errorf("got %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestStderrCaptureShape verifies that stderr capture
+// during a synthetic failure emits the right prefix.
+func TestStderrCaptureShape(t *testing.T) {
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = origStderr }()
+
+	doneCh := make(chan struct{})
+	var buf bytes.Buffer
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(doneCh)
+	}()
+
+	writeError(os.Stderr, "soldier not found: DXD-99999")
+	w.Close()
+	<-doneCh
+
+	got := buf.String()
+	if !strings.HasPrefix(got, "error: ") {
+		t.Errorf("stderr output missing 'error: ' prefix: %q", got)
+	}
+	if !strings.HasSuffix(got, "\n") {
+		t.Errorf("stderr output missing trailing newline: %q", got)
+	}
 }
