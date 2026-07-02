@@ -240,14 +240,16 @@ func hasLogToStderr(args []string) bool {
 // started (so the soldiers facade is wired) then shut down so
 // background jobs + the DB close cleanly. We don't need Wails.
 func runQuerySubcommand() int {
-	opts, _ := appshell.ParseQueryCommand(os.Args[1:])
-	a := appshell.NewApp()
-	ctx := context.Background()
-	a.Startup(ctx)
-	defer a.Shutdown(ctx)
-	opts.App = a
-	code, err := appshell.RunQuery(ctx, opts)
-	if err != nil {
+	code, err := recoverExit5(func() (int, error) {
+		opts, _ := appshell.ParseQueryCommand(os.Args[1:])
+		a := appshell.NewApp()
+		ctx := context.Background()
+		a.Startup(ctx)
+		defer a.Shutdown(ctx)
+		opts.App = a
+		return appshell.RunQuery(ctx, opts)
+	})
+	if err != nil && code != 5 {
 		writeError(os.Stderr, err.Error())
 	}
 	return code
@@ -258,21 +260,22 @@ func runQuerySubcommand() int {
 // runQuerySubcommand. No Wails — bypasses the native SaveFileDialog
 // entirely (every command takes --out PATH).
 func runExportSubcommand() int {
-	if dir := firstDataDir(os.Args[1:]); dir != "" {
-		_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
-	}
-	opts, err := appshell.ParseExportArgs(os.Args[1:])
-	if err != nil {
-		writeError(os.Stderr, err.Error())
-		return 3
-	}
-	a := appshell.NewApp()
-	ctx := context.Background()
-	a.Startup(ctx)
-	defer a.Shutdown(ctx)
-	opts.App = a
-	code, err := appshell.RunExport(ctx, opts)
-	if err != nil {
+	code, err := recoverExit5(func() (int, error) {
+		if dir := firstDataDir(os.Args[1:]); dir != "" {
+			_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
+		}
+		opts, err := appshell.ParseExportArgs(os.Args[1:])
+		if err != nil {
+			return 3, err
+		}
+		a := appshell.NewApp()
+		ctx := context.Background()
+		a.Startup(ctx)
+		defer a.Shutdown(ctx)
+		opts.App = a
+		return appshell.RunExport(ctx, opts)
+	})
+	if err != nil && code != 5 {
 		writeError(os.Stderr, err.Error())
 	}
 	return code
@@ -285,18 +288,19 @@ func runImportSubcommand() int {
 	if dir := firstDataDir(os.Args[1:]); dir != "" {
 		_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
 	}
-	opts, err := appshell.ParseImportArgs(os.Args[1:])
-	if err != nil {
-		writeError(os.Stderr, err.Error())
-		return 3
-	}
-	a := appshell.NewApp()
-	ctx := context.Background()
-	a.Startup(ctx)
-	defer a.Shutdown(ctx)
-	opts.App = a
-	code, err := appshell.RunImport(ctx, opts)
-	if err != nil {
+	code, err := recoverExit5(func() (int, error) {
+		opts, err := appshell.ParseImportArgs(os.Args[1:])
+		if err != nil {
+			return 3, err
+		}
+		a := appshell.NewApp()
+		ctx := context.Background()
+		a.Startup(ctx)
+		defer a.Shutdown(ctx)
+		opts.App = a
+		return appshell.RunImport(ctx, opts)
+	})
+	if err != nil && code != 5 {
 		writeError(os.Stderr, err.Error())
 	}
 	return code
@@ -308,22 +312,23 @@ func runImportSubcommand() int {
 // by setting DIXIEDATA_DATA_DIR before a.Startup() so
 // appdata.DefaultDir() picks it up.
 func runAdminSubcommand() int {
-	args := os.Args[1:]
-	if dir := firstDataDir(args); dir != "" {
-		_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
-	}
-	opts, err := appshell.ParseAdminArgs(args)
-	if err != nil {
-		writeError(os.Stderr, err.Error())
-		return 3
-	}
-	a := appshell.NewApp()
-	ctx := context.Background()
-	a.Startup(ctx)
-	defer a.Shutdown(ctx)
-	opts.App = a
-	code, err := appshell.RunAdmin(ctx, opts)
-	if err != nil {
+	code, err := recoverExit5(func() (int, error) {
+		args := os.Args[1:]
+		if dir := firstDataDir(args); dir != "" {
+			_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
+		}
+		opts, err := appshell.ParseAdminArgs(args)
+		if err != nil {
+			return 3, err
+		}
+		a := appshell.NewApp()
+		ctx := context.Background()
+		a.Startup(ctx)
+		defer a.Shutdown(ctx)
+		opts.App = a
+		return appshell.RunAdmin(ctx, opts)
+	})
+	if err != nil && code != 5 {
 		writeError(os.Stderr, err.Error())
 	}
 	return code
@@ -339,22 +344,22 @@ func runAdminSubcommand() int {
 // --yes and never touch the archive file. Useful for support
 // workflows where the GUI is unavailable.
 func runDebugSubcommand() int {
-	opts, err := appshell.ParseDebugArgs(os.Args[1:])
-	if err != nil {
-		writeError(os.Stderr, err.Error())
-		return 3
-	}
-	if err := appshell.ApplyDebugDataDirOverride(opts.DataDir); err != nil {
-		writeError(os.Stderr, err.Error())
-		return 3
-	}
-	a := appshell.NewApp()
-	ctx := context.Background()
-	a.Startup(ctx)
-	defer a.Shutdown(ctx)
-	opts.App = a
-	code, err := appshell.RunDebug(ctx, opts)
-	if err != nil {
+	code, err := recoverExit5(func() (int, error) {
+		opts, err := appshell.ParseDebugArgs(os.Args[1:])
+		if err != nil {
+			return 3, err
+		}
+		if err := appshell.ApplyDebugDataDirOverride(opts.DataDir); err != nil {
+			return 3, err
+		}
+		a := appshell.NewApp()
+		ctx := context.Background()
+		a.Startup(ctx)
+		defer a.Shutdown(ctx)
+		opts.App = a
+		return appshell.RunDebug(ctx, opts)
+	})
+	if err != nil && code != 5 {
 		writeError(os.Stderr, err.Error())
 	}
 	return code
