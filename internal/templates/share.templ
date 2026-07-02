@@ -29,7 +29,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
 			</div>
 			<div class="responsive-two-col relative grid gap-6">
-				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<section id="export-section" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Export & Backup</p>
 						<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
@@ -103,15 +103,17 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 								</span>
 							</label>
 						</form>
-						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"data-share-queue-open": "",
-						}) {
-							<span class="font-bold">Build Share Archive</span>
-							<span class="text-xs text-slate-500">Open the Share Queue modal (issue #182)</span>
-						}
+						<div id="build-share-archive" data-build-share-archive>
+							@components.ButtonContent(components.ButtonSecondary, "justify-between text-left w-full", templ.Attributes{
+								"data-share-queue-open": "",
+							}) {
+								<span class="font-bold">Build Share Archive</span>
+								<span class="text-xs text-slate-500">Open the Share Queue modal (issue #182)</span>
+							}
+						</div>
 					</div>
 				</section>
-				<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<section id="import-section" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Import & Restore</p>
 						<h3 class="mt-2 text-xl gold font-bold">Bring data back into this local archive</h3>
