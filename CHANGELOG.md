@@ -13,6 +13,35 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **CLI follow-up pack.** Resolves 7 of the 13 carryover
+  items from `docs/agents/cli-plan.md` "Open follow-up":
+  - `dixiedata --version` / `-v` (issue #271) — top-level
+    short-circuit in main.go that prints
+    `buildinfo.AppLabel + buildinfo.BuildIdentity`. Exits 0.
+  - `dixiedata help` / `--help` / `-h` (issue #277) — top-level
+    help dispatch with a hand-maintained subcommand list.
+    main_test.go asserts the listed verbs match the
+    dispatcher's view.
+  - `dixiedata --log-to-stderr` (issue #270) — mirrors the
+    JSONL log to stderr via a new `debug.SetStderrMirror`
+    toggle + a `teeHandler.stderrMirror` field. Triggered
+    by the env var `DIXIEDATA_LOG_TO_STDERR=1` which main.go
+    sets before the appshell starts.
+  - `restore point apply` (issue #269) — the previously
+    no-op subcommand now actually applies via the existing
+    `backup.ImportWithLocalIdentity` flow. `--dry-run`
+    preserves the previous behaviour. New
+    `RestorePointManager.LocalArchiveAbsolutePath` accessor.
+  - Exit-5 path (issue #275) — `recoverExit5` wrapper converts
+    panics in any subcommand runner to exit code 5 with the
+    panic value + stack trace on stderr. All 5
+    `run*Subcommand` helpers wrapped.
+  - `writeError` helper (issue #274) — centralised the
+    `error: <msg>\n` to stderr format. The 10 call sites in
+    main.go funnelled through it. New `errors.go`.
+  - `--data-dir` path-with-spaces test (issue #276) —
+    parser test with 6 path shapes (POSIX + Windows +
+    embedded spaces + leading/trailing whitespace + quote).
 - **Build / release / schema / update-in-place safety
   protocol.** Adds `docs/agents/build-protocol.md` (the
   canonical procedure covering Makefile hygiene, CLI
