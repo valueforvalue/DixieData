@@ -77,3 +77,41 @@ jobs:
         shell: pwsh
         run: |
           pwsh -File scripts/bump-version.ps1 -VerifyOnly
+
+      # Schema-touching detector (build-protocol.md §4). If the
+      # PR has any commit subject matching feat(db) / feat(schema)
+      # / fix(db) AND CurrentSchemaVersion is unchanged from the
+      # base branch, fail with a drift message. The skip hatch
+      # is a commit subject 'chore: skip-schema-bump' + reason
+      # in the body, used for cases like a performance-only
+      # index change that doesn't need a bump.
+      - name: Schema-touching bump detector
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          $base = "${{ github.base_ref }}"
+          $subjects = git log --format=%s "$base..HEAD" 2>$null
+          $touches = $subjects | Where-Object { $_ -match '^(feat|fix)\((db|schema)\):' -or $_ -match '^feat\(schema\):' }
+          if (-not $touches) {
+            Write-Host "schema-touching: no feat(db)/feat(schema)/fix(db) commits in PR"
+            exit 0
+          }
+          $skipHatch = $subjects | Where-Object { $_ -match '^chore: skip-schema-bump' }
+          if ($skipHatch) {
+            Write-Host "schema-touching: skip-schema-bump hatch found, allowing PR"
+            exit 0
+          }
+          $currentHead = (git show "HEAD:internal/versioninfo/versioninfo.go" | Select-String 'CurrentSchemaVersion\s*=\s*(\d+)').Matches[0].Groups[1].Value
+          $currentBase = (git show "origin/$($base):internal/versioninfo/versioninfo.go" | Select-String 'CurrentSchemaVersion\s*=\s*(\d+)').Matches[0].Groups[1].Value
+          if ($currentHead -eq $currentBase) {
+            Write-Host ""
+            Write-Host "DRIFT: PR #${{ github.event.pull_request.number }} touches schema but did not bump CurrentSchemaVersion." -ForegroundColor Red
+            Write-Host "Touching commits:" -ForegroundColor Yellow
+            $touches | ForEach-Object { Write-Host "  $_" }
+            Write-Host ""
+            Write-Host "Either:" -ForegroundColor Yellow
+            Write-Host "  1. Add a 'feat(schema): bump to v$($currentBase + 1)' commit in this PR"
+            Write-Host "  2. Add a 'chore: skip-schema-bump' commit + reason in body (rare; for non-shape changes)"
+            exit 1
+          }
+          Write-Host "schema-touching: schema bumped from $currentBase to $currentHead, OK"
