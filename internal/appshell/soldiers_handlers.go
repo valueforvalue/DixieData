@@ -471,7 +471,12 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 			respondValidation(w, r, "Invalid 'from' parameter for the back link.", err)
 			return
 		}
-		presentation.SoldierDetail(*soldier).Render(r.Context(), w)
+		soldierTags, err := a.tags.TagsForSoldier(r.Context(), id)
+		if err != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not load tags for person record %d.", id), err)
+			return
+		}
+		presentation.SoldierDetail(*soldier, soldierTags).Render(r.Context(), w)
 	case http.MethodPut:
 		a.handleUpdateSoldier(w, r, id)
 	case http.MethodDelete:
