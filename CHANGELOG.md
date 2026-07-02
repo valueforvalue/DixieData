@@ -2911,6 +2911,27 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   JSON click → POST /export/json → /jobs/{id} → Recent activity
   populates round-trip).
 
+- **Fixed Share foldout menu items invisible (1.00:1 contrast)**
+  (issue #283). The foldout menu items inherited `color: #22303d`
+  (dark slate from the parent `.pill-link`) but the panel
+  background was dark navy `rgba(36,48,61,0.96)`, giving a
+  contrast ratio of 1.00:1 — effectively invisible at every
+  WCAG level. The user perceived "items don't show" because
+  they were functionally invisible. After the first click
+  the user knew to look for them, so the "items appear after
+  clicking another nav first" pattern was a perception bug,
+  not a clipping bug. Fix: `.foldout-menuitem` now uses
+  explicit cream `color: #f2ede1` (the same cream the top-nav
+  brand text uses on the dark surface) — 11.49:1 ratio,
+  passes WCAG AAA. The focus-visible state uses an even
+  brighter `#fff8e7`. The diagnostic that traced the
+  ancestor chain found no `overflow: hidden` clipping; the
+  panel was correctly visible the whole time, just at
+  zero contrast. Regression net: `audit/smoke_foldout_nav.mjs`
+  extended from 24 to 32 assertions (+8 covering items
+  visible in the painted viewport on /calendar + contrast
+  ratio >= 4.5:1 for each menuitem).
+
 - **Share top-nav foldout** (issue #264). Replaced the two
   flat top-nav links (Share + Share Queue) with a single
   Share trigger that opens a foldout panel containing 4
