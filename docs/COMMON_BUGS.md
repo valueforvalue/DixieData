@@ -942,6 +942,83 @@ done
 
 ---
 
+### 3.6 [FUTURE-NAV-AVOID] Outside-click handler closes the panel the trigger just opened
+
+**Symptom:** First click on a top-nav foldout trigger (e.g.
+"Share" in the top-nav) does nothing visible. Workaround:
+click any other top-nav link first, then click the trigger
+— the panel opens. The chevron may or may not rotate;
+the panel may or may not have `aria-expanded="true"`
+after the click.
+
+**Why it happens:** Two click handlers fire in bubble
+order when the user clicks the trigger:
+  1. **Trigger's own click handler** (bound directly on the
+     trigger element) fires first → calls `open()` →
+     removes the `hidden` class from the panel.
+  2. **Document-level outside-click handler** (bound on
+     `document` to close panels on outside click) fires
+     second when the click bubbles up → iterates ALL
+     foldout panels and closes any that are open and
+     don't contain the click target. The just-opened
+     panel matches the close criteria (open + click
+     target is the trigger, which is a sibling of the
+     panel, not contained) → gets closed again.
+
+The same-class check inside the document handler
+(`if (trigger.contains(target)) continue;`) correctly
+skips the trigger that owns the click, but the OTHER
+triggers' panels are also skipped (still hidden). The
+bug is that the just-opened panel — owned by the same
+trigger the user just clicked — is also iterated and
+closed.
+
+The page-reload workaround works because the second
+navigates the Wails WebView2 to a fresh document,
+where the bubble-phase event ordering race resolves
+differently (the document handler doesn't re-fire on
+the next page's clicks because the page is "settled"
+by the time the user clicks Share again).
+
+**Why this is documented as a future-nav-avoid pattern:**
+The top-nav foldout pattern (issue #264) is going to be
+revamped. Any future top-nav that re-implements the
+"trigger button + dropdown panel" pattern with a
+similar click-outside handler MUST guard against the
+race above. The guard: skip the panel whose trigger is
+the click target, regardless of whether the panel
+contains the click target. See the fix in commit
+`d8f73b7` for the one-line guard.
+
+**Find it:** See `docs/agents/bug-pattern-grep.md` §9
+for the grep.
+
+**Repro:** Fresh boot, hit any non-trigger-page (e.g.
+`/calendar`), click the foldout trigger. Panel does
+not appear.
+
+**Fix:** In the document-level outside-click handler,
+add `if (trigger === target || trigger.contains(target)) continue;`
+at the top of the loop body. The trigger's own click
+handler still calls `open()` synchronously; the
+document handler runs LATER in the bubble phase and
+would re-close it without this guard.
+
+**Playwright masked this bug:** `page.evaluate(() =>
+element.click())` fires a synthetic `click` event that
+doesn't go through the normal browser event flow, so
+the bubble-phase race didn't reproduce. The
+regression-net assertion in `audit/smoke_foldout_nav.mjs`
+step 9.5 specifically uses `page.locator.click()` (a
+real mouse click) to catch this. New tests for the
+foldout family MUST use the real-mouse path, not
+synthetic dispatch.
+
+**Real example:**
+- `d8f73b7 fix(foldout): outside-click handler closed the panel the trigger just opened (issue #283 followup)`
+
+---
+
 ## 4. Go backend bugs
 
 ### 4.1 Goroutine / subscription leak
@@ -2035,6 +2112,7 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Handler runs, toast shows, page doesn't navigate | Section 1.10 | `X-DixieData-Redirect` missing |
 | Form submits, server runs, JS post-response ignored | Section 1.11 | `data-dixie-submit` missing |
 | Submit OK but target panel never refreshes | Section 3.5 | stale status panel after submit |
+| Top-nav foldout first click does nothing | Section 3.6 | outside-click handler closes panel the trigger just opened (bubble-phase race) |
 | Double-click produces duplicate job | Section 4.11 | dedup helper / in-flight slot |
 | Toast shows mojibake | Section 4.12 | HTTP/1.x header charset |
 | 405 from a clickable form | Section 4.13 | wrong HTTP method on route |

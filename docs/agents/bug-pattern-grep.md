@@ -239,6 +239,54 @@ done
 
 ---
 
+## 9. `foldout-trigger-click-race` (§3.6, FUTURE-NAV-AVOID)
+
+**Symptom:** First click on a top-nav foldout trigger does
+nothing. Workaround: click another nav link first, then
+the trigger — the panel opens. The pattern is the
+**bubble-phase race** between the trigger's own click
+handler and a document-level outside-click handler that
+closes any open panel that doesn't contain the click
+target.
+
+**Why this grep matters:** The top-nav foldout pattern
+(issue #264) is going to be revamped. Any new top-nav
+re-implementing the "trigger button + dropdown panel"
+pattern MUST guard against the race. The grep finds
+new outside-click handlers that lack the guard.
+
+```bash
+# Every document-level click handler that closes a
+# dropdown / popover / panel
+grep -rn 'addEventListener.*"click"' frontend/app.js \
+  | grep -v _test
+
+# Pair each with its body to check for the guard
+# The guard idiom (after the fix in d8f73b7):
+#   if (trigger === target || trigger.contains(target)) continue;
+# A handler that iterates a list of (trigger, panel)
+# pairs and calls something like
+#   if (panel.classList.contains("hidden")) continue;
+#   panel.classList.add("hidden");
+# WITHOUT the target-equals-trigger guard is a bug.
+grep -rnB 2 -A 5 'classList\.add("hidden")' frontend/app.js \
+  | grep -v _test
+```
+
+**What the result means:** A new outside-click handler
+that iterates `trigger`/`panel` pairs and conditionally
+adds `hidden` to the panel is a foldout-trigger-click-
+race waiting to happen. Add the guard before merging.
+The guard must compare against the click target, not
+the click target's ancestor (`trigger.contains(target)` is
+NOT enough because a click on the trigger itself has
+`target === trigger`, not `target` inside the trigger).
+
+**Real example:**
+- `d8f73b7 fix(foldout): outside-click handler closed the panel the trigger just opened (issue #283 followup)`
+
+---
+
 ## How to use this cookbook
 
 1. Before merging a PR, run the greps relevant to the changed
