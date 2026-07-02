@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --- html-level defaults (issue: top nav jumps when switching tabs) --- */
+/* The .top-shell uses margin: 0 auto to centre within .app-shell. On
+   pages where the content fits in the viewport, the scrollbar is
+   absent (0px); on pages where it overflows, the scrollbar takes
+   ~15px. Each tab switch re-centres .app-shell, which shifts the
+   sticky top-nav by 15px horizontally — a visible "jump".
+
+   scrollbar-gutter: stable reserves the scrollbar gutter even when
+   no scrollbar is present, so .app-shell (and the .top-shell inside
+   it) stays at a fixed horizontal position across all tabs. The
+   trade-off is a permanent ~15px gutter on the right edge, which is
+   invisible in practice and matches user expectation (the layout
+   doesn't shift while clicking around). */
+html { scrollbar-gutter: stable; }
+
 /* PR1 — pure file move from internal/templates/layout.templ (inline <style>).
    Drop .gold-border (zero matches in repo, dead code per design D1).
    Computed styles identical to pre-PR1; layout_test.go byte-stability
