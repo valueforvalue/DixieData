@@ -2914,9 +2914,24 @@
       // synthetic forms have no FormData to attach anyway.
       const methodUpper = String(fetchOptions.method).toUpperCase();
       if (methodUpper !== "GET" && methodUpper !== "HEAD") {
-        fetchOptions.body = button.closest("form")
-          ? new FormData(form)
-          : new FormData();
+        // Issue #247: when the form has multiple submit buttons
+        // sharing the same name (e.g. review-queue's Ignore +
+        // Delete with name="bulk_action"), `new FormData(form)`
+        // silently drops the submitter's name+value because the
+        // synthetic fetch is not a real form submission. Pass the
+        // submitter as the second arg AND, as a belt-and-suspenders
+        // fallback for browsers that don't honor the submitter
+        // argument in synthetic FormData construction, manually
+        // append the submitter's entry if FormData omitted it.
+        if (button.closest("form")) {
+          const fd = new FormData(form, button);
+          if (button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
+            fd.append(button.name, button.value);
+          }
+          fetchOptions.body = fd;
+        } else {
+          fetchOptions.body = new FormData();
+        }
       }
       const requestUrl = form.action || window.location.pathname;
       const response = await fetch(requestUrl, fetchOptions);

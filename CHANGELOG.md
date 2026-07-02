@@ -639,6 +639,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   same DOM node. Regression net:
   `audit/smoke_share_queue_select_all.mjs` (7 assertions,
   live-binary headless browser probe).
+- "Ignore Selected" and "Delete Selected" buttons on
+  `/review-queue` returned "Unknown bulk action. Use
+  ignore or delete." regardless of which button was
+  clicked. The form has two submit buttons sharing the
+  name `bulk_action`. `dispatchDixieDataForm` built the
+  request body as `new FormData(form)` (no submitter
+  argument); per the WHATWG spec, `new FormData(form)`
+  silently drops submit-button values when the form is
+  not actually submitted (which it isn't — the JS path
+  uses `fetch`, not `<form>.submit()`). In practice the
+  browser honored the submitter argument in some
+  contexts (a direct call) but not in the synthetic
+  fetch path, so a single-line `new FormData(form,
+  button)` was insufficient. Fix: pass the submitter to
+  FormData AND, as a belt-and-suspenders fallback,
+  manually append the submitter's name+value to the
+  FormData if the browser omitted it. Regression net:
+  `audit/smoke_review_queue_bulk.mjs` (4 assertions,
+  live-binary headless browser probe: synthetic form
+  with 2 checkboxes + 2 submit buttons, intercept
+  fetch, dispatch real submit event, assert body
+  includes `bulk_action=ignore`).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"
