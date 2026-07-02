@@ -51,6 +51,7 @@ const (
 	DebugHXInvariants
 	DebugBrowserTree
 	DebugRequest
+	DebugCLICoverage
 )
 
 // String returns the lowercase verb used on the command line.
@@ -64,6 +65,8 @@ func (k DebugKind) String() string {
 		return "browser-tree"
 	case DebugRequest:
 		return "request"
+	case DebugCLICoverage:
+		return "cli-coverage"
 	default:
 		return "unknown"
 	}
@@ -111,6 +114,8 @@ func RunDebug(ctx context.Context, opts DebugOptions) (int, error) {
 		return runDebugBrowserTree(ctx, app, opts)
 	case DebugRequest:
 		return runDebugRequest(ctx, app, opts)
+	case DebugCLICoverage:
+		return runDebugCLICoverage(ctx, app, opts)
 	default:
 		return 3, fmt.Errorf("unknown debug command")
 	}
@@ -893,7 +898,7 @@ func ParseDebugArgs(args []string) (DebugOptions, error) {
 		return opts, nil
 	}
 	if len(args) < 2 {
-		return opts, fmt.Errorf("debug subcommand requires a kind (dump, hx-invariants, browser-tree, request)")
+		return opts, fmt.Errorf("debug subcommand requires a kind (dump, hx-invariants, browser-tree, request, cli-coverage)")
 	}
 	switch args[1] {
 	case "dump":
@@ -911,8 +916,10 @@ func ParseDebugArgs(args []string) (DebugOptions, error) {
 			return opts, err
 		}
 		opts.RequestPath = path
+	case "cli-coverage":
+		opts.Kind = DebugCLICoverage
 	default:
-		return opts, fmt.Errorf("unknown debug subcommand: %s (want dump, hx-invariants, browser-tree, request)", args[1])
+		return opts, fmt.Errorf("unknown debug subcommand: %s (want dump, hx-invariants, browser-tree, request, cli-coverage)", args[1])
 	}
 
 	for i, a := range args {
@@ -1044,4 +1051,285 @@ func ApplyDebugDataDirOverride(cliDataDir string) error {
 		return fmt.Errorf("--data-dir %q: %w", cliDataDir, err)
 	}
 	return os.Setenv("DIXIEDATA_DATA_DIR", abs)
+}
+
+// CLICoverageReport is the JSON payload for `debug cli-coverage`.
+type CLICoverageReport struct {
+	Command             string   `json:"command"`
+	Documented          []string `json:"documented"`
+	Implemented         []string `json:"implemented"`
+	DocumentedNotImpl   []string `json:"documented_not_implemented"`
+	ImplementedNotDoc   []string `json:"implemented_not_documented"`
+	DocumentedCount     int      `json:"documented_count"`
+	ImplementedCount    int      `json:"implemented_count"`
+	CoveragePercent     int      `json:"coverage_percent"`
+	DocPath             string   `json:"doc_path"`
+	GeneratedAt         string   `json:"generated_at"`
+}
+
+// runDebugCLICoverage walks the CLI subcommand dispatcher in
+// main.go / internal/appshell/cli_*.go against the documented
+// subcommand list in docs/agents/cli-plan.md. Emits the diff
+// of "documented, not implemented" + "implemented, not
+// documented" + a coverage percentage. Exit 0 if both sets
+// match; exit 1 otherwise.
+//
+// Implementation strategy: parse the source for `case "...":`
+// lines in the cli_*.go files (cheap regex; doesn't need a
+// full AST). Parse cli-plan.md for `dixiedata <verb> ...`
+// lines under the "shipped" phases. Compare.
+//
+// Drift detection is the primary use case. A subcommand
+// documented but not in the dispatcher (or vice versa) is a
+// stale doc or a stale switch — both should be flagged.
+func runDebugCLICoverage(ctx context.Context, app *App, opts DebugOptions) (int, error) {
+	// Locate the cli-plan.md doc. We try the repo root by
+	// walking up from the working dir.
+	docPath := findCLICoverageDoc()
+	if docPath == "" {
+		return 2, fmt.Errorf("could not locate docs/agents/cli-plan.md from working dir")
+	}
+	implSet := scanImplementedSubcommands(repoRootOf(docPath))
+	docSet := scanDocumentedSubcommands(docPath)
+
+	docList := sortedKeys(docSet)
+	implList := sortedKeys(implSet)
+
+	docNotImpl := diff(docList, implList)
+	implNotDoc := diff(implList, docList)
+
+	coverage := 100
+	if len(docList) > 0 {
+		matched := 0
+		for _, d := range docList {
+			if contains(implList, d) {
+				matched++
+			}
+		}
+		coverage = (matched * 100) / len(docList)
+	}
+
+	report := CLICoverageReport{
+		Command:           "debug cli-coverage",
+		Documented:        docList,
+		Implemented:       implList,
+		DocumentedNotImpl: docNotImpl,
+		ImplementedNotDoc: implNotDoc,
+		DocumentedCount:   len(docList),
+		ImplementedCount:  len(implList),
+		CoveragePercent:   coverage,
+		DocPath:           docPath,
+		GeneratedAt:       time.Unix(opts.Now(), 0).UTC().Format(time.RFC3339),
+	}
+
+	if opts.JSON {
+		enc := json.NewEncoder(opts.Writer)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(report); err != nil {
+			return 1, err
+		}
+	} else {
+		fmt.Fprintf(opts.Writer, "dixiedata debug cli-coverage\n")
+		fmt.Fprintf(opts.Writer, "================================\n")
+		fmt.Fprintf(opts.Writer, "Doc:           %s\n", report.DocPath)
+		fmt.Fprintf(opts.Writer, "Documented:    %d subcommands\n", report.DocumentedCount)
+		fmt.Fprintf(opts.Writer, "Implemented:   %d subcommands\n", report.ImplementedCount)
+		fmt.Fprintf(opts.Writer, "Coverage:      %d%%\n", report.CoveragePercent)
+		fmt.Fprintf(opts.Writer, "\n")
+		if len(report.DocumentedNotImpl) > 0 {
+			fmt.Fprintf(opts.Writer, "Documented, not implemented (drift — remove from docs):\n")
+			for _, s := range report.DocumentedNotImpl {
+				fmt.Fprintf(opts.Writer, "  - %s\n", s)
+			}
+			fmt.Fprintf(opts.Writer, "\n")
+		}
+		if len(report.ImplementedNotDoc) > 0 {
+			fmt.Fprintf(opts.Writer, "Implemented, not documented (drift — add to docs OR are leaf verbs under a parent):\n")
+			for _, s := range report.ImplementedNotDoc {
+				fmt.Fprintf(opts.Writer, "  - %s\n", s)
+			}
+			fmt.Fprintf(opts.Writer, "\n")
+			fmt.Fprintf(opts.Writer, "Note: leaf verbs (e.g. 'pdf' under 'export') appear here because\n")
+			fmt.Fprintf(opts.Writer, "they're switch-case literals in the dispatcher but only documented\n")
+			fmt.Fprintf(opts.Writer, "as 'dixiedata export pdf'. They are real, reachable verbs. Add a\n")
+			fmt.Fprintf(opts.Writer, "top-level 'dixiedata <verb>' line in cli-plan.md ONLY if the verb\n")
+			fmt.Fprintf(opts.Writer, "is reachable directly (e.g. via 'dixiedata migrate status', not\n")
+			fmt.Fprintf(opts.Writer, "'dixiedata migrate up status').\n\n")
+		}
+		if len(report.DocumentedNotImpl) == 0 && len(report.ImplementedNotDoc) == 0 {
+			fmt.Fprintf(opts.Writer, "Clean: every documented subcommand is implemented and vice versa.\n")
+		}
+	}
+
+	if len(report.DocumentedNotImpl) > 0 || len(report.ImplementedNotDoc) > 0 {
+		return 1, fmt.Errorf("cli-coverage drift detected: %d documented-not-implemented, %d implemented-not-documented",
+			len(report.DocumentedNotImpl), len(report.ImplementedNotDoc))
+	}
+	return 0, nil
+}
+
+// findCLICoverageDoc walks up from cwd looking for
+// docs/agents/cli-plan.md. Returns the absolute path or "" if
+// not found within 5 levels.
+func findCLICoverageDoc() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	dir := cwd
+	for i := 0; i < 5; i++ {
+		candidate := filepath.Join(dir, "docs", "agents", "cli-plan.md")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// repoRootOf strips /docs/agents/cli-plan.md from a path to
+// give the repo root used for scanning cli_*.go.
+func repoRootOf(docPath string) string {
+	// docPath is absolute; strip the trailing components.
+	dir := filepath.Dir(filepath.Dir(filepath.Dir(docPath)))
+	return dir
+}
+
+// scanImplementedSubcommands walks internal/appshell/cli_*.go
+// (and a few siblings — smoke.go, doctor.go — for flag-style
+// top-level verbs like --smoke, --version) and pulls every
+// quoted verb the dispatcher knows about. Source of truth:
+// `func Has<Verb>Subcommand` / `func Has<Verb>Flag` functions
+// referenced from main.go's dispatch chain. Each function
+// body is scanned for `case "<verb>":` switch statements AND
+// `args[0] == "<verb>"` / `args[0] != "<verb>"` /
+// `a == "--<flag>"` early-return checks.
+//
+// Leaf verbs (e.g. 'pdf' under 'export') appear in the
+// result too — they're real, reachable verbs. The report
+// distinguishes documented-not-implemented (drift) from
+// implemented-not-documented (often a leaf verb under a
+// parent, not drift).
+func scanImplementedSubcommands(root string) map[string]bool {
+	out := map[string]bool{}
+
+	// Walk main.go for Has*Subcommand / Has*Flag references.
+	mainPath := filepath.Join(root, "main.go")
+	mainData, err := os.ReadFile(mainPath)
+	if err != nil {
+		return out
+	}
+	hasRefRe := regexp.MustCompile(`appshell\.Has(\w+?)(?:Subcommand|Flag)\(`)
+	funcRefs := map[string]bool{}
+	for _, m := range hasRefRe.FindAllStringSubmatch(string(mainData), -1) {
+		funcRefs[m[1]] = true
+	}
+
+	// For each function name reference, find the function body
+	// in cli_*.go (or smoke.go / doctor.go) and pull verbs.
+	files, _ := filepath.Glob(filepath.Join(root, "internal", "appshell", "cli_*.go"))
+	files = append(files,
+		filepath.Join(root, "internal", "appshell", "smoke.go"),
+		filepath.Join(root, "internal", "appshell", "doctor.go"),
+	)
+
+	for funcName := range funcRefs {
+		funcDefRe := regexp.MustCompile(
+			`func\s+Has` + funcName + `(?:Subcommand|Flag)\([^)]*\)\s*bool\s*\{([\s\S]*?)\n\}`,
+		)
+		eqRe := regexp.MustCompile(`args\[0\]\s*[!=]=\s*"((?:--?)?[a-z][a-z0-9_\-]*)"`)
+		aeqRe := regexp.MustCompile(`\ba\s*==\s*"((?:--?)?[a-z][a-z0-9_\-]*)"`)
+		caseRe := regexp.MustCompile(`case\s+"([a-z][a-z0-9_-]*)"`)
+		verbInCaseRe := regexp.MustCompile(`"([a-z][a-z0-9_-]*)"`)
+
+		for _, f := range files {
+			data, err := os.ReadFile(f)
+			if err != nil {
+				continue
+			}
+			fd := funcDefRe.FindStringSubmatch(string(data))
+			if fd == nil {
+				continue
+			}
+			body := fd[1]
+			// args[0] == / != "<verb>"
+			for _, m := range eqRe.FindAllStringSubmatch(body, -1) {
+				out[m[1]] = true
+			}
+			// a == "--<flag>"
+			for _, m := range aeqRe.FindAllStringSubmatch(body, -1) {
+				out[m[1]] = true
+			}
+			// case "<verb>": (and any comma-separated siblings)
+			if cm := caseRe.FindStringSubmatchIndex(body); cm != nil {
+				snippet := body[cm[0]:cm[0]+200]
+				for _, m := range verbInCaseRe.FindAllStringSubmatch(snippet, -1) {
+					out[m[1]] = true
+				}
+			}
+		}
+	}
+
+	return out
+}
+
+// scanDocumentedSubcommands walks docs/agents/cli-plan.md
+// looking for `dixiedata <verb> ...` lines that look like
+// subcommand examples. Filters out flag-only references and
+// prose mentions.
+func scanDocumentedSubcommands(docPath string) map[string]bool {
+	out := map[string]bool{}
+	data, err := os.ReadFile(docPath)
+	if err != nil {
+		return out
+	}
+	// Match `dixiedata <verb>` at start of line (could be
+	// inside a fenced code block — that's fine, those are the
+	// documented examples we want).
+	pattern := regexp.MustCompile(`(?m)^\s*dixiedata\s+([a-z][a-z0-9_-]*)`)
+	for _, hit := range pattern.FindAllStringSubmatch(string(data), -1) {
+		out[hit[1]] = true
+	}
+	// Also match `dixiedata --<flag>` style top-level flags.
+	flagPattern := regexp.MustCompile(`(?m)^\s*dixiedata\s+(--[a-z][a-z0-9-]*)`)
+	for _, hit := range flagPattern.FindAllStringSubmatch(string(data), -1) {
+		out[hit[1]] = true
+	}
+	return out
+}
+
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func diff(a, b []string) []string {
+	setB := map[string]bool{}
+	for _, s := range b {
+		setB[s] = true
+	}
+	out := []string{}
+	for _, s := range a {
+		if !setB[s] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func contains(haystack []string, needle string) bool {
+	for _, h := range haystack {
+		if h == needle {
+			return true
+		}
+	}
+	return false
 }
