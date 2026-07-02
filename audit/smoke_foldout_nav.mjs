@@ -292,6 +292,62 @@ try {
   const buildAnchor = await page.evaluate(() => document.getElementById("build-share-archive") !== null);
   record("build-share-archive-anchor-present", buildAnchor === true, { present: buildAnchor });
 
+  // === Step 9.5: regression net for the first-click bug (issue #283 followup) ===
+  // Before the fix, the document-level outside-click handler was
+  // closing the panel that the trigger's own click handler had
+  // just opened (the bubble-phase order: trigger's click → open
+  // → document's click → outside-click closes everything open).
+  // The user saw the panel flash open then immediately disappear;
+  // the workaround was to navigate to another page first, which
+  // reset enough state for the race to go the other way. This
+  // step reproduces the exact scenario: fresh boot, hit a
+  // non-`/share` page, click Share, assert the panel STAYS open
+  // + items are visible.
+  console.log("\nStep 9.5: first-click on /calendar opens + stays open (issue #283 followup)");
+  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await wait(1000);
+  // Use the real click path (page.locator) — the same path a
+  // user would take. Synthetic dispatchEvent would bypass the
+  // bubble-phase ordering the bug depended on.
+  await page.locator("[data-foldout-trigger='layout.share.menu']").first().click({ force: true, timeout: 5000 });
+  // No wait between click + assertion — the bug was a
+  // synchronous race; if the outside-click handler fires
+  // synchronously and closes the panel, the next check sees
+  // display: none.
+  const afterFirstClick = await page.evaluate(() => {
+    const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
+    const trigger = document.querySelector("[data-foldout-trigger='layout.share.menu']");
+    return {
+      panelHidden: panel ? panel.classList.contains("hidden") : null,
+      panelDisplay: panel ? getComputedStyle(panel).display : null,
+      ariaExpanded: trigger ? trigger.getAttribute("aria-expanded") : null,
+      itemCount: panel ? panel.querySelectorAll('[role="menuitem"]').length : 0,
+      firstItemInViewport: (() => {
+        const item = panel ? panel.querySelector('[role="menuitem"]') : null;
+        if (!item) return false;
+        const r = item.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
+      })(),
+    };
+  });
+  record("first-click-panel-stays-open", afterFirstClick.panelHidden === false, { state: afterFirstClick });
+  record("first-click-panel-display-flex", afterFirstClick.panelDisplay === "flex", { display: afterFirstClick.panelDisplay });
+  record("first-click-aria-expanded-true", afterFirstClick.ariaExpanded === "true", { ariaExpanded: afterFirstClick.ariaExpanded });
+  record("first-click-has-4-items", afterFirstClick.itemCount === 4, { itemCount: afterFirstClick.itemCount });
+  record("first-click-first-item-in-viewport", afterFirstClick.firstItemInViewport === true, { firstItemInViewport: afterFirstClick.firstItemInViewport });
+  // Now click outside the panel — the panel SHOULD close.
+  // This asserts the fix didn't break the legitimate outside-click
+  // behavior (which the prior tests in step 5 cover, but a single
+  // test that exercises both "trigger click opens" + "outside
+  // click closes" catches the symmetry in one go).
+  await page.evaluate(() => document.body.click());
+  await wait(300);
+  const afterOutsideClick = await page.evaluate(() => {
+    const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
+    return { panelHidden: panel ? panel.classList.contains("hidden") : null };
+  });
+  record("first-click-outside-click-still-closes", afterOutsideClick.panelHidden === true, { state: afterOutsideClick });
+
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);
