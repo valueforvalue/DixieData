@@ -2861,26 +2861,34 @@
   }
 
   async function dispatchDixieDataForm(button) {
-    // Bare-button mode: some share-page buttons have hx-post /
-    // hx-delete but no enclosing <form>. Construct a synthetic form
-    // from the button's hx-* URL so the fetch+redirect logic stays
-    // uniform. This branch is dead code after the templ retag
-    // (Commits 6–14) — every click target will live inside a form
-    // with data-dixie-submit and a real action.
-    const form = button instanceof HTMLFormElement
-      ? button
-      : button.closest("form") || (() => {
-        // Bare-button mode: pull URL from data-action (Option C
-        // convention) and method from data-method. After the templ
-        // retag, no element carries hx-* / data-hx-* anymore.
-        const url = (button.getAttribute && button.getAttribute("data-action")) || "";
-        if (!url) return null;
+    // Issue #248: when a button carries a data-action URL, that
+    // URL represents the click target's intent and wins over the
+    // parent form's action. The earlier code only honored
+    // data-action in the bare-button (no parent form) branch; when
+    // the button lived inside a data-dixie-submit form (e.g. the
+    // per-row "Mark as Resolved" button on /review-queue, which is
+    // wrapped by the bulk-action form), the form's action won and
+    // the fetch hit /review-queue/bulk with no bulk_action field.
+    // Build the form from the button's intent when data-action is
+    // present, then fall back to the parent form. data-method
+    // drives the method on the synthetic path; everything else
+    // (data-confirm, data-results-target) is read from either the
+    // button or the form via the existing dataset lookup.
+    let form;
+    if (button instanceof HTMLFormElement) {
+      form = button;
+    } else {
+      const dataAction = (button.getAttribute && button.getAttribute("data-action")) || "";
+      if (dataAction) {
         const method = button.getAttribute("data-method") === "DELETE" ? "DELETE" : "POST";
         const synthetic = document.createElement("form");
-        synthetic.action = url;
+        synthetic.action = dataAction;
         synthetic.method = method;
-        return synthetic;
-      })();
+        form = synthetic;
+      } else {
+        form = button.closest("form");
+      }
+    }
     if (!(form instanceof HTMLFormElement)) {
       return false;
     }
@@ -2923,9 +2931,20 @@
         // fallback for browsers that don't honor the submitter
         // argument in synthetic FormData construction, manually
         // append the submitter's entry if FormData omitted it.
+        // Issue #248: only pass the submitter when it is a real
+        // submit button of the form. A type="button" trigger
+        // (e.g. the per-row "Mark as Resolved" button on
+        // /review-queue) is not a form submitter; passing it to
+        // FormData throws "not a submit button" in Chromium. For
+        // type="button" triggers, the form's named controls are
+        // enough (the data-action URL is what matters; the body
+        // carries the form's data, not the trigger's name/value).
+        const isSubmitButton = button instanceof HTMLButtonElement
+          && button.type === "submit"
+          && button.form === form;
         if (button.closest("form")) {
-          const fd = new FormData(form, button);
-          if (button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
+          const fd = isSubmitButton ? new FormData(form, button) : new FormData(form);
+          if (isSubmitButton && button instanceof HTMLButtonElement && button.name && fd.get(button.name) === null) {
             fd.append(button.name, button.value);
           }
           fetchOptions.body = fd;
@@ -3261,6 +3280,44 @@
       return;
     }
     hideOverlayModal(modal);
+  }
+
+  // ----- Dismiss button on /jobs/{id} (issue #249) -----
+  // The templ renders a [data-dismiss-job] button with a
+  // data-dismiss-target carrying the kind-specific fallback
+  // (Job.DismissTargetPath()). On click, prefer the same-origin
+  // document.referrer if it isn't a /jobs/* page itself (avoids
+  // loops when the user dismisses a chain of jobs). Otherwise
+  // use the templ fallback. Both /jobs/1 → /jobs/2 (cross-job
+  // navigation) and absent/off-origin referrer are handled.
+  function installDismissJobButtons() {
+    document.addEventListener("click", (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLElement)) return;
+      const btn = target.closest("[data-dismiss-job]");
+      if (!(btn instanceof HTMLElement)) return;
+      ev.preventDefault();
+      const fallback = btn.getAttribute("data-dismiss-target") || "/share";
+      const destination = pickDismissTarget(fallback);
+      window.location.assign(destination);
+    });
+  }
+  function pickDismissTarget(fallback) {
+    const ref = String(document.referrer || "");
+    if (!ref) return fallback;
+    let url;
+    try {
+      url = new URL(ref);
+    } catch (_) {
+      return fallback;
+    }
+    if (url.origin !== window.location.origin) return fallback;
+    const path = url.pathname || "";
+    // Avoid loops: the referer must not be a /jobs/* page or a
+    // /jobs/{id}/report sub-page (which is a sub-page of the
+    // status page).
+    if (path === "/jobs" || path.startsWith("/jobs/")) return fallback;
+    return path + (url.search || "");
   }
 
   // ----- Share Queue modal (issue #182) -----
@@ -4577,6 +4634,14 @@
     rememberRecentRecordFromPage();
     hydrateRecentSearchResults();
     initializeBrowseView();
+    // Issue #249: install the dismiss-job button handler at boot
+    // so document.referrer-based navigation works on first
+    // dismissal. The handler prefers the same-origin referer
+    // (the page that triggered the job) and falls back to the
+    // templ-provided data-dismiss-target path (the kind-specific
+    // DismissTargetPath() fallback). One delegated listener
+    // covers every [data-dismiss-job] on the page.
+    installDismissJobButtons();
     // Issue pending: installShareQueueGlobals was previously only
     // called from openPrintConfigModal(). That meant every
     // `+ Queue` button across /browse, /soldiers/{id},
