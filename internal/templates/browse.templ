@@ -172,14 +172,14 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 				@SuggestionDatalist("browse-buried-in-suggestions", suggestions.BuriedIn)
 				@SuggestionDatalist("browse-pension-state-suggestions", suggestions.PensionState)
 			<div id="browse-results" class="relative">
-				@BrowseResults(records, state)
+				@BrowseResults(records, state, availableTags)
 			</div>
 		</div>
 	}
 	@partials.PrintConfigModal(exportRecords)
 }
 
-templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState) {
+templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState, availableTags []viewmodel.TagOption) {
 	<div data-browse-results data-browse-total={ fmt.Sprintf("%d", state.Total) }>
 		<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.3)] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600">
 			<div class="space-y-1">
@@ -196,6 +196,20 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 			if state.Total > 0 {
 				<div>{ fmt.Sprintf("%d", state.Total) } record(s)</div>
 			}
+		</div>
+		<div id="browse-bulk-toolbar" class="mb-4 hidden rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.82)] px-4 py-3">
+			<form action="/browse/bulk-tag" method="post" data-dixie-submit="true" data-reload-on-success="true" class="flex flex-wrap items-center gap-3 text-sm">
+				<input type="hidden" name="selected_ids" value="" data-browse-bulk-ids/>
+				<span class="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">Bulk Tag</span>
+				<input type="text" name="tag_name" placeholder="Tag name…" list="browse-bulk-tag-suggestions" autocomplete="off" class="field-input w-48"/>
+				<button type="submit" class="rounded-full bg-[#8d7440] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#6f2c26]">Apply</button>
+				<span class="text-xs text-slate-500">Adds this tag to every selected record.</span>
+			</form>
+			<datalist id="browse-bulk-tag-suggestions">
+				for _, t := range availableTags {
+					<option value={ t.Name }/>
+				}
+			</datalist>
 		</div>
 		@BrowsePager(state)
 		if len(records) == 0 {
@@ -230,6 +244,13 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 								<dd class="mt-0.5">{ browseCellValue(record.PensionState) }</dd>
 							</div>
 						</dl>
+						if len(record.Tags) > 0 {
+							<div class="mt-2 flex flex-wrap gap-1">
+								for _, t := range record.Tags {
+									<span class="inline-block rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.65)] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
+								}
+							</div>
+						}
 						<div class="mt-3 flex items-center justify-between text-xs">
 							<span class="text-slate-500">Last edited { browseTimestamp(record.LastEditedAt, record.UpdatedAt, record.CreatedAt) }</span>
 							<a href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="font-semibold text-[#8d7440] hover:text-[#6f2c26]">View &rarr;</a>
@@ -250,6 +271,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col" data-browse-column="unit">Unit</th>
 								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col" data-browse-column="pension_state">Pension State</th>
 								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col" data-browse-column="review_status">Review Status</th>
+								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col" data-browse-column="tags">Tags</th>
 								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col" data-browse-column="last_edited">Last Edited</th>
 							</tr>
 						</thead>
@@ -273,6 +295,17 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="unit">{ browseCellValue(record.Unit) }</td>
 									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="pension_state">{ browseCellValue(record.PensionState) }</td>
 									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="review_status">{ browseReviewStatus(record) }</td>
+									<td class="px-4 py-3 align-top" data-browse-column="tags">
+										if len(record.Tags) > 0 {
+											<div class="flex flex-wrap gap-1">
+												for _, t := range record.Tags {
+													<span class="inline-block rounded-full border border-[rgba(141,116,64,0.35)] bg-[rgba(246,241,228,0.65)] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
+												}
+											</div>
+										} else {
+											<span class="text-xs text-slate-400">—</span>
+										}
+									</td>
 									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="last_edited">{ browseTimestamp(record.LastEditedAt, record.UpdatedAt, record.CreatedAt) }</td>
 								</tr>
 							}
@@ -379,6 +412,7 @@ func browseColumnOptions() []browseColumnOption {
 		{Key: "unit", Label: "Unit"},
 		{Key: "pension_state", Label: "Pension State"},
 		{Key: "review_status", Label: "Review Status"},
+		{Key: "tags", Label: "Tags"},
 		{Key: "last_edited", Label: "Last Edited"},
 	}
 }

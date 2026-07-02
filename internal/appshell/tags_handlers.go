@@ -224,12 +224,21 @@ func (a *App) handleBulkTagFromBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := r.Form["selected_ids"]
 	if len(raw) == 0 {
-		respondValidation(w, r, "At least one selected_ids entry is required.", nil)
-		return
+		// Accept comma-separated single-field form (bulk toolbar hidden input).
+		csv := strings.TrimSpace(r.FormValue("selected_ids"))
+		if csv == "" {
+			respondValidation(w, r, "At least one selected_ids entry is required.", nil)
+			return
+		}
+		raw = strings.Split(csv, ",")
 	}
 	ids := make([]int64, 0, len(raw))
 	for _, s := range raw {
-		n, perr := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		n, perr := strconv.ParseInt(s, 10, 64)
 		if perr != nil {
 			respondValidation(w, r, fmt.Sprintf("Invalid selected_ids entry: %q.", s), perr)
 			return

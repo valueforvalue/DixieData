@@ -2723,6 +2723,16 @@
           : "Select records across pages to keep a working set while you browse.";
       }
     });
+    // Toggle bulk-tag toolbar visibility
+    const toolbar = root.querySelector("#browse-bulk-toolbar");
+    if (toolbar) {
+      toolbar.classList.toggle("hidden", selected.length === 0);
+      // Populate the hidden input with current selection
+      const idsInput = toolbar.querySelector("[data-browse-bulk-ids]");
+      if (idsInput instanceof HTMLInputElement) {
+        idsInput.value = selected.join(",");
+      }
+    }
   }
 
   function applyBrowseSelection(root) {

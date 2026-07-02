@@ -45,9 +45,9 @@ func SoldierList(soldiers []models.Soldier, page, total int, query string, sugge
 	return templates.SoldierList(viewmodel.PersonRecordsFromModels(soldiers), page, total, query, viewmodel.PersonRecordFormSuggestionsFromModel(suggestions))
 }
 
-func BrowseView(soldiers []models.Soldier, state records.BrowseRequest, total int, suggestions models.SoldierFormSuggestions, exportRecords []models.Soldier, availableTags []records.Tag) templ.Component {
+func BrowseView(soldiers []models.Soldier, state records.BrowseRequest, total int, suggestions models.SoldierFormSuggestions, exportRecords []models.Soldier, availableTags []records.Tag, tagMap map[int64][]viewmodel.TagOption) templ.Component {
 	return templates.BrowseView(
-		viewmodel.PersonRecordsFromModels(soldiers),
+		viewmodel.PersonRecordsFromModelsWithTags(soldiers, tagMap),
 		viewmodel.BrowseStateFromDomain(state, total),
 		viewmodel.PersonRecordFormSuggestionsFromModel(suggestions),
 		viewmodel.ExportRecordOptionsFromModels(exportRecords),
@@ -55,10 +55,11 @@ func BrowseView(soldiers []models.Soldier, state records.BrowseRequest, total in
 	)
 }
 
-func BrowseResults(soldiers []models.Soldier, state records.BrowseRequest, total int) templ.Component {
+func BrowseResults(soldiers []models.Soldier, state records.BrowseRequest, total int, tagMap map[int64][]viewmodel.TagOption, availableTags []viewmodel.TagOption) templ.Component {
 	return templates.BrowseResults(
-		viewmodel.PersonRecordsFromModels(soldiers),
+		viewmodel.PersonRecordsFromModelsWithTags(soldiers, tagMap),
 		viewmodel.BrowseStateFromDomain(state, total),
+		availableTags,
 	)
 }
 

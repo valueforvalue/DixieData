@@ -95,6 +95,22 @@ func SoldiersFromModels(inputs []models.Soldier) []PersonRecord {
 	return PersonRecordsFromModels(inputs)
 }
 
+// PersonRecordsFromModelsWithTags builds PersonRecord viewmodels and
+// zips in tag data from a map keyed by soldier ID. Existing callers
+// that don't need tags continue to use PersonRecordsFromModels;
+// browse and browse-results use this variant.
+func PersonRecordsFromModelsWithTags(inputs []models.Soldier, tagMap map[int64][]TagOption) []PersonRecord {
+	items := make([]PersonRecord, 0, len(inputs))
+	for _, input := range inputs {
+		rec := PersonRecordFromModel(input)
+		if tags, ok := tagMap[input.ID]; ok {
+			rec.Tags = tags
+		}
+		items = append(items, rec)
+	}
+	return items
+}
+
 func ExportRecordOptionFromModel(input models.Soldier) ExportRecordOption {
 	displayName := strings.TrimSpace(persondisplay.FullName(persondisplay.NameParts{
 		Prefix:               input.Prefix,

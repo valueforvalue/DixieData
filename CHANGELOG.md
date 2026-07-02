@@ -54,6 +54,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (6 assertions: checkbox present, form action is
   /share/export-options, default unchecked, submit
   fires POST, body contains include_tags=1).
+- Browse row tag chips + bulk-tag toolbar (issue #183
+  Slice C). Each Person Record row in the browse table
+  now shows its applied tags as small rounded chips
+  (or an em-dash when none), with a "Tags" column
+  header and column-toggle entry. A bulk-tag toolbar
+  appears above the table whenever at least one row is
+  selected, with a tag_name text input + datalist
+  (populated from the existing availableTags cloud) +
+  "Apply" button. The form POSTs to `/browse/bulk-tag`
+  with `selected_ids` (comma-separated from JS) and
+  `tag_name`. The handler at /browse/bulk-tag
+  (existing since PR #195) was patched to also accept
+  comma-separated selected_ids in addition to repeated
+  form fields. The `TagsForSoldiers` batch query
+  (existing in TagService) is called from both
+  handleBrowse and handleBrowseResults, and the
+  viewmodel mapper `PersonRecordsFromModelsWithTags`
+  zips tags into each PersonRecord. Mobile card layout
+  also renders tag chips. Regression net:
+  `audit/smoke_browse_tag_chips.mjs` (15 assertions:
+  Tags column header, cells exist, chip rendered,
+  em-dash rendered, toolbar hidden/visible, selected
+  IDs populated, form elements, POST fires, column
+  toggle entry). Pre-fix: 0/15. Post-fix: 15/15.
 - Build-tag-gated zero-cost trace instrumentation (issue #218).
   New `internal/debug/trace` package with `trace.Log(msg, attrs...)`
   emits `slog.Debug` calls in `-tags debug` builds and is a

@@ -116,7 +116,23 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if availableTags == nil {
 		availableTags = []records.Tag{}
 	}
-	presentation.BrowseView(soldiers, normalized, total, suggestions, nil, availableTags).Render(r.Context(), w)
+	// Slice C: batch-fetch tags for all rendered soldiers so each
+	// browse row can display its tag chips.
+	soldierIDs := make([]int64, len(soldiers))
+	for i, s := range soldiers {
+		soldierIDs[i] = s.ID
+	}
+	soldierTags, tagErr := a.tags.TagsForSoldiers(r.Context(), soldierIDs)
+	if tagErr != nil {
+		respondInternal(w, r, "Could not load tags for browse rows.", tagErr)
+		return
+	}
+	// Convert map[int64][]records.Tag → map[int64][]viewmodel.TagOption
+	tagMap := make(map[int64][]viewmodel.TagOption, len(soldierTags))
+	for pid, tags := range soldierTags {
+		tagMap[pid] = viewmodel.TagsFromModels(tags)
+	}
+	presentation.BrowseView(soldiers, normalized, total, suggestions, nil, availableTags, tagMap).Render(r.Context(), w)
 }
 
 func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +145,23 @@ func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not run the browse query.", err)
 		return
 	}
-	presentation.BrowseResults(soldiers, normalized, total).Render(r.Context(), w)
+	soldierIDs := make([]int64, len(soldiers))
+	for i, s := range soldiers {
+		soldierIDs[i] = s.ID
+	}
+	soldierTags, tagErr := a.tags.TagsForSoldiers(r.Context(), soldierIDs)
+	if tagErr != nil {
+		respondInternal(w, r, "Could not load tags for browse rows.", tagErr)
+		return
+	}
+	tagMap := make(map[int64][]viewmodel.TagOption, len(soldierTags))
+	for pid, tags := range soldierTags {
+		tagMap[pid] = viewmodel.TagsFromModels(tags)
+	}
+	// Fetch available tags for the bulk-tag toolbar datalist.
+	availableTags, _ := a.tags.List(r.Context())
+	avail := viewmodel.TagsFromModels(availableTags)
+	presentation.BrowseResults(soldiers, normalized, total, tagMap, avail).Render(r.Context(), w)
 }
 
 func parseBrowseRequest(values url.Values) records.BrowseRequest {
