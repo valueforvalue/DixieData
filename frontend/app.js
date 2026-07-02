@@ -3727,22 +3727,23 @@
     if (section.dataset.shareQueuePageInstalled === "true") return;
     section.dataset.shareQueuePageInstalled = "true";
 
-    // Select-all checkbox: when present, toggles every row.
-    const selectAll = document.querySelector("[data-share-queue-page-select-all]");
-    if (selectAll instanceof HTMLInputElement) {
-      selectAll.addEventListener("change", () => {
-        const checked = selectAll.checked;
-        document.querySelectorAll("input[type=checkbox][data-share-queue-page-select]").forEach((el) => {
-          if (el instanceof HTMLInputElement) el.checked = checked;
-        });
-        syncShareQueuePageButtons();
-      });
-    }
-
-    // Per-row checkbox change -> update bulk buttons.
+    // Select-all checkbox + per-row checkboxes: delegated
+    // through `section` so the handlers survive the
+    // renderShareQueuePage() replaceChildren() call. The
+    // select-all checkbox is inside the section, so a
+    // direct addEventListener on it would be attached to
+    // an element that gets detached on the next render.
     section.addEventListener("change", (ev) => {
       const target = ev.target;
       if (!(target instanceof HTMLInputElement)) return;
+      if (target.matches("[data-share-queue-page-select-all]")) {
+        const checked = target.checked;
+        section.querySelectorAll("input[type=checkbox][data-share-queue-page-select]").forEach((el) => {
+          if (el instanceof HTMLInputElement) el.checked = checked;
+        });
+        syncShareQueuePageButtons();
+        return;
+      }
       if (target.matches("input[type=checkbox][data-share-queue-page-select]")) {
         syncShareQueuePageButtons();
       }
