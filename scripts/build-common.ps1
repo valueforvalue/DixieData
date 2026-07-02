@@ -481,6 +481,9 @@ function Write-DixieDataDebugLauncher {
     # debugger can attach; the race detector is added via
     # `make race` / wails build -race).
     $script = @'
+# Run-DixieData-Debug.ps1 — debug launcher for DixieData.exe.
+# Forwards every CLI flag to DixieData.exe verbatim. See the
+# example block at the bottom for common invocations.
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$AppArgs
@@ -499,6 +502,12 @@ if (-not (Test-Path $exePath)) {
 # .\Run-DixieData-Debug.ps1`.
 if (-not $env:GOTRACEBACK) { $env:GOTRACEBACK = "all" }
 if (-not $env:DIXIEDATA_DEVTOOLS) { $env:DIXIEDATA_DEVTOOLS = "1" }
+# Default --log-to-stderr ON for debug sessions so panic +
+# structured-log lines surface inline instead of requiring
+# a separate `dixiedata logs path` round-trip. Override with
+# `$env:DIXIEDATA_LOG_TO_STDERR='0'` if the stderr mirror is
+# noise.
+if (-not $env:DIXIEDATA_LOG_TO_STDERR) { $env:DIXIEDATA_LOG_TO_STDERR = "1" }
 # Allow the user to attach a Go debugger on a fixed port. The
 # binary's symbols are intact (make debug uses -gcflags=-N -l)
 # so dlv attach --pid <pid> works after the process is up.
@@ -506,6 +515,23 @@ if (-not $env:DIXIEDATA_WAIT_FOR_DEBUGGER) { $env:DIXIEDATA_WAIT_FOR_DEBUGGER = 
 
 & $exePath @AppArgs
 exit $LASTEXITCODE
+
+# Example invocations (commented out; cut + paste from here):
+#
+#   .\Run-DixieData-Debug.ps1                       # GUI (default)
+#   .\Run-DixieData-Debug.ps1 --version            # print app version + commit
+#   .\Run-DixieData-Debug.ps1 help                  # list CLI subcommands
+#   .\Run-DixieData-Debug.ps1 --smoke --json        # headless boot check
+#   .\Run-DixieData-Debug.ps1 doctor --check=sqlite # diagnose a scratch dir
+#   .\Run-DixieData-Debug.ps1 --log-to-stderr export pdf --soldier 1
+#                                                    # mirror JSONL to stderr
+#   .\Run-DixieData-Debug.ps1 debug dump --json     # archive inventory
+#
+# Override env defaults per-invocation:
+#   $env:GOTRACEBACK='panic';  .\Run-DixieData-Debug.ps1
+#   $env:DIXIEDATA_DATA_DIR='.scratch\webmode';  .\Run-DixieData-Debug.ps1
+#   $env:DIXIEDATA_WAIT_FOR_DEBUGGER='1';  .\Run-DixieData-Debug.ps1
+#     # then `dlv attach --pid $pid` from another shell
 '@
 
     Set-Content -Path $launcherPath -Value $script -Encoding UTF8
