@@ -22,7 +22,7 @@ RECURSIVE_MAKE = $(PWSH) -NoLogo -NoProfile -Command "Set-Content -Path env:MAKE
         stress goldmaster tune tune-smoke tune-snapshots tune-bin \
         web seed gold render-round render-round-ONE update-snapshots-ONE \
         render-svg tpl css audit clean log-clean bump release-github \
-        probe-clean
+        probe-clean freshness release-pipeline cli-coverage
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -99,6 +99,66 @@ tune-bin: ## Build tools/tune (render-round PDF harness)
 # the live archive). Add `tune-bin` for the build-only step so
 # the debug chain can depend on it without colliding with the run
 # target.
+
+# --- Freshness check (build-protocol.md §1, §2) ---
+#
+# Builds every debug subtool and runs a sanity probe on each.
+# Catches the case where `make debug` succeeds but a subtool
+# (dixiedata-web, seed-data, gold-master, dixiedata-tune) is
+# stale or broken. Also runs `dixiedata debug cli-coverage`
+# to assert every documented CLI subcommand still parses +
+# dispatches.
+#
+# Each subtool probe is wrapped in a shell function so a
+# failure in one doesn't mask the others; the final exit
+# code is the OR of all probes.
+FRESHNESS_BIN := build/bin/dixiedata.exe
+freshness: web seed gold tune-bin cli-coverage ## Build + sanity-probe every debug subtool
+	@echo ""
+	@echo "=== freshness: probing subtools ==="
+	@status=0; \
+	for pair in \
+	  "dixiedata-web|$(WEB_BIN)|--help" \
+	  "seed-data|$(SEED_BIN)|-h" \
+	  "gold-master|$(GOLD_BIN)|-h" \
+	  "dixiedata-tune|$(TUNE_BIN)|-h"; do \
+	    IFS='|' read -r name bin flag <<< "$$pair"; \
+	    if [ ! -x "$$bin" ]; then \
+	      echo "  [FAIL] $$name: $$bin not built"; status=1; \
+	      continue; \
+	    fi; \
+	    out=$$("$$bin" $$flag 2>&1); rc=$$?; \
+	    if [ $$rc -ne 0 ]; then \
+	      echo "  [FAIL] $$name $$flag (exit $$rc)"; status=1; \
+	    elif [ -z "$$out" ]; then \
+	      echo "  [FAIL] $$name $$flag (empty output)"; status=1; \
+	    else \
+	      echo "  [ok]   $$name $$flag"; \
+	    fi; \
+	  done; \
+	if [ $$status -ne 0 ]; then echo ""; echo "freshness: FAILED"; exit 1; fi
+	@echo ""
+	@echo "=== freshness: dixiedata --smoke ==="
+	@mkdir -p $(LOGDIR)
+	@$(FRESHNESS_BIN) --smoke --json > $(LOGDIR)/freshness-smoke.json 2>&1; rc=$$?; \
+	if [ $$rc -ne 0 ]; then echo "  [FAIL] --smoke (exit $$rc); see $(LOGDIR)/freshness-smoke.json"; exit 1; fi; \
+	echo "  [ok] --smoke"
+	@echo ""
+	@echo "freshness: OK"
+
+# CLI subcommand coverage check. Runs the Go binary built by
+# the debug target chain and asserts every documented
+# subcommand (docs/agents/cli-plan.md) is implemented + every
+# implemented subcommand is documented. Drift detector.
+#
+# Implementation lives in internal/appshell/cli_debug.go
+# (`runDebugSubcommand` case "cli-coverage"). The Node script
+# scripts/cli-coverage.mjs is a fallback for offline use.
+cli-coverage: ## Walk dispatcher vs cli-plan.md; report documented/implemented drift
+	@if [ ! -x $(FRESHNESS_BIN) ]; then \
+	  echo "cli-coverage: $(FRESHNESS_BIN) not built; run 'make freshness' or 'make debug' first"; exit 1; \
+	fi
+	@$(FRESHNESS_BIN) debug cli-coverage
 
 release: SCRIPT := scripts/build-release.ps1
 release: TARGET := release
