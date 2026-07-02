@@ -221,6 +221,14 @@ func (m *RestorePointManager) Get(id string) (RestorePointRecord, error) {
 	return RestorePointRecord{}, fmt.Errorf("restore point %q not found", id)
 }
 
+// LocalArchiveAbsolutePath returns the on-disk absolute path
+// to the .ddbak artifact for the given record. The path
+// returned respects both the in-place manager (dataDir-
+// resident) and the sibling manager (root-resident) layouts.
+func (m *RestorePointManager) LocalArchiveAbsolutePath(record RestorePointRecord) string {
+	return m.absolutePath(record.LocalArchivePath)
+}
+
 func (m *RestorePointManager) Housekeeping() error {
 	index, err := m.loadIndex()
 	if err != nil {

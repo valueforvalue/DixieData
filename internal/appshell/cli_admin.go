@@ -48,6 +48,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
@@ -99,6 +100,7 @@ type AdminOptions struct {
 	Action          AdminAction
 	DataDir         string // --data-dir override
 	JSON            bool   // --json
+	DryRun          bool   // --dry-run (restore point apply, etc.)
 	KeepLast        int    // --keep-last N (backup prune)
 	Note            string // --note <text> (restore point create)
 	RestorePointRoot string // --root <path> (restore point create)
@@ -253,6 +255,8 @@ func ParseAdminArgs(args []string) (AdminOptions, error) {
 		switch {
 		case a == "--json":
 			opts.JSON = true
+		case a == "--dry-run":
+			opts.DryRun = true
 		case a == "--follow":
 			opts.Follow = true
 		case strings.HasPrefix(a, "--data-dir="):
@@ -658,16 +662,80 @@ func runAdminRestorePointApply(ctx context.Context, opts AdminOptions) (int, err
 	if err != nil {
 		return 1, fmt.Errorf("get restore point: %w", err)
 	}
-	if opts.JSON {
-		return 0, writeJSON(opts.Writer, record)
+
+	// --dry-run: print the record and return without applying.
+	// The previous behaviour (always print, never apply) was
+	// effectively a dry-run; preserve it under the explicit
+	// flag for backwards compatibility.
+	if opts.DryRun {
+		if opts.JSON {
+			return 0, writeJSON(opts.Writer, map[string]any{
+				"kind":          "restore_point",
+				"action":        "apply",
+				"dry_run":       true,
+				"restore_point": record,
+			})
+		}
+		fmt.Fprintf(opts.Writer, "id              = %s\n", record.ID)
+		fmt.Fprintf(opts.Writer, "created_at      = %s\n", record.CreatedAt)
+		fmt.Fprintf(opts.Writer, "source_version  = %s\n", record.SourceAppVersion)
+		fmt.Fprintf(opts.Writer, "target_version  = %s\n", record.TargetAppVersion)
+		fmt.Fprintf(opts.Writer, "local_archive   = %s\n", manager.LocalArchiveAbsolutePath(record))
+		fmt.Fprintf(opts.Writer, "installed_build = %s\n", record.InstalledBuildPath)
+		fmt.Fprintln(opts.Writer, "(dry-run: no changes applied)")
+		return 0, nil
 	}
-	fmt.Fprintf(opts.Writer, "id              = %s\n", record.ID)
-	fmt.Fprintf(opts.Writer, "created_at      = %s\n", record.CreatedAt)
-	fmt.Fprintf(opts.Writer, "source_version  = %s\n", record.SourceAppVersion)
-	fmt.Fprintf(opts.Writer, "target_version  = %s\n", record.TargetAppVersion)
-	fmt.Fprintf(opts.Writer, "local_archive   = %s\n", record.LocalArchivePath)
-	fmt.Fprintf(opts.Writer, "installed_build = %s\n", record.InstalledBuildPath)
-	fmt.Fprintln(opts.Writer, "(apply not yet implemented; see docs/agents/cli-plan.md Phase 6 + 7)")
+
+	// Path A — apply via the existing backup.ImportWithLocalIdentity
+	// flow. Closes + reopens the DB around the import (same as
+	// `dixiedata import backup`) so the staging swap can rename
+	// the data dir. See issue #269 + cli-plan.md Open follow-up #1.
+	ddbakPath := manager.LocalArchiveAbsolutePath(record)
+	if _, statErr := os.Stat(ddbakPath); statErr != nil {
+		return 1, fmt.Errorf("restore point artifact missing at %s: %w", ddbakPath, statErr)
+	}
+
+	if app.database != nil {
+		app.database.Close()
+		app.database = nil
+	}
+
+	// Resolve the local identity using the same inlined helper
+	// that cli_import.go uses — the DB handle is gone at this
+	// point so we can't go through the appshell helper.
+	var localIdentity models.UserIdentity
+	preserveLocalIdentity := false
+	if id, preserve, idErr := loadLocalImportIdentity(app); idErr == nil {
+		localIdentity = id
+		preserveLocalIdentity = preserve
+	}
+
+	manifest, err := app.backup.ImportWithLocalIdentity(
+		ddbakPath, app.dataDir, localIdentity, preserveLocalIdentity,
+	)
+	if err != nil {
+		if reopenErr := app.reopenDatabase(); reopenErr != nil {
+			return 1, fmt.Errorf("restore point apply failed (%v) and the database could not be reopened (%v)", err, reopenErr)
+		}
+		return 1, fmt.Errorf("restore point apply failed: %w", err)
+	}
+	if reopenErr := app.reopenDatabase(); reopenErr != nil {
+		return 1, fmt.Errorf("restore point applied but the database could not be reopened: %w", reopenErr)
+	}
+
+	if opts.JSON {
+		return 0, writeJSON(opts.Writer, map[string]any{
+			"kind":     "restore_point",
+			"action":   "apply",
+			"id":       record.ID,
+			"soldiers": manifest.Soldiers,
+			"records":  manifest.Records,
+			"images":   manifest.Images,
+		})
+	}
+	fmt.Fprintf(opts.Writer, "restored %s\n", ddbakPath)
+	fmt.Fprintf(opts.Writer, "soldiers: %d  records: %d  images: %d\n",
+		manifest.Soldiers, manifest.Records, manifest.Images)
 	return 0, nil
 }
 
