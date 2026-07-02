@@ -28,6 +28,16 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (9 assertions: heading renders, empty state, expand
   button, input found, form action + reload attribute,
   POST fires to correct URL).
+- Top-nav link to the `/tags` management page (issue
+  #256 follow-up). The page shipped in PR #195 but had
+  no discoverable entry point; users had to URL-guess.
+  The link is added to both the primary top-nav (between
+  Share Queue and Settings) and the mobile / split-screen
+  layout so it surfaces in every viewport.
+  Regression net: `audit/smoke_tags_nav.mjs` (5
+  assertions: primary nav has Tags link, link points to
+  /tags, mobile nav also has the link, click navigates
+  to /tags, /tags page renders).
 - Build-tag-gated zero-cost trace instrumentation (issue #218).
   New `internal/debug/trace` package with `trace.Log(msg, attrs...)`
   emits `slog.Debug` calls in `-tags debug` builds and is a

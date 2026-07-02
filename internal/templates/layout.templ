@@ -91,6 +91,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
 					<a href="/share" class="pill-link top-nav-link">Share</a>
 					<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } class="pill-link top-nav-link" data-share-queue-page-link>Share Queue</a>
+					<a href="/tags" class="pill-link top-nav-link">Tags</a>
 					<a href="/settings" class="pill-link top-nav-link">Settings</a>
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
 				</nav>
@@ -124,6 +125,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 						<a href="/review-queue" class="pill-link justify-start">Review Queue</a>
 						<a href="/insights" class="pill-link justify-start">Insights</a>
 						<a href="/share" class="pill-link justify-start">Share</a>
+						<a href="/tags" class="pill-link justify-start">Tags</a>
 						<a href="/settings" class="pill-link justify-start">Settings</a>
 						<a href="/soldiers/new" class="primary-button justify-start">Add Person Record</a>
 					</nav>
