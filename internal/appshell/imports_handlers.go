@@ -15,7 +15,7 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/debug"
+	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -58,7 +58,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	dupKey := guardedOpenFileDialogKey("backup_import", dialogOpts)
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(r.Context()).Debug("handleImportBackup duplicate request rejected")
+		trace.Log("handleImportBackup dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
