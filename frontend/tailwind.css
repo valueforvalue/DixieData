@@ -483,7 +483,7 @@ html { scrollbar-gutter: stable; }
    opacity+transform transition with no per-property
    keyframes — no jitter on resize. */
 .foldout-panel {
-  display: flex;
+  display: none;
   transform-origin: top right;
   opacity: 0;
   transform: scaleY(0.92) translateY(-4px);
@@ -491,6 +491,7 @@ html { scrollbar-gutter: stable; }
   pointer-events: none;
 }
 .foldout-panel:not(.hidden) {
+  display: flex;
   opacity: 1;
   transform: scaleY(1) translateY(0);
   pointer-events: auto;
