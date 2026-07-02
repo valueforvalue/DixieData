@@ -677,7 +677,7 @@ func (a *App) handleSoldierPDFNoImages(w http.ResponseWriter, r *http.Request, i
 	dupKey := fmt.Sprintf("soldier-pdf-noimg|%d|%s", id, soldierPDFNameNoImages(*soldier))
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(r.Context()).Debug("handleSoldierPDFNoImages duplicate request rejected")
+		trace.Log("handleSoldierPDFNoImages dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
