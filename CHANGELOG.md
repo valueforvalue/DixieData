@@ -13,6 +13,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Build / release / schema / update-in-place safety
+  protocol.** Adds `docs/agents/build-protocol.md` (the
+  canonical procedure covering Makefile hygiene, CLI
+  freshness, release pipeline, schema bumps, and
+  update-in-place safety); `make freshness` (builds +
+  sanity-probes every debug subtool — DixieData,
+  dixiedata-web, seed-data, gold-master, dixiedata-tune
+  — and runs CLI coverage); `make release-pipeline`
+  (ordered 8-gate release chain with halt-on-first-failure);
+  `dixiedata debug cli-coverage` (walks the dispatcher vs
+  `docs/agents/cli-plan.md` and emits documented-vs-
+  implemented drift; Node fallback in
+  `scripts/cli-coverage.mjs`); `dixiedata debug in-place-
+  safety` (walks `git diff <last-tag>..HEAD` and flags
+  destructive schema operations + handler registrations);
+  PR template (`safe-for-in-place` / `unsafe-for-in-place`
+  required); 2 new labels (`safe-for-in-place`,
+  `unsafe-for-in-place`); schema-touching detector in CI
+  (`feat(db)` / `feat(schema)` / `fix(db)` commits must
+  bump or use the `chore: skip-schema-bump` hatch);
+  `bump-version.ps1 -DetectDrift` mode + `make bump-detect-
+  drift` (Windows/local equivalent of the CI detector);
+  filed issue #266 for the future `v{MAJOR}.{U}.{N}`
+  version split (separates update-flow gate from schema
+  version). Each piece is a separate commit; this bullet
+  is the umbrella.
 - **Feature add protocol + label taxonomy + historical
   artifact index.** Adds
   `docs/agents/feature-protocol.md` (the canonical procedure
