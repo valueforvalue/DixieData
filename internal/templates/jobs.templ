@@ -75,7 +75,7 @@ templ jobSummaryCard(job jobs.Job) {
 			<p class="break-all text-xs text-slate-500">Saved to <code>{ job.Summary().ResultPath }</code></p>
 		}
 		<div class="flex flex-wrap items-center gap-2 pt-2">
-			@components.Button("Dismiss", components.ButtonPrimary, "", templ.Attributes{"type": "button", "onclick": "window.location.assign(" + quoteAttr(job.DismissTargetPath()) + ")"})
+			@components.Button("Dismiss", components.ButtonPrimary, "", templ.Attributes{"type": "button", "data-dismiss-job": "", "data-dismiss-target": job.DismissTargetPath()})
 			@components.Button("Show report", components.ButtonSecondary, "", templ.Attributes{"type": "button", "onclick": "window.location.assign('/jobs/" + job.ID + "/report')"})
 			if job.ResultPath != "" {
 				// Copy-path button is the user-facing affordance for

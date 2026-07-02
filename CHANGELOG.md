@@ -661,6 +661,44 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   with 2 checkboxes + 2 submit buttons, intercept
   fetch, dispatch real submit event, assert body
   includes `bulk_action=ignore`).
+- "Mark as Resolved" button on each `/review-queue`
+  entry row also returned "Unknown bulk action." The
+  button carries `data-action="/soldiers/{id}/review/
+  resolve?context=queue"` but lives INSIDE the
+  bulk-action form. `dispatchDixieDataForm` only
+  honored `data-action` for bare buttons (no parent
+  form); inside a form, the form's action won and the
+  fetch hit `/review-queue/bulk` with no `bulk_action`
+  field. Fix: `dispatchDixieDataForm` now respects
+  `data-action` (and `data-method`) when present,
+  regardless of parent form. The synthetic-form
+  fallback path (used when no `data-action`) is
+  unchanged. Also gated `new FormData(form, button)`
+  on the button being a real submit button of the form
+  (`type="submit" && button.form === form`); passing a
+  `type="button"` trigger throws "not a submit button"
+  in Chromium. Regression net:
+  `audit/smoke_review_queue_resolve.mjs` (5 assertions:
+  per-row click hits `/soldiers/42/review/resolve?
+  context=queue` via POST, not `/review-queue/bulk`).
+- Dismiss button on `/jobs/{id}` always navigated to
+  `/share` (or the kind-specific fallback) instead of
+  the page that triggered the job. The templ rendered
+  a hard-coded `onclick="window.location.assign(<fallback>)"`
+  and the docstring on `Job.DismissTargetPath()` said
+  "Issue #131 prefers the referring page, but the
+  referer is never saved, so we always use the kind
+  fallback." Fix: the templ now renders
+  `<button data-dismiss-job data-dismiss-target="<fallback>">Dismiss</button>`
+  and the JS handler at DOMContentLoaded prefers
+  `document.referrer` when it is same-origin and not
+  a `/jobs/*` path (avoids cross-job navigation loops);
+  otherwise it falls back to the templ-provided target.
+  The query string is preserved on the referer path.
+  Regression net: `audit/smoke_jobs_dismiss_button.mjs`
+  (5 assertions: referer wins, /jobs referer falls back,
+  off-origin falls back, empty referer falls back,
+  query string preserved).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"
