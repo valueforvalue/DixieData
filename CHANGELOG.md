@@ -11,6 +11,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **Feature add protocol + label taxonomy + historical
+  artifact index.** Adds
+  `docs/agents/feature-protocol.md` (the canonical procedure
+  for adding a new feature: pre-flight checklist, 3-tier
+  commit rule, deep-module discipline, pipeline phasing,
+  per-layer load table, anti-patterns);
+  `docs/agents/INDEX.md` (3-tier progressive-disclosure
+  table for `docs/`); the Backend-First Law in
+  `CONTEXT.md` ("no feature PR ships a backend surface
+  without a UI apply-site"); the Historical Artifact
+  glossary term; the Feature Protocol section +
+  6-axis Label Taxonomy in `docs/agents/issue-tracker.md`;
+  16 new issue labels (`area:*` × 11, `priority:*` × 3,
+  `blocked`) with `scripts/sync-labels.sh` (idempotent
+  spec) and `scripts/backfill-labels.sh` (idempotent
+  backfill applied to 18 open issues); `docs/historical/`
+  retention tree with README; and per-iteration PDF
+  gitignore rules. Each piece is a separate commit; this
+  bullet is the umbrella.
+
 ### Fixed
 
 - `/tags` showed the empty-archive welcome card when the
