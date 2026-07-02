@@ -12,10 +12,16 @@ module.exports = {
       // names so component work in subsequent PRs can reference them.
       colors: {
         gold: "#a88a46",
+        "gold-light": "#c5ab68",
+        "gold-deep": "#a5853f",
+        "gold-glow": "#eddca6",
         "sepia-500": "#8d7440",
+        "sepia-300": "#cfb77a",
         parchment: "rgba(246,241,228,0.98)",
         "parchment-soft": "rgba(246,241,228,0.72)",
         ink: "#22303d",
+        "ink-deep": "#1f2b38",
+        "ink-mid": "#324253",
         "ink-muted": "rgba(34,45,57,0.7)",
         "ink-faint": "rgba(34,45,57,0.025)",
         "bg-amber-50": "rgba(245,241,230,0.97)",
@@ -24,11 +30,16 @@ module.exports = {
         "bg-sepia-mid": "#c9c2b5",
         "bg-sepia-bottom": "#b9b1a3",
         "review-red": "#6f2c26",
+        "review-red-deep": "#54211d",
         "review-red-tint": "rgba(111,44,38,0.12)",
         "success-green": "#29522d",
         "success-green-bg": "rgba(242,252,244,0.95)",
         "error-red": "#7a2d2d",
         "error-red-bg": "rgba(255,245,245,0.95)",
+        warning: "#d97706",
+        warning_bg: "rgba(255,251,235,0.99)",
+        info: "#2563eb",
+        "info-bg": "rgba(239,246,255,0.99)",
         // Research / relationship accent palette — used on the
         // Camaraderie, Conflict Ledger, Research Log / Pack /
         // Collections, Service Timeline, and the matching side-cards
@@ -40,6 +51,11 @@ module.exports = {
         "research-border": "#bfdbfe",
         "research-accent": "#2563eb",
         "research-text": "#1d4ed8",
+        // Shadow tokens — used for box-shadow rgba() values that
+        // are today inline in component classes. Tokenized in
+        // issue #252 (Phase 1) so the intent is named in code.
+        "shadow-ink": "#17212b",
+        "shadow-deep": "#0f172a",
       },
       borderRadius: {
         surface: "1.7rem",
