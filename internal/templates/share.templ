@@ -143,6 +143,7 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 									<div class="text-xs text-slate-500">Analyses the archive first; you confirm on the status page before any rows are added</div>
 								}
 							</div>
+							<div id="memorial-preview-target" class="mt-4 text-sm text-slate-600"></div>
 						</div>
 						<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Replace Local Archive</p>
@@ -186,7 +187,6 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 						}
 					</div>
 				</section>
-				<div id="share-status" class="responsive-span-2 md:col-span-2 text-sm text-slate-500"><p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">Import + export status messages appear here.</p></div>
 			</div>
 			@partials.PrintConfigModal(exportRecords)
 

@@ -101,7 +101,7 @@ func TestShareViewKeepsResponsiveImportLayoutContract(t *testing.T) {
 		`class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4"`,
 		`class="secondary-button justify-start text-left"`,
 		`Import Memorial JSON (.json)`,
-		`id="share-status" class="responsive-span-2 md:col-span-2`,
+		`id="memorial-preview-target"`,
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("share view missing responsive/split-screen contract %s", needle)
