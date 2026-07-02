@@ -107,7 +107,19 @@ func (a *App) setupRoutes() {
 	r.Post("/export/preview", a.handleExportPreview)
 	r.Get("/export/templates", a.handleListExportTemplates)
 	r.Post("/export/templates", a.handleSaveExportTemplate)
+	// Issue #258: the print-config modal's Save Changes button
+	// fires POST /export/templates/{id} from JS (see
+	// frontend/app.js: updateSelectedTemplate). The handler
+	// already accepts POST as well as PATCH (see
+	// handleUpdateExportTemplate), so expose both verbs at the
+	// router level — chi matches the exact verb, so without
+	// this alias the POST fetch lands on 405 Method Not Allowed.
+	// PATCH stays canonical per REST; POST is the alias used by
+	// the JS dispatcher (which keeps verb=POST so it composes
+	// with the Option C X-DixieData-Redirect flow used by every
+	// other form in the app).
 	r.Patch("/export/templates/{id}", a.handleUpdateExportTemplate)
+	r.Post("/export/templates/{id}", a.handleUpdateExportTemplate)
 	r.Delete("/export/templates/{id}", a.handleDeleteExportTemplate)
 	r.Post("/export/templates/{id}/apply", a.handleApplyExportTemplate)
 	r.Get("/layout/review-count", a.handleLayoutReviewCount)
