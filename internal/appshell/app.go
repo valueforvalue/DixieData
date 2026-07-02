@@ -722,7 +722,7 @@ func (a *App) handleSoldierJPG(w http.ResponseWriter, r *http.Request, id int64)
 	dupKey := fmt.Sprintf("soldier-jpg|%d|%s|%s", id, options.Orientation, soldierJPGName(*soldier, options))
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(r.Context()).Debug("handleSoldierJPG duplicate request rejected")
+		trace.Log("handleSoldierJPG dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
