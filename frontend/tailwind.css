@@ -93,6 +93,73 @@
     padding-bottom: 0.25rem;
   }
   .ghost-link:hover { color: #1f2b38; }
+
+  /* --- v2 button states (issue #251) --- */
+  /* :focus-visible uses the keyboard-only focus ring so mouse clicks
+     don't show the ring; matches Tailwind's focus-visible: utility. */
+  .primary-button:focus-visible {
+    outline: 2px solid #eddca6; /* gold-glow */
+    outline-offset: 2px;
+  }
+  .secondary-button:focus-visible,
+  .pill-link:focus-visible {
+    outline: 2px solid #a88a46; /* gold */
+    outline-offset: 2px;
+  }
+  .danger-button:focus-visible {
+    outline: 2px solid #6f2c26; /* review-red */
+    outline-offset: 2px;
+  }
+  .ghost-link:focus-visible {
+    outline: 2px solid #324253; /* ink-mid */
+    outline-offset: 2px;
+  }
+
+  /* :active — pressed state. Subtle inset shadow + slight scale-down
+     gives a tactile feel without breaking the gradient backgrounds. */
+  .primary-button:active,
+  .secondary-button:active,
+  .danger-button:active,
+  .pill-link:active,
+  .ghost-link:active {
+    transform: scale(0.97);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.18);
+  }
+
+  /* :disabled — applies to <button disabled> + <a aria-disabled="true">.
+     Reduced opacity + cursor + no hover effects. The user-agent
+     stylesheet sets pointer-events: none on <button disabled>;
+     we mirror that on aria-disabled for parity. */
+  .primary-button:disabled,
+  .secondary-button:disabled,
+  .danger-button:disabled,
+  .pill-link:disabled,
+  .ghost-link:disabled,
+  .primary-button[aria-disabled="true"],
+  .secondary-button[aria-disabled="true"],
+  .danger-button[aria-disabled="true"],
+  .pill-link[aria-disabled="true"],
+  .ghost-link[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .primary-button:disabled:hover,
+  .secondary-button:disabled:hover,
+  .danger-button:disabled:hover,
+  .pill-link:disabled:hover,
+  .ghost-link:disabled:hover,
+  .primary-button[aria-disabled="true"]:hover,
+  .secondary-button[aria-disabled="true"]:hover,
+  .danger-button[aria-disabled="true"]:hover,
+  .pill-link[aria-disabled="true"]:hover,
+  .ghost-link[aria-disabled="true"]:hover {
+    /* No hover effect when disabled. Explicit overrides so the
+       :hover rules above don't bleed through. */
+    background: inherit;
+    color: inherit;
+  }
   .google-progress-shell {
     display: flex;
     flex-direction: column;
