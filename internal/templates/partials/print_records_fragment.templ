@@ -1,0 +1,129 @@
+// Print-records fragment — body of the print-config modal. Rendered
+// server-side by handleSharePrintRecordsFragment so the modal opens
+// immediately and the fragment is swapped into [data-print-config-body]
+// by htmx after the user clicks Print/Export Selected.
+//
+// Split from print_config_modal.templ as part of the lazy-load fix
+// (issue #176 / #234). The full archive's listAllSoldiers() cost was
+// 80-95% of the /browse and /share GET handlers; moving the data
+// load to a fragment fetch on modal open makes the nav GETs fast at
+// scale.
+//
+// The fragment is identical in shape to what the modal used to
+// server-render in-place. The sentinel div [data-print-config-body]
+// wraps the filter panel + record picker; htmx innerHTML-swaps the
+// whole region on response.
+package partials
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// PrintRecordsFragment returns the modal body that the print-config
+// modal lazy-loads on open. The fragment is wrapped in a sentinel
+// div with data-print-config-body so htmx can swap the whole region
+// in one innerHTML pass.
+//
+// The caller (handleSharePrintRecordsFragment) is responsible for
+// populating exportRecords via listAllSoldiers(); the modal renders
+// the filter checkboxes + the per-record picker from this slice.
+templ PrintRecordsFragment(exportRecords []viewmodel.ExportRecordOption) {
+	<div data-print-config-body>
+		<div data-print-filter-panel class="space-y-4 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4">
+			<div>
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Burial Location</p>
+				<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440] mt-3">
+					Search burial locations
+					<input type="search" placeholder="Type a cemetery or location" data-print-buried-filter class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
+				</label>
+				<div class="mt-3 max-h-44 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+					<label data-print-buried-option data-print-buried-search="location unknown" class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<input type="checkbox" name="filter_buried_in" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="buried-in" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span>Location Unknown</span>
+					</label>
+					for _, value := range ExportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.BuriedIn }) {
+						<label data-print-buried-option data-print-buried-search={ strings.ToLower(value) } class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+							<input type="checkbox" name="filter_buried_in" value={ value } data-print-filter-checkbox data-print-filter-family="buried-in" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span>{ value }</span>
+						</label>
+					}
+				</div>
+			</div>
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Entry Type</p>
+					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<input type="checkbox" name="filter_entry_type" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="entry-type" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span>Entry Type Unknown</span>
+					</label>
+					for _, value := range ExportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.EntryType }) {
+						<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+							<input type="checkbox" name="filter_entry_type" value={ value } data-print-filter-checkbox data-print-filter-family="entry-type" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span>{ ExportRecordOptionEntryTypeLabel(value) }</span>
+						</label>
+					}
+				</div>
+				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Unit</p>
+					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<input type="checkbox" name="filter_unit" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="unit" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span>Unit Unknown</span>
+					</label>
+					for _, value := range ExportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.Unit }) {
+						<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+							<input type="checkbox" name="filter_unit" value={ value } data-print-filter-checkbox data-print-filter-family="unit" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span>{ value }</span>
+						</label>
+					}
+				</div>
+				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Pension State</p>
+					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<input type="checkbox" name="filter_pension_state" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="pension-state" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span>N/A</span>
+					</label>
+					for _, value := range ExportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.PensionState }) {
+						<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+							<input type="checkbox" name="filter_pension_state" value={ value } data-print-filter-checkbox data-print-filter-family="pension-state" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span>{ value }</span>
+						</label>
+					}
+				</div>
+				<div class="max-h-44 space-y-3 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Confederate Home Status</p>
+					<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<input type="checkbox" name="filter_confederate_home_status" value={ ExportFilterUnknownValue } data-print-filter-checkbox data-print-filter-family="confederate-home-status" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span>N/A</span>
+					</label>
+					for _, value := range ExportUniqueFilterValues(exportRecords, func(record viewmodel.ExportRecordOption) string { return record.ConfederateHomeStatus }) {
+						<label class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+							<input type="checkbox" name="filter_confederate_home_status" value={ value } data-print-filter-checkbox data-print-filter-family="confederate-home-status" class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+							<span>{ value }</span>
+						</label>
+					}
+				</div>
+			</div>
+		</div>
+		<div data-print-record-picker class="space-y-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(36,48,61,0.04)] p-4">
+			<label class="block text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+				Find records
+				<input type="search" placeholder="Type a display ID or name" data-print-record-filter class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
+			</label>
+			<div class="text-xs text-slate-500">Choose which person records to include when exporting a manually selected subset.</div>
+			<div data-print-record-options class="max-h-52 space-y-2 overflow-y-auto rounded-2xl border border-[rgba(141,116,64,0.2)] bg-white/75 p-3 sm:max-h-64">
+				if len(exportRecords) == 0 {
+					<p class="px-3 py-2 text-xs text-slate-500">No records available.</p>
+				}
+				for _, record := range exportRecords {
+					<label data-print-record-option data-print-record-search={ ExportRecordOptionSearchText(record) } class="flex items-start gap-3 rounded-xl border border-[rgba(141,116,64,0.14)] bg-white/80 px-3 py-2 text-sm text-slate-700">
+						<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", record.ID) } data-print-record-checkbox class="mt-1 h-4 w-4 accent-[#8d7440]"/>
+						<span>{ ExportRecordOptionLabel(record) }</span>
+					</label>
+				}
+			</div>
+		</div>
+	</div>
+}

@@ -135,6 +135,10 @@ func (a *App) setupRoutes() {
 	r.Get("/share/queue/modal", a.handleShareQueueModal)
 	r.Post("/share/queue/preview", a.handleShareQueuePreview)
 	r.Post("/share/queue/clear", a.handleShareQueueClear)
+	// Issue #234: lazy-load print-records fragment. Same wildcard
+	// ordering concern as /share/queue/*: register before the
+	// generic /share handler so chi resolves the literal first.
+	r.Get("/share/print-records-fragment", a.handleSharePrintRecordsFragment)
 	// Issue #192: saved Share Queue presets. /share/queue/presets
 	// is a literal prefix; the /{id} and /{id}/apply routes
 	// register below and chi matches in order so the literal
