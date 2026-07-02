@@ -203,3 +203,60 @@ func TestStderrCaptureShape(t *testing.T) {
 		t.Errorf("stderr output missing trailing newline: %q", got)
 	}
 }
+
+// TestRecoverExit5 verifies that a panic inside the wrapped
+// function is converted to exit code 5 + the panic value +
+// stack trace land on stderr. Issue #275.
+func TestRecoverExit5(t *testing.T) {
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = origStderr }()
+
+	doneCh := make(chan struct{})
+	var buf bytes.Buffer
+	go func() {
+		_, _ = io.Copy(&buf, r)
+		close(doneCh)
+	}()
+
+	code, err := recoverExit5(func() (int, error) {
+		panic("kaboom")
+	})
+	w.Close()
+	<-doneCh
+
+	if code != 5 {
+		t.Errorf("code = %d, want 5", code)
+	}
+	if err == nil {
+		t.Error("expected non-nil error after panic")
+	}
+	stderr := buf.String()
+	if !strings.Contains(stderr, "internal error:") {
+		t.Errorf("stderr missing 'internal error:' prefix: %q", stderr)
+	}
+	if !strings.Contains(stderr, "kaboom") {
+		t.Errorf("stderr missing panic value: %q", stderr)
+	}
+	if !strings.Contains(stderr, "stack trace:") {
+		t.Errorf("stderr missing stack trace: %q", stderr)
+	}
+}
+
+// TestRecoverExit5NoPanic verifies that a non-panicking
+// wrapped function returns normally. Issue #275.
+func TestRecoverExit5NoPanic(t *testing.T) {
+	code, err := recoverExit5(func() (int, error) {
+		return 42, nil
+	})
+	if code != 42 {
+		t.Errorf("code = %d, want 42", code)
+	}
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+}
