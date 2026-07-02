@@ -61,9 +61,21 @@ you need more recon, not more plan.
 slices that map to commits.
 
 **Activities:**
-- Decompose the change into vertical slices. A slice is
-  end-to-end across layers (templ + handler + JS + test) and
-  produces something a user (or a probe) can verify.
+- **Tracer-bullet first slice (non-negotiable for any plan
+  with 2+ slices).** Slice 1 must be the smallest end-to-end
+  slice: schema (if any) → service → handler → ONE UI
+  apply-site → regression net → green. If the feature lists
+  multiple apply-sites in the issue, Slice 1 covers exactly
+  one of them and the critical path is proven before the
+  other apply-sites are scoped. See
+  `docs/agents/feature-protocol.md` §"Tracer bullets" and the
+  `tracer-bullets` skill for the full rule. This prevents
+  the AI-slop pattern of horizontal layers built in
+  isolation before the critical path is validated.
+- Decompose the remaining change into vertical slices. A
+  slice is end-to-end across layers (templ + handler + JS +
+  test) and produces something a user (or a probe) can
+  verify.
 - For each slice, list: files touched, success criteria, the
   regression net (test name, smoke probe, manual step).
 - Identify the commit/PR boundary. One commit per logical
@@ -127,6 +139,15 @@ work is mechanical execution.
 
 **Goal:** Execute the plan slice by slice, with regression
 tests confirming each slice before the next starts.
+
+**The first slice is the only slice that runs in the same
+session.** Once Slice 1 (the tracer bullet) is green and the
+user has signed off, **close the session and let the next
+slice start in a fresh context window.** This is the
+tracer-bullet rhythm: fresh context per slice, prior commits
+green before the next one starts. The same agent building
+six slices back-to-back is the AI-slop failure mode the
+`tracer-bullets` skill is built to prevent.
 
 **Activities per slice:**
 1. Read the files you'll touch (recon is cheap, do it again
