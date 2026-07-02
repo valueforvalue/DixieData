@@ -559,3 +559,26 @@ type ShareQueueRow struct {
 	Order        int
 	PersonRecord PersonRecord
 }
+
+// RecentJobEntry (issue #265) is the per-row view shape used
+// by the /share landing's "Recent activity" section. The
+// ShareView handler builds these from the last N terminal
+// jobs in the registry (see jobs.Registry.RecentJobs); the
+// templ iterates without a dependency on the jobs package.
+//
+// FinishedAt is a friendly relative timestamp rendered
+// client-side by JS (a fresh app.js helper turns the RFC3339
+// string into "2 minutes ago"); the server emits the raw
+// value so the templ stays framework-agnostic.
+type RecentJobEntry struct {
+	ID          string
+	Kind        string
+	KindLabel   string // human label from Job.DisplayLabel()
+	Status      string // jobs.StatusDone, StatusError, StatusCancelled, StatusInterrupted
+	StatusLabel string // human label (Done / Error / Cancelled / Interrupted)
+	Message     string
+	ResultPath  string
+	StartedAt   string // RFC3339
+	FinishedAt  string // RFC3339
+	DetailURL   string // /jobs/{id}
+}

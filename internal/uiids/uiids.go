@@ -108,6 +108,17 @@ const (
 	// up uniformly.
 	LayoutShareMenu       = "layout.share.menu"
 	LayoutShareMenuTrigger = "layout.share.menu.trigger"
+	// Issue #265: /share landing sections. The page is
+	// reorganised into a top-of-page stack (Quick Actions,
+	// Recent activity) above the existing Export/Import/Sync
+	// cards. Panel IDs are the card-rooted landmarks a11y
+	// tools and the smoke probe can target.
+	PanelShareQuickActions = "panel.share.quick-actions"
+	PanelShareRecent      = "panel.share.recent"
+	PanelShareAllExports  = "panel.share.all-exports"
+	PanelShareAllImports  = "panel.share.all-imports"
+	PanelShareSync        = "panel.share.sync"
+	PanelShareSupport     = "panel.share.support"
 )
 
 type Surface struct {
@@ -191,6 +202,12 @@ var Registry = []Surface{
 	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues section inside the Share Build modal (issue #192) listing named presets with Load + Delete per row."},
 	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
 	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
+	{ID: PanelShareQuickActions, Kind: "panel", Description: "Quick Actions card on /share (issue #265). Three large tiles: Export JSON, Import .ddbak, Share Queue. Above the fold."},
+	{ID: PanelShareRecent, Kind: "panel", Description: "Recent activity card on /share (issue #265). Last 3 terminal jobs sorted by StartedAt desc. Empty state when no jobs exist."},
+	{ID: PanelShareAllExports, Kind: "panel", Description: "All Exports card on /share (issue #265). Below the fold. Renamed from 'Export & Backup'."},
+	{ID: PanelShareAllImports, Kind: "panel", Description: "All Imports card on /share (issue #265). Below the fold. Renamed from 'Import & Restore'."},
+	{ID: PanelShareSync, Kind: "panel", Description: "Sync card on /share (issue #265). Google Integration card wrapped in a section header. Below the fold."},
+	{ID: PanelShareSupport, Kind: "panel", Description: "Support & Diagnostics card on /share (issue #265). Below the fold. Moved from 'Export & Backup' to its own section."},
 }
 
 
