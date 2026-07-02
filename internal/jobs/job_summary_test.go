@@ -208,6 +208,9 @@ func TestSummaryRendersExportStatsConditionally(t *testing.T) {
 		// Backup and shared archive include all three counts.
 		{kind: "backup_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
 		{kind: "shared_archive", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
+		// Subset export from the Share Queue includes the same
+		// counts as a full shared archive; issue #245.
+		{kind: "shared_archive_subset", result: JobResult{Records: 247, Images: 312, Sources: 18}, expect: expect{recordsLine: true, imagesLine: true, sourcesLine: true}},
 		// Insights and bug report do not enumerate persons — no stats lines.
 		{kind: "insights_pdf"},
 		{kind: "bug_report"},
