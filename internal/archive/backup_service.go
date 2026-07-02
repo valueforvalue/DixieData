@@ -92,6 +92,7 @@ type backupContents struct {
 type SharedImportSummary struct {
 	SoldiersInserted int
 	SoldiersUpdated  int
+	SoldiersSkipped  int
 	RecordsInserted  int
 	RecordsUpdated   int
 	ImagesInserted   int
@@ -1427,6 +1428,7 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 					SoldierID:   localSnapshot.Soldier.ID,
 					SoldierSync: localSnapshot.Soldier.SyncID,
 				}
+				summary.SoldiersSkipped++
 				if logger != nil {
 					logger.Printf("soldier action=skip-unchanged match=sync sync_id=%s display_id=%s target_id=%d", snapshot.Soldier.SyncID, localSnapshot.Soldier.DisplayID, localSnapshot.Soldier.ID)
 				}
@@ -1455,6 +1457,7 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 				SoldierSync: aliasSnapshot.Soldier.SyncID,
 			}
 			if equivalentAliasMappedSnapshots(*aliasSnapshot, snapshot) {
+				summary.SoldiersSkipped++
 				if logger != nil {
 					logger.Printf("soldier action=skip-unchanged match=alias source_node_id=%q sync_id=%s canonical_sync_id=%s target_id=%d", snapshot.SourceNodeID, snapshot.Soldier.SyncID, aliasSnapshot.Soldier.SyncID, aliasSnapshot.Soldier.ID)
 				}
