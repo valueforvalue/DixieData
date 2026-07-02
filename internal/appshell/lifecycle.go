@@ -120,6 +120,12 @@ func (a *App) startup(ctx context.Context) {
 		fmt.Printf("warning: failed to configure debug logging: %v\n", err)
 	}
 
+	// --log-to-stderr: mirror the JSONL to stderr for shell-side
+	// CI debugging. See issue #270.
+	if os.Getenv("DIXIEDATA_LOG_TO_STDERR") == "1" {
+		debug.SetStderrMirror(true)
+	}
+
 	if err := configureStressLogging(); err != nil {
 		a.startupErr = fmt.Errorf("failed to configure stress logging: %w", err)
 		a.setupRoutes()

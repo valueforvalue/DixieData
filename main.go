@@ -106,6 +106,14 @@ func main() {
 		os.Exit(0)
 	}
 
+	// --log-to-stderr: tee the JSONL to stderr for shell-side
+	// CI debugging. Issue #270. Set the env var BEFORE the
+	// appshell starts (lifecycle.go reads it after
+	// debug.Configure).
+	if hasLogToStderr(os.Args[1:]) {
+		_ = os.Setenv("DIXIEDATA_LOG_TO_STDERR", "1")
+	}
+
 	// Headless subcommand dispatch. Phase 1 (--smoke), Phase 2
 	// (doctor), Phase 3 (list / show / search), Phase 4 (export),
 	// Phase 5 (import), Phase 6 (migrate/backup/restore point/
@@ -207,6 +215,24 @@ func firstDataDir(args []string) string {
 		}
 	}
 	return ""
+}
+
+// hasLogToStderr scans args for --log-to-stderr. Returns true
+// if present (any form: --log-to-stderr, --log-to-stderr=1).
+// Issue #270.
+func hasLogToStderr(args []string) bool {
+	for _, a := range args {
+		if a == "--log-to-stderr" {
+			return true
+		}
+		if a == "--log-to-stderr=0" || a == "--log-to-stderr=false" {
+			return false
+		}
+		if strings.HasPrefix(a, "--log-to-stderr=") {
+			return true
+		}
+	}
+	return false
 }
 
 // runQuerySubcommand builds an App, parses the query args,
