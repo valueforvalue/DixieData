@@ -34,17 +34,18 @@ func handleVersionFlag(argv []string) (output string, done bool) {
 	return "", false
 }
 
-// handleHelpFlag scans argv for help / --help / -h (or for
-// the case where argv has no subcommand at all). Returns
-// the formatted help text + requested=true. The list of
-// subcommands is hand-maintained; main_test.go asserts
-// that every verb the dispatcher knows about appears in
-// the help text (cross-reference against
+// handleHelpFlag scans argv for the explicit help token
+// (help / --help / -h). Returns the formatted help text +
+// requested=true. The no-args case is intentionally NOT
+// handled here: a bare `dixiedata` invocation must fall
+// through to the GUI launch path. If we showed help on
+// no-args, the Wails GUI would never start.
+//
+// The list of subcommands is hand-maintained; main_test.go
+// asserts that every verb the dispatcher knows about appears
+// in the help text (cross-reference against
 // runDebugCLICoverage). See issue #277.
 func handleHelpFlag(argv []string) (output string, requested bool) {
-	if len(argv) == 1 {
-		return cliHelpText(), true
-	}
 	for _, a := range argv[1:] {
 		if a == "help" || a == "--help" || a == "-h" {
 			return cliHelpText(), true

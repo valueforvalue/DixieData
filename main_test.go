@@ -85,11 +85,13 @@ func TestVersionOutputFormat(t *testing.T) {
 	<-doneCh
 }
 
-// TestHelpFlag verifies that help / --help / -h (or no args)
-// produces the help text. Issue #277.
+// TestHelpFlag verifies that help / --help / -h produces the
+// help text. The no-args case (`dixiedata` with no
+// subcommand) intentionally returns requested=false so the
+// Wails GUI launch path is reachable — see handleHelpFlag
+// doc comment. Issue #277.
 func TestHelpFlag(t *testing.T) {
 	cases := [][]string{
-		{"dixiedata"},
 		{"dixiedata", "help"},
 		{"dixiedata", "--help"},
 		{"dixiedata", "-h"},
@@ -115,7 +117,9 @@ func TestHelpFlag(t *testing.T) {
 
 // TestHelpFlagAbsent verifies that without help / --help /
 // -h AND with at least one subcommand, handleHelpFlag
-// returns requested=false.
+// returns requested=false. Also covers the no-args case
+// (`dixiedata` with no subcommand) which MUST return
+// requested=false so the GUI launch path runs.
 func TestHelpFlagAbsent(t *testing.T) {
 	_, requested := handleHelpFlag([]string{"dixiedata", "doctor"})
 	if requested {
@@ -124,6 +128,14 @@ func TestHelpFlagAbsent(t *testing.T) {
 	_, requested = handleHelpFlag([]string{"dixiedata", "doctor", "--check=data_dir"})
 	if requested {
 		t.Error("expected requested=false when subcommand + flags provided")
+	}
+	// No-args case: must return requested=false so the Wails
+	// GUI launch path runs. Regression net for the bug where
+	// a bare `dixiedata` invocation printed the help text and
+	// exited 0 instead of opening the app window.
+	_, requested = handleHelpFlag([]string{"dixiedata"})
+	if requested {
+		t.Error("expected requested=false on no-args (must not block GUI launch)")
 	}
 }
 
