@@ -2870,6 +2870,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestCalendarPopulatedRendersDetailsPane`) assert DOM ordering and the
   presence/absence of the welcome panel + details-pane for both states.
 
+- **Restructured the `/share` landing page into focused sections**
+  (issue #265). Added a Quick Actions card above the fold with
+  three hardcoded tiles (Export JSON, Load Backup, Share Queue)
+  so a returning user can complete the most common task without
+  scrolling past the long tail. Added a Recent Activity card
+  showing the last 3 terminal jobs (done / error / cancelled /
+  interrupted) sorted by StartedAt desc, with an empty-state
+  message for new installs. The existing 2-col grid (All Exports
+  + All Imports) and the Sync + Support & Diagnostics cards
+  remain below the fold unchanged. New generic primitive:
+  `@components.QuickAction` (large tile: icon+label+description+arrow).
+  New component: `@components.RecentJobs` (last N jobs card with
+  status pills + relative timestamps). New query:
+  `jobs.Registry.RecentJobs(n)` returns terminal jobs sorted by
+  StartedAt desc, excluding queued + running. New viewmodel:
+  `viewmodel.RecentJobEntry`. New uiids: `PanelShareQuickActions`,
+  `PanelShareRecent`, `PanelShareAllExports`, `PanelShareAllImports`,
+  `PanelShareSync`, `PanelShareSupport`. CSS fix: foldout panel
+  now uses `display: none` by default (was `display: flex` which
+  was overriding the Tailwind `.hidden` class — caused 480px
+  overflow in #264's smoke probe, surfaced by #265's). Regression
+  net: `audit/smoke_share_landing.mjs` (15/15 assertions cover
+  section presence, ordering, tile correctness, recent activity
+  empty/populated states, 480px responsiveness, and the Export
+  JSON click → POST /export/json → /jobs/{id} → Recent activity
+  populates round-trip).
+
 - **Share top-nav foldout** (issue #264). Replaced the two
   flat top-nav links (Share + Share Queue) with a single
   Share trigger that opens a foldout panel containing 4
