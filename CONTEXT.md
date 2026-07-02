@@ -159,6 +159,18 @@ _Avoid_: Spouse
 > **Dev:** "This pension application came in from a shared archive — should it become a new **Person Record**?"
 > **Domain expert:** "No. It is a **Source Record** unless it represents a different person we do not already track."
 
+## Historical Artifact
+
+A doc, audit result, or rendering review retained for traceability
+but no longer loaded by default. Lives under `docs/historical/`
+with the retention rule documented in that directory's README. An
+agent does not load a Historical Artifact unless the issue, PR, or
+ADR explicitly names it. Resolved audits, superseded handoffs, and
+per-surface iteration rounds past the latest three are Historical
+Artifacts by definition.
+_Avoid_: legacy doc, old doc, archive (use one of the archive terms
+already defined)
+
 ## Flagged ambiguities
 
 - "record" was used to mean both **Person Record** and **Source Record** — resolved: use **Person Record** for the main person entry and **Source Record** for attached evidence items.
@@ -177,6 +189,22 @@ _Avoid_: Spouse
 - "soldier" was used both for one subtype and for the whole main table — resolved: use **Soldier** only for that subtype and **Person Record** for the umbrella.
 - "spouse", "wife", and "widow" were used interchangeably — resolved: use **Spouse Record** as the umbrella term, with **Wife** and **Widow** as specific subtypes when the distinction matters.
 - "virtual cemetery" was used generically for any Person Record grouping — resolved: use **Tag** as the generic term; reserve "virtual cemetery" for a specific FindAGrave pattern that the user explicitly names.
+- "old doc", "legacy doc", and "archived doc" risked ambiguity with the archive terms above — resolved: use **Historical Artifact** for retained-for-traceability docs that are not loaded by default.
+
+## Adding features
+
+The canonical procedure for adding a new feature to DixieData lives
+in [`docs/agents/feature-protocol.md`](docs/agents/feature-protocol.md).
+The protocol covers the 3-tier commit rule (issue #183 worked
+example), the deep-module discipline (define the facade before the
+internals, service is the seam, two-adapter rule), the 7-phase
+pipeline phasing (lightweight issue body by default;
+`docs/RESEARCH.md` → `docs/PRD.md` → `docs/TASKS.csv` only for 6+
+file cross-layer features), and the per-layer "when to load what"
+table.
+
+Read it end-to-end before any feature work. The protocol references
+RPCI; you don't need to re-read `docs/agents/rpci.md` separately.
 
 ## Laws (non-negotiable)
 
@@ -236,3 +264,43 @@ focus trap and ESC close handlers in `frontend/app.js`
 until Wails fixes the upstream interaction. Tests in
 `internal/templates/{layout,share}_test.go` lock in the
 overlay shape.
+
+### No feature PR ships a backend surface without a UI apply-site
+
+The 2026-06 "shipped but invisible" sweep (issue #257) surfaced
+four features that landed backend + service + handler + routes
+with no UI to invoke them. Each was functionally complete,
+fully tested, and reachable only by `curl`. Users had no way to
+discover them; the discoverable entry points were buried in
+unrelated screens. The pattern drifted across issues #183 (tags),
+#184 (templates "Show details" toggle), #185 (live preview
+StaleSummary), #186 (PATCH `/export/templates/{id}`), and
+#187 (search-bar history).
+
+The contract:
+
+- Every feature PR that adds a backend surface (new HTTP route,
+  new service method, new CLI subcommand) MUST land at least one
+  matching UI apply-site in the same PR. A "UI apply-site" is a
+  templ button / form / link / CLI command / job that a user (or
+  a smoke probe driving the live UI) can click to exercise the
+  surface.
+- The apply-sites are a **checklist** in the feature issue body
+  AND the PR description, not a prose sentence. Each box must be
+  ticked as the matching commit lands. Backend-only commits with
+  no matching UI apply-site in the same PR are not mergeable.
+- The only exception is a backend surface whose apply-site is
+  already wired (e.g. extending an existing route). Mark it
+  "extends existing apply-site" in the issue body; the reviewer
+  verifies the surface is actually reachable from the UI before
+  approving.
+- Tracked follow-up PRs are acceptable for the SECOND-and-later
+  apply-sites (e.g. add the Browse row chip after the Person
+  Record detail page picker lands). Each follow-up PR carries
+  its own apply-sites checklist; the original issue stays open
+  until every box is checked.
+
+`audit/discover_orphan_handlers.mjs` runs in CI and greps the
+registered routes against the templ invokers. Handlers with no
+invoker are flagged. This is the automated tripwire that catches
+the pattern before a user does.
