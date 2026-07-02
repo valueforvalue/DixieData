@@ -2870,6 +2870,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestCalendarPopulatedRendersDetailsPane`) assert DOM ordering and the
   presence/absence of the welcome panel + details-pane for both states.
 
+- **Removed the deprecated `#share-status` placeholder panel from
+  `/share`** (issue #254). The panel was made obsolete by the
+  `/jobs/{id}` job status pages (issue #193): every export and
+  import action now redirects to a deep-linkable job page for its
+  status feedback, so the in-page panel had no writers left. The
+  removed surface includes the placeholder paragraph, the dead
+  `memorialImportPreviewMarkup` / `memorialImportSummaryMarkup` /
+  `memorialImportIssuesList` helpers (orphaned by commit 3748db7's
+  memorial flow migration to `/jobs/{id}`), the unused
+  `scrollShareStatusIntoView` + `htmx:afterSwap` hook + dead
+  `shareStatusTarget()` helper in `frontend/app.js`, the
+  `#share-status` assertion in `share_test.go`, three deprecated
+  audit probes (`probe-backup-status.mjs`,
+  `probe-share-status-scroll.mjs`, `run-backup-status.mjs`), and
+  the `#share-status` references in `probe-full-restore.mjs`. A
+  new empty `<div id="memorial-preview-target">` slot is left
+  inside the Memorial JSON import card as a documented attach
+  point for future in-page feedback (per the issue). The export
+  wireframe (`docs/ui-map/wireframes/08-export.md`) is updated to
+  reflect that all import buttons now redirect to `/jobs/{id}`.
+  Regression net: `audit/smoke_memorial_json_preview.mjs`
+  (7/7 assertions).
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
