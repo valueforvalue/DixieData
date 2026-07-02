@@ -161,6 +161,12 @@ The user invokes the flow with a phrase that includes
    re-ask of the full task).
 2. Run RPCI, gating the Implement phase on explicit approval.
 3. Surface the slice breakdown before writing any code.
+4. For bugs (not features), file the Research phase
+   output as a GitHub issue following the bug protocol
+   in `docs/agents/issue-tracker.md`. The issue body is
+   the durable record; it must contain Symptom, Repro,
+   Root cause, Call sites, Proposed fix, Files, and
+   Regression net before the Plan phase starts.
 
 Surface forms the user might use:
 - "do RPCI on the click delay fix"
