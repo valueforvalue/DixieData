@@ -13,6 +13,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Tracer-bullets discipline.** New section in
+  `docs/agents/feature-protocol.md` codifying the
+  end-to-end vertical-slice rule from The Pragmatic
+  Programmer as the DixieData enforcement mechanism for
+  the 3-tier commit rule. Paired with the new
+  `tracer-bullets` skill in `~/.pi/agent/skills/` that
+  any RPCI loop or build-feature flow can invoke to
+  force "one slice, one commit, green before next
+  slice" behaviour. The Plan phase of
+  `docs/agents/rpci.md` now requires a tracer-bullet
+  first slice for any multi-slice plan, and the
+  Implement phase mandates a fresh session per slice
+  to keep prior decisions un-contaminated. Advisory
+  only — no CI tripwire.
 - **CLI follow-up pack.** Resolves 7 of the 13 carryover
   items from `docs/agents/cli-plan.md` "Open follow-up":
   - `dixiedata --version` / `-v` (issue #271) — top-level

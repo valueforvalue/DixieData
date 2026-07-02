@@ -49,6 +49,26 @@ Add to the checklist when the feature touches:
 | Subsystem feature, 4+ files across layers | **Full protocol + design artifact.** Issue body as above + `.rpiv/artifacts/designs/<slug>.md` for the architecture. |
 | Cross-cutting feature, 6+ files, design questions | **Full protocol + 7-phase pipeline.** Add `docs/RESEARCH.md` → `docs/PRD.md` → `docs/TASKS.csv` for the heavy artifacts. Issue body always carries the slice plan; the artifact files are the durable record. |
 
+## Tracer bullets (vertical-slice discipline)
+
+Before any feature work, internalise the tracer-bullet rule from
+The Pragmatic Programmer: **build a tiny, end-to-end slice first,
+get feedback, then expand.** AI agents are prone to outrunning
+their headlights — building whole layers in isolation before the
+critical path is validated. The 3-tier commit rule below is the
+DixieData enforcement mechanism: every commit is one slice, every
+slice crosses every layer, no slice ships without a regression net
+running green.
+
+Hard rule: do not start the next slice until the previous commit is
+green AND the user has seen the working surface. A fresh context
+window for each slice is ideal — it keeps prior decisions
+un-contaminated by the agent's growing "memory" of the feature.
+
+This is documented as a standalone skill at
+`~/.pi/agent/skills/tracer-bullets/SKILL.md` so it can be invoked
+on demand by RPCI loops or any build-feature flow.
+
 ## The 3-tier commit rule
 
 One commit = one of:
