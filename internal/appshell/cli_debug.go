@@ -52,6 +52,7 @@ const (
 	DebugBrowserTree
 	DebugRequest
 	DebugCLICoverage
+	DebugInPlaceSafety
 )
 
 // String returns the lowercase verb used on the command line.
@@ -67,6 +68,8 @@ func (k DebugKind) String() string {
 		return "request"
 	case DebugCLICoverage:
 		return "cli-coverage"
+	case DebugInPlaceSafety:
+		return "in-place-safety"
 	default:
 		return "unknown"
 	}
@@ -116,6 +119,8 @@ func RunDebug(ctx context.Context, opts DebugOptions) (int, error) {
 		return runDebugRequest(ctx, app, opts)
 	case DebugCLICoverage:
 		return runDebugCLICoverage(ctx, app, opts)
+	case DebugInPlaceSafety:
+		return runDebugInPlaceSafety(ctx, app, opts)
 	default:
 		return 3, fmt.Errorf("unknown debug command")
 	}
@@ -918,8 +923,10 @@ func ParseDebugArgs(args []string) (DebugOptions, error) {
 		opts.RequestPath = path
 	case "cli-coverage":
 		opts.Kind = DebugCLICoverage
+	case "in-place-safety":
+		opts.Kind = DebugInPlaceSafety
 	default:
-		return opts, fmt.Errorf("unknown debug subcommand: %s (want dump, hx-invariants, browser-tree, request, cli-coverage)", args[1])
+		return opts, fmt.Errorf("unknown debug subcommand: %s (want dump, hx-invariants, browser-tree, request, cli-coverage, in-place-safety)", args[1])
 	}
 
 	for i, a := range args {
@@ -1332,4 +1339,5 @@ func contains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+
 }
