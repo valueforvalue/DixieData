@@ -622,6 +622,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   transitions in one code path. Regression net:
   `audit/smoke_share_queue_page.mjs` (5 transitions, 7
   assertions, live-binary headless browser probe).
+- "Select all" checkbox on `/share/queue` did not toggle
+  per-row checkboxes after the first render. The
+  `installShareQueuePage()` function attached the change
+  handler directly to the selectAll element, which lives
+  inside the section. `renderShareQueuePage()` calls
+  `section.replaceChildren(...)` on every render, which
+  detaches the original selectAll from the DOM; the
+  listener was stranded. The per-row checkbox change +
+  per-row Remove click were already section-delegated
+  (PR #241), but select-all was the lone direct listener
+  — and the one that broke. Move the select-all change
+  handler into the existing section-level `change`
+  delegation. All event listeners on the section survive
+  `replaceChildren()` because the section itself is the
+  same DOM node. Regression net:
+  `audit/smoke_share_queue_select_all.mjs` (7 assertions,
+  live-binary headless browser probe).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"
