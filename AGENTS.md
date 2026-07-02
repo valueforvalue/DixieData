@@ -205,15 +205,44 @@ screen, then follow the HTMX wiring table to the owning handler.
   htmx + JS + Go handler together (the chi-router migration and
   the hx-attr strip both shipped as one-system drift).
 
+### Adding a feature
+
+[`docs/agents/feature-protocol.md`](docs/agents/feature-protocol.md)
+is the canonical procedure for adding a new feature. Read it
+end-to-end before any feature work. The protocol covers the 3-tier
+commit rule, module discipline (define the facade before the
+internals; service is the seam; two-adapter rule), pipeline phasing
+(lightweight issue body by default; `docs/RESEARCH.md` →
+`docs/PRD.md` → `docs/TASKS.csv` only for 6+ file cross-layer
+features), and the per-layer "when to load what" table. The
+protocol references RPCI; you don't need to re-read it separately.
+
+### Docs index (progressive disclosure)
+
+[`docs/agents/INDEX.md`](docs/agents/INDEX.md) is the 3-tier
+progressive-disclosure table for `docs/`. **Read it at session
+start** to know which tier-1/2 docs to load for your task. Tier 0
+is always loaded (already cross-referenced from this file); Tier 1
+loads by matching the task to a role; Tier 2 (under
+`docs/historical/`) loads only on explicit reference.
+
 ### Issue tracker
 
 Issues are tracked in GitHub Issues for this repository using the `gh` CLI.
-See `docs/agents/issue-tracker.md`.
+See `docs/agents/issue-tracker.md`. Labels follow the 6-axis taxonomy
+in [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md):
+**Type × Status × Area × Priority × Cohort × Meta**. Use
+`./scripts/sync-labels.sh` (idempotent) to apply the label set and
+`./scripts/backfill-labels.sh` to apply area/priority labels to
+existing open issues.
 
 ### Triage labels
 
 The triage label vocabulary uses the canonical labels: `needs-triage`, `needs-info`,
-`ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+`ready-for-agent`, `ready-for-human`, and `wontfix`. See
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md) for the full
+6-axis taxonomy (Type × Status × Area × Priority × Cohort × Meta) and
+the `scripts/sync-labels.sh` + `scripts/backfill-labels.sh` helpers.
 
 ### Domain docs
 
