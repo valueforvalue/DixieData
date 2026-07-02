@@ -640,7 +640,7 @@ func (a *App) handleSoldierPDF(w http.ResponseWriter, r *http.Request, id int64)
 	dupKey := fmt.Sprintf("soldier-pdf|%d|%s|%s", id, options.Orientation, soldierPDFName(*soldier, options))
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(r.Context()).Debug("handleSoldierPDF duplicate request rejected")
+		trace.Log("handleSoldierPDF dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
