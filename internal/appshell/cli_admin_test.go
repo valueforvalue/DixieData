@@ -162,6 +162,21 @@ func TestParseAdminArgs_RestorePointUnknownVerb(t *testing.T) {
 	}
 }
 
+func TestParseAdminArgs_RestorePointApplyDryRun(t *testing.T) {
+	opts, err := ParseAdminArgs([]string{
+		"restore", "point", "apply", "--dry-run", "restore-point-20260628-070504",
+	})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !opts.DryRun {
+		t.Error("expected DryRun=true")
+	}
+	if opts.RestorePointID != "restore-point-20260628-070504" {
+		t.Errorf("RestorePointID = %q", opts.RestorePointID)
+	}
+}
+
 func TestParseAdminArgs_LogsPath(t *testing.T) {
 	opts, err := ParseAdminArgs([]string{"logs", "path"})
 	if err != nil {
