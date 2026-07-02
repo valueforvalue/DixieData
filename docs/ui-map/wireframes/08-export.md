@@ -9,14 +9,24 @@
 
 ## Regions (relaxed mode)
 
-```
+```issue #265 (Quick Actions + Recent activity above the fold)
 ┌── Share Archive ──────────────────────────────────────────────────┐
 │ if zero records: EmptyStateCard("share", counts)                 │
 │ h2 + intro copy                                                   │
 ├───────────────────────────────────────────────────────────────────┤
+│ [panel.share.quick-actions] (3 tiles, sm:grid-cols-3)            │
+│   [Export JSON →] [Load Backup →] [Share Queue →]                │
+│   Each tile is a real <a>; Export JSON + Load Backup submit      │
+│   the data-action flow (same handler as the in-page button)     │
+├───────────────────────────────────────────────────────────────────┤
+│ [panel.share.recent] (last 3 terminal jobs, StartedAt desc)      │
+│   per row: [Kind] [status pill] [relative time]                   │
+│   empty state: "No exports or imports yet."                      │
+│   each row links to /jobs/{id}                                    │
+├───────────────────────────────────────────────────────────────────┤
 │ [panel.export.actions] (responsive-two-col → 2 sections side-by-side)│
 │                                                                    │
-│  ┌── Export & Backup ─────────┐  ┌── Import & Restore ─────────┐  │
+│  ┌── All Exports ────────────┐  ┌── All Imports ─────────────┐  │
 │  │ Export JSON               │  │ [Collaborative Merge card]  │  │
 │  │ Export Excel (.xlsx)      │  │   Import Shared Archive     │  │
 │  │ Export iCalendar          │  │     (redirects to /jobs/{id})│  │
@@ -27,7 +37,7 @@
 │  │                           │  │   Load Backup (.ddbak)       │  │
 │  └───────────────────────────┘  └─────────────────────────────┘  │
 │                                                                    │
-│ [Support & Diagnostics card] (responsive-span-2)                 │
+│ [panel.share.support] (responsive-span-2)                        │
 │   Export Feedback Log | Export Bug Report Bundle                 │
 │                                                                    │
 ├───────────────────────────────────────────────────────────────────┤
