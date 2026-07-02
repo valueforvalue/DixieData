@@ -90,12 +90,13 @@ func ResearchPackView(pack records.ResearchPack) templ.Component {
 	return templates.ResearchPackView(viewmodel.ResearchPackFromDomain(pack))
 }
 
-func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict, exportRecords []models.Soldier, counts models.ArchiveCounts) templ.Component {
+func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict, exportRecords []models.Soldier, counts models.ArchiveCounts, shareIncludeTags bool) templ.Component {
 	return templates.ShareView(
 		viewmodel.GoogleStatusFromModel(status),
 		viewmodel.MergeReviewConflictsFromModels(conflicts),
 		viewmodel.ExportRecordOptionsFromModels(exportRecords),
 		viewmodelCountsFromModels(counts),
+		shareIncludeTags,
 	)
 }
 

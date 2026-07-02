@@ -10,7 +10,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts) {
+templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts, shareIncludeTagsEnabled bool) {
 	@Layout("Share") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			if counts.TotalRecords() == 0 {
@@ -83,6 +83,26 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							<span class="font-bold">Export Shared Archive (.ddshare)</span>
 							<span class="text-xs text-slate-500">For sharing into another DixieData</span>
 						}
+						<form action="/share/export-options" method="post" data-dixie-submit="true" data-reload-on-success="true" class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/65 px-4 py-3 text-sm text-slate-700 space-y-2">
+							<input type="hidden" name="include_tags" value="0"/>
+							<label class="flex items-start gap-2">
+								<input
+									type="checkbox"
+									name="include_tags"
+									value="1"
+									data-share-include-tags
+									if shareIncludeTagsEnabled {
+										checked
+									}
+									class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"
+								/>
+								<span>
+									<strong class="text-[#22303d]">Include tags</strong> in this .ddshare
+									(virtual cemeteries, research notes). Default off; recipient
+									sees your grouping on import.
+								</span>
+							</label>
+						</form>
 						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
 							"data-share-queue-open": "",
 						}) {

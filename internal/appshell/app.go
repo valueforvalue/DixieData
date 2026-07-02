@@ -525,7 +525,8 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load archive counts.", err)
 		return
 	}
-	presentation.ShareView(status, conflicts, exportRecords, domainCounts).Render(r.Context(), w)
+	shareIncludeTags := a.archiveMeta.IncludeTags(r.Context(), records.ArchiveKindShared)
+	presentation.ShareView(status, conflicts, exportRecords, domainCounts, shareIncludeTags).Render(r.Context(), w)
 }
 
 func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) {
