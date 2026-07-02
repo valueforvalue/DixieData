@@ -206,7 +206,7 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		a.jobs.SetResult(jobID, jobs.JobResult{
 			Added:          summary.SoldiersInserted,
 			Merged:         summary.SoldiersUpdated,
-			Skipped:        0, // service does not surface Skipped today
+			Skipped:        summary.SoldiersSkipped,
 			Conflicts:      summary.PendingConflicts,
 			ImagesImported: summary.ImagesInserted + summary.ImagesUpdated,
 		})

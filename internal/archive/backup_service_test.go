@@ -1106,6 +1106,88 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 	}
 }
 
+// TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates is
+// the regression net for issue #246: when a .ddshare import
+// finds every source soldier content-equivalent to an
+// existing local soldier, the SharedImportSummary must
+// report the count via SoldiersSkipped so the jobs UI can
+// surface "Person records: N skipped" instead of an empty
+// summary card.
+func TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates(t *testing.T) {
+	targetDir := t.TempDir()
+	targetDB, err := db.Open(targetDir)
+	if err != nil {
+		t.Fatalf("db.Open target: %v", err)
+	}
+	defer targetDB.Close()
+	targetSvc := NewSoldierService(targetDB)
+	backupSvc := NewBackupService(targetDB, targetSvc)
+
+	// Create two soldiers on the target.
+	target1, err := targetSvc.Create(models.Soldier{FirstName: "A", LastName: "Smith"})
+	if err != nil {
+		t.Fatalf("Create target1: %v", err)
+	}
+	target2, err := targetSvc.Create(models.Soldier{FirstName: "B", LastName: "Jones"})
+	if err != nil {
+		t.Fatalf("Create target2: %v", err)
+	}
+
+	// Build a source DB that mirrors the same two soldiers by
+	// re-using their SyncIDs (snapshot then rewrite). This is
+	// the same setup MergesContents uses; the difference is we
+	// re-import the same backup into the same target so every
+	// source row is content-equivalent to the local row.
+	sourceDir := t.TempDir()
+	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
+		t.Fatalf("SnapshotTo source: %v", err)
+	}
+	sourceDB, err := db.Open(sourceDir)
+	if err != nil {
+		t.Fatalf("db.Open source: %v", err)
+	}
+	defer sourceDB.Close()
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceBackupSvc := NewBackupService(sourceDB, sourceSvc)
+
+	// Confirm the source snapshot picked up the same SyncIDs
+	// (it should, because SyncIDs are preserved by SnapshotTo).
+	src1, err := sourceSvc.GetByID(target1.ID)
+	if err != nil {
+		t.Fatalf("GetByID source1: %v", err)
+	}
+	src2, err := sourceSvc.GetByID(target2.ID)
+	if err != nil {
+		t.Fatalf("GetByID source2: %v", err)
+	}
+	if src1.SyncID != target1.SyncID || src2.SyncID != target2.SyncID {
+		t.Fatalf("expected sync IDs to survive SnapshotTo, got %q/%q vs %q/%q",
+			src1.SyncID, src2.SyncID, target1.SyncID, target2.SyncID)
+	}
+
+	backupPath := filepath.Join(t.TempDir(), "shared-backup.zip")
+	if _, err := sourceBackupSvc.ExportShared(backupPath, sourceDir); err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+
+	summary, err := backupSvc.ImportSharedBackup(backupPath, targetDir)
+	if err != nil {
+		t.Fatalf("ImportSharedBackup: %v", err)
+	}
+	if summary.SoldiersSkipped != 2 {
+		t.Fatalf("expected SoldiersSkipped=2 (both content-equivalent), got %#v", summary)
+	}
+	if summary.SoldiersInserted != 0 {
+		t.Fatalf("expected no inserts, got %#v", summary)
+	}
+	if summary.SoldiersUpdated != 0 {
+		t.Fatalf("expected no updates, got %#v", summary)
+	}
+	if summary.PendingConflicts != 0 {
+		t.Fatalf("expected no conflicts, got %#v", summary)
+	}
+}
+
 func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 	targetDir := t.TempDir()
 	targetDB, err := db.Open(targetDir)
