@@ -1,0 +1,35 @@
+{
+  "findings": [
+    {
+      "surface": "calendar",
+      "check": "calendar-day-click-shows-anniversary",
+      "result": "PASS",
+      "details": "clicked day \"June 1, press enter to load details\", details pane html length: 4061"
+    },
+    {
+      "surface": "soldier-new",
+      "check": "required-field-validation",
+      "result": "PASS",
+      "details": "form=true requiredFields=2 serverStatus=400 serverBlocksEmpty=true"
+    },
+    {
+      "surface": "browse",
+      "check": "browse-soldier-link-navigates",
+      "result": "PASS",
+      "details": "clicked /soldiers/1, landed on http://127.0.0.1:8765/soldiers/1; first heading: \"Jasper Gray Turner A\""
+    },
+    {
+      "surface": "floating-dock-layout",
+      "check": "floating-nav-vs-dock-overlap",
+      "result": "PASS",
+      "details": "nav {\"x\":872,\"y\":19.90625,\"width\":384,\"height\":692.09375} dock {\"x\":0,\"y\":745.28125,\"width\":1248,\"height\":54.71875}"
+    },
+    {
+      "surface": "feedback-modal",
+      "check": "save-shows-toast-no-console-errors",
+      "result": "PASS",
+      "details": "toast=true newErrors=0 "
+    }
+  ],
+  "ts": "2026-06-29T19:42:39.680Z"
+}
