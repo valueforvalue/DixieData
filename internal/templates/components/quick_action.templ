@@ -1,0 +1,59 @@
+package components
+
+// QuickAction is a large tile used in the /share landing's
+// "Quick actions" section (issue #265). The tile surfaces a
+// high-priority action (Export JSON, Import .ddbak, Share
+// Queue) above the fold so a user can complete the common
+// task without scrolling past the rest of the page.
+//
+// The tile renders as a single <a> element so it gets the
+// browser's native focus ring, middle-click / cmd-click open
+// in new tab, and screen-reader treatment for free. The
+// caller is expected to pass a URL the browser can navigate
+// to directly (an in-page anchor like /share#export-section
+// works; so does /share/queue).
+//
+// For data-action flows (e.g. POSTing a form to /export/json
+// + redirecting to /jobs/{id}), the caller should pass
+// data-action + data-dixie-submit via attrs and a JS click
+// handler reads them; the browser will still navigate to the
+// href on middle-click.
+//
+// extraClass accepts compound classes the caller wants to
+// add. The primitive owns the base surface classes.
+templ QuickAction(label string, description string, href string, extraClass string, attrs templ.Attributes) {
+	<a
+		href={ templ.SafeURL(href) }
+		class={ quickActionClass(extraClass) }
+		{ quickActionAttrsExcludingClass(attrs)... }
+	>
+		<span class="flex flex-col">
+			<span class="text-lg font-bold text-[#22303d]">{ label }</span>
+			if description != "" {
+				<span class="mt-1 text-sm text-slate-600">{ description }</span>
+			}
+		</span>
+		<span aria-hidden="true" class="text-2xl text-[#8d7440]">→</span>
+	</a>
+}
+
+func quickActionClass(extraClass string) string {
+	if extraClass == "" {
+		return "card flex items-center justify-between gap-4 rounded-2xl p-5 transition hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-[#8d7440]"
+	}
+	return "card flex items-center justify-between gap-4 rounded-2xl p-5 transition hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-[#8d7440] " + extraClass
+}
+
+func quickActionAttrsExcludingClass(attrs templ.Attributes) templ.Attributes {
+	if attrs == nil {
+		return nil
+	}
+	out := make(templ.Attributes, len(attrs))
+	for k, v := range attrs {
+		if k == "class" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}

@@ -1,0 +1,73 @@
+package components
+
+import (
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// RecentJobs renders the /share landing's "Recent activity"
+// card (issue #265). Shows the last N terminal jobs
+// (done / error / cancelled / interrupted) sorted by
+// StartedAt descending. Each row is a link to /jobs/{id}
+// so the user can see the full status + result. Renders
+// an empty-state message when the list is empty so the
+// section stays quiet for new users.
+//
+// The card title is fixed; callers that want a different
+// section header should compose this with their own
+// <section> wrapper. The empty state is also fixed;
+// callers can't override it without forking the templ.
+templ RecentJobs(entries []viewmodel.RecentJobEntry) {
+	<div id={ uiids.PanelShareRecent } class="card rounded-3xl p-5 sm:p-8 space-y-3">
+		<div class="flex items-center justify-between gap-3">
+			<div>
+				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Recent activity</p>
+				<h3 class="mt-2 text-xl gold font-bold">Last exports and imports</h3>
+			</div>
+		</div>
+		if len(entries) == 0 {
+			<p class="text-sm text-slate-500">No exports or imports yet. Try Export JSON or Build Share Archive above to populate this list.</p>
+		} else {
+			<ul class="divide-y divide-[rgba(141,116,64,0.18)]">
+				for _, job := range entries {
+					<li class="py-3 first:pt-0 last:pb-0">
+						<a href={ templ.SafeURL(job.DetailURL) } class="flex items-center justify-between gap-3 text-sm">
+							<span class="flex flex-col">
+								<span class="font-semibold text-[#22303d]">{ job.KindLabel }</span>
+								if job.Message != "" {
+									<span class="mt-0.5 text-xs text-slate-500">{ job.Message }</span>
+								}
+							</span>
+							<span class="flex items-center gap-3">
+								@recentJobStatusPill(job.Status, job.StatusLabel)
+								if job.FinishedAt != "" {
+									<span class="text-xs text-slate-500" data-recent-job-time={ job.FinishedAt }></span>
+								}
+							</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// recentJobStatusPill renders the right pill color for a
+// terminal job status. Pulled out so the iteration above
+// stays focused on the row layout.
+templ recentJobStatusPill(status string, label string) {
+	<span class={ recentJobPillClass(status) }>{ label }</span>
+}
+
+func recentJobPillClass(status string) string {
+	switch status {
+	case "done":
+		return "inline-flex items-center rounded-full bg-[rgba(41,82,45,0.12)] px-3 py-1 text-xs font-semibold text-[#29522d]"
+	case "error":
+		return "inline-flex items-center rounded-full bg-[rgba(111,44,38,0.12)] px-3 py-1 text-xs font-semibold text-[#6f2c26]"
+	case "cancelled":
+		return "inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
+	default:
+		return "inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800"
+	}
+}
