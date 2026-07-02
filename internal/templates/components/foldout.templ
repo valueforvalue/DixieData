@@ -1,0 +1,75 @@
+package components
+
+// Foldout is the generic top-nav foldout primitive used by the
+// Share nav (issue #264) and any future nav item that needs to
+// surface multiple destinations under one trigger. The pattern
+// is "first consumer" — Share proved the pattern out, future
+// consumers (Browse, Review Queue) can copy the Foldout and
+// just swap the items.
+//
+// ARIA contract (issue #264, locked decision "only the trigger
+// gets aria-current=page, never sub-items"):
+//   - The trigger is a <button> with aria-haspopup="menu",
+//     aria-expanded (mirrored by JS), aria-controls pointing
+//     at the panel's id.
+//   - The panel has role="menu" and the items have
+//     role="menuitem". Each item is a real <a href> (not a
+//     div with click handler) so screen readers + middle-click
+//     + cmd-click + htmx all work without extra wiring.
+//   - aria-current="page" is the caller's responsibility — pass
+//     it in triggerAttrs when on the trigger's surface. The
+//     primitive never sets it itself.
+//
+// The panel starts hidden; JS removes the hidden class on
+// trigger click. CSS handles the open/close transition (see
+// frontend/tailwind.css `.foldout-panel`). The primitive does
+// NOT animate — the transition lives in CSS so the same
+// pattern can be reused without per-instance JS.
+//
+// Children render inside the <ul role="menu">. Each child is
+// expected to be a single <li role="none"> containing one
+// <a role="menuitem" href="...">...</a>. The <li role="none">
+// is required by the ARIA menu pattern (the menu role is on
+// the <ul>, not the <li>s).
+templ Foldout(triggerLabel string, menuID string, triggerAttrs templ.Attributes) {
+	<div class="foldout relative">
+		<button
+			type="button"
+			class="pill-link top-nav-link inline-flex items-center gap-1"
+			aria-haspopup="menu"
+			aria-expanded="false"
+			aria-controls={ menuID }
+			data-foldout-trigger={ menuID }
+			{ foldoutAttrsExcludingClass(triggerAttrs)... }
+		>
+			{ triggerLabel }
+			<span aria-hidden="true" class="text-xs">▾</span>
+		</button>
+		<ul
+			id={ menuID }
+			role="menu"
+			aria-label={ triggerLabel + " menu" }
+			data-foldout-panel={ menuID }
+			class="foldout-panel absolute right-0 top-full z-50 mt-2 hidden min-w-[14rem] flex-col gap-1 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-2 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
+		>
+			{ children... }
+		</ul>
+	</div>
+}
+
+// foldoutAttrsExcludingClass strips "class" from the spread attrs
+// so the primitive owns the class attribute on the trigger (see
+// Field / Pill for the same rationale).
+func foldoutAttrsExcludingClass(attrs templ.Attributes) templ.Attributes {
+	if attrs == nil {
+		return nil
+	}
+	out := make(templ.Attributes, len(attrs))
+	for k, v := range attrs {
+		if k == "class" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}

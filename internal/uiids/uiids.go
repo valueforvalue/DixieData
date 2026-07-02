@@ -97,6 +97,17 @@ const (
 	PanelShareQueueList       = "panel.share-queue.list"
 	PanelShareQueuePreview    = "panel.share-queue.preview"
 	PanelShareQueuePresets    = "panel.share-queue.presets"
+	// Issue #264: Share top-nav foldout. The trigger is a
+	// <button data-foldout-trigger="layout.share.menu"> + the
+	// panel is the <ul data-foldout-panel="layout.share.menu">
+	// with role="menu". The two are linked by aria-controls on
+	// the trigger. The foldout pattern is generic; if a
+	// future nav item (Browse, Review Queue) adopts it, the
+	// trigger/panel pair should be wired through the same
+	// data-foldout-* attributes so installFoldout() picks it
+	// up uniformly.
+	LayoutShareMenu       = "layout.share.menu"
+	LayoutShareMenuTrigger = "layout.share.menu.trigger"
 )
 
 type Surface struct {
@@ -178,6 +189,8 @@ var Registry = []Surface{
 	{ID: PanelShareQueueList, Kind: "panel", Description: "Per-row queued Person Records list inside the Share Build modal; each row carries a remove button + a per-row checkbox."},
 	{ID: PanelShareQueuePreview, Kind: "panel", Description: "Live preview pane inside the Share Build modal showing the Soldiers / Source Records / Images count summary."},
 	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues section inside the Share Build modal (issue #192) listing named presets with Load + Delete per row."},
+	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
+	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
 }
 
 
