@@ -837,7 +837,7 @@ func (a *App) handleImageScreenshot(w http.ResponseWriter, r *http.Request) {
 	dupKey := fmt.Sprintf("screenshot|%s", imageScreenshotName(payload.FileName))
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(r.Context()).Debug("handleImageScreenshot duplicate request rejected")
+		trace.Log("handleImageScreenshot dup_reject")
 		a.respondDuplicateInFlight(w, r, dupKey)
 		return
 	}
