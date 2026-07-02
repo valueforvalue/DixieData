@@ -19,17 +19,17 @@
 │  ┌── Export & Backup ─────────┐  ┌── Import & Restore ─────────┐  │
 │  │ Export JSON               │  │ [Collaborative Merge card]  │  │
 │  │ Export Excel (.xlsx)      │  │   Import Shared Archive     │  │
-│  │ Export iCalendar          │  │   → #share-status            │  │
+│  │ Export iCalendar          │  │     (redirects to /jobs/{id})│  │
 │  │ Export Static Web Archive │  │ [Memorial JSON Import card] │  │
 │  │ Full Database PDF (modal) │  │   Preview Memorial JSON     │  │
-│  │ Export Backup (.ddbak)    │  │ [Replace Local Archive RED] │  │
-│  │ Export Shared Archive     │  │   Load Backup (.ddbak)       │  │
+│  │ Export Backup (.ddbak)    │  │     (redirects to /jobs/{id})│  │
+│  │ Export Shared Archive     │  │ [Replace Local Archive RED] │  │
+│  │                           │  │   Load Backup (.ddbak)       │  │
 │  └───────────────────────────┘  └─────────────────────────────┘  │
 │                                                                    │
 │ [Support & Diagnostics card] (responsive-span-2)                 │
 │   Export Feedback Log | Export Bug Report Bundle                 │
 │                                                                    │
-│ #share-status — import/export status messages                     │
 ├───────────────────────────────────────────────────────────────────┤
 │ if len(conflicts) > 0:                                            │
 │   [Merge Review section]  #merge-review-section                    │
@@ -83,9 +83,9 @@ the full export-config form (`data-pdf-pref-scope="archive"`).
 | Full DB PDF | — | — | — | Opens `#share-print-config-modal` |
 | Backup | POST | `/export/backup` | `this` | `hx-swap="none"` |
 | Shared Archive | POST | `/export/shared-archive` | `this` | `hx-swap="none"` |
-| Import Shared Archive | POST | `/import/shared-archive` | `#share-status` | |
-| Preview Memorial JSON | POST | `/import/memorial-json/preview` | `#share-status` | |
-| Load Backup | POST | `/import/backup` | `#share-status` | `hx-confirm`, destructive |
+| Import Shared Archive | POST | `/import/shared-archive` | redirect `/jobs/{id}` | via `X-DixieData-Redirect` |
+| Preview Memorial JSON | POST | `/import/memorial-json` | redirect `/jobs/{id}` | via `X-DixieData-Redirect` |
+| Load Backup | POST | `/import/backup` | redirect `/jobs/{id}` | `hx-confirm`, destructive |
 | Connect Google | POST | `/integrations/google/connect` | `this` | `hx-swap="none"` |
 | Disconnect | POST | `/integrations/google/disconnect` | `this` | |
 | Upload to Drive | POST | `/integrations/google/backup` | `this` | |
