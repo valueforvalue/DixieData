@@ -3046,6 +3046,29 @@
         window.location.reload();
         return true;
       }
+      // Issue #244: data-clear-share-queue-on-success is a
+      // one-attribute opt-in for forms that commit a .ddshare
+      // export. On success the share queue is cleared (the
+      // staged items have been sent), the pill hides, the
+      // /share/queue page re-renders to the empty state, and
+      // the toast surfaces immediately (not via savePendingToast
+      // because the existing path is sufficient and we do not
+      // want a delayed toast on the success-only path). Used
+      // by the Bulk Export form on /share/queue and any other
+      // /export/shared-archive?subset=1 submitter.
+      const clearShareQueueOnSuccess = (form.dataset && form.dataset.clearShareQueueOnSuccess) === "true";
+      if (clearShareQueueOnSuccess && responseOk && !redirectTo) {
+        if (typeof writeShareQueue === "function") {
+          writeShareQueue([]);
+        }
+        if (typeof renderShareQueuePage === "function") {
+          renderShareQueuePage();
+        }
+        if (toastMessage) {
+          showToast(toastMessage, toastKind);
+        }
+        return true;
+      }
       if (resultsTargetSelector && !redirectTo && responseOk) {
         const target = document.querySelector(resultsTargetSelector);
         if (target instanceof HTMLElement) {
