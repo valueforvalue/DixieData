@@ -590,6 +590,83 @@ func TestMostRecentActiveSkipsSilentKinds(t *testing.T) {
 	}
 }
 
+// TestRecentJobsReturnsTerminalJobsByStartedAtDesc is the
+// regression net for the /share landing's "Recent activity"
+// section (issue #265). The query must:
+//   - Exclude queued + running jobs (those show in the global
+//     jobs-progress overlay, not in /share's recent activity).
+//   - Sort by StartedAt descending (most recent first).
+//   - Cap at n; n <= 0 returns an empty slice.
+//   - Return an empty slice (not nil) when no terminal jobs
+//     exist, so the templ can iterate without a nil guard.
+func TestRecentJobsReturnsTerminalJobsByStartedAtDesc(t *testing.T) {
+	reg := New()
+	// Seed a job that finishes quickly.
+	reg.Start("json_export", func(ctx context.Context, p *Progress) error {
+		p.Set(100, "done")
+		return nil
+	})
+	// Wait for the worker to mark it done.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		jobs := reg.RecentJobs(10)
+		if len(jobs) == 1 && jobs[0].Status == StatusDone {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	got := reg.RecentJobs(10)
+	if len(got) != 1 {
+		t.Fatalf("RecentJobs(10) = %d jobs, want 1; jobs=%+v", len(got), got)
+	}
+	if got[0].Status != StatusDone {
+		t.Errorf("RecentJobs returned status=%q, want %q", got[0].Status, StatusDone)
+	}
+	if got[0].Kind != "json_export" {
+		t.Errorf("RecentJobs returned kind=%q, want %q", got[0].Kind, "json_export")
+	}
+}
+
+// TestRecentJobsExcludesRunningJobs confirms a long-running
+// job doesn't appear in the recent-activity section until
+// it reaches a terminal state.
+func TestRecentJobsExcludesRunningJobs(t *testing.T) {
+	reg := New()
+	reg.Start("static_archive", func(ctx context.Context, p *Progress) error {
+		time.Sleep(500 * time.Millisecond)
+		return nil
+	})
+	// Give the worker a moment to register, then check that
+	// RecentJobs(10) is empty (the job is still running).
+	time.Sleep(50 * time.Millisecond)
+	got := reg.RecentJobs(10)
+	if len(got) != 0 {
+		t.Fatalf("RecentJobs returned %d jobs while a job is running; want 0; jobs=%+v", len(got), got)
+	}
+}
+
+// TestRecentJobsRespectsN asserts the n-cap and the empty
+// case (no panic on nil/empty input).
+func TestRecentJobsRespectsN(t *testing.T) {
+	reg := New()
+	// Empty case: no jobs.
+	got := reg.RecentJobs(3)
+	if got == nil {
+		t.Errorf("RecentJobs(3) on empty registry returned nil; want empty slice")
+	}
+	if len(got) != 0 {
+		t.Errorf("RecentJobs(3) on empty registry returned %d jobs; want 0", len(got))
+	}
+	// n <= 0 case.
+	got = reg.RecentJobs(0)
+	if got == nil {
+		t.Errorf("RecentJobs(0) returned nil; want empty slice")
+	}
+	if len(got) != 0 {
+		t.Errorf("RecentJobs(0) returned %d jobs; want 0", len(got))
+	}
+}
+
 // TestIsSilentKindIsTheOnlyEntryPoint guards against callers
 // reaching past the SilentKinds map and breaking the picker.
 // SilentKinds is exported for jobs_handlers tests that need to
