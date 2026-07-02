@@ -158,3 +158,183 @@ it at `needs-triage` and let the triage skill route it.
   bugs (root cause exists, fix is restoration) from
   features (no root cause, fix is addition).
 
+## Feature protocol
+
+Enhancements use a parallel template that mirrors the bug
+template's rigor. The full procedure — 3-tier commit rule,
+module discipline, pipeline phasing, slice plan template —
+lives in [`feature-protocol.md`](feature-protocol.md).
+This section is the issue-filing companion only.
+
+### Feature issue template
+
+Every section is required unless marked optional:
+
+```markdown
+## Summary
+<One sentence: what the feature does and who it serves.>
+
+## User story
+<As a <role>, I want <capability>, so that <outcome>.>
+
+## Locked decisions
+<Numbered list of decisions settled during recon. Each cites
+the source: "Decided in <PR/issue/chat on YYYY-MM-DD>". Locked
+decisions are NOT re-opened during the Critique phase unless
+the user explicitly says so.>
+
+## Proposed UX
+<Per apply-site, what the user sees. References the screen by
+name and surface by ID.>
+
+## Apply sites (v1 checklist)
+- [ ] <Surface 1>
+- [ ] <Surface 2>
+
+The feature is not "shipped" until every box is checked.
+Backend-only landings require a tracked follow-up issue for
+each missing UI surface; see Backend-First Law in CONTEXT.md.
+
+## Glossary changes (if any)
+<Quote the new entry exactly as it should appear in CONTEXT.md.
+If the feature uses existing terms only, write "None.">
+
+## Schema sketch (if any)
+<Migration SQL + version bump + seed data.>
+
+## Acceptance criteria
+- [ ] <Observable, testable in 5 min>
+
+## Slice plan
+### Slice 1: <name>
+- Files: <paths>
+- Success criteria: <observable>
+- Regression net: <test / probe / manual step>
+
+## Test plan
+- Unit: <file: TestXxx>
+- Handler: <file: TestXxx>
+- Migration: <file: TestXxx>
+- Smoke probe: audit/smoke_<feature>.mjs (per UI apply-site)
+
+## Files
+- <bulleted list of every file that will be touched>
+
+## Regression net
+- <unit test names + audit/smoke probe filenames>
+
+## Related
+- <issue numbers, ADR numbers, docs/COMMON_BUGS.md refs>
+```
+
+### What shifts vs the bug template
+
+| Bug section | Feature section | Why |
+|---|---|---|
+| Symptom | User story | Bug has a wrong-behavior; feature has a missing-capability |
+| Repro | (skip — UI walk is in the apply-sites list) | Features don't repro; they get exercised by the user story |
+| Root cause | Locked decisions | Bug has a why-broken; feature has a why-this-shape |
+| Proposed fix | Proposed UX | Bug fixes are scoped to code; features span code + UI |
+| Files | Apply sites + Files | Bug touches specific files; feature touches a surface area |
+| Regression net | Test plan | Bug needs one net; feature needs per-apply-site nets |
+
+### Labels
+
+| Label | When to apply |
+|---|---|
+| `enhancement` | Always. Every feature gets this. |
+| `needs-triage` | Locked decisions unknown or apply-sites list empty. The recon didn't pin the feature down. |
+| `needs-info` | User story clear but the locked decisions or apply-sites need the reporter to clarify. |
+| `ready-for-agent` | Full template filled in, locked decisions cited, apply-sites checklist complete, slice plan testable. An AFK agent can implement. |
+| `ready-for-human` | Feature is straightforward but needs human judgment (UX decision, design call). |
+| `wontfix` | Decision to not implement. Must include reasoning in a comment. |
+
+Apply `ready-for-agent` only when the P (Plan) phase is complete.
+If the issue has User story + Apply sites but no Locked decisions
+or Slice plan, leave it at `needs-triage`.
+
+### Anti-patterns
+
+- **Filing a feature without apply-sites.** The checklist is the
+  contract; an empty list signals "I haven't thought about where
+  this lives in the UI." Don't file it until the list is concrete.
+- **One mega-slice.** A slice plan with a single "Slice 1: ship
+  the whole thing" line is no plan. Decompose until each slice is
+  Tier 1 / Tier 2 / Tier 3 per the 3-tier rule.
+- **Filing the design in the issue body.** The issue is the
+  research + acceptance + slice plan. Architecture decisions
+  live in `.rpiv/artifacts/designs/<slug>.md`. Don't paste code
+  into the issue.
+- **Locking decisions the user hasn't settled.** Locked decisions
+  cite their source. If a decision is "I think we should X", it
+  isn't locked — list it under "Open questions" instead.
+- **Skipping the smoke probe.** Every UI apply-site needs an
+  `audit/smoke_<feature>.mjs` assertion that checks both the
+  response shape AND `page.url()` after the click.
+
+## Label taxonomy
+
+Issues carry labels from six axes. Each axis answers a different
+question:
+
+| Axis | Question | Values |
+|---|---|---|
+| **Type** | What's the work? | `bug`, `enhancement`, `documentation` |
+| **Status** | Where is it in triage? | `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` |
+| **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug`, ... |
+| **Priority** | How urgent is it? | `priority:high`, `priority:medium`, `priority:low` |
+| **Cohort** | What batch does it belong to? | `audit-fallout`, ... |
+| **Meta** | Process state, not work state | `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `blocked` |
+
+### Why six axes
+
+- **Type × Status** distinguishes bugs from features without losing
+  triage routing. A bug and an enhancement can both be
+  `ready-for-agent`; the agent knows which template to read by
+  the Type.
+- **Area** lets a maintainer filter by component (`area:cli`,
+  `area:templates`) without re-reading every issue title. New
+  area labels are added via `scripts/sync-labels.sh` when a new
+  component emerges (max ~15 to avoid label explosion).
+- **Priority** is the urgency signal for the backlog. `priority:high`
+  is reserved for known regressions, lost-data bugs, and the
+  issues a user is actively blocked on. `priority:medium` is the
+  default. `priority:low` is polish.
+- **Cohort** groups issues that share a discovery context (e.g.
+  `audit-fallout` for the 2026-06-24 audit sweep). Lets a
+  maintainer filter the audit work without re-reading every
+  audit-finding issue.
+- **Meta** is process state, not work state. `blocked` is held by
+  another issue. `duplicate` points to the canonical issue.
+  `question` / `invalid` are triage outcomes, not work states.
+
+### One label per axis
+
+An issue has **exactly one label from each axis** (where the axis
+applies). Two `area:*` labels on one issue means the agent doesn't
+know which component to load docs for. Zero `area:*` labels means
+the issue hasn't been routed.
+
+The exception is `Meta` — an issue can carry multiple `Meta`
+labels (`duplicate` + `wontfix` for "this is a dup, also we won't
+fix either"). Process labels compose.
+
+### Triage workflow
+
+1. New issue lands with no labels (or just `enhancement`).
+2. Maintainer applies the Type label (`bug` / `enhancement` /
+   `documentation`).
+3. Maintainer applies the Status label based on what's missing:
+   `needs-triage` if Root cause / Locked decisions unknown,
+   `needs-info` if the reporter owes detail, `ready-for-agent`
+   when the template is complete.
+4. Maintainer applies the Area label based on the affected
+   component.
+5. Maintainer applies the Priority label based on impact.
+6. Agent picks up `ready-for-agent` issues, drops the Status label,
+   works the slice, applies the next Status label (`needs-info` if
+   blocked on the user, no label on merge).
+
+The `scripts/backfill-labels.sh` script applies Area + Priority
+labels to existing open issues by parsing titles + bodies. Idempotent.
+
