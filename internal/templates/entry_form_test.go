@@ -187,7 +187,7 @@ func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
 		DisplayID:   "ABC-00001",
 		DisplayName: "John Carter",
 		EntryType:   "soldier",
-	}}, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	}}, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 			Reason:            "Shared record changed notes.",
 			IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
 		},
-	}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	}, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -297,7 +297,7 @@ func TestShareViewUsesManagedGoogleCalendarActions(t *testing.T) {
 		DriftAdded:        2,
 		DriftUpdated:      1,
 		DriftRemoved:      3,
-	}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	}, nil, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestShareViewMergeReviewUsesSharedSummaryFormatting(t *testing.T) {
 				EntryType:            "wife",
 			},
 		},
-	}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	}, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -632,7 +632,7 @@ func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 			FirstName: "Shared",
 			LastName:  "Version",
 		},
-	}}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	}}, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -811,7 +811,7 @@ func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 			FirstName: "Andrew",
 			LastName:  "Morris",
 		},
-	}}, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	}}, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

@@ -305,7 +305,7 @@ func TestJobStatusViewOmitsJobsOverlay(t *testing.T) {
 // 'jobs-progress-overlay-survives-polls' exercises this end-to-end.
 func TestSharePageKeepsJobsOverlay(t *testing.T) {
 	var buf bytes.Buffer
-	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
+	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("ShareView render: %v", err)
 	}
 	html := buf.String()

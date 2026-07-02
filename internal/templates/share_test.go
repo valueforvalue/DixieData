@@ -18,7 +18,7 @@ import (
 // of the page instead of center".
 func TestSharePrintConfigModalIsCentered(t *testing.T) {
 	var buf bytes.Buffer
-	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
+	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
@@ -49,7 +49,7 @@ func TestSharePrintConfigModalIsCentered(t *testing.T) {
 // implemented manually in app.js.
 func TestShareModalsAreOverlayDivs(t *testing.T) {
 	var buf bytes.Buffer
-	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf); err != nil {
+	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
@@ -67,7 +67,7 @@ func TestShareModalsAreOverlayDivs(t *testing.T) {
 
 func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestShareViewShowsPrintableExportHelp(t *testing.T) {
 
 func TestShareViewKeepsResponsiveImportLayoutContract(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}).Render(context.Background(), &buf)
+	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

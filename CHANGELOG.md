@@ -38,6 +38,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   assertions: primary nav has Tags link, link points to
   /tags, mobile nav also has the link, click navigates
   to /tags, /tags page renders).
+- "Include tags" opt-in checkbox for `.ddshare` exports
+  on `/share` (issue #261). The PATCH
+  `/share/export-options` handler + `archive_meta`
+  table shipped in PR #195 commit `845a205`; only the
+  templ UI was missing. The checkbox is rendered
+  directly under the .ddshare export button on the
+  Export & Backup card, defaults to OFF (per the
+  #183 locked decision #4), and POSTs to
+  `/share/export-options` with `include_tags=1|0`.
+  The page reloads on success so the checkbox state
+  reflects the new value. A hidden `include_tags=0`
+  fallback ensures uncheck sends the right value.
+  Regression net: `audit/smoke_share_include_tags.mjs`
+  (6 assertions: checkbox present, form action is
+  /share/export-options, default unchecked, submit
+  fires POST, body contains include_tags=1).
 - Build-tag-gated zero-cost trace instrumentation (issue #218).
   New `internal/debug/trace` package with `trace.Log(msg, attrs...)`
   emits `slog.Debug` calls in `-tags debug` builds and is a
