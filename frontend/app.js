@@ -3103,6 +3103,90 @@
     }
   }
 
+  // Issue #234: cache the lazy-loaded print-records fragment so
+  // subsequent modal opens in the same session are free. Cleared
+  // by invalidatePrintRecordsCache() when an archive-mutating
+  // action completes (export template save, share queue edit, etc.)
+  // so the next open re-fetches.
+  let printRecordsFragmentCache = null;
+  let printRecordsFragmentInflight = null;
+
+  function invalidatePrintRecordsCache() {
+    printRecordsFragmentCache = null;
+    printRecordsFragmentInflight = null;
+  }
+
+  // loadPrintRecordsFragment fetches the fragment on first open and
+  // swaps into [data-print-config-body]. On subsequent opens with a
+  // valid cache the body is restored from memory and no network
+  // request fires. The placeholder rendered by the templ (empty
+  // chrome, "Loading…" fallback) is overwritten either way.
+  function loadPrintRecordsFragment(modal) {
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+    const body = modal.querySelector("[data-print-config-body]");
+    if (!(body instanceof HTMLElement)) {
+      return;
+    }
+    if (printRecordsFragmentCache !== null) {
+      body.innerHTML = printRecordsFragmentCache;
+      onPrintRecordsFragmentReady(modal);
+      return;
+    }
+    if (printRecordsFragmentInflight !== null) {
+      // Reuse the in-flight promise to dedupe concurrent opens.
+      printRecordsFragmentInflight
+        .then((html) => {
+          if (document.body.contains(modal)) {
+            body.innerHTML = html;
+            onPrintRecordsFragmentReady(modal);
+          }
+        })
+        .catch(() => {});
+      return;
+    }
+    printRecordsFragmentInflight = fetch("/share/print-records-fragment", {
+      headers: { Accept: "text/html" },
+    })
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error("fragment fetch failed: " + resp.status);
+        }
+        return resp.text();
+      })
+      .then((html) => {
+        printRecordsFragmentCache = html;
+        printRecordsFragmentInflight = null;
+        if (document.body.contains(modal)) {
+          body.innerHTML = html;
+          onPrintRecordsFragmentReady(modal);
+        }
+        return html;
+      })
+      .catch((err) => {
+        printRecordsFragmentInflight = null;
+        if (typeof console !== "undefined") {
+          console.warn("print-records fragment load failed", err);
+        }
+      });
+  }
+
+  // onPrintRecordsFragmentReady wires the just-swapped body:
+  // re-enables the submit button, runs the existing print-config
+  // filter wiring, and refreshes the preview. Mirrors what
+  // openPrintConfigModal does for the modal itself, scoped to the
+  // fragment that just arrived.
+  function onPrintRecordsFragmentReady(modal) {
+    const submit = modal.querySelector("[data-print-config-submit]");
+    if (submit instanceof HTMLButtonElement) {
+      submit.disabled = false;
+    }
+    applyPrintRecordFilter();
+    applyPrintBuriedFilter();
+    refreshPrintConfigPreview();
+  }
+
   function printConfigModal() {
     const modal = document.querySelector("[data-print-config-modal]");
     return modal instanceof HTMLElement ? modal : null;
@@ -3142,6 +3226,12 @@
     installExportTemplates();
     refreshExportTemplates();
     showOverlayModal(modal);
+    // Issue #234: lazy-load the print-records fragment into the
+    // [data-print-config-body] placeholder. The fragment endpoint
+    // (/share/print-records-fragment) returns the filter panel +
+    // record picker as a swap target. Cached on first load so
+    // subsequent modal opens in the same session are free.
+    loadPrintRecordsFragment(modal);
     // Issue #182: install Share Queue globals so the
     // persistent pill + per-row [+ Queue] buttons + /share
     // Build Share button work on first paint. The pill's
@@ -4078,6 +4168,13 @@
       }
       nameInput.value = "";
       await refreshExportTemplates();
+      // Issue #234: save mutates the export templates list, which
+      // is a sibling of the lazy-loaded fragment cache. Force a
+      // re-fetch on next modal open so the new template name shows
+      // up in the picker without a manual refresh.
+      if (typeof invalidatePrintRecordsCache === "function") {
+        invalidatePrintRecordsCache();
+      }
       if (status instanceof HTMLElement) {
         status.textContent = "Saved.";
       }
@@ -4186,6 +4283,10 @@
       // Refresh the dropdown so the renamed template moves in
       // sort order if the user renamed it.
       await refreshPrintConfigTemplateDropdown();
+      // Issue #234: invalidates the lazy-loaded fragment cache.
+      if (typeof invalidatePrintRecordsCache === "function") {
+        invalidatePrintRecordsCache();
+      }
     } catch (error) {
       if (status instanceof HTMLElement) {
         status.textContent = "Could not update template.";
@@ -4222,6 +4323,10 @@
       }
       select.value = "";
       await refreshExportTemplates();
+      // Issue #234: invalidates the lazy-loaded fragment cache.
+      if (typeof invalidatePrintRecordsCache === "function") {
+        invalidatePrintRecordsCache();
+      }
       if (status instanceof HTMLElement) {
         status.textContent = "Deleted.";
       }
