@@ -86,3 +86,46 @@ func TestVersionOutputFormat(t *testing.T) {
 	w.Close()
 	<-doneCh
 }
+
+// TestHelpFlag verifies that help / --help / -h (or no args)
+// produces the help text. Issue #277.
+func TestHelpFlag(t *testing.T) {
+	cases := [][]string{
+		{"dixiedata"},                 // no args
+		{"dixiedata", "help"},          // 'help' subcommand
+		{"dixiedata", "--help"},        // --help
+		{"dixiedata", "-h"},            // -h
+		{"dixiedata", "--help", "garbage"}, // --help wins over garbage
+	}
+	for _, argv := range cases {
+		t.Run(strings.Join(argv[1:], "_"), func(t *testing.T) {
+			output, requested := handleHelpFlag(argv)
+			if !requested {
+				t.Fatalf("expected requested=true for %v", argv)
+			}
+			if !strings.Contains(output, "DixieData CLI") {
+				t.Errorf("output missing header: %q", output)
+			}
+			// Every documented subcommand must appear.
+			for _, sub := range []string{"--smoke", "--version", "doctor", "list", "show", "search", "export", "import", "migrate", "backup", "restore point", "logs", "config", "debug"} {
+				if !strings.Contains(output, sub) {
+					t.Errorf("output missing subcommand %q", sub)
+				}
+			}
+		})
+	}
+}
+
+// TestHelpFlagAbsent verifies that without help / --help /
+// -h AND with at least one subcommand, handleHelpFlag
+// returns requested=false.
+func TestHelpFlagAbsent(t *testing.T) {
+	_, requested := handleHelpFlag([]string{"dixiedata", "doctor"})
+	if requested {
+		t.Error("expected requested=false when a subcommand is provided")
+	}
+	_, requested = handleHelpFlag([]string{"dixiedata", "doctor", "--check=data_dir"})
+	if requested {
+		t.Error("expected requested=false when subcommand + flags provided")
+	}
+}

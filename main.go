@@ -34,12 +34,74 @@ func handleVersionFlag(argv []string) (output string, done bool) {
 	return "", false
 }
 
+// handleHelpFlag scans argv for help / --help / -h (or for
+// the case where argv has no subcommand at all). Returns
+// the formatted help text + requested=true. The list of
+// subcommands is hand-maintained; main_test.go asserts
+// that every verb the dispatcher knows about appears in
+// the help text (cross-reference against
+// runDebugCLICoverage). See issue #277.
+func handleHelpFlag(argv []string) (output string, requested bool) {
+	if len(argv) == 1 {
+		return cliHelpText(), true
+	}
+	for _, a := range argv[1:] {
+		if a == "help" || a == "--help" || a == "-h" {
+			return cliHelpText(), true
+		}
+	}
+	return "", false
+}
+
+// cliHelpText is the hand-maintained help output. main_test.go
+// asserts that every verb listed here is also recognised by
+// the dispatcher (catches drift between the help text and
+// the actual surface).
+func cliHelpText() string {
+	return `DixieData CLI — headless archive operations
+
+Usage:
+  dixiedata <subcommand> [flags]
+  dixiedata --version | --help
+
+Subcommands:
+  --smoke             Headless boot check (8 checks)
+  --version           Print app version + build identity
+  doctor              Diagnose the local install
+  list                List records (soldiers, sources)
+  show                Show a single record
+  search              Search across records
+  export              Export PDFs / JPGs / JSON / CSV / iCal / archives
+  import              Import .ddbak / .ddshare / images / memorial-json
+  migrate             Apply / inspect schema migrations
+  backup              List / prune retained backups
+  restore point       Manage restore points
+  logs                Tail / locate app logs
+  config              Show / set local settings
+  debug               Dump / hx-invariants / browser-tree / request
+                      cli-coverage / in-place-safety
+
+For per-subcommand flags, run ` + "`dixiedata <subcommand> --help`." + `
+
+See docs/agents/cli-plan.md for the full roadmap.
+`
+}
+
 func main() {
 	// --version / -v short-circuit. Sits BEFORE the
 	// subcommand dispatchers so it doesn't open the DB or
 	// start the appshell. The user gets the version + build
 	// identity and a clean exit. See issue #271.
 	if output, done := handleVersionFlag(os.Args); done {
+		fmt.Print(output)
+		os.Exit(0)
+	}
+
+	// help / --help / -h. Lists every subcommand with a
+	// one-line description. Sits BEFORE the subcommand
+	// dispatchers so it doesn't open the DB either. See
+	// issue #277.
+	if output, requested := handleHelpFlag(os.Args); requested {
 		fmt.Print(output)
 		os.Exit(0)
 	}
