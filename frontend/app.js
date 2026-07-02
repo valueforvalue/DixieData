@@ -4457,6 +4457,26 @@
           initializeDynamicContent(target);
         }
       });
+      // The server-side blockIfFragment helper (appshell/fragment_guard.go)
+      // returns 204 + X-DixieData-Redirect for htmx fragment requests during
+      // blocked states (pre-mux window, setup-required, recovery, startupErr).
+      // htmx does not auto-follow a 204 the way it follows a 3xx, so without
+      // this listener the <body> stays empty and the user sees a white
+      // screen. This handler is the single client-side bridge for the
+      // fragment-204 contract; any new blocked state must rely on the same
+      // header so this one hook keeps working.
+      // Regression net: audit/_probe-fragment-redirect.mjs covers all four
+      // blocked states via headless chromium.
+      window.htmx.on("htmx:afterRequest", (evt) => {
+        const xhr = evt.detail && evt.detail.xhr;
+        if (!xhr || xhr.status !== 204) {
+          return;
+        }
+        const redirect = xhr.getResponseHeader("X-DixieData-Redirect");
+        if (redirect && typeof window.location.assign === "function") {
+          window.location.assign(redirect);
+        }
+      });
     }
     window.requestAnimationFrame(() => clampPopoutPanels(document));
   });

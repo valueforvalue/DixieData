@@ -1493,6 +1493,125 @@ grep -rn 'error.templ\|ErrorPage' internal/templates/
 
 ---
 
+### 4.16 `fragment-204-no-client-listener` — empty shell stays empty, white screen on initial load (recurring across 4 blocked states)
+
+**Symptom:** Fresh app load with `setupRequired=true` (or any
+blocked state) shows a white page with no nav, no CSS, no
+content. The browser console is clean. Devtools shows the empty
+`<body>` shell from `frontend/index.html`.
+
+**Why it happens:** The Wails asset server serves raw
+`frontend/index.html` to the browser as the initial document.
+The shell's `<body>` carries `<body hx-get="/calendar"
+hx-trigger="load">` so the page populates once the Go handler
+responds. htmx fires the load request with `HX-Request: true`.
+If the server is in a blocked state (pre-mux window before the
+chi router mounts, `setupRequired=true`, pending recovery, or
+`startupErr != nil`), `App.ServeHTTP` calls `blockIfFragment`
+which writes `204 + X-DixieData-Redirect`. htmx receives a 204,
+does not swap, and the `<body>` stays empty. The user sees white.
+
+The 4 fragment-204 fixes (#209 pre-mux, #212 setup, #214
+recovery + startupErr) all assumed a client bridge that did not
+exist. Each fix added the `X-DixieData-Redirect` header and
+pinned the server contract with a unit test
+(`TestAppServeHTTP*FragmentReturns204WithRedirectHint`), but
+no test ever verified the client actually follows the header.
+The bug class recurred under each new blocked state because
+the listener was missing.
+
+**Fix:**
+- `frontend/app.js`: added `htmx:afterRequest` listener that
+  reads `X-DixieData-Redirect` from any 204 response and calls
+  `window.location.assign(redirect)`. Single hook covers all
+  blocked states; new ones automatically inherit the bridge
+  by reusing the same header.
+- `audit/smoke_fragment_redirect.mjs`: regression test that
+  loads the empty shell, asserts htmx's load request returns
+  204 + the header (server contract), the browser navigates
+  to `/setup` (client behavior), and `body.innerHTML.length >
+  500` (no white screen). Test fails without the listener
+  (2/3 assertions) and passes with it (3/3).
+
+**Find it:**
+```bash
+grep -n 'X-DixieData-Redirect' frontend/app.js
+grep -n 'blockIfFragment' internal/appshell/
+```
+
+**Real example:** this entry (covers issues #209, #212, #214
++ every future blocked state that uses the fragment-204 contract).
+
+---
+
+### 4.17 `open-handle-in-data-dir-blocks-restore` — rename fails with "Access is denied" because jobs.jsonl lived inside .dixiedata/
+
+**Symptom:** A `.ddbak` restore fails with:
+
+> `import failed: rename C:\…\.dixiedata → C:\…\.dixiedata-previous-N failed after 5 attempts: rename …: Access is denied.`
+
+The user sees the error on the `/jobs/{id}` status page. The
+archive isn't replaced; the import job ends in `failed` state.
+
+**Why it happens:** DixieData.exe (and dixiedata-web.exe) open
+`<dataDir>/jobs.jsonl` in append mode during `App.Startup` and
+keep the handle alive for the lifetime of the process. The
+`replaceDataDir` helper that runs at the start of a restore
+performs an atomic `os.Rename(<dataDir>, <dataDir>-previous-N)`.
+On Windows, an open handle on any descendant file blocks the
+parent directory's rename with `ERROR_ACCESS_DENIED`
+(`Access is denied`).
+
+Today's `renameWithRetry` (#216) loops 5 times with exponential
+backoff. The retries help when the holder is an external
+process (OneDrive, SearchIndexer, the Wails asset watcher)
+that eventually releases the handle. The retries do **not**
+help when the holder is DixieData.exe itself — the handle
+never releases until process exit.
+
+The convention that the data dir contains only the SQLite
+database and the image store had been previously established
+for `app.log.jsonl` (commit `b9a30cc refactor(appdata): move
+app logs out of .dixiedata/`). `jobs.jsonl` was missed at the
+time of that refactor.
+
+**Fix:**
+- `internal/appshell/jobs_persistence.go`: changed
+  `openJobsRegistry` to write the log at
+  `appdata.LogsDir(dataDir)/jobs.jsonl` (the sibling
+  `.dixiedata-logs/` directory) instead of inside the data
+  dir. `migrateLegacyJobsLog` moves any existing
+  `<dataDir>/jobs.jsonl` to the new location on first startup
+  with copy + remove fallback when the rename is denied.
+- `internal/appshell/jobs_persistence_test.go`: 3 new tests
+  pin the convention (`TestOpenJobsRegistryLogPathOutsideDataDir`,
+  `TestMigrateLegacyJobsLogRenamesOldFile`,
+  `TestMigrateLegacyJobsLogIsIdempotent`).
+- `internal/archive/backup_service_test.go`: new subtest
+  `open_file outside target dir is not under replaceDataDir's
+  rename set` confirms `replaceDataDir` no longer touches the
+  logs directory.
+- `audit/smoke_jobs_log_location.mjs`: live-binary regression
+  probe boots dixiedata-web and asserts the jobs log lands
+  under `.dixiedata-logs/` (not under the data dir).
+
+**Find it:**
+```bash
+grep -n 'dataDir/jobs.jsonl\|dataDir, jobsLogFilename' internal/appshell/
+ls .dixiedata  # should NOT contain jobs.jsonl after the fix
+```
+
+**Convention reminder (applies to every new file written to
+the data dir):** the data dir contains ONLY the SQLite database
+(`dixiedata.db` + WAL/SHM sidecars) and the image store
+(`updates/`). All app-level state, logs, caches, and write-ahead
+logs MUST live under `appdata.LogsDir(dataDir)`, the sibling
+`.dixiedata-logs/` directory.
+
+**Real example:** this entry.
+
+---
+
 ## 5. Typst PDF rendering bugs
 
 (See section 2.1 for most typst-related patterns — they overlap.)

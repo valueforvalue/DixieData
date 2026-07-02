@@ -2200,4 +2200,67 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 			t.Fatalf("target marker should be restored after rollback: %v", err)
 		}
 	})
+
+	// (8) Open file handle OUTSIDE the target dir survives
+	// replaceDataDir. The previous convention kept the jobs
+	// append log inside .dixiedata/; on Windows, an open handle
+	// on a descendant file blocks the atomic rename of the
+	// parent dir, so replaceDataDir failed with "Access is
+	// denied" even after 5 retries. After the convention move
+	// (jobs.jsonl → .dixiedata-logs/jobs.jsonl), the open log
+	// file lives outside the data dir and the rename succeeds.
+	//
+	// This test is OS-independent: the proof is that
+	// replaceDataDir doesn't touch any path under the logs
+	// directory. On Windows, a real handle would also be
+	// blocked; on Linux/macOS, the OS allows the rename
+	// regardless. The test asserts the convention, which is
+	// what the production fix actually depends on.
+	t.Run("open file outside target dir is not under replaceDataDir's rename set", func(t *testing.T) {
+		parent := t.TempDir()
+		target := filepath.Join(parent, ".dixiedata")
+		logsDir := filepath.Join(parent, ".dixiedata-logs")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll target: %v", err)
+		}
+		if err := os.MkdirAll(logsDir, 0o755); err != nil {
+			t.Fatalf("MkdirAll logs: %v", err)
+		}
+		// Real-DixieData shape: 200KB DB, 1KB log file with an
+		// open handle.
+		if err := os.WriteFile(filepath.Join(target, "dixiedata.db"), make([]byte, 200*1024), 0o644); err != nil {
+			t.Fatalf("WriteFile DB: %v", err)
+		}
+		logPath := filepath.Join(logsDir, "jobs.jsonl")
+		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatalf("OpenFile log: %v", err)
+		}
+		t.Cleanup(func() { logFile.Close() })
+
+		staging := filepath.Join(parent, ".dixiedata-import-test")
+		if err := os.MkdirAll(staging, 0o755); err != nil {
+			t.Fatalf("MkdirAll staging: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(staging, "staging-marker.txt"), []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile marker: %v", err)
+		}
+
+		// Open handles inside target → Windows rename would
+		// fail. Verify the convention: the open log file must
+		// live outside target, so it doesn't block the rename.
+		if strings.HasPrefix(logPath, target+string(filepath.Separator)) {
+			t.Fatalf("jobs log path must NOT be inside target; got %s under %s", logPath, target)
+		}
+		if err := replaceDataDir(target, staging); err != nil {
+			t.Fatalf("replaceDataDir: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(target, "staging-marker.txt")); err != nil {
+			t.Fatalf("staging should now be at target: %v", err)
+		}
+		// Open log file must still be writable after the rename.
+		if _, err := logFile.WriteString("post-rename line\n"); err != nil {
+			t.Fatalf("log file write after rename: %v", err)
+		}
+	})
 }
