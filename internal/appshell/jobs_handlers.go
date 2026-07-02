@@ -306,6 +306,11 @@ func (a *App) openJobArtifact(w http.ResponseWriter, r *http.Request, id string)
 		// context. Surface a clear info toast rather than failing with
 		// a generic 500; the user is on /jobs/{id} and the page reloads
 		// to display the toast.
+		// Keep as slog.Debug (not trace.Log) — narrative message + path/err
+		// attrs make this a candidate for the always-on INFO+ log when an
+		// operator investigates a web-mode support ticket. Migrating to
+		// trace.Log would hide it behind DIXIEDATA_DEBUG=1 for no good
+		// reason. See docs/adr/0006-slog-vs-trace-decision-tree.md.
 		debug.FromContext(r.Context()).Debug("openJobArtifact: BrowserOpenURL unavailable in this runtime", "path", path, "err", err)
 		setToastHeaderWithType(w, "Open file is only available in the desktop app. Use Copy Path to get the file location.", "info")
 		http.Redirect(w, r, "/jobs/"+id, http.StatusSeeOther)
