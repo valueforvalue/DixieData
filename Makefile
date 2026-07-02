@@ -400,6 +400,16 @@ log-clean: ## Truncate build/log/*.log
 bump: ## Bump schema version (writes versioninfo.go; commit before tagging)
 	$(PWSH) -File scripts/bump-version.ps1
 
+# Detect schema-touching drift (build-protocol.md §4). Walks
+# HEAD..base commit subjects for feat(db) / feat(schema) / fix(db)
+# patterns; fails if CurrentSchemaVersion is unchanged. The
+# 'chore: skip-schema-bump' hatch covers the rare case where a
+# PR touches the db layer without changing the schema shape.
+# Mirrors the bash step in .github/workflows/test.yml.
+bump-detect-drift: ## Detect schema-touching drift in the current branch
+	@if [ -z "$$GITHUB_BASE_REF" ]; then echo "bump-detect-drift: GITHUB_BASE_REF not set; skipping (run inside GitHub Actions or set it manually)"; exit 0; fi
+	GITHUB_BASE_REF=$$GITHUB_BASE_REF $(PWSH) -File scripts/bump-version.ps1 -DetectDrift
+
 # Tag, push main, push tag, create DRAFT GitHub release via gh CLI.
 # Safety gates: clean tree, committed bump, archive present, tag absent
 # (local + remote), gh authenticated. Draft = not auto-published.
