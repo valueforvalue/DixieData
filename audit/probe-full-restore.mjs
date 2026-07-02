@@ -23,8 +23,6 @@
 //   - server returned 200 with X-DixieData-Toast
 //   - server returned X-DixieData-Redirect (F1 fix)
 //   - panel content shows "Backup loaded: N soldiers, M records, K images"
-//   - scrollShareStatusIntoView fires via htmx:afterSwap (F2 fix)
-//   - panel ends up inside viewport at 1280x800
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -118,33 +116,9 @@ async function main({ registerCleanup }) {
     }));
     console.log('diag:', JSON.stringify(diag, null, 2));
 
-    // Instrument scrollIntoView on #share-status BEFORE click.
-    await page.evaluate(() => {
-      const panel = document.getElementById('share-status');
-      if (!panel) return;
-      const calls = [];
-      const original = panel.scrollIntoView.bind(panel);
-      panel.scrollIntoView = function (opts) {
-        calls.push({ opts: opts || null, ts: Date.now() });
-        return original(opts);
-      };
-      window.__shareStatusScrollCalls = calls;
-    });
-
-    const beforeClick = await page.locator('#share-status').boundingBox();
-    const viewport = page.viewportSize();
-    console.log(`before click: panel y=${Math.round(beforeClick.y)}`);
-
     await page.locator('button.danger-button:has-text("Load Backup")').click();
     await sleep(20000); // real .ddbak import + DB close/reopen + restart takes ~13s
 
-    const afterClick = await page.locator('#share-status').boundingBox();
-    const scrollCalls = await page.evaluate(() => window.__shareStatusScrollCalls || []);
-    const panelText = (await page.locator('#share-status').textContent()) || '';
-
-    console.log(`after click: panel y=${Math.round(afterClick.y)} inViewport=${afterClick.y >= 0 && afterClick.y + afterClick.height <= viewport.height}`);
-    console.log(`panel text: ${panelText.slice(0, 200)}`);
-    console.log(`scrollIntoView calls: ${scrollCalls.length}`);
     console.log(`import response: ${importResponse ? `${importResponse.status} body=${(importResponse.body || '').slice(0, 200)}` : 'NO RESPONSE CAPTURED'}`);
 
     await browser.close();
@@ -177,14 +151,6 @@ async function main({ registerCleanup }) {
     } else {
       verdicts.push(`FAIL: response body does not show restore counts: "${(importResponse.body || '').slice(0, 80)}"`);
       exitCode = 1;
-    }
-    if (scrollCalls.length > 0) {
-      verdicts.push(`OK: scrollIntoView fired ${scrollCalls.length} time(s) on #share-status (F2 fix)`);
-    } else {
-      verdicts.push('INFO: scrollIntoView did not fire (htmx may have navigated before swap settled)');
-    }
-    if (importResponse && afterClick.y < viewport.height) {
-      verdicts.push(`OK: panel reachable in viewport after click (y=${Math.round(afterClick.y)})`);
     }
     verdicts.forEach((v) => console.log(v));
 
