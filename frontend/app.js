@@ -2175,6 +2175,200 @@
     });
   }
 
+  // installFoldouts wires every element with [data-foldout-trigger]
+  // to its [data-foldout-panel] (matched by the same data-* value).
+  // The Share top-nav foldout is the first consumer (issue #264);
+  // any future nav item that wants the same affordance just adds
+  // a trigger + panel pair with matching data-foldout-* values and
+  // this init picks them up uniformly.
+  //
+  // The contract:
+  //   - Click the trigger → toggle the panel; aria-expanded mirrors
+  //     the open state.
+  //   - Click anywhere outside the trigger or the panel → close.
+  //   - ESC → close + return focus to the trigger.
+  //   - Tab / Shift+Tab inside the panel → move through menuitems in
+  //     source order (the browser default — we don't intercept Tab
+  //     so focus naturally cycles to the next focusable element).
+  //   - ArrowDown / ArrowUp on the trigger or inside the panel →
+  //     move focus to the next / previous menuitem. Home / End jump
+  //     to first / last. Enter is the browser default on <a>.
+  //   - When window.location.pathname starts with the trigger's
+  //     aria-controls stem, the trigger gets aria-current="page".
+  //     Per the issue's locked decision, ONLY the trigger gets the
+  //     active indicator — sub-items stay plain.
+  function installFoldouts() {
+    const triggers = document.querySelectorAll("[data-foldout-trigger]");
+    for (const trigger of triggers) {
+      if (!(trigger instanceof HTMLElement)) {
+        continue;
+      }
+      const menuID = trigger.getAttribute("data-foldout-trigger");
+      if (!menuID) {
+        continue;
+      }
+      const panel = document.querySelector('[data-foldout-panel="' + menuID + '"]');
+      if (!(panel instanceof HTMLElement)) {
+        continue;
+      }
+      // Single shared click-outside handler closes all open panels
+      // so a click that opens a different foldout cleanly closes
+      // the first one without two handlers racing.
+      const isOpen = () => !panel.classList.contains("hidden");
+      const open = () => {
+        // Close any sibling foldouts first.
+        for (const t of document.querySelectorAll("[data-foldout-trigger]")) {
+          if (t === trigger) continue;
+          const id = t.getAttribute("data-foldout-trigger");
+          if (!id) continue;
+          const p = document.querySelector('[data-foldout-panel="' + id + '"]');
+          if (p instanceof HTMLElement) p.classList.add("hidden");
+          t.setAttribute("aria-expanded", "false");
+        }
+        panel.classList.remove("hidden");
+        trigger.setAttribute("aria-expanded", "true");
+        // Move focus to the first menuitem so keyboard users land
+        // inside the panel after Enter/Space on the trigger.
+        const firstItem = panel.querySelector('[role="menuitem"]');
+        if (firstItem instanceof HTMLElement) {
+          firstItem.focus();
+        }
+      };
+      const close = (returnFocus) => {
+        panel.classList.add("hidden");
+        trigger.setAttribute("aria-expanded", "false");
+        if (returnFocus && document.activeElement === panel) {
+          trigger.focus();
+        } else if (returnFocus) {
+          // ESC path: always return focus to the trigger.
+          trigger.focus();
+        }
+      };
+      const toggle = () => {
+        if (isOpen()) {
+          close(false);
+        } else {
+          open();
+        }
+      };
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggle();
+      });
+      // Keyboard nav: ArrowDown opens + moves to first item;
+      // ArrowUp opens + moves to last item. ESC closes.
+      trigger.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          if (!isOpen()) open();
+          else focusSibling(panel, "next");
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          if (!isOpen()) open();
+          else focusSibling(panel, "prev");
+        } else if (event.key === "Escape" && isOpen()) {
+          event.preventDefault();
+          close(true);
+        }
+      });
+      panel.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(true);
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          focusSibling(panel, "next");
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          focusSibling(panel, "prev");
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          const first = panel.querySelector('[role="menuitem"]');
+          if (first instanceof HTMLElement) first.focus();
+        } else if (event.key === "End") {
+          event.preventDefault();
+          const items = panel.querySelectorAll('[role="menuitem"]');
+          const last = items[items.length - 1];
+          if (last instanceof HTMLElement) last.focus();
+        }
+      });
+      // Auto-close on sub-item click. The browser default
+      // navigates to the link; the next page load replaces
+      // the panel DOM so the hidden state is irrelevant, but
+      // closing immediately prevents a flash of an-open
+      // panel during the navigation transition.
+      for (const item of panel.querySelectorAll('[role="menuitem"]')) {
+        item.addEventListener("click", () => {
+          close(false);
+        });
+      }
+      // Active-page indicator. If the current path starts with
+      // /share, the Share trigger is the active page. Future
+      // triggers that adopt this pattern should add their own
+      // mapping (Browse → /browse*, etc.).
+      const stem = stemForTrigger(menuID);
+      if (stem && window.location.pathname.indexOf(stem) === 0) {
+        trigger.setAttribute("aria-current", "page");
+      }
+    }
+    // Outside-click closes any open foldout. Bound on document
+    // capture so it sees clicks before the trigger's own handler
+    // runs.
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      for (const trigger of document.querySelectorAll("[data-foldout-trigger]")) {
+        if (!(trigger instanceof HTMLElement)) continue;
+        if (trigger.contains(target)) continue;
+        const id = trigger.getAttribute("data-foldout-trigger");
+        if (!id) continue;
+        const panel = document.querySelector('[data-foldout-panel="' + id + '"]');
+        if (!(panel instanceof HTMLElement)) continue;
+        if (panel.classList.contains("hidden")) continue;
+        if (panel.contains(target)) continue;
+        panel.classList.add("hidden");
+        trigger.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  // focusSibling moves focus to the next/previous menuitem in the
+  // panel relative to the currently-focused element. Wraps around
+  // so the user can keep pressing ArrowDown to cycle through the
+  // list. The WAI-ARIA menu pattern spec wraps; we follow it.
+  function focusSibling(panel, direction) {
+    const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
+    if (items.length === 0) {
+      return;
+    }
+    const current = document.activeElement;
+    const idx = items.indexOf(current);
+    let next;
+    if (idx === -1) {
+      next = direction === "next" ? 0 : items.length - 1;
+    } else {
+      next = direction === "next"
+        ? (idx + 1) % items.length
+        : (idx - 1 + items.length) % items.length;
+    }
+    if (items[next] instanceof HTMLElement) {
+      items[next].focus();
+    }
+  }
+
+  // stemForTrigger maps a foldout menu id to the URL path stem
+  // that should set aria-current=page on the trigger. The
+  // current contract: menu id "layout.share.menu" → "/share".
+  // Future triggers add their own mapping. Keeping this in one
+  // place makes it easy to audit which nav items are "active"
+  // on which routes.
+  function stemForTrigger(menuID) {
+    if (menuID === "layout.share.menu") return "/share";
+    return null;
+  }
+
   // Browse filter drawer. Counts active filters and updates the badge
   // above the disclosure element. Persists open/closed preference in
   // localStorage so the drawer stays collapsed/expanded across visits.
@@ -4666,6 +4860,7 @@
     initializeEntryTypeForms();
     initializeLiveCounts(document);
     initializeFloatingNav();
+    installFoldouts();
     initializeBrowseFilterDrawer();
     applyCalendarAnniversaryDensity();
     syncPrintScopeState();
