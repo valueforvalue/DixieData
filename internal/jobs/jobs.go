@@ -32,6 +32,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -774,6 +775,47 @@ func (r *Registry) Get(id string) (Job, bool) {
 		return Job{}, false
 	}
 	return job.Snapshot(), true
+}
+
+// RecentJobs returns up to n terminal-state jobs sorted by
+// StartedAt descending. Used by the /share landing's "Recent
+// activity" section (issue #265). Terminal states are
+// StatusDone, StatusError, StatusCancelled, and
+// StatusInterrupted; queued + running jobs are excluded
+// because they show in the global jobs-progress overlay
+// instead. n <= 0 returns an empty slice.
+//
+// Cost: O(jobs * log jobs) where jobs is the in-memory
+// registry size. The registry is bounded by the user's
+// session (jobs that have been rehydrated from the JSONL
+// log on startup); the in-memory map holds the full
+// history for the running session, not just the last n.
+// For a researcher with ~hundreds of jobs over a year,
+// this is well under a millisecond.
+func (r *Registry) RecentJobs(n int) []Job {
+	if n <= 0 {
+		return []Job{}
+	}
+	r.mu.Lock()
+	out := make([]Job, 0, len(r.jobs))
+	for _, job := range r.jobs {
+		snap := job.Snapshot()
+		switch snap.Status {
+		case StatusDone, StatusError, StatusCancelled, StatusInterrupted:
+			out = append(out, snap)
+		}
+	}
+	r.mu.Unlock()
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].StartedAt.Equal(out[j].StartedAt) {
+			return out[i].StartedAt.After(out[j].StartedAt)
+		}
+		return out[i].ID < out[j].ID
+	})
+	if len(out) > n {
+		out = out[:n]
+	}
+	return out
 }
 
 // Cancel marks the job cancelled and signals the worker via context. It
