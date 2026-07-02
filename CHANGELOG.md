@@ -721,6 +721,42 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Regression net: `audit/smoke_review_queue_resolve_reload.mjs`
   (6 assertions: fetch hits the resolve endpoint via POST,
   reload fires, final URL is /review-queue).
+- `.ddshare` import summary card no longer reads "Duration: 0s"
+  when the import dedups every record (issue #246). The worker
+  now counts content-equivalent skip-unchanged branches via
+  a new `SharedImportSummary.SoldiersSkipped` field, plumbed
+  through `handleImportSharedArchive` into `JobResult.Skipped`.
+  The render path in `appendSharedImportStats` already
+  supported a Skipped-only line; the data now arrives.
+  Regression net: new unit test
+  `TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates`.
+- `/jobs/{id}` summary card for `shared_archive_subset` now
+  reports Person records / Images / Source records counts
+  (issue #245). Previously fell through to the default
+  branch which only printed Size + Duration, leaving the
+  user to open the `.ddshare` in another tool to see what
+  they sent. New `case "shared_archive_subset":` in
+  `summarizeJob` reuses `appendExportStats` and
+  differentiates the headline ("Subset shared archive
+  complete.").
+  Regression net: extension to
+  `TestSummaryRendersExportStatsConditionally`.
+- Share Queue is cleared after a successful `.ddshare`
+  subset export (issue #244). New
+  `data-clear-share-queue-on-success="true"` attribute on
+  the export forms (page form on `/share/queue` and the
+  Share Build modal form) opts the dispatch into a new
+  `dispatchDixieDataForm` branch that, on
+  `responseOk && !redirectTo`, calls `writeShareQueue([])`,
+  re-renders `/share/queue` to the empty state, hides the
+  pill, and shows the server-provided toast immediately
+  (not via `savePendingToast` because the success path
+  does not need a deferred toast). Failed exports leave
+  the queue intact.
+  Regression net: `audit/smoke_share_queue_clear_after_export.mjs`
+  (7 assertions: page + modal forms have the attribute,
+  fetch hits `/export/shared-archive?subset=1` via POST,
+  localStorage cleared on success).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"

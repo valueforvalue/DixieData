@@ -23,7 +23,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Share Queue</p>
 				<h1 class="mt-2 text-2xl gold font-bold">Manage your staged subset</h1>
 				<p class="mt-2 text-sm text-slate-600">Re-order, remove, or bulk-export the Person Records you have staged for sharing. This page mirrors the Share Build modal queue so changes sync back to localStorage on every action.</p>
-				<form action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-page-form class="mt-4 flex flex-wrap items-center gap-3">
+				<form action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-page-form data-clear-share-queue-on-success="true" class="mt-4 flex flex-wrap items-center gap-3">
 					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-[rgba(111,44,38,0.45)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#6f2c26] hover:bg-white" disabled>
 						Remove Selected
 					</button>

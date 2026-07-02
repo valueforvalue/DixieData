@@ -19,7 +19,7 @@ import (
 
 templ ShareQueueModal() {
 	<div id={ uiids.OverlayShareQueue } class="relative w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-8">
-		<form id="share-queue-modal-form" action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-form class="space-y-5">
+		<form id="share-queue-modal-form" action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-form data-clear-share-queue-on-success="true" class="space-y-5">
 			<div class="flex items-start justify-between gap-3">
 				<div>
 					<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Share Queue</p>
