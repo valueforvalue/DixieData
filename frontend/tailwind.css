@@ -469,3 +469,65 @@ html { scrollbar-gutter: stable; }
   white-space: nowrap;
   border: 0;
 }
+
+/* Top-nav foldout (issue #264). The pattern is shared by every
+   future nav item that wants the same affordance; pick a new
+   menu id from internal/uiids and pass it to @Foldout. The
+   open/close transition is CSS-only; installFoldout() in
+   frontend/app.js just toggles the [hidden] class. We
+   animate opacity + transform together so the panel feels
+   like it slides down from the trigger (no height auto
+   jank). transform-origin is top so scaleY shrinks toward
+   the trigger. Per docs/COMMON_BUGS.md §4.14 the
+   transition-timing jitter pattern, this is a single
+   opacity+transform transition with no per-property
+   keyframes — no jitter on resize. */
+.foldout-panel {
+  display: flex;
+  transform-origin: top right;
+  opacity: 0;
+  transform: scaleY(0.92) translateY(-4px);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  pointer-events: none;
+}
+.foldout-panel:not(.hidden) {
+  opacity: 1;
+  transform: scaleY(1) translateY(0);
+  pointer-events: auto;
+}
+.foldout-menuitem {
+  display: block;
+  text-align: left;
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  text-decoration: none;
+  background: transparent;
+  color: inherit;
+  transition: background-color 120ms ease-out;
+}
+.foldout-menuitem:hover,
+.foldout-menuitem:focus-visible {
+  background: rgba(255, 247, 231, 0.08);
+}
+/* On narrow viewports the absolute-positioned panel can clip
+   past the right edge. Drop the transform + position the
+   panel full-width under the trigger instead. The
+   transform-origin also drops to top-center for a centered
+   scale. */
+@media (max-width: 640px) {
+  .foldout-panel {
+    right: 0;
+    left: 0;
+    min-width: 0;
+    width: calc(100vw - 2rem);
+    transform-origin: top center;
+  }
+}
+/* When the trigger is the active page, mirror the
+   pill-link top-nav-link active convention (cream
+   background). aria-current=page is set by the JS
+   installFoldout helper based on window.location.pathname. */
+[aria-current="page"].foldout {
+  /* No-op; the trigger button already has the pill-link
+     styles. We just document the convention here. */
+}
