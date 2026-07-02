@@ -7,10 +7,11 @@ import (
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts, shareIncludeTagsEnabled bool) {
+templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts, shareIncludeTagsEnabled bool, recentJobs []viewmodel.RecentJobEntry) {
 	@Layout("Share") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			if counts.TotalRecords() == 0 {
@@ -28,6 +29,32 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
 				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
 			</div>
+			// Issue #265: Quick Actions sit above the fold so
+			// a returning user can complete the most common
+			// task (export / import / share) without scrolling
+			// past the long tail of less-common actions. The
+			// three tiles are hardcoded — telemetry-driven
+			// curation is a future concern. The Export JSON
+			// tile submits the same data-action flow as the
+			// in-page Export JSON button so behaviour is
+			// identical regardless of which surface the user
+			// uses.
+			<div id={ uiids.PanelShareQuickActions } class="space-y-3">
+				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Quick actions</p>
+				<div class="grid gap-3 sm:grid-cols-3">
+					@components.QuickAction("Export JSON", "Hierarchical w/ version metadata", "/share#export-section", "", templ.Attributes{
+						"data-action":       "/export/json",
+						"data-dixie-submit": "true",
+					})
+					@components.QuickAction("Load Backup", "Restore your local archive from a .ddbak", "/share#import-section", "", templ.Attributes{
+						"data-action":       "/import/backup",
+						"data-dixie-submit": "true",
+						"data-confirm":      "Load a backup archive and replace the current local archive?",
+					})
+					@components.QuickAction("Share Queue", "Build a shared archive from queued records", routebuilder.ShareQueuePage(), "", nil)
+				</div>
+			</div>
+			@components.RecentJobs(recentJobs)
 			<div class="responsive-two-col relative grid gap-6">
 				<section id="export-section" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
