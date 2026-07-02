@@ -98,16 +98,13 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not run the browse query.", err)
 		return
 	}
-	// Load the full archive so the print-config modal (rendered in-
-	// place on /browse per issue #176) can populate its filter
-	// dropdowns. Cost is bounded — typical archives 100-2k records,
-	// single-digit ms. Stress-tested by TestHandleBrowseResponseUnder-
-	// Threshold (internal/appshell/browse_response_time_test.go).
-	exportRecords, err := a.listAllSoldiers()
-	if err != nil {
-		respondInternal(w, r, "Could not load printable export options.", err)
-		return
-	}
+	// Issue #234: pass nil for exportRecords. The print-config modal
+	// lazy-loads its filter panel + record picker from
+	// /share/print-records-fragment on first open (see
+	// internal/templates/partials/print_records_fragment.templ +
+	// frontend/app.js::loadPrintRecordsFragment). This drops the
+	// listAllSoldiers() call from the /browse GET, which was 80-95%
+	// of the request cost on archives with 5k+ records.
 	// Available tags power the Browse sidebar's AND-filter chip
 	// cloud (issue #183). Cheap — reads the tags table + an index
 	// on person_record_tags.tag_id.
@@ -119,7 +116,7 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if availableTags == nil {
 		availableTags = []records.Tag{}
 	}
-	presentation.BrowseView(soldiers, normalized, total, suggestions, exportRecords, availableTags).Render(r.Context(), w)
+	presentation.BrowseView(soldiers, normalized, total, suggestions, nil, availableTags).Render(r.Context(), w)
 }
 
 func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {

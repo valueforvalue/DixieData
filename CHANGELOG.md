@@ -589,6 +589,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- `+ Queue` button silently no-opped on Browse, Soldier
+  detail, Calendar, and Review Queue rows until the user
+  first opened the print-config modal. The
+  `document.addEventListener("click", ...)` handler that
+  intercepts `[data-share-queue-add]` clicks was registered
+  inside `installShareQueueGlobals()`, which was only called
+  from `openPrintConfigModal()`. Move the install into the
+  `DOMContentLoaded` block in `frontend/app.js` so the
+  listener is registered before any user interaction. The
+  redundant call in `openPrintConfigModal` is kept as a
+  safety net for htmx swap without full page load (both
+  functions are idempotent). Regression net:
+  `audit/smoke_share_queue_add_button.mjs` (3 assertions,
+  live-binary headless browser probe).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"
@@ -2780,5 +2794,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `docs/COMMON_BUGS.md` §4.17 codifies the convention:
   every new file written to the data dir must live under
   `appdata.LogsDir(dataDir)` instead.
+- Lazy-load the print-records fragment to make /browse and
+  /share nav GETs fast at scale. The print-config modal's
+  filter panel + record picker were server-rendered on
+  every /browse and /share GET, paying a listAllSoldiers()
+  cost that was 80-95% of the request time (bench-verified:
+  261ms at 5k records, 717ms+ at 10k). The modal now opens
+  immediately on first paint; a new
+  `GET /share/print-records-fragment` endpoint serves the
+  filter + picker as a htmx-swapped fragment on modal open.
+  The fragment is rendered by a new `PrintRecordsFragment`
+  templ and cached client-side after the first load;
+  archive-mutating actions (export template save/update/
+  delete) invalidate the cache so the next open re-fetches.
+  Bench: 5k records /browse GET drops from 261ms to 36ms
+  (7x faster); 5k fragment GET stays under 250ms. New
+  files:
+  - `internal/templates/partials/print_records_fragment.templ`
+  - `internal/appshell/print_records_fragment_handlers.go`
+  - `internal/appshell/print_records_fragment_test.go`
+  - `audit/smoke_browse_nav_speed.mjs`
+  Threshold test updated: `TestHandleBrowseResponseUnderThreshold`
+  asserts 100ms at 5k records (was 500ms at 1k). 3 new
+  unit tests for the fragment endpoint (renders, empty
+  archive, 405 contract). `handleShare` deliberately keeps
+  listAllSoldiers() for the `CalendarDriftStatus` consumer
+  (one-shot destination; cost is acceptable for the page's
+  single visit per session).
 
 ## v1.1.16 - Gold Master

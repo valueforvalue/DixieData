@@ -24,6 +24,14 @@ import (
 const ExportFilterUnknownValue = "__unknown__"
 
 func exportRecordOptionLabel(record viewmodel.ExportRecordOption) string {
+	return ExportRecordOptionLabel(record)
+}
+
+// ExportRecordOptionLabel is the exported form of exportRecordOptionLabel.
+// Used by partials/print_records_fragment.templ which is generated as
+// a separate Go file in the same package but needs the public symbol
+// (tlower-cased function names are package-private even across files).
+func ExportRecordOptionLabel(record viewmodel.ExportRecordOption) string {
 	name := strings.TrimSpace(record.DisplayName)
 	if name == "" {
 		name = "Unnamed Record"
@@ -36,6 +44,12 @@ func exportRecordOptionLabel(record viewmodel.ExportRecordOption) string {
 }
 
 func exportRecordOptionEntryTypeLabel(value string) string {
+	return ExportRecordOptionEntryTypeLabel(value)
+}
+
+// ExportRecordOptionEntryTypeLabel is the exported form of
+// exportRecordOptionEntryTypeLabel. Mirrors ExportRecordOptionLabel.
+func ExportRecordOptionEntryTypeLabel(value string) string {
 	words := strings.Fields(strings.ReplaceAll(strings.TrimSpace(value), "_", " "))
 	for i := range words {
 		if words[i] == "" {
@@ -47,6 +61,12 @@ func exportRecordOptionEntryTypeLabel(value string) string {
 }
 
 func exportRecordOptionSearchText(record viewmodel.ExportRecordOption) string {
+	return ExportRecordOptionSearchText(record)
+}
+
+// ExportRecordOptionSearchText is the exported form of
+// exportRecordOptionSearchText. Mirrors ExportRecordOptionLabel.
+func ExportRecordOptionSearchText(record viewmodel.ExportRecordOption) string {
 	return strings.ToLower(strings.TrimSpace(strings.Join([]string{
 		record.DisplayID,
 		record.DisplayName,
