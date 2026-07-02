@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appshell"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -19,7 +20,30 @@ import (
 //go:embed frontend
 var assets embed.FS
 
+// handleVersionFlag scans argv for --version / -v. Returns
+// the formatted output + done=true if found, done=false
+// otherwise. Exposed as a separate function so the test
+// (main_test.go) can verify the behaviour without calling
+// main() (which calls os.Exit).
+func handleVersionFlag(argv []string) (output string, done bool) {
+	for _, a := range argv[1:] {
+		if a == "--version" || a == "-v" {
+			return fmt.Sprintf("%s\n%s\n", buildinfo.AppLabel(), buildinfo.BuildIdentity()), true
+		}
+	}
+	return "", false
+}
+
 func main() {
+	// --version / -v short-circuit. Sits BEFORE the
+	// subcommand dispatchers so it doesn't open the DB or
+	// start the appshell. The user gets the version + build
+	// identity and a clean exit. See issue #271.
+	if output, done := handleVersionFlag(os.Args); done {
+		fmt.Print(output)
+		os.Exit(0)
+	}
+
 	// Headless subcommand dispatch. Phase 1 (--smoke), Phase 2
 	// (doctor), Phase 3 (list / show / search), Phase 4 (export),
 	// Phase 5 (import), Phase 6 (migrate/backup/restore point/
