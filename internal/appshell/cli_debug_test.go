@@ -699,3 +699,111 @@ func writeSyntheticTemplTree(t *testing.T, files map[string]string) string {
 // helpers added later.
 var _ = httptest.NewRecorder
 var _ = fmt.Sprintf
+
+// TestScanImplementedSubcommands_ShortBody is the regression
+// net for issue #286: scanImplementedSubcommands used to
+// slice `body[cm[0]:cm[0]+200]` without clamping, which
+// panicked when a Has*Subcommand function body was shorter
+// than 200 chars past the `case "<verb>":` match. The probe
+// seeds synthetic cli_*.go files with bodies of varying
+// length and asserts (a) no panic and (b) the documented
+// verbs come back in the result map.
+func TestScanImplementedSubcommands_ShortBody(t *testing.T) {
+	// Pad a body to a target length with spaces inside a
+	// comment so the function shape stays parseable. Lengths
+	// are measured against caseWindowChars (200) — every
+	// value below is a body size AFTER the `case "...":`
+	// match that previously panicked.
+	cases := []struct {
+		name        string
+		bodySuffix  string // appended after the case line
+		wantVerbs   []string
+		dontWantLen bool // true when body is too short to grab siblings
+	}{
+		{
+			name: "body_shorter_than_window",
+			// 50 chars of suffix < caseWindowChars (200)
+			bodySuffix: "\n\treturn false\n}\n", // 22 chars — under
+			wantVerbs:  []string{"shortverb"},
+		},
+		{
+			name:       "body_just_under_window",
+			bodySuffix: strings.Repeat(" ", 180) + "\n\treturn false\n}\n", // 180 spaces + 19
+			wantVerbs:  []string{"edgeverb"},
+		},
+		{
+			name: "body_at_window_boundary",
+			// Exactly 200 chars of suffix — used to be the panic site.
+			bodySuffix: strings.Repeat("x", 200-len("\n\treturn false\n}\n")) + "\n\treturn false\n}\n",
+			wantVerbs:  []string{"borderverb"},
+		},
+		{
+			name: "body_well_over_window",
+			bodySuffix: strings.Repeat("y", 500) + "\n\treturn false\n}\n",
+			wantVerbs:  []string{"longverb"},
+		},
+	}
+
+	root := t.TempDir()
+	appshellDir := filepath.Join(root, "internal", "appshell")
+	if err := os.MkdirAll(appshellDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// scanImplementedSubcommands reads main.go to discover
+	// the set of Has*Subcommand function names to scan. Seed
+	// a synthetic main.go that references each test verb so
+	// the inner loop has something to look up.
+	var mainBuf strings.Builder
+	mainBuf.WriteString("package main\n\n")
+	mainBuf.WriteString("import \"github.com/valueforvalue/DixieData/internal/appshell\"\n\n")
+	mainBuf.WriteString("func _refs() {\n")
+	for _, tc := range cases {
+		verb := tc.wantVerbs[0]
+		fmt.Fprintf(&mainBuf, "\t_ = appshell.Has%sSubcommand(nil)\n", strings.ToUpper(verb[:1])+verb[1:])
+	}
+	mainBuf.WriteString("}\n")
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(mainBuf.String()), 0o644); err != nil {
+		t.Fatalf("write synthetic main.go: %v", err)
+	}
+	// The scan also looks at smoke.go and doctor.go even
+	// when they don't exist — but Glob on cli_*.go MUST
+	// match at least one file or the loop never runs and the
+	// test is a no-op. Seed one file per case into a single
+	// source file so we exercise the inner loop.
+	var b strings.Builder
+	b.WriteString("package appshell\n\n")
+	b.WriteString("import \"testing\"\n\n")
+	b.WriteString("// silence unused-import lint\n")
+	b.WriteString("var _ = testing.Short\n\n")
+	for _, tc := range cases {
+		verb := tc.wantVerbs[0]
+		fmt.Fprintf(&b, "func Has%sSubcommand(args []string) bool {\n", strings.ToUpper(verb[:1])+verb[1:])
+		b.WriteString("\t_ = args\n")
+		fmt.Fprintf(&b, "\tswitch args[0] {\n\tcase %q:\n\t\treturn true\n\t}\n", verb)
+		b.WriteString(tc.bodySuffix)
+		b.WriteString("\n")
+	}
+	srcPath := filepath.Join(appshellDir, "cli_synth.go")
+	if err := os.WriteFile(srcPath, []byte(b.String()), 0o644); err != nil {
+		t.Fatalf("write synthetic cli_synth.go: %v", err)
+	}
+
+	// Must not panic on any of the seeded bodies. Recover
+	// defensively so a regression in the fix shows up as a
+	// test failure rather than killing the test binary.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("scanImplementedSubcommands panicked: %v", r)
+		}
+	}()
+
+	got := scanImplementedSubcommands(root)
+
+	for _, tc := range cases {
+		verb := tc.wantVerbs[0]
+		if !got[verb] {
+			t.Errorf("%s: expected verb %q in result map, got %v", tc.name, verb, got)
+		}
+	}
+}
