@@ -20,7 +20,7 @@ import (
 // TagsManagementPage renders the /tags list with rename / merge /
 // delete affordances. Sorted alphabetically (case-insensitive),
 // backstopped by an empty-state card when the archive has no tags.
-templ TagsManagementPage(tags []records.Tag) {
+templ TagsManagementPage(tags []records.Tag, counts viewmodel.ArchiveCounts) {
 	@Layout("Tags") {
 		<div class="relative mx-auto max-w-5xl space-y-6">
 			<div>
@@ -34,11 +34,14 @@ templ TagsManagementPage(tags []records.Tag) {
 			</div>
 			<section id={ uiids.PanelTagsList } class="card rounded-3xl p-5 sm:p-8">
 				if len(tags) == 0 {
-					@partials.EmptyStateCard("tags", viewmodel.ArchiveCounts{})
-					<p class="mt-4 text-sm text-slate-600">
-						No tags yet. Apply a tag from any Person Record
-						detail page to create the first one.
-					</p>
+					if counts.TotalRecords() == 0 {
+						@partials.EmptyStateCard("tags", counts)
+					} else {
+						<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+							No tags yet. Apply a tag from any Person Record
+							detail page to create the first one.
+						</p>
+					}
 				} else {
 					<table class="w-full table-fixed border-separate border-spacing-y-2 text-left text-sm">
 						<thead>

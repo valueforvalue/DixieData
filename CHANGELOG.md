@@ -11,6 +11,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- `/tags` showed the empty-archive welcome card when the
+  archive had Person Records but zero tags (issue #262).
+  The page now distinguishes two empty conditions: a
+  truly-empty archive (zero records + zero tags) keeps
+  the welcome; archive-with-records-but-no-tags shows
+  the tags-specific "No tags yet. Apply a tag from any
+  Person Record detail page to create the first one."
+  copy. The fix threads `viewmodel.ArchiveCounts` into
+  `TagsManagementPage` and branches on
+  `counts.TotalRecords() == 0`. Regression net: the
+  unit-test pair in
+  `internal/appshell/tags_handlers_test.go`
+  (`TestTagsManagementPageRenders` + new
+  `TestTagsManagementPageHasRecordsButNoTags`).
+
 ### Added
 
 - Tags sub-card on the Person Record detail page

@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/templates"
 )
@@ -407,8 +409,14 @@ func (a *App) handleTagsManagementPage(w http.ResponseWriter, r *http.Request) {
 	if tagsList == nil {
 		tagsList = []records.Tag{}
 	}
+	domainCounts, err := a.soldiers.ArchiveCounts()
+	if err != nil {
+		respondInternal(w, r, "Could not load archive counts for the tags page.", err)
+		return
+	}
+	counts := viewmodel.ArchiveCountsFromModel(domainCounts)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := templates.TagsManagementPage(tagsList).Render(ctx, w); err != nil {
+	if err := templates.TagsManagementPage(tagsList, counts).Render(ctx, w); err != nil {
 		respondInternal(w, r, "Could not render the tags page.", err)
 	}
 }
