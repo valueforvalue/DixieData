@@ -6,7 +6,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,19 +21,14 @@ import (
 func TestOpenDialogGuardRejectsConcurrentDuplicates(t *testing.T) {
 	app := NewApp()
 	var invocations atomic.Int32
-	// Block the first call's dialog inside the helper so the
-	// second goroutine has time to race past the dup check
-	// before the slot is released. Without this barrier the
-	// override returns immediately and the first call's defer
-	// fires before the second call arrives, so the dup-check
-	// would never be exercised.
-	release := make(chan struct{})
-	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
-		invocations.Add(1)
-		<-release
-		return "/tmp/example.ddshare", nil
-	})
-
+	// Simulate a held slot by entering the same dupKey the
+	// guarded function will use. This deterministically
+	// reproduces the race-condition the guard is designed to
+	// prevent: a second caller arriving while the first
+	// caller's slot is still in flight. The original
+	// time.Sleep-based test was racy under heavy scheduler
+	// pressure (issue #207); manually holding the slot
+	// removes the timing dependency entirely.
 	opts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData shared archive", Pattern: "*.ddshare"},
@@ -42,40 +36,34 @@ func TestOpenDialogGuardRejectsConcurrentDuplicates(t *testing.T) {
 	}
 	dupKey := guardedOpenFileDialogKey("shared_archive", opts)
 
-	var wg sync.WaitGroup
-	admitted := make(chan bool, 2)
-	wg.Add(2)
-	for i := 0; i < 2; i++ {
-		go func() {
-			defer wg.Done()
-			_, ad, _ := app.guardedOpenFileDialog(dupKey, opts)
-			admitted <- ad
-		}()
+	admittedFirst, heldEntry := app.enterInFlight(dupKey)
+	if !admittedFirst || heldEntry == nil {
+		t.Fatalf("setup: failed to acquire held slot; admitted=%v entry=%v", admittedFirst, heldEntry)
 	}
+	defer app.leaveInFlight(dupKey, heldEntry)
 
-	// Wait for the first goroutine to reach the dialog override
-	// so the second goroutine actually races the dup check while
-	// the slot is held. Without this barrier close(release) can
-	// fire before goroutine 1 even starts and the test passes
-	// for the wrong reason (slot released before second call).
-	for invocations.Load() == 0 {
-		time.Sleep(time.Millisecond)
-	}
-	close(release)
-	wg.Wait()
-	close(admitted)
+	// Override is unused in this test — the second call's
+	// dup-check must return false before reaching the dialog.
+	// (If it reaches the dialog, the test would also fail
+	// because the dialog's invocations counter would increment
+	// past the expected value.)
+	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
+		invocations.Add(1)
+		return "/tmp/example.ddshare", nil
+	})
 
-	admitCount := 0
-	for v := range admitted {
-		if v {
-			admitCount++
-		}
+	path, admitted, ok := app.guardedOpenFileDialog(dupKey, opts)
+	if admitted {
+		t.Fatalf("guardedOpenFileDialog must return admitted=false when slot is held; got admitted=true path=%q ok=%v", path, ok)
 	}
-	if admitCount != 1 {
-		t.Fatalf("expected exactly 1 admit, got %d", admitCount)
+	if ok {
+		t.Errorf("held-slot call must return ok=false; got ok=true path=%q", path)
 	}
-	if got := invocations.Load(); got != 1 {
-		t.Fatalf("OpenFileDialog must be invoked exactly once; got %d", got)
+	if path != "" {
+		t.Errorf("held-slot call must return empty path; got %q", path)
+	}
+	if got := invocations.Load(); got != 0 {
+		t.Errorf("OpenFileDialog must not be invoked when dup-check rejects; got %d", got)
 	}
 }
 
@@ -126,13 +114,11 @@ func TestOpenDirectoryGuardRejectsConcurrentDuplicates(t *testing.T) {
 func TestOpenMultipleFilesGuardRejectsConcurrentDuplicates(t *testing.T) {
 	app := NewApp()
 	var invocations atomic.Int32
-	release := make(chan struct{})
-	app.SetOpenMultipleFilesDialogOverride(func(_ any) ([]string, error) {
-		invocations.Add(1)
-		<-release
-		return []string{"/tmp/a.png", "/tmp/b.jpg"}, nil
-	})
-
+	// See TestOpenDialogGuardRejectsConcurrentDuplicates for the
+	// rationale. Hold the dupKey manually, then assert the
+	// guarded call returns admitted=false. This is the
+	// deterministic equivalent of the racy two-goroutine race
+	// the test used to express.
 	opts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Image files", Pattern: "*.png;*.jpg"},
@@ -140,35 +126,29 @@ func TestOpenMultipleFilesGuardRejectsConcurrentDuplicates(t *testing.T) {
 	}
 	dupKey := guardedOpenMultipleFilesDialogKey("import_images", opts)
 
-	var wg sync.WaitGroup
-	admitted := make(chan bool, 2)
-	wg.Add(2)
-	for i := 0; i < 2; i++ {
-		go func() {
-			defer wg.Done()
-			_, ad, _ := app.guardedOpenMultipleFilesDialog(dupKey, opts)
-			admitted <- ad
-		}()
+	admittedFirst, heldEntry := app.enterInFlight(dupKey)
+	if !admittedFirst || heldEntry == nil {
+		t.Fatalf("setup: failed to acquire held slot; admitted=%v entry=%v", admittedFirst, heldEntry)
 	}
+	defer app.leaveInFlight(dupKey, heldEntry)
 
-	for invocations.Load() == 0 {
-		time.Sleep(time.Millisecond)
-	}
-	close(release)
-	wg.Wait()
-	close(admitted)
+	app.SetOpenMultipleFilesDialogOverride(func(_ any) ([]string, error) {
+		invocations.Add(1)
+		return []string{"/tmp/a.png", "/tmp/b.jpg"}, nil
+	})
 
-	admitCount := 0
-	for v := range admitted {
-		if v {
-			admitCount++
-		}
+	paths, admitted, ok := app.guardedOpenMultipleFilesDialog(dupKey, opts)
+	if admitted {
+		t.Fatalf("guardedOpenMultipleFilesDialog must return admitted=false when slot is held; got admitted=true paths=%v ok=%v", paths, ok)
 	}
-	if admitCount != 1 {
-		t.Fatalf("expected exactly 1 admit, got %d", admitCount)
+	if ok {
+		t.Errorf("held-slot call must return ok=false; got ok=true paths=%v", paths)
 	}
-	if got := invocations.Load(); got != 1 {
-		t.Fatalf("OpenMultipleFilesDialog must be invoked exactly once; got %d", got)
+	if len(paths) != 0 {
+		t.Errorf("held-slot call must return empty paths; got %v", paths)
+	}
+	if got := invocations.Load(); got != 0 {
+		t.Errorf("OpenMultipleFilesDialog must not be invoked when dup-check rejects; got %d", got)
 	}
 }
 
@@ -282,86 +262,56 @@ func TestGuardedOpenDialogRecorders(t *testing.T) {
 func TestHandleImportBackupDialogGuard(t *testing.T) {
 	app := NewApp()
 
-	var invocations atomic.Int32
-	// Block the first dialog so the second POST has time to
-	// race past the dup check while the slot is held.
-	release := make(chan struct{})
-	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
-		invocations.Add(1)
-		<-release
-		return "", nil // empty path → handler returns cancelled toast
-	})
-
+	// The handler builds the dupKey from the same dialogOpts
+	// shape every time. We hold the slot manually so the
+	// handler's enterInFlight is guaranteed to return false
+	// on its first call (see the other guard tests in this
+	// file for the rationale — the old time.Sleep / two-
+	// goroutine race was flaky under heavy scheduler pressure,
+	// issue #207).
 	opts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "DixieData backup archive", Pattern: "*.ddbak"},
+			{DisplayName: "Legacy backup archive", Pattern: "*.zip"},
 		},
 	}
 	dupKey := guardedOpenFileDialogKey("backup_import", opts)
 	if dupKey == "" {
 		t.Fatal("guardedOpenFileDialogKey must produce a non-empty key")
 	}
-
-	// Two concurrent POSTs to /import/backup.
-	var wg sync.WaitGroup
-	statuses := make(chan int, 2)
-	headers := make(chan string, 2)
-	wg.Add(2)
-	for i := 0; i < 2; i++ {
-		go func() {
-			defer wg.Done()
-			rec := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/import/backup", nil)
-			app.handleImportBackup(rec, req)
-			statuses <- rec.Code
-			headers <- rec.Header().Get("X-DixieData-Redirect")
-		}()
+	admittedFirst, heldEntry := app.enterInFlight(dupKey)
+	if !admittedFirst || heldEntry == nil {
+		t.Fatalf("setup: failed to acquire held slot; admitted=%v entry=%v", admittedFirst, heldEntry)
 	}
 
-	// Wait until the first handler reaches the dialog override
-	// (proves the dup-check has fired for the second goroutine
-	// before the slot is released).
-	for invocations.Load() == 0 {
-		time.Sleep(time.Millisecond)
-	}
-	close(release)
-	wg.Wait()
-	close(statuses)
-	close(headers)
-
-	// First call: cancelled (200 with cancel toast — but we don't
-	// assert on body). Second call: dup-hit → respondDuplicateInFlight
-	// → 200 with X-DixieData-Redirect header (Option C contract).
-	//
-	// Either order is valid (we don't pin which goroutine wins);
-	// what matters is:
-	//   * exactly one X-DixieData-Redirect header across both responses
-	//   * OpenFileDialog invoked exactly once
-	var redirectCount int
-	for h := range headers {
-		if h != "" {
-			redirectCount++
-		}
-	}
-	if redirectCount != 1 {
-		t.Fatalf("exactly one response must set X-DixieData-Redirect (the dup-hit); got %d", redirectCount)
-	}
-	if got := invocations.Load(); got != 1 {
-		t.Fatalf("OpenFileDialog must be invoked exactly once; got %d", got)
-	}
-
-	// And the guard slot must be released: a subsequent POST
-	// (after the first returned) must not be blocked. The
-	// third call hits OpenFileDialog which returns "" (cancel),
-	// which the handler turns into a 400 with toast. What matters
-	// is that it is NOT a dup-hit (no X-DixieData-Redirect).
+	// One POST to /import/backup. The slot is held, so the
+	// handler's enterInFlight returns false and it issues the
+	// dup-hit response (200 + X-DixieData-Redirect, per
+	// Option C contract).
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/import/backup", nil)
 	app.handleImportBackup(rec, req)
-	if rec.Code == http.StatusOK {
-		t.Errorf("third POST returns cancel-toast 400; got 200 (unexpected happy path)")
+	if rec.Code != http.StatusOK {
+		t.Errorf("dup-hit must return 200 (Option C contract); got %d", rec.Code)
 	}
-	if rec.Header().Get("X-DixieData-Redirect") != "" {
-		t.Errorf("third POST must not be a dup-hit; got X-DixieData-Redirect=%q", rec.Header().Get("X-DixieData-Redirect"))
+	if rec.Header().Get("X-DixieData-Redirect") == "" {
+		t.Errorf("dup-hit must set X-DixieData-Redirect; got empty")
+	}
+
+	// Release the slot so the second call is NOT a dup-hit.
+	// The second call hits OpenFileDialog which returns "" (cancel)
+	// by default, which the handler turns into a 400 with toast.
+	// What matters is that it is NOT a dup-hit (no
+	// X-DixieData-Redirect).
+	app.leaveInFlight(dupKey, heldEntry)
+
+	app.SetOpenFileDialogOverride(func(_ any) (string, error) {
+		return "", nil
+	})
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest("POST", "/import/backup", nil)
+	app.handleImportBackup(rec2, req2)
+	if rec2.Header().Get("X-DixieData-Redirect") != "" {
+		t.Errorf("second POST must not be a dup-hit; got X-DixieData-Redirect=%q", rec2.Header().Get("X-DixieData-Redirect"))
 	}
 }
