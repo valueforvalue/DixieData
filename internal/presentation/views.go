@@ -66,8 +66,8 @@ func SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page,
 	return templates.SearchResults(viewmodel.PersonRecordsFromModels(soldiers), viewmodel.PersonRecordSearchFromModel(search), page, total, pageSize)
 }
 
-func SoldierDetail(soldier models.Soldier) templ.Component {
-	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier))
+func SoldierDetail(soldier models.Soldier, tags []records.Tag) templ.Component {
+	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier), tags)
 }
 
 func UnitCamaraderieView(graph records.UnitCamaraderieGraph) templ.Component {

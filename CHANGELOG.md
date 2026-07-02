@@ -13,6 +13,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- Tags sub-card on the Person Record detail page
+  (issue #256). The `tag_picker.templ` primitive existed
+  but was never invoked by any other templ — users had
+  no UI to add a tag to a Person Record. The new sub-card
+  sits at the bottom of the existing summary card on
+  `/soldiers/{id}` and renders the current tags as chips
+  with × detach buttons, an empty-state message, and a
+  collapsible "+ Add tag" form that POSTs to
+  `/soldiers/{id}/tags`. Both attach and detach use
+  `data-reload-on-success="true"` so the page reloads
+  and the chip list updates without a full nav.
+  Regression net: `audit/smoke_soldier_tag_picker.mjs`
+  (9 assertions: heading renders, empty state, expand
+  button, input found, form action + reload attribute,
+  POST fires to correct URL).
 - Build-tag-gated zero-cost trace instrumentation (issue #218).
   New `internal/debug/trace` package with `trace.Log(msg, attrs...)`
   emits `slog.Debug` calls in `-tags debug` builds and is a

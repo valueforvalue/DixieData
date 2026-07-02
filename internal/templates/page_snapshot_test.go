@@ -148,7 +148,7 @@ func TestPageSnapshotSoldierDetail(t *testing.T) {
 	}
 
 	doc := renderIntoDoc(t, "SoldierDetail", func(ctx context.Context, w *bytes.Buffer) error {
-		return SoldierDetail(soldier).Render(ctx, w)
+		return SoldierDetail(soldier, nil).Render(ctx, w)
 	})
 
 	if doc.Find("h2").First().Length() == 0 {
