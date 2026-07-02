@@ -503,12 +503,22 @@ html { scrollbar-gutter: stable; }
   padding: 0.4rem 0.75rem;
   text-decoration: none;
   background: transparent;
-  color: inherit;
+  /* Issue #283: explicit cream text instead of `color: inherit`.
+     The parent <a class="pill-link"> has `color: #22303d` (dark
+     slate) from the .pill-link rule; the panel background is
+     dark navy rgba(36,48,61,0.96); the inherited dark-on-dark
+     gave a contrast ratio of 1.00:1 (WCAG failed at every
+     level), making the items effectively invisible even
+     though the panel was correctly open + visible. #f2ede1
+     (the same cream used by the top-nav's brand text on the
+     dark surface) gives an 11.49:1 ratio — passes WCAG AAA. */
+  color: #f2ede1;
   transition: background-color 120ms ease-out;
 }
 .foldout-menuitem:hover,
 .foldout-menuitem:focus-visible {
   background: rgba(255, 247, 231, 0.08);
+  color: #fff8e7;
 }
 /* On narrow viewports the absolute-positioned panel can clip
    past the right edge. Drop the transform + position the
