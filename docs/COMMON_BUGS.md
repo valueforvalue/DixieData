@@ -1612,6 +1612,111 @@ logs MUST live under `appdata.LogsDir(dataDir)`, the sibling
 
 ---
 
+### 4.20 `backend-first-landing` — handler ships, UI never wires (4 instances in 60 days)
+
+**Symptom:** A feature is declared "shipped" in a PR. The
+user runs the app and cannot find the feature anywhere. The
+backend is fully present (Go service + HTTP handler + route
+registered + tests passing) but no templ/JS element
+exposes it to the user.
+
+**Why it happens:** The feature is decomposed into a "data
+layer" commit and a "UI layer" commit, the data layer
+lands first, the PR is opened and merged, and the UI layer
+slips (rebases, scope drift, forgetfulness). The issue
+body listed the apply sites as a paragraph; nobody
+double-checked that the paragraph became visible code.
+
+**Real examples** (sweep from issue #257):
+
+- Issue #183 tagging feature — PR #195 shipped
+  `TagService` + 6 HTTP handlers + `/tags` management
+  page, but the **soldier detail page tag editor was never
+  wired** (the `tag_picker.templ` primitive exists but no
+  other templ invokes it). Browse has the sidebar filter
+  but no row chip and no bulk-tag button. There is no
+  top-nav link to `/tags`. Result: the feature is
+  functionally invisible to a user without a deep link.
+- Issue #186 edit template — `ExportTemplateService.Update`
+  + `handleUpdateExportTemplate` + `PATCH
+  /export/templates/{id}` are all in place. No UI
+  button calls the endpoint.
+- Issue #184 inline stale-list — the JS handler
+  `app.js:4050-4061` is implemented and the comment
+  cites the issue. No templ has the
+  `data-export-templates-warnings-toggle` attribute the
+  handler listens for. The handler is dead code.
+- Issue #185 stale preview — the server populates
+  `StaleCount` + `StaleSummary` in the preview response
+  (`export_preview.go:62-87`). No JS or templ renders
+  the field.
+
+**How to find it in this repo:**
+
+```sh
+# 1. List all registered routes from internal/appshell/routes.go.
+grep -E 'r\.(Get|Post|Patch|Put|Delete)\(' internal/appshell/routes.go
+
+# 2. For each route, grep for any templ invoker:
+#    - <form action="..."> in any .templ
+#    - <button data-action="..."> or data-dixie-submit
+#    - hx-post / hx-get / hx-patch / hx-delete / hx-put
+#    - hx-target="..."
+#    - dispatchDixieDataForm wired via data-dixie-submit
+#    - any data-share-queue-* / data-browse-* / data-tag-*
+#      attribute that maps to a route via JS
+# 3. Handlers with zero invokers are flagged.
+
+# The audit/discover_orphan_handlers.mjs probe automates
+# this check. Run it in CI; it should report zero orphan
+# handlers on every PR.
+
+# Manual quick check: does the feature have a top-nav
+# link? If not, can a user find it by URL-guessing?
+# If the answer is "only by reading the route table",
+# the feature is invisible to the user.
+```
+
+**Fix template (one slice per apply site):**
+
+1. Pick the first unchecked apply site from the issue
+   body's v1 apply sites checklist (see AGENTS.md
+   "Feature apply sites — the checklist rule")
+2. Find the templ that should host the UI element;
+   add the button/form/picker that calls the route
+3. Add an `audit/smoke_*.mjs` regression probe that
+   drives the user-visible flow end-to-end
+4. Add a CHANGELOG entry under `### Added` (UI
+   landing) or `### Fixed` (wiring existing code)
+5. Commit + push + check the box in the PR description
+6. Repeat for the next apply site
+
+**Anti-patterns to avoid:**
+
+- **Don't ship "backend-only" PRs for features.** If the
+  issue lists apply sites, the PR must cover them all
+  before the feature is considered "done". Backend-only
+  PRs are fine for refactors and internal infrastructure;
+  they are not fine for user-facing features.
+- **Don't write the apply sites as prose.** Prose
+  hides gaps. A checklist makes gaps visible to the
+  reviewer and to the user reading the closed issue.
+- **Don't trust the `go test -short ./...` pass as proof
+  of shipping.** A handler that compiles and has a unit
+  test can still be invisible to the user. The
+  `discover_orphan_handlers.mjs` probe + a smoke probe
+  for the user-visible flow are the real evidence.
+
+**Related:**
+
+- `AGENTS.md` "Feature apply sites — the checklist rule"
+- `audit/discover_orphan_handlers.mjs` (CI gate)
+- Issue #257 (the sweep that surfaced the pattern)
+- Issues #256, #258, #259, #260, #261 (the individual
+  fixes filed from the sweep)
+
+---
+
 ## 5. Typst PDF rendering bugs
 
 (See section 2.1 for most typst-related patterns — they overlap.)
