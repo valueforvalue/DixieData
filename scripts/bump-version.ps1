@@ -25,7 +25,8 @@
 [CmdletBinding()]
 param(
     [switch]$Force,
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+    [switch]$DetectDrift
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,6 +100,64 @@ if ($VerifyOnly) {
         exit 1
     }
     Write-Host "VERIFY OK: schema $current, docs reference $appVer, discipline intact" -ForegroundColor Green
+    exit 0
+}
+
+# DetectDrift: walks HEAD..origin/<base> commit subjects for
+# schema-touching patterns. If any are present AND CurrentSchemaVersion
+# is unchanged, fail with a drift message. The skip hatch is a
+# commit subject 'chore: skip-schema-bump' + reason in the body.
+# Used by CI on every PR (the .github/workflows/test.yml schema-
+# touching detector is a duplicate of this check; the bash variant
+# is the canonical for non-Windows runners, this is the canonical
+# for Windows).
+if ($DetectDrift) {
+    $base = "origin/$env:GITHUB_BASE_REF"
+    if (-not $env:GITHUB_BASE_REF) {
+        Write-Host "DETECT-DRIFT: skipping (GITHUB_BASE_REF not set; run inside GitHub Actions)"
+        exit 0
+    }
+    $subjects = & git log --format=%s "$base..HEAD" 2>$null
+    if (-not $subjects) {
+        Write-Host "DETECT-DRIFT: no commits to scan"
+        exit 0
+    }
+    $touches = $subjects | Where-Object { $_ -match '^(feat|fix)\((db|schema)\):' -or $_ -match '^feat\(schema\):' }
+    if (-not $touches) {
+        Write-Host "DETECT-DRIFT: no schema-touching commits in PR"
+        exit 0
+    }
+    $skipHatch = $subjects | Where-Object { $_ -match '^chore: skip-schema-bump' }
+    if ($skipHatch) {
+        Write-Host "DETECT-DRIFT: skip-schema-bump hatch found, allowing PR"
+        exit 0
+    }
+    $headContent = & git show "HEAD:internal/versioninfo/versioninfo.go" 2>$null
+    $baseContent = & git show "$base:internal/versioninfo/versioninfo.go" 2>$null
+    if (-not $headContent -or -not $baseContent) {
+        Write-Host "DETECT-DRIFT: could not read versioninfo.go at HEAD or base; skipping"
+        exit 0
+    }
+    $headMatch = [regex]::Match($headContent, 'CurrentSchemaVersion\s*=\s*(\d+)')
+    $baseMatch = [regex]::Match($baseContent, 'CurrentSchemaVersion\s*=\s*(\d+)')
+    if (-not $headMatch.Success -or -not $baseMatch.Success) {
+        Write-Host "DETECT-DRIFT: could not parse CurrentSchemaVersion; skipping"
+        exit 0
+    }
+    $headVer = [int]$headMatch.Groups[1].Value
+    $baseVer = [int]$baseMatch.Groups[1].Value
+    if ($headVer -eq $baseVer) {
+        Write-Host ""
+        Write-Host "DRIFT: PR touches schema but did not bump CurrentSchemaVersion ($baseVer -> $headVer)." -ForegroundColor Red
+        Write-Host "Touching commits:" -ForegroundColor Yellow
+        $touches | ForEach-Object { Write-Host "  $_" }
+        Write-Host ""
+        Write-Host "Either:" -ForegroundColor Yellow
+        Write-Host "  1. Add a 'feat(schema): bump to v$($baseVer + 1)' commit in this PR"
+        Write-Host "  2. Add a 'chore: skip-schema-bump' commit + reason in body (rare; for non-shape changes)"
+        exit 1
+    }
+    Write-Host "DETECT-DRIFT: schema bumped $baseVer -> $headVer, OK"
     exit 0
 }
 
