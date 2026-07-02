@@ -113,3 +113,10 @@ audit/reports/ui-diff/*.png
 # Bug Hunter skill working directory (per skill spec: 'Add .bug-hunter/ to your project's .gitignore')
 .bug-hunter/
 audit/manual-walk-report.json
+
+# Per-iteration PDF artifacts (Typst rendering iteration). The
+# source `.typ` templates are tracked; these PDFs are regenerated
+# by `make render-round` for each round. Old rounds move to
+# docs/historical/renderings/ when the retention rule fires.
+docs/renderings/*/pre-iteration.pdf
+docs/renderings/*/round-*.pdf
