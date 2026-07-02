@@ -405,3 +405,51 @@ bump: ## Bump schema version (writes versioninfo.go; commit before tagging)
 # (local + remote), gh authenticated. Draft = not auto-published.
 release-github: ## Tag + push + draft gh release (run 'make archive' first)
 	$(PWSH) -File scripts/release-github.ps1
+
+# --- Release pipeline (build-protocol.md §3) ---
+#
+# Ordered gates that must pass before a release is cut. Halts
+# on the first non-zero exit. Run interactively — each gate's
+# output streams so the operator can see what failed.
+#
+# Gates:
+#   1. test             — go test -short -count=1
+#   2. tpl              — regenerate templ files (catches stale generated files)
+#   3. css              — rebuild Tailwind bundle
+#   4. bump-verify      — bump-version.ps1 -VerifyOnly (schema discipline intact)
+#   5. debug            — build DixieData + 4 subtools (chains web/seed/gold/tune-bin)
+#   6. freshness        — subtool sanity probes + CLI coverage
+#   7. archive          — build + zip release/DixieData-release-v1.2.{N}.zip
+#   8. release-github   — tag + push + draft gh release
+#
+# The 'audit' gate is MANUAL (operator runs `make audit` and
+# signs off) — not chained here. Add it explicitly between
+# freshness and archive if your release needs the visual sweep.
+#
+# Pass RELEASE_SKIP_FRESHNESS=1 to skip gate 6 in emergencies
+# (CI outage, subtool build failure blocking a security fix).
+# Document the skip in the PR description.
+RELEASE_PIPELINE_GATES := test tpl css bump-verify debug freshness archive release-github
+release-pipeline: ## Run the ordered release chain; halt on first failure
+	@echo "=== release-pipeline ==="
+	@failed=0; \
+	for gate in $(RELEASE_PIPELINE_GATES); do \
+	  if [ "$$gate" = "bump-verify" ]; then \
+	    echo ""; echo "--- gate: bump-verify ---"; \
+	    if ! $(PWSH) -NoLogo -NoProfile -File scripts/bump-version.ps1 -VerifyOnly; then \
+	      echo "FAIL at gate: $$gate"; failed=1; break; \
+	    fi; \
+	    continue; \
+	  fi; \
+	  if [ "$$gate" = "freshness" ] && [ "$(RELEASE_SKIP_FRESHNESS)" = "1" ]; then \
+	    echo ""; echo "--- gate: freshness (SKIPPED via RELEASE_SKIP_FRESHNESS=1) ---"; \
+	    continue; \
+	  fi; \
+	  echo ""; echo "--- gate: $$gate ---"; \
+	  if ! $(MAKE) --no-print-directory $$gate; then \
+	    echo "FAIL at gate: $$gate"; failed=1; break; \
+	  fi; \
+	done; \
+	if [ $$failed -ne 0 ]; then echo ""; echo "release-pipeline: ABORTED"; exit 1; fi
+	@echo ""
+	@echo "release-pipeline: OK"
