@@ -43,6 +43,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/update"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -526,7 +527,63 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	shareIncludeTags := a.archiveMeta.IncludeTags(r.Context(), records.ArchiveKindShared)
-	presentation.ShareView(status, conflicts, exportRecords, domainCounts, shareIncludeTags).Render(r.Context(), w)
+	// Issue #265: surface the last 3 terminal jobs in the
+	// /share landing's "Recent activity" card. The registry
+	// is optional in tests + the headless CLI, so guard the
+	// nil case (an empty list still renders the empty-state
+	// copy in the section).
+	var recentJobs []viewmodel.RecentJobEntry
+	if a.jobs != nil {
+		recentJobs = buildRecentJobEntries(a.jobs.RecentJobs(3))
+	}
+	presentation.ShareView(status, conflicts, exportRecords, domainCounts, shareIncludeTags, recentJobs).Render(r.Context(), w)
+}
+
+// buildRecentJobEntries converts the jobs.Registry output
+// (jobs.Job) into the viewmodel shape the /share landing
+// renders. Kept as a standalone helper (not a method on
+// App) because the conversion is pure data — no app state
+// involved, no I/O. The function is package-private to
+// app.go because the conversion only matters for the
+// ShareView call site; if a future handler needs the
+// same shape, lift it into viewmodel.
+func buildRecentJobEntries(jobs []jobs.Job) []viewmodel.RecentJobEntry {
+	out := make([]viewmodel.RecentJobEntry, 0, len(jobs))
+	for _, job := range jobs {
+		out = append(out, viewmodel.RecentJobEntry{
+			ID:          job.ID,
+			Kind:        job.Kind,
+			KindLabel:   job.DisplayLabel(),
+			Status:      job.Status,
+			StatusLabel: statusLabelFor(job.Status),
+			Message:     job.Message,
+			ResultPath:  job.ResultPath,
+			StartedAt:   job.StartedAt.UTC().Format(time.RFC3339),
+			FinishedAt:  job.FinishedAt.UTC().Format(time.RFC3339),
+			DetailURL:   "/jobs/" + job.ID,
+		})
+	}
+	return out
+}
+
+// statusLabelFor returns the human label for a terminal
+// job status. Matches the pill class keys in
+// components.RecentJobs. Kept inline because it has one
+// caller and lifts to a method only if a second caller
+// shows up.
+func statusLabelFor(status string) string {
+	switch status {
+	case jobs.StatusDone:
+		return "Done"
+	case jobs.StatusError:
+		return "Error"
+	case jobs.StatusCancelled:
+		return "Cancelled"
+	case jobs.StatusInterrupted:
+		return "Interrupted"
+	default:
+		return "Unknown"
+	}
 }
 
 func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) {
