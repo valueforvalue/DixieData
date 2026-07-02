@@ -2870,6 +2870,34 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestCalendarPopulatedRendersDetailsPane`) assert DOM ordering and the
   presence/absence of the welcome panel + details-pane for both states.
 
+- **Share top-nav foldout** (issue #264). Replaced the two
+  flat top-nav links (Share + Share Queue) with a single
+  Share trigger that opens a foldout panel containing 4
+  menu items: Export, Import, Share Queue, and Build Share
+  Archive. Trigger is a real `<button aria-haspopup="menu">`
+  with a chevron `▾`; panel has `role="menu"` and 4
+  `<a role="menuitem">` items (anchors, not divs, so
+  middle-click / cmd-click / screen readers all work).
+  Sub-items deep-link to anchors on /share: Export →
+  `#export-section`, Import → `#import-section`, Build
+  Share Archive → `#build-share-archive` (new anchors
+  added to share.templ). The foldout is the first consumer
+  of a generic pattern — any future nav item can adopt the
+  same `data-foldout-trigger` / `data-foldout-panel` shape
+  and `installFoldouts()` in app.js picks it up uniformly.
+  ARIA: only the trigger gets `aria-current="page"` when
+  on a /share/* path (per the issue's locked decision;
+  sub-items stay plain). Keyboard: ArrowDown/Up wrap
+  through menuitems (WAI-ARIA menu pattern), Home/End jump
+  to first/last, ESC closes and returns focus to the
+  trigger. New generic primitive: `@components.Foldout`
+  (internal/templates/components/foldout.templ). New uiids:
+  `LayoutShareMenu` + `LayoutShareMenuTrigger`. Regression
+  net: `audit/smoke_foldout_nav.mjs` (24/24 assertions
+  cover ARIA contract, open/close via click/ESC/outside-
+  click, keyboard nav, aria-current on /share, anchor
+  deep-links).
+
 - **Wire the existing PATCH `/export/templates/{id}` endpoint**
   (issue #258 / #186). The backend (`ExportTemplateService.Update`
   + `handleUpdateExportTemplate` + chi route) was fully landed
