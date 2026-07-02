@@ -2870,6 +2870,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestCalendarPopulatedRendersDetailsPane`) assert DOM ordering and the
   presence/absence of the welcome panel + details-pane for both states.
 
+- **Wire the existing PATCH `/export/templates/{id}` endpoint**
+  (issue #258 / #186). The backend (`ExportTemplateService.Update`
+  + `handleUpdateExportTemplate` + chi route) was fully landed
+  in PR #195 but the router only registered `r.Patch(...)`.
+  The JS handler `updateSelectedTemplate()` POSTed to the same
+  path (the handler body accepts both PATCH and POST), so the
+  Save Changes button on the print-config modal's Saved
+  Templates dropdown was silently returning 405 Method Not
+  Allowed. Added a `r.Post("/export/templates/{id}", ...)`
+  alias so the POST fetch lands; PATCH stays canonical per
+  REST. Regression net: `audit/smoke_template_edit.mjs`
+  (8/8 assertions) — seeds a template via the Save endpoint,
+  opens the print-config modal, loads the template, clicks
+  Save Changes, asserts 200; renames + Save Changes again,
+  asserts rename persisted in `/export/templates`.
+
 - **Removed the deprecated `#share-status` placeholder panel from
   `/share`** (issue #254). The panel was made obsolete by the
   `/jobs/{id}` job status pages (issue #193): every export and
