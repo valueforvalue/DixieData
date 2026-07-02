@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/models"
 )
 
 var tagSeedCounter int64
@@ -353,6 +354,35 @@ func TestTagsManagementPageRenders(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	if !strings.Contains(string(body), "Tags") {
 		t.Errorf("expected /tags page to mention Tags; body=%s", string(body)[:min(200, len(body))])
+	}
+	// On a freshly seeded empty archive (zero records, zero tags)
+	// the empty-state welcome card is the right thing to show.
+	if !strings.Contains(string(body), "Welcome to DixieData") {
+		t.Errorf("expected empty-archive welcome on /tags when archive has zero records; body=%s", string(body)[:min(400, len(body))])
+	}
+}
+
+func TestTagsManagementPageHasRecordsButNoTags(t *testing.T) {
+	app := newTagTestApp(t)
+	if _, err := app.soldiers.Create(models.Soldier{FirstName: "Abel", LastName: "Test"}); err != nil {
+		t.Fatalf("seed soldier: %v", err)
+	}
+	server := httptest.NewServer(app)
+	defer server.Close()
+	resp, err := http.Get(server.URL + "/tags")
+	if err != nil {
+		t.Fatalf("GET /tags: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/tags status %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if strings.Contains(string(body), "Welcome to DixieData") {
+		t.Errorf("archive has records but no tags; should NOT show empty-archive welcome. body=%s", string(body)[:min(400, len(body))])
+	}
+	if !strings.Contains(string(body), "No tags yet") {
+		t.Errorf("expected tags-specific empty copy; body=%s", string(body)[:min(400, len(body))])
 	}
 }
 
