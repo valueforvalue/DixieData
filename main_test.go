@@ -129,3 +129,28 @@ func TestHelpFlagAbsent(t *testing.T) {
 		t.Error("expected requested=false when subcommand + flags provided")
 	}
 }
+
+// TestHasLogToStderr verifies the --log-to-stderr flag
+// scanner. Issue #270.
+func TestHasLogToStderr(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"absent", []string{"dixiedata", "doctor"}, false},
+		{"present", []string{"dixiedata", "--log-to-stderr", "doctor"}, true},
+		{"present equals 1", []string{"dixiedata", "--log-to-stderr=1", "doctor"}, true},
+		{"explicit false", []string{"dixiedata", "--log-to-stderr=0", "doctor"}, false},
+		{"present mid args", []string{"dixiedata", "doctor", "--log-to-stderr"}, true},
+		{"only flag", []string{"dixiedata", "--log-to-stderr"}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := hasLogToStderr(c.args); got != c.want {
+				t.Errorf("hasLogToStderr(%v) = %v, want %v", c.args, got, c.want)
+			}
+		})
+	}
+
+}

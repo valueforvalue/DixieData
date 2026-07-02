@@ -18,15 +18,16 @@ import (
 // It implements both slog.Handler (for slog.SetDefault) and Sink (so it
 // can be registered in the sinks registry via RegisterSink).
 type teeHandler struct {
-	buf      *bufio.Writer
-	ring     *RingBuffer
-	appName  string
-	version  string
-	build    string
-	level    slog.Level
-	attrs    []slog.Attr
-	groups   []string
-	stderrMu sync.Mutex
+	buf          *bufio.Writer
+	ring         *RingBuffer
+	appName      string
+	version      string
+	build        string
+	level        slog.Level
+	attrs        []slog.Attr
+	groups       []string
+	stderrMirror bool // set via SetStderrMirror for --log-to-stderr
+	stderrMu     sync.Mutex
 }
 
 var _ Sink = (*teeHandler)(nil)
@@ -44,7 +45,7 @@ func (h *teeHandler) Write(e Entry) error {
 	if h.ring != nil {
 		h.ring.Push(e)
 	}
-	if debugMode.Load() {
+	if debugMode.Load() || h.stderrMirror {
 		h.stderrMu.Lock()
 		_, _ = os.Stderr.Write([]byte(e.Time.Format(time.RFC3339Nano) + " " +
 			e.Level + " " + e.Message + "\n"))

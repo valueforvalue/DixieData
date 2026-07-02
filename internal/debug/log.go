@@ -234,6 +234,23 @@ func SetDebugMode(enabled bool) {
 // IsEnabled returns the current debug-mode flag.
 func IsEnabled() bool { return debugMode.Load() }
 
+// SetStderrMirror toggles the stderr mirror independently of
+// debug mode. When enabled, every slog entry the handler emits
+// is also written to os.Stderr in addition to the JSONL file.
+// Use this for `dixiedata --log-to-stderr` so failed CLI
+// invocations surface their log trail in the shell without
+// requiring a separate `dixiedata logs path` round-trip.
+// Issue #270.
+func SetStderrMirror(enabled bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	stderrMirrored = enabled
+	if handler == nil {
+		return
+	}
+	handler.stderrMirror = enabled
+}
+
 // LogPath returns the configured log file path, or "" if Configure has
 // not run.
 func LogPath() string {
