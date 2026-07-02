@@ -52,6 +52,7 @@ type PersonRecord struct {
 	ImageCount            int
 	SourceRecords         []SourceRecord
 	Images                []Image
+	Tags                  []TagOption
 }
 
 type SourceRecord struct {

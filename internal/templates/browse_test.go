@@ -101,7 +101,7 @@ func TestBrowseResultsDoNotShowBlankPensionStateAsActiveFilter(t *testing.T) {
 		Total:    320,
 		Scope:    "all",
 		Sort:     "display_id_asc",
-	}).Render(context.Background(), &buf)
+	}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
