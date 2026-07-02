@@ -8,6 +8,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/htmxattr"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
 // Layout is the single shell used across the app. The previous
@@ -89,8 +90,20 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this"></span>
 						</a>
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
-					<a href="/share" class="pill-link top-nav-link">Share</a>
-					<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } class="pill-link top-nav-link" data-share-queue-page-link>Share Queue</a>
+					@components.Foldout("Share", uiids.LayoutShareMenu, nil) {
+						<li role="none">
+							<a href="/share#export-section" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-export>Export</a>
+						</li>
+						<li role="none">
+							<a href="/share#import-section" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-import>Import</a>
+						</li>
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-queue-page-link>Share Queue</a>
+						</li>
+						<li role="none">
+							<a href="/share#build-share-archive" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-build>Build Share Archive</a>
+						</li>
+					}
 					<a href="/tags" class="pill-link top-nav-link">Tags</a>
 					<a href="/settings" class="pill-link top-nav-link">Settings</a>
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
