@@ -2753,4 +2753,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (#209 pre-mux, #212 setup, #214 recovery + startupErr) ship
   without a working client bridge.
 
+- Moved `jobs.jsonl` out of the data dir into the sibling
+  `.dixiedata-logs/` directory. The on-disk jobs registry held
+  an open append handle on `<dataDir>/jobs.jsonl` for the
+  lifetime of the process; on Windows, that descendant handle
+  blocked the atomic `os.Rename` that `replaceDataDir`
+  performs at the start of a `.ddbak` restore, returning
+  "Access is denied" after 5 retries. The fix follows the
+  same convention as commit `b9a30cc` for `app.log.jsonl`:
+  the data dir contains only the SQLite database and the
+  image store. `migrateLegacyJobsLog` moves any existing
+  legacy file to the new location on first startup (copy +
+  remove fallback when the rename itself is denied). New
+  tests pin the convention:
+  - `TestOpenJobsRegistryLogPathOutsideDataDir` asserts
+    the canonical log path is outside the data dir
+  - `TestMigrateLegacyJobsLogRenamesOldFile` covers the
+    upgrade path for existing installs
+  - `TestMigrateLegacyJobsLogIsIdempotent` covers restart
+    safety
+  - `TestReplaceDataDir_.../open_file_outside_target_dir...`
+    confirms `replaceDataDir` no longer touches the logs
+    directory
+  - `audit/smoke_jobs_log_location.mjs` confirms the
+    deployed web binary writes the log to the right place.
+  `docs/COMMON_BUGS.md` §4.17 codifies the convention:
+  every new file written to the data dir must live under
+  `appdata.LogsDir(dataDir)` instead.
+
 ## v1.1.16 - Gold Master

@@ -566,13 +566,17 @@ func TestArchiveInventoryText(t *testing.T) {
 // dump + request tests that exercise SQL. We DO call Shutdown via
 // t.Cleanup so the temp dir is unlocked.
 //
-// Windows quirk: the jobs registry opens <dataDir>/jobs.jsonl in
-// append mode and keeps the handle alive across Shutdown (only
-// the worker pool drains — the file handle is owned by the
-// registry, which doesn't expose a Close method). We use
-// reflection to reach the unexported logCloser field and close
-// it explicitly. Reflection is acceptable in test code only; it
-// would be a hidden coupling if used in production.
+// Windows quirk: the jobs registry opens the jobs log (under
+// <dataDir-parent>/.dixiedata-logs/jobs.jsonl) in append mode
+// and keeps the handle alive across Shutdown (only the worker
+// pool drains — the file handle is owned by the registry,
+// which doesn't expose a Close method). We use reflection to
+// reach the unexported logCloser field and close it
+// explicitly. Reflection is acceptable in test code only; it
+// would be a hidden coupling if used in production. The log
+// lives outside the data dir on purpose: replaceDataDir
+// renames <dataDir> atomically, and an open handle inside the
+// data dir blocks the rename on Windows.
 func newHeadlessAppForTest(t *testing.T) *App {
 	t.Helper()
 	tmp, err := os.MkdirTemp("", "dixiedata-debug-test-*")

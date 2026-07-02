@@ -1544,6 +1544,74 @@ grep -n 'blockIfFragment' internal/appshell/
 
 ---
 
+### 4.17 `open-handle-in-data-dir-blocks-restore` — rename fails with "Access is denied" because jobs.jsonl lived inside .dixiedata/
+
+**Symptom:** A `.ddbak` restore fails with:
+
+> `import failed: rename C:\…\.dixiedata → C:\…\.dixiedata-previous-N failed after 5 attempts: rename …: Access is denied.`
+
+The user sees the error on the `/jobs/{id}` status page. The
+archive isn't replaced; the import job ends in `failed` state.
+
+**Why it happens:** DixieData.exe (and dixiedata-web.exe) open
+`<dataDir>/jobs.jsonl` in append mode during `App.Startup` and
+keep the handle alive for the lifetime of the process. The
+`replaceDataDir` helper that runs at the start of a restore
+performs an atomic `os.Rename(<dataDir>, <dataDir>-previous-N)`.
+On Windows, an open handle on any descendant file blocks the
+parent directory's rename with `ERROR_ACCESS_DENIED`
+(`Access is denied`).
+
+Today's `renameWithRetry` (#216) loops 5 times with exponential
+backoff. The retries help when the holder is an external
+process (OneDrive, SearchIndexer, the Wails asset watcher)
+that eventually releases the handle. The retries do **not**
+help when the holder is DixieData.exe itself — the handle
+never releases until process exit.
+
+The convention that the data dir contains only the SQLite
+database and the image store had been previously established
+for `app.log.jsonl` (commit `b9a30cc refactor(appdata): move
+app logs out of .dixiedata/`). `jobs.jsonl` was missed at the
+time of that refactor.
+
+**Fix:**
+- `internal/appshell/jobs_persistence.go`: changed
+  `openJobsRegistry` to write the log at
+  `appdata.LogsDir(dataDir)/jobs.jsonl` (the sibling
+  `.dixiedata-logs/` directory) instead of inside the data
+  dir. `migrateLegacyJobsLog` moves any existing
+  `<dataDir>/jobs.jsonl` to the new location on first startup
+  with copy + remove fallback when the rename is denied.
+- `internal/appshell/jobs_persistence_test.go`: 3 new tests
+  pin the convention (`TestOpenJobsRegistryLogPathOutsideDataDir`,
+  `TestMigrateLegacyJobsLogRenamesOldFile`,
+  `TestMigrateLegacyJobsLogIsIdempotent`).
+- `internal/archive/backup_service_test.go`: new subtest
+  `open_file outside target dir is not under replaceDataDir's
+  rename set` confirms `replaceDataDir` no longer touches the
+  logs directory.
+- `audit/smoke_jobs_log_location.mjs`: live-binary regression
+  probe boots dixiedata-web and asserts the jobs log lands
+  under `.dixiedata-logs/` (not under the data dir).
+
+**Find it:**
+```bash
+grep -n 'dataDir/jobs.jsonl\|dataDir, jobsLogFilename' internal/appshell/
+ls .dixiedata  # should NOT contain jobs.jsonl after the fix
+```
+
+**Convention reminder (applies to every new file written to
+the data dir):** the data dir contains ONLY the SQLite database
+(`dixiedata.db` + WAL/SHM sidecars) and the image store
+(`updates/`). All app-level state, logs, caches, and write-ahead
+logs MUST live under `appdata.LogsDir(dataDir)`, the sibling
+`.dixiedata-logs/` directory.
+
+**Real example:** this entry.
+
+---
+
 ## 5. Typst PDF rendering bugs
 
 (See section 2.1 for most typst-related patterns — they overlap.)
