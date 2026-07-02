@@ -64,6 +64,10 @@ LABELS=(
   "invalid|e4e669|This doesn't seem right"
   "question|d876e3|Further information is requested"
   "wontfix|ffffff|This will not be worked on"
+
+  # --- In-place update safety (build-protocol.md §5) ---
+  "safe-for-in-place|0E8A16|Reviewed against the 4 safety rules; safe for in-place update on main"
+  "unsafe-for-in-place|B60205|Intentional destructive change; ships via full re-install + restore-point only"
 )
 
 CHANGED=0
