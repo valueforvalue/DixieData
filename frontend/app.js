@@ -2547,38 +2547,6 @@
     });
   }
 
-  // After a response populates the shared status panel, bring it into
-  // view so the user sees the result without scrolling. Without this,
-  // a successful import can land in a panel y=1372 below a viewport
-  // fold at 800px — user clicks Load Backup, nothing visibly happens,
-  // re-imports. Only scrolls when the panel content actually changed
-  // (the placeholder "Import + export status messages appear here."
-  // text is not a result; ignore that re-render).
-  function scrollShareStatusIntoView(target) {
-    if (!(target instanceof HTMLElement) || target.id !== "share-status") {
-      return;
-    }
-    const placeholder = "Import + export status messages appear here.";
-    if (target.textContent && target.textContent.includes(placeholder)) {
-      return;
-    }
-    try {
-      target.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    } catch (error) {
-      console.warn("scrollShareStatusIntoView failed", error);
-    }
-  }
-
-  // htmx dispatches its own swaps (XHR, not fetch). Hook htmx:afterSwap
-  // so the shared status panel scrolls into view after a response lands
-  // in it, regardless of whether the swap came from app.js's
-  // applyResponse or htmx's internal ajax.
-  if (typeof window !== "undefined" && window.htmx && typeof window.htmx.on === "function") {
-    window.htmx.on("htmx:afterSwap", (event) => {
-      scrollShareStatusIntoView(event.target);
-    });
-  }
-
   async function refreshCalendarGrid(monthValue) {
     const month = Number.parseInt(String(monthValue || ""), 10);
     if (!Number.isInteger(month) || month < 1 || month > 12) {
@@ -4592,11 +4560,6 @@
       exportAll: scope === "all",
       selectedIds: selectedIDs,
     };
-  }
-
-  function shareStatusTarget() {
-    const target = document.getElementById("share-status");
-    return target instanceof HTMLElement ? target : null;
   }
 
   function seedPrintRecordSelectionFromBrowse() {
