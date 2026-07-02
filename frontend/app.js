@@ -2884,6 +2884,18 @@
         const synthetic = document.createElement("form");
         synthetic.action = dataAction;
         synthetic.method = method;
+        // Copy data-* attributes from the button so the synthetic
+        // form can drive the same dispatch conventions (data-confirm,
+        // data-results-target, data-reload-on-success) that the
+        // surrounding page-level form would have provided. This is
+        // how the per-row "Mark as Resolved" button (issue #248 +
+        // #250) wires up its reload-on-success without being a child
+        // of a real form.
+        for (const attr of Array.from(button.attributes)) {
+          if (attr.name.startsWith("data-") && attr.name !== "data-action" && attr.name !== "data-method") {
+            synthetic.setAttribute(attr.name, attr.value);
+          }
+        }
         form = synthetic;
       } else {
         form = button.closest("form");
@@ -3015,6 +3027,25 @@
       // Issue #134: scan/quality buttons render into #settings-orphan-results
       // and #settings-quality-results via this convention.
       const resultsTargetSelector = (form.dataset && form.dataset.resultsTarget) || "";
+      // Issue #250: data-reload-on-success is a one-attribute opt-in
+      // for "inline action that mutates the page state, no fragment
+      // available — just reload the page so the user sees the new
+      // state + the badge re-fetches + the toast shows immediately
+      // (before the next page load via savePendingToast)." Used by
+      // the per-row "Mark as Resolved" button on /review-queue so
+      // a single click removes the item + updates the top-nav badge
+      // + shows the confirmation toast without a full nav. We
+      // surface the toast now (not via savePendingToast) because
+      // the reload fires immediately and the user shouldn't have to
+      // wait for the next page load to see confirmation.
+      const reloadOnSuccess = (form.dataset && form.dataset.reloadOnSuccess) === "true";
+      if (reloadOnSuccess && responseOk && !redirectTo) {
+        if (toastMessage) {
+          showToast(toastMessage, toastKind);
+        }
+        window.location.reload();
+        return true;
+      }
       if (resultsTargetSelector && !redirectTo && responseOk) {
         const target = document.querySelector(resultsTargetSelector);
         if (target instanceof HTMLElement) {

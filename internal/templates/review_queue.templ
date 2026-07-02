@@ -76,6 +76,7 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 										@components.Button("Mark as Resolved", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
 										"data-action": fmt.Sprintf("/soldiers/%d/review/resolve?context=queue", entry.PersonRecord.ID),
 										"data-dixie-submit": "true",
+										"data-reload-on-success": "true",
 									})
 									</div>
 								</div>

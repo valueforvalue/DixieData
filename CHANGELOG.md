@@ -699,6 +699,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (5 assertions: referer wins, /jobs referer falls back,
   off-origin falls back, empty referer falls back,
   query string preserved).
+- "Mark as Resolved" on `/review-queue` silently no-opped
+  after server-side success: the item was removed from
+  the queue but the page didn't refresh, the top-nav
+  badge didn't update, and the confirmation toast didn't
+  appear until the user navigated away. Root cause: the
+  per-row handler returns empty body + no
+  X-DixieData-Redirect + only the toast header, so the
+  JS path was stuck between "do nothing" and "show the
+  toast on the next page load" (savePendingToast). Fix:
+  a new `data-reload-on-success="true"` attribute on the
+  button opts the dispatch into a new branch that shows
+  the toast immediately and calls
+  `window.location.reload()`. The reload re-runs the
+  page-load initializers (which re-fetch the badge via
+  `/layout/review-count`) and the next-paint state
+  reflects the resolve. Synthetic forms built from a
+  button's `data-action` (PR #248) now copy the
+  button's other `data-*` attributes so this works for
+  inline buttons that live inside a parent form.
+  Regression net: `audit/smoke_review_queue_resolve_reload.mjs`
+  (6 assertions: fetch hits the resolve endpoint via POST,
+  reload fires, final URL is /review-queue).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"
