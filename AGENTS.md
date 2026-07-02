@@ -167,6 +167,13 @@ works until the code ships.
 ### Capturing decisions
 
 - **Default:** capture in the conversation. The user is the chat.
+- **Default flow for non-trivial work:** the user invokes RPCI
+  (Research → Plan → Critique → Implement). The full procedure
+  is in `docs/agents/rpci.md`; the short form is: research enough
+  to write a plan, write the plan with surfaced decisions,
+  critique with the user, implement slice by slice with
+  regression tests. The Critique phase is the gate — no
+  implementation before the user signs off.
 - **Promote to ADR:** if a decision is durable enough that the next
   LLM session (or a human six months from now) needs to know it
   without reading the chat log, write `docs/adr/000N-<slug>.md`.
