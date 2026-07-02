@@ -16,7 +16,7 @@ import (
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/valueforvalue/DixieData/internal/archive"
-	"github.com/valueforvalue/DixieData/internal/debug"
+	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/pkg/exportbridge"
@@ -580,7 +580,7 @@ func (a *App) exportFullDatabasePDFPath(settings archive.PrintSettings) (string,
 	dupKey := fmt.Sprintf("db-pdf|%s", printableArchivePDFName(settings))
 	admitted, entry := a.enterInFlight(dupKey)
 	if !admitted {
-		debug.FromContext(context.Background()).Debug("exportFullDatabasePDFPath duplicate request rejected")
+		trace.Log("exportFullDatabasePDFPath dup_reject")
 		return "", dupKey, errExportInFlight
 	}
 	defer a.leaveInFlight(dupKey, entry)
