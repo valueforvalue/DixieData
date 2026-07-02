@@ -1,0 +1,142 @@
+{
+  "results": [
+    {
+      "name": "calendar.calendar-page-loads",
+      "ok": true,
+      "reason": 200,
+      "ts": "2026-06-29T19:42:44.430Z"
+    },
+    {
+      "name": "calendar.calendar-month-nav-fires-request",
+      "ok": true,
+      "reason": "month select count: 1",
+      "ts": "2026-06-29T19:42:44.791Z"
+    },
+    {
+      "name": "calendar.calendar-export-pdf-form-has-data-dixie-submit",
+      "ok": true,
+      "reason": "data-dixie-submit=true",
+      "ts": "2026-06-29T19:42:45.357Z"
+    },
+    {
+      "name": "calendar.calendar-day-click-shows-anniversary",
+      "ok": "manual",
+      "ts": "2026-06-29T19:42:45.357Z"
+    },
+    {
+      "name": "soldier-new.soldier-new-form-loads",
+      "ok": true,
+      "reason": "first_name input: 1",
+      "ts": "2026-06-29T19:42:50.958Z"
+    },
+    {
+      "name": "soldier-new.soldier-new-submit-without-name-shows-validation",
+      "ok": "manual",
+      "ts": "2026-06-29T19:42:50.958Z"
+    },
+    {
+      "name": "browse.browse-page-loads",
+      "ok": true,
+      "reason": 200,
+      "ts": "2026-06-29T19:42:51.852Z"
+    },
+    {
+      "name": "browse.browse-list-renders-soldier-links",
+      "ok": true,
+      "reason": "soldier links: 15",
+      "ts": "2026-06-29T19:42:52.202Z"
+    },
+    {
+      "name": "browse.browse-soldier-link-navigates",
+      "ok": "manual",
+      "ts": "2026-06-29T19:42:52.202Z"
+    },
+    {
+      "name": "share.share-page-loads",
+      "ok": true,
+      "reason": 200,
+      "ts": "2026-06-29T19:42:52.846Z"
+    },
+    {
+      "name": "share.share-export-button-discovery",
+      "ok": true,
+      "reason": "discovered 3 export buttons",
+      "ts": "2026-06-29T19:42:53.200Z"
+    },
+    {
+      "name": "share.share-print-modal-opens",
+      "ok": true,
+      "reason": "visible modals: 1",
+      "ts": "2026-06-29T19:42:53.821Z"
+    },
+    {
+      "name": "settings.settings-page-loads",
+      "ok": true,
+      "reason": 200,
+      "ts": "2026-06-29T19:42:54.649Z"
+    },
+    {
+      "name": "settings.settings-orphan-scan-results-render",
+      "ok": true,
+      "reason": "target len: 149",
+      "ts": "2026-06-29T19:42:55.529Z"
+    },
+    {
+      "name": "settings.settings-debug-toggle-round-trips",
+      "ok": true,
+      "reason": "fired http://127.0.0.1:8765/settings/debug-mode",
+      "ts": "2026-06-29T19:42:55.948Z"
+    },
+    {
+      "name": "feedback-modal.feedback-modal-opens",
+      "ok": true,
+      "reason": "visible",
+      "ts": "2026-06-29T19:42:57.123Z"
+    },
+    {
+      "name": "feedback-modal.feedback-save-sends-headers",
+      "ok": true,
+      "reason": "close=true toast=Feedback saved to the local log.",
+      "ts": "2026-06-29T19:42:57.761Z"
+    },
+    {
+      "name": "feedback-modal.feedback-save-hides-modal-clears-form-shows-toast",
+      "ok": true,
+      "reason": "{\"modalHidden\":true,\"textareaEmpty\":true,\"toastVisible\":true}",
+      "ts": "2026-06-29T19:42:58.879Z"
+    },
+    {
+      "name": "floating-dock-layout.floating-dock-renders-at-bottom",
+      "ok": true,
+      "reason": "dock y=745.28125 h=54.71875 viewport h=800",
+      "ts": "2026-06-29T19:42:59.552Z"
+    },
+    {
+      "name": "floating-dock-layout.floating-dock-no-overlap-with-toast-region",
+      "ok": "manual",
+      "ts": "2026-06-29T19:42:59.552Z"
+    },
+    {
+      "name": "jobs-page.jobs-active-endpoint-returns-200",
+      "ok": true,
+      "reason": 204,
+      "ts": "2026-06-29T19:42:59.893Z"
+    },
+    {
+      "name": "jobs-page.jobs-page-auto-polls-active-region",
+      "ok": true,
+      "reason": "polls: 1",
+      "ts": "2026-06-29T19:43:03.739Z"
+    },
+    {
+      "name": "jobs-open-artifact.jobs-open-artifact-creates-file-url",
+      "ok": "skipped",
+      "reason": "DIXIE_BROWSER_OPEN_URL_LOG not set",
+      "ts": "2026-06-29T19:43:04.048Z"
+    }
+  ],
+  "pass": 18,
+  "fail": 0,
+  "manual": 4,
+  "ts": "2026-06-29T19:43:04.196Z"
+}
