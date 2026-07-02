@@ -2735,4 +2735,50 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `go test ./... -short -count=1` (22 packages green),
   `go test -tags debug ./internal/debug/...` (2 packages green).
 
+- Fixed the white-screen bug on initial load under blocked states
+  (pre-mux window, setup-required, recovery, startupErr). The
+  `blockIfFragment` helper returns 204 + `X-DixieData-Redirect`
+  for htmx fragment requests; htmx does not auto-follow a 204 the
+  way it follows a 3xx, so the empty `<body>` shell stayed empty
+  and the user saw a white page. Added an `htmx:afterRequest`
+  listener in `frontend/app.js` that reads the redirect header
+  from any 204 response and calls `window.location.assign`. New
+  `audit/smoke_fragment_redirect.mjs` regression test asserts the
+  full client path: empty shell loads, htmx fires, server returns
+  204 + header, browser navigates to `/setup`, body renders.
+  Test would fail without the listener (final URL stays on the
+  shell path, body length 0) and pin the server response shape
+  (204 + header) so the contract doesn't drift. The pattern
+  addresses the systemic gap that let 4 prior fragment-204 fixes
+  (#209 pre-mux, #212 setup, #214 recovery + startupErr) ship
+  without a working client bridge.
+
+- Moved `jobs.jsonl` out of the data dir into the sibling
+  `.dixiedata-logs/` directory. The on-disk jobs registry held
+  an open append handle on `<dataDir>/jobs.jsonl` for the
+  lifetime of the process; on Windows, that descendant handle
+  blocked the atomic `os.Rename` that `replaceDataDir`
+  performs at the start of a `.ddbak` restore, returning
+  "Access is denied" after 5 retries. The fix follows the
+  same convention as commit `b9a30cc` for `app.log.jsonl`:
+  the data dir contains only the SQLite database and the
+  image store. `migrateLegacyJobsLog` moves any existing
+  legacy file to the new location on first startup (copy +
+  remove fallback when the rename itself is denied). New
+  tests pin the convention:
+  - `TestOpenJobsRegistryLogPathOutsideDataDir` asserts
+    the canonical log path is outside the data dir
+  - `TestMigrateLegacyJobsLogRenamesOldFile` covers the
+    upgrade path for existing installs
+  - `TestMigrateLegacyJobsLogIsIdempotent` covers restart
+    safety
+  - `TestReplaceDataDir_.../open_file_outside_target_dir...`
+    confirms `replaceDataDir` no longer touches the logs
+    directory
+  - `audit/smoke_jobs_log_location.mjs` confirms the
+    deployed web binary writes the log to the right place.
+  `docs/COMMON_BUGS.md` §4.17 codifies the convention:
+  every new file written to the data dir must live under
+  `appdata.LogsDir(dataDir)` instead.
+
 ## v1.1.16 - Gold Master
