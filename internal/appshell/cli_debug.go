@@ -1221,6 +1221,13 @@ func repoRootOf(docPath string) string {
 // distinguishes documented-not-implemented (drift) from
 // implemented-not-documented (often a leaf verb under a
 // parent, not drift).
+//
+// caseWindowChars bounds the slice used to capture
+// comma-separated sibling cases on the line following a
+// `case "<verb>":` match. Must be clamped at slice time —
+// see issue #286.
+const caseWindowChars = 200
+
 func scanImplementedSubcommands(root string) map[string]bool {
 	out := map[string]bool{}
 
@@ -1271,9 +1278,18 @@ func scanImplementedSubcommands(root string) map[string]bool {
 			for _, m := range aeqRe.FindAllStringSubmatch(body, -1) {
 				out[m[1]] = true
 			}
-			// case "<verb>": (and any comma-separated siblings)
+			// case "<verb>": (and any comma-separated siblings).
+			// Clamp the upper bound: the 200-char window is a
+			// heuristic to grab siblings on the next line, but a
+			// short body (e.g. a stub Has*Subcommand in a
+			// new cli_*.go file) would otherwise trip a slice
+			// out-of-range panic. See issue #286.
 			if cm := caseRe.FindStringSubmatchIndex(body); cm != nil {
-				snippet := body[cm[0]:cm[0]+200]
+				end := cm[0] + caseWindowChars
+				if end > len(body) {
+					end = len(body)
+				}
+				snippet := body[cm[0]:end]
 				for _, m := range verbInCaseRe.FindAllStringSubmatch(snippet, -1) {
 					out[m[1]] = true
 				}

@@ -104,6 +104,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- `dixiedata debug cli-coverage` (and therefore
+  `make freshness`) panicked with `slice bounds out of
+  range` when any `Has*Subcommand` / `Has*Flag` function
+  body in `internal/appshell/cli_*.go` was shorter than
+  200 chars past the `case "<verb>":` match (issue #286).
+  The `scanImplementedSubcommands` walker now clamps
+  the case-window slice to `len(body)` and the 200-char
+  heuristic lives in a named `caseWindowChars` const.
+  Regression net:
+  `internal/appshell/cli_debug_test.go::TestScanImplementedSubcommands_ShortBody`
+  seeds synthetic bodies of 0 / ~50 / 180 / 200 / 500
+  chars past the match and asserts no panic + the
+  documented verb is captured.
 - `/tags` showed the empty-archive welcome card when the
   archive had Person Records but zero tags (issue #262).
   The page now distinguishes two empty conditions: a
