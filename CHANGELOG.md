@@ -603,6 +603,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   functions are idempotent). Regression net:
   `audit/smoke_share_queue_add_button.mjs` (3 assertions,
   live-binary headless browser probe).
+- `/share/queue` management page showed the empty-state
+  card ("No Person Records staged") even when the
+  persistent pill counted 3+ items, because the user
+  navigated to the page for the first time after staging
+  items via `+ Queue`. The page's `renderShareQueuePage`
+  function targeted the `<tbody data-share-queue-page-body>`
+  element and early-returned when missing; the server
+  renders the empty-state branch (no tbody) on the first
+  visit, so the function silently no-opped. The install
+  guard had the same bug, so event handlers + the
+  installed-flag never persisted across re-renders.
+  Refactor: target the section
+  (`id="panel.share-queue.list"`) which is always present.
+  Fetch `/share/queue?ids=N` and replace the section's
+  inner contents with the fresh section's inner contents;
+  this handles both empty→populated and populated→empty
+  transitions in one code path. Regression net:
+  `audit/smoke_share_queue_page.mjs` (5 transitions, 7
+  assertions, live-binary headless browser probe).
 - Main screen no longer blanks out on first load. The review-queue
   badge wrapper in the top nav (`<span data-layout-review-count
   hx-get="/layout/review-count" hx-trigger="load, every 30s"

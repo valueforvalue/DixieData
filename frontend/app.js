@@ -3667,56 +3667,65 @@
     return tr;
   }
   async function renderShareQueuePage() {
-    const tbody = document.querySelector("[data-share-queue-page-body]");
-    if (!(tbody instanceof HTMLElement)) return;
+    // Issue pending: the previous version targeted the tbody
+    // (data-share-queue-page-body) and early-returned when
+    // missing. That was wrong: when localStorage has items
+    // but the user navigates here for the first time, the
+    // server renders the empty-state branch (no tbody) and
+    // the function silently no-ops, leaving the empty card
+    // on screen even though the pill says "Share queue: 3".
+    // Fix: target the section (panel.share-queue.list)
+    // which is always present, fetch the page with the
+    // current ids, and replace the section's inner contents
+    // with the new section's inner contents. This handles
+    // both empty→populated and populated→empty transitions
+    // in one code path.
+    const section = document.querySelector(`section[id="${ShareQueueListSectionID}"]`);
+    if (!(section instanceof HTMLElement)) return;
     const ids = readShareQueue();
-    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
-    if (ids.length === 0) {
-      // Re-render empty-state by re-fetching the page with
-      // no ids so the templ body emits the empty card.
-      try {
-        const response = await fetch("/share/queue", { method: "GET" });
-        if (response.ok) {
-          const html = await response.text();
-          const doc = new DOMParser().parseFromString(html, "text/html");
-          const freshSection = doc.querySelector("[data-share-queue-page-body], section[id='panel.share-queue.list']");
-          const currentSection = document.querySelector("[data-share-queue-page-body], section[id='panel.share-queue.list']");
-          if (freshSection && currentSection && currentSection.parentElement) {
-            const wrapper = currentSection.parentElement;
-            while (wrapper.firstChild) wrapper.removeChild(wrapper.firstChild);
-            const fallbackEmpty = doc.querySelector("[data-share-queue-empty], section[id='panel.share-queue.list'] > div");
-            if (fallbackEmpty) wrapper.appendChild(fallbackEmpty.cloneNode(true));
-          }
-        }
-      } catch (err) {
-        // Stay quiet -- the pill count update is enough
-        // signal that the queue changed.
+    const target = ids.length === 0 ? "/share/queue" : `/share/queue?ids=${ids.join(",")}`;
+    let response;
+    try {
+      response = await fetch(target, { method: "GET" });
+    } catch (err) {
+      updateShareQueuePill(ids);
+      syncShareQueuePageButtons();
+      return;
+    }
+    if (!response.ok) {
+      // Server failed: render a minimal placeholder so the
+      // user sees the ids even if metadata lookup is broken.
+      if (ids.length > 0) {
+        const tbody = document.createElement("tbody");
+        tbody.setAttribute("data-share-queue-page-body", "");
+        ids.forEach((id, i) => tbody.appendChild(shareQueuePageRowTemplate({ id, display_id: "#" + id }, i)));
+        section.replaceChildren(tbody);
       }
       updateShareQueuePill(ids);
       syncShareQueuePageButtons();
       return;
     }
-    // Populate rows from the server-rendered page (which
-    // already has Display ID + Name + Unit + counts), then
-    // fall back to a placeholder if the server omitted a row.
-    const response = await fetch(`/share/queue?ids=${ids.join(",")}`, { method: "GET" });
-    if (!response.ok) {
-      ids.forEach((id, i) => tbody.appendChild(shareQueuePageRowTemplate({ id, display_id: "#" + id }, i)));
-      syncShareQueuePageButtons();
-      return;
-    }
     const html = await response.text();
     const doc = new DOMParser().parseFromString(html, "text/html");
-    const freshRows = doc.querySelectorAll("[data-share-queue-page-row-id]");
-    freshRows.forEach((row) => tbody.appendChild(row.cloneNode(true)));
+    const freshSection = doc.querySelector(`section[id="${ShareQueueListSectionID}"]`);
+    if (freshSection instanceof HTMLElement) {
+      section.replaceChildren(...Array.from(freshSection.childNodes).map((n) => n.cloneNode(true)));
+    }
     updateShareQueuePill(ids);
     syncShareQueuePageButtons();
   }
+  // Issue pending: the section (id="panel.share-queue.list")
+  // is the persistent install anchor; the tbody is transient
+  // and depends on whether the page rendered the empty-state
+  // or the rows. Always derive the install-target from the
+  // section, never the tbody, so event handlers + flag persist
+  // across re-renders.
+  const ShareQueueListSectionID = "panel.share-queue.list";
   function installShareQueuePage() {
-    const body = document.querySelector("[data-share-queue-page-body]");
-    if (!(body instanceof HTMLElement)) return;
-    if (body.dataset.shareQueuePageInstalled === "true") return;
-    body.dataset.shareQueuePageInstalled = "true";
+    const section = document.querySelector(`section[id="${ShareQueueListSectionID}"]`);
+    if (!(section instanceof HTMLElement)) return;
+    if (section.dataset.shareQueuePageInstalled === "true") return;
+    section.dataset.shareQueuePageInstalled = "true";
 
     // Select-all checkbox: when present, toggles every row.
     const selectAll = document.querySelector("[data-share-queue-page-select-all]");
@@ -3731,7 +3740,7 @@
     }
 
     // Per-row checkbox change -> update bulk buttons.
-    body.addEventListener("change", (ev) => {
+    section.addEventListener("change", (ev) => {
       const target = ev.target;
       if (!(target instanceof HTMLInputElement)) return;
       if (target.matches("input[type=checkbox][data-share-queue-page-select]")) {
@@ -3740,7 +3749,7 @@
     });
 
     // Per-row Remove button.
-    body.addEventListener("click", (ev) => {
+    section.addEventListener("click", (ev) => {
       const target = ev.target;
       if (!(target instanceof HTMLElement)) return;
       const remove = target.closest("[data-share-queue-page-remove-id]");
