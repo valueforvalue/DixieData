@@ -182,6 +182,96 @@ try {
   const onShare = await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.getAttribute("aria-current"));
   record("aria-current-page-set-on-share", onShare === "page", { ariaCurrent: onShare });
 
+  // === Step 7.5: items visible + readable on /calendar (issue #283) ===
+  // The original foldout (issue #264) had a 1.00:1 contrast
+  // ratio for menuitem text — dark slate inherited from the
+  // parent .pill-link against the dark navy panel. The
+  // user perceived "items don't show" because they were
+  // functionally invisible (1.00:1 = effectively zero
+  // contrast). The fix: .foldout-menuitem color: #f2ede1
+  // cream text (11.49:1 ratio, WCAG AAA). This step asserts
+  // (a) the items are in the painted viewport (not just
+  // present in the DOM) on /calendar, and (b) the contrast
+  // ratio is at least WCAG AA (4.5:1).
+  console.log("\nStep 7.5: items visible + readable on /calendar (issue #283)");
+  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await wait(1000);
+  await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
+  await wait(500);
+  // Blur the focused menuitem so the :focus-visible color
+  // (#fff8e7 — also a passing cream) doesn't dominate the
+  // contrast check; we want to assert the base state.
+  await page.evaluate(() => (document.activeElement instanceof HTMLElement) ? document.activeElement.blur() : null);
+  await wait(200);
+  const contrastCheck = await page.evaluate(() => {
+    function parseRGB(s) {
+      // s might be 'rgba(36, 48, 61, 0.96)' or 'rgb(36, 48, 61)'.
+      // Returns [r, g, b] for rgb, [r, g, b, a] for rgba, null otherwise.
+      const m = s.match(/rgba?\(([^)]+)\)/);
+      if (!m) return null;
+      const parts = m[1].split(',').map((x) => parseFloat(x.trim()));
+      return parts.length >= 3 ? parts : null;
+    }
+    function lum(c) {
+      const [r,g,b] = c.map((v) => {
+        v = v / 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+    function ratio(c1, c2) {
+      const l1 = lum(c1), l2 = lum(c2);
+      const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+      return (hi + 0.05) / (lo + 0.05);
+    }
+    const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
+    if (!panel) return { error: "no panel" };
+    const panelBgRaw = getComputedStyle(panel).backgroundColor;
+    const panelBg = parseRGB(panelBgRaw);
+    const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
+    return {
+      panelBg,
+      itemCount: items.length,
+      items: items.map((it) => {
+        const r = it.getBoundingClientRect();
+        const cs = getComputedStyle(it);
+        const fg = parseRGB(cs.color);
+        // Composite the panel's translucent bg over white for
+        // the contrast ratio (the panel sits on a light cream
+        // page surface per the layout body bg); per WCAG 2.1
+        // 1.4.3, translucent fg over a known bg should be
+        // composed before measuring. panelBg[3] is the alpha
+        // (0..1); default 1.0 if the panel is opaque.
+        const alpha = panelBg && panelBg.length === 4 ? panelBg[3] : 1;
+        const composedBg = panelBg ? [
+          Math.round(panelBg[0] * alpha + 255 * (1 - alpha)),
+          Math.round(panelBg[1] * alpha + 255 * (1 - alpha)),
+          Math.round(panelBg[2] * alpha + 255 * (1 - alpha)),
+        ] : null;
+        return {
+          text: it.textContent.trim(),
+          inViewport: r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth,
+          hasSize: r.width > 0 && r.height > 0,
+          fg,
+          rawColor: cs.color,
+          bg: composedBg,
+          ratio: fg && composedBg ? ratio(fg, composedBg) : null,
+        };
+      }),
+    };
+  });
+  if (contrastCheck && contrastCheck.itemCount) {
+    for (const it of contrastCheck.items) {
+      record(`item-visible-on-calendar:${it.text}`, it.inViewport === true && it.hasSize === true, { w: it.inViewport, hasSize: it.hasSize });
+      record(`item-contrast-passes-AA:${it.text}`, it.ratio !== null && it.ratio >= 4.5, { ratio: it.ratio ? Number(it.ratio.toFixed(2)) : null, fg: it.rawColor });
+    }
+  } else {
+    record("contrast-check-ran", false, contrastCheck);
+  }
+  // Close the panel so the deep-link test below has a clean state.
+  await page.keyboard.press("Escape");
+  await wait(300);
+
   // === Step 8: deep-link to anchor from menu item ===
   console.log("\nStep 8: menu item deep-link to /share#export-section");
   await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
