@@ -2321,7 +2321,22 @@
       }
       for (const trigger of document.querySelectorAll("[data-foldout-trigger]")) {
         if (!(trigger instanceof HTMLElement)) continue;
-        if (trigger.contains(target)) continue;
+        // Skip the panel whose trigger owns the click. When the
+        // user clicks the trigger, the trigger's own click handler
+        // (bound directly on the trigger element) runs FIRST in
+        // the bubble phase and calls open() (panel.hidden =
+        // false). The document-level handler then sees the click
+        // bubble up; without this guard, the panel that was
+        // JUST opened by the trigger's click would be immediately
+        // closed by the outside-click handler. The check on
+        // trigger.contains(target) below catches clicks INSIDE
+        // the trigger (e.g. a child icon), but the click on the
+        // trigger button itself has target === trigger, so
+        // contains() returns true and the trigger is skipped —
+        // but the OTHER triggers' panels are NOT skipped, and
+        // the just-opened Share panel is closed by its own click
+        // because the handler iterates ALL triggers.
+        if (trigger === target || trigger.contains(target)) continue;
         const id = trigger.getAttribute("data-foldout-trigger");
         if (!id) continue;
         const panel = document.querySelector('[data-foldout-panel="' + id + '"]');
