@@ -304,3 +304,63 @@ The contract:
 registered routes against the templ invokers. Handlers with no
 invoker are flagged. This is the automated tripwire that catches
 the pattern before a user does.
+
+### Fresh debug build = `make freshness`
+
+A debug build is not "DixieData.exe compiles". It is "every
+debug subtool builds AND every CLI subcommand still parses AND
+every subtool's sanity probe passes". The contract:
+
+- `make debug` builds the Wails binary. `make freshness` builds
+  DixieData + dixiedata-web + seed-data + gold-master +
+  dixiedata-tune, then probes each (`--help` / `--smoke` /
+  `--self-test`), then runs `dixiedata debug cli-coverage` to
+  assert every documented CLI subcommand is implemented.
+- A subtool that rots (flag renamed, dispatcher updated but
+  doc not, subcommand removed but `cli-plan.md` not updated)
+  is the same class of bug as the dialog-guard crash: silent
+  drift that the user hits first. The freshness check is the
+  tripwire.
+- The `make freshness` target is required by `make release-
+  pipeline` (the ordered release gate chain). PRs that touch
+  `main.go`, `internal/appshell/cli_*.go`, `docs/agents/cli-
+  plan.md`, `tools/tune/`, or any `cmd/*/main.go` MUST land
+  with `make freshness` passing.
+
+See [`docs/agents/build-protocol.md`](docs/agents/build-protocol.md)
+§1 + §2 for the canonical reference.
+
+### PRs that touch schema must bump
+
+The schema version (`CurrentSchemaVersion` in
+`internal/versioninfo/versioninfo.go`) is the single source
+of truth for the local update feature. Every schema-touching
+PR MUST bump in the same PR — the migration has to ship with
+the bump so users on older DBs can apply the update.
+
+The contract:
+
+- A PR "touches the schema" if any commit subject matches
+  `feat(db):` / `feat(schema):` / `fix(db):` AND the change
+  actually affects schema shape (new table, new column,
+  drop, rename, new index, modified JSON shape).
+- `feat(db):` commits that don't change schema shape
+  (performance-only index, EXPLAIN-friendly rewrite) use the
+  `chore: skip-schema-bump` hatch — one extra commit with
+  that subject and a reason in the body.
+- CI runs the schema-touching detector on every PR. If the
+  PR has a touching commit AND `CurrentSchemaVersion` is
+  unchanged from the base branch, the check fails with a
+  drift message. The merge is blocked.
+- The bump is gated by `scripts/bump-version.ps1`: refuses
+  to advance by more than `+1` (use `-Force` for jumps),
+  requires `docs/migrations/v{N+1}.md` with at least one
+  bullet, refuses uncommitted changes to `versioninfo.go`.
+
+The 2026-06 sweep that surfaced four "shipped but invisible"
+features (issue #257) also surfaced the parallel risk: a
+schema change that ships without a bump leaves users on older
+DBs unable to update. Don't repeat.
+
+See [`docs/agents/build-protocol.md`](docs/agents/build-protocol.md)
+§4 for the canonical reference.
