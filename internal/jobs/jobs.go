@@ -876,6 +876,14 @@ func (j Job) Summary() JobSummary {
 			"Send this .ddshare file to another DixieData user; they can preview it on the Share page.",
 		}
 		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
+	case "shared_archive_subset":
+		s.Headline = fmt.Sprintf("Subset shared archive complete — %s.", formatBytes(s.SizeBytes))
+		s.DetailLines = []string{
+			fmt.Sprintf("Size: %s", formatBytes(s.SizeBytes)),
+			fmt.Sprintf("Duration: %s", s.Duration),
+			"Subset of Person Records staged from the Share Queue; send to another DixieData user.",
+		}
+		s.DetailLines = appendExportStats(s.DetailLines, j.Result)
 	case "json_export", "excel_export", "icalendar_export":
 		s.Headline = fmt.Sprintf("%s complete — %s.", j.DisplayLabel(), formatBytes(s.SizeBytes))
 		s.DetailLines = []string{
