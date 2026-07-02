@@ -11,23 +11,21 @@ import (
 )
 
 // TestHandleBrowseResponseUnderThreshold is the regression net for
-// issue #176. BrowseView now also loads the full archive via
-// listAllSoldiers() so the in-place print-config modal can populate
-// its filter dropdowns. We assert that even with 1000 records the
-// /browse GET stays well under the UX-acceptable threshold so users
-// don't perceive a slowdown.
-//
-// Per the issue critique, if this ever fails we revisit (lazy-load
-// the filter options via AJAX on modal open, or cache the export
-// list keyed by archive hash). The test exists to catch the
-// regression early, not to ship with a brittle threshold.
+// the /browse GET perf budget (issues #176, #234). After issue #234
+// the GET no longer calls listAllSoldiers(); the print-config modal
+// lazy-loads its filter panel + record picker from
+// /share/print-records-fragment on first open. The bench-driven
+// budget is 100ms at 5k records (was 500ms at 1k before the fix);
+// if this test fails the most likely cause is a regression that
+// re-introduces the full-archive load on the GET path. See
+// docs/COMMON_BUGS.md §4.x for the bug class.
 func TestHandleBrowseResponseUnderThreshold(t *testing.T) {
 	if testing.Short() {
 		t.Skip("response-time test: run via `go test ./internal/appshell/...` without -short")
 	}
 	app := newStressApp(t)
 
-	const recordCount = 1000
+	const recordCount = 5000
 	for i := 0; i < recordCount; i++ {
 		_, err := app.soldiers.Create(models.Soldier{
 			DisplayID: fmt.Sprintf("BRT-%04d", i),
@@ -51,7 +49,10 @@ func TestHandleBrowseResponseUnderThreshold(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	const threshold = 500 * time.Millisecond
+	// Issue #234: tightened from 500ms after the lazy-load fix
+	// dropped listAllSoldiers() from the /browse GET. Bench
+	// numbers (pre-fix vs post-fix at 5k records): 261ms vs 36ms.
+	const threshold = 100 * time.Millisecond
 	start := time.Now()
 	resp, err = http.Get(server.URL + "/browse")
 	elapsed := time.Since(start)
