@@ -2831,12 +2831,29 @@
     if (busy) {
       el.setAttribute("aria-busy", "true");
       if (el instanceof HTMLButtonElement) {
+        // data-busy-label: opt-in label swap while busy. Captures
+        // the original textContent so the finally block can restore
+        // it. The convention is opt-in per form (the initial-setup
+        // form opts in; forms that don't care don't) so the global
+        // helper stays a no-op for buttons without the attribute.
+        const busyLabel = el.getAttribute("data-busy-label");
+        if (busyLabel && !el.dataset.idleLabel) {
+          el.dataset.idleLabel = el.textContent || "";
+        }
+        if (busyLabel) {
+          el.textContent = busyLabel;
+        }
         el.disabled = true;
       }
       return;
     }
     el.removeAttribute("aria-busy");
     if (el instanceof HTMLButtonElement) {
+      // Restore the original label captured in the busy branch.
+      if (el.dataset.idleLabel) {
+        el.textContent = el.dataset.idleLabel;
+        delete el.dataset.idleLabel;
+      }
       el.disabled = false;
     }
   }

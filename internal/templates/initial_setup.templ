@@ -23,7 +23,7 @@ templ InitialSetupView(form viewmodel.InitialSetupForm) {
 						{ form.ErrorMessage }
 					</div>
 				}
-				<form method="post" action="/setup" class="responsive-two-col grid gap-4">
+				<form method="post" action="/setup" data-dixie-submit class="responsive-two-col grid gap-4">
 					<div>
 						<label class="mb-1 block text-sm text-slate-500" for="setup-first_name">First name</label>
 						<input type="text" name="first_name" value={ form.FirstName } class="field-input" autocomplete="given-name" id="setup-first_name"/>
@@ -46,7 +46,7 @@ templ InitialSetupView(form viewmodel.InitialSetupForm) {
 						</div>
 					}
 					<div class="responsive-span-2">
-						@components.Button("Save Identity", components.ButtonPrimary, "", templ.Attributes{"type": "submit"})
+						@components.Button("Save Identity", components.ButtonPrimary, "", templ.Attributes{"type": "submit", "data-busy-label": "Saving…"})
 					</div>
 				</form>
 			</div>
