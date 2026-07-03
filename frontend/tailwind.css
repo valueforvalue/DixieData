@@ -68,18 +68,26 @@ html { scrollbar-gutter: stable; }
     background: rgba(246, 241, 228, 0.72);
     padding: 1rem 1.25rem;
   }
+  /* Field input — colors via token @apply so a future token
+     change in tailwind.config.js flows through (issue #291
+     Phase 2 field-input). The bg rgba(245, 242, 236, 0.96) is
+     NOT an exact match for any ADR-0003 token (parchment is
+     rgba(246, 241, 228, 0.98) — hex differs by ~10 + alpha 0.02)
+     so the bg stays literal; the visual diff is small but
+     nonzero and the issue body mandates opportunistic-only
+     refactors for Phase 2. */
   .field-input {
     width: 100%;
     background: rgba(245, 242, 236, 0.96);
-    border: 1px solid rgba(141, 116, 64, 0.82);
+    @apply border-sepia-500/[0.82];
     border-radius: 0.8rem;
     padding: 0.65rem 0.9rem;
     font-size: 0.95rem;
-    color: #22303d;
+    @apply text-ink;
   }
   .field-input:focus {
     outline: none;
-    border-color: #a88a46;
+    @apply border-gold;
     box-shadow: 0 0 0 3px rgba(168, 138, 70, 0.2);
   }
   .primary-button,
