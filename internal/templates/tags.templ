@@ -53,7 +53,7 @@ templ TagsManagementPage(tags []records.Tag, counts viewmodel.ArchiveCounts) {
 						</thead>
 						<tbody>
 							for _, t := range tags {
-								@tagsRow(t)
+								@tagsRow(t, tags)
 							}
 						</tbody>
 					</table>
@@ -66,7 +66,17 @@ templ TagsManagementPage(tags []records.Tag, counts viewmodel.ArchiveCounts) {
 // tagsRow renders one tag row with the inline rename + merge
 // form and a Delete button. All three forms target the same /tags
 // endpoint family registered in internal/appshell/routes.go.
-templ tagsRow(t records.Tag) {
+//
+// The merge picker is a <select> populated with every other tag in
+// the archive (excluding the source row's id; a tag cannot merge
+// into itself) per issue #282. Each option reads
+// `{id} — {name} ({N} members)`, sorted by name to match the page's
+// table sort. The default option is an empty placeholder so submitting
+// without a survivor selection is a no-op — the existing handler's
+// validation (`survivor_id is required`) handles that case, no JS
+// required. allTags is the full archive list (the source iteration
+// in TagsManagementPage already provides it).
+templ tagsRow(t records.Tag, allTags []records.Tag) {
 	<tr id={ fmt.Sprintf("tag-row-%d", t.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70">
 		<td class="px-3 py-2 align-top font-semibold text-slate-900">
 			<a href={ templ.SafeURL(routebuilder.TagDetail(t.ID)) } class="underline-offset-2 hover:underline">
@@ -83,7 +93,14 @@ templ tagsRow(t records.Tag) {
 					@components.Button("Rename", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 				</form>
 				<form action={ templ.SafeURL(routebuilder.TagMerge(t.ID)) } method="post" data-dixie-submit="true" class="flex items-center gap-1">
-					<input type="number" name="survivor_id" placeholder="merge into id" class="w-28 rounded border border-slate-300 px-2 py-1 text-sm" aria-label={ fmt.Sprintf("Merge tag %s into tag id", t.Name) }/>
+					<select name="survivor_id" class="w-64 rounded border border-slate-300 px-2 py-1 text-sm" aria-label={ fmt.Sprintf("Merge tag %s into which tag", t.Name) }>
+						<option value="" disabled selected>Pick a survivor tag…</option>
+						for _, other := range allTags {
+							if other.ID != t.ID {
+								<option value={ fmt.Sprintf("%d", other.ID) }>{ fmt.Sprintf("%d \u2014 %s (%d members)", other.ID, other.Name, other.MemberCount) }</option>
+							}
+						}
+					</select>
 					@components.Button("Merge", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
 				</form>
 				<form action={ templ.SafeURL(routebuilder.TagDelete(t.ID)) } method="post" data-dixie-submit="true" data-confirm={ fmt.Sprintf("Delete tag %q and detach it from every Person Record?", t.Name) }>
