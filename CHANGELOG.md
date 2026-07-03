@@ -98,6 +98,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestArchiveInventoryOnEmptyDB` (Go unit) asserts the same
   field contracts at the package level.
 
+### Changed
+
+- **`scripts/bump-version.ps1` gains `-BumpSchema`, `-BumpUpdateFlow`,
+  `-BumpRelease` switches** (issue #294, follow-up). The script
+  now distinguishes the three version counters that
+  `internal/versioninfo/versioninfo.go` carries (issue #266):
+  - `-BumpSchema` (default; today's behavior) bumps
+    `CurrentSchemaVersion`; still requires a paired
+    `docs/migrations/v{N+1}.md`.
+  - `-BumpUpdateFlow` bumps `CurrentUpdateFlowVersion`,
+    resets `CurrentAppVersionInt` to 0, and archives the
+    previous U sequence's last N to
+    `.release-state/last-n-for-u{prev_U}.json` so a future
+    U transition can be reviewed. (`.release-state/` is
+    gitignored — see `.gitignore`.)
+  - `-BumpRelease` bumps `CurrentAppVersionInt` (N) only;
+    use for bug-fix-only releases.
+  The three switches are mutually exclusive; passing more
+  than one throws. `-VerifyOnly` now checks all three counters
+  for drift (U bump requires the sidecar JSON; schema bump
+  requires the migration note; CHANGELOG + docs reference the
+  new `v{MAJOR}.{U}.{N}` shape).
+  Tested in scratch repo against all four paths
+  (`-BumpRelease`, `-BumpUpdateFlow`, `-BumpSchema`, mutual
+  exclusion).
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
