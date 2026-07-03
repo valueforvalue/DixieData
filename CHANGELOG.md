@@ -138,6 +138,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   helper contract (callers concatenate without re-prefixing in
   some places, so the prefix is preserved here for consistency).
 
+### Documentation
+
+- **`docs/RELEASING.md` rewritten for the three-counter model**
+  (issue #295). §Versioning rules now documents
+  `v{MAJOR}.{U}.{N}` with explicit semantics for each counter
+  (U bump = reinstall, N bump = bug-fix-only, schema bump =
+  migration). Release workflow step 1 picks the right bump;
+  the four-step bump section is replaced with a one-switch
+  invocation per counter. New "See also" block cross-
+  references ADR 0008 + ADR 0007 + the versioninfo.go source.
+- **`docs/adr/0008-promotion-protocol.md`** §Open questions Q1
+  updated to mark the v{MAJOR}.{U}.{N} split as shipped
+  (commit 5a297a6) instead of "future". The "Alt 2"
+  continuous-promotion analysis reframes the split as the
+  mid-ground that path (b) cadence-driven promotion builds on.
+  References list adds #293/#294/#295/#296 cross-links.
+- **`CONTEXT.md` §Laws** new sub-section "Release counter N ≠
+  schema version" documents the three-counter contract
+  + the `bump-version.ps1` switch model.
+- **`docs/user-manual.md`**, **`docs/implementation-and-features.md`**
+  current release line pinned to `v1.1.59` with a one-line
+  issue #266 footnote. **`docs/ai-handoff.md`** version +
+  schema version refreshed in the project snapshot block.
+- `bump-version.ps1 -VerifyOnly` is now green against the
+  new doc surface.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
