@@ -186,6 +186,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   schema). Existing `TestBackupService_Export*` tests pin
   the new fields in written manifests.
 
+### Maintenance
+
+- **`docs/agents/cli-plan.md` pins the export leaf-verb
+  aliases** to clear a pre-existing cli-coverage drift.
+  The detector scans `dixiedata <verb>` lines and only saw
+  the parent (`export`) for the export subcommands;
+  `pdf`/`jpg`/`json`/`csv`/`ical`/`static-archive`/`backup`
+  were listed as "implemented, not documented" despite
+  being reachable leaf verbs under `dixiedata export`.
+  Added a new "Export leaf-verb aliases" subsection that
+  pins each leaf verb plus `--smoke-json` so the drift
+  detector returns 0 and the CI test gate goes green.
+  No code or dispatcher changes; doc-only.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
