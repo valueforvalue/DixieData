@@ -186,6 +186,66 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   schema). Existing `TestBackupService_Export*` tests pin
   the new fields in written manifests.
 
+- **Three-branch model introduced (ADR 0009)**:
+  `dev` (integration), `stable` (released code, NEW),
+  `main` (frozen legacy production at `31a8901`).
+  - ADR 0009 is the source of truth: documents the rename
+    rationale, the symmetric branch protection applied to
+    both `main` and `stable`, the promote flow (PR via
+    GitHub UI), and the conflict policy (merge dev into
+    stable when divergence arises).
+  - ADR 0008 (existing) gets a one-line cross-reference to
+    ADR 0009 in §Implementation notes; its gate chain is
+    unchanged.
+  - `Makefile` ships four new targets:
+    - `make promote-dry-run` — runs the gate chain (test,
+      tpl, css, bump-verify, debug, freshness, archive)
+      with no push, no PR; prints the dev-vs-stable
+      divergence at the end.
+    - `make promote` — runs the gate chain (via
+      `promote-dry-run`), aborts on divergence, then calls
+      `scripts/promote-open-pr.sh` to open the PR
+      `dev → stable` via `gh pr create` with the gate-chain
+      output + commit log + diff stat embedded in the body.
+    - `make promote-prep` — diagnostic; fetches origin,
+      prints the divergence, instructs the operator on
+      conflict resolution per ADR 0009 §"Conflict policy".
+    - `make promote-confirm` — post-merge sanity; checks
+      that `stable` HEAD matches the dev merge SHA before
+      the operator runs `release-github.ps1`.
+  - `scripts/promote-open-pr.sh` (NEW) implements the PR
+    opening; the heredoc + markdown body is in a file to
+    avoid Make escaping headaches.
+  - `.github/BRANCH_PROTECTION.md` (NEW) documents the
+    standard protection rules applied to BOTH `main` and
+    `stable` (no direct push, no force-push, no deletion,
+    require CI green: audit + build + test). Apply via the
+    GitHub UI per the steps in the doc; the `gh api`
+    verification commands are listed.
+  - `.github/workflows/test.yml`, `build.yml`, `audit.yml`
+    — `branches: [dev, main]` → `branches: [dev, stable]`.
+    The "stern warning if PR targets main without in-place
+    safety label" check (test.yml) moves to "if PR targets
+    stable."
+  - `.github/PULL_REQUEST_TEMPLATE.md` — "every PR to `dev`
+    or `main`" → "every PR to `dev` or `stable`."
+  - `scripts/release-github.ps1` — `git push origin main`
+    (hard-coded) → `git push origin HEAD`. The script no
+    longer assumes the working branch; the operator runs
+    it from `stable` after the promotion PR is merged.
+  - `docs/RELEASING.md` §6 — release workflow now spells out
+    the five-step promote chain (dry-run → promote PR →
+    merge in UI → promote-confirm → release-github) instead
+    of the old "push to main" flow.
+  - `AGENTS.md` §Branch policy — rewritten to document the
+    three-branch model + symmetric branch protection + the
+    promote flow.
+  - `CONTEXT.md` §Laws — new law entry: "Released code lands
+    on `stable`; `main` is frozen at `31a8901`."
+  - GitHub branch protection rules on `main` and `stable`
+    (apply via the UI per `.github/BRANCH_PROTECTION.md`):
+    a one-time setup step documented in the PR body.
+
 ### Maintenance
 
 - **`docs/agents/cli-plan.md` pins the export leaf-verb

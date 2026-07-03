@@ -1,9 +1,9 @@
 ## In-place update safety
 
-> **Required.** Every PR to `dev` or `main` carries one of:
+> **Required.** Every PR to `dev` or `stable` carries one of:
 > - [ ] `safe-for-in-place` — reviewed against the 4 rules in
 >       [`docs/agents/build-protocol.md`](docs/agents/build-protocol.md) §5;
->       safe for in-place update on `main`.
+>       safe for in-place update on `stable`.
 > - [ ] `unsafe-for-in-place` — intentional destructive change;
 >       ships via full re-install + restore-point only. **Explain
 >       WHY the change is destructive** in the body below.

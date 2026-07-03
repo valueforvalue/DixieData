@@ -88,13 +88,35 @@ make archive
 
 Produces `release/DixieData-release-v1.1.55.zip` containing the contents of `build\bin\` (`DixieData.exe`, `google-oauth-defaults.json`, `pdfium.dll`, `pdfium.version`).
 
-### 6. Tag and publish (draft)
+### 6. Promote dev → stable + tag and publish (draft)
+
+Per ADR 0009, releases ship from `stable` (the released-code
+branch), not `main`. The chain is:
 
 ```bash
+# 6a. Dry-run the gate chain (no push, no PR)
+make promote-dry-run
+
+# 6b. Open the promotion PR dev → stable
+make promote
+
+# 6c. Review + merge the PR via the GitHub UI
+#     (operator is the merge authority per ADR 0009)
+
+# 6d. Post-merge sanity: stable HEAD matches the merge SHA
+make promote-confirm
+
+# 6e. Tag + push + draft gh release
 make release-github
 ```
 
-This calls `scripts/release-github.ps1`, which enforces five safety gates before any mutation:
+`make promote` calls `scripts/promote-open-pr.sh`, which
+embeds the gate-chain output + commit log + diff stat in the
+PR body. The PR title is `promote: dev → stable (v{VERSION})`.
+
+After the PR is merged, `make release-github` calls
+`scripts/release-github.ps1`, which enforces five safety gates
+before any mutation:
 
 1. Working tree is clean.
 2. `internal/versioninfo/versioninfo.go` is committed (matches HEAD).
@@ -105,7 +127,8 @@ This calls `scripts/release-github.ps1`, which enforces five safety gates before
 On success:
 
 - `git tag -a v{VERSION} -m "Release v{VERSION}"`
-- `git push origin main`
+- `git push origin HEAD` (the current branch, which is `stable`
+  after the promotion PR has been merged)
 - `git push origin v{VERSION}`
 - `gh release create v{VERSION} release/DixieData-release-v{VERSION}.zip --draft --title "DixieData v{VERSION}" --generate-notes`
 
