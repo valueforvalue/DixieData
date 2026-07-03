@@ -212,6 +212,25 @@ These are not style preferences. Each one was earned by a real bug that
 crashed the app, lost data, or confused a researcher. Treat any code that
 violates a law as a bug that must be fixed before the change can ship.
 
+### Released code lands on `stable`; `main` is frozen at `31a8901`
+
+The three-branch model (per ADR 0009) is a law, not a convention:
+
+- **`dev`** — integration. Direct commits are the default flow
+  for agents and humans (per AGENTS.md §Branch policy).
+- **`stable`** — released-code home. The promotion chain
+  documented in ADR 0008 lands here. Every release that reaches
+  users is tagged on `stable`.
+- **`main`** — frozen legacy production record. Sits at commit
+  `31a8901` (the version actively in production on 2026-07-03)
+  and accepts no new commits, ever. Preserved as the audit
+  anchor for "what users had on 2026-07-03."
+
+Treat any code, script, or CI workflow that pushes to `main` as
+a bug. The GitHub default branch stays on `main` until the first
+release has shipped from `stable` and proven itself; the flip
+itself is a one-line repo-settings change tracked separately.
+
 ### Every native dialog call is guarded against re-entry
 
 Wails v2.12.0 on Windows runs every native `SaveFileDialog` and

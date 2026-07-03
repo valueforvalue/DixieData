@@ -237,6 +237,11 @@ the steps in code (executable) rather than prose.
 
 ## Implementation notes
 
+> **As of 2026-07-03**, the destination branch is `stable`,
+> not `main`. See [ADR 0009 — Stable branch as released-code
+> home](0009-stable-branch-promotion.md). The gate chain
+> below is unchanged; only the destination name changes.
+
 ### Existing infra this ADR composes with
 
 - `Makefile` — `make help` already lists the related targets;

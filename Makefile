@@ -463,3 +463,92 @@ release-pipeline: ## Run the ordered release chain; halt on first failure
 	if [ $$failed -ne 0 ]; then echo ""; echo "release-pipeline: ABORTED"; exit 1; fi
 	@echo ""
 	@echo "release-pipeline: OK"
+
+# --- Promotion chain: dev → stable (ADR 0009 §"The promote flow") ---
+#
+# Per ADR 0009, the promote flow is PR via GitHub UI:
+#   1. make promote-dry-run  (gate chain, no push, no PR)
+#   2. make promote          (gate chain + open PR dev → stable)
+#   3. operator reviews PR + merges via GitHub UI
+#   4. make promote-confirm  (post-merge sanity: stable HEAD == merge SHA)
+#   5. operator runs scripts/release-github.ps1
+#
+# The gate chain here is the same as release-pipeline EXCEPT
+# release-github itself — that's the operator's last step,
+# after the PR is merged and the operator reviews the diff.
+# The promote-prep target handles the case where dev has
+# commits stable doesn't have (see ADR 0009 §"Conflict policy").
+
+STABLE_BRANCH ?= stable
+
+PROMOTE_GATES := test tpl css bump-verify debug freshness archive
+promote-dry-run: ## Run the promotion gate chain (no push, no PR); per ADR 0009
+	@echo "=== promote-dry-run: gates 1-$$(echo "$(PROMOTE_GATES)" | wc -w) ==="
+	@failed=0; \
+	for gate in $(PROMOTE_GATES); do \
+	  if [ "$$gate" = "bump-verify" ]; then \
+	    echo ""; echo "--- gate: bump-verify ---"; \
+	    if ! $(PWSH) -NoLogo -NoProfile -File scripts/bump-version.ps1 -VerifyOnly; then \
+	      echo "FAIL at gate: $$gate"; failed=1; break; \
+	    fi; \
+	    continue; \
+	  fi; \
+	  echo ""; echo "--- gate: $$gate ---"; \
+	  if ! $(MAKE) --no-print-directory $$gate; then \
+	    echo "FAIL at gate: $$gate"; failed=1; break; \
+	  fi; \
+	done; \
+	if [ $$failed -ne 0 ]; then echo ""; echo "promote-dry-run: ABORTED"; exit 1; fi
+	@echo ""
+	@echo "promote-dry-run: OK"
+	@echo ""
+	@echo "=== pre-flight: dev vs $(STABLE_BRANCH) divergence ==="
+	@git fetch origin $(STABLE_BRANCH) dev 2>/dev/null || true
+	@echo "Commits on dev not on $(STABLE_BRANCH):"
+	@git log origin/$(STABLE_BRANCH)..origin/dev --oneline 2>/dev/null | head -50 || echo "  (none; dev and $(STABLE_BRANCH) are in sync)"
+	@echo ""
+	@echo "promote-dry-run: gates passed; safe to run 'make promote'"
+
+promote: ## Run gate chain + open PR dev → stable via gh CLI; per ADR 0009
+	@echo "=== promote: gates 1-$$(echo "$(PROMOTE_GATES)" | wc -w) ==="
+	@$(MAKE) --no-print-directory promote-dry-run
+	@echo ""
+	@echo "=== pre-flight: divergence check ==="
+	@git fetch origin $(STABLE_BRANCH) dev 2>/dev/null || true
+	@if ! git diff --quiet origin/$(STABLE_BRANCH)..origin/dev 2>/dev/null; then \
+	  echo ""; \
+	  echo "promote: ABORTED — dev has commits $(STABLE_BRANCH) doesn't have."; \
+	  echo "Run 'make promote-prep' to sync $(STABLE_BRANCH) with dev first."; \
+	  exit 1; \
+	fi
+	@echo "promote: dev and $(STABLE_BRANCH) are in sync."
+	@echo ""
+	@echo "=== opening PR dev → $(STABLE_BRANCH) ==="
+	@bash scripts/promote-open-pr.sh $(STABLE_BRANCH)
+
+promote-prep: ## Sync $(STABLE_BRANCH) with dev for conflict-free promotion; per ADR 0009
+	@echo "=== promote-prep: sync $(STABLE_BRANCH) with dev ==="
+	@git fetch origin $(STABLE_BRANCH) dev
+	@echo ""
+	@echo "Commits on dev not on $(STABLE_BRANCH):"
+	@git log origin/$(STABLE_BRANCH)..origin/dev --oneline 2>/dev/null | head -50 || echo "  (none; dev and $(STABLE_BRANCH) are in sync)"
+	@echo ""
+	@echo "Commits on $(STABLE_BRANCH) not on dev:"
+	@git log origin/dev..origin/$(STABLE_BRANCH) --oneline 2>/dev/null | head -10 || echo "  (none)"
+	@echo ""
+	@echo "promote-prep: if the divergence is non-conflicting, run:"
+	@echo "  git checkout $(STABLE_BRANCH) && git merge --no-ff origin/dev"
+	@echo "If the divergence is conflicting, resolve conflicts locally per ADR 0009 §\"Conflict policy\","
+	@echo "commit the resolution to $(STABLE_BRANCH) via a hot-fix PR, then re-run 'make promote'."
+
+promote-confirm: ## Post-merge sanity: stable HEAD matches dev merge SHA
+	@echo "=== promote-confirm: post-merge sanity ==="
+	@git fetch origin $(STABLE_BRANCH) dev
+	@echo ""
+	@if git diff --quiet origin/$(STABLE_BRANCH)..origin/dev 2>/dev/null; then \
+	  echo "promote-confirm: $(STABLE_BRANCH) and dev are in sync. Safe to run scripts/release-github.ps1."; \
+	else \
+	  echo "promote-confirm: $(STABLE_BRANCH) and dev STILL differ. Investigate before tagging."; \
+	  git log origin/$(STABLE_BRANCH)..origin/dev --oneline 2>/dev/null | head -10; \
+	  exit 1; \
+	fi
