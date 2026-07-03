@@ -754,7 +754,7 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 		Scanned <strong>{ fmt.Sprintf("%d", result.ScannedRecords) }</strong> person record(s) in <strong>{ result.Mode }</strong> mode and found <strong>{ fmt.Sprintf("%d", result.IssueCount) }</strong> issue(s).
 	</div>
 	if len(result.Groups) == 0 {
-		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-[rgba(242,252,244,0.95)] px-4 py-3 text-sm text-[#29522d]">No obvious issues were found in this run.</div>
+		<div class="rounded-2xl border border-[rgba(91,143,101,0.25)] bg-success-green-bg/[0.95] px-4 py-3 text-sm text-success-green">No obvious issues were found in this run.</div>
 	} else {
 		<form action={ templ.SafeURL(routebuilder.SettingsQualityApply()) } data-dixie-submit="true" class="space-y-3">
 			for _, group := range result.Groups {
@@ -798,9 +798,9 @@ templ SettingsQualityScanApplyResult(result viewmodel.DataQualityApplyResult) {
 func updateStatusCardClasses(kind string) string {
 	switch strings.ToLower(strings.TrimSpace(kind)) {
 	case "success":
-		return "border-[rgba(91,143,101,0.25)] bg-[rgba(242,252,244,0.95)] text-[#29522d]"
+		return "border-[rgba(91,143,101,0.25)] bg-success-green-bg/[0.95] text-success-green"
 	case "failed", "error":
-		return "border-[rgba(176,70,70,0.25)] bg-[rgba(255,245,245,0.95)] text-[#7a2d2d]"
+		return "border-[rgba(176,70,70,0.25)] bg-error-red-bg/[0.95] text-error-red"
 	default:
 		return "border-sepia-500/[0.35] bg-white/80 text-slate-700"
 	}
