@@ -6,9 +6,9 @@ name: test
 
 on:
   push:
-    branches: [dev, main]
+    branches: [dev, stable]
   pull_request:
-    branches: [dev, main]
+    branches: [dev, stable]
 
 permissions:
   contents: read
@@ -130,12 +130,14 @@ jobs:
           Write-Host "schema-touching: schema bumped from $currentBase to $currentHead, OK"
 
       # In-place update safety gate (build-protocol.md §5).
-      # PRs targeting main without one of the safety labels
+      # PRs targeting stable without one of the safety labels
       # get a STERN WARNING comment. The merge is NOT blocked
       # (per the user-decision in this PR); the warning is
-      # loud and visible to the reviewer.
+      # loud and visible to the reviewer. Per ADR 0009, the
+      # target is `stable` (the released-code branch), not
+      # `main` (the frozen legacy branch).
       - name: In-place update safety label check
-        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'stable'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -152,16 +154,16 @@ jobs:
           if (-not $has) {
             Write-Host ""
             Write-Host "============================================================" -ForegroundColor Yellow
-            Write-Host "  STERN WARNING: PR #$prNumber to main has NO in-place safety label." -ForegroundColor Yellow
+            Write-Host "  STERN WARNING: PR #$prNumber to stable has NO in-place safety label." -ForegroundColor Yellow
             Write-Host "============================================================" -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "Every PR to main must carry one of:" -ForegroundColor Yellow
+            Write-Host "Every PR to stable must carry one of:" -ForegroundColor Yellow
             Write-Host "  - safe-for-in-place: reviewed against the 4 rules; safe to ship via in-place update"
             Write-Host "  - unsafe-for-in-place: intentional destructive change; explain WHY in the PR body"
             Write-Host ""
             Write-Host "This is a WARNING. The merge is NOT blocked." -ForegroundColor Yellow
             Write-Host "See docs/agents/build-protocol.md §5 for the protocol." -ForegroundColor Yellow
-            gh pr comment $prNumber --body "**STERN WARNING**: This PR targets \`main\` but has no in-place safety label. Every PR to main must carry \`safe-for-in-place\` (reviewed against the 4 rules in [build-protocol.md §5](docs/agents/build-protocol.md#5-update-in-place-safety)) or \`unsafe-for-in-place\` (intentional destructive change with explanation). The merge is NOT blocked, but the reviewer should confirm one of the labels is applied before merge."
+            gh pr comment $prNumber --body "**STERN WARNING**: This PR targets \`stable\` but has no in-place safety label. Every PR to stable must carry \`safe-for-in-place\` (reviewed against the 4 rules in [build-protocol.md §5](docs/agents/build-protocol.md#5-update-in-place-safety)) or \`unsafe-for-in-place\` (intentional destructive change with explanation). The merge is NOT blocked, but the reviewer should confirm one of the labels is applied before merge."
           } else {
             Write-Host "in-place-safety: label applied on PR #$prNumber, OK"
           }

@@ -10,7 +10,7 @@
       4. Tag v{VERSION} does not exist locally or on origin
       5. gh CLI is authenticated
 
-    On success: tag + push main + push tag + gh release create --draft.
+    On success: tag + push origin + push tag + gh release create --draft.
     Draft means the release is created but NOT published. Review in the
     GitHub UI, then run `gh release edit v{VERSION} --draft=false` to publish.
 
@@ -96,15 +96,21 @@ if ($confirm -ne "yes") {
 & git tag -a $tag -m "Release $tag"
 if ($LASTEXITCODE -ne 0) { throw "git tag failed" }
 
-& git push origin main
+# Push the current branch (which is `stable` after `make promote`
+# has been merged via the GitHub UI per ADR 0009). We do NOT
+# hard-code `stable` here — the script is invoked after the
+# operator has merged the promotion PR and is on the `stable`
+# branch. Hard-coding the branch name would break if the
+# script is ever run from a different working branch.
+& git push origin HEAD
 if ($LASTEXITCODE -ne 0) {
     & git tag -d $tag | Out-Null
-    throw "git push origin main failed — local tag $tag rolled back"
+    throw "git push origin HEAD failed (current branch: $(& git rev-parse --abbrev-ref HEAD)) — local tag $tag rolled back"
 }
 
 & git push origin $tag
 if ($LASTEXITCODE -ne 0) {
-    throw "git push origin $tag failed. main was already pushed; tag is now on origin — investigate before retrying."
+    throw "git push origin $tag failed. HEAD was already pushed; tag is now on origin — investigate before retrying."
 }
 
 # Draft release
