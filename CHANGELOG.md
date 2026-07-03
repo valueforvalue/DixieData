@@ -188,7 +188,7 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - **Three-branch model introduced (ADR 0009)**:
   `dev` (integration), `stable` (released code, NEW),
-  `main` (frozen legacy production at `31a8901`).
+  `main` (frozen legacy production at `56e31f0`).
   - ADR 0009 is the source of truth: documents the rename
     rationale, the symmetric branch protection applied to
     both `main` and `stable`, the promote flow (PR via
@@ -241,7 +241,7 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     three-branch model + symmetric branch protection + the
     promote flow.
   - `CONTEXT.md` §Laws — new law entry: "Released code lands
-    on `stable`; `main` is frozen at `31a8901`."
+    on `stable`; `main` is frozen at `56e31f0`."
   - GitHub branch protection rules on `main` and `stable`
     (apply via the UI per `.github/BRANCH_PROTECTION.md`):
     a one-time setup step documented in the PR body.

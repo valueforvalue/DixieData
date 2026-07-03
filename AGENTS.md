@@ -88,11 +88,11 @@ branches with distinct roles:
   for `make promote` (per ADR 0008). Future releases tag
   and ship from here.
 - **`main`** — frozen legacy production record. Sits at
-  commit `31a8901` (the version actively in production on
-  2026-07-03) and accepts no new commits, ever. Preserved
-  as the audit anchor for "what users had on 2026-07-03"
-  so the production state is recoverable even after
-  multiple releases have shipped from `stable`.
+  HEAD `56e31f0` at the moment this ADR was written (2026-07-03)
+  and accepts no new commits, ever. Preserved as the audit
+  anchor for "what users had on 2026-07-03" so the
+  production state is recoverable even after multiple
+  releases have shipped from `stable`.
 
 ### Branch protection (both `main` and `stable`)
 
