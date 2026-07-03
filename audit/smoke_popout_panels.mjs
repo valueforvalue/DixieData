@@ -227,6 +227,7 @@ try {
             panelTop: pr.top,
             panelBottom: pr.bottom,
             transform: cs.transform,
+            computedPosition: cs.position,
           };
         });
         console.log(`  >> site B matched: ${JSON.stringify({ tag: geom?.tag, id: geom?.id, panelLeft: geom?.panelLeft, panelRight: geom?.panelRight, panelWidth: geom?.panelWidth })}`);
@@ -236,6 +237,17 @@ try {
           record(`B-no-right-clipping@${viewportWidth}`, geom.panelRight <= viewportWidth + 0.5, { panelRight: geom.panelRight });
           record(`B-panel-has-size@${viewportWidth}`, geom.panelWidth > 0, { panelWidth: geom.panelWidth });
           record(`B-no-top-clipping@${viewportWidth}`, geom.panelTop >= 0, { panelTop: geom.panelTop });
+          // Cascade-applied regression net (issue #290). Direct
+          // navigation to /anniversary/<month>/<day> previously
+          // shipped without the Layout shell, so app.css never
+          // loaded and the `absolute right-0 ... w-[min(...)]`
+          // classes were inert (computed position: static,
+          // panel-width: parent's content width). Now that
+          // /anniversary/<month>/<day> wraps in Layout for
+          // non-HTMX requests, the computed position must be
+          // "absolute" — if a future refactor removes the
+          // wrapper again, this assertion fails.
+          record(`B-cascade-applied@${viewportWidth}`, geom.computedPosition === "absolute", { computedPosition: geom.computedPosition });
         }
       } else {
         record(`B-day-action-summary-present@${viewportWidth}`, false, { reason: "summary not found at /anniversary/2/28 — check that handleAnniversary renders the empty-day view by default" });
