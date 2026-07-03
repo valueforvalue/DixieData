@@ -80,54 +80,70 @@ html { scrollbar-gutter: stable; }
     font-size: 0.82rem;
     font-weight: 600;
   }
+  /* v2 button primitives — colors via token @apply so a
+     future token change in tailwind.config.js flows through
+     automatically (issue #291, Phase 2). The translucent
+     rgba() values for the secondary/pill-link bg + border
+     and the cream (#fff8e7) danger-button text stay literal:
+     no matching token yet (Phase 3 or separate issue).
+     The primary-button hover gradient stops (#d1b676, #b08f45)
+     also stay literal — they're a separate gradient set the
+     palette absorption did not propose tokens for. */
   .primary-button {
-    background: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
-    color: #1f2b38;
-    border: 1px solid #8d7440;
+    background-image: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
+    @apply text-ink-deep border-sepia-500;
   }
   .primary-button:hover { background: linear-gradient(180deg, #d1b676 0%, #b08f45 100%); }
   .secondary-button,
   .pill-link {
     background: rgba(246, 241, 228, 0.92);
-    color: #22303d;
+    @apply text-ink;
     border: 1px solid rgba(141, 116, 64, 0.85);
   }
   .secondary-button:hover,
   .pill-link:hover { background: rgba(255, 247, 231, 0.98); }
   .danger-button {
-    background: #6f2c26;
+    @apply bg-review-red border-review-red-deep;
     color: #fff8e7;
-    border: 1px solid #54211d;
   }
-  .danger-button:hover { background: #54211d; }
+  .danger-button:hover { @apply bg-review-red-deep; }
   .ghost-link {
-    color: #324253;
+    @apply text-ink-mid;
     font-size: 0.9rem;
     font-weight: 500;
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
   }
-  .ghost-link:hover { color: #1f2b38; }
+  .ghost-link:hover { @apply text-ink-deep; }
 
   /* --- v2 button states (issue #251) --- */
   /* :focus-visible uses the keyboard-only focus ring so mouse clicks
-     don't show the ring; matches Tailwind's focus-visible: utility. */
+     don't show the ring; matches Tailwind's focus-visible: utility.
+     Outline colors via @apply so a future token change flows
+     through (issue #291 Phase 2). Tailwind does not emit a
+     `outline-{color}` utility for arbitrary colors, so the
+     `outline-2` and `outline-offset-2` set the width/offset
+     separately and the @apply sets the color. */
   .primary-button:focus-visible {
-    outline: 2px solid #eddca6; /* gold-glow */
+    outline: 2px solid;
     outline-offset: 2px;
+    @apply outline-gold-glow;
   }
   .secondary-button:focus-visible,
   .pill-link:focus-visible {
-    outline: 2px solid #a88a46; /* gold */
+    outline: 2px solid;
     outline-offset: 2px;
+    @apply outline-gold;
   }
   .danger-button:focus-visible {
-    outline: 2px solid #6f2c26; /* review-red */
+    outline: 2px solid;
     outline-offset: 2px;
+    @apply outline-review-red;
   }
   .ghost-link:focus-visible {
-    outline: 2px solid #324253; /* ink-mid */
+    outline: 2px solid;
     outline-offset: 2px;
+    @apply outline-ink-mid;
   }
 
   /* :active — pressed state. Subtle inset shadow + slight scale-down
