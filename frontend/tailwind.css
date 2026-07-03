@@ -25,12 +25,26 @@ html { scrollbar-gutter: stable; }
   :root {
     color-scheme: light;
   }
+  /* Background gradient stops — issue #291 Phase 2. The body
+     bg uses three sepia tones via CSS custom properties on
+     :root so a future palette shift in tailwind.config.js
+     `theme.extend.colors.bg-sepia-top/mid/bottom` is a single
+     :root edit. CSS gradients can't reference Tailwind theme
+     tokens via @apply (no class generation for unused tokens
+     + gradient stops live inside a function call), so the
+     CSS-var indirection keeps the var-to-token mapping
+     readable + maintainable in one place. */
+  :root {
+    --bg-sepia-top: #d7d2c9;
+    --bg-sepia-mid: #c9c2b5;
+    --bg-sepia-bottom: #b9b1a3;
+  }
   body {
     background:
       radial-gradient(circle at top left, rgba(255,255,255,0.7), transparent 26%),
       radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 18%),
       repeating-linear-gradient(135deg, rgba(34,45,57,0.025) 0, rgba(34,45,57,0.025) 6px, transparent 6px, transparent 18px),
-      linear-gradient(180deg, #d7d2c9 0%, #c9c2b5 42%, #b9b1a3 100%);
+      linear-gradient(180deg, var(--bg-sepia-top) 0%, var(--bg-sepia-mid) 42%, var(--bg-sepia-bottom) 100%);
     color: #22303d;
     font-family: "Helvetica Neue", Arial, sans-serif;
   }
@@ -302,8 +316,7 @@ html { scrollbar-gutter: stable; }
   }
   .layout-mode-option[data-layout-mode-active="true"] {
     background: linear-gradient(180deg, #c5ab68 0%, #a5853f 100%);
-    color: #1f2b38;
-    border-color: #8d7440;
+    @apply text-ink-deep border-sepia-500;
   }
   .layout-mode-summary {
     display: flex;
