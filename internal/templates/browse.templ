@@ -20,7 +20,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 				<button type="button" data-history-back
 					data-fallback-href="/soldiers"
 					data-fallback-label="Back to Soldiers List"
-					class="inline-flex w-full items-center justify-center rounded-full border border-sepia-500/[0.85] bg-[rgba(246,241,228,0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					class="inline-flex w-full items-center justify-center rounded-full border border-sepia-500/[0.85] bg-parchment-soft/[0.92] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
 					← Back to Soldiers List
 				</button>
 			</div>
@@ -29,7 +29,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 					<h2 class="text-2xl gold font-bold">Browse Local Archive</h2>
 					<p class="mt-2 max-w-3xl text-sm text-slate-600">Browse-first paging for large archives with stable multi-select working sets, column controls, and archive-focused filters.</p>
 				</div>
-				<div class="rounded-2xl border border-sepia-500/[0.3] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600">
+				<div class="rounded-2xl border border-sepia-500/[0.3] bg-parchment-soft/[0.78] px-4 py-3 text-sm text-slate-600">
 					Default order: <strong>Display ID</strong>. Open any row to jump straight to the full Person Record page.
 				</div>
 			</div>
@@ -181,7 +181,7 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 
 templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseState, availableTags []viewmodel.TagOption) {
 	<div data-browse-results data-browse-total={ fmt.Sprintf("%d", state.Total) }>
-		<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sepia-500/[0.3] bg-[rgba(246,241,228,0.78)] px-4 py-3 text-sm text-slate-600">
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sepia-500/[0.3] bg-parchment-soft/[0.78] px-4 py-3 text-sm text-slate-600">
 			<div class="space-y-1">
 				<div>{ browseSummary(state) }</div>
 				if activeFilters := browseActiveFilters(state); len(activeFilters) > 0 {
@@ -197,7 +197,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 				<div>{ fmt.Sprintf("%d", state.Total) } record(s)</div>
 			}
 		</div>
-		<div id="browse-bulk-toolbar" class="mb-4 hidden rounded-2xl border border-sepia-500/[0.35] bg-[rgba(246,241,228,0.82)] px-4 py-3">
+		<div id="browse-bulk-toolbar" class="mb-4 hidden rounded-2xl border border-sepia-500/[0.35] bg-parchment-soft/[0.82] px-4 py-3">
 			<form action="/browse/bulk-tag" method="post" data-dixie-submit="true" data-reload-on-success="true" class="flex flex-wrap items-center gap-3 text-sm">
 				<input type="hidden" name="selected_ids" value="" data-browse-bulk-ids/>
 				<span class="text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">Bulk Tag</span>
@@ -217,7 +217,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 		} else {
 			<div class="md:hidden space-y-3">
 				for _, record := range records {
-					<div class="rounded-2xl border border-sepia-500/[0.24] bg-white/85 p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:bg-[rgba(246,241,228,0.55)]">
+					<div class="rounded-2xl border border-sepia-500/[0.24] bg-white/85 p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:bg-parchment-soft/[0.55]">
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
 								<a href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="block text-base font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(record) }</a>
@@ -247,7 +247,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 						if len(record.Tags) > 0 {
 							<div class="mt-2 flex flex-wrap gap-1">
 								for _, t := range record.Tags {
-									<span class="inline-block rounded-full border border-sepia-500/[0.35] bg-[rgba(246,241,228,0.65)] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
+									<span class="inline-block rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.65] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
 								}
 							</div>
 						}
@@ -277,7 +277,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 						</thead>
 						<tbody>
 							for _, record := range records {
-								<tr data-browse-row-href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="border-t border-sepia-500/[0.16] transition hover:bg-[rgba(246,241,228,0.46)]">
+								<tr data-browse-row-href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="border-t border-sepia-500/[0.16] transition hover:bg-parchment-soft/[0.46]">
 									<td class="px-4 py-3 align-top">
 										<div class="flex items-center gap-2">
 											<input type="checkbox" value={ fmt.Sprintf("%d", record.ID) } data-browse-select data-browse-label={ record.DisplayID } aria-label={ fmt.Sprintf("Select %s", record.DisplayID) } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" id={ fmt.Sprintf("browse-row-%d", record.ID) }/>
@@ -299,7 +299,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 										if len(record.Tags) > 0 {
 											<div class="flex flex-wrap gap-1">
 												for _, t := range record.Tags {
-													<span class="inline-block rounded-full border border-sepia-500/[0.35] bg-[rgba(246,241,228,0.65)] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
+													<span class="inline-block rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.65] px-2 py-0.5 text-xs font-medium text-[#5a3b1f]">{ t.Name }</span>
 												}
 											</div>
 										} else {

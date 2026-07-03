@@ -45,15 +45,15 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Overview</p>
 					<h3 class="mt-2 text-xl gold font-bold">Person Record Type Snapshot</h3>
 					<div class="mt-5 grid gap-4 sm:grid-cols-3">
-						<a href={ insightDrilldownHref("entry_type", models.EntryTypeSoldier) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-[rgba(246,241,228,0.9)]">
+						<a href={ insightDrilldownHref("entry_type", models.EntryTypeSoldier) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-parchment-soft/[0.9]">
 							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SoldierCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Soldiers</div>
 						</a>
-						<a href={ insightDrilldownHref("entry_type", "spouse") } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-[rgba(246,241,228,0.9)]">
+						<a href={ insightDrilldownHref("entry_type", "spouse") } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-parchment-soft/[0.9]">
 							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.SpouseRecordCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Spouse Records</div>
 						</a>
-						<a href={ insightDrilldownHref("entry_type", models.EntryTypeLinkedPerson) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-[rgba(246,241,228,0.9)]">
+						<a href={ insightDrilldownHref("entry_type", models.EntryTypeLinkedPerson) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-parchment-soft/[0.9]">
 							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.PersonRecordTypes.PersonRecordCount) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Person Records</div>
 						</a>
@@ -95,7 +95,7 @@ templ InsightsView(snapshot viewmodel.AnalyticsSnapshot, counts viewmodel.Archiv
 					<h3 class="mt-2 text-xl gold font-bold">Advanced Duplicate Discovery</h3>
 					<p class="text-sm text-slate-600">Runs an exact + fuzzy duplicate scan using the current Levenshtein threshold of { fmt.Sprintf("%d", snapshot.DuplicateAudit.SimilarityThreshold) }.</p>
 					<div class="grid gap-3 sm:grid-cols-2">
-						<a href={ insightDrilldownHref("review_status", "review") } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-[rgba(246,241,228,0.9)]">
+						<a href={ insightDrilldownHref("review_status", "review") } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-4 transition hover:border-sepia-500/[0.55] hover:bg-parchment-soft/[0.9]">
 							<div class="text-3xl font-semibold text-[#22303d]">{ fmt.Sprintf("%d", snapshot.DuplicateAudit.OpenFindings) }</div>
 							<div class="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">Open Duplicate Pairs</div>
 						</a>
@@ -144,7 +144,7 @@ templ InsightsCountList(items []viewmodel.AnalyticsCount, scope, emptyMessage st
 	} else {
 		<div class="mt-4 space-y-3">
 			for _, item := range items {
-				<a href={ insightDrilldownHref(scope, item.Label) } class="flex items-start justify-between gap-4 rounded-2xl border border-sepia-500/[0.28] bg-white/72 px-4 py-3 transition hover:border-sepia-500/[0.55] hover:bg-[rgba(246,241,228,0.9)]">
+				<a href={ insightDrilldownHref(scope, item.Label) } class="flex items-start justify-between gap-4 rounded-2xl border border-sepia-500/[0.28] bg-white/72 px-4 py-3 transition hover:border-sepia-500/[0.55] hover:bg-parchment-soft/[0.9]">
 					<div class="text-sm text-[#22303d]">{ item.Label }</div>
 					<div class="text-sm font-semibold text-[#6f2c26]">{ fmt.Sprintf("%d", item.Count) }</div>
 				</a>
@@ -167,13 +167,13 @@ templ InsightsDrilldownView(title, description string, personRecords []viewmodel
 							"data-fallback-label": "Back to Insights",
 						})
 			</div>
-			<div class="rounded-2xl border border-sepia-500/[0.28] bg-[rgba(246,241,228,0.72)] px-4 py-3 text-sm text-slate-600">
+			<div class="rounded-2xl border border-sepia-500/[0.28] bg-parchment-soft/[0.72] px-4 py-3 text-sm text-slate-600">
 				Showing <strong>{ fmt.Sprintf("%d", total) }</strong> matching record(s).
 			</div>
 			if len(personRecords) == 0 {
 				<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-500">No records matched this insight.</p>
 			} else {
-				<div class="flex flex-col gap-3 rounded-2xl border border-sepia-500/[0.3] bg-[rgba(246,241,228,0.78)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+				<div class="flex flex-col gap-3 rounded-2xl border border-sepia-500/[0.3] bg-parchment-soft/[0.78] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Manual Comparison</p>
 						<p data-compare-selection-status class="mt-1 text-sm text-slate-600">Select exactly two records to compare them side by side from this insight drilldown.</p>
