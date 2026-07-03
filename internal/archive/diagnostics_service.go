@@ -41,11 +41,19 @@ type DiagnosticsManifest struct {
 	Environment           map[string]string `json:"environment"`
 }
 
+// DiagnosticsService produces the bug-report bundle the in-place
+// update flow + the Support & Diagnostics screen surface: a zip of
+// the latest retained snapshot, the active schema version, recent
+// crash-log lines, and enough state for support to reproduce a
+// user-reported issue without seeing the live database.
 type DiagnosticsService struct {
 	db      *db.DB
 	soldier *SoldierService
 }
 
+// NewDiagnosticsService constructs a DiagnosticsService bound to the
+// given database and soldier service. The soldier service is used to
+// attach display-ID context to the bundle's per-record metadata.
 func NewDiagnosticsService(database *db.DB, soldier *SoldierService) *DiagnosticsService {
 	return &DiagnosticsService{db: database, soldier: soldier}
 }

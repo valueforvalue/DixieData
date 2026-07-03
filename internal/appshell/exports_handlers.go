@@ -536,6 +536,11 @@ func (a *App) handleExportDatabasePDF(w http.ResponseWriter, r *http.Request) {
 	}, path, w)
 }
 
+// ExportFullDatabasePDF renders every Person Record in the database
+// into a single PDF using the supplied print settings, returning the
+// path to the generated file. Refuses with errExportInFlight if a
+// previous export is still running; the inFlight dialog-guard law
+// in CONTEXT.md §Laws applies.
 func (a *App) ExportFullDatabasePDF(settings archive.PrintSettings) (string, error) {
 	path, dupKey, err := a.exportFullDatabasePDFPath(settings)
 	if errors.Is(err, errExportInFlight) {

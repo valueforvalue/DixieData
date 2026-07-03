@@ -80,15 +80,26 @@ func NewApp() *App {
 	return &App{}
 }
 
+// WithFrontendAssets installs the embedded frontend asset filesystem
+// used by ServeHTTP and the Wails runtime. Must be called before
+// Startup. Returns the same *App for chaining with NewApp.
 func (a *App) WithFrontendAssets(frontendAssets fs.FS) *App {
 	a.frontendAssets = frontendAssets
 	return a
 }
 
+// Startup initializes the App: opens the database, builds the service
+// facades, registers the htmx routes, and starts the job-registry
+// ticker. Called once by the Wails runtime (and by the headless
+// CLI runner). The supplied context is the Wails app context; the
+// App's internal context is derived from it.
 func (a *App) Startup(ctx context.Context) {
 	a.startup(ctx)
 }
 
+// Shutdown stops the job-registry ticker, drains pending jobs,
+// closes the database, and releases any retained-backup state.
+// Called once by the Wails runtime on app exit.
 func (a *App) Shutdown(ctx context.Context) {
 	a.shutdown(ctx)
 }

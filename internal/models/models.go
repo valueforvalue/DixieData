@@ -6,6 +6,17 @@ import (
 	"strings"
 )
 
+// Soldier is the canonical Person Record type for a Civil War-era
+// individual in the DixieData Local Archive. It carries identity
+// (name, aliases, display ID), service data (rank, unit, dates),
+// burials, and the relationships to attached Source Records,
+// Claims, and Findings. Also exported as the type alias
+// PersonRecord for UI-layer code that prefers the domain glossary.
+//
+// Tags is populated on the shared archive export path (issue #183)
+// when archive_meta.include_tags is true. Other export paths leave
+// it nil; the json:",omitempty" keeps the static archive HTML
+// output unchanged.
 type Soldier struct {
 	// Tags is populated on the shared archive export path
 	// (issue #183) when archive_meta.include_tags is true.
@@ -78,6 +89,12 @@ type Soldier struct {
 	Images                []Image  `json:"images,omitempty"`
 }
 
+// ArchiveCounts is the headline-number rollup surfaced on the
+// Insights page and the calendar header: how many soldiers, wives
+// / widows, and linked-people are in the Local Archive. Computed
+// by the analytics service and rendered by the calendar + insights
+// pages. TotalRecords is the sum of all three and what the UI
+// typically shows as the headline number.
 type ArchiveCounts struct {
 	TotalSoldiers     int `json:"total_soldiers"`
 	TotalWivesWidows  int `json:"total_wives_widows"`
@@ -88,6 +105,12 @@ func (c ArchiveCounts) TotalRecords() int {
 	return c.TotalSoldiers + c.TotalWivesWidows + c.TotalLinkedPeople
 }
 
+// SoldierSearch is the structured search-result row the browse +
+// soldiers-list pages render. It carries the canonical fields the
+// user sorts and filters on (display ID, name, dates, unit) plus
+// enough denormalized context to render a row without a follow-up
+// query. Used by both UI list paths and the export-pipeline
+// snapshot.
 type SoldierSearch struct {
 	Mode                  string
 	Query                 string
@@ -126,6 +149,11 @@ type SoldierSearch struct {
 	TotalRecordCount int
 }
 
+// SoldierFormSuggestions is the autocomplete payload the soldier
+// detail form fetches when the user starts typing in a field:
+// recently-used unit names, known cemeteries, common rank strings,
+// etc. Populated by the suggestions service and rendered by the
+// form's combobox inputs.
 type SoldierFormSuggestions struct {
 	RankIn              []string
 	RankOut             []string
@@ -156,6 +184,11 @@ type FindAGraveScrapeState struct {
 	ConfidenceScore int
 }
 
+// Record is a Source Record attached to a Soldier: a pension
+// application, a roster entry, a death record, etc. Carries the
+// kind (claim, finding, source), the source-document metadata, and
+// the per-record text content. Linked to a Soldier by SoldierID.
+// See CONTEXT.md §Domain vocabulary for the "Source Record" term.
 type Record struct {
 	ID            int64  `json:"id"`
 	SyncID        string `json:"sync_id"`
@@ -166,6 +199,12 @@ type Record struct {
 	Details       string `json:"details"`
 }
 
+// Image is a per-soldier image: portrait, document scan, cemetery
+// photo. Carries the on-disk relative path under the dataDir's
+// images directory, the SHA-256 used for dedup, and the
+// soldier-attach metadata. See CONTEXT.md §Domain vocabulary
+// (Image is not a glossary term but is the canonical field name
+// across exports and the PDF pipeline).
 type Image struct {
 	ID            int64  `json:"id"`
 	SyncID        string `json:"sync_id"`

@@ -52,6 +52,17 @@ import (
 //go:embed quotes.json
 var embeddedQuotes []byte
 
+// App is the DixieData application shell: it owns the SQLite database
+// connection, every service facade (backup, export, research, settings,
+// etc.), the htmx + REST request router, the frontend-asset filesystem,
+// and the in-process job registry. Constructed by NewApp, configured
+// by WithFrontendAssets, and started by Startup. Every UI handler in
+// internal/appshell is a method on *App; the Wails runtime and the
+// CLI runner both receive an *App.
+//
+// App is the central seam between the Wails frontend, the headless CLI
+// runner, and the domain layer. Nothing in internal/{records,models,
+// viewmodel,archive,...} imports appshell; appshell imports them.
 type App struct {
 	ctx                     context.Context
 	database                *db.DB

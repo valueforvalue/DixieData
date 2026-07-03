@@ -12,6 +12,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// DB is the DixieData SQLite database handle: the connection, the
+// dataDir that produced it, and the migration state (PRAGMA
+// user_version). Constructed by Open (full path: open file, apply
+// schema migrations, run pending blocks) or by NewFromExisting
+// (read-only tools that wrap an already-opened *sql.DB). Every
+// service facade in internal/archive receives a *DB; the appshell
+// owns the only *DB instance per process.
 type DB struct {
 	conn    *sql.DB
 	dataDir string
