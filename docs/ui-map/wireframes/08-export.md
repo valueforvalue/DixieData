@@ -92,8 +92,13 @@ to the owning subpages (`/share/exports` + `/share/sync` respectively).
   the action. Two clicks vs one — intentional per the locked
   decision (the surfaces are now focused; the previous landing
   was too dense to scan).
-- **Foldout collapsed 4 → 3 items** — Build Share Archive folded
-  into Export (the Build button lives on /share/exports). The
+- **Foldout: 4 items, Build folded into Export** — Export /
+  Import / Share Queue / Sync. Build Share Archive folded into
+  Export (the Build button lives on /share/exports). The 4-item
+  menu (without Build) gives the user a direct entry to the
+  Sync subpage from the top nav; if the menu were 3 items, Sync
+  would only be reachable via the /share landing's 4th Quick
+  Action tile. The
   in-page anchor deep links (`/share#export-section`,
   `/share#import-section`) still work for backward compat; the
   anchors are harmless on the new landing because the IDs no

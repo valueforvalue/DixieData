@@ -100,6 +100,9 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 						<li role="none">
 							<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-queue-page-link>Share Queue</a>
 						</li>
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ShareSync()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-sync>Sync</a>
+						</li>
 					}
 					<a href="/tags" class="pill-link top-nav-link">Tags</a>
 					<a href="/settings" class="pill-link top-nav-link">Settings</a>
