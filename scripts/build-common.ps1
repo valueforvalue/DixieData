@@ -53,14 +53,28 @@ function Get-DixieDataAppVersion {
         [string]$Root
     )
 
+    # Emits the v{MAJOR}.{U}.{N} shape (issue #266, follow-up
+    # #294). Reads all three counters from internal/versioninfo/
+    # versioninfo.go so the tag stamps exactly what the binary
+    # reports via buildinfo.AppVersion / versioninfo.AppVersion.
+    # MAJOR is fixed at 1 for now (TBD: bump policy, not in scope
+    # for this change).
     $versionInfoPath = Join-Path $Root "internal\versioninfo\versioninfo.go"
     $content = Get-Content -Path $versionInfoPath -Raw
-    $match = [regex]::Match($content, "CurrentSchemaVersion\s*=\s*(\d+)")
-    if (-not $match.Success) {
+    $schemaMatch = [regex]::Match($content, "CurrentSchemaVersion\s*=\s*(\d+)")
+    $updateFlowMatch = [regex]::Match($content, "CurrentUpdateFlowVersion\s*=\s*(\d+)")
+    $releaseMatch = [regex]::Match($content, "CurrentAppVersionInt\s*=\s*(\d+)")
+    if (-not $schemaMatch.Success) {
         throw "Failed to determine CurrentSchemaVersion from $versionInfoPath"
     }
+    if (-not $updateFlowMatch.Success) {
+        throw "Failed to determine CurrentUpdateFlowVersion from $versionInfoPath"
+    }
+    if (-not $releaseMatch.Success) {
+        throw "Failed to determine CurrentAppVersionInt from $versionInfoPath"
+    }
 
-    return "v1.2.{0}" -f $match.Groups[1].Value
+    return "v1.{0}.{1}" -f $updateFlowMatch.Groups[1].Value, $releaseMatch.Groups[1].Value
 }
 
 function Get-DixieDataOAuthDefaultsBuildPath {

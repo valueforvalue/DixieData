@@ -124,6 +124,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (`-BumpRelease`, `-BumpUpdateFlow`, `-BumpSchema`, mutual
   exclusion).
 
+### Changed
+
+- **Release tag emits `v{MAJOR}.{U}.{N}` shape** (issue #294).
+  `scripts/build-common.ps1` `Get-DixieDataAppVersion` now reads
+  `CurrentSchemaVersion` + `CurrentUpdateFlowVersion` +
+  `CurrentAppVersionInt` from `internal/versioninfo/versioninfo.go`
+  and emits `v1.{U}.{N}` instead of the legacy `v1.2.{schema}`
+  string. Downstream consumers pick up the new shape automatically:
+  - `scripts/release-github.ps1` tag + archive name
+  - `scripts/build-release.ps1` archive filename
+  The `v` prefix on the returned string matches the historical
+  helper contract (callers concatenate without re-prefixing in
+  some places, so the prefix is preserved here for consistency).
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
