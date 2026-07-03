@@ -151,6 +151,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `internal/appshell/tags_handlers_test.go`
   (`TestTagsManagementPageRenders` + new
   `TestTagsManagementPageHasRecordsButNoTags`).
+- `.pi/agents/Explore.md` frontmatter was unparseable by
+  the `yaml` package, breaking every subagent spawn with
+  `Nested mappings are not allowed in compact mappings at
+  line 1, column 14`. Root cause: the description value
+  contains three `: ` (colon-space) sequences
+  (`search breadth: "quick"`, `…: "medium"`,
+  `…: "very thorough"`) that the parser reads as nested
+  key/value pairs inside the description's mapping. This
+  is the same latent bug the package's own `ejectAgent`
+  now works around by wrapping descriptions with
+  `JSON.stringify` (per its CHANGELOG). Fix wraps the
+  description in a YAML 1.2 double-quoted scalar with
+  embedded `"` escaped as `\"`. Regression net: a node
+  one-liner using the same `yaml` package parses
+  `.pi/agents/{Explore,Plan,general-purpose}.md` and
+  returns the expected keys (description / tools /
+  model / thinking). Subagent spawn now succeeds.
 
 ### Added
 
