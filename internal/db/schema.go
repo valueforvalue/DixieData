@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -398,6 +399,108 @@ func applySchema(db *DB) error {
 		return err
 	}
 	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, CurrentSchemaVersion)); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// applyDownSchema runs the inverse of every block in the migrations
+// slice that maps to the `current` -> `target` delta. The
+// relationship between user_version and the slice is NOT 1:1 (the
+// slice has 17 entries but user_version is 59; many blocks predate
+// the v52 doc discipline). We map the delta as follows: the LAST
+// `current - target` blocks of the slice are undone in reverse
+// order. The first block undone is the last one applied (Block 17
+// for the current schema); the last block undone is whichever block
+// sits at slice index `len(migrations) - (current - target)`.
+//
+// Refusal semantics (per the audit at docs/migrations/reversibility.md
+// + the 5 design decisions captured in the issue #273 research
+// artifact):
+//
+//   - If any block in the path has Down == nil (should not happen;
+//     every Migration in the slice gets a Down function, even if
+//     it's a no-op for PartiallyReversible cases), applyDownSchema
+//     refuses with an error identifying the block ID.
+//   - If any block's Down returns ErrMigrationIrreversible, the
+//     runner refuses the entire path with ErrDowngradeRefused.
+//     The CLI unwraps this and prints the blocking block ID +
+//     Reason. The runner does NOT bypass the refusal even with
+//     a --force-irreversible flag (per design decision Q2: the
+//     flag emits the "what was lost" manifest but does not
+//     invert the SQL).
+//   - On any non-refusal error from a block's Down, the deferred
+//     tx.Rollback() unwinds the partial state. The next Open
+//     call sees `user_version = current` (unchanged) and the
+//     schema is at v(N)-shape (partial).
+//
+// The single-tx model + terminal `PRAGMA user_version = target`
+// write are critical: writing user_version earlier would
+// mean a crashed-mid-DOWN DB claims to be at `target` while
+// still being at v(N)'s shape, opening the next Open() to an
+// applySchema short-circuit (per the version gate at the top
+// of applySchema) that would do no remedial forward work,
+// leaving the operator with a phantom-downgraded DB.
+// ApplyDownSchema is the exported form of applyDownSchema. The
+// CLI's runAdminMigrateDown calls it via the public surface so the
+// runner can refuse ErrDowngradeRefused errors with the proper
+// errors.Is check.
+func ApplyDownSchema(db *DB, target int) error {
+	return applyDownSchema(db, target)
+}
+
+// applyDownSchema is the package-private implementation. The
+// exported ApplyDownSchema wrapper exists so external callers
+// (the CLI runner in internal/appshell/cli_admin.go) can call it
+// without importing a private symbol.
+func applyDownSchema(db *DB, target int) error {
+	current, err := currentSchemaVersion(db.conn)
+	if err != nil {
+		return err
+	}
+	if current <= target {
+		return nil
+	}
+
+	// Map the (current - target) delta to a slice window. The
+	// delta cannot exceed len(migrations); cap it.
+	delta := current - target
+	if delta > len(migrations) {
+		delta = len(migrations)
+	}
+
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Iterate the last `delta` entries of the migrations slice in
+	// REVERSE order. Slice index `len(migrations) - 1` is the most
+	// recent block; index `len(migrations) - delta` is the oldest
+	// block in the window.
+	for i := len(migrations) - 1; i >= len(migrations)-delta; i-- {
+		m := migrations[i]
+		if m.Down == nil {
+			return fmt.Errorf("%w: block %s has no Down function (caller must supply one or refuse the path)", ErrDowngradeRefused, m.ID)
+		}
+		if err := m.Down(tx); err != nil {
+			if errors.Is(err, ErrMigrationIrreversible) {
+				// Wrap both the umbrella ErrDowngradeRefused AND
+				// the inner ErrMigrationIrreversible so callers
+				// can use errors.Is for either check (Go 1.20+
+				// supports multiple %w verbs).
+				return fmt.Errorf("%w: %s: %w: %s", ErrDowngradeRefused, m.ID, ErrMigrationIrreversible, m.Reason)
+			}
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(`DELETE FROM schema_version WHERE version > ?`, target); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, target)); err != nil {
 		return err
 	}
 
