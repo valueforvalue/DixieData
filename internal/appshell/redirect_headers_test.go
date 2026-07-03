@@ -66,7 +66,7 @@ import (
 // exemption.
 var exemptFunctions = map[string]string{
 	"handleRecovery":             "GET handler / early-out — no DixieData button reaches it; recovery is server-initiated middleware",
-	"handleInitialSetup":         "setup flow — POST from a plain <form method=\"post\"> without DixieData; X-DixieData-Redirect not needed",
+	"handleInitialSetup":         "GET branch only — POST now sets X-DixieData-Redirect + X-DixieData-Toast (issue #263); exempt covers the GET-only http.Redirect at the top",
 	"handleLegacyExportRedirect": "GET-only URL rename (/export -> /share); no body, no DixieData",
 	"handleSoldierByDisplayID":   "GET-only display-ID lookup; the two redirects are URL canonicalisation, no form submit",
 	"cancelJob":                  "POST /jobs/{id}/cancel is a plain <form method=\"post\"> (jobs.templ:153); native browser follows Location",

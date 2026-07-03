@@ -80,7 +80,10 @@ func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.setupRequired = false
-		http.Redirect(w, r, "/calendar", http.StatusSeeOther)
+		w.Header().Set("X-DixieData-Redirect", "/calendar")
+		w.Header().Set("X-DixieData-Toast", "Identity saved. Loading DixieData...")
+		w.Header().Set("X-DixieData-Toast-Type", "success")
+		w.WriteHeader(http.StatusOK)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
