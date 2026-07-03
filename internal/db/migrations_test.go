@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"testing"
 )
 
@@ -49,6 +51,51 @@ func TestMigrationsCatalogueHasUp(t *testing.T) {
 	for i, m := range Migrations() {
 		if m.Up == nil {
 			t.Errorf("migrations[%d].ID=%q has nil Up function", i, m.ID)
+		}
+	}
+}
+
+// TestMigrationsCatalogueHasDown locks that every migration carries
+// a non-nil Down function. applyDownSchema refuses the path with
+// ErrDowngradeRefused when it encounters a nil Down (per the
+// applyDownSchema comment), so a silent nil here would surface as
+// an opaque "block N has no Down function" error at runner time.
+// PartiallyReversible blocks can have a no-op Down (Block 11's
+// "best-effort no-op") but the function must still be present.
+func TestMigrationsCatalogueHasDown(t *testing.T) {
+	for i, m := range Migrations() {
+		if m.Down == nil {
+			t.Errorf("migrations[%d].ID=%q has nil Down function", i, m.ID)
+		}
+	}
+}
+
+// TestMigrationsIrreversibleDownRefuses locks the runner contract
+// for Irreversible blocks: their Down function must return
+// ErrMigrationIrreversible. applyDownSchema unwraps this to refuse
+// the path with ErrDowngradeRefused.
+func TestMigrationsIrreversibleDownRefuses(t *testing.T) {
+	// Stand up a real *sql.Tx so we can call the Down closure.
+	// In-memory SQLite + a single shared connection gives us
+	// the minimal environment the Down function needs.
+	conn, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer conn.Close()
+	tx, err := conn.Begin()
+	if err != nil {
+		t.Fatalf("conn.Begin: %v", err)
+	}
+	defer tx.Rollback()
+
+	for _, m := range Migrations() {
+		if m.Reversibility != Irreversible {
+			continue
+		}
+		err := m.Down(tx)
+		if !errors.Is(err, ErrMigrationIrreversible) {
+			t.Errorf("%s (Irreversible) Down returned %v, want ErrMigrationIrreversible", m.ID, err)
 		}
 	}
 }

@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"errors"
+)
 
 // Reversibility classifies a single migration block by whether its
 // effect can be cleanly reversed. Issue #273 ("feat(cli): add 'migrate
@@ -52,11 +55,11 @@ func (r Reversibility) String() string {
 	}
 }
 
-// Migration is a single forward-only schema op paired with its
-// reversibility class. The Up function runs inside the applySchema
-// transaction in slice order; future work (issue #273) will pair
-// each Up with a Down function and surface the slice to a CLI audit
-// command (`dixiedata debug schema-reversibility`).
+// Migration is a single forward schema op paired with an inverse
+// (where one exists) and a reversibility class. The Up function
+// runs inside the applySchema transaction in slice order; the
+// Down function runs inside applyDownSchema in REVERSE slice
+// order from `current` to `target+1`.
 //
 // The fields:
 //   - ID: stable string identifier. Used by the DOWN runner to skip
@@ -66,15 +69,39 @@ func (r Reversibility) String() string {
 //   - Up: the forward SQL/HELPER step. Returns nil to indicate
 //     success; non-nil to abort the transaction (applySchema's
 //     defer tx.Rollback() handles the unwind).
+//   - Down: the inverse step, where one exists. For Irreversible
+//     blocks, Down returns ErrMigrationIrreversible to refuse the
+//     DOWN path at runner time unless --force-irreversible is
+//     supplied (in which case the runner still gets a refusal — see
+//     the CLI's runAdminMigrateDown for the full contract). For
+//     PartiallyReversible blocks, Down performs best-effort
+//     inversion with the understanding that some rows may be
+//     over-corrected or skipped. For Reversible blocks, Down is
+//     the precise inverse.
 //   - Reversibility: classification per the Reversibility enum.
 //   - Reason: one-line human-readable explanation cited by the
 //     audit catalogue. Used by the "what was lost" manifest.
 type Migration struct {
 	ID            string
 	Up            func(*sql.Tx) error
+	Down          func(*sql.Tx) error
 	Reversibility Reversibility
 	Reason        string
 }
+
+// ErrMigrationIrreversible is returned by Migration.Down when the
+// block's effect cannot be cleanly inverted. The CLI runner surfaces
+// this as a refusal unless --force-irreversible is supplied (which
+// still prints the "what was lost" manifest but does NOT bypass the
+// refusal — see the design decisions captured in the issue #273
+// audit at docs/migrations/reversibility.md).
+var ErrMigrationIrreversible = errors.New("migration is irreversible")
+
+// ErrDowngradeRefused is the umbrella error returned by
+// applyDownSchema when the path crosses an Irreversible block.
+// The CLI unwraps this to find the blocking Migration ID and prints
+// it to the operator along with the per-block Reason.
+var ErrDowngradeRefused = errors.New("schema downgrade refused")
 
 // migrations enumerates every block that runs inside applySchema in
 // execution order. The catalogue is the source of truth for the
@@ -127,6 +154,9 @@ var migrations = []Migration{
 			_, err := tx.Exec(schema)
 			return err
 		},
+		Down: func(tx *sql.Tx) error {
+			return reverseSchemaBaseline(tx)
+		},
 	},
 	// Block 2 - ALTER TABLE ADD COLUMN loop. Each entry is Reversible
 	// individually (DROP COLUMN). The loop as a whole is Reversible.
@@ -141,6 +171,9 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return applyAddColumnLoop(tx)
 		},
+		Down: func(tx *sql.Tx) error {
+			return reverseAddColumnLoop(tx)
+		},
 	},
 	// Block 3 - is_generated flip for legacy DXD-NNNNN rows. The inverse
 	// is mechanical but over-corrects (demotes user-created DXD-NNNNN
@@ -151,6 +184,17 @@ var migrations = []Migration{
 		Reason: "UPDATE flips is_generated=1 for DXD-NNNNN rows; no 'system-issued' marker. Inverse over-corrects user-created rows.",
 		Up: func(tx *sql.Tx) error {
 			_, err := tx.Exec(`UPDATE soldiers SET is_generated = 1 WHERE is_generated = 0 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`)
+			return err
+		},
+		Down: func(tx *sql.Tx) error {
+			// Best-effort inverse: set is_generated=0 for every
+			// DXD-NNNNN row currently flagged is_generated=1.
+			// Over-corrects user-created rows that legitimately
+			// had is_generated=1, but the alternative (leaving
+			// is_generated=1 on rows that the migration flipped)
+			// is the wrong default — the operator can re-flip
+			// any user-created rows post-down via SQL.
+			_, err := tx.Exec(`UPDATE soldiers SET is_generated = 0 WHERE is_generated = 1 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`)
 			return err
 		},
 	},
@@ -168,6 +212,7 @@ var migrations = []Migration{
 			_, err := tx.Exec(phase1DistributedMergeMigration)
 			return err
 		},
+		Down: refuseDown,
 	},
 	// Block 5 - phase2CanonicalDatesMigration. Sentinel collapse +
 	// printf stringification of partial dates. Pre-state is discarded.
@@ -179,6 +224,7 @@ var migrations = []Migration{
 			_, err := tx.Exec(phase2CanonicalDatesMigration)
 			return err
 		},
+		Down: refuseDown,
 	},
 	// Block 6 - Inline UPDATE normalization chain on soldiers. Mixed:
 	// the NULL-coalesce cases (needs_review, review_reason,
@@ -196,6 +242,9 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return applySoldiersNormalization(tx)
 		},
+		Down: func(tx *sql.Tx) error {
+			return reverseSoldiersNormalization(tx)
+		},
 	},
 	// Block 7 - last_edited_at backfill. Mechanical inverse but no
 	// per-row NULL marker; over-corrects.
@@ -205,6 +254,16 @@ var migrations = []Migration{
 		Reason: "COALESCE backfill from updated_at/created_at/CURRENT_TIMESTAMP; no per-row NULL marker; inverse over-corrects.",
 		Up: func(tx *sql.Tx) error {
 			_, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`)
+			return err
+		},
+		Down: func(tx *sql.Tx) error {
+			// Best-effort: set last_edited_at to '' for every
+			// row where the forward path set it via COALESCE.
+			// Cannot distinguish which fallback fired
+			// (updated_at / created_at / CURRENT_TIMESTAMP)
+			// per-row, so we use '' as the most-conservative
+			// inverse (the original was NULL/empty).
+			_, err := tx.Exec(`UPDATE soldiers SET last_edited_at = '' WHERE last_edited_at IS NOT NULL AND TRIM(last_edited_at) <> ''`)
 			return err
 		},
 	},
@@ -219,6 +278,14 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return applyImagesIsPrimary(tx)
 		},
+		Down: func(tx *sql.Tx) error {
+			// Inverse of the NULL-coalesce only. The MIN(id)
+			// election is irreversible — those images stay
+			// is_primary=1 unless the operator manually resets
+			// them post-down.
+			_, err := tx.Exec(`UPDATE images SET is_primary = NULL WHERE is_primary = 0`)
+			return err
+		},
 	},
 	// Block 9 - idx_soldiers_spouse index. Pure additive.
 	{
@@ -229,6 +296,10 @@ var migrations = []Migration{
 			_, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`)
 			return err
 		},
+		Down: func(tx *sql.Tx) error {
+			_, err := tx.Exec(`DROP INDEX IF EXISTS idx_soldiers_spouse`)
+			return err
+		},
 	},
 	// Block 10 - idx_soldiers_import_batch index. Pure additive.
 	{
@@ -237,6 +308,10 @@ var migrations = []Migration{
 		Reason: "CREATE INDEX IF NOT EXISTS; inverse is DROP INDEX IF EXISTS.",
 		Up: func(tx *sql.Tx) error {
 			_, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_import_batch ON soldiers(import_batch_id, created_at DESC)`)
+			return err
+		},
+		Down: func(tx *sql.Tx) error {
+			_, err := tx.Exec(`DROP INDEX IF EXISTS idx_soldiers_import_batch`)
 			return err
 		},
 	},
@@ -251,6 +326,16 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return migrateNodePrefixConfiguration(tx)
 		},
+		// No Down: the forward path's overwrite is the data-loss
+		// event; reversing would either re-overwrite (no-op) or
+		// require a side table the schema doesn't carry. The
+		// runner's "what was lost" manifest calls this out.
+		Down: func(tx *sql.Tx) error {
+			// Best-effort no-op: do not touch system_config.
+			// The operator can manually reset node_prefix
+			// post-down if they have a snapshot to copy from.
+			return nil
+		},
 	},
 	// Block 12 - migrateSanitizedDisplayIDs. HIGH RISK Irreversible.
 	// No display_id_history, no audit log, in-memory slice only.
@@ -264,6 +349,7 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return migrateSanitizedDisplayIDs(tx)
 		},
+		Down: refuseDown,
 	},
 	// Block 13 - migrateCanonicalDateData. HIGH RISK Irreversible.
 	// Consumes birth_info narrative without re-writing; NormalizeCanonical
@@ -275,6 +361,7 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return migrateCanonicalDateData(tx)
 		},
+		Down: refuseDown,
 	},
 	// Block 14 - ensureSoldierFTS. The FTS rebuild itself is
 	// Reversible (DROP + CREATE VIRTUAL TABLE + INSERT...SELECT is an
@@ -289,6 +376,16 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return ensureSoldierFTS(tx)
 		},
+		Down: func(tx *sql.Tx) error {
+			// Inverse is the same idempotent cycle: DROP +
+			// CREATE + INSERT...SELECT. No data is lost because
+			// FTS5 is a derived index — the source-of-truth
+			// (soldiers + scratchpad_cache) is unchanged.
+			// The orphan scratch_pad rows the forward path
+			// deleted (line 588) cannot be recovered — they're
+			// permanently lost. Documented in the manifest.
+			return ensureSoldierFTS(tx)
+		},
 	},
 	// Block 15 - ensureArchiveMetaSeed. Three INSERT OR IGNORE seed
 	// rows. Pure additive.
@@ -298,6 +395,10 @@ var migrations = []Migration{
 		Reason: "Three INSERT OR IGNORE INTO archive_meta seed rows (v58, issue #183). Inverse: DELETE FROM archive_meta WHERE archive_kind IN (...).",
 		Up: func(tx *sql.Tx) error {
 			return ensureArchiveMetaSeed(tx)
+		},
+		Down: func(tx *sql.Tx) error {
+			_, err := tx.Exec(`DELETE FROM archive_meta WHERE archive_kind IN ('shared_archive', 'backup_archive', 'static_archive')`)
+			return err
 		},
 	},
 	// Block 16 - migrateEntryTypeDiscipline. v55 (issue #106).
@@ -317,6 +418,10 @@ var migrations = []Migration{
 		Up: func(tx *sql.Tx) error {
 			return migrateEntryTypeDiscipline(tx)
 		},
+		Down: func(tx *sql.Tx) error {
+			_, err := tx.Exec(`DROP TABLE IF EXISTS soldiers_entry_type_check_log`)
+			return err
+		},
 	},
 	// Block 17 - research_log.evidence_type rename ('archive' ->
 	// 'local_archive'). v55 (issue #106). Pre-rename value cannot
@@ -333,7 +438,77 @@ var migrations = []Migration{
 			}
 			return err
 		},
+		Down: refuseDown,
 	},
+}
+
+// reverseAddColumnLoop is the inverse of Block 2 — it drops every
+// column the forward loop added, guarded by columnExists so the
+// inverse is safe to re-run on a partially-downgraded DB. The
+// column list matches the forward loop exactly; order does not
+// matter (DROP COLUMN is independent per column).
+//
+// SQLite >=3.35 supports DROP COLUMN for unindexed, non-FK columns.
+// The FK-constrained columns in this list (entry_type,
+// spouse_soldier_id, import_batch_id) require a table rebuild;
+// the runner reports the SQLite error verbatim if DROP COLUMN
+// fails on those — the operator can either skip Block 2's inverse
+// or accept the failure. SQLite <3.35 will reject every DROP
+// COLUMN; the applySchema call sites enforce a minimum SQLite
+// version elsewhere (per internal/db/db.go:30-36).
+func reverseAddColumnLoop(tx *sql.Tx) error {
+	columns := []struct {
+		table  string
+		column string
+	}{
+		{"soldiers", "buried_in"},
+		{"soldiers", "pension_id"},
+		{"soldiers", "application_id"},
+		{"soldiers", "prefix"},
+		{"soldiers", "show_prefix_before_name"},
+		{"soldiers", "middle_name"},
+		{"soldiers", "suffix"},
+		{"soldiers", "rank_in"},
+		{"soldiers", "rank_out"},
+		{"soldiers", "pension_state"},
+		{"soldiers", "confederate_home_status"},
+		{"soldiers", "confederate_home_name"},
+		{"soldiers", "sync_id"},
+		{"soldiers", "entry_type"},
+		{"soldiers", "spouse_soldier_id"},
+		{"soldiers", "relationship_label"},
+		{"soldiers", "maiden_name"},
+		{"soldiers", "birth_date"},
+		{"soldiers", "death_date"},
+		{"soldiers", "biography"},
+		{"soldiers", "pdf_excerpt_override"},
+		{"soldiers", "needs_review"},
+		{"soldiers", "review_reason"},
+		{"soldiers", "added_by"},
+		{"soldiers", "last_edited_by"},
+		{"soldiers", "last_edited_fields"},
+		{"soldiers", "last_edited_at"},
+		{"soldiers", "updated_at"},
+		{"soldiers", "import_batch_id"},
+		{"records", "sync_id"},
+		{"records", "soldier_sync_id"},
+		{"images", "sync_id"},
+		{"images", "soldier_sync_id"},
+		{"images", "is_primary"},
+	}
+	for _, c := range columns {
+		exists, err := columnExists(tx, c.table, c.column)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+		if _, err := tx.Exec(`ALTER TABLE ` + c.table + ` DROP COLUMN ` + c.column); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // applyAddColumnLoop runs the 31-entry ALTER TABLE ADD COLUMN loop.
@@ -418,6 +593,44 @@ func applySoldiersNormalization(tx *sql.Tx) error {
 	return nil
 }
 
+// reverseSoldiersNormalization is the best-effort inverse of Block
+// 6. Per the catalogue, the four NULL-coalesce UPDATEs are
+// reversible in isolation; the two placeholder-string rewrites
+// (confederate_home_status, pension_state) and the line 457-459
+// confederate_home_name overwrite are NOT reversible. We apply
+// the four reversible inverses here and skip the rest — the
+// runner's "what was lost" manifest lists the skipped UPDATEs
+// so the operator can re-apply them post-down if they want.
+func reverseSoldiersNormalization(tx *sql.Tx) error {
+	// Inverse of: needs_review = 0 WHERE needs_review IS NULL
+	// (only flip back rows that are still 0; rows legitimately 0
+	// from user input stay 0 — the over-correction is the same
+	// shape as the forward pass had, and the operator can
+	// distinguish by checking last_edited_at post-down).
+	if _, err := tx.Exec(`UPDATE soldiers SET needs_review = NULL WHERE needs_review = 0`); err != nil {
+		return err
+	}
+	// Inverse of: review_reason = '' WHERE review_reason IS NULL
+	if _, err := tx.Exec(`UPDATE soldiers SET review_reason = NULL WHERE review_reason = ''`); err != nil {
+		return err
+	}
+	// Inverse of: show_prefix_before_name = 0 WHERE ... IS NULL
+	if _, err := tx.Exec(`UPDATE soldiers SET show_prefix_before_name = NULL WHERE show_prefix_before_name = 0`); err != nil {
+		return err
+	}
+	// Inverse of: confederate_home_name = '' WHERE ... IS NULL
+	// (NOT the line 457-459 overwrite — that one is irreversible)
+	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = NULL WHERE TRIM(confederate_home_name) = ''`); err != nil {
+		return err
+	}
+	// The two placeholder-string rewrites (confederate_home_status
+	// 'none' -> 'N/A', pension_state 'none' -> 'N/A') are NOT
+	// reversed — the original pre-state is lost, the catalog
+	// classifies these as Irreversible. The "what was lost"
+	// manifest emitted by the CLI runner calls them out.
+	return nil
+}
+
 // applyImagesIsPrimary runs Block 8 — the two UPDATE statements on
 // images: NULL-coalesce + MIN(id) primary election.
 func applyImagesIsPrimary(tx *sql.Tx) error {
@@ -443,4 +656,75 @@ func applyImagesIsPrimary(tx *sql.Tx) error {
 // Callers MUST NOT mutate the returned slice.
 func Migrations() []Migration {
 	return migrations
+}
+
+// refuseDown is the shared Down function for all Irreversible
+// blocks. It returns ErrMigrationIrreversible so the applyDownSchema
+// runner can surface a precise refusal with the blocking block ID.
+// The CLI unwraps this via errors.Is and prints the block's Reason
+// in the "what was lost" manifest.
+func refuseDown(tx *sql.Tx) error {
+	return ErrMigrationIrreversible
+}
+
+// reverseSchemaBaseline is the inverse of Block 1. It drops every
+// table + index that the inline `schema` constant creates, in the
+// reverse of declaration order so that foreign-key children are
+// dropped before their parents. The archive_meta seed rows are
+// deleted first so that archive_meta itself can be dropped last
+// (after every other table that might reference it has been
+// dropped). Each DROP uses IF EXISTS so the inverse is safe to
+// re-run on a partially-downgraded DB.
+//
+// IMPORTANT: this function drops EVERY table in the schema constant.
+// It is the caller's responsibility (applyDownSchema) to ensure the
+// operator has supplied a restore-point ID when crossing the v58 /
+// v59 boundaries — those tables are required by live read code in
+// the running binary, and the runner must refuse to drop them
+// while the binary is still serving.
+func reverseSchemaBaseline(tx *sql.Tx) error {
+	// archive_meta seed first (so the table can be dropped later).
+	if _, err := tx.Exec(`DELETE FROM archive_meta WHERE archive_kind IN ('shared_archive', 'backup_archive', 'static_archive')`); err != nil {
+		return err
+	}
+	// Tables in reverse of declaration order (FK children first).
+	// The schema constant declares (schema.go:19-340):
+	//   1. schema_version, 2. soldiers, 3. records, 4. images,
+	//   5. merge_review_sessions, 6. import_batches,
+	//   7. merge_review_conflicts, 8. shared_merge_aliases,
+	//   9. duplicate_audit_findings, 10. research_tasks,
+	//   11. export_templates, 12. share_queue_presets,
+	//   13. research_collections, 14. research_collection_items,
+	//   15. calendar_items, 16. tags, 17. person_record_tags,
+	//   18. archive_meta.
+	// Reverse order = archive_meta first, then person_record_tags
+	// (FK -> tags), then tags, etc. The exact FK dependency graph
+	// is documented at schema.go:121 (shared_merge_aliases ->
+	// soldiers) and schema.go:240 (person_record_tags -> tags).
+	dropOrder := []string{
+		"archive_meta",
+		"person_record_tags",
+		"tags",
+		"calendar_items",
+		"research_collection_items",
+		"research_collections",
+		"share_queue_presets",
+		"export_templates",
+		"research_tasks",
+		"duplicate_audit_findings",
+		"shared_merge_aliases",
+		"merge_review_conflicts",
+		"import_batches",
+		"merge_review_sessions",
+		"images",
+		"records",
+		"soldiers",
+		"schema_version",
+	}
+	for _, table := range dropOrder {
+		if _, err := tx.Exec(`DROP TABLE IF EXISTS ` + table); err != nil {
+			return err
+		}
+	}
+	return nil
 }

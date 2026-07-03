@@ -1,6 +1,7 @@
 package appshell
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -58,9 +59,48 @@ func TestParseAdminArgs_MigrateMissingVerb(t *testing.T) {
 	}
 }
 
+func TestParseAdminArgs_MigrateDown_AcceptsVersionAndFlags(t *testing.T) {
+	// Per issue #273 PR 2: migrate down is now shipped. Verify
+	// the parser accepts the version + --yes + --force-irreversible.
+	opts, err := ParseAdminArgs([]string{"migrate", "down", "58", "--yes", "--force-irreversible"})
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if opts.Action != AdminMigrateDown {
+		t.Errorf("got Action=%v, want AdminMigrateDown", opts.Action)
+	}
+	if opts.TargetVersion != 58 {
+		t.Errorf("got TargetVersion=%d, want 58", opts.TargetVersion)
+	}
+	if !opts.Yes {
+		t.Error("got Yes=false, want true (--yes flag set)")
+	}
+	if !opts.ForceIrreversible {
+		t.Error("got ForceIrreversible=false, want true (--force-irreversible flag set)")
+	}
+}
+
+func TestParseAdminArgs_MigrateDown_RejectsMissingVersion(t *testing.T) {
+	if _, err := ParseAdminArgs([]string{"migrate", "down"}); err == nil {
+		t.Fatal("expected error for migrate down without target version")
+	}
+}
+
+func TestParseAdminArgs_MigrateDown_RejectsNonIntegerVersion(t *testing.T) {
+	if _, err := ParseAdminArgs([]string{"migrate", "down", "fifty"}); err == nil {
+		t.Fatal("expected error for migrate down with non-integer target version")
+	}
+}
+
+func TestParseAdminArgs_MigrateDown_RejectsUnknownFlag(t *testing.T) {
+	if _, err := ParseAdminArgs([]string{"migrate", "down", "58", "--bogus"}); err == nil {
+		t.Fatal("expected error for migrate down with unknown flag")
+	}
+}
+
 func TestParseAdminArgs_MigrateUnknown(t *testing.T) {
-	if _, err := ParseAdminArgs([]string{"migrate", "down", "1"}); err == nil {
-		t.Fatalf("expected error for migrate down (not shipped)")
+	if _, err := ParseAdminArgs([]string{"migrate", "frobnicate"}); err == nil {
+		t.Fatalf("expected error for unknown migrate subcommand")
 	}
 }
 
@@ -354,6 +394,70 @@ func TestRunAdmin_UnknownAction(t *testing.T) {
 	code, err := RunAdmin(t.Context(), opts)
 	if err == nil || code != 3 {
 		t.Errorf("got code=%d err=%v, want code=3 err!=nil", code, err)
+	}
+}
+
+// TestRunAdminMigrateDown_RefusesWithoutYes covers the CLI gate
+// that requires --yes before runAdminMigrateDown will even open
+// the database. The runner refuses with code 1 + a user-facing
+// message before any DB work happens.
+func TestRunAdminMigrateDown_RefusesWithoutYes(t *testing.T) {
+	app := newHeadlessAppForTest(t)
+	var buf bytes.Buffer
+	opts := AdminOptions{
+		Kind:          AdminMigrate,
+		Action:        AdminMigrateDown,
+		TargetVersion: 58,
+		Yes:           false, // explicit; gate must trip
+		Writer:        &buf,
+		App:           app,
+	}
+	code, err := RunAdmin(t.Context(), opts)
+	if err == nil {
+		t.Fatal("expected error from RunAdmin (refusal without --yes)")
+	}
+	if code != 1 {
+		t.Errorf("got code=%d, want 1 (refusal exit code)", code)
+	}
+	if !strings.Contains(buf.String(), "--yes is required") {
+		t.Errorf("user-facing message missing --yes hint; got: %q", buf.String())
+	}
+}
+
+// TestRunAdminMigrateDown_ManifestPrinted covers the manifest
+// path: the runner prints a per-block table for the path BEFORE
+// applying the inverse, regardless of whether the path is fully
+// Reversible or crosses an Irreversible boundary. The manifest
+// must list every block in the window with its reversibility
+// marker (R/P/I) and one-line Reason.
+func TestRunAdminMigrateDown_ManifestPrinted(t *testing.T) {
+	app := newHeadlessAppForTest(t)
+	var buf bytes.Buffer
+	opts := AdminOptions{
+		Kind:               AdminMigrate,
+		Action:             AdminMigrateDown,
+		TargetVersion:      0, // crosses every block
+		Yes:                true,
+		ForceIrreversible:  true, // forces the manifest branch even though the path refuses
+		Writer:             &buf,
+		App:                app,
+	}
+	_, err := RunAdmin(t.Context(), opts)
+	// The path crosses Block 17 (Irreversible) so the runner
+	// refuses. We don't care about the error here; we only
+	// care that the manifest appeared in the output.
+	out := buf.String()
+	if !strings.Contains(out, "schema down manifest") {
+		t.Errorf("manifest header missing; got: %q", out)
+	}
+	if !strings.Contains(out, "[I] block-") {
+		t.Errorf("manifest should mark at least one Irreversible block; got: %q", out)
+	}
+	if !strings.Contains(out, "block-17-research-log-evidence-rename") {
+		t.Errorf("manifest should enumerate Block 17; got: %q", out)
+	}
+	if err == nil {
+		t.Errorf("expected refusal error (path crosses Block 17 Irreversible)")
 	}
 }
 

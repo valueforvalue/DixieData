@@ -240,6 +240,78 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestOpenCreatesRetainedPreMigrationBackup` (the v1→current
   end-to-end). This is PR 1 of the two-PR plan for issue #273
   (refactor first, then feature).
+- **Schema migration blocks get a `Down` function + `applyDownSchema`
+  runner** (issue #273 PR 2 of 2). Every `Migration` in the slice
+  now carries a `Down func(*sql.Tx) error` field paired with `Up`.
+  Per the reversibility classification:
+  - **Reversible** (Blocks 1, 2, 9, 10, 15, 16) — `Down` is the precise
+    inverse (DROP TABLE, DROP COLUMN, DROP INDEX, DELETE seed rows).
+  - **PartiallyReversible** (Blocks 3, 6, 7, 8, 11, 14) — `Down` is
+    best-effort; null-coalesce cases are reverted mechanically,
+    sentinel/printf/canonicalization cases are documented as
+    "what was lost" in the CLI manifest.
+  - **Irreversible** (Blocks 4, 5, 12, 13, 17) — `Down` returns
+    `ErrMigrationIrreversible`; the runner refuses the entire path
+    with `ErrDowngradeRefused` wrapping the blocking block ID +
+    reason. Per design decision Q2, `--force-irreversible` emits
+    the manifest but does NOT bypass the refusal.
+  - `internal/db/schema.go::applyDownSchema(db, target int)` is
+    the new runner. It maps `(current - target)` to a slice window
+    (capped at `len(migrations)`), iterates in REVERSE order, refuses
+    on `ErrMigrationIrreversible`, and writes `PRAGMA user_version
+    = target` as the LAST statement before commit. Exported as
+    `db.ApplyDownSchema` for the CLI.
+  Regression net (new `internal/db/migrate_down_test.go` + extensions
+  to `migrations_test.go`):
+  - `TestApplyDownSchema_NoOpWhenAlreadyAtTarget`
+  - `TestApplyDownSchema_RefusesPastIrreversible` (asserts
+    `errors.Is(err, ErrDowngradeRefused)` AND
+    `errors.Is(err, ErrMigrationIrreversible)`; asserts
+    user_version is unchanged after refusal)
+  - `TestApplyDownSchema_PartialReversibleStepDown` (every
+    v<N<59 must refuse — documents the current v59 floor)
+  - `TestApplyDownSchema_EmptyArchiveSucceedsAtCurrentVersion`
+  - `TestApplyDownSchema_RefusalDoesNotMutateTables` (row counts
+    byte-identical pre/post refusal)
+  - `TestRetainedBackupDirectionDiscriminator` (smoke test
+    against the existing `RetainedBackupManager` — documents the
+    integration point the CLI uses for the pre-DOWN snapshot)
+  - `TestMigrationsCatalogueHasDown` (every migration has a
+    non-nil Down function)
+  - `TestMigrationsIrreversibleDownRefuses` (every Irreversible
+    block's Down returns `ErrMigrationIrreversible` when called
+    against a real `*sql.Tx`)
+
+- **`dixiedata migrate down <target> [--yes] [--force-irreversible]`
+  ships** (issue #273 PR 2). The CLI surface previously returned an
+  error for `migrate down`; the dispatch now routes to
+  `runAdminMigrateDown` which:
+  1. Refuses without `--yes` (exit code 1, user-facing message).
+  2. Computes the slice window from the audit catalogue, prints
+     a per-block manifest with `[R]` / `[P]` / `[I]` reversibility
+     markers and the per-block Reason.
+  3. Calls `db.ApplyDownSchema` and surfaces the refusal (if any)
+     with the blocking block ID + reason.
+  4. JSON mode emits the same manifest as `manifest: []struct{id,
+     reversibility, reason}`.
+  Existing `TestParseAdminArgs_MigrateUnknown` updated; new tests:
+  - `TestParseAdminArgs_MigrateDown_AcceptsVersionAndFlags`
+  - `TestParseAdminArgs_MigrateDown_RejectsMissingVersion`
+  - `TestParseAdminArgs_MigrateDown_RejectsNonIntegerVersion`
+  - `TestParseAdminArgs_MigrateDown_RejectsUnknownFlag`
+  - `TestRunAdminMigrateDown_RefusesWithoutYes`
+  - `TestRunAdminMigrateDown_ManifestPrinted`
+
+- **`docs/migrations/v55.md` doc-vs-code mismatch corrected**. The
+  v55 doc claimed a SQL CHECK constraint was added at v55, but the
+  inline `CREATE TABLE soldiers` at `internal/db/schema.go:25-65`
+  declares `entry_type TEXT NOT NULL DEFAULT 'soldier'` without a
+  CHECK. The comment at `schema.go:824-836` explicitly documents the
+  pragmatic "application-level validation" approach. The doc is
+  rewritten to reflect the actual SQL effect (log table +
+  application-level validation) per the audit's Block 16 entry.
+  The audit classifies Block 16 as Reversible at the SQL level;
+  the `migrate down` runner drops the log table without refusal.
 
 ### Fixed
 
