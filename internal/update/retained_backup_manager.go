@@ -236,7 +236,7 @@ func snapshotFileNameFor(direction string) string {
 	}
 }
 
-// Direction returns the record's direction label, defaulting to
+// DirectionLabel returns the record's direction label, defaulting to
 // "upgrade" for records persisted before the field was added
 // (issue #273 PR 3). The default makes the field backward
 // compatible — old indexes parse cleanly via encoding/json's

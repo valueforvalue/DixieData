@@ -72,7 +72,10 @@ func (b *bufferedResponseWriter) FlushTo(target http.ResponseWriter) {
 	}
 }
 
-// --- NewApp, WithFrontendAssets, Startup, Shutdown, startup, shutdown ---
+// NewApp returns a zero-value *App ready for option chaining.
+// The returned App has no database, no facades, and no frontend assets;
+// call WithFrontendAssets, then open the database via the appshell
+// bootstrap path before invoking Startup.
 func NewApp() *App {
 	return &App{}
 }
@@ -305,7 +308,9 @@ func (a *App) readFrontendAsset(name string) ([]byte, error) {
 	return nil, lastErr
 }
 
-// --- ServeHTTP ---
+// ServeHTTP routes an incoming HTTP request to the appshell's
+// htmx + REST dispatcher, recording the request in the debug
+// context and recovering from any panic to the crash log.
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	debug.FromContext(r.Context()).Debug("request received",
 		"component", "http",

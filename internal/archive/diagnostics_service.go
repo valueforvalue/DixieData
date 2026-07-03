@@ -238,8 +238,10 @@ func addTruncatedLogFile(zipWriter *zip.Writer, srcPath, entryName string, maxLi
 	return nil
 }
 
-// (no fmt usage here; package-level fmt imported only if needed by future edits)
-
+// DiagnosticsBundleName returns the filename used for the bug-report
+// zip the diagnostics walker produces, dated to the day the bundle
+// was generated. The format matches what the in-place update flow
+// expects for "user-generated report" attachments.
 func DiagnosticsBundleName(now time.Time) string {
 	return "dixiedata-bug-report-" + now.Format("2006-01-02") + ".zip"
 }

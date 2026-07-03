@@ -13,8 +13,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-// exportFilterUnknownValue is the sentinel value used to represent
-// records with an unknown value for a given filter dimension.
 // ExportFilterUnknownValue is the sentinel value the print-config
 // modal uses to represent records with an unknown value for a
 // given filter dimension. Exported so appshell handlers can
