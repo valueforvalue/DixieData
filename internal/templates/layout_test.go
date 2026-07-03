@@ -114,6 +114,11 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 				`position:sticky`,
 				`position: sticky`,
 			}},
+		{needle: "split-screen foldout-panel override (issue #288 slice 2)",
+			alternates: []string{
+				`html[data-layout-mode="split-screen"] .foldout-panel`,
+				`html[data-layout-mode=split-screen] .foldout-panel`,
+			}},
 	}
 	for _, c := range checks {
 		ok := false

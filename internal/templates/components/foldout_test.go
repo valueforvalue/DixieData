@@ -89,7 +89,8 @@ func TestFoldout_TriggerAttrsPassThrough(t *testing.T) {
 // If a future change strips the max-w token, this test fails.
 // The CSS-layer enforcement (html[data-layout-mode=split-screen]
 // .foldout-panel rule) lives in frontend/tailwind.css and is
-// covered by a separate assertion in internal/templates/layout_test.go.
+// covered by a separate assertion in internal/templates/layout_test.go
+// ("split-screen foldout-panel override (issue #288 slice 2)").
 func TestFoldout_PanelResponsiveSizing(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Foldout("Share", "layout.share.menu", nil).Render(context.Background(), &buf); err != nil {
