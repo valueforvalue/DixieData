@@ -58,6 +58,7 @@ LABELS=(
 
   # --- Meta (process state) ---
   "blocked|cccccc|Held by another issue; cannot proceed until unblocked"
+  "deferred|bfd4f2|Held until a future trigger; reopen conditions documented in the issue body"
   "duplicate|cfd3d7|This issue or pull request already exists"
   "good first issue|7057ff|Good for newcomers"
   "help wanted|008672|Extra attention is needed"

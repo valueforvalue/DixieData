@@ -12,7 +12,7 @@ state without re-reading every issue title.
 | **Area** | Which part of the system? | `area:backend`, `area:frontend`, `area:templates`, `area:cli`, `area:share`, `area:tags`, `area:export`, `area:import`, `area:db`, `area:docs`, `area:debug` |
 | **Priority** | How urgent is it? | `priority:high`, `priority:medium`, `priority:low` |
 | **Cohort** | What batch does it belong to? | `audit-fallout` |
-| **Meta** | Process state, not work state | `blocked`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix` |
+| **Meta** | Process state, not work state | `blocked`, `deferred`, `duplicate`, `invalid`, `question`, `good first issue`, `help wanted`, `wontfix` |
 
 The full label set with colors + descriptions is defined in
 [`scripts/sync-labels.sh`](../../scripts/sync-labels.sh).
@@ -131,6 +131,7 @@ a backlog of related issues.
 | Label | When to apply |
 |---|---|
 | `blocked` | Held by another issue. Comment on the issue with a link to the blocker. |
+| `deferred` | Held until a future trigger fires. Issue body must document the reopen conditions (what event would un-defer this?). Distinct from `wontfix` (decision to never action) and `blocked` (held by a specific in-flight issue). |
 | `duplicate` | This issue already exists. Comment with a link to the canonical issue. |
 | `good first issue` | Small enough for a newcomer to pick up. Maintainer-curated. |
 | `help wanted` | Maintainer is actively looking for someone to pick this up. |
