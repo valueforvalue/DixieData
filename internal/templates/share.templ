@@ -11,7 +11,18 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReviewConflict, exportRecords []viewmodel.ExportRecordOption, counts viewmodel.ArchiveCounts, shareIncludeTagsEnabled bool, recentJobs []viewmodel.RecentJobEntry) {
+// ShareView is the /share landing — a sub-overview
+// after issue #284. The Export & Backup, Import &
+// Restore, and Google Integration surfaces moved to
+// /share/exports, /share/imports, and /share/sync
+// respectively. The Quick Actions tiles here link to
+// each subpage. The Merge Review section stays on
+// /share (locked decision from #265). The Support &
+// Diagnostics card stays on /share (deferred to #255).
+// The PrintConfigModal + Google Calendar Preferences
+// modal moved with the surface that owns them
+// (export + sync respectively).
+templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.ArchiveCounts, recentJobs []viewmodel.RecentJobEntry) {
 	@Layout("Share") {
 		<div class="relative mx-auto max-w-6xl space-y-6">
 			if counts.TotalRecords() == 0 {
@@ -29,201 +40,59 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 				<h2 class="text-2xl gold font-bold">Share Archive</h2>
 				<p class="mt-2 text-sm text-slate-600">Export, back up, import, and restore your DixieData local archive from one shared workspace.</p>
 			</div>
-			// Issue #265: Quick Actions sit above the fold so
-			// a returning user can complete the most common
-			// task (export / import / share) without scrolling
-			// past the long tail of less-common actions. The
-			// three tiles are hardcoded — telemetry-driven
-			// curation is a future concern. The Export JSON
-			// tile submits the same data-action flow as the
-			// in-page Export JSON button so behaviour is
-			// identical regardless of which surface the user
-			// uses.
+			// Issue #284: Quick Actions are now navigate-to-subpage
+			// links (4 tiles, one per subpage). Pre-#264 the
+			// landing used in-page anchors; post-#264 (issue #264
+			// landed the foldout) the tiles used to be quick
+			// data-action submits for the most common tasks
+			// (export JSON, load backup, share queue). Per the
+			// locked decision in #284, the tiles now navigate to
+			// the dedicated subpages so the user lands on a
+			// focused surface. The actions (Export JSON, Load
+			// Backup, etc.) live on the subpages themselves.
 			<div id={ uiids.PanelShareQuickActions } class="space-y-3">
 				<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Quick actions</p>
-				<div class="grid gap-3 sm:grid-cols-3">
-					@components.QuickAction("Export JSON", "Hierarchical w/ version metadata", "/share#export-section", "", templ.Attributes{
-						"data-action":       "/export/json",
-						"data-dixie-submit": "true",
-					})
-					@components.QuickAction("Load Backup", "Restore your local archive from a .ddbak", "/share#import-section", "", templ.Attributes{
-						"data-action":       "/import/backup",
-						"data-dixie-submit": "true",
-						"data-confirm":      "Load a backup archive and replace the current local archive?",
-					})
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+					@components.QuickAction("Export", "Generate portable exports + backups", routebuilder.ShareExports(), "", nil)
+					@components.QuickAction("Import", "Bring data back into this archive", routebuilder.ShareImports(), "", nil)
 					@components.QuickAction("Share Queue", "Build a shared archive from queued records", routebuilder.ShareQueuePage(), "", nil)
+					@components.QuickAction("Sync", "Google Drive, Sheets, Calendar", routebuilder.ShareSync(), "", nil)
 				</div>
 			</div>
 			@components.RecentJobs(recentJobs)
-			<div class="responsive-two-col relative grid gap-6">
-				<section id="export-section" class="card rounded-3xl p-5 sm:p-8 space-y-4">
-					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Export & Backup</p>
-						<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
-						<p class="mt-2 text-sm text-slate-500">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
-					</div>
-					<div class="flex flex-col gap-3">
-						@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{
-							"data-action": "/export/json",
-							"data-dixie-submit": "true",
-						}) {
-							<span class="font-bold">Export JSON</span>
-							<span class="text-xs text-slate-300">Hierarchical w/ version metadata</span>
-						}
-						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"data-action": "/export/csv",
-							"data-dixie-submit": "true",
-						}) {
-							<span class="font-bold">Export Excel (.xlsx)</span>
-							<span class="text-xs text-slate-500">Typed dates, linked spouse data</span>
-						}
-						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"data-action": "/export/ical",
-							"data-dixie-submit": "true",
-						}) {
-							<span class="font-bold">Export iCalendar</span>
-							<span class="text-xs text-slate-500">ICS w/ app and schema versions</span>
-						}
-						<form method="post" action="/export/static-archive?async=1" class="contents">
-							@components.ButtonContent(components.ButtonSecondary, "justify-between text-left w-full", templ.Attributes{"type": "submit"}) {
-								<span class="font-bold">Export Static Web Archive</span>
-								<span class="text-xs text-slate-500">Standalone, live search, expandable cards</span>
-							}
-						</form>
-						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"data-print-config-open": "",
-						}) {
-							<span class="font-bold">Full Database Printable PDF</span>
-							<span class="text-xs text-slate-500">Landscape, configurable scope/sort/group</span>
-						}
-						@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{
-							"data-action": "/export/backup",
-							"data-dixie-submit": "true",
-						}) {
-							<span class="font-bold">Export Backup (.ddbak)</span>
-							<span class="text-xs text-slate-300">Manifest, DB, all images</span>
-						}
-						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
-							"data-action": "/export/shared-archive",
-							"data-dixie-submit": "true",
-						}) {
-							<span class="font-bold">Export Shared Archive (.ddshare)</span>
-							<span class="text-xs text-slate-500">For sharing into another DixieData</span>
-						}
-						<form action="/share/export-options" method="post" data-dixie-submit="true" data-reload-on-success="true" class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/65 px-4 py-3 text-sm text-slate-700 space-y-2">
-							<input type="hidden" name="include_tags" value="0"/>
-							<label class="flex items-start gap-2">
-								<input
-									type="checkbox"
-									name="include_tags"
-									value="1"
-									data-share-include-tags
-									if shareIncludeTagsEnabled {
-										checked
-									}
-									class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"
-								/>
-								<span>
-									<strong class="text-[#22303d]">Include tags</strong> in this .ddshare
-									(virtual cemeteries, research notes). Default off; recipient
-									sees your grouping on import.
-								</span>
-							</label>
-						</form>
-						<div id="build-share-archive" data-build-share-archive>
-							@components.ButtonContent(components.ButtonSecondary, "justify-between text-left w-full", templ.Attributes{
-								"data-share-queue-open": "",
-							}) {
-								<span class="font-bold">Build Share Archive</span>
-								<span class="text-xs text-slate-500">Open the Share Queue modal (issue #182)</span>
-							}
-						</div>
-					</div>
-				</section>
-				<section id="import-section" class="card rounded-3xl p-5 sm:p-8 space-y-4">
-					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Import & Restore</p>
-						<h3 class="mt-2 text-xl gold font-bold">Bring data back into this local archive</h3>
-						<p class="mt-2 text-sm text-slate-500">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p>
-					</div>
-					<div class="space-y-4">
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Collaborative Merge</p>
-							<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p>
-							<div class="mt-4">
-								@components.ButtonContent(components.ButtonPrimary, "justify-start text-left", templ.Attributes{
-									"data-action": "/import/shared-archive",
-									"data-dixie-submit": "true",
-								}) {
-									<div class="font-bold">Import Shared Archive (.ddshare)</div>
-									<div class="text-xs text-slate-300">Merge a shared archive into the current local archive using the bundled manifest, source identity, snapshot, and images</div>
-								}
-							</div>
-						</div>
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Memorial JSON Import</p>
-							<p class="mt-2 text-sm text-slate-600">Import Tampermonkey memorial JSON into basic person records. The pre-flight analyses how many rows would be added, skipped, or failed; the actual import only runs after you confirm on its own status page.</p>
-							<div class="mt-4">
-								@components.ButtonContent(components.ButtonSecondary, "justify-start text-left", templ.Attributes{
-									"data-action": "/import/memorial-json",
-									"data-dixie-submit": "true",
-								}) {
-									<div class="font-bold">Import Memorial JSON (.json)</div>
-									<div class="text-xs text-slate-500">Analyses the archive first; you confirm on the status page before any rows are added</div>
-								}
-							</div>
-							<div id="memorial-preview-target" class="mt-4 text-sm text-slate-600"></div>
-						</div>
-						<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4">
-							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#6f2c26]">Replace Local Archive</p>
-							<p class="mt-2 text-sm text-[#6f2c26]">Use this only when you intentionally want to overwrite the local database with a backup snapshot.</p>
-							<div class="mt-4">
-								@components.ButtonContent(components.ButtonDanger, "justify-start text-left", templ.Attributes{
-									"data-action": "/import/backup",
-									"data-dixie-submit": "true",
-									"data-confirm": "Load a backup archive and replace the current local archive?",
-								}) {
-									<div class="font-bold">Load Backup (.ddbak)</div>
-									<div class="text-xs text-[#f6ddd6]">Restore a backup archive and replace the current local archive (legacy .zip backups still supported)</div>
-								}
-							</div>
-						</div>
-					</div>
-					<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
-						<strong class="text-[#22303d]">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.
-					</div>
-				</section>
-				<section class="responsive-span-2 card rounded-3xl p-5 sm:p-8 space-y-4 md:col-span-2">
-					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Support & Diagnostics</p>
-						<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
-						<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
-					</div>
-					<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-						@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-							"data-action": "/export/feedback-log",
-							"data-dixie-submit": "true",
-						}) {
-							<div class="font-bold">Export Feedback Log</div>
-							<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
-						}
-						@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-							"data-action": "/export/bug-report",
-							"data-dixie-submit": "true",
-						}) {
-							<div class="font-bold">Export Bug Report Bundle</div>
-							<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
-						}
-					</div>
-				</section>
-			</div>
-			@partials.PrintConfigModal(exportRecords)
-
-						if len(conflicts) > 0 {
+			// Issue #284 + #265: Support & Diagnostics card stays
+			// on /share (the destructive / user-troubleshooting
+			// surface; deferred to #255 for a possible move to
+			// /settings). Merge Review stays on /share per the
+			// locked decision from #265.
+			<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Support & Diagnostics</p>
+					<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
+					<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
+				</div>
+				<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
+						"data-action":       "/export/feedback-log",
+						"data-dixie-submit": "true",
+					}) {
+						<div class="font-bold">Export Feedback Log</div>
+						<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
+					}
+					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
+						"data-action":       "/export/bug-report",
+						"data-dixie-submit": "true",
+					}) {
+						<div class="font-bold">Export Bug Report Bundle</div>
+						<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
+					}
+				</div>
+			</section>
+			if len(conflicts) > 0 {
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>
-								<h3 class="text-xl gold font-bold">Merge Review</h3>
-								<p class="mt-2 text-sm text-slate-500">These person records were staged because the incoming source archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
+						<h3 class="text-xl gold font-bold">Merge Review</h3>
+						<p class="mt-2 text-sm text-slate-500">These person records were staged because the incoming source archive changed the same person, matched an existing local person record, or collided on a display ID. Choose which version should win before the merge is fully finished.</p>
 						<div id="merge-review-loaded-status" data-merge-review-loaded-status class="mt-3 inline-flex rounded-full border border-[rgba(141,116,64,0.45)] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]" aria-live="polite">Data Loaded: { fmt.Sprintf("%d", len(conflicts)) } Conflicts Found</div>
 					</div>
 					for _, conflict := range conflicts {
@@ -277,20 +146,20 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 							</div>
 							<div class="flex flex-wrap gap-3">
 								@components.Button("Inspect Diff", components.ButtonSecondary, "", templ.Attributes{
-								"data-merge-review-diff-toggle": fmt.Sprintf("%d", conflict.ID),
-							})
+									"data-merge-review-diff-toggle": fmt.Sprintf("%d", conflict.ID),
+								})
 								@components.Button("Keep Local", components.ButtonSecondary, "", templ.Attributes{
-								"data-merge-review-action": "",
-								"data-action": fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID),
-								"data-dixie-submit": "true",
-								"data-confirm": mergeReviewConfirmMessage("Keep Local", conflict),
-							})
+									"data-merge-review-action": "",
+									"data-action": fmt.Sprintf("/merge-review/%d/keep-local", conflict.ID),
+									"data-dixie-submit": "true",
+									"data-confirm": mergeReviewConfirmMessage("Keep Local", conflict),
+								})
 								@components.Button("Keep Incoming", components.ButtonPrimary, "", templ.Attributes{
-								"data-merge-review-action": "",
-								"data-action": fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID),
-								"data-dixie-submit": "true",
-								"data-confirm": mergeReviewConfirmMessage("Keep Incoming", conflict),
-							})
+									"data-merge-review-action": "",
+									"data-action": fmt.Sprintf("/merge-review/%d/keep-shared", conflict.ID),
+									"data-dixie-submit": "true",
+									"data-confirm": mergeReviewConfirmMessage("Keep Incoming", conflict),
+								})
 								if conflict.ConflictType == "display-id-collision" {
 									@components.Button("Keep Both", components.ButtonSecondary, "", templ.Attributes{
 										"data-merge-review-action": "",
@@ -340,207 +209,6 @@ templ ShareView(status viewmodel.GoogleStatus, conflicts []viewmodel.MergeReview
 					}
 				</div>
 			}
-			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
-				<div>
-					<h3 class="text-xl gold font-bold">Google Integration</h3>
-					<p class="mt-2 text-sm text-slate-500">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
-					if status.SharedClientAvailable {
-						<p class="mt-1 text-xs text-slate-500">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p>
-						<p class="mt-1 text-xs text-slate-500">Loaded from: <code>{ status.SharedClientSource }</code></p>
-					} else {
-						<p class="mt-1 text-xs text-slate-500">Save settings first, then connect the account in your browser.</p>
-						<p class="mt-1 text-xs text-slate-500">If you want shared settings, place <code>google-oauth-defaults.json</code> next to <code>DixieData.exe</code>.</p>
-					}
-				</div>
-				<div class="responsive-two-col grid gap-4">
-					<div class="col-span-2 flex flex-wrap gap-3">
-						@components.Button("Connect Google Account", components.ButtonPrimary, "", templ.Attributes{
-							"data-action": "/integrations/google/connect",
-							"data-dixie-submit": "true",
-						})
-						@components.Button("Disconnect", components.ButtonSecondary, "", templ.Attributes{
-							"data-action": "/integrations/google/disconnect",
-							"data-dixie-submit": "true",
-						})
-					</div>
-					<div class="col-span-2 flex flex-wrap gap-3">
-						@components.Button("Upload Backup to Google Drive", components.ButtonPrimary, "", templ.Attributes{
-							"data-action": "/integrations/google/backup",
-							"data-dixie-submit": "true",
-						})
-						@components.Button("Export CSV to Google Sheets", components.ButtonSecondary, "", templ.Attributes{
-							"data-action": "/integrations/google/sheets/export",
-							"data-dixie-submit": "true",
-						})
-					</div>
-					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-3">
-						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
-						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-							@components.Button("Use Calendar", components.ButtonSecondary, "", templ.Attributes{
-								"data-action": "/integrations/google/calendar/use-managed",
-								"data-dixie-submit": "true",
-								"data-progress-label": "Configuring DixieData Calendar...",
-								"data-busy-group": "google-calendar-actions",
-							})
-							@components.Button("Sync", components.ButtonSecondary, "", templ.Attributes{
-								"data-action": "/integrations/google/calendar/sync-managed",
-								"data-dixie-submit": "true",
-								"data-progress-label": "Syncing DixieData Calendar...",
-								"data-busy-group": "google-calendar-actions",
-							})
-							@components.Button("Unsync", components.ButtonSecondary, "", templ.Attributes{
-								"data-action": "/integrations/google/calendar/unsync-managed",
-								"data-dixie-submit": "true",
-								"data-confirm": "Remove all Google Calendar events previously created by DixieData?",
-								"data-progress-label": "Unsyncing DixieData Calendar...",
-								"data-busy-group": "google-calendar-actions",
-							})
-							@components.Button("Preferences", components.ButtonSecondary, "", templ.Attributes{
-								"data-google-calendar-preferences-open": "",
-							})
-						</div>
-						<p class="text-xs text-slate-500">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p>
-					</div>
-					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-2">
-						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
-						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-							@components.Button("Use Test", components.ButtonSecondary, "", templ.Attributes{
-								"data-action": "/integrations/google/calendar/use-test",
-								"data-dixie-submit": "true",
-								"data-progress-label": "Configuring DixieData Test Calendar...",
-								"data-busy-group": "google-calendar-actions",
-							})
-							@components.Button("Test Sync", components.ButtonSecondary, "", templ.Attributes{
-								"data-action": "/integrations/google/calendar/sync-test",
-								"data-dixie-submit": "true",
-								"data-progress-label": "Running DixieData Test Sync...",
-								"data-busy-group": "google-calendar-actions",
-							})
-							@components.Button("Test Unsync", components.ButtonSecondary, "", templ.Attributes{
-								"data-action": "/integrations/google/calendar/unsync-test",
-								"data-dixie-submit": "true",
-								"data-progress-label": "Removing DixieData Test events...",
-								"data-busy-group": "google-calendar-actions",
-							})
-						</div>
-					</div>
-				</div>
-				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600">
-					Status:
-					if status.Connected {
-						<strong class="ml-1 text-[#22303d]">Connected</strong>
-					} else {
-						<strong class="ml-1 text-[#6f2c26]">Not connected</strong>
-					}
-					if status.UsingSharedClient {
-						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">using shared OAuth app</span>
-					} else if status.SharedClientAvailable {
-						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">shared OAuth app available</span>
-					}
-				</div>
-				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
-					<div><strong>DixieData Calendar ID:</strong> { status.ManagedCalendarID }</div>
-					<div class="mt-1"><strong>DixieData Test Calendar ID:</strong> { status.TestCalendarID }</div>
-					if strings.TrimSpace(status.LastSyncedAt) != "" {
-						<div class="mt-1 text-xs text-slate-500">Last synced: { status.LastSyncedAt }</div>
-					}
-					<div class="mt-2">
-						if status.OutOfSync {
-							<strong class="text-[#6f2c26]">Out of sync</strong>
-						} else {
-							<strong class="text-[#29522d]">In sync</strong>
-						}
-						<span class="ml-2 text-xs text-slate-500">Added { fmt.Sprintf("%d", status.DriftAdded) } • Updated { fmt.Sprintf("%d", status.DriftUpdated) } • Removed { fmt.Sprintf("%d", status.DriftRemoved) }</span>
-					</div>
-				</div>
-				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
-					Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.
-				</div>
-				<div id="google-status" class="text-sm text-slate-500"></div>
-			</div>
-			<div id="google-calendar-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
-				<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-						<div>
-							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">DixieData Calendar</p>
-							<h3 id="google-calendar-preferences-modal-heading" class="mt-2 text-xl gold font-bold">Managed event preferences</h3>
-							<p class="mt-2 text-sm text-slate-600">Save one global preference profile. Changes apply on the next managed sync and overwrite DixieData-owned event formatting.</p>
-						</div>
-						@components.Button("Close", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
-						"data-google-calendar-preferences-close": "",
-					})
-					</div>
-					<form class="mt-6 space-y-5" action={ templ.SafeURL(routebuilder.GoogleCalendarPreferencesSave()) } data-dixie-submit="true">
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-3">
-							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Title format</p>
-							<label class="flex items-start gap-3 text-sm text-slate-700">
-								<input type="radio" name="title_preset" value="memorial_full_name" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "memorial_full_name" { checked }/>
-								<span>Memorial Anniversary: &#123;FullName&#125;</span>
-							</label>
-							<label class="flex items-start gap-3 text-sm text-slate-700">
-								<input type="radio" name="title_preset" value="full_name_memorial" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "full_name_memorial" { checked }/>
-								<span>&#123;FullName&#125; Memorial Anniversary</span>
-							</label>
-							<label class="flex items-start gap-3 text-sm text-slate-700">
-								<input type="radio" name="title_preset" value="display_id_full_name" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "display_id_full_name" { checked }/>
-								<span>&#123;DisplayID&#125; • &#123;FullName&#125;</span>
-							</label>
-						</div>
-						<div class="grid gap-4 sm:grid-cols-2">
-							<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
-								<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Start time</span>
-								<input type="time" name="start_time" data-google-pref-start-time data-google-pref-input min="05:00" max="23:00" step="900" value={ status.Settings.ManagedEventPreferences.StartTime } class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
-							</label>
-							<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-2 text-sm text-slate-700">
-								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Description fields</p>
-								<label class="flex items-center gap-2"><input type="checkbox" name="include_record_id" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeRecordID { checked }/>Record ID</label>
-								<label class="flex items-center gap-2"><input type="checkbox" name="include_unit" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeUnit { checked }/>Unit</label>
-								<label class="flex items-center gap-2"><input type="checkbox" name="include_buried_in" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeBuriedIn { checked }/>Buried In</label>
-								<label class="flex items-center gap-2"><input type="checkbox" name="include_original_date" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeOriginalDate { checked }/>Original Death Date</label>
-							</div>
-						</div>
-						<div class="grid gap-4 sm:grid-cols-2">
-							<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
-								<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Primary reminder</span>
-								<select name="reminder_primary" data-google-pref-input class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
-									<option value="none" if status.Settings.ManagedEventPreferences.ReminderPrimary == "none" { selected }>None</option>
-									<option value="1h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1h" { selected }>1 hour before</option>
-									<option value="3h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "3h" { selected }>3 hours before</option>
-									<option value="12h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "12h" { selected }>12 hours before</option>
-									<option value="1d" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1d" { selected }>1 day before</option>
-									<option value="2d" if status.Settings.ManagedEventPreferences.ReminderPrimary == "2d" { selected }>2 days before</option>
-									<option value="1w" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1w" { selected }>1 week before</option>
-								</select>
-							</label>
-							<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
-								<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Secondary reminder</span>
-								<select name="reminder_secondary" data-google-pref-input class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
-									<option value="none" if status.Settings.ManagedEventPreferences.ReminderSecondary == "none" { selected }>None</option>
-									<option value="1h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1h" { selected }>1 hour before</option>
-									<option value="3h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "3h" { selected }>3 hours before</option>
-									<option value="12h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "12h" { selected }>12 hours before</option>
-									<option value="1d" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1d" { selected }>1 day before</option>
-									<option value="2d" if status.Settings.ManagedEventPreferences.ReminderSecondary == "2d" { selected }>2 days before</option>
-									<option value="1w" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1w" { selected }>1 week before</option>
-								</select>
-							</label>
-						</div>
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(36,48,61,0.04)] p-4 text-sm text-slate-600">
-							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Sample preview</p>
-							<div class="mt-2 font-semibold text-[#22303d]" data-google-pref-preview-title>Memorial Anniversary: Capt. John Smith</div>
-							<div class="mt-1 text-xs text-slate-500" data-google-pref-preview-time>Start: 09:00 America/Chicago</div>
-						</div>
-						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-							@components.Button("Cancel", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
-								"data-google-calendar-preferences-close": "",
-							})
-							@components.Button("Save Preferences", components.ButtonPrimary, "w-full px-4 sm:w-auto", templ.Attributes{"type": "submit"})
-						</div>
-					</form>
-				</div>
-			</div>
 		</div>
 	}
 }
-
-

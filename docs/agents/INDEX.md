@@ -72,6 +72,7 @@ all of them; load only the ones that match your task.
 | [`docs/TASKS.csv`](../TASKS.csv) | CSV-driven task backlog for 7-phase pipeline. |
 | [`docs/SERVICES.md`](../SERVICES.md) | Service inventory. |
 | [`docs/THIRDPARTY.md`](../THIRDPARTY.md) | Third-party dependencies. |
+| [`docs/agents/model-scope.md`](model-scope.md) | Subagent model allowlist + project shadow files. Load when configuring or debugging subagent models. |
 
 ## Tier 2 — On-demand
 

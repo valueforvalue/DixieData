@@ -1,172 +1,117 @@
-# 08 — Share / Export
+# 08 — Share Landing (sub-overview)
 
 - **Route**: `/share` (GET)
-- **Builder**: `routebuilder.ExportBackup`, `routebuilder.ExportDatabasePDFAsync`,
-  `routebuilder.GoogleCalendarPreferencesSave`
+- **Builder**: N/A (no data-action submits on the landing; all 4 tiles are navigate-to-subpage links)
 - **Template**: `internal/templates/share.templ`
 - **Layout**: both
 - **Owner**: package `templates`
+- **Subpages**: see [08a-exports.md](08a-exports.md), [08b-imports.md](08b-imports.md), [08c-sync.md](08c-sync.md)
+
+The /share landing was a single inline surface pre-#284 (Export & Backup card + Import & Restore card + Google Integration card + Support & Diagnostics + Merge Review). Issue #284 split the three primary surfaces into dedicated subpages; the landing is now a sub-overview that links to them.
 
 ## Regions (relaxed mode)
 
-```issue #265 (Quick Actions + Recent activity above the fold)
-┌── Share Archive ──────────────────────────────────────────────────┐
-│ if zero records: EmptyStateCard("share", counts)                 │
-│ h2 + intro copy                                                   │
-├───────────────────────────────────────────────────────────────────┤
-│ [panel.share.quick-actions] (3 tiles, sm:grid-cols-3)            │
-│   [Export JSON →] [Load Backup →] [Share Queue →]                │
-│   Each tile is a real <a>; Export JSON + Load Backup submit      │
-│   the data-action flow (same handler as the in-page button)     │
-├───────────────────────────────────────────────────────────────────┤
-│ [panel.share.recent] (last 3 terminal jobs, StartedAt desc)      │
-│   per row: [Kind] [status pill] [relative time]                   │
-│   empty state: "No exports or imports yet."                      │
-│   each row links to /jobs/{id}                                    │
-├───────────────────────────────────────────────────────────────────┤
-│ [panel.export.actions] (responsive-two-col → 2 sections side-by-side)│
-│                                                                    │
-│  ┌── All Exports ────────────┐  ┌── All Imports ─────────────┐  │
-│  │ Export JSON               │  │ [Collaborative Merge card]  │  │
-│  │ Export Excel (.xlsx)      │  │   Import Shared Archive     │  │
-│  │ Export iCalendar          │  │     (redirects to /jobs/{id})│  │
-│  │ Export Static Web Archive │  │ [Memorial JSON Import card] │  │
-│  │ Full Database PDF (modal) │  │   Preview Memorial JSON     │  │
-│  │ Export Backup (.ddbak)    │  │     (redirects to /jobs/{id})│  │
-│  │ Export Shared Archive     │  │ [Replace Local Archive RED] │  │
-│  │                           │  │   Load Backup (.ddbak)       │  │
-│  └───────────────────────────┘  └─────────────────────────────┘  │
-│                                                                    │
-│ [panel.share.support] (responsive-span-2)                        │
-│   Export Feedback Log | Export Bug Report Bundle                 │
-│                                                                    │
-├───────────────────────────────────────────────────────────────────┤
-│ if len(conflicts) > 0:                                            │
-│   [Merge Review section]  #merge-review-section                    │
-│     [Loaded status pill] "Data Loaded: N Conflicts Found"        │
-│     per conflict:                                                  │
-│       [Conflict card]                                              │
-│         Local vs Incoming (responsive-two-col)                     │
-│         Inspect Diff (data-merge-review-diff-toggle)              │
-│         Keep Local / Keep Incoming / Keep Both                    │
-│         (collapsible) field-by-field diff                        │
-├───────────────────────────────────────────────────────────────────┤
-│ [panel.export.google]                                             │
-│   Status block (shared client availability, loaded-from path)    │
-│   Connect / Disconnect                                            │
-│   Upload Backup to Drive | Export CSV to Google Sheets            │
-│   DixieData Calendar group: Use / Sync / Unsync / Preferences    │
-│   DixieData Test Calendar group: Use Test / Test Sync / Test Unsync│
-│   [Status card] — Connected? | Out of sync / In sync | drift counts│
-│   #google-status                                                   │
-│                                                                    │
-│   [Google Calendar preferences modal]  overlay.google-calendar-prefs│
-└───────────────────────────────────────────────────────────────────┘
+```
+┌── Share Archive (sub-overview) ────────────────────────────────┐
+│ if zero records: EmptyStateCard("share", counts)              │
+│ h2 "Share Archive" + intro copy                                │
+├────────────────────────────────────────────────────────────────┤
+│ [panel.share.quick-actions] (4 tiles, sm:grid-cols-2 lg:grid-cols-4)│
+│  ┌──Export──┐ ┌──Import──┐ ┌──Share Queue──┐ ┌──Sync──┐     │
+│  │→/exports │ │→/imports │ │→/share/queue  │ │→/sync  │     │
+│  └──────────┘ └──────────┘ └───────────────┘ └────────┘     │
+│  Each tile is a plain navigate-to-subpage <a> (no data-action │
+│  submit; the actions live on the subpages).                    │
+├────────────────────────────────────────────────────────────────┤
+│ [panel.share.recent] (last 3 terminal jobs, StartedAt desc)   │
+│   per row: [Kind] [status pill] [relative time]                │
+│   empty state: "No exports or imports yet."                   │
+│   each row links to /jobs/{id}                                 │
+├────────────────────────────────────────────────────────────────┤
+│ [Support & Diagnostics card] (full-width)                      │
+│  Export Feedback Log | Export Bug Report Bundle                 │
+│  /export/feedback-log + /export/bug-report (data-action submit)│
+├────────────────────────────────────────────────────────────────┤
+│ if len(conflicts) > 0:                                         │
+│   [Merge Review section]  #merge-review-section                │
+│     [Loaded status pill] "Data Loaded: N Conflicts Found"     │
+│     per conflict:                                               │
+│       [Conflict card]                                           │
+│         Local vs Incoming (responsive-two-col)                  │
+│         Inspect Diff (data-merge-review-diff-toggle)           │
+│         Keep Local / Keep Incoming / Keep Both                 │
+│         (collapsible) field-by-field diff                     │
+│         "remembers that mapping" copy (display-id-collision)   │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ## Modals / overlays
 
-| ID | Region | Notes |
-| --- | --- | --- |
-| `overlay.print-config.modal` | `#share-print-config-modal` | Configurable PDF export — scope/filter/sort/group/options |
-| `overlay.google-calendar-prefs.modal` | `#google-calendar-preferences-modal` | Title format / start time / reminders / description fields |
-
-Both modals contain `data-print-config-close` /
-`data-google-calendar-preferences-close` and the printable modal has
-the full export-config form (`data-pdf-pref-scope="archive"`).
+None. The print-config + Google Calendar Preferences modals moved
+to the owning subpages (`/share/exports` + `/share/sync` respectively).
 
 ## Atomic components
 
-- `Button`, `ButtonContent` — every export/import action.
-- `Card` — section wrappers.
-- `Field` — modal form inputs.
-- `EmptyState` — zero-archive variant.
+- `QuickAction` — the 4 Quick Action tiles
+- `ButtonContent` — Support & Diagnostics buttons + Merge Review per-conflict action buttons
+- `Card` — section wrappers
+- `RecentJobs` — last 3 jobs card
+- `EmptyState` — zero-archive variant
 
-## HTMX wiring (heavy surface)
+## HTMX wiring
 
-| Trigger | Verb | URL | Target | Notes |
-| --- | --- | --- | --- | --- |
-| Export JSON | POST | `/export/json` | `this` | `hx-swap="none"` |
-| Export xlsx | POST | `/export/csv` | `this` | `hx-swap="none"` |
-| Export iCal | POST | `/export/ical` | `this` | `hx-swap="none"` |
-| Static Archive | POST | `/export/static-archive?async=1` | (native form submit) | Triggers job, redirect |
-| Full DB PDF | — | — | — | Opens `#share-print-config-modal` |
-| Backup | POST | `/export/backup` | `this` | `hx-swap="none"` |
-| Shared Archive | POST | `/export/shared-archive` | `this` | `hx-swap="none"` |
-| Import Shared Archive | POST | `/import/shared-archive` | redirect `/jobs/{id}` | via `X-DixieData-Redirect` |
-| Preview Memorial JSON | POST | `/import/memorial-json` | redirect `/jobs/{id}` | via `X-DixieData-Redirect` |
-| Load Backup | POST | `/import/backup` | redirect `/jobs/{id}` | `hx-confirm`, destructive |
-| Connect Google | POST | `/integrations/google/connect` | `this` | `hx-swap="none"` |
-| Disconnect | POST | `/integrations/google/disconnect` | `this` | |
-| Upload to Drive | POST | `/integrations/google/backup` | `this` | |
-| Export CSV to Sheets | POST | `/integrations/google/sheets/export` | `this` | |
-| Use / Sync / Unsync Calendar | POST | `/integrations/google/calendar/...` | `this` | `data-busy-group="google-calendar-actions"`, `data-progress-label` |
-| Use / Sync / Unsync Test Calendar | POST | `/integrations/google/calendar/...test...` | `this` | same |
-| Save Calendar Preferences | POST | `routebuilder.GoogleCalendarPreferencesSave()` | `this` | |
-| Keep Local | POST | `/merge-review/{id}/keep-local` | `this` | `hx-confirm` per-conflict |
-| Keep Incoming | POST | `/merge-review/{id}/keep-shared` | `this` | |
-| Keep Both | POST | `/merge-review/{id}/keep-both` | `this` | only on display-id-collision |
-| Merge Review diff toggle | — | — | — | JS (`data-merge-review-diff-toggle`) |
-| Printable PDF submit | POST | `routebuilder.ExportDatabasePDFAsync()` | `this` | `hx-on::after-request` redirects on 303 |
+| Trigger | URL | Notes |
+| --- | --- | --- |
+| Quick Action tile Export | `GET /share/exports` | Navigate-to-subpage (no htmx) |
+| Quick Action tile Import | `GET /share/imports` | Navigate-to-subpage |
+| Quick Action tile Share Queue | `GET /share/queue` | Navigate-to-subpage |
+| Quick Action tile Sync | `GET /share/sync` | Navigate-to-subpage |
+| Support: Export Feedback Log | `POST /export/feedback-log` | `data-dixie-submit` |
+| Support: Export Bug Report Bundle | `POST /export/bug-report` | `data-dixie-submit` |
+| Merge Review: Keep Local | `POST /merge-review/{id}/keep-local` | `data-merge-review-action`, `hx-confirm` |
+| Merge Review: Keep Incoming | `POST /merge-review/{id}/keep-shared` | `data-merge-review-action`, `hx-confirm` |
+| Merge Review: Keep Both | `POST /merge-review/{id}/keep-both` | `data-merge-review-action`, only on display-id-collision, `hx-confirm` |
+| Merge Review diff toggle | — | JS (`data-merge-review-diff-toggle`) |
 
 ## State variants
 
 - **Zero archive**: `EmptyStateCard("share", counts)` at top.
-- **No merge conflicts**: section omitted entirely.
-- **Google not connected**: status pill says "Not connected".
-- **Google out of sync**: drift counts shown.
+- **No merge conflicts**: Merge Review section omitted entirely.
+- **Non-zero conflicts (any type)**: Merge Review section renders with per-conflict Keep Local / Keep Incoming actions + the diff + the "remembers that mapping" copy.
+- **Display-id-collision conflicts**: the per-conflict card also renders the Keep Both button + the "preserves the local record" copy.
 
 ## Footguns
 
-- **Import job results surface per-kind stats on the `/jobs/{id}`
-  summary card** (`backup_import` → Replaced records/images +
-  Schema migrated line; `shared_import` → Added/Merged/Skipped +
-  Conflicts staged + Images imported; `memorial_import` → Added/
-  Skipped/Failed + Images imported). Users land here when their
-  import finishes — the stats are the first confirmation the import
-  succeeded. See [20-jobs.md](20-jobs.md) for the full per-kind table.
-- **Memorial import log path is invisible** — `JobResult.LogPath`
-  is set by `handleConfirmMemorialJSONImport` but the summary card
-  doesn't render a download button for it. If the user hits the
-  memorial "Preview → Confirm" flow with any `Failed` count, they
-  have no in-app path to the error log. See [gaps.md](../gaps.md).
-- **Shared-import conflicts reminder is text-only** — when
-  `Conflicts > 0` the summary card shows
-  `Conflicts staged for review: N — see Merge Review below.` but
-  no button. The user has to navigate to the Share page to find
-  the Merge Review section. Consider adding a deep-link pill.
-- **Native dialog handlers everywhere** — `/export/backup`,
-  `/export/shared-archive`, `/export/static-archive`, image imports,
-  calendar actions. Each MUST be guarded per
-  [dialog-guard.md](../../agents/dialog-guard.md). Highest-risk page
-  in the app. See [gaps.md](../gaps.md).
-- **Bare URLs everywhere** — no routebuilder coverage on `/export/*`,
-  `/import/*`, `/integrations/*`, `/merge-review/*`. Renames will
-  silently break.
-- **Printable modal** uses `hx-on::after-request` with inline JS to
-  redirect on 303. Wails + HTMX event detail handling — verify it
-  works in webview.
-- **`data-busy-group="google-calendar-actions"`** — JS-level lockout
-  to prevent concurrent calendar actions. Verify on every calendar
-  button.
-- **`data-progress-label` + `data-async-job-redirect="true"`** on
-  printable PDF — confirm the redirect flow handles the job ID
-  correctly.
-- **Printable modal: `data-print-scope-value` radios + scope-panel**
-  shows/hides filter/record sections. JS-driven.
-- **`data-print-config-open` opens modal via JS**, `data-print-config-close`
-  closes. Verify outside-click + Esc behavior.
-- **Merge Review** can grow long with N conflicts — verify scroll
-  preservation + the `data-merge-review-loaded-status` `aria-live`
-  announces when conflicts arrive.
-- **Each conflict's Keep Both button** is conditionally rendered
-  (only for `display-id-collision`). Tests must check both branches.
-- **`mergeReviewConfirmMessage` is templated** — verify long incoming
-  display IDs don't overflow the confirm dialog.
+- **No modals on the landing** — the print-config and Google Calendar
+  Preferences modals moved to /share/exports and /share/sync
+  respectively. Any audit or test that looks for these modals on
+  the landing is a bug.
+- **Quick Action tiles are NOT data-action submits** — pre-#284 the
+  Export JSON + Load Backup tiles ran the action immediately.
+  Post-#284 they navigate to the subpage where the user clicks
+  the action. Two clicks vs one — intentional per the locked
+  decision (the surfaces are now focused; the previous landing
+  was too dense to scan).
+- **Foldout collapsed 4 → 3 items** — Build Share Archive folded
+  into Export (the Build button lives on /share/exports). The
+  in-page anchor deep links (`/share#export-section`,
+  `/share#import-section`) still work for backward compat; the
+  anchors are harmless on the new landing because the IDs no
+  longer exist (the old inline sections were removed).
+- **Recent Activity card** shows the last 3 jobs across ALL
+  surfaces (export / import / merge / share-queue). The kind
+  label distinguishes them. See [20-jobs.md](20-jobs.md) for
+  the per-kind result summary.
+- **Merge Review** can grow long with N conflicts — verify
+  scroll preservation + the `data-merge-review-loaded-status`
+  `aria-live` announces when conflicts arrive.
+- **`mergeReviewConfirmMessage` is templated** — verify long
+  incoming display IDs don't overflow the confirm dialog.
 
 ## See also
 
-- [04-browse.md](04-browse.md) (Print/Export Selected deep link)
-- [20-jobs.md](20-jobs.md) (job status for exports)
-- [21-settings.md](21-settings.md) (debug mode toggle surfaces here)
-- [gaps.md](../gaps.md) (dialog-guard audit pending)
+- [08a-exports.md](08a-exports.md) — /share/exports subpage
+- [08b-imports.md](08b-imports.md) — /share/imports subpage
+- [08c-sync.md](08c-sync.md) — /share/sync subpage
+- [20-jobs.md](20-jobs.md) (job status for exports/imports)
+- [gaps.md](../gaps.md) (folded-in Build button is the future target for the dialog-guard audit)

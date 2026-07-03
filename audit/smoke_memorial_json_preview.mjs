@@ -60,9 +60,13 @@ try {
   const page = await ctx.newPage();
   page.on("pageerror", (err) => console.log("    [pageerror]", err.message));
 
-  // === Step 1: load /share + assert Memorial JSON card structure ===
-  console.log("Step 1: load /share + assert Memorial JSON card");
-  await page.goto(`http://127.0.0.1:${PORT}/share`, { waitUntil: "networkidle" });
+  // === Step 1: load /share/imports + assert Memorial JSON card structure ===
+  // Issue #284: the Memorial JSON Import card moved from
+  // the inline /share landing to the dedicated
+  // /share/imports subpage. The probe now navigates to the
+  // subpage instead of the landing.
+  console.log("Step 1: load /share/imports + assert Memorial JSON card");
+  await page.goto(`http://127.0.0.1:${PORT}/share/imports`, { waitUntil: "networkidle" });
   await wait(500);
 
   // 1.1. The deprecated #share-status panel must NOT exist.

@@ -92,16 +92,13 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
 					@components.Foldout("Share", uiids.LayoutShareMenu, nil) {
 						<li role="none">
-							<a href="/share#export-section" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-export>Export</a>
+							<a href={ templ.SafeURL(routebuilder.ShareExports()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-export>Export</a>
 						</li>
 						<li role="none">
-							<a href="/share#import-section" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-import>Import</a>
+							<a href={ templ.SafeURL(routebuilder.ShareImports()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-import>Import</a>
 						</li>
 						<li role="none">
 							<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-queue-page-link>Share Queue</a>
-						</li>
-						<li role="none">
-							<a href="/share#build-share-archive" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-build>Build Share Archive</a>
 						</li>
 					}
 					<a href="/tags" class="pill-link top-nav-link">Tags</a>
