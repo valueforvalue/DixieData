@@ -508,19 +508,26 @@ func docCoverageForPackage(t *testing.T, pkgPath string) (int, int, float64) {
 	return exportedCount, documentedCount, pct
 }
 
-// TestPerPackageDocCoverageFloor is the regression gate for Go Doc
-// audit Phase 4. For every Go package under internal/ and pkg/ with
-// at least 5 exported identifiers, asserts that the documented
-// fraction is at least 60%. Packages below the floor are listed in
-// the failure output with their (exported, documented, pct) counts
-// so the operator knows exactly which packages to address.
+// TestPerPackageDocCoverageFloor is the regression gate for the
+// Go Doc coverage requirement (CONTEXT.md §Laws: "Exported Go
+// identifiers carry doc comments"). For every Go package under
+// internal/ and pkg/ with at least 5 exported identifiers,
+// asserts that the documented fraction is at least 70%. Packages
+// below the floor are listed in the failure output with their
+// (exported, documented, pct) counts so the operator knows
+// exactly which packages to address.
 //
-// The 60% per-package floor + 70% overall floor matches the
-// Phase 4 plan. The test uses `go doc -all -short` to count
-// (under-counts vs. the audit script for packages that re-export
-// many type aliases); the audit script (.scratch/audit/go_doc_audit.py)
-// is the source of truth for the overall metric. This test is
-// the regression gate, not the audit.
+// The 70% per-package floor is a regression gate, not a target;
+// the working rule is "aim for 100% on every new PR" (per the
+// law). The test exists so a future commit that strips docs in
+// bulk gets caught; it is not a license to land a 70% patch.
+//
+// The test uses `go doc -all -short` to count (under-counts vs.
+// the audit script for packages that re-export many type
+// aliases); the audit script
+// (.scratch/audit/go_doc_audit.py) is the source of truth for
+// the overall metric. This test is the regression gate, not
+// the audit.
 //
 // Packages with < 5 exported identifiers are skipped because the
 // percentage metric is too noisy for tiny packages.
@@ -570,13 +577,13 @@ func TestPerPackageDocCoverageFloor(t *testing.T) {
 		if exp < 5 {
 			continue
 		}
-		if pct < 60.0 {
+		if pct < 70.0 {
 			fails = append(fails, result{rel, exp, doc, pct})
 		}
 	}
 	if len(fails) > 0 {
 		for _, f := range fails {
-			t.Errorf("package %q has %d/%d (%.1f%%) exported identifiers documented; below the 60%% floor",
+			t.Errorf("package %q has %d/%d (%.1f%%) exported identifiers documented; below the 70%% floor (see CONTEXT.md §Laws: 'Exported Go identifiers carry doc comments')",
 				f.pkg, f.documented, f.exported, f.pct)
 		}
 	}

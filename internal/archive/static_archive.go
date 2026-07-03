@@ -69,12 +69,14 @@ type StaticArchiveRecord struct {
 	Records           []StaticArchiveRecordEntry `json:"records,omitempty"`
 }
 
+// StaticArchiveImage is an archive-layer type.
 type StaticArchiveImage struct {
 	FileName string `json:"fileName"`
 	Caption  string `json:"caption,omitempty"`
 	FilePath string `json:"filePath"`
 }
 
+// StaticArchiveRecordEntry is an archive-layer type.
 type StaticArchiveRecordEntry struct {
 	RecordType string `json:"recordType,omitempty"`
 	AppID      string `json:"appId,omitempty"`
