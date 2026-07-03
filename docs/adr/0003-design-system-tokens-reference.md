@@ -29,8 +29,9 @@ an ADR amendment.
 ### Palette absorption — issue #252 (Phase 1)
 
 The six colors below were added from the user-supplied
-`Pallete.png` palette. **No template or component references
-them yet.** Phase 2 (separate issue) migrates existing literal
+`docs/design/palette.png` palette (also present at repo root as
+`Pallete.png`, kept in sync at every ADR amendment). **No template or
+component references them yet.** Phase 2 (separate issue) migrates existing literal
 hex values in `frontend/tailwind.css` + the component
 templates to whichever of these roles is a clear win. Phase 3
 takes before/after screenshots + WCAG contrast checks before
