@@ -2,31 +2,57 @@
 package uiids
 
 const (
+// PageCalendar is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageCalendar                = "page.calendar"
+// PageInitialSetup is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageInitialSetup            = "page.setup"
+// PanelCalendarQuote is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelCalendarQuote          = "panel.calendar.quote"
+// PanelCalendarGrid is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelCalendarGrid           = "panel.calendar.grid"
+// PanelCalendarDetails is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelCalendarDetails        = "panel.calendar.details"
+// PageSoldiersList is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSoldiersList            = "page.soldiers.list"
+// PageBrowse is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageBrowse                  = "page.browse"
+// TabSoldiersSearchBasic is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	TabSoldiersSearchBasic      = "tab.soldiers.search.basic"
+// PanelSoldiersSearchBasic is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldiersSearchBasic    = "panel.soldiers.search.basic"
+// TabSoldiersSearchAdvanced is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	TabSoldiersSearchAdvanced   = "tab.soldiers.search.advanced"
+// PanelSoldiersSearchAdvanced is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldiersSearchAdvanced = "panel.soldiers.search.advanced"
+// PanelSoldiersResults is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldiersResults        = "panel.soldiers.results"
+// PanelBrowseResults is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelBrowseResults          = "panel.browse.results"
+// PageSoldierDetail is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSoldierDetail           = "page.soldier.detail"
+// PanelSoldierDetailSummary is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierDetailSummary   = "panel.soldier.detail.summary"
+// PanelSoldierDetailRecords is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierDetailRecords   = "panel.soldier.detail.records"
+// PanelSoldierDetailImages is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierDetailImages    = "panel.soldier.detail.images"
+// PageSoldierNew is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSoldierNew              = "page.soldier.new"
+// PageSoldierEdit is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSoldierEdit             = "page.soldier.edit"
+// PanelSoldierFormScratchpad is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierFormScratchpad  = "panel.soldier.form.scratchpad"
+// PanelSoldierFormRecords is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierFormRecords     = "panel.soldier.form.records"
+// PanelSoldierFormImages is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierFormImages      = "panel.soldier.form.images"
+// PageExport is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageExport                  = "page.export"
+// PanelExportActions is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelExportActions          = "panel.export.actions"
+// PanelJobStatus is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelJobStatus              = "panel.job.status"
+// PanelExportGoogle is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelExportGoogle           = "panel.export.google"
 	// Issue #284: dedicated subpage IDs for the three
 	// subpages that replaced the inline sections on the
@@ -34,27 +60,49 @@ const (
 	// route + page (Page*); the section inside is its own
 	// panel (Panel*).
 	PageShareExports            = "page.share.exports"
+// PageShareImports is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageShareImports            = "page.share.imports"
+// PageShareSync is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageShareSync               = "page.share.sync"
+// PageShareLanding is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageShareLanding            = "page.share.landing"
+// PageInsights is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageInsights                = "page.insights"
+// PanelInsightsOverview is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsOverview       = "panel.insights.overview"
+// PanelInsightsCemeteries is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsCemeteries     = "panel.insights.cemeteries"
+// PanelInsightsHomes is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsHomes          = "panel.insights.homes"
+// PanelInsightsPensions is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsPensions       = "panel.insights.pensions"
+// PanelInsightsUnits is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsUnits          = "panel.insights.units"
+// PanelInsightsChronology is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsChronology     = "panel.insights.chronology"
+// PanelInsightsDuplicateAudit is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelInsightsDuplicateAudit = "panel.insights.duplicate-audit"
+// PageReviewQueue is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageReviewQueue             = "page.review-queue"
+// PanelReviewQueueList is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelReviewQueueList        = "panel.review-queue.list"
+// PageReviewQueueCompare is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageReviewQueueCompare      = "page.review-queue.compare"
+// PanelReviewQueueCompare is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelReviewQueueCompare     = "panel.review-queue.compare"
+// PageResearchCollectionsHub is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageResearchCollectionsHub  = "page.research-collections.hub"
+// PageResearchCollection is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageResearchCollection      = "page.research-collections.detail"
+// PageResearchLog is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageResearchLog             = "page.research-log"
+// PageResearchPack is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageResearchPack            = "page.research-pack"
+// PageServiceTimeline is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageServiceTimeline         = "page.service-timeline"
+// PageUnitCamaraderie is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageUnitCamaraderie         = "page.unit-camaraderie"
+// PageMergeReviewLedger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageMergeReviewLedger       = "page.merge-review-ledger"
 	// PanelResearchCollectionsHub is the named-research-collections
 	// list/table on the Research Collections Hub page.
@@ -78,16 +126,27 @@ const (
 	// ledger rendered inside the soldier detail page (Conflict Ledger
 	// HTMX swap).
 	PanelSoldierConflictLedger  = "panel.soldier.conflict-ledger"
+// PageInsightsDrilldown is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageInsightsDrilldown       = "page.insights.drilldown"
+// PageSettings is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSettings                = "page.settings"
+// PanelSettingsLayout is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSettingsLayout         = "panel.settings.layout"
+// PanelSettingsInitialize is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSettingsInitialize     = "panel.settings.initialize"
+// PanelSettingsUpdates is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSettingsUpdates        = "panel.settings.updates"
+// PanelSettingsDebug is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSettingsDebug          = "panel.settings.debug"
+// OverlayFloatingMenu is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayFloatingMenu         = "overlay.floating.menu"
+// OverlayFeedbackModal is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayFeedbackModal        = "overlay.feedback.modal"
+// OverlayPrintConfigModal is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayPrintConfigModal     = "overlay.print-config.modal"
+// OverlayGoogleCalendarPrefs is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayGoogleCalendarPrefs  = "overlay.google-calendar-prefs.modal"
+// OverlayImageViewer is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayImageViewer          = "overlay.image.viewer"
 	// OverlayJobsProgress is the fixed-position popup region that
 	// shows a progress card for the most recent active background
@@ -99,13 +158,19 @@ const (
 	OverlayJobsProgress = "overlay.jobs.progress"
 	// Issue #183: Person Record tagging surfaces.
 	PageTagsManagement       = "page.tags.management"
+// PanelTagsList is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelTagsList            = "panel.tags.list"
+// PanelTagDetail is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelTagDetail           = "panel.tags.detail"
+// OverlayTagPicker is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayTagPicker         = "overlay.tag.picker"
 	// Issue #182: Share Queue surfaces.
 	OverlayShareQueue         = "overlay.share-queue.modal"
+// PanelShareQueueList is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareQueueList       = "panel.share-queue.list"
+// PanelShareQueuePreview is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareQueuePreview    = "panel.share-queue.preview"
+// PanelShareQueuePresets is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareQueuePresets    = "panel.share-queue.presets"
 	// Issue #264: Share top-nav foldout. The trigger is a
 	// <button data-foldout-trigger="layout.share.menu"> + the
@@ -117,6 +182,7 @@ const (
 	// data-foldout-* attributes so installFoldout() picks it
 	// up uniformly.
 	LayoutShareMenu       = "layout.share.menu"
+// LayoutShareMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	LayoutShareMenuTrigger = "layout.share.menu.trigger"
 	// Issue #265: /share landing sections. The page is
 	// reorganised into a top-of-page stack (Quick Actions,
@@ -124,16 +190,22 @@ const (
 	// cards. Panel IDs are the card-rooted landmarks a11y
 	// tools and the smoke probe can target.
 	PanelShareQuickActions = "panel.share.quick-actions"
+// PanelShareRecent is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareRecent      = "panel.share.recent"
+// PanelShareAllExports is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareAllExports  = "panel.share.all-exports"
+// PanelShareAllImports is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareAllImports  = "panel.share.all-imports"
+// PanelShareSync is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareSync        = "panel.share.sync"
+// PanelShareSupport is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareSupport     = "panel.share.support"
 	// Issue #284: panel IDs for the dedicated /share/exports,
 	// /share/imports, /share/sync subpages. Distinct from
 	// PanelShareAllExports etc. above (which are reserved
 	// for the future "view all" surface on /share).
 	PanelShareExports = "panel.share.exports"
+// PanelShareImports is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareImports = "panel.share.imports"
 )
 

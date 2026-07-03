@@ -1,3 +1,8 @@
+// This file re-exports types from internal/records + pkg/render as
+// type aliases so the appshell can depend on internal/archive alone
+// (rather than importing both records + render). Each alias is
+// documented at the canonical definition; the alias itself is
+// non-canonical and exists for import-path convenience.
 package archive
 
 import (

@@ -13,6 +13,7 @@ import (
 
 const scratchpadLegacyImportConfigKey = "scratchpad_legacy_import_complete"
 
+// Scratchpad returns the per-soldier scratchpad text (the free-form notes file the user can edit from the Person Record detail page).
 func (d *DB) Scratchpad(displayID string) (string, time.Time, error) {
 	displayID = strings.TrimSpace(displayID)
 	if displayID == "" {
@@ -43,6 +44,7 @@ func (d *DB) Scratchpad(displayID string) (string, time.Time, error) {
 	return content, time.Unix(updatedUnix, 0).UTC(), nil
 }
 
+// SaveScratchpad persists the new scratchpad text for a Soldier.
 func (d *DB) SaveScratchpad(displayID, content string) error {
 	soldierID, err := d.soldierIDByDisplayID(displayID)
 	if err != nil {
@@ -59,6 +61,7 @@ func (d *DB) SaveScratchpad(displayID, content string) error {
 	return err
 }
 
+// ScratchpadCount returns the number of soldiers that have a non-empty scratchpad. Surfaced on the Insights overview card.
 func (d *DB) ScratchpadCount() (int, error) {
 	var count int
 	err := d.conn.QueryRow(`
@@ -69,6 +72,7 @@ func (d *DB) ScratchpadCount() (int, error) {
 	return count, err
 }
 
+// ImportLegacyScratchpadFiles imports scratchpad files from the pre-issue-#280 on-disk layout (one .md file per soldier under dataDir/scratchpads/).
 func (d *DB) ImportLegacyScratchpadFiles() error {
 	configValue, err := d.SystemConfig(scratchpadLegacyImportConfigKey)
 	if err != nil {

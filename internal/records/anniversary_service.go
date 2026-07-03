@@ -21,6 +21,7 @@ func NewAnniversaryService(database *db.DB) *AnniversaryService {
 	return &AnniversaryService{db: database}
 }
 
+// GetByMonthDay returns the per-soldier anniversaries that match the given month + day.
 func (a *AnniversaryService) GetByMonthDay(month, day int) ([]models.Soldier, error) {
 	conn := a.db.Conn()
 
@@ -42,6 +43,7 @@ func (a *AnniversaryService) GetByMonthDay(month, day int) ([]models.Soldier, er
 	return scanSoldiers(r)
 }
 
+// GetMonthCalendar returns the calendar page payload for the given month: per-day summaries + per-day details.
 func (a *AnniversaryService) GetMonthCalendar(month int) (map[int][]models.Soldier, error) {
 	result := make(map[int][]models.Soldier)
 	for day := 0; day <= 31; day++ {

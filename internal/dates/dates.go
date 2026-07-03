@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// PartialDate is the canonical 3-field date shape used throughout the Local Archive. Year is 0 when unknown (the Civil War era rarely records exact birth years); Month + Day are the only required fields.
 type PartialDate struct {
 	Month int
 	Day   int
@@ -27,6 +28,7 @@ var birthInfoDatePatterns = []struct {
 	{re: regexp.MustCompile(`\b(\d{4})\b`), yearIndex: 1},
 }
 
+// ParseCanonical parses a partial date string into a PartialDate. Accepts year-only (\"1862\"), year+month (\"1862-03\"), full ISO (\"1862-03-15\"), and bare month-day (\"03-15\" — year defaults to 0).
 func ParseCanonical(value string) (PartialDate, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -56,6 +58,7 @@ func ParseCanonical(value string) (PartialDate, error) {
 	return PartialDate{Month: month, Day: day, Year: year}, nil
 }
 
+// MustFormat formats the given year/month/day as a canonical 3-field string; panics on invalid input. Use Format for error-returning variants.
 func MustFormat(month, day, year int) string {
 	if month == 0 && day == 0 && year == 0 {
 		return ""
@@ -63,6 +66,7 @@ func MustFormat(month, day, year int) string {
 	return fmt.Sprintf("%02d/%02d/%04d", month, day, year)
 }
 
+// NormalizeCanonical canonicalizes a partial-date string. Strips whitespace, normalizes separators to '-', and applies the same parse rules as ParseCanonical.
 func NormalizeCanonical(value string) (string, error) {
 	partial, err := ParseCanonical(value)
 	if err != nil {
@@ -71,22 +75,27 @@ func NormalizeCanonical(value string) (string, error) {
 	return partial.Format(), nil
 }
 
+// Format formats a PartialDate as the canonical 3-field string. Returns 'unknown' when the date has no fields set.
 func (p PartialDate) Format() string {
 	return MustFormat(p.Month, p.Day, p.Year)
 }
 
+// HasAny reports whether the PartialDate has any field set (year, month, or day).
 func (p PartialDate) HasAny() bool {
 	return p.Month > 0 || p.Day > 0 || p.Year > 0
 }
 
+// HasYear reports whether the PartialDate has a non-zero year.
 func (p PartialDate) HasYear() bool {
 	return p.Year > 0
 }
 
+// HasMonthDay reports whether the PartialDate has a non-zero month + day.
 func (p PartialDate) HasMonthDay() bool {
 	return p.Month > 0 && p.Day > 0
 }
 
+// Display renders a PartialDate for UI use: \"15 March 1862\" or \"15 March\" when year is unknown.
 func Display(value string) string {
 	partial, err := ParseCanonical(value)
 	if err != nil {
@@ -113,6 +122,7 @@ func Display(value string) string {
 	return fmt.Sprintf("%s %d, %d", monthLabel(partial.Month), partial.Day, partial.Year)
 }
 
+// DisplayUnknown renders an unknown-date placeholder ('—' by default).
 func DisplayUnknown(value string) string {
 	display := Display(value)
 	if display == "N/A" {
@@ -121,6 +131,7 @@ func DisplayUnknown(value string) string {
 	return display
 }
 
+// ParseBirthInfo extracts the per-source-record birth-date fragment from a freeform Source Record string (e.g. a census line). Heuristic; best-effort.
 func ParseBirthInfo(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

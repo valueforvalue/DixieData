@@ -1,9 +1,3 @@
-// Per-archive-kind export toggles (issue #183). The first toggle
-// is `include_tags` — opt-in for Shared Archive (.ddshare),
-// always-on for Backup Archive (full SQLite snapshot),
-// always-off for Static Archive (HTML export excludes working
-// notes). The table is keyed by archive_kind so future toggles
-// land as additional columns without schema churn.
 package records
 
 import (
@@ -34,6 +28,7 @@ type ArchiveMetaService struct {
 	db *sql.DB
 }
 
+// NewArchiveMetaService constructs an ArchiveMetaService bound to the given database.
 func NewArchiveMetaService(db *sql.DB) *ArchiveMetaService {
 	return &ArchiveMetaService{db: db}
 }

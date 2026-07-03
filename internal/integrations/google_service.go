@@ -68,10 +68,12 @@ type GoogleCalendarSyncResult struct {
 	Skipped int
 }
 
+// GoogleCalendarUnsyncResult is the return value of GoogleService.UnsyncCalendar: the number of events deleted from the Google Calendar and any drift remaining after the unsync.
 type GoogleCalendarUnsyncResult struct {
 	Deleted int
 }
 
+// GoogleCalendarDriftStatus describes the per-event drift between the Local Archive and the remote Google Calendar: events the user has locally that are not on the calendar, and vice versa.
 type GoogleCalendarDriftStatus struct {
 	LastSyncedAt string
 	Added        int
@@ -99,6 +101,7 @@ func NewGoogleService(dataDir string) *GoogleService {
 	return &GoogleService{dataDir: dataDir}
 }
 
+// Status returns the current GoogleService state snapshot for the Settings page: connected / not connected, last sync time, last sync result, any drift detected.
 func (g *GoogleService) Status() (models.GoogleStatus, error) {
 	settings, err := g.LoadSettings()
 	if err != nil {
@@ -151,6 +154,7 @@ func (g *GoogleService) connectionHealthy(settings models.GoogleSettings, token 
 	return true
 }
 
+// SaveSettings persists the Google OAuth client credentials + token (the user pastes their own OAuth client ID + secret in the Settings page).
 func (g *GoogleService) SaveSettings(settings models.GoogleSettings) error {
 	if strings.TrimSpace(settings.CalendarID) == "" {
 		settings.CalendarID = "primary"
@@ -159,10 +163,12 @@ func (g *GoogleService) SaveSettings(settings models.GoogleSettings) error {
 	return writeJSONFile(filepath.Join(g.dataDir, googleSettingsFile), settings)
 }
 
+// LoadSettings reads the persisted Google OAuth client credentials + token from disk. Returns zero-value settings if the file is absent.
 func (g *GoogleService) LoadSettings() (models.GoogleSettings, error) {
 	return g.loadSavedSettings()
 }
 
+// LoadEffectiveSettings returns the effective Google settings (the persisted settings, OR the build-time defaults if the user has not configured their own). The Settings page displays these; the OAuth flow uses them.
 func (g *GoogleService) LoadEffectiveSettings() (models.GoogleSettings, bool, bool, string, error) {
 	saved, err := g.loadSavedSettings()
 	if err != nil {
@@ -207,6 +213,7 @@ func (g *GoogleService) loadSavedSettings() (models.GoogleSettings, error) {
 	return settings, nil
 }
 
+// ManagedEventPreferences returns the per-user override for the default Google Calendar event template (title, description, reminder minutes).
 func (g *GoogleService) ManagedEventPreferences() (models.CalendarEventPreferences, error) {
 	settings, err := g.loadSavedSettings()
 	if err != nil {
@@ -215,6 +222,7 @@ func (g *GoogleService) ManagedEventPreferences() (models.CalendarEventPreferenc
 	return models.NormalizeCalendarEventPreferences(settings.ManagedEventPreferences), nil
 }
 
+// SaveManagedEventPreferences persists the per-user event-template override.
 func (g *GoogleService) SaveManagedEventPreferences(preferences models.CalendarEventPreferences) (models.CalendarEventPreferences, error) {
 	saved, err := g.loadSavedSettings()
 	if err != nil {
@@ -227,6 +235,7 @@ func (g *GoogleService) SaveManagedEventPreferences(preferences models.CalendarE
 	return saved.ManagedEventPreferences, nil
 }
 
+// Disconnect tears down the Google OAuth session: revokes the token, deletes the persisted client credentials, and unsyncs the managed Calendar.
 func (g *GoogleService) Disconnect() error {
 	for _, name := range []string{googleTokenFile, googleCalendarSyncFile} {
 		path := filepath.Join(g.dataDir, name)
@@ -237,6 +246,7 @@ func (g *GoogleService) Disconnect() error {
 	return nil
 }
 
+// Connect runs the OAuth handshake: opens the system browser, captures the redirect, exchanges the auth code for a token, persists the token. Returns the chosen Google Calendar ID on success.
 func (g *GoogleService) Connect(ctx context.Context) error {
 	settings, _, _, _, err := g.LoadEffectiveSettings()
 	if err != nil {
@@ -317,6 +327,7 @@ func (g *GoogleService) Connect(ctx context.Context) error {
 	return g.saveToken(token)
 }
 
+// UseManagedCalendar switches the sync target to the user's main managed calendar (the one DixieData pushes anniversaries to).
 func (g *GoogleService) UseManagedCalendar(ctx context.Context) (string, bool, error) {
 	client, _, err := g.client(ctx)
 	if err != nil {
@@ -341,6 +352,7 @@ func (g *GoogleService) UseManagedCalendar(ctx context.Context) (string, bool, e
 	return calendarID, created, nil
 }
 
+// UseTestCalendar switches the sync target to a DixieData-owned test calendar. Used by the in-place update flow's integration tests so a real user's calendar never sees test events.
 func (g *GoogleService) UseTestCalendar(ctx context.Context) (string, bool, error) {
 	client, _, err := g.client(ctx)
 	if err != nil {
@@ -365,6 +377,7 @@ func (g *GoogleService) UseTestCalendar(ctx context.Context) (string, bool, erro
 	return calendarID, created, nil
 }
 
+// PreviewSyncCalendar returns a per-event preview of what a SyncCalendar call would create/update/delete on the remote Google Calendar. The user confirms before the actual sync runs.
 func (g *GoogleService) PreviewSyncCalendar(settings models.GoogleSettings, soldiers []models.Soldier) (GoogleCalendarSyncResult, error) {
 	syncState, err := g.loadCalendarSyncState()
 	if err != nil {
@@ -395,6 +408,7 @@ func (g *GoogleService) PreviewSyncCalendar(settings models.GoogleSettings, sold
 	return result, nil
 }
 
+// CalendarDriftStatus returns the per-event drift between the Local Archive's anniversaries and the remote Google Calendar.
 func (g *GoogleService) CalendarDriftStatus(soldiers []models.Soldier) (GoogleCalendarDriftStatus, error) {
 	syncState, err := g.loadCalendarSyncState()
 	if err != nil {
@@ -523,6 +537,7 @@ func firstGoogleTrackedEventID(eventIDs map[string]string) string {
 	return ""
 }
 
+// UploadBackup uploads the user's most recent backup archive (.ddbak) to the configured Google Drive folder. Returns the Drive file ID + share link on success.
 func (g *GoogleService) UploadBackup(ctx context.Context, backupPath string) (GoogleDriveUploadResult, error) {
 	client, settings, err := g.client(ctx)
 	if err != nil {
@@ -554,6 +569,7 @@ func (g *GoogleService) UploadBackup(ctx context.Context, backupPath string) (Go
 	return googleDriveUploadResult(created), nil
 }
 
+// UploadCSVAsSheet uploads a CSV export as a Google Sheet (auto-converted by the Drive API).
 func (g *GoogleService) UploadCSVAsSheet(ctx context.Context, csvPath, title string) (GoogleDriveUploadResult, error) {
 	client, settings, err := g.client(ctx)
 	if err != nil {
@@ -665,6 +681,7 @@ func googleDriveUploadResult(file *drive.File) GoogleDriveUploadResult {
 	}
 }
 
+// SyncCalendar upserts every anniversary from the Local Archive onto the remote Google Calendar: creates new events, updates changed ones, deletes orphans. Returns the per-event result list.
 func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.GoogleSettings, soldiers []models.Soldier) (GoogleCalendarSyncResult, error) {
 	client, _, err := g.client(ctx)
 	if err != nil {
@@ -756,6 +773,7 @@ func (g *GoogleService) SyncCalendar(ctx context.Context, settings models.Google
 	return result, nil
 }
 
+// UnsyncCalendar removes every DixieData-created event from the remote Google Calendar, then unlinks the calendar ID from the Local Archive.
 func (g *GoogleService) UnsyncCalendar(ctx context.Context) (GoogleCalendarUnsyncResult, error) {
 	client, settings, err := g.client(ctx)
 	if err != nil {
@@ -824,6 +842,7 @@ func (g *GoogleService) UnsyncCalendar(ctx context.Context) (GoogleCalendarUnsyn
 	return result, nil
 }
 
+// SyncTestCalendar is the test-calendar equivalent of SyncCalendar. Used by the in-place update flow's integration tests.
 func (g *GoogleService) SyncTestCalendar(ctx context.Context) (GoogleCalendarSyncResult, error) {
 	client, _, err := g.client(ctx)
 	if err != nil {
@@ -888,6 +907,7 @@ func (g *GoogleService) SyncTestCalendar(ctx context.Context) (GoogleCalendarSyn
 	return result, nil
 }
 
+// UnsyncTestCalendar is the test-calendar equivalent of UnsyncCalendar.
 func (g *GoogleService) UnsyncTestCalendar(ctx context.Context) (GoogleCalendarUnsyncResult, error) {
 	client, _, err := g.client(ctx)
 	if err != nil {
