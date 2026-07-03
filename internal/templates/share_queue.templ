@@ -35,7 +35,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 			</div>
 			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueueList }>
 				if len(rows) == 0 {
-					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4 text-sm text-slate-600">
+					<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4 text-sm text-slate-600">
 						No Person Records staged. Use the <strong>[+ Queue]</strong> button on
 						Browse rows, the Soldier detail page, the Calendar Anniversary compact row,
 						or the Review Queue compare row to start a queue. The queue persists across navigation.
@@ -44,7 +44,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 					<div class="overflow-x-auto">
 						<table class="w-full border-collapse text-sm">
 							<thead>
-								<tr class="border-b border-[rgba(141,116,64,0.4)] text-left text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">
+								<tr class="border-b border-sepia-500/[0.4] text-left text-xs font-semibold uppercase tracking-[0.16em] text-[#8d7440]">
 									<th class="px-2 py-2 w-10">
 										<input type="checkbox" data-share-queue-page-select-all aria-label="Select all"/>
 									</th>
@@ -59,7 +59,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 							</thead>
 							<tbody data-share-queue-page-body>
 								for i, row := range rows {
-									<tr data-share-queue-page-row-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="border-b border-[rgba(141,116,64,0.18)]">
+									<tr data-share-queue-page-row-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="border-b border-sepia-500/[0.18]">
 										<td class="px-2 py-3 align-top">
 											<input type="checkbox" value={ fmt.Sprintf("%d", row.PersonRecord.ID) } data-share-queue-page-select data-share-queue-page-label={ row.PersonRecord.DisplayID } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" aria-label={ "Select " + row.PersonRecord.DisplayID }/>
 										</td>

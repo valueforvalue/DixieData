@@ -34,7 +34,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-research-accent">Open Tasks</p>
 							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", log.OpenCount) }</p>
 						</div>
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.8)] p-4">
+						<div class="rounded-2xl border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.8)] p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Resolved Tasks</p>
 							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", log.ResolvedCount) }</p>
 						</div>
@@ -95,7 +95,7 @@ templ ResearchLogView(log viewmodel.ResearchLog) {
 							</div>
 							<div class="mt-4 grid gap-4 md:grid-cols-2">
 								for _, suggestion := range log.Suggestions {
-									<form action={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } data-dixie-submit="true" class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/80 p-4">
+									<form action={ templ.SafeURL(routebuilder.ResearchLogTasksCreate(log.SubjectPersonRecord.ID)) } data-dixie-submit="true" class="rounded-2xl border border-sepia-500/[0.35] bg-white/80 p-4">
 										<input type="hidden" name="title" value={ suggestion.Title }/>
 										<input type="hidden" name="notes" value={ suggestion.Notes }/>
 										<input type="hidden" name="evidence_type" value={ suggestion.EvidenceType }/>
