@@ -4,14 +4,14 @@
 
 Accepted 2026-07-03. Introduces a third named branch (`stable`)
 as the destination for `dev → released-code` promotion, and
-freezes `main` at its current HEAD (`31a8901`) as the legacy
+freezes `main` at its current HEAD (`56e31f0`) as the legacy
 production record.
 
 ## Context
 
 The current state at the time of this ADR:
 
-- `main` sits at commit `31a8901` (the version actively in
+- `main` sits at commit `56e31f0` (the version actively in
   production use by users).
 - `dev` carries ongoing integration work (e.g. the
   schema-downgrade work shipped in PRs #298, #299, #300).
@@ -92,7 +92,7 @@ GitHub release artifact (consumed by in-place update flow)
 ```
 
 `main` is **not** in this chain. It is a frozen legacy
-record — the commit at which this ADR was written (`31a8901`)
+record — the commit at which this ADR was written (`56e31f0`)
 is its last commit. It accepts no new work, ever.
 
 ### Why `main` stays in place (not deleted)
@@ -251,7 +251,7 @@ move "main" to a different name, and Alt 1 is rejected).
   in a future, planned PR (one-line change in repo settings).
 - `main` is preserved as the immutable production-history
   anchor. Future agents that need to know "what was the app
-  state on 2026-07-03" point at `main` HEAD = `31a8901`.
+  state on 2026-07-03" point at `main` HEAD = `56e31f0`.
 - Branch protection on `main` and `stable` is symmetric.
   Both are read-only-ish from the agent's perspective.
 - The CI workflows (test, build, audit) update from
@@ -298,7 +298,7 @@ move "main" to a different name, and Alt 1 is rejected).
 - `AGENTS.md` §Branch policy — rewrite "Promotion: dev → main"
   to "Promotion: dev → stable; main is legacy freeze."
 - `CONTEXT.md` §Laws — add the line "Released code lands on
-  `stable`. `main` is frozen at `31a8901`."
+  `stable`. `main` is frozen at `56e31f0`."
 - `CHANGELOG.md` [Unreleased] — Maintenance entry.
 - `docs/RELEASING.md` §Release workflow — replace "merge to
   `main`" with "merge to `stable`." Add the promote-flow
@@ -341,7 +341,7 @@ move "main" to a different name, and Alt 1 is rejected).
 ### Branch operations
 
 - `git push origin main:stable` — creates `stable` from
-  `main` HEAD (`31a8901`). Same commit; no rewrite.
+  `main` HEAD (`56e31f0`). Same commit; no rewrite.
 - `git branch -d old-main 2>/dev/null || true` — no-op; we
   keep `main`.
 - GitHub branch protection rules — set in repo settings
@@ -353,7 +353,7 @@ move "main" to a different name, and Alt 1 is rejected).
 1. **First `make promote` run.** When the first promotion
    from `dev` to `stable` lands, it will produce a release
    that is not the version in production (that's still
-   `31a8901`). The release notes for that first promotion
+   `56e31f0`). The release notes for that first promotion
    must say so explicitly. Tracked as a follow-up to the
    first promote run.
 2. **GitHub default branch flip.** When does it happen? Per
@@ -397,5 +397,5 @@ move "main" to a different name, and Alt 1 is rejected).
 - Issue #273 — schema-downgrade (shipped in PRs #298, #299,
   #300). The first wave of work that will land on `dev` and
   become the first `dev → stable` promotion.
-- Commit `31a8901` — the current `main` HEAD. Frozen by this
+- Commit `56e31f0` — the current `main` HEAD. Frozen by this
   ADR as the legacy production record.
