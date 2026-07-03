@@ -1,3 +1,4 @@
+// Package db opens the DixieData SQLite database, applies schema migrations, and snapshots the file.
 package db
 
 import (

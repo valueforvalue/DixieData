@@ -1,3 +1,4 @@
+// Command gold-master audits, benchmarks, and validates DixieData exports and backups.
 package main
 
 import (

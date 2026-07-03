@@ -1,3 +1,4 @@
+// Package viewmodel defines UI-shaped projections of soldier records and maps them to/from domain models.
 package viewmodel
 
 type PersonRecord struct {

@@ -1,3 +1,4 @@
+// Package appdata resolves DixieData's on-disk directories and path conventions.
 package appdata
 
 import (

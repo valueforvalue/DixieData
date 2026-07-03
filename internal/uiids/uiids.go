@@ -1,3 +1,4 @@
+// Package uiids declares the stable string identifiers for every UI page, tab, and panel.
 package uiids
 
 const (

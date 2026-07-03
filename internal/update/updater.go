@@ -1,3 +1,4 @@
+// Package update checks, downloads, applies, and rolls back DixieData application updates.
 package update
 
 import (

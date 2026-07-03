@@ -1,3 +1,4 @@
+// Package scratchpad launches an external editor to edit a soldier's per-record scratchpad file.
 package scratchpad
 
 import "time"

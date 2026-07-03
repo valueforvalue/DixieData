@@ -1,3 +1,4 @@
+// Package seed generates deterministic sample soldiers, records, and images into a DixieData data directory.
 package seed
 
 import (

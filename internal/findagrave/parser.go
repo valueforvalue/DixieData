@@ -1,3 +1,4 @@
+// Package findagrave extracts structured soldier data from Find a Grave memorial HTML.
 package findagrave
 
 import (
