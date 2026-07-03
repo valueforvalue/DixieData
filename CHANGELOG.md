@@ -246,6 +246,36 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     (apply via the UI per `.github/BRANCH_PROTECTION.md`):
     a one-time setup step documented in the PR body.
 
+- **Doc-comment requirement formalized in CONTEXT.md §Laws**
+  (issue #273 follow-up audit). New §Laws entry: "Exported Go
+  identifiers carry doc comments." The rule:
+  - Every exported identifier in a DixieData Go package (func,
+    type, var, const, including methods on exported types) must
+    have a doc comment.
+  - Every Go package has a `// Package <name> <one-sentence purpose>`
+    synopsis.
+  - **Floor (regression gate):** every Go package under
+    `internal/` and `pkg/` with ≥5 exported identifiers must have
+    ≥70% identifier-level doc-comment coverage. The CI test
+    `TestPerPackageDocCoverageFloor` enforces this; a future
+    commit that strips docs in bulk gets caught.
+  - 70% is a regression gate, not a target. The working rule is
+    "aim for 100% on every new PR."
+  - Exemptions: `cmd/*` (unexported main packages), templ-
+    generated files (churn that disappears on next `make tpl`),
+    and build-tag-gated packages.
+
+  - `TestPerPackageDocCoverageFloor` floor raised from 60% to
+    70% to match the formalized rule. Coverage delta from
+    raising: +30 documented identifiers added to
+    `internal/archive` (BackupManifest, SharedImportSummary,
+    SourceConflictLedger, RestoreBackupArchive, all the
+    compat.go alias re-exports, etc.) to keep archive above
+    the new floor.
+
+  - Audit metric: 71.7% → 74.1% overall; `internal/archive`
+    54.2% → 90.4%.
+
 ### Maintenance
 
 - **`docs/agents/cli-plan.md` pins the export leaf-verb

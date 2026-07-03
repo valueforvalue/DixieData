@@ -18,6 +18,7 @@ import (
 const diagnosticsFormatName = "dixiedata-diagnostic-bundle"
 const diagnosticsBundleVersion = 2
 
+// DiagnosticsManifest is the metadata envelope at the top of the bug-report bundle: the source schema version, the snapshot path inside the zip, and the per-record metadata the support engineer needs to reproduce the user's issue without seeing the live database.
 type DiagnosticsManifest struct {
 	Format                string            `json:"format"`
 	Version               int               `json:"version"`
@@ -58,6 +59,7 @@ func NewDiagnosticsService(database *db.DB, soldier *SoldierService) *Diagnostic
 	return &DiagnosticsService{db: database, soldier: soldier}
 }
 
+// Export produces the bug-report bundle zip at outputPath. Returns the per-file metadata so the UI can show the user what was included before the bundle is uploaded to support.
 func (d *DiagnosticsService) Export(outputPath, dataDir string) (DiagnosticsManifest, error) {
 	manifest, err := d.buildManifest(dataDir)
 	if err != nil {

@@ -24,12 +24,19 @@ const (
 	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
 
+// SoldierService is a re-export of records.SoldierService (or pkg/render.SoldierService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type SoldierService = records.SoldierService
+// AnniversaryService is a re-export of records.AnniversaryService (or pkg/render.AnniversaryService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type AnniversaryService = records.AnniversaryService
+// AnalyticsService is a re-export of records.AnalyticsService (or pkg/render.AnalyticsService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type AnalyticsService = records.AnalyticsService
+// AnalyticsCount is a re-export of records.AnalyticsCount (or pkg/render.AnalyticsCount for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type AnalyticsCount = records.AnalyticsCount
+// AnalyticsSnapshot is a re-export of records.AnalyticsSnapshot (or pkg/render.AnalyticsSnapshot for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type AnalyticsSnapshot = records.AnalyticsSnapshot
+// PrintSettings is a re-export of records.PrintSettings (or pkg/render.PrintSettings for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type PrintSettings = render.PrintSettings
+// PDFOptions is a re-export of records.PDFOptions (or pkg/render.PDFOptions for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type PDFOptions = render.PDFOptions
 const (
 	PrintSortLastName  = render.PrintSortLastName
@@ -40,8 +47,11 @@ const (
 	PrintScopeSelected = render.PrintScopeSelected
 )
 
+// NewSoldierService is a re-export of records.NewSoldierService (or pkg/render.NewSoldierService). See the source package for the canonical implementation.
 func NewSoldierService(database *db.DB) *SoldierService { return records.NewSoldierService(database) }
+// NewAnniversaryService is a re-export of records.NewAnniversaryService (or pkg/render.NewAnniversaryService). See the source package for the canonical implementation.
 func NewAnniversaryService(database *db.DB) *AnniversaryService { return records.NewAnniversaryService(database) }
+// NewAnalyticsService is a re-export of records.NewAnalyticsService (or pkg/render.NewAnalyticsService). See the source package for the canonical implementation.
 func NewAnalyticsService(database *db.DB) *AnalyticsService { return records.NewAnalyticsService(database) }
 
 func nullableInt64(value int64) interface{} {
@@ -238,6 +248,7 @@ func nullInt64Dest(target *int64, holder *sql.NullInt64) interface{ Scan(any) er
 
 type scannerFunc func(any) error
 
+// Scan is the archive-layer method matching its name.
 func (f scannerFunc) Scan(value any) error { return f(value) }
 
 func hydrateLegacyDeathParts(soldier *models.Soldier) {
