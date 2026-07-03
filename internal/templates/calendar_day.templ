@@ -35,7 +35,7 @@ templ CalendarDayDetail(day viewmodel.CalendarDayDetail) {
 }
 
 templ CalendarDayActions(day viewmodel.CalendarDayDetail) {
-	<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sepia-500/[0.24] bg-[rgba(255,255,255,0.72)] px-4 py-4">
+	<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sepia-500/[0.24] bg-white/[0.72] px-4 py-4">
 		<div>
 			<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Calendar Actions</p>
 			<p class="mt-1 text-sm text-[#5a6a78]">Add or edit yearly events and holidays without crowding the day view.</p>
@@ -73,7 +73,7 @@ templ CalendarDayAnniversaries(day viewmodel.CalendarDayDetail) {
 			</div>
 		</div>
 		if len(day.Anniversaries) == 0 {
-			<p class="rounded-2xl border border-dashed border-sepia-500/[0.35] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No person records for this date.</p>
+			<p class="rounded-2xl border border-dashed border-sepia-500/[0.35] bg-white/[0.62] px-4 py-4 text-sm text-[#5a6a78]">No person records for this date.</p>
 		} else {
 			<div data-calendar-anniversary-density="expanded" class="space-y-3">
 				for _, soldier := range day.Anniversaries {
@@ -94,11 +94,11 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 			<p class="mt-1 text-sm text-[#5a6a78]">Recurring custom items appear every year on this date.</p>
 		</div>
 		if len(day.Items) == 0 {
-			<p class="rounded-2xl border border-dashed border-sepia-500/[0.35] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No custom calendar items yet for this date.</p>
+			<p class="rounded-2xl border border-dashed border-sepia-500/[0.35] bg-white/[0.62] px-4 py-4 text-sm text-[#5a6a78]">No custom calendar items yet for this date.</p>
 		} else {
 			<div class="space-y-2">
 				for _, item := range day.Items {
-					<div class="rounded-2xl border border-sepia-500/[0.24] bg-[rgba(255,255,255,0.78)] px-4 py-3">
+					<div class="rounded-2xl border border-sepia-500/[0.24] bg-white/[0.78] px-4 py-3">
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2">
@@ -138,7 +138,7 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 }
 
 templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
-	<div data-calendar-anniversary-compact class="hidden rounded-2xl border border-sepia-500/[0.24] bg-[rgba(255,255,255,0.8)] px-4 py-3">
+	<div data-calendar-anniversary-compact class="hidden rounded-2xl border border-sepia-500/[0.24] bg-white/[0.8] px-4 py-3">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div class="min-w-0 flex-1">
 				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(soldier) }</a>
