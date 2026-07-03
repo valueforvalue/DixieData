@@ -27,6 +27,15 @@ const (
 	PanelExportActions          = "panel.export.actions"
 	PanelJobStatus              = "panel.job.status"
 	PanelExportGoogle           = "panel.export.google"
+	// Issue #284: dedicated subpage IDs for the three
+	// subpages that replaced the inline sections on the
+	// pre-#284 /share landing. Each subpage is its own
+	// route + page (Page*); the section inside is its own
+	// panel (Panel*).
+	PageShareExports            = "page.share.exports"
+	PageShareImports            = "page.share.imports"
+	PageShareSync               = "page.share.sync"
+	PageShareLanding            = "page.share.landing"
 	PageInsights                = "page.insights"
 	PanelInsightsOverview       = "panel.insights.overview"
 	PanelInsightsCemeteries     = "panel.insights.cemeteries"
@@ -160,6 +169,13 @@ var Registry = []Surface{
 	{ID: PanelJobStatus, Kind: "panel", Description: "Background-job status page panel."},
 	{ID: PanelExportActions, Kind: "panel", Description: "Main export and import actions panel."},
 	{ID: PanelExportGoogle, Kind: "panel", Description: "Google integration panel on the export page."},
+	// Issue #284: dedicated subpage IDs. See
+	// PanelShareExports / PanelShareImports above for the
+	// per-section panel IDs.
+	{ID: PageShareLanding, Kind: "page", Description: "Share landing sub-overview (Quick Actions + Recent + Support & Diagnostics + conditional Merge Review)."},
+	{ID: PageShareExports, Kind: "page", Description: "Share Exports subpage (Export & Backup surface + Build Share Archive button)."},
+	{ID: PageShareImports, Kind: "page", Description: "Share Imports subpage (Import & Restore surface)."},
+	{ID: PageShareSync, Kind: "page", Description: "Share Sync subpage (Google Integration surface + Calendar Preferences modal)."},
 	{ID: PageInsights, Kind: "page", Description: "Archive insights dashboard page."},
 	{ID: PanelInsightsOverview, Kind: "panel", Description: "Overview card on the insights page."},
 	{ID: PanelInsightsCemeteries, Kind: "panel", Description: "Top cemeteries analytics card."},
