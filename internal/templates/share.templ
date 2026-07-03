@@ -32,7 +32,7 @@ templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.Arch
 				<button type="button" data-history-back
 					data-fallback-href="/"
 					data-fallback-label="Back to Dashboard"
-					class="inline-flex w-full items-center justify-center rounded-full border border-sepia-500/[0.85] bg-[rgba(246,241,228,0.92)] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
+					class="inline-flex w-full items-center justify-center rounded-full border border-sepia-500/[0.85] bg-parchment-soft/[0.92] px-4 py-2 text-sm font-semibold text-[#22303d] transition hover:bg-[rgba(255,247,231,0.98)] sm:w-auto">
 					← Back to Dashboard
 				</button>
 			</div>
@@ -170,7 +170,7 @@ templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.Arch
 								}
 							</div>
 							if conflict.LocalRecord != nil {
-								<details id={ fmt.Sprintf("merge-review-diff-%d", conflict.ID) } class="mt-2 rounded-2xl border border-sepia-500/[0.35] bg-[rgba(246,241,228,0.72)] px-4 py-3 text-sm">
+								<details id={ fmt.Sprintf("merge-review-diff-%d", conflict.ID) } class="mt-2 rounded-2xl border border-sepia-500/[0.35] bg-parchment-soft/[0.72] px-4 py-3 text-sm">
 									<summary class="cursor-pointer font-medium text-slate-700">Show field-by-field diff</summary>
 									<div class="mt-3 grid gap-3 sm:grid-cols-2">
 										<div>
