@@ -64,8 +64,8 @@ html { scrollbar-gutter: stable; }
      custom properties. */
   .empty-state {
     border-radius: 1.2rem;
-    border: 1px dashed rgba(141, 116, 64, 0.45);
-    background: rgba(246, 241, 228, 0.72);
+    @apply border-sepia-500/[0.45];
+    @apply bg-parchment-soft;
     padding: 1rem 1.25rem;
   }
   /* Field input — colors via token @apply so a future token
