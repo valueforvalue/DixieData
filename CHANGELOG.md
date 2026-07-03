@@ -174,36 +174,53 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the top nav rendered the panel at its baked-in 14rem
   (224px) min-width with no upper cap, and at the right
   edge of the trigger could push past the page edge or
-  force horizontal scroll. The 641–1000px range had no
-  CSS rule even though the layout-mode system already
-  existed for `.floating-nav-panel`. Three-slice fix:
-  (1) `internal/templates/components/foldout.templ`
-  adds a `max-w-[calc(100vw-2rem)]` cap alongside the
-  existing `min-w-[14rem]` floor (additive, not a
-  replacement) so the panel can never overflow the
-  viewport on any size screen; (2) `frontend/tailwind.css`
-  adds `html[data-layout-mode="split-screen"]
-  .foldout-panel { min-width: 0; width: calc(100vw -
-  2rem); }` mirroring the `.floating-nav-panel`
-  precedent, so the 14rem floor is dropped exactly at
-  the 1000px split-screen breakpoint where it was the
-  root cause; (3) new smoke probe
-  `audit/smoke_foldout_split_screen_sizing.mjs` verifies
-  the user-visible behavior end-to-end across a 900px
-  (split-screen) and a 1600px (relaxed) viewport,
-  asserting the floor drops in split-screen and stays
-  intact in relaxed, the viewport cap always applies,
-  the panel's right edge stays inside the viewport, and
-  all 4 menu items render and remain in-viewport.
-  Regression net: `TestFoldout_PanelResponsiveSizing`
-  in
+  force horizontal scroll. Single-slice fix:
+  `internal/templates/components/foldout.templ` adds a
+  `max-w-[calc(100vw-2rem)]` cap alongside the existing
+  `min-w-[14rem]` floor (additive, not a replacement) so
+  the panel can never overflow the viewport on any size
+  screen — an earlier `html[data-layout-mode="split-screen"]`
+  layout-mode rule intended to drop the 14rem floor was
+  rolled back (see followup entry below) because it
+  pushed the panel's left edge off-screen at split-screen
+  viewports. Regression net:
+  `TestFoldout_PanelResponsiveSizing` in
   `internal/templates/components/foldout_test.go`
-  locks the templ-rendered class tokens (slice 1),
-  the new "split-screen foldout-panel override (issue
-  #288 slice 2)" entry in
-  `internal/templates/layout_test.go` locks the compiled
-  CSS rule (slice 2), and the new smoke probe locks the
-  end-to-end behavior (slice 3).
+  locks the templ-rendered class tokens, and the smoke
+  probe `audit/smoke_foldout_split_screen_sizing.mjs`
+  sweeps 800/900/1000/1100/1200/1400/1600px viewports
+  and asserts (a) `data-layout-mode` flips correctly at
+  the 1000px breakpoint, (b) the panel's left edge is
+  ≥0 (no left clipping), (c) the panel's right edge is
+  ≤viewportWidth (no right clipping), (d) the panel
+  width stays at the 14rem floor at every width
+  (regression net against the reverted layout-mode rule),
+  and (e) all 4 menuitems render and remain in-viewport.
+- **Reverted the issue #288 slice-2 layout-mode foldout
+  rule.** The original slice-2 `html[data-layout-mode="split-screen"]
+  .foldout-panel { min-width: 0; width: calc(100vw - 2rem); }`
+  rule intended to drop the 14rem floor at split-screen
+  viewports, but it instead stretched the panel to nearly
+  the full viewport width while still anchoring to the
+  trigger's right edge — at 900px the panel grew to 868px
+  wide and pushed its left edge to x=-240, off the left
+  side of the screen. The user's report after #288 landed
+  ("Share foldout cuts off at small widths") reproduced
+  this exactly. Revert path: delete the rule from
+  `frontend/tailwind.css`, drop the matching entry from
+  `internal/templates/layout_test.go`'s compiled-CSS
+  checks slice, drop the cross-reference line in
+  `internal/templates/components/foldout_test.go`. Net
+  behavior: the foldout panel sits at its templ default
+  14rem (224px) floor at every viewport ≥ 640px,
+  anchored to the trigger's right edge via the
+  pre-existing `absolute right-0` class, with the slice-1
+  `max-w-[calc(100vw-2rem)]` cap on top so a future menu
+  item with a long label still can't overflow. Regression
+  net: `audit/smoke_foldout_split_screen_sizing.mjs`
+  now sweeps 7 viewport widths and asserts the unified
+  invariant (panel-left ≥ 0, panel-right ≤ viewportWidth,
+  panel width = 224px at every width); the probe is 70/70.
 
 ### Added
 

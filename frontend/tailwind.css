@@ -442,20 +442,6 @@ html { scrollbar-gutter: stable; }
     width: 100%;
     min-width: 0;
   }
-  /* The foldout panel keeps its 14rem floor + viewport cap on
-     wide screens (slice 1 of issue #288) so menu items stay
-     readable. In split-screen mode the 14rem floor is the
-     problem — that's the breakpoint where the panel first
-     overflows the trigger's parent. Drop the floor + stretch
-     the panel to the viewport cap so the 4-item Share menu
-     wraps cleanly instead of clipping past the right edge.
-     The .foldout-panel.default { max-w-[calc(100vw-2rem)] }
-     tailwind class still bounds it; this rule merely lets the
-     width shrink below the floor. */
-  html[data-layout-mode="split-screen"] .foldout-panel {
-    min-width: 0;
-    width: calc(100vw - 2rem);
-  }
   @media (max-width: 900px) {
     .app-shell {
       padding-bottom: 8.75rem;
