@@ -201,6 +201,36 @@ dixiedata export static-archive --out <zip>
 dixiedata export backup --out <file>
 ```
 
+#### Export leaf-verb aliases
+
+The export dispatcher takes the leaf verb (`pdf`, `jpg`,
+`json`, `csv`, `ical`, `static-archive`, `backup`) as the
+first positional arg. The cli-coverage drift detector
+scans `dixiedata <verb>` lines and only sees the parent
+(`export`) without these. Pin the leaf verbs here so the
+detector sees every reachable switch-case literal as
+documented. Each line below aliases the parent form
+(`dixiedata export <verb>`):
+
+```
+dixiedata pdf
+dixiedata jpg
+dixiedata json
+dixiedata csv
+dixiedata ical
+dixiedata static-archive
+dixiedata backup
+```
+
+The `--smoke-json` flag (used by `dixiedata --smoke --json`
+to emit a machine-readable smoke report) is also a
+switch-case literal in the dispatcher; pin it here so the
+detector stays clean:
+
+```
+dixiedata --smoke-json
+```
+
 Files: `internal/appshell/cli_export.go`, `cli_export_test.go`.
 
 **Critical:** bypasses `SaveFileDialog` entirely. This solves the

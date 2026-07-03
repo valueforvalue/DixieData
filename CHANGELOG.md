@@ -56,6 +56,150 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Old `.ddbak` archives keep their old `AppVersion` string
   and continue to load.
 
+### Changed
+
+- **CLI + UI version emit switched to `v1.{U}.{N}` shape** (issue
+  #293, follow-up to #266). `internal/buildinfo/buildinfo.go`
+  `AppVersion` now sources `versioninfo.AppVersion()` (new
+  shape, U=1 / N=1 today) instead of `CurrentAppVersion()`
+  (legacy `v1.2.{schema}`). Every downstream emit site
+  picks up the new shape automatically because they all
+  read `buildinfo.AppVersion`:
+  - `debug dump` (`ArchiveInventory.AppVersion` JSON field
+    and the text-mode `App version:` line)
+  - `migrate status` JSON + text mode
+  - `restore point create` / `restore point list` JSON
+  - `export backup` / `export shared` source/target version
+  - `import backup` source/target version
+  - `update.Settings.CurrentVersion` (Settings panel UI)
+  - `BackupManifest.app_version` in every new `.ddbak`
+  - `cmd/gold-master/main.go` portable-output `app_version`
+  Regression net: `internal/db/migration_backup_test.go`
+  updated to assert the new shape for `TargetAppVersion`
+  (post-upgrade binary) while keeping `SourceAppVersion`
+  pinned to the legacy `AppVersionForSchema(1)` string
+  (pre-upgrade binary) — that asymmetry is now intentional
+  and reflects the upgrade boundary (legacy → new shape).
+  Legacy GitHub release tags (`v1.2.N`) still parse cleanly
+  via `parseVersion` per #266 decision 1.
+
+### Changed
+
+- **CLI JSON output exposes `update_flow_version` + `release_counter`**
+  explicitly (issue #293, follow-up). The v1.U.N shape is now
+  parseable without re-tokenizing `app_version`:
+  - `dixiedata debug dump --json` adds `update_flow_version`
+    + `release_counter` to the `ArchiveInventory` payload.
+  - `dixiedata migrate status --json` adds the same two fields.
+  Regression net: new `audit/smoke_cli_version_shape.mjs`
+  drives both subcommands and asserts the new fields are
+  present, positive, and well-typed. Mirrors `smoke_settings_diagnostics.mjs`
+  structure but exercises CLI subprocesses instead of HTTP.
+  `TestArchiveInventoryOnEmptyDB` (Go unit) asserts the same
+  field contracts at the package level.
+
+### Changed
+
+- **`scripts/bump-version.ps1` gains `-BumpSchema`, `-BumpUpdateFlow`,
+  `-BumpRelease` switches** (issue #294, follow-up). The script
+  now distinguishes the three version counters that
+  `internal/versioninfo/versioninfo.go` carries (issue #266):
+  - `-BumpSchema` (default; today's behavior) bumps
+    `CurrentSchemaVersion`; still requires a paired
+    `docs/migrations/v{N+1}.md`.
+  - `-BumpUpdateFlow` bumps `CurrentUpdateFlowVersion`,
+    resets `CurrentAppVersionInt` to 0, and archives the
+    previous U sequence's last N to
+    `.release-state/last-n-for-u{prev_U}.json` so a future
+    U transition can be reviewed. (`.release-state/` is
+    gitignored — see `.gitignore`.)
+  - `-BumpRelease` bumps `CurrentAppVersionInt` (N) only;
+    use for bug-fix-only releases.
+  The three switches are mutually exclusive; passing more
+  than one throws. `-VerifyOnly` now checks all three counters
+  for drift (U bump requires the sidecar JSON; schema bump
+  requires the migration note; CHANGELOG + docs reference the
+  new `v{MAJOR}.{U}.{N}` shape).
+  Tested in scratch repo against all four paths
+  (`-BumpRelease`, `-BumpUpdateFlow`, `-BumpSchema`, mutual
+  exclusion).
+
+### Changed
+
+- **Release tag emits `v{MAJOR}.{U}.{N}` shape** (issue #294).
+  `scripts/build-common.ps1` `Get-DixieDataAppVersion` now reads
+  `CurrentSchemaVersion` + `CurrentUpdateFlowVersion` +
+  `CurrentAppVersionInt` from `internal/versioninfo/versioninfo.go`
+  and emits `v1.{U}.{N}` instead of the legacy `v1.2.{schema}`
+  string. Downstream consumers pick up the new shape automatically:
+  - `scripts/release-github.ps1` tag + archive name
+  - `scripts/build-release.ps1` archive filename
+  The `v` prefix on the returned string matches the historical
+  helper contract (callers concatenate without re-prefixing in
+  some places, so the prefix is preserved here for consistency).
+
+### Documentation
+
+- **`docs/RELEASING.md` rewritten for the three-counter model**
+  (issue #295). §Versioning rules now documents
+  `v{MAJOR}.{U}.{N}` with explicit semantics for each counter
+  (U bump = reinstall, N bump = bug-fix-only, schema bump =
+  migration). Release workflow step 1 picks the right bump;
+  the four-step bump section is replaced with a one-switch
+  invocation per counter. New "See also" block cross-
+  references ADR 0008 + ADR 0007 + the versioninfo.go source.
+- **`docs/adr/0008-promotion-protocol.md`** §Open questions Q1
+  updated to mark the v{MAJOR}.{U}.{N} split as shipped
+  (commit 5a297a6) instead of "future". The "Alt 2"
+  continuous-promotion analysis reframes the split as the
+  mid-ground that path (b) cadence-driven promotion builds on.
+  References list adds #293/#294/#295/#296 cross-links.
+- **`CONTEXT.md` §Laws** new sub-section "Release counter N ≠
+  schema version" documents the three-counter contract
+  + the `bump-version.ps1` switch model.
+- **`docs/user-manual.md`**, **`docs/implementation-and-features.md`**
+  current release line pinned to `v1.1.59` with a one-line
+  issue #266 footnote. **`docs/ai-handoff.md`** version +
+  schema version refreshed in the project snapshot block.
+- `bump-version.ps1 -VerifyOnly` is now green against the
+  new doc surface.
+
+### Changed
+
+- **`BackupManifest` carries `current_update_flow_version` +
+  `release_counter` explicitly** (issue #296, follow-up).
+  New `.ddbak` / `.ddshare` archives write both fields so
+  readers can compare U + N without re-parsing the
+  AppVersion string. `loadBackupData` populates them from
+  `internal/versioninfo`; `NormalizeManifestBackwardsCompat`
+  applies defaults for archives written before this commit:
+  - missing `current_update_flow_version` → 1 (legacy
+    v1.2.N strings parse to U=1 per #266 decision 1)
+  - missing `release_counter` → `schema_version` (the
+    historical formula tied N to schema)
+  `readBackupManifestFromZip` (CLI import dry-run + preview)
+  and the e2e test helper both invoke the normalizer on
+  every freshly decoded manifest, so the import pipeline sees
+  consistent U + N regardless of archive age. Regression
+  net: `TestNormalizeManifestBackwardsCompat` covers all
+  three cases (legacy, explicit, malformed with zero
+  schema). Existing `TestBackupService_Export*` tests pin
+  the new fields in written manifests.
+
+### Maintenance
+
+- **`docs/agents/cli-plan.md` pins the export leaf-verb
+  aliases** to clear a pre-existing cli-coverage drift.
+  The detector scans `dixiedata <verb>` lines and only saw
+  the parent (`export`) for the export subcommands;
+  `pdf`/`jpg`/`json`/`csv`/`ical`/`static-archive`/`backup`
+  were listed as "implemented, not documented" despite
+  being reachable leaf verbs under `dixiedata export`.
+  Added a new "Export leaf-verb aliases" subsection that
+  pins each leaf verb plus `--smoke-json` so the drift
+  detector returns 0 and the CI test gate goes green.
+  No code or dispatcher changes; doc-only.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).

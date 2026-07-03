@@ -48,10 +48,11 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
 // AdminKind identifies which top-level admin subcommand the
@@ -390,13 +391,15 @@ func runAdminMigrateStatus(ctx context.Context, opts AdminOptions) (int, error) 
 
 	if opts.JSON {
 		return 0, writeJSON(opts.Writer, map[string]any{
-			"app_version":     buildinfo.AppVersion,
-			"build_identity":  buildinfo.BuildIdentity(),
-			"data_dir":        app.dataDir,
-			"applied_version": applied,
-			"current_version": current,
-			"pending":         pending,
-			"status":          status,
+			"app_version":        buildinfo.AppVersion,
+			"build_identity":     buildinfo.BuildIdentity(),
+			"update_flow_version": versioninfo.CurrentUpdateFlowVersion,
+			"release_counter":    versioninfo.AppRelease(),
+			"data_dir":           app.dataDir,
+			"applied_version":    applied,
+			"current_version":    current,
+			"pending":            pending,
+			"status":             status,
 		})
 	}
 	fmt.Fprintf(opts.Writer, "data_dir        = %s\n", app.dataDir)

@@ -2346,3 +2346,64 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 		}
 	})
 }
+
+// TestNormalizeManifestBackwardsCompat covers issue #296 — the
+// manifest reader must accept pre-#296 .ddbak archives that
+// omit the new CurrentUpdateFlowVersion + ReleaseCounter
+// fields. The legacy v1.2.N string parses to U=1 per #266
+// decision 1, and the historical formula tied N to the schema
+// version; both defaults flow from the manifest's AppVersion
+// shape + SchemaVersion.
+func TestNormalizeManifestBackwardsCompat(t *testing.T) {
+	t.Run("missing U + N defaults from legacy v1.2.N archive", func(t *testing.T) {
+		// Simulates an archive written before #296 — the
+		// AppVersion is legacy `v1.2.55`, no explicit U + N
+		// fields, schema version 55.
+		legacy := BackupManifest{
+			Format:        "dixiedata-backup",
+			Version:       3,
+			AppVersion:    "v1.2.55",
+			SchemaVersion: 55,
+		}
+		normalized := NormalizeManifestBackwardsCompat(legacy)
+		if normalized.CurrentUpdateFlowVersion != 1 {
+			t.Errorf("U = %d, want 1 (legacy v1.2.N maps to U=1)", normalized.CurrentUpdateFlowVersion)
+		}
+		if normalized.ReleaseCounter != 55 {
+			t.Errorf("N = %d, want 55 (historical N == SchemaVersion)", normalized.ReleaseCounter)
+		}
+	})
+	t.Run("explicit U + N preserved", func(t *testing.T) {
+		// New archive (post-#296) — explicit fields must NOT
+		// be overwritten by the defaults.
+		modern := BackupManifest{
+			Format:                   "dixiedata-backup",
+			Version:                  3,
+			AppVersion:               "v1.1.2",
+			SchemaVersion:            59,
+			CurrentUpdateFlowVersion: 1,
+			ReleaseCounter:           2,
+		}
+		normalized := NormalizeManifestBackwardsCompat(modern)
+		if normalized.CurrentUpdateFlowVersion != 1 {
+			t.Errorf("U = %d, want 1", normalized.CurrentUpdateFlowVersion)
+		}
+		if normalized.ReleaseCounter != 2 {
+			t.Errorf("N = %d, want 2", normalized.ReleaseCounter)
+		}
+	})
+	t.Run("missing N + zero schema does not invent a counter", func(t *testing.T) {
+		// Defensive: if both N and SchemaVersion are zero
+		// (e.g. malformed manifest), leave N at zero so the
+		// caller sees the missing data rather than a
+		// fabricated value.
+		malformed := BackupManifest{Format: "dixiedata-backup", Version: 3, AppVersion: "v1.2.0"}
+		normalized := NormalizeManifestBackwardsCompat(malformed)
+		if normalized.ReleaseCounter != 0 {
+			t.Errorf("N = %d, want 0 (no schema to back-derive from)", normalized.ReleaseCounter)
+		}
+		if normalized.CurrentUpdateFlowVersion != 1 {
+			t.Errorf("U = %d, want 1 (legacy default still applies)", normalized.CurrentUpdateFlowVersion)
+		}
+	})
+}

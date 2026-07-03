@@ -1,29 +1,89 @@
 <#
 .SYNOPSIS
-    Increment CurrentSchemaVersion in internal/versioninfo/versioninfo.go.
+    Bump a DixieData release counter.
 
 .DESCRIPTION
-    Strict bump: refuses to advance by more than 1 unless -Force, and refuses
-    to advance without a migration doc at docs/migrations/v{N+1}.md. This
-    protects DixieData's local update feature — every schema bump needs a
-    paired migration in internal/db/schema.go and a human-readable note in
-    docs/migrations/.
+    Three independent counters live in internal/versioninfo/versioninfo.go:
 
-    Does NOT auto-commit. Lets the reviewer amend CHANGELOG.md, run the
-    migration test suite, and commit deliberately before tagging.
+      CurrentSchemaVersion     — SQLite user_version; the data plane
+                                 (bump = a docs/migrations/v{N+1}.md is
+                                 required; that's the migration note
+                                 that ships with every release)
+      CurrentUpdateFlowVersion — update-flow shape gate (issue #266).
+                                 Bump = the in-place update mechanism
+                                 itself changed shape; old binaries
+                                 must NOT auto-apply a release with a
+                                 higher U (the user must reinstall)
+      CurrentAppVersionInt     — release counter N. Every release
+                                 bumps N; bug-fix-only releases
+                                 bump N without touching the schema
+
+    Pick one of the three switches (-BumpSchema, -BumpUpdateFlow,
+    -BumpRelease). They're mutually exclusive. The default (no
+    switch) is -BumpSchema to match the historical behavior of
+    this script.
+
+    Schema bumps:
+      pwsh -File scripts/bump-version.ps1
+      # or
+      pwsh -File scripts/bump-version.ps1 -BumpSchema
+      # CurrentSchemaVersion +1; requires docs/migrations/v{N+1}.md
+
+    Update-flow bumps (rare; reserve for changes that genuinely
+    reshape the in-place update mechanism):
+      pwsh -File scripts/bump-version.ps1 -BumpUpdateFlow
+      # CurrentUpdateFlowVersion +1; CurrentAppVersionInt reset to 0;
+      # previous U sequence's last N is archived to
+      # .release-state/last-n-for-u{U}.json so a future
+      # U=1 -> U=3 transition can be reviewed
+
+    Release counter bumps (bug-fix-only releases):
+      pwsh -File scripts/bump-version.ps1 -BumpRelease
+      # CurrentAppVersionInt +1; nothing else
+
+    Force / verify / detect-drift switches work as before.
+
+.PARAMETER BumpSchema
+    Bump CurrentSchemaVersion (+1; -Force for jumps).
+
+.PARAMETER BumpUpdateFlow
+    Bump CurrentUpdateFlowVersion (+1), reset CurrentAppVersionInt
+    to 0, archive the previous U sequence's last N to a sidecar
+    JSON. Does NOT touch CurrentSchemaVersion.
+
+.PARAMETER BumpRelease
+    Bump CurrentAppVersionInt (+1) only. Use for bug-fix-only
+    releases that don't change the schema or the update flow.
 
 .PARAMETER Force
-    Allow a jump greater than +1. Use sparingly (e.g., re-syncing after a
-    missed bump). Always pair with a docs/migrations/v{N+1}.md entry.
+    Allow a jump greater than +1. Use sparingly. Pair with a
+    docs/migrations/v{N+1}.md entry.
+
+.PARAMETER VerifyOnly
+    Non-mutating validation pass. Used by CI. Checks drift on
+    all three counters (CurrentSchemaVersion, CurrentUpdateFlowVersion,
+    CurrentAppVersionInt).
+
+.PARAMETER DetectDrift
+    Walks HEAD..origin/<base> commit subjects for schema-touching
+    patterns. If present and CurrentSchemaVersion is unchanged,
+    fail with a drift message. CI use.
 
 .EXAMPLE
     pwsh -File scripts/bump-version.ps1
     # CurrentSchemaVersion 54 -> 55
     # Requires docs/migrations/v55.md to exist with at least one bullet.
+
+.EXAMPLE
+    pwsh -File scripts/bump-version.ps1 -BumpRelease
+    # CurrentAppVersionInt +1; nothing else
 #>
 
 [CmdletBinding()]
 param(
+    [switch]$BumpSchema,
+    [switch]$BumpUpdateFlow,
+    [switch]$BumpRelease,
     [switch]$Force,
     [switch]$VerifyOnly,
     [switch]$DetectDrift
@@ -33,42 +93,82 @@ $ErrorActionPreference = "Stop"
 $root = (Get-Location).Path
 $versionInfoPath = Join-Path $root "internal\versioninfo\versioninfo.go"
 $migrationsDir = Join-Path $root "docs\migrations"
+$releaseStateDir = Join-Path $root ".release-state"
+
+# Resolve which bump the caller wants. Default = BumpSchema
+# (matches the historical behavior of this script pre-#266).
+$explicitBumps = @()
+if ($BumpSchema) { $explicitBumps += 'Schema' }
+if ($BumpUpdateFlow) { $explicitBumps += 'UpdateFlow' }
+if ($BumpRelease) { $explicitBumps += 'Release' }
+if ($explicitBumps.Count -gt 1) {
+    throw "Pass only one of -BumpSchema, -BumpUpdateFlow, -BumpRelease. Got: $($explicitBumps -join ', ')"
+}
+if ($explicitBumps.Count -eq 0) {
+    $bumpKind = 'Schema'
+} else {
+    $bumpKind = $explicitBumps[0]
+}
 
 if (-not (Test-Path $versionInfoPath)) {
     throw "versioninfo.go not found at $versionInfoPath — run from repo root."
 }
 
 $content = Get-Content -Path $versionInfoPath -Raw
-$match = [regex]::Match($content, "CurrentSchemaVersion\s*=\s*(\d+)")
-if (-not $match.Success) {
-    throw "Failed to locate 'CurrentSchemaVersion = N' in $versionInfoPath."
+
+function Read-Counter($Source, [string]$Name) {
+    $m = [regex]::Match($Source, "$Name\s*=\s*(\d+)")
+    if (-not $m.Success) {
+        throw "Failed to locate '$Name = N' in $versionInfoPath."
+    }
+    return [int]$m.Groups[1].Value
 }
 
-$current = [int]$match.Groups[1].Value
-$next = $current + 1
-$delta = $next - $current
+$currentSchema = Read-Counter $content 'CurrentSchemaVersion'
+$currentUpdateFlow = Read-Counter $content 'CurrentUpdateFlowVersion'
+$currentRelease = Read-Counter $content 'CurrentAppVersionInt'
 
 # VerifyOnly: non-mutating validation pass. Returns 0 on pass, 1 on fail.
-# Checks:
-#   1. If versioninfo.go bumped relative to HEAD, paired docs/migrations/v{new}.md exists
-#   2. user-manual / implementation-and-features / ai-handoff reference current app version
-#   3. CHANGELOG.md has a section header for the current app version
+# Checks (covers all three counters per issue #294 acceptance):
+#   1. If CurrentSchemaVersion bumped relative to HEAD, paired
+#      docs/migrations/v{new}.md exists.
+#   2. user-manual / implementation-and-features / ai-handoff reference
+#      the current v{MAJOR}.{U}.{N} shape.
+#   3. CHANGELOG.md has a section header for the current release.
+#   4. If CurrentUpdateFlowVersion bumped relative to HEAD, the sidecar
+#      JSON for the previous U sequence exists at
+#      .release-state/last-n-for-u{prev_U}.json.
 if ($VerifyOnly) {
     $errors = @()
     $headContent = & git show "HEAD:internal/versioninfo/versioninfo.go" 2>$null
-    $headVersion = $current
+    $headSchema = $currentSchema
+    $headUpdateFlow = $currentUpdateFlow
+    $headRelease = $currentRelease
     if ($headContent) {
-        $hm = [regex]::Match($headContent, 'CurrentSchemaVersion\s*=\s*(\d+)')
-        if ($hm.Success) { $headVersion = [int]$hm.Groups[1].Value }
+        $headSchema = Read-Counter $headContent 'CurrentSchemaVersion'
+        $headUpdateFlow = Read-Counter $headContent 'CurrentUpdateFlowVersion'
+        $headRelease = Read-Counter $headContent 'CurrentAppVersionInt'
     }
-    if ($current -ne $headVersion) {
-        $expectedMigration = Join-Path $migrationsDir ("v{0}.md" -f $current)
+
+    # Schema drift
+    if ($currentSchema -ne $headSchema) {
+        $expectedMigration = Join-Path $migrationsDir ("v{0}.md" -f $currentSchema)
         if (-not (Test-Path $expectedMigration)) {
-            $errors += "versioninfo.go bumped $headVersion -> $current but missing $expectedMigration"
+            $errors += "CurrentSchemaVersion bumped $headSchema -> $currentSchema but missing $expectedMigration"
         }
     }
 
-    $appVer = "1.2.$current"
+    # UpdateFlow drift: a U bump must have archived the previous
+    # sequence's last N for review (issue #294 acceptance).
+    if ($currentUpdateFlow -ne $headUpdateFlow) {
+        $expectedSidecar = Join-Path $releaseStateDir ("last-n-for-u{0}.json" -f $headUpdateFlow)
+        if (-not (Test-Path $expectedSidecar)) {
+            $errors += "CurrentUpdateFlowVersion bumped $headUpdateFlow -> $currentUpdateFlow but missing sidecar $expectedSidecar"
+        }
+    }
+
+    # Doc references use the new v{MAJOR}.{U}.{N} shape.
+    $appVer = "1.$currentUpdateFlow.$currentSchema"
     $docFiles = @(
         "docs\user-manual.md",
         "docs\implementation-and-features.md",
@@ -99,18 +199,17 @@ if ($VerifyOnly) {
         foreach ($e in $errors) { Write-Host "  - $e" -ForegroundColor Red }
         exit 1
     }
-    Write-Host "VERIFY OK: schema $current, docs reference $appVer, discipline intact" -ForegroundColor Green
+    Write-Host "VERIFY OK: schema $currentSchema, update_flow $currentUpdateFlow, release $currentRelease" -ForegroundColor Green
+    Write-Host "  app version: 1.$currentUpdateFlow.$currentSchema"
+    Write-Host "  doc + changelog references intact"
     exit 0
 }
 
 # DetectDrift: walks HEAD..origin/<base> commit subjects for
-# schema-touching patterns. If any are present AND CurrentSchemaVersion
-# is unchanged, fail with a drift message. The skip hatch is a
-# commit subject 'chore: skip-schema-bump' + reason in the body.
-# Used by CI on every PR (the .github/workflows/test.yml schema-
-# touching detector is a duplicate of this check; the bash variant
-# is the canonical for non-Windows runners, this is the canonical
-# for Windows).
+# schema-touching patterns. If any are present AND
+# CurrentSchemaVersion is unchanged, fail with a drift message.
+# The skip hatch is a commit subject 'chore: skip-schema-bump'
+# + reason in the body. Used by CI on every PR.
 if ($DetectDrift) {
     $base = "origin/$env:GITHUB_BASE_REF"
     if (-not $env:GITHUB_BASE_REF) {
@@ -161,52 +260,109 @@ if ($DetectDrift) {
     exit 0
 }
 
-if ($delta -ne 1 -and -not $Force) {
-    throw "Refusing to bump by $delta (current=$current, next=$next). " +
-          "Use -Force for jumps > 1, and pair with a docs/migrations/v$next.md entry."
-}
-
-$migrationPath = Join-Path $migrationsDir ("v{0}.md" -f $next)
-if (-not (Test-Path $migrationPath)) {
-    throw "Missing migration note: $migrationPath`n" +
-          "DixieData's local update feature requires a paired migration doc for each schema bump.`n" +
-          "Create the file with at least one '- ' bullet describing the schema change, then re-run."
-}
-
-# Enforce non-empty migration note
-$migrationContent = Get-Content -Path $migrationPath -Raw
-if ($migrationContent -notmatch '^\s*-\s+\S' -and $migrationContent -notmatch '\n\s*-\s+\S') {
-    throw "Migration note $migrationPath has no '- ' bullets. " +
-          "Document the schema change so reviewers and the update flow have a paper trail."
-}
-
 # Refuse if working tree has uncommitted changes touching versioninfo.go
 $gitStatus = & git status --porcelain $versionInfoPath 2>$null
 if ($gitStatus) {
     throw "versioninfo.go has uncommitted changes. Commit or stash before bumping."
 }
 
-# Rewrite the file with new value, preserving everything else
-$newContent = $content -replace "CurrentSchemaVersion\s*=\s*\d+", "CurrentSchemaVersion = $next"
-Set-Content -Path $versionInfoPath -Value $newContent -NoNewline
+switch ($bumpKind) {
+    'Schema' {
+        $next = $currentSchema + 1
+        $delta = $next - $currentSchema
+        if ($delta -ne 1 -and -not $Force) {
+            throw "Refusing to bump schema by $delta (current=$currentSchema, next=$next). " +
+                  "Use -Force for jumps > 1, and pair with a docs/migrations/v$next.md entry."
+        }
 
-$appVersion = "v1.2.{0}" -f $next
+        $migrationPath = Join-Path $migrationsDir ("v{0}.md" -f $next)
+        if (-not (Test-Path $migrationPath)) {
+            throw "Missing migration note: $migrationPath`n" +
+                  "DixieData's local update feature requires a paired migration doc for each schema bump.`n" +
+                  "Create the file with at least one '- ' bullet describing the schema change, then re-run."
+        }
+        $migrationContent = Get-Content -Path $migrationPath -Raw
+        if ($migrationContent -notmatch '^\s*-\s+\S' -and $migrationContent -notmatch '\n\s*-\s+\S') {
+            throw "Migration note $migrationPath has no '- ' bullets. " +
+                  "Document the schema change so reviewers and the update flow have a paper trail."
+        }
 
-if ($VerifyOnly) {
-    Write-Host "VERIFY OK: CurrentSchemaVersion would go $current -> $next" -ForegroundColor Green
-    Write-Host "  paired migration note: $migrationPath"
-    Write-Host "  app version: $appVersion"
-    exit 0
+        # Rewrite the file with new schema value, preserving everything else.
+        $newContent = $content -replace "CurrentSchemaVersion\s*=\s*\d+", "CurrentSchemaVersion = $next"
+        Set-Content -Path $versionInfoPath -Value $newContent -NoNewline
+
+        $appVersion = "v1.$currentUpdateFlow.$next"
+
+        Write-Host ""
+        Write-Host "Bumped CurrentSchemaVersion: $currentSchema -> $next" -ForegroundColor Green
+        Write-Host "App version: $appVersion"
+        Write-Host ""
+        Write-Host "Next steps:" -ForegroundColor Cyan
+        Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section."
+        Write-Host "  2. Run the test suite (make test-quiet) to confirm migrations apply cleanly."
+        Write-Host "  3. git add internal/versioninfo/versioninfo.go CHANGELOG.md"
+        Write-Host "  4. git commit -m 'Bump release line to $appVersion'"
+        Write-Host "  5. make archive   # builds + zips release/DixieData-release-$appVersion.zip"
+        Write-Host "  6. make release-github   # tag + push + draft GitHub release"
+    }
+    'UpdateFlow' {
+        # U bump: bumps U, resets N to 0, archives the previous U
+        # sequence's last N to a sidecar for review.
+        $nextU = $currentUpdateFlow + 1
+
+        if (-not (Test-Path $releaseStateDir)) {
+            New-Item -ItemType Directory -Path $releaseStateDir -Force | Out-Null
+        }
+        $sidecarPath = Join-Path $releaseStateDir ("last-n-for-u{0}.json" -f $currentUpdateFlow)
+        $sidecar = @{
+            previous_update_flow_version = $currentUpdateFlow
+            last_release_counter         = $currentRelease
+            last_schema_version          = $currentSchema
+            archived_at                  = (Get-Date).ToUniversalTime().ToString("o")
+            note                         = "Archived by bump-version.ps1 -BumpUpdateFlow. The U=$currentUpdateFlow -> U=$nextU transition resets the release counter; this file preserves the last N from the previous sequence for review."
+        } | ConvertTo-Json -Depth 4
+        Set-Content -Path $sidecarPath -Value $sidecar
+
+        $newContent = $content -replace "CurrentUpdateFlowVersion\s*=\s*\d+", "CurrentUpdateFlowVersion = $nextU"
+        $newContent = $newContent -replace "CurrentAppVersionInt\s*=\s*\d+", "CurrentAppVersionInt = 0"
+        Set-Content -Path $versionInfoPath -Value $newContent -NoNewline
+
+        $appVersion = "v1.$nextU.0"
+
+        Write-Host ""
+        Write-Host "Bumped CurrentUpdateFlowVersion: $currentUpdateFlow -> $nextU" -ForegroundColor Green
+        Write-Host "Reset  CurrentAppVersionInt:    $currentRelease -> 0"
+        Write-Host "Archived previous U=$currentUpdateFlow sequence last N=$currentRelease to $sidecarPath" -ForegroundColor Yellow
+        Write-Host "App version: $appVersion"
+        Write-Host ""
+        Write-Host "Next steps:" -ForegroundColor Cyan
+        Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section noting the U bump rationale."
+        Write-Host "  2. Update docs/RELEASING.md and ADR 0008 if the U bump changes the install/upgrade contract."
+        Write-Host "  3. Run the test suite (make test-quiet) — the in-place update flow's compareVersions will reject U-mismatched releases."
+        Write-Host "  4. git add internal/versioninfo/versioninfo.go .release-state/ CHANGELOG.md"
+        Write-Host "  5. git commit -m 'Bump update-flow version to $appVersion'"
+        Write-Host "  6. make archive && make release-github"
+    }
+    'Release' {
+        # Bug-fix-only release: bump N only. Nothing else changes.
+        $nextN = $currentRelease + 1
+        if ($nextN -ne $currentRelease + 1 -and -not $Force) {
+            throw "Refusing to bump release counter by more than +1 (current=$currentRelease). Use -Force for jumps."
+        }
+        $newContent = $content -replace "CurrentAppVersionInt\s*=\s*\d+", "CurrentAppVersionInt = $nextN"
+        Set-Content -Path $versionInfoPath -Value $newContent -NoNewline
+
+        $appVersion = "v1.$currentUpdateFlow.$nextN"
+
+        Write-Host ""
+        Write-Host "Bumped CurrentAppVersionInt: $currentRelease -> $nextN" -ForegroundColor Green
+        Write-Host "App version: $appVersion"
+        Write-Host ""
+        Write-Host "Next steps:" -ForegroundColor Cyan
+        Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section."
+        Write-Host "  2. Run the test suite (make test-quiet)."
+        Write-Host "  3. git add internal/versioninfo/versioninfo.go CHANGELOG.md"
+        Write-Host "  4. git commit -m 'Bump release counter to $appVersion'"
+        Write-Host "  5. make archive && make release-github"
+    }
 }
-
-Write-Host ""
-Write-Host "Bumped CurrentSchemaVersion: $current -> $next" -ForegroundColor Green
-Write-Host "App version: $appVersion"
-Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "  1. Update CHANGELOG.md with a '## $appVersion - ...' section."
-Write-Host "  2. Run the test suite (make test-quiet) to confirm migrations apply cleanly."
-Write-Host "  3. git add internal/versioninfo/versioninfo.go CHANGELOG.md"
-Write-Host "  4. git commit -m 'Bump release line to $appVersion'"
-Write-Host "  5. make archive   # builds + zips release/DixieData-release-$appVersion.zip"
-Write-Host "  6. make release-github   # tag + push + draft GitHub release"

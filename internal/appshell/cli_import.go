@@ -785,7 +785,12 @@ func readBackupManifestFromZip(path string) (archive.BackupManifest, error) {
 			if err := json.Unmarshal(body, &manifest); err != nil {
 				return manifest, err
 			}
-			return manifest, nil
+			// Backward-compat: archives written before
+			// issue #296 omitted the U + N fields; the
+			// reader fills them in so the rest of the
+			// import pipeline can compare axes without
+			// re-parsing the AppVersion string.
+			return archive.NormalizeManifestBackwardsCompat(manifest), nil
 		}
 	}
 	return manifest, errors.New("archive contains no manifest.json")

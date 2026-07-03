@@ -16,6 +16,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -36,6 +37,16 @@ type BackupManifest struct {
 	ArchiveKind   string `json:"archive_kind,omitempty"`
 	AppVersion    string `json:"app_version,omitempty"`
 	SchemaVersion int    `json:"schema_version,omitempty"`
+	// CurrentUpdateFlowVersion (U) and ReleaseCounter (N) are
+	// the explicit axes of the v{MAJOR}.{U}.{N} version split
+	// (issues #266 + #296). New backups write both fields so
+	// readers can compare U without re-parsing the AppVersion
+	// string. Old archives pre-#296 omit both; readers treat
+	// missing U as 1 (legacy v1.2.N strings parse to U=1 per
+	// #266 decision 1) and missing N as SchemaVersion (the
+	// historical formula tied N to schema).
+	CurrentUpdateFlowVersion int `json:"current_update_flow_version,omitempty"`
+	ReleaseCounter           int `json:"release_counter,omitempty"`
 	NodePrefix    string `json:"node_prefix,omitempty"`
 	OwnerName     string `json:"owner_name,omitempty"`
 	SourceNodeID  string `json:"source_node_id,omitempty"`
@@ -619,15 +630,17 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 
 func (b *BackupService) loadBackupData(archiveKind string) (BackupManifest, error) {
 	manifest := BackupManifest{
-		Format:        backupFormatName,
-		Version:       buildinfo.BackupFormatVersion,
-		ArchiveKind:   archiveKind,
-		AppVersion:    buildinfo.AppVersion,
-		SchemaVersion: buildinfo.SchemaVersion,
-		CreatedAt:     time.Now().Format(time.RFC3339),
-		DataFormat:    "sqlite",
-		DatabaseFile:  filepath.ToSlash(filepath.Join("data", db.FileName)),
-		ImageRoot:     "images/",
+		Format:                   backupFormatName,
+		Version:                  buildinfo.BackupFormatVersion,
+		ArchiveKind:              archiveKind,
+		AppVersion:               buildinfo.AppVersion,
+		SchemaVersion:            buildinfo.SchemaVersion,
+		CurrentUpdateFlowVersion: versioninfo.CurrentUpdateFlowVersion,
+		ReleaseCounter:           versioninfo.AppRelease(),
+		CreatedAt:                time.Now().Format(time.RFC3339),
+		DataFormat:               "sqlite",
+		DatabaseFile:             filepath.ToSlash(filepath.Join("data", db.FileName)),
+		ImageRoot:                "images/",
 	}
 	nodePrefix, err := b.db.NodePrefix()
 	if err != nil {
@@ -930,6 +943,31 @@ func readBackupJSON(file *zip.File, target interface{}) error {
 	}
 	defer reader.Close()
 	return json.NewDecoder(reader).Decode(target)
+}
+
+// NormalizeManifestBackwardsCompat applies defaults for
+// version-axis fields that didn't exist before issue #296
+// landed. Callers should invoke this on every freshly decoded
+// BackupManifest so the rest of the import pipeline can
+// compare U + N without re-parsing the AppVersion string.
+//
+// Defaults (per issue #296 acceptance):
+//   - CurrentUpdateFlowVersion: 1 (legacy v1.2.N strings
+//     parse to U=1 per issue #266 decision 1)
+//   - ReleaseCounter: SchemaVersion (the historical formula
+//     tied N to the schema version; the bug-fix-only release
+//     counter diverged from that with issue #266)
+//
+// The function mutates the manifest in place and returns it
+// so callers can chain `m, err := NormalizeManifestBackwardsCompat(m)`.
+func NormalizeManifestBackwardsCompat(manifest BackupManifest) BackupManifest {
+	if manifest.CurrentUpdateFlowVersion == 0 {
+		manifest.CurrentUpdateFlowVersion = 1
+	}
+	if manifest.ReleaseCounter == 0 && manifest.SchemaVersion > 0 {
+		manifest.ReleaseCounter = manifest.SchemaVersion
+	}
+	return manifest
 }
 
 func extractBackupImages(reader *zip.Reader, destinationRoot, imageRoot string) error {

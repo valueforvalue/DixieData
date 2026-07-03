@@ -362,5 +362,33 @@ features (issue #257) also surfaced the parallel risk: a
 schema change that ships without a bump leaves users on older
 DBs unable to update. Don't repeat.
 
+### Release counter N ≠ schema version
+
+The release line lives at three counters in
+`internal/versioninfo/versioninfo.go` (issue #266):
+
+- **`CurrentSchemaVersion`** — SQLite `user_version`; the data plane.
+- **`CurrentUpdateFlowVersion`** (U) — the in-place update flow's
+  shape gate. U mismatch in either direction forces a
+  reinstall. Default U=1 covers every legacy v1.2.N release.
+- **`CurrentAppVersionInt`** (N) — the release counter. Every
+  release bumps N; bug-fix-only releases bump N without a
+  schema change.
+
+The composite app version is `v{MAJOR}.{U}.{N}`. N is the
+**release counter**, not the schema version — bug-fix-only
+releases bump N without touching the schema, and the inverse
+is possible but rare (a schema bump that doesn't roll a new
+release). Treat them as independent axes in any script or doc
+that wants to compare versions.
+
+`bump-version.ps1` exposes three switches — `-BumpSchema`,
+`-BumpUpdateFlow`, `-BumpRelease` — one per counter. They
+are mutually exclusive. The default (no switch) is
+`-BumpSchema` to match historical behavior.
+
+See [`docs/RELEASING.md`](docs/RELEASING.md) §Versioning rules
+for the canonical contract.
+
 See [`docs/agents/build-protocol.md`](docs/agents/build-protocol.md)
 §4 for the canonical reference.

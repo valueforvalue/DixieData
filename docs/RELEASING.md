@@ -1,24 +1,41 @@
 # Releasing DixieData
 
-DixieData's release line is schema-driven: `CurrentSchemaVersion` in `internal/versioninfo/versioninfo.go` is the single source of truth. The app version is computed as `v1.2.{CurrentSchemaVersion}` and is embedded in the binary, packaged in the release zip, and stamped on every GitHub release.
+DixieData's release line has three independent counters, all declared in `internal/versioninfo/versioninfo.go` (issue #266):
+
+- **`CurrentSchemaVersion`** — SQLite `user_version`; the data plane. Bump = the migration runner applies forward-only migrations. Most common bump.
+- **`CurrentUpdateFlowVersion`** — the update-flow shape gate (U). Bump = the auto-update mechanism itself changed shape (restore-point storage moves, eligibility rules change, in-place codepaths removed). Releases with a higher U cannot be auto-applied by a binary with the current U; the user must reinstall.
+- **`CurrentAppVersionInt`** — the release counter (N). Every release bumps N; bug-fix-only releases bump N without a schema change.
+
+The app version is the composite `v{MAJOR}.{U}.{N}` and is embedded in the binary, packaged in the release zip, stamped on every GitHub release, and parsed by the in-place update flow's `compareVersions` to decide eligibility.
 
 The local update feature (`internal/appdata/`) downloads release packages and applies schema migrations on top of an existing `.dixiedata` database. **Every schema bump must be paired with a migration in `internal/db/schema.go` AND a human-readable note in `docs/migrations/`.** Without the migration, users on older DBs cannot upgrade via the update flow.
 
 ## Versioning rules
 
-- **App version**: `v{MAJOR}.{MINOR}.{SCHEMA}` where `SCHEMA = CurrentSchemaVersion`. Currently `v1.2.{N}`.
-- **Bump increment**: always `+1` per release. `bump-version.ps1` refuses jumps greater than `+1` unless `-Force` is passed.
-- **Migration note**: `docs/migrations/v{N+1}.md` must exist before `make bump` will run. Must contain at least one `- ` bullet.
+- **App version**: `v{MAJOR}.{U}.{N}` where `MAJOR` is fixed at 1 today (TBD bump policy), `U` is the update-flow version, `N` is the release counter. Initial release is `v1.1.1` (U=1, N=1). Legacy releases (v1.2.52, v1.2.55, ...) parse to **U=1** by default per issue #266 decision 1, so they slot in cleanly alongside the new shape.
+- **U bump semantics**: U mismatch in either direction (release.U > installed.U OR release.U < installed.U) forces the user to reinstall. The installed binary's update-flow shape can't safely apply a release whose flow changed. U bumps are rare — reserve them for changes that genuinely reshape the in-place update mechanism.
+- **N bump semantics**: every release bumps N. Bug-fix-only releases bump N without touching schema or U. The release counter is independent of the data plane.
+- **Schema bump semantics**: `-BumpSchema` bumps `CurrentSchemaVersion`; requires a paired `docs/migrations/v{N+1}.md` with at least one `- ` bullet.
+- **Bump increment**: always `+1` per release for each counter. `bump-version.ps1` refuses jumps greater than `+1` unless `-Force` is passed.
+- **Migration note**: `docs/migrations/v{N+1}.md` must exist before `-BumpSchema` will run.
 
 ## Release workflow
 
-### 1. Write the migration note
+### 1. Pick the right bump
+
+Decide which counter is changing:
+
+- **Schema changed** (new table, new column, drop, rename, index, modified JSON shape): `-BumpSchema`.
+- **Update flow changed** (new restore-point storage location, new eligibility rule, new migration runner mechanics, removal of an in-place codepath): `-BumpUpdateFlow`. Bumps U, resets N to 0, archives the previous U sequence's last N to `.release-state/last-n-for-u{prev_U}.json`.
+- **Bug-fix only** (no schema change, no update-flow change): `-BumpRelease`. Bumps N only.
+
+### 2. Write the migration note (schema bumps only)
 
 Before bumping, describe the schema change in `docs/migrations/v{N+1}.md`. This note:
 
 - documents the schema change for reviewers and the update flow
 - serves as the audit trail when users apply the update
-- is required by `make bump` — the script will refuse to run without it
+- is required by `-BumpSchema` — the script will refuse to run without it
 
 ```markdown
 # Schema v55
@@ -26,46 +43,52 @@ Before bumping, describe the schema change in `docs/migrations/v{N+1}.md`. This 
 - Added `merge_review_conflicts.notes` column for reviewer context.
 ```
 
-### 2. Update CHANGELOG.md
+### 3. Update CHANGELOG.md
 
 Add a new section at the top:
 
 ```markdown
-## v1.2.55 - Patch Release
+## v1.1.55 - Patch Release
 
 - Added merge-review conflict notes column.
-- Carried the release line forward to `v1.2.55` so the schema version,
+- Carried the release line forward to `v1.1.55` so the schema version,
   runtime metadata, Wails title, and packaged release artifacts stay aligned.
 ```
 
-### 3. Bump the schema version
+### 4. Bump the counter
 
 ```bash
+# Schema bump (default; matches historical behavior)
 make bump
+
+# Or explicitly:
+pwsh -File scripts/bump-version.ps1 -BumpSchema
+pwsh -File scripts/bump-version.ps1 -BumpUpdateFlow
+pwsh -File scripts/bump-version.ps1 -BumpRelease
 ```
 
-This calls `scripts/bump-version.ps1`, which:
+The script:
 
-- verifies `docs/migrations/v{N+1}.md` exists and has at least one bullet
+- verifies the paired migration note exists for `-BumpSchema`
 - refuses bumps greater than `+1` (use `-Force` to override)
-- rewrites `CurrentSchemaVersion` in `internal/versioninfo/versioninfo.go`
-- prints the new app version and next-step instructions
+- rewrites the appropriate constant in `internal/versioninfo/versioninfo.go`
+- prints the new app version (`v1.{U}.{N}`) and next-step instructions
 
 `make bump` does NOT auto-commit. The reviewer must:
 
-- edit CHANGELOG.md (already done in step 2)
+- edit CHANGELOG.md (already done in step 3)
 - run `make test-quiet` to confirm migrations apply cleanly
-- commit deliberately: `git add internal/versioninfo/versioninfo.go CHANGELOG.md docs/migrations/v55.md && git commit -m "Bump release line to v1.2.55"`
+- commit deliberately: `git add internal/versioninfo/versioninfo.go CHANGELOG.md docs/migrations/v55.md && git commit -m "Bump release line to v1.1.55"`
 
-### 4. Build and archive
+### 5. Build and archive
 
 ```bash
 make archive
 ```
 
-Produces `release/DixieData-release-v1.2.55.zip` containing the contents of `build\bin\` (`DixieData.exe`, `google-oauth-defaults.json`, `pdfium.dll`, `pdfium.version`).
+Produces `release/DixieData-release-v1.1.55.zip` containing the contents of `build\bin\` (`DixieData.exe`, `google-oauth-defaults.json`, `pdfium.dll`, `pdfium.version`).
 
-### 5. Tag and publish (draft)
+### 6. Tag and publish (draft)
 
 ```bash
 make release-github
@@ -89,10 +112,10 @@ On success:
 The release is **DRAFT** — not publicly visible. Review notes in the GitHub UI, then publish:
 
 ```bash
-gh release edit v1.2.55 --draft=false
+gh release edit v1.1.55 --draft=false
 ```
 
-### 6. Rollback
+### 7. Rollback
 
 If `git push origin main` succeeds but `git push origin v{VERSION}` fails:
 
@@ -108,7 +131,7 @@ If `gh release create` fails after a successful tag push:
 
 ## Demo packages
 
-`make demo` produces a seeded demo release under `release/DixieData-demo-{date}.zip` via `scripts/build-demo-release.ps1`. This is independent of the schema-driven release line — demo versions do not get GitHub releases.
+`make demo` produces a seeded demo release under `release/DixieData-demo-{date}.zip` via `scripts/build-demo-release.ps1`. This is independent of the release line — demo versions do not get GitHub releases.
 
 ## Manual override
 
@@ -119,11 +142,17 @@ If the Makefile pipeline breaks (e.g., `gh` unavailable, network issues), fall b
 pwsh -File scripts/build-release.ps1 -Archive
 
 # Tag + push
-git tag -a v1.2.55 -m "Release v1.2.55"
+git tag -a v1.1.55 -m "Release v1.1.55"
 git push origin main
-git push origin v1.2.55
+git push origin v1.1.55
 
 # Upload release zip manually at https://github.com/valueforvalue/DixieData/releases/new
 ```
 
-The Makefile and scripts are convenience wrappers; the underlying convention is the schema-driven version + GitHub release zip.
+The Makefile and scripts are convenience wrappers; the underlying convention is the three-counter version + GitHub release zip.
+
+## See also
+
+- [ADR 0008 — Promotion protocol](adr/0008-promotion-protocol.md) — the `make promote` gate chain for `dev → main`, including the cadence-driven promotion story that the v{MAJOR}.{U}.{N} split enables.
+- [ADR 0007 — In-place update safety](adr/0007-in-place-update-safety.md) — the four rules that gate the in-place update flow.
+- [`internal/versioninfo/versioninfo.go`](../internal/versioninfo/versioninfo.go) — the source-of-truth for all three counters.
