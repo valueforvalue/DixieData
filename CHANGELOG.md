@@ -168,6 +168,42 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `.pi/agents/{Explore,Plan,general-purpose}.md` and
   returns the expected keys (description / tools /
   model / thinking). Subagent spawn now succeeds.
+- **Share foldout menu too wide at small viewport sizes**
+  (issue #288). On a 16" laptop snapped to split-screen
+  (viewport ~640–1000px), opening the Share foldout from
+  the top nav rendered the panel at its baked-in 14rem
+  (224px) min-width with no upper cap, and at the right
+  edge of the trigger could push past the page edge or
+  force horizontal scroll. The 641–1000px range had no
+  CSS rule even though the layout-mode system already
+  existed for `.floating-nav-panel`. Three-slice fix:
+  (1) `internal/templates/components/foldout.templ`
+  adds a `max-w-[calc(100vw-2rem)]` cap alongside the
+  existing `min-w-[14rem]` floor (additive, not a
+  replacement) so the panel can never overflow the
+  viewport on any size screen; (2) `frontend/tailwind.css`
+  adds `html[data-layout-mode="split-screen"]
+  .foldout-panel { min-width: 0; width: calc(100vw -
+  2rem); }` mirroring the `.floating-nav-panel`
+  precedent, so the 14rem floor is dropped exactly at
+  the 1000px split-screen breakpoint where it was the
+  root cause; (3) new smoke probe
+  `audit/smoke_foldout_split_screen_sizing.mjs` verifies
+  the user-visible behavior end-to-end across a 900px
+  (split-screen) and a 1600px (relaxed) viewport,
+  asserting the floor drops in split-screen and stays
+  intact in relaxed, the viewport cap always applies,
+  the panel's right edge stays inside the viewport, and
+  all 4 menu items render and remain in-viewport.
+  Regression net: `TestFoldout_PanelResponsiveSizing`
+  in
+  `internal/templates/components/foldout_test.go`
+  locks the templ-rendered class tokens (slice 1),
+  the new "split-screen foldout-panel override (issue
+  #288 slice 2)" entry in
+  `internal/templates/layout_test.go` locks the compiled
+  CSS rule (slice 2), and the new smoke probe locks the
+  end-to-end behavior (slice 3).
 
 ### Added
 
