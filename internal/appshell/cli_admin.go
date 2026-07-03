@@ -593,6 +593,27 @@ func runAdminMigrateDown(ctx context.Context, opts AdminOptions) (int, error) {
 		fmt.Fprintln(opts.Writer, "  ... then: dixiedata migrate down <target> --yes")
 	}
 
+	// Take the pre-downgrade snapshot BEFORE the runner fires.
+	// This is the safety net: if the runner refuses on an
+	// Irreversible block, the operator has a fresh copy of the
+	// live schema to restore from. The snapshot is taken with
+	// the same RetainedBackupManager the UP path uses
+	// (CreatePreSchemaUpgradeBackup), with a thin wrapper that
+	// sets Kind=pre-schema-downgrade + the direction-aware
+	// filename. See internal/update/retained_backup_manager.go.
+	manager := update.NewRetainedBackupManager(app.dataDir)
+	preDowngradeRecord, snapErr := manager.CreatePreSchemaDowngradeBackup(update.CreateRetainedBackupInput{
+		SourceAppVersion:    buildinfo.AppVersion,
+		SourceSchemaVersion: current,
+		TargetAppVersion:    buildinfo.AppVersion,
+		TargetSchemaVersion: target,
+		BuildIdentity:       buildinfo.BuildIdentity(),
+	}, database.SnapshotTo)
+	if snapErr != nil {
+		return 2, fmt.Errorf("pre-downgrade snapshot: %w", snapErr)
+	}
+	fmt.Fprintf(opts.Writer, "\npre-downgrade snapshot: %s\n", preDowngradeRecord.ID)
+
 	// Run the inverse. applyDownSchema refuses via
 	// ErrDowngradeRefused when the path crosses an Irreversible
 	// block; the runner propagates the refusal without
@@ -600,6 +621,7 @@ func runAdminMigrateDown(ctx context.Context, opts AdminOptions) (int, error) {
 	if err := db.ApplyDownSchema(database, target); err != nil {
 		if errors.Is(err, db.ErrDowngradeRefused) {
 			fmt.Fprintf(opts.Writer, "\nrefused: %v\n", err)
+			fmt.Fprintf(opts.Writer, "pre-downgrade snapshot %s is available for rollback.\n", preDowngradeRecord.ID)
 			return 1, err
 		}
 		return 2, fmt.Errorf("apply downgrade: %w", err)
@@ -607,15 +629,17 @@ func runAdminMigrateDown(ctx context.Context, opts AdminOptions) (int, error) {
 
 	if opts.JSON {
 		return 0, writeJSON(opts.Writer, map[string]any{
-			"before":             current,
-			"after":              target,
-			"moved":              current - target,
-			"force_irreversible": opts.ForceIrreversible,
-			"manifest":           manifestForJSON(window),
+			"before":              current,
+			"after":               target,
+			"moved":               current - target,
+			"force_irreversible":  opts.ForceIrreversible,
+			"manifest":            manifestForJSON(window),
+			"pre_downgrade_snapshot": preDowngradeRecord.ID,
 		})
 	}
 	fmt.Fprintf(opts.Writer, "\nschema before = v%d\n", current)
 	fmt.Fprintf(opts.Writer, "schema after  = v%d\n", target)
+	fmt.Fprintf(opts.Writer, "pre-downgrade snapshot: %s\n", preDowngradeRecord.ID)
 	return 0, nil
 }
 
