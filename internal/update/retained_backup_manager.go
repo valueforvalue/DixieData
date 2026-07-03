@@ -13,9 +13,28 @@ import (
 )
 
 const (
-	preSchemaUpgradeBackupKind = "pre-schema-upgrade"
-	retainedBackupIndexVersion = 1
-	defaultMaxRetainedBackups  = 5
+	preSchemaUpgradeBackupKind   = "pre-schema-upgrade"
+	preSchemaDowngradeBackupKind = "pre-schema-downgrade"
+	retainedBackupIndexVersion   = 1
+	defaultMaxRetainedBackups    = 5
+
+	// directionUpgrade / directionDowngrade are the values
+	// persisted in RetainedBackupRecord.Direction (added in
+	// issue #273 PR 3). Older records written before this field
+	// existed are treated as upgrade by the Direction() helper
+	// so listing / restore paths don't have to special-case the
+	// missing field.
+	directionUpgrade   = "upgrade"
+	directionDowngrade = "downgrade"
+
+	// snapshotFileNameUpgrade / snapshotFileNameDowngrade are
+	// the on-disk filenames per direction. The split makes a
+	// mixed UP/DOWN record list unambiguous from the artifact
+	// alone, even if metadata.json were lost. Both files share
+	// the same per-record directory; the filename is the
+	// direction marker.
+	snapshotFileNameUpgrade   = "dixiedata-pre-upgrade.db"
+	snapshotFileNameDowngrade = "dixiedata-pre-downgrade.db"
 )
 
 type SnapshotWriter func(outputPath string) error
@@ -27,6 +46,16 @@ type RetainedBackupPolicy struct {
 type RetainedBackupRecord struct {
 	ID                   string `json:"id"`
 	Kind                 string `json:"kind"`
+	// Direction is the schema-change direction this snapshot
+	// guards against. "upgrade" means a snapshot taken BEFORE
+	// applySchema ran (used as rollback target for the UP path);
+	// "downgrade" means a snapshot taken BEFORE applyDownSchema
+	// ran (used as rollback target for the DOWN path). The field
+	// was added in issue #273 PR 3; older records persisted
+	// before the field existed treat Direction() as "upgrade"
+	// so the listing / restore paths don't have to special-case
+	// the missing JSON field. See Direction() for the default.
+	Direction            string `json:"direction,omitempty"`
 	CreatedAt            string `json:"created_at"`
 	SourceAppVersion     string `json:"source_app_version,omitempty"`
 	SourceSchemaVersion  int    `json:"source_schema_version,omitempty"`
@@ -65,25 +94,65 @@ func NewRetainedBackupManager(dataDir string) *RetainedBackupManager {
 	}
 }
 
+// CreatePreSchemaUpgradeBackup is a thin wrapper around
+// CreatePreSchemaChangeBackup with the upgrade direction fixed.
+// It exists for backward compatibility — existing callers
+// (internal/db/db.go::backupBeforeMigrationIfNeeded, the
+// pre-issue-#273 sites) use this name and need not change.
 func (m *RetainedBackupManager) CreatePreSchemaUpgradeBackup(input CreateRetainedBackupInput, snapshot SnapshotWriter) (RetainedBackupRecord, error) {
+	return m.CreatePreSchemaChangeBackup(input, directionUpgrade, snapshot)
+}
+
+// CreatePreSchemaDowngradeBackup is the DOWN-path equivalent. It
+// guards the snapshot taken BEFORE applyDownSchema runs, so the
+// operator can roll back if the downgrade produces a corrupted
+// schema. Issue #273 PR 3 adds this alongside the Direction
+// field; the CLI's runAdminMigrateDown (PR 2) calls this
+// automatically so the operator doesn't have to remember to
+// snapshot first.
+func (m *RetainedBackupManager) CreatePreSchemaDowngradeBackup(input CreateRetainedBackupInput, snapshot SnapshotWriter) (RetainedBackupRecord, error) {
+	return m.CreatePreSchemaChangeBackup(input, directionDowngrade, snapshot)
+}
+
+// CreatePreSchemaChangeBackup is the unified implementation for
+// both upgrade and downgrade snapshots. The direction argument
+// sets both the Kind label and the on-disk filename so a mixed
+// UP/DOWN record list is unambiguous from the artifact alone.
+//
+// direction must be one of directionUpgrade / directionDowngrade;
+// any other value is rejected as a programmer error.
+func (m *RetainedBackupManager) CreatePreSchemaChangeBackup(input CreateRetainedBackupInput, direction string, snapshot SnapshotWriter) (RetainedBackupRecord, error) {
 	if snapshot == nil {
 		return RetainedBackupRecord{}, fmt.Errorf("snapshot writer is required")
+	}
+	switch direction {
+	case directionUpgrade, directionDowngrade:
+		// ok
+	default:
+		return RetainedBackupRecord{}, fmt.Errorf("CreatePreSchemaChangeBackup: direction must be %q or %q, got %q", directionUpgrade, directionDowngrade, direction)
 	}
 	if err := os.MkdirAll(m.backupsRoot(), 0o755); err != nil {
 		return RetainedBackupRecord{}, err
 	}
 
+	kind := preSchemaUpgradeBackupKind
+	if direction == directionDowngrade {
+		kind = preSchemaDowngradeBackupKind
+	}
+	fileName := snapshotFileNameFor(direction)
+
 	createdAt := m.now().UTC()
 	record := RetainedBackupRecord{
 		ID:                   m.backupID(createdAt, input.SourceSchemaVersion, input.TargetSchemaVersion),
-		Kind:                 preSchemaUpgradeBackupKind,
+		Kind:                 kind,
+		Direction:            direction,
 		CreatedAt:            createdAt.Format(time.RFC3339),
 		SourceAppVersion:     strings.TrimSpace(input.SourceAppVersion),
 		SourceSchemaVersion:  input.SourceSchemaVersion,
 		TargetAppVersion:     strings.TrimSpace(input.TargetAppVersion),
 		TargetSchemaVersion:  input.TargetSchemaVersion,
 		BuildIdentity:        strings.TrimSpace(input.BuildIdentity),
-		DatabaseSnapshotPath: filepath.ToSlash(filepath.Join("updates", "backups", m.backupID(createdAt, input.SourceSchemaVersion, input.TargetSchemaVersion), "dixiedata-pre-upgrade.db")),
+		DatabaseSnapshotPath: filepath.ToSlash(filepath.Join("updates", "backups", m.backupID(createdAt, input.SourceSchemaVersion, input.TargetSchemaVersion), fileName)),
 		MetadataPath:         filepath.ToSlash(filepath.Join("updates", "backups", m.backupID(createdAt, input.SourceSchemaVersion, input.TargetSchemaVersion), "metadata.json")),
 	}
 
@@ -150,6 +219,34 @@ func (m *RetainedBackupManager) RestoreDatabaseSnapshot(id, outputPath string) (
 
 func (m *RetainedBackupManager) backupsRoot() string {
 	return filepath.Join(m.dataDir, "updates", "backups")
+}
+
+// snapshotFileNameFor returns the on-disk filename for the
+// snapshot, parameterized by direction. Added in issue #273 PR 3
+// so a mixed UP/DOWN record list is unambiguous from the artifact
+// alone (even if metadata.json is lost). Pre-PR-3 records all
+// used snapshotFileNameUpgrade; the helper preserves that as
+// the unknown-direction default.
+func snapshotFileNameFor(direction string) string {
+	switch direction {
+	case directionDowngrade:
+		return snapshotFileNameDowngrade
+	default:
+		return snapshotFileNameUpgrade
+	}
+}
+
+// Direction returns the record's direction label, defaulting to
+// "upgrade" for records persisted before the field was added
+// (issue #273 PR 3). The default makes the field backward
+// compatible — old indexes parse cleanly via encoding/json's
+// missing-field handling, and listings / restore paths don't
+// have to special-case the empty string.
+func (r RetainedBackupRecord) DirectionLabel() string {
+	if r.Direction == "" {
+		return directionUpgrade
+	}
+	return r.Direction
 }
 
 func (m *RetainedBackupManager) indexPath() string {
