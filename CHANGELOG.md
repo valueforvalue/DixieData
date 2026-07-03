@@ -11,6 +11,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Changed
+
+- **Support & Diagnostics moved from /share to /settings** (issue #255).
+  The card with the two diagnostic-export buttons (Export Feedback
+  Log, Export Bug Report Bundle) moved off `/share` and onto
+  `/settings`, where it slots in alongside Debug Mode and Data
+  Quality Scan. The buttons produce diagnostic data, not export
+  data, so they belong with the other settings / configuration
+  surfaces (best discoverability — users look for "send bug
+  report" in Settings, not Share). The action URLs
+  (`/export/feedback-log`, `/export/bug-report`) and the
+  underlying handlers in `internal/appshell/exports_handlers.go`
+  are unchanged — only the templ rendering moves, per the
+  issue's Phase 1 / Phase 2 split (the larger /share re-org
+  in #253 / #284 is a separate follow-up). Regression net:
+  new `audit/smoke_settings_diagnostics.mjs` (12/12 green) —
+  asserts the card is on /settings, the two buttons carry the
+  same `data-action` URLs as before, /share no longer renders
+  the buttons or the Troubleshooting copy, and both POST
+  endpoints still return 2xx; updated
+  `internal/templates/share_test.go` to flip the Support &
+  Diagnostics assertions from "must be on /share" to "must NOT
+  be on /share" (the go-live of #255); new
+  `internal/templates/entry_form_test.go::TestSettingsViewIncludesSupportDiagnosticsPanel`
+  pins the /settings side of the move.
+
 ### Fixed
 
 - **`dixiedata debug dump --json` user_identity field shape** (issue #272).

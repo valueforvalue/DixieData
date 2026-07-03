@@ -222,21 +222,19 @@ func TestShareLandingIsSubOverview(t *testing.T) {
 			t.Errorf("/share landing missing Quick Action link %q", needle)
 		}
 	}
-	// Support & Diagnostics stays on /share (deferred to
-	// #255 for a possible move to /settings). The
-	// ".ddbak" / ".ddshare" extension copy is on the
-	// /share/exports and /share/imports subpages, not
-	// here.
-	for _, needle := range []string{
+	// Support & Diagnostics moved off /share to /settings
+	// (issue #255). The "/share" landing now stays focused
+	// on Exports / Imports / Sync / Merge Review. The
+	// diagnostic actions are still served at the same URLs
+	// but render in /settings now.
+	for _, forbidden := range []string{
 		"Support & Diagnostics",
 		"Troubleshooting bundle",
 		"/export/feedback-log",
-		"Export Feedback Log",
 		"/export/bug-report",
-		"Bug Report Bundle",
 	} {
-		if !strings.Contains(content, needle) {
-			t.Errorf("/share landing missing Support & Diagnostics %q", needle)
+		if strings.Contains(content, forbidden) {
+			t.Errorf("/share landing should not contain %q (moved to /settings per issue #255)", forbidden)
 		}
 	}
 	// The old inline Export/Import/Google sections are
@@ -495,6 +493,40 @@ func TestSettingsViewIncludesDataQualityPanel(t *testing.T) {
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("settings view missing quality scan UI: %s", needle)
+		}
+	}
+}
+
+// TestSettingsViewIncludesSupportDiagnosticsPanel (issue #255)
+// asserts that the Support & Diagnostics card moved from /share
+// to /settings and renders the same two buttons + descriptions
+// that used to live on /share. The action URLs are unchanged;
+// the handlers stay where they are.
+func TestSettingsViewIncludesSupportDiagnosticsPanel(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsView("INITIALIZE", viewmodel.UpdateSettings{}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, needle := range []string{
+		// Section identity
+		`id="settings-diagnostics-panel"`,
+		"Support &amp; Diagnostics",
+		"Troubleshooting bundle",
+		// The two buttons + their unique copy
+		"Export Feedback Log",
+		"Export Bug Report Bundle",
+		"Save the append-only feedback log for attaching to an email",
+		"DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting",
+		// The two action URLs (handlers in exports_handlers.go
+		// stay at the same paths; only the templ rendering
+		// moves per the issue body).
+		`data-action="/export/feedback-log"`,
+		`data-action="/export/bug-report"`,
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("/settings missing Support & Diagnostics card element %q", needle)
 		}
 	}
 }
