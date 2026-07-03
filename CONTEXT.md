@@ -212,7 +212,7 @@ These are not style preferences. Each one was earned by a real bug that
 crashed the app, lost data, or confused a researcher. Treat any code that
 violates a law as a bug that must be fixed before the change can ship.
 
-### Released code lands on `stable`; `main` is frozen at `31a8901`
+### Released code lands on `stable`; `main` is frozen at `56e31f0`
 
 The three-branch model (per ADR 0009) is a law, not a convention:
 
@@ -222,7 +222,7 @@ The three-branch model (per ADR 0009) is a law, not a convention:
   documented in ADR 0008 lands here. Every release that reaches
   users is tagged on `stable`.
 - **`main`** — frozen legacy production record. Sits at commit
-  `31a8901` (the version actively in production on 2026-07-03)
+  `56e31f0` (HEAD `main` at the moment this law was written, 2026-07-03)
   and accepts no new commits, ever. Preserved as the audit
   anchor for "what users had on 2026-07-03."
 
