@@ -111,6 +111,7 @@ func projectRootFrom(start string) (string, bool) {
 	}
 }
 
+// RecordImageDir returns the per-soldier image directory under dataDir (dataDir/images/<display-id>).
 func RecordImageDir(dataDir, displayID string) (string, string) {
 	safeDisplayID := sanitizePathComponent(displayID)
 	shards := imageShardSegments(safeDisplayID)
@@ -134,6 +135,7 @@ func imageShardSegments(safeDisplayID string) []string {
 	return []string{first, second}
 }
 
+// ScratchpadPaths returns the per-soldier scratchpad file paths (current + archive).
 func ScratchpadPaths(dataDir, displayID string) (string, string) {
 	safeDisplayID := sanitizePathComponent(displayID)
 	base := filepath.Join(dataDir, "scratchpads")
@@ -162,6 +164,7 @@ func LogsDir(dataDir string) string {
 	return LogsRoot(dataDir)
 }
 
+// FeedbackLogPath returns the JSONL feedback-log path under dataDir (the user-submitted feedback surface).
 func FeedbackLogPath(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "feedback-log.jsonl")
 }
@@ -172,30 +175,37 @@ func AppLogPath(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "app.log.jsonl")
 }
 
+// FeedbackLogArchiveDir returns the per-version archive directory for old feedback logs.
 func FeedbackLogArchiveDir(dataDir string) string {
 	return filepath.Join(LogsDir(dataDir), "feedback-history")
 }
 
+// FeedbackLogArchiveVersionDir returns the version-specific feedback-log archive subdirectory.
 func FeedbackLogArchiveVersionDir(dataDir, version string) string {
 	return filepath.Join(FeedbackLogArchiveDir(dataDir), sanitizePathComponent(version))
 }
 
+// UpdatesDir returns the directory in-place update artifacts are written to.
 func UpdatesDir(dataDir string) string {
 	return filepath.Join(dataDir, "updates")
 }
 
+// UpdateDownloadsDir returns the directory downloaded update archives land in.
 func UpdateDownloadsDir(dataDir string) string {
 	return filepath.Join(UpdatesDir(dataDir), "downloads")
 }
 
+// UpdateRestorePointsDir returns the directory restore-point metadata is stored in.
 func UpdateRestorePointsDir(dataDir string) string {
 	return filepath.Join(UpdatesDir(dataDir), "restore-points")
 }
 
+// UpdateRestorePointStatePath returns the path of the restore-point state file (the .state file that records what the restore-point points at).
 func UpdateRestorePointStatePath(dataDir string) string {
 	return filepath.Join(UpdatesDir(dataDir), "restore-point-state.json")
 }
 
+// UpdateApplyResultPath returns the path of the post-apply result file (the JSON summary the appshell reads to confirm an in-place update succeeded).
 func UpdateApplyResultPath(dataDir string) string {
 	return filepath.Join(UpdatesDir(dataDir), "apply-result.json")
 }

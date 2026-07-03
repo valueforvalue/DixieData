@@ -87,6 +87,7 @@ func normalizeBrowseRequest(request BrowseRequest) BrowseRequest {
 	return request
 }
 
+// BrowsePage returns the page of browse-list rows matching the supplied BrowseRequest filter + sort.
 func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, int, BrowseRequest, error) {
 	request = normalizeBrowseRequest(request)
 

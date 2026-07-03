@@ -2,6 +2,7 @@ package db
 
 import "strings"
 
+// NextDXDID returns the next sequential DixieData ID (DXDID) for a newly-imported archive row. Monotonically increasing across the lifetime of the Local Archive.
 func (d *DB) NextDXDID() (string, error) {
 	nodePrefix, err := d.NodePrefix()
 	if err != nil {

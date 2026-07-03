@@ -33,6 +33,7 @@ func NewFromExisting(conn *sql.DB) *DB {
 	return &DB{conn: conn}
 }
 
+// Open opens the SQLite database at dataDir/dixiedata.db, applies pending schema migrations, and returns a *DB ready for queries. Refuses to open a newer-schema database (the user must downgrade via migrate down first).
 func Open(dataDir string) (*DB, error) {
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
@@ -95,14 +96,17 @@ func currentSchemaVersion(conn *sql.DB) (int, error) {
 	return version, nil
 }
 
+// Close closes the underlying *sql.DB. Safe to call multiple times.
 func (d *DB) Close() error {
 	return d.conn.Close()
 }
 
+// Conn returns the underlying *sql.DB handle for callers that need raw query access (e.g. the per-service SQL files in internal/records).
 func (d *DB) Conn() *sql.DB {
 	return d.conn
 }
 
+// DataDir returns the dataDir this *DB was opened against.
 func (d *DB) DataDir() string {
 	return d.dataDir
 }

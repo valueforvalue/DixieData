@@ -52,6 +52,7 @@ type ExportTemplateService struct {
 	db *sql.DB
 }
 
+// NewExportTemplateService constructs an ExportTemplateService bound to the given database.
 func NewExportTemplateService(db *sql.DB) *ExportTemplateService {
 	return &ExportTemplateService{db: db}
 }

@@ -19,11 +19,13 @@ type AnalyticsService struct {
 	db *db.DB
 }
 
+// AnalyticsCount is a records-layer type used by the matching service.
 type AnalyticsCount struct {
 	Label string `json:"label"`
 	Count int    `json:"count"`
 }
 
+// AnalyticsSnapshot is a records-layer type used by the matching service.
 type AnalyticsSnapshot struct {
 	RecordTypes             models.ArchiveCounts        `json:"record_types"`
 	CemeteryDensity         []AnalyticsCount            `json:"cemetery_density"`
@@ -43,6 +45,7 @@ func NewAnalyticsService(database *db.DB) *AnalyticsService {
 	return &AnalyticsService{db: database}
 }
 
+// Snapshot returns the full Insights page payload in one call: per-dimension counts + headline ArchiveCounts.
 func (s *AnalyticsService) Snapshot() (AnalyticsSnapshot, error) {
 	recordTypes, err := NewSoldierService(s.db).ArchiveCounts()
 	if err != nil {

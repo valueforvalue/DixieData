@@ -2,6 +2,11 @@ package viewmodel
 
 import "github.com/valueforvalue/DixieData/internal/update"
 
+// UpdateSettingsFromDomain converts the internal update package's
+// SettingsState (the persistence-layer shape) into the viewmodel
+// UpdateSettings type the Settings page renders. Flattens the
+// optional LastApply pointer into a non-pointer field with the
+// nil case rendered as "no prior apply" in the templ template.
 func UpdateSettingsFromDomain(state update.SettingsState) UpdateSettings {
 	var lastApply *UpdateApplyStatus
 	if state.LastApply != nil {
@@ -26,6 +31,10 @@ func UpdateSettingsFromDomain(state update.SettingsState) UpdateSettings {
 	}
 }
 
+// UpdateCheckResultFromDomain converts an internal/update.CheckResult
+// into the viewmodel UpdateCheckResult the Settings page renders.
+// Pure field copy; the domain type already carries everything the
+// UI needs.
 func UpdateCheckResultFromDomain(result update.CheckResult) UpdateCheckResult {
 	return UpdateCheckResult{
 		CurrentVersion:   result.CurrentVersion,

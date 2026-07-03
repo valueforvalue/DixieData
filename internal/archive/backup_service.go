@@ -31,6 +31,12 @@ const (
 	archiveKindShared = "shared"
 )
 
+// BackupManifest is the metadata envelope written into every
+// backup-archive (.ddbak) export. Carries the format + version
+// (so the restore pipeline can apply forward-migrations), the
+// per-archive-kind flag, the app + schema version the archive
+// was produced under, and the U + N counters (issue #266's
+// version shape).
 type BackupManifest struct {
 	Format        string `json:"format"`
 	Version       int    `json:"version"`
@@ -106,6 +112,10 @@ type backupContents struct {
 	Soldiers []models.Soldier
 }
 
+// SharedImportSummary is the per-import result the share-queue
+// flow surfaces: how many Soldiers + Source Records + Images
+// were imported, how many were skipped (display-ID collision),
+// and any errors.
 type SharedImportSummary struct {
 	SoldiersInserted int
 	SoldiersUpdated  int
@@ -135,6 +145,10 @@ type sharedMergeTarget struct {
 	SoldierSync string
 }
 
+// SourceConflictLedger is the per-Soldier ledger of unresolved
+// conflicts between a Local Source Record and an incoming merge
+// candidate. Surfaced on the Conflict Ledger tab; per-record
+// resolution entries live in SourceConflictLedgerEntry.
 type SourceConflictLedger struct {
 	Central       models.Soldier
 	Entries       []SourceConflictLedgerEntry
@@ -142,6 +156,9 @@ type SourceConflictLedger struct {
 	ResolvedCount int
 }
 
+// SourceConflictLedgerEntry is one row in SourceConflictLedger:
+// the conflict, the resolution, the timestamp, and the user who
+// resolved it.
 type SourceConflictLedgerEntry struct {
 	ID               int64
 	ConflictType     string
@@ -164,10 +181,20 @@ func NewBackupService(database *db.DB, soldier *SoldierService) *BackupService {
 	return &BackupService{db: database, soldier: soldier}
 }
 
+// Export produces a full-replacement Backup Archive (.ddbak) at
+// outputPath. The output is a complete SQLite snapshot of the
+// Local Archive plus the per-record metadata needed to rehydrate
+// images on restore. Returns the manifest the restore pipeline
+// reads to decide whether to apply a forward-migration.
 func (b *BackupService) Export(outputPath, dataDir string) (BackupManifest, error) {
 	return b.exportArchive(outputPath, dataDir, archiveKindBackup)
 }
 
+// ExportShared produces a Shared Archive (.ddshare) at outputPath.
+// The shared archive is the user-mergeable shape: per-Soldier
+// records + optional tag inclusion (issue #183) + the per-user
+// identity header so the recipient can re-merge into their Local
+// Archive. Refuses to overwrite an existing file at outputPath.
 func (b *BackupService) ExportShared(outputPath, dataDir string) (BackupManifest, error) {
 	return b.ExportSharedWithTags(outputPath, dataDir, false)
 }
@@ -367,6 +394,11 @@ func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (
 	return manifest, nil
 }
 
+// Import restores a Backup Archive (.ddbak) at backupPath into
+// the Local Archive at dataDir. Refuses to restore a backup newer
+// than the current schema version (the user must upgrade first).
+// Returns the per-record summary: how many rows were restored,
+// how many skipped, any errors.
 func (b *BackupService) Import(backupPath, dataDir string) (BackupManifest, error) {
 	localIdentity, preserveLocalIdentity, err := b.currentImportIdentity()
 	if err != nil {
@@ -415,6 +447,11 @@ func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 	return contents.Manifest, nil
 }
 
+// ImportWithLocalIdentity restores a Shared Archive using the
+// current Local Archive's per-user identity (instead of the
+// identity embedded in the archive). Used when the recipient
+// wants to merge the shared archive into their own archive with
+// their own node prefix (issue #180).
 func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, localIdentity models.UserIdentity, preserveLocalIdentity bool) (BackupManifest, error) {
 	reader, err := zip.OpenReader(backupPath)
 	if err != nil {
@@ -507,6 +544,10 @@ func preserveSnapshotImportIdentity(dataDir string, identity models.UserIdentity
 	return err
 }
 
+// ImportSharedBackup is the legacy-pre-issue-#183 alias of Import
+// (older code paths still call it). Behavior is identical to
+// Import; kept for back-compat with .ddshare archives produced
+// before the issue #183 split.
 func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary SharedImportSummary, err error) {
 	logger, logErr := newMergeLogger(dataDir)
 	if logErr == nil {
@@ -1635,6 +1676,9 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 	return summary, nil
 }
 
+// PendingMergeConflicts returns the open Local-vs-Incoming merge
+// conflicts the user has not yet resolved. Surfaced on the Merge
+// Review Ledger page.
 func (b *BackupService) PendingMergeConflicts() ([]models.MergeReviewConflict, error) {
 	rows, err := b.db.Conn().Query(`SELECT id, session_id, conflict_type, reason, COALESCE(local_soldier_id, 0), COALESCE(local_display_id, ''), source_display_id, COALESCE(resolution, ''), created_at, local_data, source_data
 		FROM merge_review_conflicts
@@ -1672,6 +1716,9 @@ func (b *BackupService) PendingMergeConflicts() ([]models.MergeReviewConflict, e
 	return conflicts, rows.Err()
 }
 
+// ConflictLedger returns the full Source-Conflict Ledger for one
+// Soldier: the per-Source-Record conflicts between Local +
+// Incoming versions, with each one's resolution state.
 func (b *BackupService) ConflictLedger(soldierID int64) (*SourceConflictLedger, error) {
 	central, err := b.soldier.GetByID(soldierID)
 	if err != nil {
@@ -1720,6 +1767,10 @@ func (b *BackupService) ConflictLedger(soldierID int64) (*SourceConflictLedger, 
 	return ledger, rows.Err()
 }
 
+// ResolveMergeConflict records the user's decision for one
+// open merge conflict: keep-local, keep-incoming, or keep-both.
+// The decision is persisted to the Source-Conflict Ledger; the
+// affected Local + Incoming rows are reconciled in the same tx.
 func (b *BackupService) ResolveMergeConflict(conflictID int64, decision, dataDir string) error {
 	tx, err := b.db.Conn().Begin()
 	if err != nil {

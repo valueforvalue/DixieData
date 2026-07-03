@@ -1,3 +1,15 @@
+// The mapper functions in this file convert domain-layer types
+// (records.*, models.*) to their UI-shaped viewmodel projections.
+// Each mapper follows the naming convention `<ViewmodelType>From<DomainType>`
+// (or `<ViewmodelType>FromDomain` when the source is records.*).
+//
+// Mappers are mechanical: they copy fields and apply the
+// display-ready defaults the templ templates expect. They do not
+// query the database or perform validation; they assume the
+// source has already been loaded and checked.
+//
+// Map-mappers (suffix `FromModels` / `FromDomains`) accept a
+// slice or map and return the same shape converted element-wise.
 package viewmodel
 
 import (
@@ -11,6 +23,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
+// PersonRecordFromModel converts a domain-type value into its viewmodel projection.
 func PersonRecordFromModel(input models.Soldier) PersonRecord {
 	return PersonRecord{
 		ID:                    input.ID,
@@ -67,10 +80,12 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 	}
 }
 
+// SoldierFromModel converts a domain-type value into its viewmodel projection.
 func SoldierFromModel(input models.Soldier) PersonRecord {
 	return PersonRecordFromModel(input)
 }
 
+// PersonRecordPtrFromModel converts a domain-type value into its viewmodel projection.
 func PersonRecordPtrFromModel(input *models.Soldier) *PersonRecord {
 	if input == nil {
 		return nil
@@ -79,10 +94,12 @@ func PersonRecordPtrFromModel(input *models.Soldier) *PersonRecord {
 	return &mapped
 }
 
+// SoldierPtrFromModel converts a domain-type value into its viewmodel projection.
 func SoldierPtrFromModel(input *models.Soldier) *PersonRecord {
 	return PersonRecordPtrFromModel(input)
 }
 
+// PersonRecordsFromModels converts a domain-type value into its viewmodel projection.
 func PersonRecordsFromModels(inputs []models.Soldier) []PersonRecord {
 	items := make([]PersonRecord, 0, len(inputs))
 	for _, input := range inputs {
@@ -91,6 +108,7 @@ func PersonRecordsFromModels(inputs []models.Soldier) []PersonRecord {
 	return items
 }
 
+// SoldiersFromModels converts a domain-type value into its viewmodel projection.
 func SoldiersFromModels(inputs []models.Soldier) []PersonRecord {
 	return PersonRecordsFromModels(inputs)
 }
@@ -111,6 +129,7 @@ func PersonRecordsFromModelsWithTags(inputs []models.Soldier, tagMap map[int64][
 	return items
 }
 
+// ExportRecordOptionFromModel converts a domain-type value into its viewmodel projection.
 func ExportRecordOptionFromModel(input models.Soldier) ExportRecordOption {
 	displayName := strings.TrimSpace(persondisplay.FullName(persondisplay.NameParts{
 		Prefix:               input.Prefix,
@@ -138,6 +157,7 @@ func ExportRecordOptionFromModel(input models.Soldier) ExportRecordOption {
 	}
 }
 
+// ExportRecordOptionsFromModels converts a domain-type value into its viewmodel projection.
 func ExportRecordOptionsFromModels(inputs []models.Soldier) []ExportRecordOption {
 	items := make([]ExportRecordOption, 0, len(inputs))
 	for _, input := range inputs {
@@ -146,6 +166,7 @@ func ExportRecordOptionsFromModels(inputs []models.Soldier) []ExportRecordOption
 	return items
 }
 
+// SourceRecordFromModel converts a domain-type value into its viewmodel projection.
 func SourceRecordFromModel(input models.Record) SourceRecord {
 	return SourceRecord{
 		ID:                 input.ID,
@@ -158,10 +179,12 @@ func SourceRecordFromModel(input models.Record) SourceRecord {
 	}
 }
 
+// RecordFromModel converts a domain-type value into its viewmodel projection.
 func RecordFromModel(input models.Record) SourceRecord {
 	return SourceRecordFromModel(input)
 }
 
+// SourceRecordsFromModels converts a domain-type value into its viewmodel projection.
 func SourceRecordsFromModels(inputs []models.Record) []SourceRecord {
 	items := make([]SourceRecord, 0, len(inputs))
 	for _, input := range inputs {
@@ -170,10 +193,12 @@ func SourceRecordsFromModels(inputs []models.Record) []SourceRecord {
 	return items
 }
 
+// RecordsFromModels converts a domain-type value into its viewmodel projection.
 func RecordsFromModels(inputs []models.Record) []SourceRecord {
 	return SourceRecordsFromModels(inputs)
 }
 
+// ImageFromModel converts a domain-type value into its viewmodel projection.
 func ImageFromModel(input models.Image) Image {
 	return Image{
 		ID:                 input.ID,
@@ -188,6 +213,7 @@ func ImageFromModel(input models.Image) Image {
 	}
 }
 
+// ImagesFromModels converts a domain-type value into its viewmodel projection.
 func ImagesFromModels(inputs []models.Image) []Image {
 	items := make([]Image, 0, len(inputs))
 	for _, input := range inputs {
@@ -196,6 +222,7 @@ func ImagesFromModels(inputs []models.Image) []Image {
 	return items
 }
 
+// ArchiveCountsFromModel converts a domain-type value into its viewmodel projection.
 func ArchiveCountsFromModel(input models.ArchiveCounts) ArchiveCounts {
 	return ArchiveCounts{
 		SoldierCount:      input.TotalSoldiers,
@@ -204,8 +231,10 @@ func ArchiveCountsFromModel(input models.ArchiveCounts) ArchiveCounts {
 	}
 }
 
+// QuoteFromModel converts a domain-type value into its viewmodel projection.
 func QuoteFromModel(input models.Quote) Quote { return Quote(input) }
 
+// CalendarDaySummaryFromDomain converts a domain-type value into its viewmodel projection.
 func CalendarDaySummaryFromDomain(input records.CalendarDaySummary) CalendarDaySummary {
 	return CalendarDaySummary{
 		AnniversaryCount: input.AnniversaryCount,
@@ -214,6 +243,7 @@ func CalendarDaySummaryFromDomain(input records.CalendarDaySummary) CalendarDayS
 	}
 }
 
+// CalendarDaySummariesFromDomain converts a domain-type value into its viewmodel projection.
 func CalendarDaySummariesFromDomain(inputs map[int]records.CalendarDaySummary) map[int]CalendarDaySummary {
 	items := make(map[int]CalendarDaySummary, len(inputs))
 	for day, input := range inputs {
@@ -222,6 +252,7 @@ func CalendarDaySummariesFromDomain(inputs map[int]records.CalendarDaySummary) m
 	return items
 }
 
+// CalendarItemFromModel converts a domain-type value into its viewmodel projection.
 func CalendarItemFromModel(input models.CalendarItem) CalendarItem {
 	return CalendarItem{
 		ID:       input.ID,
@@ -231,6 +262,7 @@ func CalendarItemFromModel(input models.CalendarItem) CalendarItem {
 	}
 }
 
+// CalendarItemsFromModels converts a domain-type value into its viewmodel projection.
 func CalendarItemsFromModels(inputs []models.CalendarItem) []CalendarItem {
 	items := make([]CalendarItem, 0, len(inputs))
 	for _, input := range inputs {
@@ -239,6 +271,7 @@ func CalendarItemsFromModels(inputs []models.CalendarItem) []CalendarItem {
 	return items
 }
 
+// CalendarDayDetailFromDomain converts a domain-type value into its viewmodel projection.
 func CalendarDayDetailFromDomain(input records.CalendarDay, form CalendarItemForm, statusKind, statusMessage string) CalendarDayDetail {
 	if strings.TrimSpace(form.ItemType) == "" {
 		form.ItemType = models.CalendarItemTypeEvent
@@ -255,6 +288,7 @@ func CalendarDayDetailFromDomain(input records.CalendarDay, form CalendarItemFor
 	}
 }
 
+// QuotesFromModels converts a domain-type value into its viewmodel projection.
 func QuotesFromModels(inputs []models.Quote) []Quote {
 	items := make([]Quote, 0, len(inputs))
 	for _, input := range inputs {
@@ -263,6 +297,7 @@ func QuotesFromModels(inputs []models.Quote) []Quote {
 	return items
 }
 
+// PersonRecordSearchFromModel converts a domain-type value into its viewmodel projection.
 func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch {
 	return PersonRecordSearch{
 		Mode:                  input.Mode,
@@ -299,6 +334,7 @@ func PersonRecordSearchFromModel(input models.SoldierSearch) PersonRecordSearch 
 	}
 }
 
+// BrowseStateFromDomain converts a domain-type value into its viewmodel projection.
 func BrowseStateFromDomain(input records.BrowseRequest, total int) BrowseState {
 	selected := make(map[string]bool, len(input.Tags))
 	for _, t := range input.Tags {
@@ -343,10 +379,12 @@ func normalizeOptionalText(value string) string {
 	return strings.TrimSpace(value)
 }
 
+// SoldierSearchFromModel converts a domain-type value into its viewmodel projection.
 func SoldierSearchFromModel(input models.SoldierSearch) PersonRecordSearch {
 	return PersonRecordSearchFromModel(input)
 }
 
+// PersonRecordFormSuggestionsFromModel converts a domain-type value into its viewmodel projection.
 func PersonRecordFormSuggestionsFromModel(input models.SoldierFormSuggestions) PersonRecordFormSuggestions {
 	return PersonRecordFormSuggestions{
 		RankIn:            append([]string(nil), input.RankIn...),
@@ -362,18 +400,22 @@ func PersonRecordFormSuggestionsFromModel(input models.SoldierFormSuggestions) P
 	}
 }
 
+// SoldierFormSuggestionsFromModel converts a domain-type value into its viewmodel projection.
 func SoldierFormSuggestionsFromModel(input models.SoldierFormSuggestions) PersonRecordFormSuggestions {
 	return PersonRecordFormSuggestionsFromModel(input)
 }
 
+// InitialSetupFormFromModel converts a domain-type value into its viewmodel projection.
 func InitialSetupFormFromModel(input models.InitialSetupForm) InitialSetupForm {
 	return InitialSetupForm(input)
 }
 
+// ScrapedRelativeFromModel converts a domain-type value into its viewmodel projection.
 func ScrapedRelativeFromModel(input models.ScrapedRelative) ScrapedRelative {
 	return ScrapedRelative(input)
 }
 
+// FindAGraveScrapeStateFromModel converts a domain-type value into its viewmodel projection.
 func FindAGraveScrapeStateFromModel(input models.FindAGraveScrapeState) FindAGraveScrapeState {
 	spouses := make([]ScrapedRelative, 0, len(input.Spouses))
 	for _, spouse := range input.Spouses {
@@ -389,6 +431,7 @@ func FindAGraveScrapeStateFromModel(input models.FindAGraveScrapeState) FindAGra
 	}
 }
 
+// GoogleSettingsFromModel converts a domain-type value into its viewmodel projection.
 func GoogleSettingsFromModel(input models.GoogleSettings) GoogleSettings {
 	return GoogleSettings{
 		ClientID:      input.ClientID,
@@ -408,6 +451,7 @@ func GoogleSettingsFromModel(input models.GoogleSettings) GoogleSettings {
 	}
 }
 
+// GoogleStatusFromModel converts a domain-type value into its viewmodel projection.
 func GoogleStatusFromModel(input models.GoogleStatus) GoogleStatus {
 	return GoogleStatus{
 		Settings:              GoogleSettingsFromModel(input.Settings),
@@ -428,6 +472,7 @@ func GoogleStatusFromModel(input models.GoogleStatus) GoogleStatus {
 	}
 }
 
+// MergeReviewConflictFromModel converts a domain-type value into its viewmodel projection.
 func MergeReviewConflictFromModel(input models.MergeReviewConflict) MergeReviewConflict {
 	return MergeReviewConflict{
 		ID:                input.ID,
@@ -444,6 +489,7 @@ func MergeReviewConflictFromModel(input models.MergeReviewConflict) MergeReviewC
 	}
 }
 
+// MergeReviewConflictsFromModels converts a domain-type value into its viewmodel projection.
 func MergeReviewConflictsFromModels(inputs []models.MergeReviewConflict) []MergeReviewConflict {
 	items := make([]MergeReviewConflict, 0, len(inputs))
 	for _, input := range inputs {
@@ -452,6 +498,7 @@ func MergeReviewConflictsFromModels(inputs []models.MergeReviewConflict) []Merge
 	return items
 }
 
+// DuplicateAuditFindingSummaryFromDomain converts a domain-type value into its viewmodel projection.
 func DuplicateAuditFindingSummaryFromDomain(input records.DuplicateAuditFindingSummary) DuplicateAuditFindingSummary {
 	return DuplicateAuditFindingSummary{
 		ID:                  input.ID,
@@ -462,14 +509,17 @@ func DuplicateAuditFindingSummaryFromDomain(input records.DuplicateAuditFindingS
 	}
 }
 
+// DuplicateAuditComparisonFieldFromDomain converts a domain-type value into its viewmodel projection.
 func DuplicateAuditComparisonFieldFromDomain(input records.DuplicateAuditComparisonField) DuplicateAuditComparisonField {
 	return DuplicateAuditComparisonField(input)
 }
 
+// DuplicateAuditSummaryFromDomain converts a domain-type value into its viewmodel projection.
 func DuplicateAuditSummaryFromDomain(input records.DuplicateAuditSummary) DuplicateAuditSummary {
 	return DuplicateAuditSummary(input)
 }
 
+// ReviewQueueEntriesFromDomain converts a domain-type value into its viewmodel projection.
 func ReviewQueueEntriesFromDomain(personRecords []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary) []ReviewQueueEntry {
 	entries := make([]ReviewQueueEntry, 0, len(personRecords))
 	for _, personRecord := range personRecords {
@@ -486,6 +536,7 @@ func ReviewQueueEntriesFromDomain(personRecords []models.Soldier, findings map[i
 	return entries
 }
 
+// DuplicateAuditComparisonFromDomain converts a domain-type value into its viewmodel projection.
 func DuplicateAuditComparisonFromDomain(input records.DuplicateAuditComparison) DuplicateAuditComparison {
 	fields := make([]DuplicateAuditComparisonField, 0, len(input.Fields))
 	for _, field := range input.Fields {
@@ -505,10 +556,12 @@ func DuplicateAuditComparisonFromDomain(input records.DuplicateAuditComparison) 
 	}
 }
 
+// AnalyticsCountFromDomain converts a domain-type value into its viewmodel projection.
 func AnalyticsCountFromDomain(input records.AnalyticsCount) AnalyticsCount {
 	return AnalyticsCount(input)
 }
 
+// AnalyticsSnapshotFromDomain converts a domain-type value into its viewmodel projection.
 func AnalyticsSnapshotFromDomain(input records.AnalyticsSnapshot) AnalyticsSnapshot {
 	mapCounts := func(values []records.AnalyticsCount) []AnalyticsCount {
 		items := make([]AnalyticsCount, 0, len(values))
@@ -530,6 +583,7 @@ func AnalyticsSnapshotFromDomain(input records.AnalyticsSnapshot) AnalyticsSnaps
 	}
 }
 
+// UnitCamaraderieGraphFromDomain converts a domain-type value into its viewmodel projection.
 func UnitCamaraderieGraphFromDomain(input records.UnitCamaraderieGraph) UnitCamaraderieGraph {
 	mapConnections := func(values []records.UnitCamaraderieConnection) []UnitCamaraderieConnection {
 		items := make([]UnitCamaraderieConnection, 0, len(values))
@@ -554,6 +608,7 @@ func UnitCamaraderieGraphFromDomain(input records.UnitCamaraderieGraph) UnitCama
 	}
 }
 
+// ServiceTimelineFromDomain converts a domain-type value into its viewmodel projection.
 func ServiceTimelineFromDomain(input records.ServiceTimeline) ServiceTimeline {
 	events := make([]TimelineEvent, 0, len(input.Events))
 	for _, event := range input.Events {
@@ -578,6 +633,7 @@ func ServiceTimelineFromDomain(input records.ServiceTimeline) ServiceTimeline {
 	}
 }
 
+// ResearchLogFromDomain converts a domain-type value into its viewmodel projection.
 func ResearchLogFromDomain(input records.ResearchLog) ResearchLog {
 	tasks := make([]ResearchTask, 0, len(input.Tasks))
 	for _, task := range input.Tasks {
@@ -606,6 +662,7 @@ func ResearchLogFromDomain(input records.ResearchLog) ResearchLog {
 	}
 }
 
+// ResearchPackFromDomain converts a domain-type value into its viewmodel projection.
 func ResearchPackFromDomain(input records.ResearchPack) ResearchPack {
 	mapCounts := func(values []records.AnalyticsCount) []AnalyticsCount {
 		items := make([]AnalyticsCount, 0, len(values))
@@ -626,10 +683,12 @@ func ResearchPackFromDomain(input records.ResearchPack) ResearchPack {
 	}
 }
 
+// ResearchCollectionFromDomain converts a domain-type value into its viewmodel projection.
 func ResearchCollectionFromDomain(input records.ResearchCollection) ResearchCollection {
 	return ResearchCollection(input)
 }
 
+// ResearchCollectionHubFromDomain converts a domain-type value into its viewmodel projection.
 func ResearchCollectionHubFromDomain(input records.ResearchCollectionHub) ResearchCollectionHub {
 	collections := make([]ResearchCollection, 0, len(input.Collections))
 	for _, collection := range input.Collections {
@@ -641,6 +700,7 @@ func ResearchCollectionHubFromDomain(input records.ResearchCollectionHub) Resear
 	}
 }
 
+// ResearchCollectionDetailFromDomain converts a domain-type value into its viewmodel projection.
 func ResearchCollectionDetailFromDomain(input records.ResearchCollectionDetail) ResearchCollectionDetail {
 	return ResearchCollectionDetail{
 		Collection:          ResearchCollectionFromDomain(input.Collection),
@@ -649,6 +709,7 @@ func ResearchCollectionDetailFromDomain(input records.ResearchCollectionDetail) 
 	}
 }
 
+// MergeReviewLedgerFromDomain converts a domain-type value into its viewmodel projection.
 func MergeReviewLedgerFromDomain(input archive.SourceConflictLedger) MergeReviewLedger {
 	entries := make([]MergeReviewLedgerEntry, 0, len(input.Entries))
 	for _, entry := range input.Entries {
@@ -673,10 +734,12 @@ func MergeReviewLedgerFromDomain(input archive.SourceConflictLedger) MergeReview
 	}
 }
 
+// SourceConflictLedgerFromDomain converts a domain-type value into its viewmodel projection.
 func SourceConflictLedgerFromDomain(input archive.SourceConflictLedger) MergeReviewLedger {
 	return MergeReviewLedgerFromDomain(input)
 }
 
+// OrphanedImagesFromDomain converts a domain-type value into its viewmodel projection.
 func OrphanedImagesFromDomain(inputs []archive.OrphanedImage) []OrphanedImage {
 	items := make([]OrphanedImage, 0, len(inputs))
 	for _, input := range inputs {
@@ -685,6 +748,7 @@ func OrphanedImagesFromDomain(inputs []archive.OrphanedImage) []OrphanedImage {
 	return items
 }
 
+// DataQualityScanResultFromDomain converts a domain-type value into its viewmodel projection.
 func DataQualityScanResultFromDomain(input records.DataQualityScanResult) DataQualityScanResult {
 	type grouped struct {
 		group string
@@ -732,6 +796,7 @@ func DataQualityScanResultFromDomain(input records.DataQualityScanResult) DataQu
 	}
 }
 
+// DataQualityApplyResultFromDomain converts a domain-type value into its viewmodel projection.
 func DataQualityApplyResultFromDomain(input records.DataQualityApplyResult) DataQualityApplyResult {
 	return DataQualityApplyResult{
 		Selected:       input.Selected,
@@ -741,6 +806,7 @@ func DataQualityApplyResultFromDomain(input records.DataQualityApplyResult) Data
 	}
 }
 
+// CalendarFromModels converts a domain-type value into its viewmodel projection.
 func CalendarFromModels(input map[int][]models.Soldier) map[int][]PersonRecord {
 	calendar := make(map[int][]PersonRecord, len(input))
 	for day, personRecords := range input {
