@@ -200,6 +200,47 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   detector returns 0 and the CI test gate goes green.
   No code or dispatcher changes; doc-only.
 
+- **Schema migration blocks enumerated as a typed slice** (preparatory
+  for issue #273). `internal/db/schema.go::applySchema` used to inline
+  every block (CREATE TABLE constant, ALTER TABLE ADD COLUMN loop,
+  phase migrations, normalize UPDATEs, helper-driven migrations) as
+  a single ~160-line transaction body. Refactored into:
+  - `internal/db/migrations.go` (new file): `Reversibility` enum
+    (`Reversible` / `PartiallyReversible` / `Irreversible`),
+    `Migration` struct (`ID`, `Up func(*sql.Tx) error`,
+    `Reversibility`, `Reason`), `var migrations = []Migration{...}`
+    with 17 entries (one per block per the catalogue at
+    `docs/migrations/reversibility.md`), and the package-private
+    helpers `applyAddColumnLoop` / `applySoldiersNormalization` /
+    `applyImagesIsPrimary` that fold the multi-statement inline
+    UPDATEs into single `Migration.Up` closures.
+  - `applySchema` now reads `for _, m := range migrations { m.Up(tx) }`
+    in slice order; behaviour is byte-identical to the pre-refactor
+    inline ordering.
+  - `Migrations()` is exported so the future `dixiedata debug
+    schema-reversibility` audit harness and `migrate down <target>`
+    runner (issue #273) can iterate the catalogue from outside the
+    package.
+  Regression net (new `internal/db/migrations_test.go`):
+  - `TestMigrationsCatalogueIsOrdered` locks the 17-block order
+    (Block 1 ... Block 17); a reorder would silently change the
+    future DOWN runner's reverse-iteration behaviour.
+  - `TestMigrationsCatalogueHasUp` locks every entry has a non-nil
+    `Up` (a nil would panic at tx time).
+  - `TestMigrationsReversibilityMapping` pins the per-block
+    Reversibility class per the catalogue.
+  - `TestReversibilityString` locks the CLI-facing labels
+    (`reversible` / `partially_reversible` / `irreversible` /
+    `unknown`).
+  - `TestReversibilityIrreducibleCount` pins the count at 5
+    (Blocks 4, 5, 12, 13, 17); the future DOWN runner's gate
+    semantics depend on this number.
+  No public API change; `db.Open(dataDir)` + `db.CurrentSchemaVersion`
+  behave identically. All existing tests pass unchanged including
+  `TestOpenCreatesRetainedPreMigrationBackup` (the v1→current
+  end-to-end). This is PR 1 of the two-PR plan for issue #273
+  (refactor first, then feature).
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
