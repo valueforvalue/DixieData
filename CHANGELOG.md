@@ -13,6 +13,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Live preview renders the stale-filter warning line** (issue #260).
+  The server side of the contract was already in place —
+  `internal/appshell/export_preview.go:62-87` computes
+  `StaleCount` + `StaleSummary` via the shared
+  `computeExportTemplateStale` helper, and `export_preview.go:242-245`
+  emits the line above the count. The JS at `frontend/app.js:4235-4256`
+  fetches `/export/preview` as form POST and injects the response HTML
+  directly into `[data-print-config-preview]`, so the warning is
+  visible the moment the user types a filter value that doesn't exist
+  on any row. Unit-level guarantee in
+  `internal/appshell/export_preview_test.go::TestHandleExportPreview_StaleFilterWarning`.
+  Regression net: new `audit/smoke_stale_preview_warning.mjs` (5/5
+  green) — POSTs stale + clean filter sets against `/export/preview`
+  and asserts the warning line is present on stale and absent on
+  clean, so a future refactor that drops or always-izes the line
+  fails the probe.
+
 - **Print-config "Show details" toggle for stale-template warnings**
   (issue #259). The JS handler at `frontend/app.js:4308-4315`
   was wired — click listener on `[data-export-templates-warnings-toggle]`
