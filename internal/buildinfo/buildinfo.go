@@ -8,17 +8,47 @@ import (
 )
 
 const (
-	AppName                   = "DixieData"
-	CalendarTimeZone          = "America/Chicago"
-	JSONExportVersion         = 3
-	CSVExportVersion          = 4
-	XLSXExportVersion         = 1
-	ICalendarExportVersion    = 2
-	SoldierPDFExportVersion   = 6
-	MonthlyPDFExportVersion   = 1
-	DatabasePDFExportVersion  = 4
+	// AppName is the human-readable name emitted in every UI
+	// surface, CLI banner, and exported PDF header. Stable since
+	// 2024; not versioned.
+	AppName = "DixieData"
+	// CalendarTimeZone is the IANA tz the calendar + anniversaries
+	// surface assumes for "today" + "this month" semantics. All
+	// anniversaries are stored as month/day (no year) so the tz
+	// affects only the today-vs-occurred split, not the dates
+	// themselves.
+	CalendarTimeZone = "America/Chicago"
+	// JSONExportVersion is bumped every time the JSON export shape
+	// (internal/models.Soldier + Records + Images) changes. Read
+	// back at JSON import time to gate compatibility.
+	JSONExportVersion = 3
+	// CSVExportVersion is the version of the per-soldier CSV
+	// export shape; one row per soldier, no records/images.
+	CSVExportVersion = 4
+	// XLSXExportVersion is the version of the Excel workbook
+	// export (one sheet per kind: soldiers, records, images).
+	XLSXExportVersion = 1
+	// ICalendarExportVersion is the version of the iCal feed
+	// exported as a Static Archive; one VEVENT per anniversary.
+	ICalendarExportVersion = 2
+	// SoldierPDFExportVersion is the version of the per-soldier
+	// PDF rendering (Typst-backed since the slice 7 cutover).
+	SoldierPDFExportVersion = 6
+	// MonthlyPDFExportVersion is the version of the per-month
+	// anniversary-grid PDF; distinct from SoldierPDFExportVersion
+	// because the layout pipeline is different.
+	MonthlyPDFExportVersion = 1
+	// DatabasePDFExportVersion is the version of the full-database
+	// PDF (every soldier in one document). Bumped when the
+	// multi-soldier layout changes.
+	DatabasePDFExportVersion = 4
+	// AnalyticsPDFExportVersion is the version of the insights +
+	// analytics PDF (cemeteries, homes, pensions, duplicates).
 	AnalyticsPDFExportVersion = 1
-	BackupFormatVersion       = 3
+	// BackupFormatVersion is the version of the .ddbak backup
+	// archive shape. Read back at restore time to decide whether
+	// to apply a forward-migration or refuse the restore.
+	BackupFormatVersion = 3
 )
 
 // AppVersion is the release-line version string in the
@@ -35,17 +65,50 @@ const (
 // .ddbak archives and old GitHub release tags (issue #266
 // decision 1: legacy strings parse to U=1).
 var (
-	AppVersion    = versioninfo.AppVersion()
+	// AppVersion is the release-line version string in the
+	// v{MAJOR}.{U}.{N} shape (issue #266). It drives every
+	// CLI emission (`debug dump`, `migrate status`, `restore
+	// point create/list`, export/import SourceAppVersion/
+	// TargetAppVersion), the update UI's Settings panel
+	// (`update.Settings.CurrentVersion`), the BackupManifest
+	// `app_version` field, and `cmd/gold-master/main.go`
+	// portable-output emit sites. Switched from
+	// `versioninfo.CurrentAppVersion()` (legacy `v1.2.{schema}`)
+	// on 2026-07-03; legacy callers of `AppVersionForSchema` /
+	// `CurrentAppVersion` still work for parse/serialise of old
+	// .ddbak archives and old GitHub release tags (issue #266
+	// decision 1: legacy strings parse to U=1).
+	AppVersion = versioninfo.AppVersion()
+	// SchemaVersion is the current schema version the binary
+	// expects. The PR-time bump-verify gate (CI: schema-touching
+	// bump detector) enforces that every feat(db) commit bumps
+	// this in the same PR.
 	SchemaVersion = versioninfo.CurrentSchemaVersion
 )
 
+// GitCommit is the git SHA the binary was built from. Set by the
+// build pipeline (scripts/build-common.ps1 Invoke-DixieDataBuild).
+// Empty in dev builds; the user sees "commit dev" in the
+// diagnostic bundle in that case.
 var GitCommit = "dev"
+
+// BuildTimestamp is the RFC3339 timestamp the binary was built
+// at. Set by the build pipeline; empty in dev builds.
 var BuildTimestamp = ""
 
+// AppLabel returns the human-readable name + version string for
+// UI banners and CLI headers: "DixieData v1.1.55". Stable shape;
+// the UI's title bar, the CLI's `--version` output, and the
+// diagnostics bundle header all use this.
 func AppLabel() string {
 	return AppName + " v" + AppVersion
 }
 
+// BuildIdentity returns a short description of the binary's
+// provenance: "commit <sha> · <timestamp>" when both are set,
+// "commit dev" otherwise. Surfaced in the diagnostic bundle and
+// the support-request form so the support engineer can identify
+// exactly which build the user is on.
 func BuildIdentity() string {
 	parts := []string{}
 	if strings.TrimSpace(GitCommit) != "" {

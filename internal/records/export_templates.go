@@ -44,9 +44,10 @@ type ExportTemplate struct {
 	LastUsedAt        time.Time            `json:"last_used_at"`
 }
 
-// ExportTemplateService provides CRUD on the export_templates table.
-// Construct via NewExportTemplateService(db) — usually wired into
-// *App at startup.
+// ExportTemplateService provides CRUD on the export_templates table:
+// the user-defined Typst template overrides surfaced in the
+// Settings page. Construct via NewExportTemplateService(db) —
+// usually wired into *App at startup.
 type ExportTemplateService struct {
 	db *sql.DB
 }

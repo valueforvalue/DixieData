@@ -10,6 +10,13 @@ import (
 
 const folderName = ".dixiedata"
 
+// DefaultDir returns the canonical DixieData Local Archive root
+// directory the binary should use. Resolution order:
+//  1. DIXIEDATA_DATA_DIR env var (if set and non-empty)
+//  2. The .dixiedata/ folder under the project root (dev builds)
+//  3. The .dixiedata/ folder next to the executable (installed builds)
+//  4. The .dixiedata/ folder under the current working directory
+//  5. Just ".dixiedata" as a relative path (last-resort fallback)
 func DefaultDir() string {
 	if configured := strings.TrimSpace(os.Getenv("DIXIEDATA_DATA_DIR")); configured != "" {
 		return configured
@@ -32,6 +39,12 @@ func DefaultDir() string {
 	return folderName
 }
 
+// ProjectRoot returns the dev-build project root by walking up
+// from the executable, the cwd, and a few standard candidates
+// looking for the go.mod marker. Used by the dev launcher and by
+// the diagnostic bundle's "where was this built" report. Returns
+// an error if no project root is found (i.e. the binary is not
+// running from a dev build).
 func ProjectRoot() (string, error) {
 	for _, start := range candidateRoots() {
 		if root, ok := projectRootFrom(start); ok {
@@ -41,10 +54,20 @@ func ProjectRoot() (string, error) {
 	return "", errors.New("project root not found")
 }
 
+// ProjectRootFromPath is the exported form of the internal
+// projectRootFrom helper. Walks up from start looking for the
+// go.mod marker; returns (root, true) on hit, ("", false) on miss.
+// Used by tests and by tools/tune's CLI to resolve the dev build
+// path without re-implementing the walk.
 func ProjectRootFromPath(start string) (string, bool) {
 	return projectRootFrom(start)
 }
 
+// IsDevelopmentBuild returns true when the supplied executable
+// path is a dev build (lives under a path the project-root walker
+// recognizes), false when it's an installed release build. Drives
+// the dev-only menu items (audit, in-place-safety walker) that
+// should not appear in shipped binaries.
 func IsDevelopmentBuild(executablePath string) bool {
 	executablePath = strings.TrimSpace(executablePath)
 	if executablePath == "" {

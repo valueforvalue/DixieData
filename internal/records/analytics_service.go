@@ -10,6 +10,11 @@ import (
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
+// AnalyticsService backs the Insights page: cemetery counts,
+// Confederate-Home membership, pension state breakdowns, unit
+// distributions, duplicate-audit rollups. Pure read-only
+// aggregation over the Soldiers + Records tables; no writes.
+// Constructed by NewAnalyticsService.
 type AnalyticsService struct {
 	db *db.DB
 }
@@ -31,6 +36,9 @@ type AnalyticsSnapshot struct {
 	DuplicateAudit          DuplicateAuditSummary       `json:"duplicate_audit"`
 }
 
+// NewAnalyticsService constructs an AnalyticsService bound to the
+// given database. The service is stateless beyond the database
+// handle; every query is a fresh aggregation.
 func NewAnalyticsService(database *db.DB) *AnalyticsService {
 	return &AnalyticsService{db: database}
 }

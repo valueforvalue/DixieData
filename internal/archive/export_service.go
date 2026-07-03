@@ -25,6 +25,11 @@ import (
 
 const exportBatchSize = 500
 
+// ExportService is the facade for the export pipeline: PDF, JPG,
+// JSON, CSV, iCal, static archive, shared archive. Owns the
+// PDF rasterizer used to convert Typst pages to JPG; owns the
+// batch size that drives the export-job progress updates. Every
+// export path the UI surfaces is a method on *ExportService.
 type ExportService struct {
 	db         *db.DB
 	soldier    *SoldierService
@@ -64,6 +69,11 @@ type JSONExportDocument struct {
 	Soldiers []models.Soldier `json:"soldiers"`
 }
 
+// NewExportService constructs an ExportService bound to the given
+// database and soldier service. The rasterizer is set to the
+// default (Typst-backed); callers that need a different rasterizer
+// (tests, custom builds) can override via SetRasterizer before any
+// export runs.
 func NewExportService(database *db.DB, soldier *SoldierService) *ExportService {
 	return &ExportService{
 		db:         database,

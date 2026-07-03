@@ -26,6 +26,13 @@ const (
 	imageSelectColumns       = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
 )
 
+// SoldierService is the central domain service: CRUD on Soldiers
+// (Person Records), the form-suggestions cache, the search
+// facade the browse + soldiers-list pages use, and the merge
+// pipeline that handles Local-vs-Incoming conflict resolution.
+// Constructed by NewSoldierService and held by *App. Every other
+// domain service (Backup, Export, Analytics) depends on
+// *SoldierService for soldier lookups.
 type SoldierService struct {
 	db                *db.DB
 	formSuggestionsMu sync.RWMutex
@@ -129,6 +136,10 @@ type ResearchCollectionDetail struct {
 	Members    []models.Soldier
 }
 
+// NewSoldierService constructs a SoldierService bound to the
+// given database. The form-suggestions cache starts nil; it is
+// populated lazily on the first form-suggestions request and
+// refreshed when the soldier writes a new value.
 func NewSoldierService(database *db.DB) *SoldierService {
 	return &SoldierService{db: database}
 }

@@ -1,6 +1,12 @@
 // Package viewmodel defines UI-shaped projections of soldier records and maps them to/from domain models.
 package viewmodel
 
+// PersonRecord is the UI-shaped projection of a Soldier (the domain
+// type from internal/models). It carries only the fields the UI
+// surfaces, with nil-safe defaults for everything else, so the
+// templ handlers can render without per-field nil-checks. The
+// mapping from models.Soldier → viewmodel.PersonRecord is in
+// internal/viewmodel/mappers.go.
 type PersonRecord struct {
 	ID                    int64
 	DisplayID             string
