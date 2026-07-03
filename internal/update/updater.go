@@ -69,13 +69,19 @@ type CheckResult struct {
 	CurrentVersion   string
 	AvailableVersion string
 	UpdateAvailable  bool
-	DownloadURL      string
-	NotesURL         string
-	ReleaseNotes     string
-	PublishedAt      string
-	SourceLabel      string
-	CanApply         bool
-	DisabledReason   string
+	// NeedsReinstall is true when the latest release has a
+	// different update-flow version (U) than the installed
+	// binary (issue #266). The user must reinstall; the
+	// in-place update flow can't safely apply. Off when U
+	// matches.
+	NeedsReinstall  bool
+	DownloadURL     string
+	NotesURL        string
+	ReleaseNotes    string
+	PublishedAt     string
+	SourceLabel     string
+	CanApply        bool
+	DisabledReason  string
 }
 
 type PreparedUpdate struct {
@@ -186,10 +192,18 @@ func (s *Service) Check() (CheckResult, error) {
 	if err != nil {
 		return CheckResult{}, err
 	}
+	// Update is offered only when the release is newer AND the
+	// installed binary's U matches the release's U. A U
+	// mismatch surfaces as updateOffered=false (the UI then
+	// flips NeedsReinstall=true via the NeedsReinstall field,
+	// which is set in the caller when !Compatible). See
+	// issue #266 for the rule rationale.
+	updateOffered := comparison.Newer && comparison.Compatible
 	return CheckResult{
 		CurrentVersion:   settings.CurrentVersion,
 		AvailableVersion: release.version,
-		UpdateAvailable:  comparison > 0,
+		UpdateAvailable:  updateOffered,
+		NeedsReinstall:   !comparison.Compatible,
 		DownloadURL:      release.downloadURL,
 		NotesURL:         release.notesURL,
 		ReleaseNotes:     release.releaseNotes,
@@ -216,7 +230,7 @@ func (s *Service) PrepareLatest() (PreparedUpdate, error) {
 	if err != nil {
 		return PreparedUpdate{}, err
 	}
-	if comparison <= 0 {
+	if !comparison.Newer || !comparison.Compatible {
 		return PreparedUpdate{}, fmt.Errorf("no newer update is available")
 	}
 
@@ -514,44 +528,114 @@ func selectGitHubAsset(assets []struct {
 	return "", "", fmt.Errorf("release does not include a .zip or .exe asset")
 }
 
-func compareVersions(left, right string) (int, error) {
+// CompareResult captures the outcome of compareVersions.
+// Install-safe when Compatible is true AND the release is
+// newer than the installed binary (higher N). Compatible=false
+// means the user must reinstall (U mismatch in either direction).
+// Newer=true means the release N is greater than installed N
+// (only meaningful when Compatible=true; downgrades are
+// rejected as !Compatible).
+type CompareResult struct {
+	Compatible bool
+	Newer      bool
+}
+
+// compareVersions decides whether an installed binary can
+// auto-update to a release.
+//
+// Inputs are version strings in either the new shape
+// (v1.{U}.{N}) or the legacy shape (v1.2.{N}). Legacy strings
+// parse to U=1 by default per issue #266 decision 1, so every
+// release published before #266 maps cleanly to (U=1, N=N).
+//
+// Rules (per #266):
+//   - U mismatch (release.U > installed.U OR release.U <
+//     installed.U): the update-flow shape changed; the
+//     installed binary can't safely apply the release. The
+//     user must reinstall. (Q2 + Q4.)
+//   - U match + N match: identical versions; not an update.
+//   - U match + release.N > installed.N: auto-update path.
+//   - U match + release.N < installed.N: downgrade reject
+//     (the user is running a newer release than what's
+//     distributed; treat as compatible but not newer so the
+//     UI doesn't offer it; per Q4 the rule is symmetric).
+
+func compareVersions(left, right string) (CompareResult, error) {
 	leftParts, err := parseVersion(left)
 	if err != nil {
-		return 0, err
+		return CompareResult{}, err
 	}
 	rightParts, err := parseVersion(right)
 	if err != nil {
-		return 0, err
+		return CompareResult{}, err
 	}
-	for index := 0; index < len(leftParts); index++ {
-		if leftParts[index] < rightParts[index] {
-			return -1, nil
-		}
-		if leftParts[index] > rightParts[index] {
-			return 1, nil
-		}
+	// U mismatch in either direction forces a reinstall.
+	if leftParts.updateFlow != rightParts.updateFlow {
+		return CompareResult{Compatible: false, Newer: leftParts.release > rightParts.release}, nil
 	}
-	return 0, nil
+	// U matches. N is the release counter; release > installed
+	// = "newer" (user can auto-update). release == installed
+	// = same build (not an update). release < installed
+	// = downgrade (compatible but not newer, so the UI
+	// doesn't surface it as an offer).
+	if leftParts.release > rightParts.release {
+		return CompareResult{Compatible: true, Newer: true}, nil
+	}
+	return CompareResult{Compatible: true, Newer: false}, nil
 }
 
-func parseVersion(value string) ([3]int, error) {
+// parsedVersion captures the three numbers from a version
+// string with semantic meaning baked in. Replaces the
+// unnamed [3]int the previous walker used so the call sites
+// read obviously and the rule application above stays
+// readable.
+type parsedVersion struct {
+	major      int
+	updateFlow int // U — gates auto-update
+	release    int // N — release counter (independent of schema)
+}
+
+func parseVersion(value string) (parsedVersion, error) {
 	normalized, err := versionFromString(value)
 	if err != nil {
-		return [3]int{}, err
+		return parsedVersion{}, err
 	}
 	parts := strings.Split(normalized, ".")
 	if len(parts) != 3 {
-		return [3]int{}, fmt.Errorf("invalid version")
+		return parsedVersion{}, fmt.Errorf("invalid version")
 	}
-	var parsed [3]int
+	var parsed parsedVersion
+	numbers := [3]*int{&parsed.major, &parsed.updateFlow, &parsed.release}
 	for index, part := range parts {
 		number, err := strconv.Atoi(part)
 		if err != nil {
-			return [3]int{}, fmt.Errorf("invalid version")
+			return parsedVersion{}, fmt.Errorf("invalid version")
 		}
-		parsed[index] = number
+		*numbers[index] = number
+	}
+	// Legacy v1.2.{N} strings: the historical "2" was a
+	// placeholder for what is now U. Per #266 decision 1, treat
+	// that placeholder as U=1 so existing releases continue to
+	// compare. The new shape v1.{U}.{N} uses the literal U;
+	// the historical shape is rewritten on first emit
+	// (bump-version.ps1 --bump-update-flow follow-up).
+	if isLegacyVersionShape(normalized) {
+		parsed.updateFlow = 1
 	}
 	return parsed, nil
+}
+
+// isLegacyVersionShape returns true for v1.2.{N} shapes. The
+// new shape v1.{U}.{N} with a real U value is anything else.
+// The "2" is the historical placeholder; new releases will
+// never have it as the middle number unless U literally
+// equals 2 (a U=1.3.0 release that shipps with U=2 — at which
+// point every operator knows U bumped and reinstall is the
+// expected path; parseVersion will then leave the literal 2
+// as U=2, which matches the new shape, and the legacy
+// special-case is silent).
+func isLegacyVersionShape(normalized string) bool {
+	return strings.HasPrefix(normalized, "1.2.")
 }
 
 func versionFromString(value string) (string, error) {
@@ -559,7 +643,16 @@ func versionFromString(value string) (string, error) {
 	if len(match) != 4 {
 		return "", fmt.Errorf("version not found")
 	}
-	return fmt.Sprintf("%s.%s.%s", match[1], match[2], match[3]), nil
+	normalized := fmt.Sprintf("%s.%s.%s", match[1], match[2], match[3])
+	// Reject inputs that contain a fourth `.` segment after
+	// the matched version (e.g. "1.2.3.4") so we don't silently
+	// truncate. versionPattern only captures three groups, so
+	// the input could otherwise pass without notice.
+	remainder := strings.TrimSpace(value)
+	if strings.Contains(strings.TrimPrefix(remainder, "v"), normalized+".") {
+		return "", fmt.Errorf("version must be exactly 3 segments")
+	}
+	return normalized, nil
 }
 
 func assetKindFromURL(rawURL string) string {
