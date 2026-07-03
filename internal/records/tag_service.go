@@ -43,8 +43,9 @@ type Tag struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
-// TagService operates on the tags + person_record_tags tables.
-// Construct via NewTagService(db).
+// TagService operates on the tags + person_record_tags tables:
+// the user-defined tag set for issue #183's Person Record tagging
+// surface. Construct via NewTagService(db).
 type TagService struct {
 	db *sql.DB
 }

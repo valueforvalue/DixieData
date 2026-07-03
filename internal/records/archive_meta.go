@@ -27,7 +27,9 @@ const (
 var ErrArchiveMetaNotFound = errors.New("archive meta not found")
 
 // ArchiveMetaService provides read/write access to the
-// archive_meta table.
+// archive_meta table: per-archive-kind toggles (issue #183's
+// include_tags column is the first), seeded at schema time and
+// mutated by the Settings page.
 type ArchiveMetaService struct {
 	db *sql.DB
 }

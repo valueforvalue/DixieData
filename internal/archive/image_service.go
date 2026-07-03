@@ -15,6 +15,11 @@ import (
 
 const orphanTrashRetention = 30 * 24 * time.Hour
 
+// ImageService manages the on-disk image library: import, scrub,
+// orphan detection, and re-attach to soldiers. Constructed by
+// NewImageService and held by *App. The orphan detector uses a 30-day
+// retention window before trash-eligible orphans get surfaced to
+// the user (see orphanTrashRetention).
 type ImageService struct {
 	db *db.DB
 }
@@ -25,6 +30,10 @@ type OrphanedImage struct {
 	ModifiedAt   string
 }
 
+// NewImageService constructs an ImageService bound to the given
+// database. The service is stateless beyond the database handle
+// (image metadata is on disk; only the soldier-image join is in
+// the database).
 func NewImageService(database *db.DB) *ImageService {
 	return &ImageService{db: database}
 }

@@ -35,6 +35,10 @@ const (
 	testCalendarName       = "DixieData Test"
 )
 
+// GoogleCalendarSyncState is the on-disk JSON record of which
+// Google Calendar the DixieData anniversaries are synced to.
+// Persisted at dataDir/google-calendar-sync.json; the file is
+// deleted when the user disconnects (see GoogleService.Unsync).
 type GoogleCalendarSyncState struct {
 	CalendarID         string            `json:"calendar_id,omitempty"`
 	EventIDs           map[string]string `json:"event_ids"`
@@ -44,12 +48,19 @@ type GoogleCalendarSyncState struct {
 	TestEventIDs       map[string]string `json:"test_event_ids,omitempty"`
 }
 
+// GoogleDriveUploadResult is the per-export result returned by
+// GoogleService.UploadPDF: the Drive file ID, the share link,
+// and any per-file metadata the UI surfaces.
 type GoogleDriveUploadResult struct {
 	FileID      string
 	WebViewLink string
 	Name        string
 }
 
+// GoogleCalendarSyncResult is the return value of GoogleService.Sync:
+// the number of events upserted, the number deleted (because the
+// underlying Soldier was removed), and any drift detected between
+// the Local Archive and the remote calendar (see DriftStatus).
 type GoogleCalendarSyncResult struct {
 	Created int
 	Updated int
@@ -69,10 +80,21 @@ type GoogleCalendarDriftStatus struct {
 	OutOfSync    bool
 }
 
+// GoogleService owns the Google Calendar and Google Drive OAuth
+// flows DixieData uses to push exports: Calendar sync pushes a
+// per-event card for each anniversary; Drive uploads the PDF.
+// Constructed by NewGoogleService and held by *App. The service
+// persists its OAuth tokens under dataDir/google-calendar-sync.json
+// (and the equivalent Drive token file) so the user does not have
+// to re-authenticate on every app launch.
 type GoogleService struct {
 	dataDir string
 }
 
+// NewGoogleService constructs a GoogleService anchored at the
+// given dataDir. Token + sync state files are written under
+// dataDir so they survive app updates but are wiped when the user
+// deletes their Local Archive.
 func NewGoogleService(dataDir string) *GoogleService {
 	return &GoogleService{dataDir: dataDir}
 }

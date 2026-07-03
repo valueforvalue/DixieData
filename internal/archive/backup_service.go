@@ -89,6 +89,12 @@ func loadSharedAliasTargetSnapshot(tx *sql.Tx, sourceNodeID, sourcePersonSyncID 
 	return snapshot, err
 }
 
+// BackupService owns the backup-archive pipeline: producing full
+// replacement SQLite snapshots (.ddbak) plus the per-record metadata
+// the backup UI surfaces. Constructed by NewBackupService and held
+// by *App. Backup operations are guarded by the inFlight dialog
+// guard law (CONTEXT.md §Laws) because the native SaveFileDialog
+// cannot run concurrently with itself.
 type BackupService struct {
 	db      *db.DB
 	soldier *SoldierService
@@ -149,6 +155,11 @@ type SourceConflictLedgerEntry struct {
 	DifferenceFields []string
 }
 
+// NewBackupService constructs a BackupService bound to the given
+// database and soldier service. The soldier service is used for
+// per-record metadata enrichment (display IDs, computed dates);
+// the database is used for both the source SQLite snapshot and the
+// pre-backup retained-snapshot bookkeeping.
 func NewBackupService(database *db.DB, soldier *SoldierService) *BackupService {
 	return &BackupService{db: database, soldier: soldier}
 }
