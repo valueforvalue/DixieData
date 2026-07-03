@@ -104,6 +104,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- Cold-start top-nav foldout click did nothing in the
+  Wails desktop binary (issue #285). `installFoldouts()`
+  ran once on `DOMContentLoaded` with `triggerCount: 0`
+  on the initial `/` response; subsequent htmx swaps
+  that re-rendered the trigger did not re-init, so the
+  trigger sat in the DOM with no click listener until
+  the user navigated away and back. The fix makes
+  `installFoldouts` idempotent (document-level
+  outside-click handler guarded by
+  `window.__foldoutDocHandlerBound`; per-trigger handlers
+  guarded by a `WeakSet` of bound trigger elements) and
+  adds the call to `initializeDynamicContent` so it
+  re-runs on every `htmx:load`. Regression net: new
+  Step 10 in `audit/smoke_foldout_nav.mjs` forces a
+  re-install via `window.__foldoutProbeReinit` and
+  asserts the click still toggles open/close. Probe is
+  now 41/41. The fix is documented in `docs/COMMON_BUGS.md`
+  §3.7 (`FUTURE-NAV-AVOID`) and `docs/agents/bug-pattern-grep.md`
+  §10 so the next foldout (Browse filters, Tags picker,
+  etc.) ships the two-hook init pattern by default.
 - `dixiedata debug cli-coverage` (and therefore
   `make freshness`) panicked with `slice bounds out of
   range` when any `Has*Subcommand` / `Has*Flag` function

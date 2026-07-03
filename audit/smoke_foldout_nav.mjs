@@ -348,6 +348,56 @@ try {
   });
   record("first-click-outside-click-still-closes", afterOutsideClick.panelHidden === true, { state: afterOutsideClick });
 
+  // === Step 10: installFoldouts idempotency (issue #285 regression net) ===
+  // The cold-start Wails bug was traced to a missing re-init
+  // after the body was swapped in. The fix re-runs installFoldouts
+  // on htmx:load, which means it can run multiple times on the
+  // same page. A naive re-run would double-attach click handlers
+  // and toggle() would fire twice per click — open() then
+  // close() — which is exactly the original symptom. The fix
+  // guards the document-level handler with a window flag and
+  // each per-trigger handler with a WeakSet membership check.
+  // This step forces a re-install and asserts (a) the panel
+  // still toggles correctly (open/close once per click) and
+  // (b) the installN counter increments without breaking
+  // the open/close contract.
+  console.log("\nStep 10: installFoldouts re-run does not break toggle (issue #285)");
+  // Force a re-install to simulate htmx:load firing after
+  // the body was swapped. The cold-start Wails bug (#285)
+  // was traced to a missing re-init; the regression net
+  // verifies the re-init is both safe (idempotent) and
+  // necessary (the click below would no-op without it on
+  // a real htmx swap).
+  const reinitResult = await page.evaluate(() => {
+    const installNBefore = window.__foldoutInstallN || 0;
+    // Re-init path: dispatch a synthetic htmx:load the same way
+    // htmx would. initializeDynamicContent is the entry point
+    // wired to htmx:load in app.js.
+    if (typeof window.__foldoutProbeReinit === "function") {
+      window.__foldoutProbeReinit();
+    }
+    return { installNBefore, installNAfter: window.__foldoutInstallN };
+  });
+  record("reinit-actually-ran", reinitResult.installNAfter > reinitResult.installNBefore, reinitResult);
+  // Click trigger again, assert toggle still works (open).
+  await page.locator("[data-foldout-trigger='layout.share.menu']").first().click({ force: true });
+  await wait(100);
+  const afterReinitOpen = await page.evaluate(() => {
+    const p = document.querySelector("[data-foldout-panel='layout.share.menu']");
+    const t = document.querySelector("[data-foldout-trigger='layout.share.menu']");
+    return { panelHidden: p ? p.classList.contains("hidden") : null, ariaExpanded: t ? t.getAttribute("aria-expanded") : null };
+  });
+  record("reinit-then-click-opens", afterReinitOpen.panelHidden === false && afterReinitOpen.ariaExpanded === "true", { state: afterReinitOpen, before: reinitResult });
+  // Click again, assert toggle still works (close).
+  await page.locator("[data-foldout-trigger='layout.share.menu']").first().click({ force: true });
+  await wait(100);
+  const afterReinitClose = await page.evaluate(() => {
+    const p = document.querySelector("[data-foldout-panel='layout.share.menu']");
+    const t = document.querySelector("[data-foldout-trigger='layout.share.menu']");
+    return { panelHidden: p ? p.classList.contains("hidden") : null, ariaExpanded: t ? t.getAttribute("aria-expanded") : null };
+  });
+  record("reinit-then-click-closes", afterReinitClose.panelHidden === true && afterReinitClose.ariaExpanded === "false", { state: afterReinitClose });
+
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);
