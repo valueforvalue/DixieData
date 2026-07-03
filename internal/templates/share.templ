@@ -60,34 +60,11 @@ templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.Arch
 				</div>
 			</div>
 			@components.RecentJobs(recentJobs)
-			// Issue #284 + #265: Support & Diagnostics card stays
-			// on /share (the destructive / user-troubleshooting
-			// surface; deferred to #255 for a possible move to
-			// /settings). Merge Review stays on /share per the
+			// Issue #255 + #265: Support & Diagnostics card moved
+			// to /settings (the troubleshooting surface belongs
+			// with the configuration surfaces, not the export
+			// surface). Merge Review stays on /share per the
 			// locked decision from #265.
-			<section class="card rounded-3xl p-5 sm:p-8 space-y-4">
-				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Support & Diagnostics</p>
-					<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
-					<p class="mt-2 text-sm text-slate-500">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
-				</div>
-				<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-						"data-action":       "/export/feedback-log",
-						"data-dixie-submit": "true",
-					}) {
-						<div class="font-bold">Export Feedback Log</div>
-						<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
-					}
-					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
-						"data-action":       "/export/bug-report",
-						"data-dixie-submit": "true",
-					}) {
-						<div class="font-bold">Export Bug Report Bundle</div>
-						<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
-					}
-				</div>
-			</section>
 			if len(conflicts) > 0 {
 				<div id="merge-review-section" data-merge-review-container tabindex="-1" class="card rounded-3xl p-5 sm:p-8 space-y-4">
 					<div>

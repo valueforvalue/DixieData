@@ -33,16 +33,16 @@ func TestShareLandingHasNoModals(t *testing.T) {
 	}
 }
 
-// TestShareViewShowsSubOverviewHelp (issue #284) asserts
+// TestShareViewShowsSubOverviewHelp (issue #284, #255) asserts
 // the /share landing carries the help copy that used to
 // be inline on the pre-#284 landing. The export /
 // import / print-config help moved to the subpages; the
 // landing keeps the high-level "what is this page"
-// summary and the Support & Diagnostics help. The
-// subpage-level help (single-record vs full-database
-// PDF, "Analyses the archive first", etc.) is now
-// covered by the per-subpage render tests in
-// share_subpages_handlers_test.go.
+// summary. The Support & Diagnostics section moved off
+// /share to /settings (issue #255). The subpage-level
+// help (single-record vs full-database PDF, "Analyses the
+// archive first", etc.) is now covered by the per-subpage
+// render tests in share_subpages_handlers_test.go.
 func TestShareViewShowsSubOverviewHelp(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
@@ -52,16 +52,14 @@ func TestShareViewShowsSubOverviewHelp(t *testing.T) {
 
 	content := buf.String()
 	for _, needle := range []string{
-		// Landing-level help: what /share is, what
-		// the Quick Actions surface offers, and the
-		// Support & Diagnostics section.
+		// Landing-level help: what /share is + what
+		// the Quick Actions surface offers. Support &
+		// Diagnostics help (Export Feedback Log /
+		// Bug Report Bundle) moved to /settings
+		// (issue #255).
 		"Share Archive",
 		"Export, back up, import, and restore your DixieData local archive",
 		"Quick actions",
-		"Support & Diagnostics",
-		"Troubleshooting bundle",
-		"Export Feedback Log",
-		"Bug Report Bundle",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Errorf("/share landing missing sub-overview help %q", needle)
@@ -82,12 +80,13 @@ func TestShareViewShowsSubOverviewHelp(t *testing.T) {
 	}
 }
 
-// TestShareViewKeepsSubOverviewLayoutContract (issue #284)
-// asserts the /share landing uses the new sub-overview
-// grid (lg:grid-cols-4 for the Quick Actions) and the
-// full-width Support & Diagnostics card. The old
-// responsive-two-col grid that wrapped the inline
-// sections is gone with the sections.
+// TestShareViewKeepsSubOverviewLayoutContract (issue #284, #255)
+// asserts the /share landing uses the new sub-overview grid
+// (lg:grid-cols-4 for the Quick Actions). The Support &
+// Diagnostics card moved to /settings (issue #255); /share
+// now stays focused on Exports / Imports / Sync / Merge
+// Review. The old responsive-two-col grid that wrapped the
+// inline sections is gone with the sections.
 func TestShareViewKeepsSubOverviewLayoutContract(t *testing.T) {
 	var buf bytes.Buffer
 	err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
@@ -99,15 +98,21 @@ func TestShareViewKeepsSubOverviewLayoutContract(t *testing.T) {
 	for _, needle := range []string{
 		// New sub-overview Quick Actions grid.
 		`sm:grid-cols-2 lg:grid-cols-4`,
-		// Support & Diagnostics card stays on /share
-		// and uses the same full-width card shape the
-		// other pages use.
-		"Support & Diagnostics",
-		`/export/feedback-log`,
-		`/export/bug-report`,
 	} {
 		if !strings.Contains(content, needle) {
 			t.Errorf("/share landing missing sub-overview layout contract %q", needle)
+		}
+	}
+	// Support & Diagnostics moved off /share to /settings
+	// (issue #255) — the buttons still work via the same
+	// /export/feedback-log + /export/bug-report routes, but
+	// they render in /settings now, not here.
+	for _, forbidden := range []string{
+		`/export/feedback-log`,
+		`/export/bug-report`,
+	} {
+		if strings.Contains(content, forbidden) {
+			t.Errorf("/share landing should not contain %q (moved to /settings per issue #255)", forbidden)
 		}
 	}
 	// The old 2-col responsive grid that wrapped the

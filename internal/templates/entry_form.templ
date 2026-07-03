@@ -600,6 +600,35 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 				</form>
 				<div id="settings-quality-results" class="space-y-3"></div>
 			</div>
+			// Issue #255: Support & Diagnostics moved from /share to
+			// /settings. The two buttons package diagnostic data for
+			// support, not data to share; the user looks for them in
+			// Settings (alongside Debug Mode, Data Quality Scan, etc.),
+			// not in Share. The action URLs and handlers stay the
+			// same; only the templ rendering moves.
+			<div id="settings-diagnostics-panel" class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Support &amp; Diagnostics</p>
+					<h3 class="mt-2 text-xl gold font-bold">Troubleshooting bundle</h3>
+					<p class="mt-2 text-sm text-slate-600">Package your local archive snapshot, images, scratch pads, diagnostics, and feedback logs for support email.</p>
+				</div>
+				<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
+						"data-action":       "/export/feedback-log",
+						"data-dixie-submit": "true",
+					}) {
+						<div class="font-bold">Export Feedback Log</div>
+						<div class="text-xs text-slate-500">Save the append-only feedback log for attaching to an email</div>
+					}
+					@components.ButtonContent(components.ButtonSecondary, "w-full justify-start text-left sm:w-auto", templ.Attributes{
+						"data-action":       "/export/bug-report",
+						"data-dixie-submit": "true",
+					}) {
+						<div class="font-bold">Export Bug Report Bundle</div>
+						<div class="text-xs text-slate-500">DB snapshot, images, scratchpads, and diagnostic manifest for troubleshooting</div>
+					}
+				</div>
+			</div>
 		</div>
 	}
 }
