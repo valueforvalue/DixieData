@@ -6,10 +6,15 @@
 // will be picked up by the same installFoldouts() init
 // in app.js and the same accessibility contract.
 //
-// Pre-fix: top-nav had two flat links (Share + Share Queue).
-// Post-fix: a single Share trigger with a foldout panel
-// containing 4 menu items (Export / Import / Share Queue /
-// Build Share Archive).
+// Pre-#264: top-nav had two flat links (Share + Share Queue).
+// Post-#264: a single Share trigger with a foldout panel.
+// Post-#284 (slice 2): the 4-item menu (Export / Import /
+// Share Queue / Build Share Archive) collapsed to 3 items
+// (Build folded into Export — the Build button lives on
+// /share/exports). Post-#284 (Sync menu addition, 2026-07-02):
+// the menu grew back to 4 items — Sync is reachable from the
+// foldout instead of only from the /share landing's Quick
+// Actions tile.
 //
 // This probe verifies:
 //   1. The Share trigger button is a <button> (not <a>)
@@ -102,10 +107,10 @@ try {
   });
   record("panel-hidden-initially", panel && panel.hidden === true, panel);
   record("panel-is-ul-with-role-menu", panel && panel.tag === "UL" && panel.role === "menu", { tag: panel && panel.tag, role: panel && panel.role });
-  record("panel-has-3-menuitems", panel && panel.itemCount === 3, { itemCount: panel && panel.itemCount });
+  record("panel-has-4-menuitems", panel && panel.itemCount === 4, { itemCount: panel && panel.itemCount });
   record("menuitems-are-anchors", panel && panel.items.every((i) => i.tag === "A"), { items: panel && panel.items.map((i) => i.tag) });
   record("menuitems-have-distinct-hrefs", panel && new Set(panel.items.map((i) => i.href)).size === panel.items.length, { hrefs: panel && panel.items.map((i) => i.href) });
-  record("menuitems-include-expected-labels", panel && panel.items.map((i) => i.label).join("|") === "Export|Import|Share Queue", { labels: panel && panel.items.map((i) => i.label) });
+  record("menuitems-include-expected-labels", panel && panel.items.map((i) => i.label).join("|") === "Export|Import|Share Queue|Sync", { labels: panel && panel.items.map((i) => i.label) });
 
   // === Step 3: click opens + focuses first menuitem ===
   console.log("\nStep 3: click trigger + verify open + focus");
@@ -284,7 +289,7 @@ try {
   await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
   await wait(200);
   const menuItemCount = await page.evaluate(() => document.querySelectorAll("[data-foldout-panel='layout.share.menu'] [role='menuitem']").length);
-  record("foldout-menu-item-count-is-3", menuItemCount === 3, { menuItemCount });
+  record("foldout-menu-item-count-is-4", menuItemCount === 4, { menuItemCount });
   // Click Export (first menuitem)
   await page.evaluate(() => {
     const item = document.querySelector("[data-foldout-panel='layout.share.menu'] [role='menuitem']");
@@ -362,7 +367,7 @@ try {
   record("first-click-panel-stays-open", afterFirstClick.panelHidden === false, { state: afterFirstClick });
   record("first-click-panel-display-flex", afterFirstClick.panelDisplay === "flex", { display: afterFirstClick.panelDisplay });
   record("first-click-aria-expanded-true", afterFirstClick.ariaExpanded === "true", { ariaExpanded: afterFirstClick.ariaExpanded });
-  record("first-click-has-3-items", afterFirstClick.itemCount === 3, { itemCount: afterFirstClick.itemCount });
+  record("first-click-has-4-items", afterFirstClick.itemCount === 4, { itemCount: afterFirstClick.itemCount });
   record("first-click-first-item-in-viewport", afterFirstClick.firstItemInViewport === true, { firstItemInViewport: afterFirstClick.firstItemInViewport });
   // Now click outside the panel — the panel SHOULD close.
   // This asserts the fix didn't break the legitimate outside-click
