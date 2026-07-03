@@ -29,9 +29,9 @@ templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 				}
 				if s.NeedsReview {
 					<div class="mt-2 flex flex-wrap gap-2 text-xs">
-						<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+						<span class="rounded-full border border-review-red/[0.45] bg-review-red/[0.12] px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
 						if strings.TrimSpace(s.ReviewReason) != "" {
-							<span class="rounded-full border border-[rgba(111,44,38,0.2)] bg-[rgba(255,241,239,0.88)] px-2.5 py-1 text-[#6f2c26]">{ s.ReviewReason }</span>
+							<span class="rounded-full border border-review-red/[0.2] bg-[rgba(255,241,239,0.88)] px-2.5 py-1 text-[#6f2c26]">{ s.ReviewReason }</span>
 						}
 
 					</div>
@@ -451,7 +451,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag) {
 									<a href={ templ.SafeURL(fmt.Sprintf("/research-collections?from=%d", s.ID)) } class="secondary-button">Manage Collections</a>
 								</div>
 							</div>
-							<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-4 lg:col-span-2">
+							<div class="rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] p-4 lg:col-span-2">
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Review Queue</p>
 								if s.NeedsReview {
 									<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(s.ReviewReason) }</p>
@@ -524,7 +524,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag) {
 					</div>
 					<p class="text-sm text-slate-500">Primary work stays at the top of the page. Return actions stay here.</p>
 				</div>
-				<div class="mt-5 rounded-2xl border border-[rgba(111,44,38,0.42)] bg-[rgba(111,44,38,0.08)] p-4">
+				<div class="mt-5 rounded-2xl border border-review-red/[0.42] bg-review-red/[0.08] p-4">
 					<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Danger Zone</p>
 					<p class="mt-2 text-sm text-[#6f2c26]">Delete is separated from edit and export so destructive work is harder to trigger accidentally.</p>
 					<div class="mt-4">

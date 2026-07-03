@@ -48,7 +48,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("%d spouse record memorial(s)", len(scrape.Spouses)) }</span>
 						}
 						if scrape.ErrorMessage != "" {
-							<span class="rounded-full border border-[#6f2c26]/30 bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs attention</span>
+							<span class="rounded-full border border-[#6f2c26]/30 bg-review-red/[0.08] px-3 py-1 text-[#6f2c26]">Needs attention</span>
 						}
 					</div>
 				</summary>
@@ -62,7 +62,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</form>
 					if scrape.ErrorMessage != "" {
-						<div class="rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+						<div class="rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
 							<strong class="font-semibold">Scrape failed.</strong>
 							<span class="ml-1">{ scrape.ErrorMessage }</span>
 						</div>
@@ -99,7 +99,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 			</details>
 		}
 		if errorMessage != "" {
-			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">
+			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
 				<strong class="font-semibold">Save failed.</strong>
 				<span class="ml-1">{ errorMessage }</span>
 			</div>
@@ -141,7 +141,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						>
 							Delete saved local draft
 						</button>
-						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]">
+						<div data-clear-draft-confirm="base" class="hidden rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] p-3 text-sm text-[#6f2c26]">
 							<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 							<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
 								@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
@@ -174,7 +174,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 							"data-clear-draft-trigger": "stale",
 						})
 					</div>
-					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] p-3 text-sm text-[#6f2c26]">
+					<div data-clear-draft-confirm="stale" class="mt-3 hidden rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] p-3 text-sm text-[#6f2c26]">
 						<p>Delete the saved local draft from this browser? The current database record will stay unchanged.</p>
 						<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
 							@components.Button("Confirm delete", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{
@@ -1023,7 +1023,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 			</div>
 		}
 		if s.NeedsReview {
-			<div class="rounded-2xl border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-4 py-4 text-sm text-[#6f2c26]">
+			<div class="rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] px-4 py-4 text-sm text-[#6f2c26]">
 				<p class="font-semibold">Needs Review</p>
 				<p class="mt-1">{ emptyDetail(s.ReviewReason) }</p>
 			</div>
