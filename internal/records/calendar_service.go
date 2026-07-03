@@ -39,10 +39,16 @@ type CalendarDay struct {
 	Anniversaries []models.Soldier
 }
 
+// CalendarService produces the per-month grid the calendar page
+// renders: one row per day, one cell per soldier with an
+// anniversary that day. Owns the per-month PDF dispatch (one
+// download endpoint per month). Constructed by NewCalendarService.
 type CalendarService struct {
 	db *db.DB
 }
 
+// NewCalendarService constructs a CalendarService bound to the
+// given database.
 func NewCalendarService(database *db.DB) *CalendarService {
 	return &CalendarService{db: database}
 }

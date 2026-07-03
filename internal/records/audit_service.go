@@ -18,6 +18,12 @@ const (
 	duplicateAuditReasonPrefix               = "Duplicate Audit: "
 )
 
+// AuditService backs the duplicate-detection findings surfaced on
+// the Review Queue + Insights duplicate-audit page. Compares every
+// Soldier's name + birth + death against the rest of the archive
+// and produces candidate-match lists the user can either accept
+// (merge) or dismiss (keep separate). Constructed by
+// NewAuditService.
 type AuditService struct {
 	db *db.DB
 }
@@ -94,6 +100,9 @@ type duplicateAuditFindingCandidate struct {
 	HighlightFields string
 }
 
+// NewAuditService constructs an AuditService bound to the given
+// database. Duplicate detection runs on demand (the user clicks
+// "Re-scan" on the Insights page); no background scheduler.
 func NewAuditService(database *db.DB) *AuditService {
 	return &AuditService{db: database}
 }

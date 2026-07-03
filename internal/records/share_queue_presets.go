@@ -44,8 +44,9 @@ var ErrShareQueuePresetNameTaken = errors.New("share queue preset name already e
 // handler.
 var ErrShareQueuePresetNotFound = errors.New("share queue preset not found")
 
-// ShareQueuePresetService provides CRUD on the
-// share_queue_presets table. Construct via
+// ShareQueuePresetService provides CRUD on the share_queue_presets
+// table: user-defined sets of filters the share-queue page uses
+// to pre-fill the export filter row. Construct via
 // NewShareQueuePresetService(db) -- usually wired into *App at
 // startup.
 type ShareQueuePresetService struct {

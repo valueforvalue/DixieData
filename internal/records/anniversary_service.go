@@ -5,10 +5,18 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
+// AnniversaryService owns the per-soldier "on this day" + "this
+// month" anniversary computation that drives the calendar page +
+// the iCal export. Constructed by NewAnniversaryService and held
+// by *App. Anniversary dates are stored as month/day only (no
+// year) so the service is tz-naive for date math; CalendarTimeZone
+// in internal/buildinfo governs only "today" semantics.
 type AnniversaryService struct {
 	db *db.DB
 }
 
+// NewAnniversaryService constructs an AnniversaryService bound to
+// the given database.
 func NewAnniversaryService(database *db.DB) *AnniversaryService {
 	return &AnniversaryService{db: database}
 }
