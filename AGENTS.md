@@ -76,15 +76,43 @@ one of these criteria:
 | User explicitly says "branch this" | whatever the user says |
 | New screen or sub-system | `feature/<short-kebab>` + PR |
 
-### Promotion: dev → main
+### Three-branch model (dev / stable / main)
 
-**`main` is always stable.** No direct commits to main.
-No merge into main that does not first pass the full test
-suite + visual sweep on dev. The exact procedure (when to
-promote, how to tag, how to write release notes) is **TBD
-and will be defined in a follow-up ADR**. Until that ADR
-lands, do not promote dev to main without explicit user
-direction. If you think a promotion is needed, ask first.
+As of 2026-07-03 (ADR 0009), the repo carries three named
+branches with distinct roles:
+
+- **`dev`** — integration. Agents and humans commit here
+  directly per the default flow below; PRs target `dev`.
+  No branch protection.
+- **`stable`** — released-code home. Promotion destination
+  for `make promote` (per ADR 0008). Future releases tag
+  and ship from here. Branch protected (no direct push,
+  no force-push, require CI green).
+- **`main`** — frozen legacy production record. Sits at
+  commit `31a8901` (the version actively in production on
+  2026-07-03) and accepts no new commits, ever. Branch
+  protected. Preserved as the audit anchor for "what users
+  had on 2026-07-03" so the production state is recoverable
+  even after multiple releases have shipped from `stable`.
+
+### Promotion: dev → stable
+
+**`stable` is always releasable.** No direct commits to
+`stable`. No merge into `stable` that does not first pass
+the full test suite + visual sweep on `dev`, per the gate
+chain in ADR 0008. Until that gate chain lands in `make
+promote`, do not promote `dev` to `stable` without explicit
+user direction. If you think a promotion is needed, ask
+first.
+
+### `main` is frozen
+
+`main` is the legacy production-history anchor. It exists
+so future agents (human or LLM) can reference "what users
+had on 2026-07-03" without grepping the commit log. Do not
+commit to `main`, do not force-push, do not delete it. If
+a future refactor needs to clean up the branch list, that
+is a separate ADR; this ADR explicitly preserves `main`.
 
 ### Branch hygiene
 
