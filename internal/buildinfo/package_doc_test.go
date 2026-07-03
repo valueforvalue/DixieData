@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -68,6 +69,163 @@ func TestEveryInternalPackageHasSynopsis(t *testing.T) {
 				rel)
 		}
 	}
+}
+
+// TestNoWrongStarterDocComments is the regression gate for Go Doc
+// audit Phase 2. It walks every non-test .go file under internal/
+// and checks that every exported identifier's doc comment starts
+// with the identifier name (or a recognized variant).
+//
+// A "wrong-starter" is a comment like `// --- NewApp ---` on a
+// func NewApp, or `// NormalizeName ...` on a func NormalizeTagName.
+// go doc accepts these comments but the rendered synopsis line
+// begins with the wrong word; tooling that ingests godoc output
+// loses the identifier-name anchor.
+//
+// Heuristic: the contiguous `//` block immediately above an
+// exported identifier, with the first word (after stripping
+// separators like `// --- foo ---` and `// === foo ===`) matching
+// the identifier name. Multi-paragraph comments split by blank
+// lines are checked against the LAST paragraph (which is the one
+// actually bound to the identifier by go doc's convention).
+//
+// Filter: skip function-body prose like `// (no fmt usage here)`.
+// We catch those by requiring the first word of the doc comment
+// to start with the identifier name; if the comment is just
+// parenthetical or general prose, it fails the check and the
+// operator can decide whether to delete it or rewrite it as a
+// proper doc comment.
+//
+// This is intentionally strict: false positives are acceptable
+// because the failure message prints the file:line + identifier
+// name + first word, which is enough context to fix.
+func TestNoWrongStarterDocComments(t *testing.T) {
+	root := repoRoot(t)
+	var findings []wrongStarterFinding
+	for _, path := range allGoFiles(t, root) {
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			t.Fatalf("filepath.Rel: %v", err)
+		}
+		if strings.HasPrefix(rel, ".scratch"+string(filepath.Separator)) {
+			continue
+		}
+		if strings.HasPrefix(rel, "cmd"+string(filepath.Separator)) {
+			continue
+		}
+		findings = append(findings, scanWrongStarters(path)...)
+	}
+	if len(findings) > 0 {
+		for _, f := range findings {
+			t.Errorf("wrong-starter doc comment at %s:%d for %s: first word = %q",
+				f.File, f.Line, f.Name, f.First)
+		}
+	}
+}
+
+type wrongStarterFinding struct {
+	File  string
+	Line  int
+	Name  string
+	First string
+}
+
+// allGoFiles returns every non-test .go file under root, skipping
+// directories that should not be scanned (.scratch, etc.).
+func allGoFiles(t *testing.T, root string) []string {
+	t.Helper()
+	var out []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			base := filepath.Base(path)
+			if base == ".scratch" || base == "vendor" || base == "node_modules" || base == "build" || base == "release" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		out = append(out, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Walk: %v", err)
+	}
+	return out
+}
+
+// scanWrongStarters returns every exported-identifier-in-this-file
+// whose doc comment's first word doesn't match the identifier name.
+func scanWrongStarters(path string) []wrongStarterFinding {
+	var findings []wrongStarterFinding
+	text, err := os.ReadFile(path)
+	if err != nil {
+		return findings
+	}
+	lines := strings.Split(string(text), "\n")
+
+	// Top-level decl lines start at column 0 (no leading whitespace).
+	// We only care about top-level exported funcs/types/vars/consts.
+	declRe := regexp.MustCompile(`^(func|type|var|const)\s+(?:\([^)]+\)\s+)?([A-Z]\w*)`)
+
+	for i, line := range lines {
+		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+			continue
+		}
+		m := declRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		name := m[2]
+
+		// Walk backwards to find the contiguous doc-comment block.
+		j := i - 1
+		for j >= 0 && strings.TrimSpace(lines[j]) == "" {
+			j--
+		}
+		var block []string
+		for j >= 0 && strings.HasPrefix(strings.TrimSpace(lines[j]), "//") {
+			trimmed := strings.TrimSpace(lines[j])
+			// Skip pure-separator lines (`// --- foo ---`,
+			// `// === foo ===`) and Issue-group markers
+			// (`// Issue #XXX: ...`) — these are not the
+			// identifier's doc comment, they're prose.
+			stripped := strings.TrimLeft(trimmed, "/")
+			stripped = strings.TrimSpace(stripped)
+			if strings.HasPrefix(stripped, "---") ||
+				strings.HasPrefix(stripped, "===") ||
+				strings.HasPrefix(stripped, "Issue #") {
+				j--
+				continue
+			}
+			block = append([]string{trimmed}, block...)
+			j--
+		}
+		if len(block) == 0 {
+			continue // no doc comment, handled by Phase 3
+		}
+
+		// First word of the first line of the block.
+		first := strings.TrimLeft(block[0], "/")
+		first = strings.TrimSpace(first)
+		wordRe := regexp.MustCompile(`^(\w+)`)
+		if wm := wordRe.FindStringSubmatch(first); wm != nil {
+			fw := wm[1]
+			if !strings.HasPrefix(fw, name) {
+				findings = append(findings, wrongStarterFinding{
+					File:  path,
+					Line:  i + 1,
+					Name:  name,
+					First: fw,
+				})
+			}
+		}
+	}
+	return findings
 }
 
 // goDocSynopsis runs `go doc <pkg-path>` and returns the synopsis

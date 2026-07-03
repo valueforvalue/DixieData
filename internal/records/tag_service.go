@@ -53,7 +53,7 @@ func NewTagService(db *sql.DB) *TagService {
 	return &TagService{db: db}
 }
 
-// NormalizeName is the single source of truth for "what does the
+// NormalizeTagName is the single source of truth for "what does the
 // user mean?" lookup. Lowercases, trims, and collapses internal
 // whitespace runs to a single space. Same function backs the
 // UNIQUE column so deep-link `?tags=...` lookups always agree

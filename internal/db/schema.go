@@ -442,10 +442,13 @@ func applySchema(db *DB) error {
 // applySchema short-circuit (per the version gate at the top
 // of applySchema) that would do no remedial forward work,
 // leaving the operator with a phantom-downgraded DB.
-// ApplyDownSchema is the exported form of applyDownSchema. The
-// CLI's runAdminMigrateDown calls it via the public surface so the
-// runner can refuse ErrDowngradeRefused errors with the proper
-// errors.Is check.
+
+// ApplyDownSchema is the exported entry point for schema downgrades.
+// It delegates to the package-private applyDownSchema and exists so
+// external callers (notably the CLI runner in
+// internal/appshell/cli_admin.go) can call it without importing a
+// private symbol. Refusals surface as ErrDowngradeRefused wrapped
+// around the offending block's ID and ErrMigrationIrreversible.
 func ApplyDownSchema(db *DB, target int) error {
 	return applyDownSchema(db, target)
 }
