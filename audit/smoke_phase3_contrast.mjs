@@ -126,6 +126,43 @@ try {
       ];
     }
     function effectiveBg(el) {
+      // First, check the element's own background for a gradient.
+      // linear-gradient stops are returned by getComputedStyle's
+      // backgroundImage (the backgroundColor stays transparent),
+      // so naive reading of backgroundColor understates contrast
+      // for gradient backgrounds (which is the primary-button
+      // case). Walk the gradient stops, pick the lightest stop
+      // (worst case for dark text), use that as the bg.
+      const cs = getComputedStyle(el);
+      const bgImage = cs.backgroundImage || "";
+      // CSS gradient stops are inside the outer linear-gradient(...)
+      // which itself nests rgb(r,g,b) parens. A naive `[^)]*` would
+      // stop at the first nested `)`, capturing only the first stop.
+      // Walk forward from `linear-gradient(` with a paren-depth counter
+      // to capture the whole inner expression.
+      const gradStart = bgImage.indexOf("linear-gradient(");
+      if (gradStart >= 0) {
+        let depth = 0;
+        let gradEnd = -1;
+        for (let i = gradStart + "linear-gradient(".length; i < bgImage.length; i++) {
+          if (bgImage[i] === "(") depth++;
+          else if (bgImage[i] === ")") {
+            if (depth === 0) { gradEnd = i; break; }
+            depth--;
+          }
+        }
+        const gradientText = gradEnd >= 0 ? bgImage.slice(gradStart + "linear-gradient(".length, gradEnd) : "";
+        const stops = [...gradientText.matchAll(/(?:rgba?|hsla?)\(\s*([\d.,\s]+)\s*\)/gi)].map((m) => parseRGB(`rgb(${m[1]})`)).filter(Boolean);
+        if (stops.length >= 2) {
+          // Worst case for dark text = lightest stop. Worst case
+          // for light text = darkest stop. We can't know which
+          // until we see fg, so return all stops and let the
+          // caller pick. For phase 3 the primary-button fg is
+          // dark (text-ink-deep) so we pick the lightest stop.
+          const lightest = stops.reduce((acc, s) => lum(s) > lum(acc) ? s : acc, stops[0]);
+          return lightest;
+        }
+      }
       let cur = el;
       while (cur instanceof HTMLElement) {
         const bg = parseRGB(getComputedStyle(cur).backgroundColor);
@@ -175,28 +212,40 @@ try {
 
   // Step 3: navigate to a route with ghost-link and danger-button
   // selectors (per #292 §Scope), record their ratios. The share
-  // exports page renders a "Delete template" danger-button when a
-  // saved template is present; the ghost-link lives on the calendar
-  // grid (per the soldier_card partial).
-  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "domcontentloaded" });
+  // Step 3: navigate to /soldiers/1 — the route that ALWAYS renders
+  // ghost-link (per the soldier_card partial, regardless of calendar
+  // row presence). ghost-link uses text-ink-mid (#324253) at 0.9rem
+  // / weight 500 — small body text per WCAG, so threshold is 4.5:1.
+  await page.goto(`http://127.0.0.1:${PORT}/soldiers/1`, { waitUntil: "domcontentloaded" });
   await wait(1500);
   const calendarChecks = await page.evaluate(() => {
     function parseRGB(s) { const m = (s || "").match(/rgba?\(([^)]+)\)/); if (!m) return null; const parts = m[1].split(",").map((x) => parseFloat(x.trim())); return parts.length >= 3 ? parts : null; }
     function lum(c) { const [r, g, b] = c.map((v) => { v = v / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
     function ratio(fg, bg) { const l1 = lum(fg), l2 = lum(bg); const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1]; return (hi + 0.05) / (lo + 0.05); }
     function composedOverWhite(bg) { if (!bg) return null; const alpha = bg.length === 4 ? bg[3] : 1; return [Math.round(bg[0] * alpha + 255 * (1 - alpha)), Math.round(bg[1] * alpha + 255 * (1 - alpha)), Math.round(bg[2] * alpha + 255 * (1 - alpha))]; }
-    function effectiveBg(el) { let cur = el; while (cur instanceof HTMLElement) { const bg = parseRGB(getComputedStyle(cur).backgroundColor); if (bg && bg[3] !== undefined && bg[3] > 0) return composedOverWhite(bg); if (bg && bg.length === 3) return bg; cur = cur.parentElement; } return [255, 255, 255]; }
     function pickFont(el) { const cs = getComputedStyle(el); const fg = parseRGB(cs.color); return { fg, fontWeight: cs.fontWeight, fontSize: cs.fontSize }; }
     function isLarge(f) { const size = parseFloat(f.fontSize); const isBold = parseInt(f.fontWeight, 10) >= 700; return size >= 24 || (isBold && size >= 18.66); }
-    function ratioFor(selector) { const el = document.querySelector(selector); if (!(el instanceof HTMLElement)) return { found: false }; const fg = pickFont(el); const bg = effectiveBg(el); if (!fg.fg || !bg) return { found: false }; return { found: true, ratio: ratio(fg.fg, bg), fg: fg.fg, bg, large: isLarge(fg), fontWeight: fg.fontWeight, fontSize: fg.fontSize }; }
+    function ratioFor(selector) { const el = document.querySelector(selector); if (!(el instanceof HTMLElement)) return { found: false }; const fg = pickFont(el); if (!fg.fg) return { found: false };
+      // Walk parents to find a non-transparent bg; compose over white
+      // if rgba(alpha<1). The ghost-link case is inline text on a
+      // cream/parchment surface, so a single parent walk is enough.
+      let cur = el; let bg = null;
+      while (cur instanceof HTMLElement && !bg) {
+        const bgRaw = parseRGB(getComputedStyle(cur).backgroundColor);
+        if (bgRaw && bgRaw.length === 3) bg = bgRaw;
+        else if (bgRaw && bgRaw.length === 4 && bgRaw[3] > 0) bg = composedOverWhite(bgRaw);
+        cur = cur.parentElement;
+      }
+      if (!fg.fg || !bg) return { found: false };
+      return { found: true, ratio: ratio(fg.fg, bg), fg: fg.fg, bg, large: isLarge(fg), fontWeight: fg.fontWeight, fontSize: fg.fontSize }; }
     return {
       ghostLink: ratioFor(".ghost-link"),
     };
   });
   for (const [name, c] of Object.entries(calendarChecks)) {
-    if (!c.found) { record(`contrast-${name}-on-calendar`, false, { found: false, note: "selector not present on /calendar (no rows on dev scratch)" }); continue; }
+    if (!c.found) { record(`contrast-${name}-on-soldiers`, false, { found: false, note: "selector not present on /soldiers/1 (record may not exist on dev scratch)" }); continue; }
     const threshold = c.large ? 3.0 : 4.5;
-    record(`contrast-${name}-on-calendar`, c.ratio >= threshold, { ratio: c.ratio?.toFixed(2), threshold, fontWeight: c.fontWeight });
+    record(`contrast-${name}-on-soldiers`, c.ratio >= threshold, { ratio: c.ratio?.toFixed(2), threshold, fontWeight: c.fontWeight });
   }
 
   await browser.close();
