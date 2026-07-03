@@ -76,3 +76,44 @@ func TestFoldout_TriggerAttrsPassThrough(t *testing.T) {
 		t.Errorf("expected aria-current to pass through; got:\n%s", got)
 	}
 }
+
+// TestFoldout_PanelResponsiveSizing locks in the responsive
+// sizing contract documented in issue #288. The panel class
+// must carry BOTH a floor (min-w-[14rem]) so the menu items
+// stay readable on wide screens AND a cap (max-w-[calc(100vw-2rem)])
+// so the panel can never overflow the viewport on narrow
+// screens. This is the same three-cap pattern as
+// .floating-nav-panel (internal/templates/layout.templ:129) —
+// preferred width, min floor, max cap.
+//
+// If a future change strips the max-w token, this test fails.
+// The CSS-layer enforcement (html[data-layout-mode=split-screen]
+// .foldout-panel rule) lives in frontend/tailwind.css and is
+// covered by a separate assertion in internal/templates/layout_test.go.
+func TestFoldout_PanelResponsiveSizing(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Foldout("Share", "layout.share.menu", nil).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	wantSubstrings := []string{
+		`foldout-panel`,
+		`min-w-[14rem]`,
+		`max-w-[calc(100vw-2rem)]`,
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(got, want) {
+			t.Errorf("rendered foldout panel missing required responsive-sizing class %q (issue #288)\nfull render:\n%s", want, got)
+		}
+	}
+
+	// Regression net: confirm the min-w floor was not removed
+	// by the responsive cap. The cap is additive, not a
+	// replacement — losing the floor lets the panel collapse
+	// below the 14rem threshold on wide screens and break
+	// the menu-item readability contract.
+	if !strings.Contains(got, `min-w-[14rem]`) {
+		t.Errorf("foldout panel must keep its min-w-[14rem] floor on wide screens; the max-w cap is additive (issue #288)")
+	}
+}
