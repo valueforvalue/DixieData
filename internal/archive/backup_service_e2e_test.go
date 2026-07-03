@@ -174,7 +174,7 @@ func readManifestFromZip(zr *zip.ReadCloser) (BackupManifest, error) {
 		if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
 			return BackupManifest{}, err
 		}
-		return manifest, nil
+		return NormalizeManifestBackwardsCompat(manifest), nil
 	}
 	return BackupManifest{}, fmt.Errorf("manifest.json not found in archive")
 }

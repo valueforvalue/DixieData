@@ -172,12 +172,13 @@ Consequences §Negative ("the label is not a hard gate").
 ### Alt 2: Continuous promotion (every commit lands on main)
 
 What modern CI/CD does for trunk-based development. Rejected
-because DixieData's release line is `v1.2.N` per
-`CurrentSchemaVersion`; the tagged release is a meaningful
-boundary that breaks if dev flows continuously into main. The
-`v{MAJOR}.{U}.{N}` split that issue #266 proposes is the
-mid-ground that would unlock continuous promotion — that ADR
-is its own future.
+because DixieData's release line was historically `v1.2.N`
+per `CurrentSchemaVersion`; the tagged release was a
+meaningful boundary that breaks if dev flows continuously
+into main. The `v{MAJOR}.{U}.{N}` split that issue #266
+shipped in commit 5a297a6 (this ADR accepted on 2026-07-03)
+is the mid-ground that unlocks cadence-driven promotion —
+tracked as path (b) under "When does promotion happen?" above.
 
 ### Alt 3: Manual `release-github.ps1` (current flow) + better docs
 
@@ -258,10 +259,13 @@ the steps in code (executable) rather than prose.
 
 ### Open questions
 
-1. **Tag naming.** Today's tags are `v1.2.{N}`. Should
-   pre-promotion tags (the base-ref for in-place-safety) be
-   different, e.g. `v1.2.{N}-pre` for the pre-promotion
-   state? Decide before first `make promote` run.
+1. **Tag naming.** Today's tags are `v1.1.{N}` (the
+   v{MAJOR}.{U}.{N} shape shipped in commit 5a297a6 per
+   issue #266 — U=1 implicit for legacy v1.2.N releases).
+   Should pre-promotion tags (the base-ref for
+   in-place-safety) be different, e.g. `v1.1.{N}-pre` for
+   the pre-promotion state? Decide before first
+   `make promote` run.
 2. **Rollback after a failed in-place update.** ADR 0007 +
    ADR 0001 cover the BEFORE-update state (restore points)
    and the change-shape contracts. They don't cover the
@@ -298,10 +302,22 @@ regression is its first run)
 - [`AGENTS.md`](../../AGENTS.md) §Branch policy — the maintainer
   rule this ADR codifies
 - [`docs/RELEASING.md`](../RELEASING.md) — release mechanics
-  this ADR composes with (will expand in a follow-up commit)
+  this ADR composes with (rewritten in commit e4f6a97 to
+  cover the v{MAJOR}.{U}.{N} shape + three-counter bump
+  script; per this ADR's "Files this ADR will touch"
+  follow-up)
 - [`docs/agents/build-protocol.md`](../agents/build-protocol.md)
   §5 — canonical build procedure
-- Issue #266 — `v{MAJOR}.{U}.{N}` version split (the future
-  work that would unlock cadence-driven promotion)
+- Issue #266 — `v{MAJOR}.{U}.{N}` version split (shipped in
+  commit 5a297a6; the cadence-driven promotion that this
+  split unlocks is path (b) of "When does promotion happen?")
 - Issue #255 — Support & Diagnostics move (unrelated; not
   this ADR; surfaced during the same sweep)
+- Issue #293 — CLI + UI version emit switched to new shape
+  (commit e807297)
+- Issue #294 — bump-version.ps1 + release tag use new shape
+  (commits 011173f + e4f6a97)
+- Issue #295 — this doc update (RELEASING.md + ADR 0008 +
+  CONTEXT.md)
+- Issue #296 — `BackupManifest` carries U + N explicitly
+  (commit forthcoming)

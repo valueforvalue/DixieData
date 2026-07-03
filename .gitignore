@@ -120,3 +120,10 @@ audit/manual-walk-report.json
 # docs/historical/renderings/ when the retention rule fires.
 docs/renderings/*/pre-iteration.pdf
 docs/renderings/*/round-*.pdf
+
+# Release state sidecar JSONs written by
+# `scripts/bump-version.ps1 -BumpUpdateFlow`. Each U bump archives
+# the previous sequence's last N here so a future U-bump can be
+# reviewed. These are operational artifacts; the release line
+# itself lives in internal/versioninfo/versioninfo.go (tracked).
+.release-state/
