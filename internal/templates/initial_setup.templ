@@ -41,7 +41,7 @@ templ InitialSetupView(form viewmodel.InitialSetupForm) {
 						<input type="text" name="birth_year" value={ form.BirthYear } inputmode="numeric" maxlength="4" class="field-input" autocomplete="bday-year" id="ef-birth_year"/>
 					</div>
 					if form.PrefixPreview != "" {
-						<div class="responsive-span-2 rounded-2xl border border-sepia-500/[0.45] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
+						<div class="responsive-span-2 rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04] px-4 py-3 text-sm text-slate-600">
 							New ID prefix: <strong class="text-[#22303d]">{ form.PrefixPreview }</strong>
 						</div>
 					}

@@ -240,7 +240,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 								list="suffix-suggestions"
 								class="field-input" placeholder="Jr." id="ef-suffix"/>
 						</div>
-						<div class="responsive-span-2 col-span-2 rounded-2xl border border-sepia-500/[0.24] bg-[rgba(36,48,61,0.04)] p-4" data-entry-type-special>
+						<div class="responsive-span-2 col-span-2 rounded-2xl border border-sepia-500/[0.24] bg-ink-deep/[0.04] p-4" data-entry-type-special>
 							<div class="mb-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Person Record Link</p>
 								<p class="mt-1 text-sm text-slate-600">Person records stay anchored to a soldier record for navigation, merge review, and comparisons.</p>
@@ -401,7 +401,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 									<p data-live-count-display="biography" class="font-medium text-slate-600">0 chars</p>
 								</div>
 							</div>
-							<details class="overflow-hidden rounded-2xl border border-sepia-500/[0.24] bg-[rgba(36,48,61,0.04)]">
+							<details class="overflow-hidden rounded-2xl border border-sepia-500/[0.24] bg-ink-deep/[0.04]">
 								<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 									<div>
 										<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Advanced PDF Excerpt Override</p>
@@ -511,7 +511,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 					<div class="layout-mode-summary">
 						<span>Current mode:</span>
 						<strong data-layout-mode-status>Relaxed</strong>
-						<span class="rounded-full border border-sepia-500/[0.24] bg-[rgba(36,48,61,0.04)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" data-layout-mode-preference-label>Auto</span>
+						<span class="rounded-full border border-sepia-500/[0.24] bg-ink-deep/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" data-layout-mode-preference-label>Auto</span>
 					</div>
 					<p class="mt-2 text-xs text-slate-500">The same preference also appears in the global Menu so you can change it from anywhere.</p>
 				</div>
@@ -1017,7 +1017,7 @@ templ SearchPreviewContent(s viewmodel.PersonRecord) {
 			</div>
 		</div>
 		if strings.TrimSpace(s.Notes) != "" {
-			<div class="rounded-2xl border border-sepia-500/[0.3] bg-[rgba(36,48,61,0.04)] px-4 py-4">
+			<div class="rounded-2xl border border-sepia-500/[0.3] bg-ink-deep/[0.04] px-4 py-4">
 				<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Notes Preview</p>
 				<p class="mt-2 text-sm leading-6 text-slate-600">{ previewText(s.Notes, 260) }</p>
 			</div>
