@@ -5,7 +5,7 @@
 //
 //   dixiedata migrate status
 //   dixiedata migrate up
-//   dixiedata migrate down <version>          (intentionally not shipped; see note)
+//   dixiedata migrate down <version> [--yes] [--force-irreversible]
 //   dixiedata backup list [--json]
 //   dixiedata backup prune [--keep-last N]
 //   dixiedata restore point list [--json]
@@ -20,12 +20,13 @@
 //   --data-dir PATH    override the data dir (default: appdata.DefaultDir())
 //   --json             stable JSON envelope
 //
-// migrate down is NOT shipped yet: the schema-version-down path
-// in internal/db/migrate is "best-effort, may not undo all
-// changes", and the CLI would need a fresh --yes guard plus a
-// pre-migration snapshot. Phase 6 ships status + up (which is
-// the same as opening the DB; applySchema short-circuits if
-// user_version >= CurrentSchemaVersion).
+// migrate down is shipped (issue #273 PR 2). The runner refuses
+// without --yes and refuses any path that crosses an Irreversible
+// block (per docs/migrations/reversibility.md). --force-irreversible
+// emits a "what was lost" manifest for every Irreversible block in
+// the path but does NOT bypass the refusal (per design decision Q2).
+// Phase 6 ships status + up (which is the same as opening the DB;
+// applySchema short-circuits if user_version >= CurrentSchemaVersion).
 //
 // restore point create accepts --root PATH so the CLI can
 // pre-import snapshot at a SIBLING of the data dir
@@ -38,6 +39,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -79,6 +81,7 @@ const (
 	// migrate
 	AdminMigrateStatus
 	AdminMigrateUp
+	AdminMigrateDown
 	// backup
 	AdminBackupList
 	AdminBackupPrune
@@ -110,6 +113,19 @@ type AdminOptions struct {
 	ConfigValue     string // <value> positional (config set)
 	Follow          bool   // --follow (logs tail)
 	TailLines       int    // --lines N (logs tail, default 100)
+	// Yes is the destructive-operation confirmation flag for
+	// commands like migrate down that mutate the schema. Without
+	// --yes the runner prints a refusal and exits 1.
+	Yes bool
+	// TargetVersion is the schema version target for migrate down.
+	// Negative means "no target supplied" (the runner will refuse
+	// to proceed).
+	TargetVersion int
+	// ForceIrreversible is the audit's design-decision Q2 flag:
+	// when set, the runner emits a "what was lost" manifest for
+	// every Irreversible block in the path but does NOT bypass
+	// the refusal. Documented at docs/migrations/reversibility.md.
+	ForceIrreversible bool
 	Writer          io.Writer
 	App             *App
 }
@@ -140,15 +156,42 @@ func ParseAdminArgs(args []string) (AdminOptions, error) {
 	case "migrate":
 		opts.Kind = AdminMigrate
 		if len(args) < 2 {
-			return opts, fmt.Errorf("migrate requires a subcommand: status, up")
+			return opts, fmt.Errorf("migrate requires a subcommand: status, up, down")
 		}
 		switch args[1] {
 		case "status":
 			opts.Action = AdminMigrateStatus
 		case "up":
 			opts.Action = AdminMigrateUp
+		case "down":
+			opts.Action = AdminMigrateDown
+			// Args: down <version> [--yes] [--force-irreversible]
+			// <version> is positional. --yes and
+			// --force-irreversible are flags. We walk the rest
+			// of args[2:] and pull out the version + flags.
+			if len(args) < 3 {
+				return opts, fmt.Errorf("migrate down requires a target version: dixiedata migrate down <version> [--yes] [--force-irreversible]")
+			}
+			target, err := strconv.Atoi(args[2])
+			if err != nil {
+				return opts, fmt.Errorf("migrate down: target version must be an integer, got %q", args[2])
+			}
+			if target < 0 {
+				return opts, fmt.Errorf("migrate down: target version must be >= 0, got %d", target)
+			}
+			opts.TargetVersion = target
+			for _, flag := range args[3:] {
+				switch flag {
+				case "--yes":
+					opts.Yes = true
+				case "--force-irreversible":
+					opts.ForceIrreversible = true
+				default:
+					return opts, fmt.Errorf("migrate down: unknown flag %q (want --yes, --force-irreversible)", flag)
+				}
+			}
 		default:
-			return opts, fmt.Errorf("unknown migrate subcommand: %q (want status, up)", args[1])
+			return opts, fmt.Errorf("unknown migrate subcommand: %q (want status, up, down)", args[1])
 		}
 	case "backup":
 		opts.Kind = AdminBackup
@@ -341,6 +384,8 @@ func RunAdmin(ctx context.Context, opts AdminOptions) (int, error) {
 		return runAdminMigrateStatus(ctx, opts)
 	case AdminMigrateUp:
 		return runAdminMigrateUp(ctx, opts)
+	case AdminMigrateDown:
+		return runAdminMigrateDown(ctx, opts)
 	case AdminBackupList:
 		return runAdminBackupList(ctx, opts)
 	case AdminBackupPrune:
@@ -470,9 +515,135 @@ func runAdminMigrateUp(ctx context.Context, opts AdminOptions) (int, error) {
 	return 0, nil
 }
 
+// runAdminMigrateDown applies the inverse of every block in the
+// schema migrations slice between `current` and `target`. The
+// runner refuses without --yes (per design decision) and refuses
+// any path that crosses an Irreversible block (per the audit at
+// docs/migrations/reversibility.md). The --force-irreversible flag
+// emits a "what was lost" manifest for the Irreversible blocks in
+// the path but does NOT bypass the refusal (per design decision Q2).
+//
+// The runner is read-only on the schema (the runner only WRITES
+// when --yes is supplied and the path is fully Reversible /
+// PartiallyReversible). The runner is destructive on the data
+// plane: any row whose pre-state was lost during the original
+// forward migration is unrecoverable post-down (the manifest
+// enumerates which blocks have which data-loss profile).
+func runAdminMigrateDown(ctx context.Context, opts AdminOptions) (int, error) {
+	app := opts.App
+
+	if !opts.Yes {
+		fmt.Fprintln(opts.Writer, "refusing: --yes is required for migrate down (destructive operation)")
+		return 1, fmt.Errorf("migrate down refused: --yes is required")
+	}
+
+	database, err := db.Open(app.dataDir)
+	if err != nil {
+		return 2, fmt.Errorf("open db: %w", err)
+	}
+	defer database.Close()
+
+	current, err := queryUserVersion(database.Conn())
+	if err != nil {
+		return 2, fmt.Errorf("read user_version: %w", err)
+	}
+
+	target := opts.TargetVersion
+	if target >= current {
+		fmt.Fprintf(opts.Writer, "no-op: current schema is v%d, target is v%d (down only)\n", current, target)
+		return 0, nil
+	}
+
+	// Compute the slice window (mirrors the applyDownSchema
+	// logic). The delta is capped at len(migrations) because the
+	// slice has 17 entries but the schema version is 59.
+	delta := current - target
+	migs := db.Migrations()
+	if delta > len(migs) {
+		delta = len(migs)
+	}
+	// Build a manifest of every block the runner will attempt.
+	// Print it before the runner fires so the operator sees the
+	// impact list regardless of whether the runner succeeds or
+	// refuses.
+	window := migs[len(migs)-delta:]
+	if opts.ForceIrreversible {
+		fmt.Fprintln(opts.Writer, "schema down manifest (--force-irreversible set; refusal still applies):")
+	} else {
+		fmt.Fprintln(opts.Writer, "schema down manifest:")
+	}
+	irreversibleCount := 0
+	for _, m := range window {
+		marker := " "
+		switch m.Reversibility {
+		case db.Reversible:
+			marker = "R"
+		case db.PartiallyReversible:
+			marker = "P"
+		case db.Irreversible:
+			marker = "I"
+			irreversibleCount++
+		}
+		fmt.Fprintf(opts.Writer, "  [%s] %s: %s\n", marker, m.ID, m.Reason)
+	}
+	if irreversibleCount > 0 {
+		fmt.Fprintf(opts.Writer, "\n%d irreversible block(s) in path; runner will refuse.\n", irreversibleCount)
+		fmt.Fprintln(opts.Writer, "to recover, restore the pre-downgrade snapshot via:")
+		fmt.Fprintln(opts.Writer, "  dixiedata restore point create --note \"before migrate down\"")
+		fmt.Fprintln(opts.Writer, "  ... then: dixiedata migrate down <target> --yes")
+	}
+
+	// Run the inverse. applyDownSchema refuses via
+	// ErrDowngradeRefused when the path crosses an Irreversible
+	// block; the runner propagates the refusal without
+	// bypassing.
+	if err := db.ApplyDownSchema(database, target); err != nil {
+		if errors.Is(err, db.ErrDowngradeRefused) {
+			fmt.Fprintf(opts.Writer, "\nrefused: %v\n", err)
+			return 1, err
+		}
+		return 2, fmt.Errorf("apply downgrade: %w", err)
+	}
+
+	if opts.JSON {
+		return 0, writeJSON(opts.Writer, map[string]any{
+			"before":             current,
+			"after":              target,
+			"moved":              current - target,
+			"force_irreversible": opts.ForceIrreversible,
+			"manifest":           manifestForJSON(window),
+		})
+	}
+	fmt.Fprintf(opts.Writer, "\nschema before = v%d\n", current)
+	fmt.Fprintf(opts.Writer, "schema after  = v%d\n", target)
+	return 0, nil
+}
+
+// manifestForJSON flattens the migration window into a slice of
+// struct values for the JSON envelope. Each entry carries the
+// block ID, reversibility class label, and one-line reason.
+type manifestEntry struct {
+	ID             string `json:"id"`
+	Reversibility  string `json:"reversibility"`
+	Reason         string `json:"reason"`
+}
+
+func manifestForJSON(window []db.Migration) []manifestEntry {
+	out := make([]manifestEntry, 0, len(window))
+	for _, m := range window {
+		out = append(out, manifestEntry{
+			ID:            m.ID,
+			Reversibility: m.Reversibility.String(),
+			Reason:        m.Reason,
+		})
+	}
+	return out
+}
+
 // --- backup ---
 
 // runAdminBackupList prints the retained backup index
+// (pre-schema-upgrade snapshots). Read-only.
 // (pre-schema-upgrade snapshots). Read-only.
 func runAdminBackupList(ctx context.Context, opts AdminOptions) (int, error) {
 	app := opts.App
