@@ -13,6 +13,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Print-config "Show details" toggle for stale-template warnings**
+  (issue #259). The JS handler at `frontend/app.js:4308-4315`
+  was wired — click listener on `[data-export-templates-warnings-toggle]`
+  that toggled the wrap's `hidden` class and flipped
+  `aria-expanded` + the button label — but no element on
+  the page had the selector. Result: clicking the warning
+  toast for a stale saved template showed only the count;
+  the underlying list of stale filter values was invisible
+  to the user (had to open devtools). Fixed by adding the
+  toggle button + wrap + live `<ul>` in
+  `internal/templates/partials/print_config_modal.templ:49-53`
+  (the modal renders on `/browse` and `/share/exports`
+  since #265 moved Share exports into its own page).
+  Regression net: new `audit/smoke_stale_template_warnings.mjs`
+  asserts the toggle + wrap + list markup on both pages
+  and exercises click-show / click-hide in a real browser
+  (11/11 green).
+
 - **Initial-setup submit feedback** (issue #263). The `/setup`
   credentials form already had `data-dixie-submit` on the
   form and `data-busy-label="Saving…"` on the submit button
