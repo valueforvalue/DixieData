@@ -50,7 +50,7 @@ templ Foldout(triggerLabel string, menuID string, triggerAttrs templ.Attributes)
 			role="menu"
 			aria-label={ triggerLabel + " menu" }
 			data-foldout-panel={ menuID }
-			class="foldout-panel absolute right-0 top-full z-50 mt-2 hidden min-w-[14rem] flex-col gap-1 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-2 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
+			class="foldout-panel absolute right-0 top-full z-50 mt-2 hidden min-w-[14rem] max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.96)] p-2 shadow-[0_24px_44px_rgba(23,33,43,0.28)]"
 		>
 			{ children... }
 		</ul>
