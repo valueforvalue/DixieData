@@ -1017,6 +1017,110 @@ synthetic dispatch.
 **Real example:**
 - `d8f73b7 fix(foldout): outside-click handler closed the panel the trigger just opened (issue #283 followup)`
 
+### 3.7 [FUTURE-NAV-AVOID] installFoldouts runs once on DOMContentLoaded — triggers rendered later by htmx have no listener
+
+**Symptom:** First click on a top-nav foldout trigger (e.g.
+"Share") on a fresh cold-start Wails launch does nothing.
+After navigating to any other page and back, the click
+works. Differs from §3.6: the click never reaches any
+trigger handler (no `aria-expanded` flip, no `hidden`
+class change), and the bug only reproduces when the
+app boots directly into the page containing the
+trigger (not when the user navigates in from another
+page).
+
+**Why it happens:** `installFoldouts()` is called from the
+`DOMContentLoaded` handler in `app.js`. On cold start,
+`DOMContentLoaded` fires once on the initial response.
+The DixieData routing layer maps `GET /` to
+`handleCalendar`, so the app boots onto `/calendar`
+(the same page that hosts the Share trigger). But
+the *initial* response on Wails's first page load
+renders the layout/calendar in a state where the
+trigger element is not yet in the DOM when
+`installFoldouts` runs — verified with a gated
+`[DEBUG-foldout-race-install]` console probe that
+fires unconditionally on every `installFoldouts` call:
+
+```
+[DEBUG-foldout-race-install] fired { n: 1, pathname: "/", triggerCount: 0 }
+```
+
+Subsequent htmx swaps that re-render the trigger
+into the body do NOT re-run `installFoldouts` —
+`initializeDynamicContent` is the htmx re-init hook
+wired to `htmx:load`, but `installFoldouts` was
+never added to that function. So the trigger sits
+in the DOM with no click listener until the user
+navigates to a different page (which triggers a
+full body swap) and back (which re-runs the
+DOMContentLoaded path with the trigger now
+present at install time).
+
+**This is documented as a future-nav-avoid pattern**
+because any future foldout trigger added to the
+top-nav will ship the same bug unless (a) the
+install function is idempotent and (b) the
+function is added to `initializeDynamicContent`.
+The Share foldout was the only consumer at the
+time of discovery; the next foldout (Browse
+filters, Tags picker, anything) will hit the
+same gap unless this recipe is followed.
+
+**Find it:** `grep -n "installFoldouts" frontend/app.js` —
+verify the function is called from BOTH
+`document.addEventListener("DOMContentLoaded", ...)`
+AND `initializeDynamicContent`. If it's only in
+the first, the cold-start bug will reproduce for
+the next foldout that lands in a body that htmx
+swaps in.
+
+**Repro:**
+1. `build/bin/dixiedata.exe` — cold launch.
+2. App lands on `/calendar` (the default route).
+3. Click "Share" in the top-nav. Nothing happens.
+4. Navigate to `/browse`, then back to `/calendar`.
+5. Click "Share". Panel opens normally.
+
+**Fix:** Two changes in `frontend/app.js`:
+  1. Make `installFoldouts` idempotent. Guard the
+     document-level click handler (for outside-click
+     close) with `if (!window.__foldoutDocHandlerBound)`
+     so it's bound exactly once across re-runs. Guard
+     each per-trigger handler with a `WeakSet` of
+     already-bound trigger elements so re-runs don't
+     double-attach (a double-bind would call
+     `toggle()` twice per click — open() then close()
+     — and the panel would flash open and immediately
+     close, which is exactly the §3.6 symptom and was
+     the failure mode of my first attempt at this
+     fix).
+  2. Add `installFoldouts()` to
+     `initializeDynamicContent` so it re-runs on
+     every `htmx:load`. The function then attaches
+     listeners to the newly-rendered trigger and the
+     document handler stays bound (one-time guard).
+  3. Expose a `window.__foldoutProbeReinit` handle
+     for the smoke regression net (no production
+     behaviour change; cost is one function
+     reference on `window`).
+
+**Playwright masked this bug** for the same reason
+§3.6 is masked: Playwright's `page.goto(...)`
+loads the URL directly, so by the time the test
+clicks, htmx has had a chance to do its initial
+swap and the trigger has a listener. The
+regression net in `audit/smoke_foldout_nav.mjs`
+Step 10 explicitly forces a re-install via
+`window.__foldoutProbeReinit` (added in the same
+commit) and asserts the click still toggles
+correctly. Future foldout tests must include
+this re-install step OR verify the install counter
+incremented when the trigger is rendered late.
+
+**Real example:**
+- (pending) `fix(foldout): re-init foldouts on htmx swap (issue #285)`
+
 ---
 
 ## 4. Go backend bugs
@@ -2113,6 +2217,7 @@ Quick reference table for "the page does X wrong, where's the bug":
 | Form submits, server runs, JS post-response ignored | Section 1.11 | `data-dixie-submit` missing |
 | Submit OK but target panel never refreshes | Section 3.5 | stale status panel after submit |
 | Top-nav foldout first click does nothing | Section 3.6 | outside-click handler closes panel the trigger just opened (bubble-phase race) |
+| Top-nav foldout click does nothing on cold start, works after nav | Section 3.7 | installFoldouts ran on `/` with triggerCount: 0; htmx swap did not re-init |
 | Double-click produces duplicate job | Section 4.11 | dedup helper / in-flight slot |
 | Toast shows mojibake | Section 4.12 | HTTP/1.x header charset |
 | 405 from a clickable form | Section 4.13 | wrong HTTP method on route |

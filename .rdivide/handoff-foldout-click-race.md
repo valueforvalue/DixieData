@@ -1,13 +1,15 @@
 # Handoff — Foldout-trigger-click-race bug + Wails-runtime smoke harness (snapshot 2026-07-02)
 
-> **Status: ACTIVE WORK.** Captures the state of the
+> **Status: ACTIVE WORK — instrumentation in place, awaiting
+> Wails-runtime trace.** Captures the state of the
 > foldout-click-race investigation and the Wails-runtime
-> smoke harness blocker. Branch: `dev` at `c06c452` (pushed,
-> clean). Open issue: #285 (demoted to `needs-triage`).
+> smoke harness blocker. Branch: `dev` at `6f0dd41` (pushed,
+> clean). Open issues: #285 (Wails-runtime smoke harness),
+> #286 (cli-coverage slice panic — fixed in 6f0dd41).
 
-Date: 2026-07-02
+Date: 2026-07-02 (rev 2)
 Branch: `dev`
-Last commit: `c06c452 docs(common-bugs): document foldout-trigger-click-race for future top-nav revamp`
+Last commit: `6f0dd41 fix(cli): clamp case-window slice in scanImplementedSubcommands (issue #286)`
 Open issues tied to this work: #285 (Wails-runtime smoke harness)
 
 ## Where we are
@@ -61,7 +63,7 @@ The foldout-trigger-click-race bug is **fixed and shipped**:
   pattern, paired with the guard idiom so a future reviewer sees the fix
   at the same place they find the candidate.
 
-### Wails-runtime verification (issue #285) — BLOCKED
+### Wails-runtime verification (issue #285) — BLOCKED, repro requested
 
 The foldout bug was confirmed end-to-end in Playwright (38/38 smoke
 assertions pass, including the 6 new first-click assertions). The user
@@ -69,9 +71,89 @@ also ran a manual diagnostic in the Wails dev console in the earlier
 session — the third diagnostic run (after the fix) showed the panel
 correctly open with all items in viewport.
 
-However, we have **not confirmed the fix in the real Wails runtime
-automatically**. The attempt to build a Wails-runtime smoke harness
-(issue #285) hit a blocker:
+**As of rev 2 (2026-07-02):** user reports the bug is still occurring
+on a different computer. The handoff's "fix shipped" is contested by
+a fresh symptom report. We do NOT yet have a Wails-runtime trace to
+disprove the bubble-phase fix in that environment.
+
+**Instrumentation landed (uncommitted as of this rev — see "Diff in
+this rev" at the bottom):** `[DEBUG-foldout-race]` console.log probes
+gated behind `window.__foldoutRaceTrace` in `frontend/app.js`:
+
+| Probe | Where | What it logs |
+|---|---|---|
+| `trigger-click` | trigger's own click handler | `t`, `phase`, `target` (menuID), `isOpenBefore` |
+| `open-called` | `open()` sentinel | `t`, `menuID`, `panelHiddenAfter` |
+| `close-called` | `close()` sentinel | `t`, `menuID`, `returnFocus`, `panelHiddenAfter` |
+| `document-click` | document-level outside-click handler | `t`, `phase`, `targetTag`, `targetIsTrigger`, `targetTriggerID` |
+
+The probes are **gated** behind `window.__foldoutRaceTrace = true` so
+the Playwright probe (38/38) is unaffected. The gate is set in the
+Wails dev console (or via a bookmarklet) at the time of the repro, not
+at boot.
+
+### How to capture the Wails trace (the repro recipe)
+
+1. On the computer where the bug reproduces, launch the latest Wails
+   binary (`build/bin/DixieData.exe` at 18:19:28, or a fresh
+   `make debug` if older). Verify footer shows commit `6f0dd41` or
+   newer — older binaries will not contain the `[DEBUG-foldout-race]`
+   probes.
+2. Open WebView2 DevTools (right-click on the app window > Inspect,
+   or Ctrl+Shift+I). Switch to the **Console** tab.
+3. Paste at the console prompt:
+   ```js
+   window.__foldoutRaceTrace = true;
+   console.log("[DEBUG-foldout-race] enabled");
+   ```
+4. Navigate to a non-`/share` page (e.g. `/calendar`).
+5. Click the **Share** trigger once. The bug should reproduce (no
+   visible panel).
+6. Copy the entire console output, including the `[DEBUG-foldout-race]`
+   lines, plus the timestamp of the click. Send back.
+
+### What we expect to see (falsifiable predictions)
+
+- **Prediction A (bubble-phase race IS the cause in Wails too):**
+  `trigger-click` and `document-click` both fire for the same click;
+  `open-called` and `close-called` fire in that order; `close-called`
+  has no user-initiated second click. → The fix is incomplete; the
+  WebView2 outside-click handler runs in a different event phase than
+  Chromium and the `trigger === target` guard does not protect.
+
+- **Prediction B (event phase is normal, but a DIFFERENT handler is
+  closing the panel):** `open-called` fires, no `close-called` from
+  our handler, yet the panel is hidden. → Some other code path is
+  hiding the panel (sibling-close loop? a focus handler? a CSS
+  class flip?). Need to add a `MutationObserver` on the panel's
+  `class` attribute in the next round.
+
+- **Prediction C (the trigger never receives the click):** No
+  `trigger-click` log at all, but a `document-click` log with
+  `targetIsTrigger: true`. → Wails WebView2 is firing the click on
+  document but the trigger's bubble handler is being short-circuited
+  (e.g. by a `stopPropagation` somewhere up the chain, or by
+  pointer-events being disabled on the trigger).
+
+The trace determines which branch we go down next.
+
+### Why we are NOT changing the fix yet
+
+The Playwright 38/38 probe is a deterministic, agent-runnable loop
+that exercises the same JS code path WebView2 runs. If the fix is
+incomplete in Wails but works in Chromium, that is a WebView2-specific
+divergence, not a logic bug — and the right fix is determined by the
+Wails trace, not by guessing. The instrumentation is the minimum
+instrument to disambiguate; shipping a guess-fix now risks masking
+the real divergence and pushing the symptom into a different shape.
+
+### Why we are NOT closing #285 yet
+
+#285 (Wails-runtime smoke harness) is the gap that lets us automate
+this kind of trace. The four options in the original handoff still
+hold. Option 3 (UIA automation) and option 4 (accept Playwright as
+sufficient) are both viable once we have a Wails trace confirming
+what the divergence actually IS.
 
 - The standard mechanism — `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`
   env var — does NOT work on Wails v2.12.0. Wails's `setupChromium` (in
@@ -131,10 +213,14 @@ pick up:
 
 ## What the next agent should know
 
-1. **The foldout fix is in.** `frontend/app.js:2339` has the guard
-   `if (trigger === target || trigger.contains(target)) continue;`. The
-   binary at `build/bin/DixieData.exe` (built 16:28:58) contains the fix
-   at byte offset 26316006.
+1. **The foldout fix is in source, but unverified in Wails runtime.**
+   `frontend/app.js:2339` has the guard
+   `if (trigger === target || trigger.contains(target)) continue;`.
+   The Playwright 38/38 probe is green. The user reports the bug
+   still reproduces on a different computer — needs a Wails trace
+   (see the "How to capture the Wails trace" section) to determine
+   whether the fix is incomplete, the symptom is a different bug,
+   or the WebView2 cache was stale.
 
 2. **If a future user reports "foldout doesn't open on first click":**
    Verify the Wails binary is the latest build (check footer for
@@ -163,9 +249,27 @@ pick up:
 | Path | What | Commit |
 |---|---|---|
 | `frontend/app.js` | The fix (line 2339) | `d8f73b7` |
+| `frontend/app.js` | `[DEBUG-foldout-race]` probes (gated) | uncommitted (rev 2) |
 | `audit/smoke_foldout_nav.mjs` | Regression net, 38 assertions | `7f4a370` |
 | `docs/COMMON_BUGS.md` | §3.6 entry + §11 table row | `c06c452` |
 | `docs/agents/bug-pattern-grep.md` | §9 grep recipe | `c06c452` |
+| `internal/appshell/cli_debug.go` | caseWindowChars clamp | `6f0dd41` |
+| `internal/appshell/cli_debug_test.go` | ShortBody regression test | `6f0dd41` |
+
+## Diff in this rev (rev 2, 2026-07-02)
+
+Uncommitted change: 6 `[DEBUG-foldout-race]` console.log probes
+gated behind `window.__foldoutRaceTrace` in `frontend/app.js`. The
+probes are diagnostic only — no behavior change when the gate is
+unset (Playwright 38/38 unchanged). The user captures a Wails trace
+on their other computer per the recipe above; the trace decides
+which fix branch we take next.
+
+**Do NOT commit the probes as a permanent fix.** They are
+diagnostic throwaway code per `docs/COMMON_BUGS.md` discipline and
+should be removed (single `grep -n "DEBUG-foldout-race" frontend/app.js`
+finds all 6 sites) once the Wails trace is in and the real fix is
+identified.
 
 ## Untouched dirs (pre-existing untracked, leave alone)
 

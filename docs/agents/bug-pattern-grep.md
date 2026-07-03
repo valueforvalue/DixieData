@@ -287,6 +287,69 @@ NOT enough because a click on the trigger itself has
 
 ---
 
+## 10. `foldout-install-on-htmx-swap` (§3.7, FUTURE-NAV-AVOID)
+
+**Pattern under audit:** any new top-nav foldout trigger
+that uses the `data-foldout-trigger` / `data-foldout-panel`
+ARIA shape. The trigger's click listener is wired by
+`installFoldouts()`, which is called from TWO places:
+`document.addEventListener("DOMContentLoaded", ...)` (cold
+boot) and `initializeDynamicContent` (every `htmx:load`).
+A new foldout that relies on the init must verify both
+hooks run for its trigger — the §3.7 cold-start bug
+appears when the trigger is rendered by an htmx swap
+that happens AFTER `DOMContentLoaded` fires on the
+initial page.
+
+**Grep 1 — confirm the install function is wired into
+both hooks:**
+
+```bash
+grep -nE 'installFoldouts\(\)|DOMContentLoaded|initializeDynamicContent' frontend/app.js
+```
+
+**What the result means:**
+- The function should appear at minimum 2 times:
+  once inside the `DOMContentLoaded` handler and once
+  inside `initializeDynamicContent`.
+- A new init pattern (e.g. an event-driven component)
+  that mirrors `installFoldouts` must follow the same
+  two-hook rule. See the fix in commit
+  `<pending: fix(foldout): re-init foldouts on htmx
+  swap (issue #285)>` for the established shape.
+
+**Grep 2 — find any new `addEventListener` inside a
+function that lives outside the DOMContentLoaded +
+initializeDynamicContent pair, paired with a trigger
+selector that only appears after an htmx swap:**
+
+```bash
+grep -nE 'data-foldout-trigger|role="menuitem"' frontend/app.js internal/templates/**/*.templ
+```
+
+**What the result means:**
+- Every new `[data-foldout-trigger]` must be in the
+  DOM at the time `installFoldouts` runs, OR the
+  function must be re-runnable on `htmx:load` (which
+  is the established pattern in §3.7).
+- A trigger that's added to the layout but rendered
+  by an htmx swap will be missing its listener on
+  cold start, which is the bug.
+
+**Audit step:** if you add a new foldout to
+`internal/templates/layout.templ`, run the
+`audit/smoke_foldout_nav.mjs` probe in a fresh
+`build/bin/dixiedata.exe` boot. The probe forces a
+re-install via `window.__foldoutProbeReinit` (Step
+10) and asserts the click toggles. If the new
+foldout's trigger isn't reachable from the smoke
+probe, the cold-start bug is reproducing for it.
+
+**Real example:**
+- (pending) `fix(foldout): re-init foldouts on htmx swap (issue #285)`
+
+---
+
 ## How to use this cookbook
 
 1. Before merging a PR, run the greps relevant to the changed

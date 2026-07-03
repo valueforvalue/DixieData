@@ -2198,7 +2198,71 @@
   //     Per the issue's locked decision, ONLY the trigger gets the
   //     active indicator — sub-items stay plain.
   function installFoldouts() {
+    // Idempotency guard. installFoldouts attaches one
+    // document-level click listener for outside-click-to-close
+    // (one per call). Without this guard, the function would
+    // compound listeners on every htmx swap and a single
+    // outside click would close the panel N times. We need
+    // htmx-swap re-runs so the document handler stays bound
+    // after the body is swapped AND so per-trigger handlers
+    // get re-attached to the new trigger DOM nodes that htmx
+    // inserts (old nodes are detached and lose their closures).
+    // The guard keeps the document handler bound once; the
+    // per-trigger loop below re-attaches on every call to pick
+    // up newly-rendered triggers. See issue #285 + handoff:
+    // .rdivide/handoff-foldout-click-race.md.
+    if (!window.__foldoutInstallN) window.__foldoutInstallN = 0;
+    window.__foldoutInstallN++;
+    // Expose a re-init handle for the issue #285 regression
+    // probe. The handle is attached unconditionally so the
+    // smoke test can force a re-install (the same path
+    // htmx:load takes) and assert idempotency end-to-end.
+    // The cost is one function reference on window; the
+    // function itself is the same one htmx:load calls
+    // indirectly via initializeDynamicContent.
+    if (!window.__foldoutProbeReinit) {
+      window.__foldoutProbeReinit = () => installFoldouts();
+    }
+    if (!window.__foldoutDocHandlerBound) {
+      window.__foldoutDocHandlerBound = true;
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        for (const trigger of document.querySelectorAll("[data-foldout-trigger]")) {
+          if (!(trigger instanceof HTMLElement)) continue;
+          // Skip the panel whose trigger owns the click. The
+          // click on the trigger button has target === trigger;
+          // without this guard, the panel that was JUST opened
+          // by the trigger's own click would be immediately
+          // closed by the outside-click handler. See commit
+          // d8f73b7 for the original race fix.
+          if (trigger === target || trigger.contains(target)) continue;
+          const id = trigger.getAttribute("data-foldout-trigger");
+          if (!id) continue;
+          const panel = document.querySelector('[data-foldout-panel="' + id + '"]');
+          if (!(panel instanceof HTMLElement)) continue;
+          if (panel.classList.contains("hidden")) continue;
+          if (panel.contains(target)) continue;
+          panel.classList.add("hidden");
+          trigger.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
     const triggers = document.querySelectorAll("[data-foldout-trigger]");
+    // Per-trigger idempotency: re-running installFoldouts
+    // (e.g. on htmx:load) must not double-attach click
+    // handlers to a trigger. Doubled handlers would call
+    // toggle() twice per click — open() then close() — and
+    // the panel would flash open and immediately close.
+    // The cold-start Wails bug (#285) was traced to a
+    // missing re-init; the smoke regression that would
+    // catch a double-bind is here. See handoff:
+    // .rdivide/handoff-foldout-click-race.md.
+    if (!window.__foldoutBoundTriggers) {
+      window.__foldoutBoundTriggers = new WeakSet();
+    }
     for (const trigger of triggers) {
       if (!(trigger instanceof HTMLElement)) {
         continue;
@@ -2207,10 +2271,19 @@
       if (!menuID) {
         continue;
       }
+      // Skip triggers that already had their per-trigger
+      // listeners attached. installFoldouts is meant to be
+      // re-runnable so newly-rendered triggers (after an
+      // htmx swap) get wired; the existing ones must not be
+      // re-wired or toggle() would fire twice per click.
+      if (window.__foldoutBoundTriggers.has(trigger)) {
+        continue;
+      }
       const panel = document.querySelector('[data-foldout-panel="' + menuID + '"]');
       if (!(panel instanceof HTMLElement)) {
         continue;
       }
+      window.__foldoutBoundTriggers.add(trigger);
       // Single shared click-outside handler closes all open panels
       // so a click that opens a different foldout cleanly closes
       // the first one without two handlers racing.
@@ -2311,42 +2384,6 @@
         trigger.setAttribute("aria-current", "page");
       }
     }
-    // Outside-click closes any open foldout. Bound on document
-    // capture so it sees clicks before the trigger's own handler
-    // runs.
-    document.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      for (const trigger of document.querySelectorAll("[data-foldout-trigger]")) {
-        if (!(trigger instanceof HTMLElement)) continue;
-        // Skip the panel whose trigger owns the click. When the
-        // user clicks the trigger, the trigger's own click handler
-        // (bound directly on the trigger element) runs FIRST in
-        // the bubble phase and calls open() (panel.hidden =
-        // false). The document-level handler then sees the click
-        // bubble up; without this guard, the panel that was
-        // JUST opened by the trigger's click would be immediately
-        // closed by the outside-click handler. The check on
-        // trigger.contains(target) below catches clicks INSIDE
-        // the trigger (e.g. a child icon), but the click on the
-        // trigger button itself has target === trigger, so
-        // contains() returns true and the trigger is skipped —
-        // but the OTHER triggers' panels are NOT skipped, and
-        // the just-opened Share panel is closed by its own click
-        // because the handler iterates ALL triggers.
-        if (trigger === target || trigger.contains(target)) continue;
-        const id = trigger.getAttribute("data-foldout-trigger");
-        if (!id) continue;
-        const panel = document.querySelector('[data-foldout-panel="' + id + '"]');
-        if (!(panel instanceof HTMLElement)) continue;
-        if (panel.classList.contains("hidden")) continue;
-        if (panel.contains(target)) continue;
-        panel.classList.add("hidden");
-        trigger.setAttribute("aria-expanded", "false");
-      }
-    });
   }
 
   // focusSibling moves focus to the next/previous menuitem in the
@@ -2794,6 +2831,19 @@
     initializeBrowseView();
     applyCalendarAnniversaryDensity();
     initializeCopyPathButtons();
+    // installFoldouts is idempotent (guarded by
+    // window.__foldoutDocHandlerBound) so calling it here on
+    // every htmx:load is safe. The per-trigger loop inside
+    // re-attaches click listeners to newly-rendered trigger
+    // elements, which is required because the original DOM
+    // node from cold-start installFoldouts may be detached
+    // by a subsequent htmx swap. Without this, the cold-start
+    // install ran once on "/" with triggerCount: 0 (no
+    // layout nav in the response), and every later trigger
+    // rendered by htmx had no listener until the user
+    // navigated twice. See issue #285 + handoff:
+    // .rdivide/handoff-foldout-click-race.md.
+    installFoldouts();
     document.querySelectorAll("form[data-pdf-pref-scope]").forEach((form) => applyPDFPreferences(form));
   }
 
