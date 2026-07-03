@@ -102,10 +102,10 @@ try {
   });
   record("panel-hidden-initially", panel && panel.hidden === true, panel);
   record("panel-is-ul-with-role-menu", panel && panel.tag === "UL" && panel.role === "menu", { tag: panel && panel.tag, role: panel && panel.role });
-  record("panel-has-4-menuitems", panel && panel.itemCount === 4, { itemCount: panel && panel.itemCount });
+  record("panel-has-3-menuitems", panel && panel.itemCount === 3, { itemCount: panel && panel.itemCount });
   record("menuitems-are-anchors", panel && panel.items.every((i) => i.tag === "A"), { items: panel && panel.items.map((i) => i.tag) });
   record("menuitems-have-distinct-hrefs", panel && new Set(panel.items.map((i) => i.href)).size === panel.items.length, { hrefs: panel && panel.items.map((i) => i.href) });
-  record("menuitems-include-expected-labels", panel && panel.items.map((i) => i.label).join("|") === "Export|Import|Share Queue|Build Share Archive", { labels: panel && panel.items.map((i) => i.label) });
+  record("menuitems-include-expected-labels", panel && panel.items.map((i) => i.label).join("|") === "Export|Import|Share Queue", { labels: panel && panel.items.map((i) => i.label) });
 
   // === Step 3: click opens + focuses first menuitem ===
   console.log("\nStep 3: click trigger + verify open + focus");
@@ -272,25 +272,54 @@ try {
   await page.keyboard.press("Escape");
   await wait(300);
 
-  // === Step 8: deep-link to anchor from menu item ===
-  console.log("\nStep 8: menu item deep-link to /share#export-section");
+  // === Step 8: deep-link to subpage from menu item (issue #284) ===
+  // Pre-#284 the foldout Export menu item deep-linked to
+  // /share#export-section (an in-page anchor on the single
+  // /share landing). Post-#284 it navigates to the
+  // dedicated /share/exports subpage. The 4-item menu
+  // collapsed to 3 (Build is folded into Export).
+  console.log("\nStep 8: menu items navigate to /share subpages (issue #284)");
   await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
   await wait(800);
   await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
   await wait(200);
+  const menuItemCount = await page.evaluate(() => document.querySelectorAll("[data-foldout-panel='layout.share.menu'] [role='menuitem']").length);
+  record("foldout-menu-item-count-is-3", menuItemCount === 3, { menuItemCount });
   // Click Export (first menuitem)
   await page.evaluate(() => {
     const item = document.querySelector("[data-foldout-panel='layout.share.menu'] [role='menuitem']");
     if (item instanceof HTMLElement) item.click();
   });
-  await page.waitForURL(/\/share#export-section$/, { timeout: 5000 }).catch(() => null);
+  await page.waitForURL(/\/share\/exports$/, { timeout: 5000 }).catch(() => null);
   const url = page.url();
-  record("export-menuitem-navigates-to-anchor", /\/share#export-section$/.test(url), { url });
+  record("export-menuitem-navigates-to-subpage", /\/share\/exports$/.test(url), { url });
 
-  // === Step 9: build-share-archive anchor present ===
-  console.log("\nStep 9: anchor #build-share-archive exists on /share");
+  // === Step 9: import menu item navigates to /share/imports subpage ===
+  console.log("\nStep 9: import menu item navigates to /share/imports (issue #284)");
+  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await wait(800);
+  await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
+  await wait(200);
+  await page.evaluate(() => {
+    const items = document.querySelectorAll("[data-foldout-panel='layout.share.menu'] [role='menuitem']");
+    // The Import menu item is the second one (Export, Import, Share Queue).
+    if (items[1] instanceof HTMLElement) items[1].click();
+  });
+  await page.waitForURL(/\/share\/imports$/, { timeout: 5000 }).catch(() => null);
+  const importUrl = page.url();
+  record("import-menuitem-navigates-to-subpage", /\/share\/imports$/.test(importUrl), { url: importUrl });
+
+  // === Step 9.5: build-share-archive anchor present on /share/exports (issue #284) ===
+  // Pre-#284 the Build button lived inline on the /share
+  // landing. Post-#284 it lives on the /share/exports
+  // subpage. The foldout no longer has a "Build Share
+  // Archive" item (folded into Export per the locked
+  // decision).
+  console.log("\nStep 9.5: Build Share Archive button on /share/exports (issue #284)");
+  await page.goto(`http://127.0.0.1:${PORT}/share/exports`, { waitUntil: "networkidle" });
+  await wait(800);
   const buildAnchor = await page.evaluate(() => document.getElementById("build-share-archive") !== null);
-  record("build-share-archive-anchor-present", buildAnchor === true, { present: buildAnchor });
+  record("build-share-archive-anchor-on-exports-subpage", buildAnchor === true, { present: buildAnchor });
 
   // === Step 9.5: regression net for the first-click bug (issue #283 followup) ===
   // Before the fix, the document-level outside-click handler was
@@ -333,7 +362,7 @@ try {
   record("first-click-panel-stays-open", afterFirstClick.panelHidden === false, { state: afterFirstClick });
   record("first-click-panel-display-flex", afterFirstClick.panelDisplay === "flex", { display: afterFirstClick.panelDisplay });
   record("first-click-aria-expanded-true", afterFirstClick.ariaExpanded === "true", { ariaExpanded: afterFirstClick.ariaExpanded });
-  record("first-click-has-4-items", afterFirstClick.itemCount === 4, { itemCount: afterFirstClick.itemCount });
+  record("first-click-has-3-items", afterFirstClick.itemCount === 3, { itemCount: afterFirstClick.itemCount });
   record("first-click-first-item-in-viewport", afterFirstClick.firstItemInViewport === true, { firstItemInViewport: afterFirstClick.firstItemInViewport });
   // Now click outside the panel — the panel SHOULD close.
   // This asserts the fix didn't break the legitimate outside-click

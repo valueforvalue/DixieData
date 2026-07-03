@@ -470,6 +470,33 @@ func ShareQueuePage() string {
 	return "/share/queue"
 }
 
+// Issue #284: dedicated subpage URLs reachable from the
+// Share foldout menu. The foldout collapses to 3 items
+// (Export / Import / Share Queue); the Build Share
+// Archive menu item is folded into Export (the Build
+// modal is reached from /share/exports).
+
+// ShareExports returns the URL for the /share/exports
+// subpage (Export & Backup surface + Build Share Archive
+// button).
+func ShareExports() string {
+	return "/share/exports"
+}
+
+// ShareImports returns the URL for the /share/imports
+// subpage (Import & Restore surface — Collaborative
+// Merge, Memorial JSON, Replace Local Archive).
+func ShareImports() string {
+	return "/share/imports"
+}
+
+// ShareSync returns the URL for the /share/sync subpage
+// (Google Integration surface — Drive backup, Sheets
+// export, DixieData Calendar / Test Calendar).
+func ShareSync() string {
+	return "/share/sync"
+}
+
 // ShareQueuePresets (issue #192) returns the URL for the
 // saved-presets endpoints. The {id} is appended by the caller
 // via fmt.Sprintf since chi needs the literal segment to win

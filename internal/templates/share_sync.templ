@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -148,6 +149,7 @@ templ ShareSyncView(status viewmodel.GoogleStatus) {
 				</div>
 				<div id="google-status" class="text-sm text-slate-500"></div>
 			</div>
+			@partials.GoogleCalendarPreferencesModal(status)
 		</div>
 	}
 }

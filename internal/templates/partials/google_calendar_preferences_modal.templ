@@ -1,0 +1,106 @@
+package partials
+
+import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// GoogleCalendarPreferencesModal renders the DixieData
+// Calendar "managed event preferences" picker. Lives in
+// its own partial so any page that surfaces the Google
+// Integration card (currently /share/sync, was /share
+// pre-issue #284) can include it. The modal is opened
+// via data-google-calendar-preferences-open and closed
+// via data-google-calendar-preferences-close; the JS
+// hooks are wired in app.js. The form posts to
+// routebuilder.GoogleCalendarPreferencesSave.
+//
+// Data: the full Google status (for the
+// ManagedEventPreferences read) is the only domain
+// input. The modal renders the form with the current
+// preferences as the checked/selected state so the user
+// can edit any single field and submit.
+templ GoogleCalendarPreferencesModal(status viewmodel.GoogleStatus) {
+	<div id="google-calendar-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="google-calendar-preferences-modal-heading" data-google-calendar-preferences-modal class="fixed inset-0 z-[95] hidden items-start justify-center overflow-y-auto bg-[rgba(15,23,42,0.58)] px-4 py-4 sm:items-center sm:py-8">
+		<div class="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[2rem] border border-[rgba(141,116,64,0.8)] bg-[rgba(246,241,228,0.98)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.35)] sm:max-h-[calc(100vh-4rem)] sm:p-7">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">DixieData Calendar</p>
+					<h3 id="google-calendar-preferences-modal-heading" class="mt-2 text-xl gold font-bold">Managed event preferences</h3>
+					<p class="mt-2 text-sm text-slate-600">Save one global preference profile. Changes apply on the next managed sync and overwrite DixieData-owned event formatting.</p>
+				</div>
+				@components.Button("Close", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
+					"data-google-calendar-preferences-close": "",
+				})
+			</div>
+			<form class="mt-6 space-y-5" action={ templ.SafeURL(routebuilder.GoogleCalendarPreferencesSave()) } data-dixie-submit="true">
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-3">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Title format</p>
+					<label class="flex items-start gap-3 text-sm text-slate-700">
+						<input type="radio" name="title_preset" value="memorial_full_name" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "memorial_full_name" { checked }/>
+						<span>Memorial Anniversary: &#123;FullName&#125;</span>
+					</label>
+					<label class="flex items-start gap-3 text-sm text-slate-700">
+						<input type="radio" name="title_preset" value="full_name_memorial" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "full_name_memorial" { checked }/>
+						<span>&#123;FullName&#125; Memorial Anniversary</span>
+					</label>
+					<label class="flex items-start gap-3 text-sm text-slate-700">
+						<input type="radio" name="title_preset" value="display_id_full_name" data-google-pref-title data-google-pref-input class="mt-1 h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.TitlePreset == "display_id_full_name" { checked }/>
+						<span>&#123;DisplayID&#125; • &#123;FullName&#125;</span>
+					</label>
+				</div>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
+						<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Start time</span>
+						<input type="time" name="start_time" data-google-pref-start-time data-google-pref-input min="05:00" max="23:00" step="900" value={ status.Settings.ManagedEventPreferences.StartTime } class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700"/>
+					</label>
+					<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 space-y-2 text-sm text-slate-700">
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Description fields</p>
+						<label class="flex items-center gap-2"><input type="checkbox" name="include_record_id" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeRecordID { checked }/>Record ID</label>
+						<label class="flex items-center gap-2"><input type="checkbox" name="include_unit" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeUnit { checked }/>Unit</label>
+						<label class="flex items-center gap-2"><input type="checkbox" name="include_buried_in" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeBuriedIn { checked }/>Buried In</label>
+						<label class="flex items-center gap-2"><input type="checkbox" name="include_original_date" value="1" data-google-pref-input class="h-4 w-4 accent-[#8d7440]" if status.Settings.ManagedEventPreferences.IncludeOriginalDate { checked }/>Original Death Date</label>
+					</div>
+				</div>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
+						<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Primary reminder</span>
+						<select name="reminder_primary" data-google-pref-input class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
+							<option value="none" if status.Settings.ManagedEventPreferences.ReminderPrimary == "none" { selected }>None</option>
+							<option value="1h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1h" { selected }>1 hour before</option>
+							<option value="3h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "3h" { selected }>3 hours before</option>
+							<option value="12h" if status.Settings.ManagedEventPreferences.ReminderPrimary == "12h" { selected }>12 hours before</option>
+							<option value="1d" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1d" { selected }>1 day before</option>
+							<option value="2d" if status.Settings.ManagedEventPreferences.ReminderPrimary == "2d" { selected }>2 days before</option>
+							<option value="1w" if status.Settings.ManagedEventPreferences.ReminderPrimary == "1w" { selected }>1 week before</option>
+						</select>
+					</label>
+					<label class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/75 p-4 text-sm text-slate-700">
+						<span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Secondary reminder</span>
+						<select name="reminder_secondary" data-google-pref-input class="mt-2 w-full rounded-xl border border-[rgba(141,116,64,0.35)] bg-white px-3 py-2 text-sm text-slate-700">
+							<option value="none" if status.Settings.ManagedEventPreferences.ReminderSecondary == "none" { selected }>None</option>
+							<option value="1h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1h" { selected }>1 hour before</option>
+							<option value="3h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "3h" { selected }>3 hours before</option>
+							<option value="12h" if status.Settings.ManagedEventPreferences.ReminderSecondary == "12h" { selected }>12 hours before</option>
+							<option value="1d" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1d" { selected }>1 day before</option>
+							<option value="2d" if status.Settings.ManagedEventPreferences.ReminderSecondary == "2d" { selected }>2 days before</option>
+							<option value="1w" if status.Settings.ManagedEventPreferences.ReminderSecondary == "1w" { selected }>1 week before</option>
+						</select>
+					</label>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(36,48,61,0.04)] p-4 text-sm text-slate-600">
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Sample preview</p>
+					<div class="mt-2 font-semibold text-[#22303d]" data-google-pref-preview-title>Memorial Anniversary: Capt. John Smith</div>
+					<div class="mt-1 text-xs text-slate-500" data-google-pref-preview-time>Start: 09:00 America/Chicago</div>
+				</div>
+				<div class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+					@components.Button("Cancel", components.ButtonSecondary, "w-full px-4 sm:w-auto", templ.Attributes{
+						"data-google-calendar-preferences-close": "",
+					})
+					@components.Button("Save Preferences", components.ButtonPrimary, "w-full px-4 sm:w-auto", templ.Attributes{"type": "submit"})
+				</div>
+			</form>
+		</div>
+	</div>
+}
