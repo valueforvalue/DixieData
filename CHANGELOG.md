@@ -11,6 +11,53 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- **In-place-safety walker false-positives on SQL comments** (issue #268).
+  `classifySchemaLine` in `internal/appshell/cli_debug_inplace.go`
+  used `strings.Contains` to match destructive keywords (DROP
+  TABLE / DROP COLUMN / RENAME / DELETE FROM) regardless of
+  whether the diff line was a SQL comment. A diff like the
+  `/-- DROP TABLE users; never actually runs/` line in a
+  migration would false-positive as `schema_drop_table` HIGH —
+  the maintainer would either skip the work or remove the
+  comment, neither of which is the right fix. The walker now
+  skips lines whose trimmed prefix is `--` or `/* */`
+  (single-line block comments) via a new `isCommentLine` helper.
+  Multi-line `/* ... */` blocks are not blocked in v1 (the diff
+  walker is per-line; a multi-line block comment body would
+  still trip if the body happened to contain DROP TABLE, which
+  is conservative).
+
+### Added
+
+- **Cli-coverage + in-place-safety walker locks** (issue #268).
+  Two new test files pin the regex shapes the build-protocol
+  pack relies on:
+  - `internal/appshell/cli_debug_coverage_test.go` —
+    `TestScanImplementedSubcommandsFixtureShape` +
+    `TestScanDocumentedSubcommandsFixtureShape` synthesize a
+    tempdir with synthetic `main.go` + `cli_*.go` + `cli-plan.md`,
+    call the production walkers, and assert the exact key set.
+    Locks the switch-case dispatcher parser + the fenced-block
+    doc parser.
+  - `internal/appshell/cli_debug_inplace_test.go` —
+    `TestClassifyAddedLine_*` covers the 4 cases from the issue
+    body (DROP TABLE in schema file → HIGH, r.Get in routes.go
+    → MEDIUM, DROP TABLE in comment → not flagged, r.Get in
+    routes_test.go → not flagged) plus the rename/delete/drop-
+    column schema kinds and a regression guard for random
+    non-destructive lines. The DROP-TABLE-in-comment test caught
+    the false-positive bug above on its first run, confirming
+    the lock is real.
+  - `.github/workflows/test.yml` — new
+    `Cli-coverage drift detector` step that runs
+    `node scripts/cli-coverage.mjs` on every push + PR. Exit 1
+    on documented-not-implemented OR implemented-not-documented
+    drift. The Go walker (run via `dixiedata debug cli-coverage`
+    in `make freshness`) is the source of truth; this offline
+    Node step keeps CI simple.
+
 ### Changed
 
 - **Support & Diagnostics moved from /share to /settings** (issue #255).

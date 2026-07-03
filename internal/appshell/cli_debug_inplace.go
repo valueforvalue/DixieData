@@ -237,8 +237,13 @@ func isSchemaFile(file string) bool {
 }
 
 // classifySchemaLine picks the specific kind for a schema
-// migration line.
+// migration line. Comment lines (-- or /* ... */) are
+// skipped so a SQL comment that mentions DROP TABLE doesn't
+// trip the walker.
 func classifySchemaLine(line string) (kind, severity, reason string) {
+	if isCommentLine(line) {
+		return "", "", ""
+	}
 	switch {
 	case strings.Contains(line, "DROP TABLE"):
 		return "schema_drop_table", "high", "DROP TABLE is destructive; users on the affected version cannot roll back via in-place update"
@@ -261,6 +266,35 @@ func isHandlerChange(line string) bool {
 		strings.Contains(line, "r.Delete(") ||
 		strings.Contains(line, "r.Patch(") ||
 		strings.Contains(line, "r.Handle(")
+}
+
+// isCommentLine returns true for SQL line comments (`--`) and
+// block comments (`/* ... */`). Used to skip comment lines that
+// mention destructive keywords (e.g. `-- DROP TABLE users;`)
+// so the in-place-safety walker doesn't false-positive on them.
+// Restricted to the trimmed-line-start check; the walker
+// operates per diff `+` line so each line is examined in
+// isolation.
+func isCommentLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if strings.HasPrefix(trimmed, "--") {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "/*") {
+		// single-line /* ... */ closes on the same line
+		if strings.Contains(trimmed, "*/") {
+			return true
+		}
+		// opening only — the closing `*/` will land on a
+		// separate diff line and we don't have context to
+		// suppress multi-line blocks. Conservative: not
+		// flagged as comment-line (the diff walker will see
+		// the body lines individually, but each one is
+		// typically indented prose; if destructive SQL
+		// happens inside a `/*` block it does get flagged,
+		// which is acceptable for v1).
+	}
+	return false
 }
 
 // classifyHandlerLine picks the kind for a handler

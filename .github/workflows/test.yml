@@ -78,6 +78,19 @@ jobs:
         run: |
           pwsh -File scripts/bump-version.ps1 -VerifyOnly
 
+      # Cli-coverage drift detector (issue #268). Asserts every
+      # documented subcommand in docs/agents/cli-plan.md is
+      # implemented in main.go's dispatch chain (and vice versa).
+      # Same regex shape the Go binary uses; this is the offline
+      # fallback so CI doesn't need a built dixiedata binary.
+      # Exit 1 surfaces drift; the Go walker is the source of
+      # truth in `make freshness` and the test suite locks both.
+      - name: Cli-coverage drift detector
+        shell: bash
+        run: |
+          node scripts/cli-coverage.mjs
+        timeout-minutes: 2
+
       # Schema-touching detector (build-protocol.md §4). If the
       # PR has any commit subject matching feat(db) / feat(schema)
       # / fix(db) AND CurrentSchemaVersion is unchanged from the
