@@ -438,10 +438,6 @@ html { scrollbar-gutter: stable; }
     font-size: 0.72rem;
     box-shadow: 0 10px 18px rgba(23, 33, 43, 0.18);
   }
-  html[data-layout-mode="split-screen"] .floating-nav-panel {
-    width: 100%;
-    min-width: 0;
-  }
   @media (max-width: 900px) {
     .app-shell {
       padding-bottom: 8.75rem;
