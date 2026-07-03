@@ -11,6 +11,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Documentation
+
+- **ADR 0008 — promotion protocol** (issue #267). Lifts the
+  dev → main promotion step from a user-driven ad-hoc flow
+  into a documented gate chain, codified in a new
+  `make promote` + `make promote-dry-run` workflow. The
+  gate chain runs `make test` → `tpl` → `css` → `bump -VerifyOnly`
+  → `debug` → `freshness` → **`make in-place-safety`
+  (the new hard gate that lifts ADR 0007's `safe-for-in-place`
+  label from informational at PR time to enforced at
+  promotion time)** → `archive` → `release-github`. The
+  maintainer's AGENTS.md §Branch policy ("do not promote
+  dev to main without explicit user direction") is now
+  WHAT the user signs off on at that moment — every gate
+  has a defined recovery path documented in
+  `docs/adr/0008-promotion-protocol.md`. The cadence
+  question (continuous promotion on every commit) is
+  explicitly deferred as a follow-up — the `v{MAJOR}.{U}.{N}`
+  split from issue #266 would unlock it. ADR carries no
+  code changes; the gate chain's first proof is the next
+  `make promote-dry-run` on dev.
+
 ### Fixed
 
 - **Live preview renders the stale-filter warning line** (issue #260).
