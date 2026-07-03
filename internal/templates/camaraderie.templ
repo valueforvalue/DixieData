@@ -45,7 +45,7 @@ templ UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) {
 						}
 					</div>
 					<div class="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.8)] px-4 py-3">
+						<div class="rounded-2xl border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.8)] px-4 py-3">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Same Unit</p>
 							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(graph.SameUnit)) }</p>
 						</div>
@@ -63,7 +63,7 @@ templ UnitCamaraderieView(graph viewmodel.UnitCamaraderieGraph) {
 					<div class="rounded-3xl border border-research-border bg-research-bg/70 p-5">
 						<p class="text-sm text-slate-700">This view keeps the strongest likely service relationships closest to the center: exact unit matches first, then company variants inside the same regiment, then broader regiment peers.</p>
 					</div>
-					@unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.CentralPersonRecord.ID, "border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.72)]")
+					@unitCamaraderieSection("Same Recorded Unit", "Highest confidence peers sharing the same recorded unit string.", graph.SameUnit, graph.CentralPersonRecord.ID, "border-sepia-500/[0.35] bg-[rgba(255,248,230,0.72)]")
 					@unitCamaraderieSection("Company Variants", "Likely close matches where the regiment is shared and the company marker aligns even if the unit text varies.", graph.SameCompanyVariant, graph.CentralPersonRecord.ID, "border-research-border bg-research-bg/70")
 					@unitCamaraderieSection("Same Regiment", "Broader context for soldiers who likely served in the same regiment family.", graph.SameRegiment, graph.CentralPersonRecord.ID, "border-slate-200 bg-white/80")
 				</div>

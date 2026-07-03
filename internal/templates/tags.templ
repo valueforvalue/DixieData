@@ -37,7 +37,7 @@ templ TagsManagementPage(tags []records.Tag, counts viewmodel.ArchiveCounts) {
 					if counts.TotalRecords() == 0 {
 						@partials.EmptyStateCard("tags", counts)
 					} else {
-						<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+						<p class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">
 							No tags yet. Apply a tag from any Person Record
 							detail page to create the first one.
 						</p>
@@ -67,7 +67,7 @@ templ TagsManagementPage(tags []records.Tag, counts viewmodel.ArchiveCounts) {
 // form and a Delete button. All three forms target the same /tags
 // endpoint family registered in internal/appshell/routes.go.
 templ tagsRow(t records.Tag) {
-	<tr id={ fmt.Sprintf("tag-row-%d", t.ID) } class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70">
+	<tr id={ fmt.Sprintf("tag-row-%d", t.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70">
 		<td class="px-3 py-2 align-top font-semibold text-slate-900">
 			<a href={ templ.SafeURL(routebuilder.TagDetail(t.ID)) } class="underline-offset-2 hover:underline">
 				{ t.Name }
@@ -113,7 +113,7 @@ templ TagDetailPage(t records.Tag, members []records.TagMemberView) {
 			</div>
 			<section id={ uiids.PanelTagDetail } class="card rounded-3xl p-5 sm:p-8">
 				if len(members) == 0 {
-					<p class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 px-4 py-3 text-sm text-slate-600">
+					<p class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">
 						This tag has no members. Apply it from a Person Record detail page to start grouping.
 					</p>
 				} else {
@@ -128,7 +128,7 @@ templ TagDetailPage(t records.Tag, members []records.TagMemberView) {
 						</thead>
 						<tbody>
 							for _, m := range members {
-								<tr class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70">
+								<tr class="rounded-2xl border border-sepia-500/[0.35] bg-white/70">
 									<td class="px-3 py-2 align-top font-mono text-xs text-slate-600">{ m.DisplayID }</td>
 									<td class="px-3 py-2 align-top font-semibold text-slate-900">
 										<a href={ templ.SafeURL(routebuilder.SoldierDetail(m.PersonRecordID)) } class="underline-offset-2 hover:underline">

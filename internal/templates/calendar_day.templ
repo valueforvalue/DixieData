@@ -35,7 +35,7 @@ templ CalendarDayDetail(day viewmodel.CalendarDayDetail) {
 }
 
 templ CalendarDayActions(day viewmodel.CalendarDayDetail) {
-	<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(255,255,255,0.72)] px-4 py-4">
+	<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sepia-500/[0.24] bg-[rgba(255,255,255,0.72)] px-4 py-4">
 		<div>
 			<p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d7440]">Calendar Actions</p>
 			<p class="mt-1 text-sm text-[#5a6a78]">Add or edit yearly events and holidays without crowding the day view.</p>
@@ -67,13 +67,13 @@ templ CalendarDayAnniversaries(day viewmodel.CalendarDayDetail) {
 				<h4 class="text-lg font-semibold text-[#22303d]">Anniversaries</h4>
 				<p class="mt-1 text-sm text-[#5a6a78]">Expanded is the default. Switch to compact rows when you want a tighter scan.</p>
 			</div>
-			<div class="inline-flex items-center gap-2 rounded-full border border-[rgba(141,116,64,0.24)] bg-white/70 px-2 py-2">
+			<div class="inline-flex items-center gap-2 rounded-full border border-sepia-500/[0.24] bg-white/70 px-2 py-2">
 				<button type="button" data-calendar-anniversary-density-toggle="expanded" class="rounded-full border border-[#22303d] bg-[rgba(36,48,61,0.92)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#f2ede1] transition">Expanded</button>
-				<button type="button" data-calendar-anniversary-density-toggle="compact" class="rounded-full border border-[rgba(141,116,64,0.24)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#51606e] transition">Compact</button>
+				<button type="button" data-calendar-anniversary-density-toggle="compact" class="rounded-full border border-sepia-500/[0.24] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#51606e] transition">Compact</button>
 			</div>
 		</div>
 		if len(day.Anniversaries) == 0 {
-			<p class="rounded-2xl border border-dashed border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No person records for this date.</p>
+			<p class="rounded-2xl border border-dashed border-sepia-500/[0.35] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No person records for this date.</p>
 		} else {
 			<div data-calendar-anniversary-density="expanded" class="space-y-3">
 				for _, soldier := range day.Anniversaries {
@@ -94,11 +94,11 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 			<p class="mt-1 text-sm text-[#5a6a78]">Recurring custom items appear every year on this date.</p>
 		</div>
 		if len(day.Items) == 0 {
-			<p class="rounded-2xl border border-dashed border-[rgba(141,116,64,0.35)] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No custom calendar items yet for this date.</p>
+			<p class="rounded-2xl border border-dashed border-sepia-500/[0.35] bg-[rgba(255,255,255,0.62)] px-4 py-4 text-sm text-[#5a6a78]">No custom calendar items yet for this date.</p>
 		} else {
 			<div class="space-y-2">
 				for _, item := range day.Items {
-					<div class="rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(255,255,255,0.78)] px-4 py-3">
+					<div class="rounded-2xl border border-sepia-500/[0.24] bg-[rgba(255,255,255,0.78)] px-4 py-3">
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
 								<div class="flex flex-wrap items-center gap-2">
@@ -138,7 +138,7 @@ templ CalendarDayCustomItems(day viewmodel.CalendarDayDetail) {
 }
 
 templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
-	<div data-calendar-anniversary-compact class="hidden rounded-2xl border border-[rgba(141,116,64,0.24)] bg-[rgba(255,255,255,0.8)] px-4 py-3">
+	<div data-calendar-anniversary-compact class="hidden rounded-2xl border border-sepia-500/[0.24] bg-[rgba(255,255,255,0.8)] px-4 py-3">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div class="min-w-0 flex-1">
 				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(soldier) }</a>
@@ -152,7 +152,7 @@ templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				<button type="button" data-share-queue-add={ fmt.Sprintf("%d", soldier.ID) } class="rounded-full border border-[rgba(141,116,64,0.45)] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + soldier.DisplayID + " to the Share Queue" }>
+				<button type="button" data-share-queue-add={ fmt.Sprintf("%d", soldier.ID) } class="rounded-full border border-sepia-500/[0.45] bg-white/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white" title={ "Add " + soldier.DisplayID + " to the Share Queue" }>
 					+ Queue
 				</button>
 				<a href={ fmt.Sprintf("/soldiers/%d", soldier.ID) } class="ghost-link px-3 py-2">Open Record</a>
@@ -162,7 +162,7 @@ templ CalendarAnniversaryCompactRow(soldier viewmodel.PersonRecord) {
 }
 
 templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
-	<div data-popout-panel class="absolute right-0 z-20 mt-3 w-[min(28rem,calc(100vw-5rem))] rounded-2xl border border-[rgba(141,116,64,0.28)] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)]">
+	<div data-popout-panel class="absolute right-0 z-20 mt-3 w-[min(28rem,calc(100vw-5rem))] rounded-2xl border border-sepia-500/[0.28] bg-[rgba(255,248,230,0.98)] p-4 shadow-[0_18px_32px_rgba(23,33,43,0.14)]">
 		<div class="flex flex-wrap items-start justify-between gap-3">
 			<div>
 				<h4 class="text-lg font-semibold text-[#22303d]">{ calendarDayFormSummary(day.Form) }</h4>

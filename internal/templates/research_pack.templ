@@ -30,7 +30,7 @@ templ ResearchPackView(pack viewmodel.ResearchPack) {
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-research-accent">Related Person Records</p>
 							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", len(pack.RelatedPersonRecords)) }</p>
 						</div>
-						<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-[rgba(255,248,230,0.8)] p-4">
+						<div class="rounded-2xl border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.8)] p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Review Queue Items</p>
 							<p class="mt-2 text-2xl font-bold text-slate-900">{ fmt.Sprintf("%d", pack.OpenReviewCount) }</p>
 						</div>

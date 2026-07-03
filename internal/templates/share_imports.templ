@@ -33,7 +33,7 @@ templ ShareImportsView() {
 					<p class="mt-2 text-sm text-slate-500">Merge collaborative updates separately from full replacements so the destructive path is visually isolated.</p>
 				</div>
 				<div class="space-y-4">
-					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+					<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Collaborative Merge</p>
 						<p class="mt-2 text-sm text-slate-600">Use this when another researcher sends you a shared archive and you want Merge Review plus remembered duplicate mapping for future imports from that same source instead of replacing your local archive.</p>
 						<div class="mt-4">
@@ -46,7 +46,7 @@ templ ShareImportsView() {
 							}
 						</div>
 					</div>
-					<div class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4">
+					<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
 						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-[#8d7440]">Memorial JSON Import</p>
 						<p class="mt-2 text-sm text-slate-600">Import Tampermonkey memorial JSON into basic person records. The pre-flight analyses how many rows would be added, skipped, or failed; the actual import only runs after you confirm on its own status page.</p>
 						<div class="mt-4">
@@ -75,7 +75,7 @@ templ ShareImportsView() {
 						</div>
 					</div>
 				</div>
-				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
+				<div class="rounded-2xl border border-sepia-500/[0.45] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
 					<strong class="text-[#22303d]">Restore caution:</strong> loading a <code>.ddbak</code> backup archive replaces the local archive, while importing a <code>.ddshare</code> shared archive stages Merge Review when needed.
 				</div>
 			</section>
