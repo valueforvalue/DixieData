@@ -164,6 +164,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 - `bump-version.ps1 -VerifyOnly` is now green against the
   new doc surface.
 
+### Changed
+
+- **`BackupManifest` carries `current_update_flow_version` +
+  `release_counter` explicitly** (issue #296, follow-up).
+  New `.ddbak` / `.ddshare` archives write both fields so
+  readers can compare U + N without re-parsing the
+  AppVersion string. `loadBackupData` populates them from
+  `internal/versioninfo`; `NormalizeManifestBackwardsCompat`
+  applies defaults for archives written before this commit:
+  - missing `current_update_flow_version` → 1 (legacy
+    v1.2.N strings parse to U=1 per #266 decision 1)
+  - missing `release_counter` → `schema_version` (the
+    historical formula tied N to schema)
+  `readBackupManifestFromZip` (CLI import dry-run + preview)
+  and the e2e test helper both invoke the normalizer on
+  every freshly decoded manifest, so the import pipeline sees
+  consistent U + N regardless of archive age. Regression
+  net: `TestNormalizeManifestBackwardsCompat` covers all
+  three cases (legacy, explicit, malformed with zero
+  schema). Existing `TestBackupService_Export*` tests pin
+  the new fields in written manifests.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
