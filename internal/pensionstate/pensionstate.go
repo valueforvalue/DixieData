@@ -1,3 +1,4 @@
+// Package pensionstate normalizes pension-application status strings to canonical values.
 package pensionstate
 
 import "strings"

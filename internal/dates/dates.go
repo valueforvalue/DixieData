@@ -1,3 +1,4 @@
+// Package dates parses and formats partial Civil-War-era dates from canonical and freeform strings.
 package dates
 
 import (

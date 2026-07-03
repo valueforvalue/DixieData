@@ -1,3 +1,4 @@
+// Package integrations implements Google Calendar and Drive OAuth sync for DixieData exports.
 package integrations
 
 import (

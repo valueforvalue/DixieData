@@ -1,3 +1,4 @@
+// Package buildinfo exposes app version, schema version, and export-format version constants.
 package buildinfo
 
 import (
