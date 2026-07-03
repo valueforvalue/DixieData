@@ -358,6 +358,21 @@ SET birth_date = ''
 WHERE birth_date = '00/00/0000';
 `
 
+// applySchema runs every block in the migrations slice (see
+// migrations.go) inside a single transaction, then writes the
+// terminal PRAGMA user_version as the gate for the next Open call.
+//
+// The block list, reversibility classification, and per-block
+// reasoning live at docs/migrations/reversibility.md — that doc is
+// the source of truth for the future `migrate down <target>` runner
+// (issue #273). applySchema itself is forward-only today; the slice
+// just makes the per-block enumeration addressable from outside
+// this file.
+//
+// Behavior is identical to the pre-refactor inline ordering:
+//   1. tx.Exec(schema) baseline
+//   2. migrations[i].Up(tx) for each Migration in order
+//   3. INSERT schema_version + PRAGMA user_version + Commit
 func applySchema(db *DB) error {
 	version, err := currentSchemaVersion(db.conn)
 	if err != nil {
@@ -373,145 +388,12 @@ func applySchema(db *DB) error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(schema); err != nil {
-		return err
-	}
-	for _, migration := range []struct {
-		table  string
-		column string
-		sql    string
-	}{
-		{table: "soldiers", column: "buried_in", sql: `ALTER TABLE soldiers ADD COLUMN buried_in TEXT`},
-		{table: "soldiers", column: "pension_id", sql: `ALTER TABLE soldiers ADD COLUMN pension_id TEXT`},
-		{table: "soldiers", column: "application_id", sql: `ALTER TABLE soldiers ADD COLUMN application_id TEXT`},
-		{table: "soldiers", column: "prefix", sql: `ALTER TABLE soldiers ADD COLUMN prefix TEXT`},
-		{table: "soldiers", column: "show_prefix_before_name", sql: `ALTER TABLE soldiers ADD COLUMN show_prefix_before_name BOOLEAN DEFAULT 0`},
-		{table: "soldiers", column: "middle_name", sql: `ALTER TABLE soldiers ADD COLUMN middle_name TEXT`},
-		{table: "soldiers", column: "suffix", sql: `ALTER TABLE soldiers ADD COLUMN suffix TEXT`},
-		{table: "soldiers", column: "rank_in", sql: `ALTER TABLE soldiers ADD COLUMN rank_in TEXT`},
-		{table: "soldiers", column: "rank_out", sql: `ALTER TABLE soldiers ADD COLUMN rank_out TEXT`},
-		{table: "soldiers", column: "pension_state", sql: `ALTER TABLE soldiers ADD COLUMN pension_state TEXT`},
-		{table: "soldiers", column: "confederate_home_status", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_status TEXT DEFAULT 'N/A'`},
-		{table: "soldiers", column: "confederate_home_name", sql: `ALTER TABLE soldiers ADD COLUMN confederate_home_name TEXT`},
-		{table: "soldiers", column: "sync_id", sql: `ALTER TABLE soldiers ADD COLUMN sync_id TEXT`},
-		{table: "soldiers", column: "entry_type", sql: `ALTER TABLE soldiers ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'soldier'`},
-		{table: "soldiers", column: "spouse_soldier_id", sql: `ALTER TABLE soldiers ADD COLUMN spouse_soldier_id INTEGER REFERENCES soldiers(id) ON DELETE SET NULL`},
-		{table: "soldiers", column: "relationship_label", sql: `ALTER TABLE soldiers ADD COLUMN relationship_label TEXT`},
-		{table: "soldiers", column: "maiden_name", sql: `ALTER TABLE soldiers ADD COLUMN maiden_name TEXT`},
-		{table: "soldiers", column: "birth_date", sql: `ALTER TABLE soldiers ADD COLUMN birth_date TEXT`},
-		{table: "soldiers", column: "death_date", sql: `ALTER TABLE soldiers ADD COLUMN death_date TEXT`},
-		{table: "soldiers", column: "biography", sql: `ALTER TABLE soldiers ADD COLUMN biography TEXT`},
-		{table: "soldiers", column: "pdf_excerpt_override", sql: `ALTER TABLE soldiers ADD COLUMN pdf_excerpt_override TEXT`},
-		{table: "soldiers", column: "needs_review", sql: `ALTER TABLE soldiers ADD COLUMN needs_review BOOLEAN DEFAULT 0`},
-		{table: "soldiers", column: "review_reason", sql: `ALTER TABLE soldiers ADD COLUMN review_reason TEXT`},
-		{table: "soldiers", column: "added_by", sql: `ALTER TABLE soldiers ADD COLUMN added_by TEXT`},
-		{table: "soldiers", column: "last_edited_by", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_by TEXT`},
-		{table: "soldiers", column: "last_edited_fields", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_fields TEXT`},
-		{table: "soldiers", column: "last_edited_at", sql: `ALTER TABLE soldiers ADD COLUMN last_edited_at DATETIME`},
-		{table: "soldiers", column: "updated_at", sql: `ALTER TABLE soldiers ADD COLUMN updated_at DATETIME`},
-		{table: "soldiers", column: "import_batch_id", sql: `ALTER TABLE soldiers ADD COLUMN import_batch_id TEXT REFERENCES import_batches(id) ON DELETE SET NULL`},
-		{table: "records", column: "sync_id", sql: `ALTER TABLE records ADD COLUMN sync_id TEXT`},
-		{table: "records", column: "soldier_sync_id", sql: `ALTER TABLE records ADD COLUMN soldier_sync_id TEXT`},
-		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
-		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`},
-		{table: "images", column: "is_primary", sql: `ALTER TABLE images ADD COLUMN is_primary BOOLEAN DEFAULT 0`},
-	} {
-		exists, err := columnExists(tx, migration.table, migration.column)
-		if err != nil {
-			return err
-		}
-		if exists {
-			continue
-		}
-		if _, err := tx.Exec(migration.sql); err != nil {
+	for _, m := range migrations {
+		if err := m.Up(tx); err != nil {
 			return err
 		}
 	}
-	if _, err := tx.Exec(`UPDATE soldiers SET is_generated = 1 WHERE is_generated = 0 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(phase1DistributedMergeMigration); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(phase2CanonicalDatesMigration); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_status = 'N/A' WHERE LOWER(TRIM(COALESCE(confederate_home_status, ''))) IN ('', 'none', 'na', 'n/a', 'not recorded')`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET pension_state = 'N/A' WHERE LOWER(TRIM(COALESCE(pension_state, ''))) IN ('', 'none', 'na', 'n/a', 'not recorded')`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET needs_review = 0 WHERE needs_review IS NULL`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET review_reason = '' WHERE review_reason IS NULL`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET show_prefix_before_name = 0 WHERE show_prefix_before_name IS NULL`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_name IS NULL`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET confederate_home_name = '' WHERE confederate_home_status = 'N/A'`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE images SET is_primary = 0 WHERE is_primary IS NULL`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE images SET is_primary = 1 WHERE id IN (
-		SELECT MIN(id)
-		FROM images
-		GROUP BY soldier_id
-		HAVING MAX(CASE WHEN is_primary = 1 THEN 1 ELSE 0 END) = 0
-	)`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_import_batch ON soldiers(import_batch_id, created_at DESC)`); err != nil {
-		return err
-	}
-	if err := migrateNodePrefixConfiguration(tx); err != nil {
-		return err
-	}
-	if err := migrateSanitizedDisplayIDs(tx); err != nil {
-		return err
-	}
-	if err := migrateCanonicalDateData(tx); err != nil {
-		return err
-	}
-	if err := ensureSoldierFTS(tx); err != nil {
-		return err
-	}
-	// v58 (issue #183): seed archive_meta rows for legacy archives
-	// that predate the table. Tags themselves need no backfill (no
-	// rows exist yet), but the export pipelines SELECT their
-	// default from archive_meta and must get a row per archive kind.
-	if err := ensureArchiveMetaSeed(tx); err != nil {
-		return err
-	}
-	// v55 (issue #106): enforce entry_type discipline + rename evidence_type
-	// 'archive' -> 'local_archive' so the value matches the glossary. SQLite
-	// doesn't support ALTER TABLE ... ADD CONSTRAINT, so the CHECK is applied
-	// via a no-op UPDATE that triggers table recreation in the upgrade path,
-	// or, more pragmatically, by rebuilding the table when constraints change.
-	if err := migrateEntryTypeDiscipline(tx); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE research_log SET evidence_type = 'local_archive' WHERE evidence_type = 'archive'`); err != nil {
-		// research_log is a future table (planned in issue #97 Tier 2 rename);
-		// tolerate "no such table" silently so v55 applies cleanly to archives
-		// that predate the table.
-		if !isNoSuchTableError(err) {
-			return err
-		}
-	}
+
 	if _, err := tx.Exec(`INSERT OR IGNORE INTO schema_version(version) VALUES (?)`, CurrentSchemaVersion); err != nil {
 		return err
 	}
