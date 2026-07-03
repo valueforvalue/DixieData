@@ -29,17 +29,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `/share/exports`, and `/soldiers/1` are staged in
   `audit/reports/phase3-after_*.png` for visual diff.
 
-  **Finding**: the gold-gradient primary button
-  (`#c5ab68 → #a5853f` over `text-ink-deep` = `#24303d`)
-  measures **1.28:1** on `/browse`, below the WCAG AA body
-  threshold of 4.5:1. This was the design before Phase 2
-  (gold buttons with dark text) and is unchanged by Phase 2
-  — the probe surfaces it so the maintainer can decide
-  whether to redesign the affordance (darker text, brighter
-  gold gradient, or a different background image), document
-  the regression as an intentional design choice, or ship
-  the Phase 3 finding as a known issue. The probe is the
-  tripwire for any FUTURE swap that lowers contrast further.
+  **Finding**: the probe initially misreported the gold-gradient
+  primary button at 1.28:1 because the helper read
+  `backgroundColor` (transparent for gradient backgrounds) and
+  walked up to the panel, composing over white. Linear-gradient
+  `rgb(...)` stops live on `backgroundImage`, not backgroundColor.
+  The fix is in the helper (paren-depth walk over
+  `backgroundImage` to parse gradient stops, worst-case
+  pick = lightest stop for dark text). After the fix, the
+  primary-button measures **6.43:1** on `/browse` —
+  comfortably above WCAG AA. All 5 surfaces measured so far
+  pass: primary 6.43, secondary 12.06, pill 12.06, field-input
+  12.04, ghost-link 9.87. The probe is now the tripwire for
+  any FUTURE swap that lowers contrast further.
 
 ### Documentation
 
