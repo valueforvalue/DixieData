@@ -261,7 +261,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 			<div class="hidden overflow-hidden rounded-3xl border border-sepia-500/[0.35] bg-white/80 shadow-[0_16px_32px_rgba(23,33,43,0.08)] md:block">
 				<div class="overflow-x-auto">
 					<table class="min-w-full border-collapse text-sm">
-						<thead class="bg-[rgba(36,48,61,0.92)] text-left text-[#f2ede1]">
+						<thead class="bg-ink-deep/[0.92] text-left text-[#f2ede1]">
 							<tr>
 								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col">Select</th>
 								<th class="px-4 py-3 font-semibold uppercase tracking-[0.18em] text-xs" scope="col" data-browse-column="display_id">Display ID</th>
@@ -331,7 +331,7 @@ templ BrowsePager(state viewmodel.BrowseState) {
 					if pageInfo.IsGap {
 						<span class="px-1 text-slate-400">…</span>
 					} else if pageInfo.Number == state.Page {
-						<span class="rounded-full bg-[rgba(36,48,61,0.92)] px-3 py-1 text-xs font-semibold text-[#f2ede1]" aria-current="page">{ fmt.Sprintf("%d", pageInfo.Number) }</span>
+						<span class="rounded-full bg-ink-deep/[0.92] px-3 py-1 text-xs font-semibold text-[#f2ede1]" aria-current="page">{ fmt.Sprintf("%d", pageInfo.Number) }</span>
 					} else {
 						<a href={ browsePageHref(state, pageInfo.Number) } hx-get={ browsePageHref(state, pageInfo.Number) } hx-target="#browse-results" data-browse-page-link class="pill-link" aria-label={ fmt.Sprintf("Page %d", pageInfo.Number) }>{ fmt.Sprintf("%d", pageInfo.Number) }</a>
 					}

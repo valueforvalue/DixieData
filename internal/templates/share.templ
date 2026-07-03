@@ -96,7 +96,7 @@ templ ShareView(conflicts []viewmodel.MergeReviewConflict, counts viewmodel.Arch
 						<div id="merge-review-loaded-status" data-merge-review-loaded-status class="mt-3 inline-flex rounded-full border border-sepia-500/[0.45] bg-[rgba(255,248,230,0.88)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f2c26]" aria-live="polite">Data Loaded: { fmt.Sprintf("%d", len(conflicts)) } Conflicts Found</div>
 					</div>
 					for _, conflict := range conflicts {
-						<div data-merge-review-item class="rounded-2xl border border-sepia-500/[0.45] bg-[rgba(36,48,61,0.04)] p-4 space-y-4">
+						<div data-merge-review-item class="rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04] p-4 space-y-4">
 							<div>
 								<div class="text-xs uppercase tracking-[0.18em] text-[#8d7440]">{ conflict.ConflictType }</div>
 								<h4 class="mt-1 font-bold text-[#22303d]">{ conflict.IncomingDisplayID }</h4>

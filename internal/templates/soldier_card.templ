@@ -110,7 +110,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				<form data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
 					hx-get={ templ.SafeURL(routebuilder.SoldierSearchAdvanced()) } hx-target="#soldier-list">
 					
-					<div class="responsive-span-2 col-span-2 rounded-2xl border border-sepia-500/[0.45] bg-[rgba(36,48,61,0.06)] px-4 py-3">
+					<div class="responsive-span-2 col-span-2 rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.06] px-4 py-3">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Advanced Search Active</p>
 						<p class="mt-2 text-sm text-[#22303d]">Use broad text matching for names, ranks, units, locations, and source record types. Year filters support exact values or a through-year range.</p>
 					</div>
@@ -382,7 +382,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag) {
 						@LinkedText(s.Biography, "mt-3 text-sm text-slate-700 leading-6")
 					</div>
 				}
-				<details class="mt-5 overflow-hidden rounded-2xl border border-sepia-500/[0.45] bg-[rgba(36,48,61,0.04)]">
+				<details class="mt-5 overflow-hidden rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Advanced Research &amp; Review</p>
@@ -482,7 +482,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag) {
 						</div>
 					</div>
 				</details>
-				<details class="mt-5 overflow-hidden rounded-2xl border border-sepia-500/[0.45] bg-[rgba(36,48,61,0.04)]">
+				<details class="mt-5 overflow-hidden rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Record Metadata &amp; History</p>
