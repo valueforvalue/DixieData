@@ -407,6 +407,7 @@ func (b *BackupService) Import(backupPath, dataDir string) (BackupManifest, erro
 	return b.ImportWithLocalIdentity(backupPath, dataDir, localIdentity, preserveLocalIdentity)
 }
 
+// RestoreBackupArchive is the package-public entry point for restoring a backup archive from outside the appshell (the CLI runner and the in-place update flow both call it). Opens the zip, validates the manifest, applies the SQLite snapshot to dataDir, and returns the restored manifest for the caller to confirm.
 func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 	reader, err := zip.OpenReader(backupPath)
 	if err != nil {

@@ -46,6 +46,7 @@ func newPDFJPEGRasterizer() pdfToJPEGRasterizer {
 	return pdfiumJPEGRasterizer{}
 }
 
+// Rasterize is the archive-layer method matching its name.
 func (pdfiumJPEGRasterizer) Rasterize(pdfPath, outputDir string) ([]string, error) {
 	dllPath, err := resolvePDFiumDLLPath()
 	if err != nil {

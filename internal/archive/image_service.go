@@ -24,6 +24,7 @@ type ImageService struct {
 	db *db.DB
 }
 
+// OrphanedImage is an archive-layer type.
 type OrphanedImage struct {
 	RelativePath string
 	Size         int64
@@ -38,6 +39,7 @@ func NewImageService(database *db.DB) *ImageService {
 	return &ImageService{db: database}
 }
 
+// EnsureShardedStorage is the archive-layer method matching its name.
 func (s *ImageService) EnsureShardedStorage(dataDir string) error {
 	rows, err := s.db.Conn().Query(`
 		SELECT images.id, COALESCE(images.file_path, ''), COALESCE(images.file_name, ''), COALESCE(soldiers.display_id, '')
@@ -101,6 +103,7 @@ func (s *ImageService) EnsureShardedStorage(dataDir string) error {
 	return tx.Commit()
 }
 
+// DiscoverOrphans is the archive-layer method matching its name.
 func (s *ImageService) DiscoverOrphans(dataDir string) ([]OrphanedImage, error) {
 	rows, err := s.db.Conn().Query(`SELECT COALESCE(file_path, '') FROM images`)
 	if err != nil {
@@ -160,6 +163,7 @@ func (s *ImageService) DiscoverOrphans(dataDir string) ([]OrphanedImage, error) 
 	return orphans, nil
 }
 
+// MoveOrphansToTrash is the archive-layer method matching its name.
 func (s *ImageService) MoveOrphansToTrash(dataDir string, relativePaths []string) (int, string, error) {
 	if len(relativePaths) == 0 {
 		return 0, "", nil
@@ -190,6 +194,7 @@ func (s *ImageService) MoveOrphansToTrash(dataDir string, relativePaths []string
 	return moved, trashRoot, nil
 }
 
+// PurgeExpiredTrash is the archive-layer method matching its name.
 func (s *ImageService) PurgeExpiredTrash(dataDir string) error {
 	trashRoot := filepath.Join(dataDir, "temp_trash")
 	entries, err := os.ReadDir(trashRoot)

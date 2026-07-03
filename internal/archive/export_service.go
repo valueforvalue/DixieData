@@ -56,6 +56,7 @@ type pdfToJPEGRasterizer interface {
 	Rasterize(pdfPath, outputDir string) ([]string, error)
 }
 
+// ExportMetadata is the per-export envelope written into every export format (PDF, JPG, JSON, CSV, iCal, etc.): the app + schema version, the source app's commit SHA, the source dataDir, the export timestamp, and the per-archive-kind toggles (issue #183's include_tags etc.).
 type ExportMetadata struct {
 	AppVersion    string `json:"app_version"`
 	SchemaVersion int    `json:"schema_version"`
@@ -64,6 +65,7 @@ type ExportMetadata struct {
 	GeneratedAt   string `json:"generated_at"`
 }
 
+// JSONExportDocument is the JSON export shape: the per-export ExportMetadata envelope + the per-soldier records. Read back at JSON import time to decide which rows to insert vs. update vs. skip.
 type JSONExportDocument struct {
 	Metadata ExportMetadata   `json:"metadata"`
 	Soldiers []models.Soldier `json:"soldiers"`
@@ -764,6 +766,7 @@ func (e *ExportService) ExportJSONWithStats(outputPath string) (records, images,
 	return records, 0, 0, nil
 }
 
+// ExportExcel produces the per-soldier Excel workbook at outputPath. One sheet per kind: Soldiers, Source Records, Images. Uses excelize/v2 under the hood. Returns the per-sheet row count.
 func (e *ExportService) ExportExcel(outputPath string) error {
 	const (
 		archiveSheet  = "Archive Export"
@@ -1047,6 +1050,7 @@ func (e *ExportService) ExportExcelWithStats(outputPath string) (records, images
 	return len(soldiers), 0, 0, nil
 }
 
+// ExportICalendar is the archive-layer method matching its name.
 func (e *ExportService) ExportICalendar(outputPath string, preferences models.CalendarEventPreferences) error {
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -1426,6 +1430,7 @@ func excelStringPtr(value string) *string {
 	return &value
 }
 
+// StaticArchiveFileName is the archive-layer method matching its name.
 func (e *ExportService) StaticArchiveFileName(now time.Time) (string, error) {
 	owner, err := e.staticArchiveOwner()
 	if err != nil {
@@ -1434,6 +1439,7 @@ func (e *ExportService) StaticArchiveFileName(now time.Time) (string, error) {
 	return fmt.Sprintf("DixieData_Archive_%s_%s.zip", owner.FileStem, now.Format("2006-01-02")), nil
 }
 
+// ExportStaticArchive is the archive-layer method matching its name.
 func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	owner, err := e.staticArchiveOwner()
 	if err != nil {
@@ -1507,6 +1513,7 @@ func (e *ExportService) ExportStaticArchiveWithStats(outputPath, dataDir string)
 	return records, images, 0, nil
 }
 
+// ExportImages is the archive-layer method matching its name.
 func (e *ExportService) ExportImages(outputPath string, images []models.Image) error {
 	if err := os.MkdirAll(outputPath, 0o755); err != nil {
 		return err

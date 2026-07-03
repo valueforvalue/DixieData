@@ -231,6 +231,45 @@ a bug. The GitHub default branch stays on `main` until the first
 release has shipped from `stable` and proven itself; the flip
 itself is a one-line repo-settings change tracked separately.
 
+### Exported Go identifiers carry doc comments
+
+Every exported identifier in a DixieData Go package — `func`,
+`type`, `var`, `const`, including methods on exported types —
+carries a doc comment. The doc comment:
+
+- Starts with the identifier name (the `go doc` synopsis line is
+  the first sentence).
+- Explains the contract, not the implementation. What does the
+  caller need to know? What are the preconditions? What does it
+  return on success and on the common failure modes?
+- Lives immediately above the declaration, with no blank line
+  between the comment and the identifier.
+
+Every Go package has a `// Package <name> <one-sentence purpose>`
+synopsis at the top of at least one of its files. Multi-paragraph
+package docs are fine; the synopsis is what `go doc <pkg>` shows
+in its first paragraph.
+
+**Floor (regression gate, enforced by CI):** every Go package
+under `internal/` and `pkg/` with ≥5 exported identifiers must
+have ≥70% identifier-level doc-comment coverage. Packages below
+the floor fail `go test ./internal/buildinfo/ -run
+TestPerPackageDocCoverageFloor`. The 70% floor is a regression
+gate, not a target; the working rule is **aim for 100% on every
+new PR**. The CI test exists so a future commit that strips docs
+in bulk gets caught; it is not a license to land a 70% patch.
+
+Exemptions (skipped by the test): `cmd/*` (unexported `main`
+packages), templ-generated files (churn that disappears on the
+next `make tpl`), and build-tag-gated packages whose `go doc`
+output cannot be parsed without the matching tag.
+
+The audit script (`.scratch/audit/go_doc_audit.py`) is the
+source of truth for the overall coverage metric. Run it before
+opening a PR that adds new exported surface; if it drops the
+overall metric, the PR is expected to add the docs inline, not
+push the work to a follow-up.
+
 ### Every native dialog call is guarded against re-entry
 
 Wails v2.12.0 on Windows runs every native `SaveFileDialog` and
