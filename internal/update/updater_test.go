@@ -77,12 +77,18 @@ func TestDirectReleaseFromURLRequiresEmbeddedVersion(t *testing.T) {
 }
 
 func TestCompareVersions(t *testing.T) {
-	comparison, err := compareVersions("1.2.24", "1.2.23")
+	// Legacy v1.2.{N} strings: the historical placeholder
+	// "2" is the U position; parseVersion rewrites it to U=1
+	// per #266 decision 1.
+	comparison, err := compareVersions("v1.2.24", "v1.2.23")
 	if err != nil {
 		t.Fatalf("compareVersions: %v", err)
 	}
-	if comparison <= 0 {
-		t.Fatalf("comparison=%d", comparison)
+	if !comparison.Compatible {
+		t.Fatalf("U should match under legacy v1.2.* mapping; got %+v", comparison)
+	}
+	if !comparison.Newer {
+		t.Fatalf("v1.2.24 should be newer than v1.2.23; got %+v", comparison)
 	}
 }
 

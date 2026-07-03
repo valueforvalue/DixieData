@@ -11,6 +11,51 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **App version split into `v{MAJOR}.{U}.{N}`** (issue #266,
+  tracer-bullet slice). The auto-update version string now
+  separates the **update-flow shape gate** (U) from the
+  **release counter** (N). SQLite schema version stays as
+  its own field (`CurrentSchemaVersion` for the data plane,
+  user_version on disk). Four decisions from the RPCI
+  Critique are locked in `internal/update/updater.go`:
+  - Legacy `v1.2.{N}` strings parse to **U=1** (decision 1).
+  - U mismatch in either direction force-reinstalls
+    (decision 2 + 4 — the user's installed flow can't
+    safely apply the new release).
+  - U match + release N > installed N → auto-update eligible.
+  - U match + release N < installed N → downgrade rejected
+    as `Compatible=true, Newer=false` so the UI doesn't
+    surface the offer.
+  - First real U bump ships as `v1.3.0` (decision 3); the
+    literal "2" in the middle position is reserved for
+    legacy strings thereafter.
+  - `compareVersions` returns a `CompareResult{Compatible,
+    Newer}` struct instead of `(int, error)`; new
+    `NeedsReinstall bool` field on `CheckResult` so the
+    Settings UI can surface the reinstall path. Caller at
+    `internal/update/updater.go:185` and `:215` updated.
+  Regression net: new
+  `internal/update/updater_compare_test.go` matrix (5
+  parent tests, 23 sub-tests). Covers the 4 decisions + the
+  legacy parse path + 4 malformed-input rejections. The
+  matrix caught 3 implementation bugs on its first run:
+  inverted N comparison, `isLegacyVersionShape` rewriting
+  a literal U=2 mid-cycle, and `versionFromString`
+  silently truncating inputs with more than 3 segments.
+  Future surface work (filed as follow-up issues for a
+  separate session per RPCI tracer-bullets discipline):
+  - cli_*.go output shape (debug dump, version probe)
+  - bump-version.ps1 gains --bump-update-flow + N tracking
+  - RELEASING.md + ADR 0008 cross-reference update
+  - ArchiveManifest field for new backups
+  `.ddbak` archive compat verified: the backup reader's
+  only check is `SchemaVersion <= current`; the
+  `AppVersion` field shape change is informational only.
+  Old `.ddbak` archives keep their old `AppVersion` string
+  and continue to load.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
