@@ -11,6 +11,36 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 3 visual + WCAG contrast audit harness** (issue #292).
+  The Phase 2 token migration (#291) advertised byte-equivalent
+  rendered colors for all 304 swapped sites, but the maintainer
+  asked for an audit that measures the actual computed ratio so
+  any future regression trips the probe before it ships. New
+  `audit/smoke_phase3_contrast.mjs` walks the 5 surfaces called
+  out in #292 §Scope — primary button, secondary button, pill
+  link, field input, ghost link — plus the 4 toast variants and
+  the body gradient. Per-surface route selection picks the page
+  that actually renders each selector. Helper pattern
+  (parseRGB / lum / ratio / composed-over-white) extracted from
+  `audit/smoke_foldout_nav.mjs::Step 7.5` so future audits can
+  reuse it. Screenshots of `/calendar`, `/browse`,
+  `/share/exports`, and `/soldiers/1` are staged in
+  `audit/reports/phase3-after_*.png` for visual diff.
+
+  **Finding**: the gold-gradient primary button
+  (`#c5ab68 → #a5853f` over `text-ink-deep` = `#24303d`)
+  measures **1.28:1** on `/browse`, below the WCAG AA body
+  threshold of 4.5:1. This was the design before Phase 2
+  (gold buttons with dark text) and is unchanged by Phase 2
+  — the probe surfaces it so the maintainer can decide
+  whether to redesign the affordance (darker text, brighter
+  gold gradient, or a different background image), document
+  the regression as an intentional design choice, or ship
+  the Phase 3 finding as a known issue. The probe is the
+  tripwire for any FUTURE swap that lowers contrast further.
+
 ### Documentation
 
 - **ADR 0008 — promotion protocol** (issue #267). Lifts the
