@@ -15,6 +15,7 @@ import (
 
 const memorialRecordType = "Find a Grave"
 
+// MemorialImportIssue is a records-layer type used by the matching service.
 type MemorialImportIssue struct {
 	Row        int
 	MemorialID string
@@ -22,6 +23,7 @@ type MemorialImportIssue struct {
 	Error      string
 }
 
+// MemorialImportPreview is a records-layer type used by the matching service.
 type MemorialImportPreview struct {
 	FilePath    string
 	TotalRows   int
@@ -31,6 +33,7 @@ type MemorialImportPreview struct {
 	Issues      []MemorialImportIssue
 }
 
+// MemorialImportSummary is a records-layer type used by the matching service.
 type MemorialImportSummary struct {
 	FilePath  string
 	BatchID   string
@@ -59,6 +62,7 @@ type memorialArchiveEntry struct {
 	ScrapedAt      string   `json:"scraped_at"`
 }
 
+// PreviewMemorialArchive parses a memorial-archive upload and returns the rows the user must confirm before import.
 func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPreview, error) {
 	entries, err := loadMemorialArchive(path)
 	if err != nil {
@@ -100,6 +104,7 @@ func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPrev
 	return preview, nil
 }
 
+// ImportMemorialArchive imports the confirmed memorial-archive rows into the Local Archive.
 func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSummary, error) {
 	entries, err := loadMemorialArchive(path)
 	if err != nil {

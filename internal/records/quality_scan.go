@@ -30,12 +30,14 @@ type DataQualityIssue struct {
 	Detail    string
 }
 
+// DataQualityScanResult is a records-layer type used by the matching service.
 type DataQualityScanResult struct {
 	Mode           DataQualityMode
 	ScannedRecords int
 	Issues         []DataQualityIssue
 }
 
+// DataQualityApplyResult is a records-layer type used by the matching service.
 type DataQualityApplyResult struct {
 	Selected       int
 	Flagged        int
@@ -66,6 +68,7 @@ func normalizeDataQualityMode(raw string) DataQualityMode {
 	}
 }
 
+// RunDataQualityScan runs the data-quality scan (per DataQualityMode) over every Soldier; returns the per-kind issue-group rollup.
 func (s *SoldierService) RunDataQualityScan(modeRaw string) (DataQualityScanResult, error) {
 	mode := normalizeDataQualityMode(modeRaw)
 	candidates, err := s.loadQualityScanCandidates()
@@ -108,6 +111,7 @@ func (s *SoldierService) RunDataQualityScan(modeRaw string) (DataQualityScanResu
 	}, nil
 }
 
+// ApplyDataQualityFindingsToReviewQueue turns one DataQualityIssueGroup into a Review Queue entry for the user to resolve manually.
 func (s *SoldierService) ApplyDataQualityFindingsToReviewQueue(ids []int64) (DataQualityApplyResult, error) {
 	result := DataQualityApplyResult{}
 	uniqueIDs := dedupePositiveIDs(ids)

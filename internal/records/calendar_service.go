@@ -12,26 +12,31 @@ import (
 
 var ErrCalendarItemNotFound = errors.New("calendar item not found")
 
+// CalendarValidationError is a records-layer type used by the matching service.
 type CalendarValidationError struct {
 	Message string
 }
 
+// Error is the records-layer method backing the matching viewmodel mapper.
 func (e *CalendarValidationError) Error() string {
 	return e.Message
 }
 
+// CalendarItemInput is a records-layer type used by the matching service.
 type CalendarItemInput struct {
 	ItemType string
 	Title    string
 	Notes    string
 }
 
+// CalendarDaySummary is a records-layer type used by the matching service.
 type CalendarDaySummary struct {
 	AnniversaryCount int
 	EventCount       int
 	HolidayCount     int
 }
 
+// CalendarDay is a records-layer type used by the matching service.
 type CalendarDay struct {
 	Month         int
 	Day           int
@@ -53,6 +58,7 @@ func NewCalendarService(database *db.DB) *CalendarService {
 	return &CalendarService{db: database}
 }
 
+// GetMonthSummary returns the per-month grid the calendar page renders: one CalendarDaySummary per day in the month.
 func (c *CalendarService) GetMonthSummary(month int) (map[int]CalendarDaySummary, error) {
 	if err := validateCalendarMonth(month); err != nil {
 		return nil, err
@@ -105,6 +111,7 @@ func (c *CalendarService) GetMonthSummary(month int) (map[int]CalendarDaySummary
 	return result, rows.Err()
 }
 
+// GetDay returns the per-day detail panel for the given date: full list of anniversaries + per-item 'open Person Record' links.
 func (c *CalendarService) GetDay(month, day int) (CalendarDay, error) {
 	if err := validateCalendarMonth(month); err != nil {
 		return CalendarDay{}, err
@@ -128,6 +135,7 @@ func (c *CalendarService) GetDay(month, day int) (CalendarDay, error) {
 	}, nil
 }
 
+// CreateCalendarItem persists a new calendar entry attached to a Soldier.
 func (c *CalendarService) CreateCalendarItem(month, day int, input CalendarItemInput) (models.CalendarItem, error) {
 	if err := validateCalendarDate(month, day); err != nil {
 		return models.CalendarItem{}, err
@@ -147,6 +155,7 @@ func (c *CalendarService) CreateCalendarItem(month, day int, input CalendarItemI
 	return c.getCalendarItem(itemID)
 }
 
+// UpdateCalendarItem updates an existing calendar entry's date / label / source-record linkage.
 func (c *CalendarService) UpdateCalendarItem(itemID int64, input CalendarItemInput) (models.CalendarItem, error) {
 	if itemID <= 0 {
 		return models.CalendarItem{}, &CalendarValidationError{Message: "item_id must be greater than 0"}
@@ -169,6 +178,7 @@ func (c *CalendarService) UpdateCalendarItem(itemID int64, input CalendarItemInp
 	return c.getCalendarItem(itemID)
 }
 
+// DeleteCalendarItem removes a calendar entry.
 func (c *CalendarService) DeleteCalendarItem(itemID int64) error {
 	if itemID <= 0 {
 		return &CalendarValidationError{Message: "item_id must be greater than 0"}

@@ -39,6 +39,7 @@ type SoldierService struct {
 	formSuggestions   *models.SoldierFormSuggestions
 }
 
+// UnitCamaraderieGraph returns the unit-connection graph for the Camaraderie tab: nodes (units) + edges (soldiers who served in both).
 type UnitCamaraderieGraph struct {
 	Central            models.Soldier
 	UnitLabel          string
@@ -49,6 +50,7 @@ type UnitCamaraderieGraph struct {
 	SameRegiment       []UnitCamaraderieConnection
 }
 
+// UnitCamaraderieConnection is a records-layer type used by the matching service.
 type UnitCamaraderieConnection struct {
 	Soldier      models.Soldier
 	Relation     string
@@ -56,6 +58,7 @@ type UnitCamaraderieConnection struct {
 	StrengthText string
 }
 
+// ServiceTimeline returns the per-soldier chronological service timeline (enlistment, transfer, wound, discharge, death).
 type ServiceTimeline struct {
 	Central            models.Soldier
 	Events             []ServiceTimelineEvent
@@ -66,6 +69,7 @@ type ServiceTimeline struct {
 	InferredEventCount int
 }
 
+// ServiceTimelineEvent is a records-layer type used by the matching service.
 type ServiceTimelineEvent struct {
 	Title           string
 	DateLabel       string
@@ -78,6 +82,7 @@ type ServiceTimelineEvent struct {
 	sortOrder       int
 }
 
+// ResearchTask is a records-layer type used by the matching service.
 type ResearchTask struct {
 	ID           int64
 	SoldierID    int64
@@ -90,12 +95,14 @@ type ResearchTask struct {
 	ResolvedAt   string
 }
 
+// ResearchTaskSuggestion is a records-layer type used by the matching service.
 type ResearchTaskSuggestion struct {
 	Title        string
 	Notes        string
 	EvidenceType string
 }
 
+// ResearchLog returns the per-soldier Research Log: open tasks + dismissed suggestions + recently completed.
 type ResearchLog struct {
 	Central       models.Soldier
 	Tasks         []ResearchTask
@@ -104,6 +111,7 @@ type ResearchLog struct {
 	ResolvedCount int
 }
 
+// ResearchPack is a records-layer type used by the matching service.
 type ResearchPack struct {
 	Central         models.Soldier
 	Scope           string
@@ -115,6 +123,7 @@ type ResearchPack struct {
 	OpenReviewCount int
 }
 
+// ResearchCollection is a records-layer type used by the matching service.
 type ResearchCollection struct {
 	ID              int64
 	Name            string
@@ -125,11 +134,13 @@ type ResearchCollection struct {
 	ContainsCurrent bool
 }
 
+// ResearchCollectionHub is a records-layer type used by the matching service.
 type ResearchCollectionHub struct {
 	Current     *models.Soldier
 	Collections []ResearchCollection
 }
 
+// ResearchCollectionDetail returns the per-collection detail page (the Soldiers in the collection, sorted).
 type ResearchCollectionDetail struct {
 	Collection ResearchCollection
 	Current    *models.Soldier
@@ -144,6 +155,7 @@ func NewSoldierService(database *db.DB) *SoldierService {
 	return &SoldierService{db: database}
 }
 
+// Create persists a new Soldier and returns the assigned ID. Sets CreatedAt + UpdatedAt; the caller is responsible for the display ID.
 func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error) {
 	conn := s.db.Conn()
 	generatedDisplayID := strings.TrimSpace(soldier.DisplayID) == ""
@@ -227,6 +239,7 @@ func isFiveDigitGeneratedSuffix(value string) bool {
 	return true
 }
 
+// GetByID returns the Soldier with the given primary-key ID, or ErrSoldierNotFound.
 func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 	conn := s.db.Conn()
 	row := conn.QueryRow(`SELECT `+soldierSelectColumns+` FROM soldiers WHERE id = ?`, id)
@@ -266,6 +279,7 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 	return soldier, nil
 }
 
+// GetByDisplayID returns the Soldier with the given display ID (e.g. 'P-0042'), or ErrSoldierNotFound.
 func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, error) {
 	trimmed := strings.TrimSpace(displayID)
 	if trimmed == "" {
@@ -313,6 +327,7 @@ func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, erro
 	return soldier, nil
 }
 
+// Update replaces the Soldier row identified by input.ID; touches UpdatedAt. Returns ErrSoldierNotFound if the row vanished.
 func (s *SoldierService) Update(soldier models.Soldier) error {
 	conn := s.db.Conn()
 	nodePrefix, err := s.db.NodePrefix()
@@ -365,6 +380,7 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	return nil
 }
 
+// Delete removes the Soldier and (via cascade) the attached records, images, and tag-join rows.
 func (s *SoldierService) Delete(id int64) error {
 	if _, err := s.db.Conn().Exec(`DELETE FROM soldiers WHERE id = ?`, id); err != nil {
 		return err
@@ -373,6 +389,7 @@ func (s *SoldierService) Delete(id int64) error {
 	return nil
 }
 
+// AddImage attaches an image to the Soldier; computes SHA-256 for dedup.
 func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption string) error {
 	soldierSyncID, err := s.soldierSyncIDByID(soldierID)
 	if err != nil {
@@ -402,6 +419,7 @@ func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption s
 	return s.touchAuditFields(soldierID, "images")
 }
 
+// DeleteImages removes the image + tag-join rows for the given image IDs. Returns the count actually deleted.
 func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
 	if len(imageIDs) == 0 {
 		return nil
@@ -428,6 +446,7 @@ func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
 	return s.touchAuditFields(soldierID, "images")
 }
 
+// SetPrimaryImage marks one image as the portrait shown on the Person Record header.
 func (s *SoldierService) SetPrimaryImage(soldierID, imageID int64) error {
 	var count int
 	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ? AND id = ?`, soldierID, imageID).Scan(&count); err != nil {
@@ -442,6 +461,7 @@ func (s *SoldierService) SetPrimaryImage(soldierID, imageID int64) error {
 	return s.touchAuditFields(soldierID, "primary_image")
 }
 
+// GetImageByID returns a single image row.
 func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
 	row := s.db.Conn().QueryRow(`SELECT `+imageSelectColumns+` FROM images WHERE id = ?`, imageID)
 	var image models.Image
@@ -463,6 +483,7 @@ func (s *SoldierService) CountNeedsReview() (int, error) {
 	return count, err
 }
 
+// ArchiveCounts returns the headline-number rollup (soldiers, wives/widows, linked people) for the Insights page header.
 func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
 	row := s.db.Conn().QueryRow(`
 		SELECT
@@ -486,6 +507,7 @@ func (s *SoldierService) ArchiveCounts() (models.ArchiveCounts, error) {
 	return counts, nil
 }
 
+// ReviewQueue returns the user's pending review items: unresolved duplicate-audit findings + unresolved merge-review conflicts.
 func (s *SoldierService) ReviewQueue(page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1
@@ -508,6 +530,7 @@ func (s *SoldierService) ReviewQueue(page, pageSize int) ([]models.Soldier, int,
 	return soldiers, total, err
 }
 
+// MarkReviewResolved marks one review item as resolved (kind: merge conflict or duplicate finding).
 func (s *SoldierService) MarkReviewResolved(soldierID int64) error {
 	if _, err := s.db.Conn().Exec(`UPDATE soldiers SET needs_review = 0, review_reason = '' WHERE id = ?`, soldierID); err != nil {
 		return err
@@ -515,6 +538,7 @@ func (s *SoldierService) MarkReviewResolved(soldierID int64) error {
 	return s.touchAuditFields(soldierID, "review_status")
 }
 
+// SetReviewStatus sets the per-review-item status (open / dismissed / resolved).
 func (s *SoldierService) SetReviewStatus(soldierID int64, needsReview bool, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if !needsReview {
@@ -529,6 +553,7 @@ func (s *SoldierService) SetReviewStatus(soldierID int64, needsReview bool, reas
 	return s.touchAuditFields(soldierID, "review_status")
 }
 
+// SearchPage returns the page of Soldiers matching the supplied filter + sort, plus the total count.
 func (s *SoldierService) SearchPage(query string, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1
@@ -742,6 +767,7 @@ func snippetContainsQuery(snippet, query string) bool {
 	return false
 }
 
+// AdvancedSearch returns the page of Soldiers matching an arbitrary query (built by the advanced-search form).
 func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1
@@ -969,6 +995,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	return soldiers, total, err
 }
 
+// List returns all Soldiers, paginated, in display-ID order.
 func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error) {
 	conn := s.db.Conn()
 	var total int
@@ -994,6 +1021,7 @@ func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error)
 	return soldiers, total, err
 }
 
+// ListByEntryTypes returns Soldiers filtered by entry_type (soldier / wife / widow / linked person).
 func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize int) ([]models.Soldier, int, error) {
 	if page < 1 {
 		page = 1
@@ -1051,6 +1079,7 @@ func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize in
 // renders. Audit issue #119 (finding 7.2).
 const recentSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
 
+// RecentByIDs returns the Soldiers with the given IDs in the order they appear in the input slice. Used to populate the Recent Edits list.
 func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, error) {
 	if limit < 1 {
 		limit = 10
@@ -1091,6 +1120,7 @@ func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, 
 	return ordered, nil
 }
 
+// UnitCamaraderieGraph returns the unit-connection graph for the Camaraderie tab: nodes (units) + edges (soldiers who served in both).
 func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderieGraph, error) {
 	central, err := s.GetByID(soldierID)
 	if err != nil {
@@ -1155,6 +1185,7 @@ func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderie
 	return graph, nil
 }
 
+// ServiceTimeline returns the per-soldier chronological service timeline (enlistment, transfer, wound, discharge, death).
 func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, error) {
 	central, err := s.GetByID(soldierID)
 	if err != nil {
@@ -1226,6 +1257,7 @@ func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, err
 	return timeline, nil
 }
 
+// ResearchLog returns the per-soldier Research Log: open tasks + dismissed suggestions + recently completed.
 func (s *SoldierService) ResearchLog(soldierID int64) (*ResearchLog, error) {
 	central, err := s.GetByID(soldierID)
 	if err != nil {
@@ -1261,6 +1293,7 @@ func (s *SoldierService) ResearchLog(soldierID int64) (*ResearchLog, error) {
 	return log, rows.Err()
 }
 
+// AddResearchTask appends a new open task to the per-soldier Research Log.
 func (s *SoldierService) AddResearchTask(soldierID int64, title, notes, evidenceType string) error {
 	if _, err := s.GetByID(soldierID); err != nil {
 		return err
@@ -1278,6 +1311,7 @@ func (s *SoldierService) AddResearchTask(soldierID int64, title, notes, evidence
 	return err
 }
 
+// ResolveResearchTask marks an open task as resolved (status: done or dropped).
 func (s *SoldierService) ResolveResearchTask(soldierID, taskID int64) error {
 	result, err := s.db.Conn().Exec(`
 		UPDATE research_tasks
@@ -1297,6 +1331,7 @@ func (s *SoldierService) ResolveResearchTask(soldierID, taskID int64) error {
 	return nil
 }
 
+// ResearchPackForSoldier returns the Research Pack for the given Soldier's geography (county/state scope).
 func (s *SoldierService) ResearchPackForSoldier(soldierID int64, scope string) (*ResearchPack, error) {
 	central, err := s.GetByID(soldierID)
 	if err != nil {
@@ -1357,10 +1392,12 @@ func (s *SoldierService) ResearchPackForSoldier(soldierID int64, scope string) (
 	return pack, nil
 }
 
+// ResearchPackForPersonRecord is the glossary-name alias of ResearchPackForSoldier.
 func (s *SoldierService) ResearchPackForPersonRecord(personRecordID int64, scope string) (*ResearchPack, error) {
 	return s.ResearchPackForSoldier(personRecordID, scope)
 }
 
+// ResearchCollectionsHub returns the full Research Collections Hub page payload.
 func (s *SoldierService) ResearchCollectionsHub(currentSoldierID int64) (*ResearchCollectionHub, error) {
 	hub := &ResearchCollectionHub{}
 	if currentSoldierID > 0 {
@@ -1396,6 +1433,7 @@ func (s *SoldierService) ResearchCollectionsHub(currentSoldierID int64) (*Resear
 	return hub, rows.Err()
 }
 
+// CreateResearchCollection creates a new named research collection.
 func (s *SoldierService) CreateResearchCollection(name, description string) error {
 	name = strings.TrimSpace(name)
 	description = strings.TrimSpace(description)
@@ -1409,6 +1447,7 @@ func (s *SoldierService) CreateResearchCollection(name, description string) erro
 	return err
 }
 
+// AddSoldierToResearchCollection attaches a Soldier to a research collection.
 func (s *SoldierService) AddSoldierToResearchCollection(collectionID, soldierID int64) error {
 	if _, err := s.GetByID(soldierID); err != nil {
 		return err
@@ -1433,10 +1472,12 @@ func (s *SoldierService) AddSoldierToResearchCollection(collectionID, soldierID 
 	return nil
 }
 
+// AddPersonRecordToResearchCollection is the glossary-name alias of AddSoldierToResearchCollection.
 func (s *SoldierService) AddPersonRecordToResearchCollection(collectionID, personRecordID int64) error {
 	return s.AddSoldierToResearchCollection(collectionID, personRecordID)
 }
 
+// ResearchCollectionDetail returns the per-collection detail page (the Soldiers in the collection, sorted).
 func (s *SoldierService) ResearchCollectionDetail(collectionID int64, currentSoldierID int64) (*ResearchCollectionDetail, error) {
 	detail := &ResearchCollectionDetail{}
 	if currentSoldierID > 0 {
@@ -1980,6 +2021,7 @@ func (s *SoldierService) researchPackCounts(whereClause string, args []interface
 	return counts, rows.Err()
 }
 
+// ManualComparison computes the per-field comparison for the user-initiated pair compare.
 func (s *SoldierService) ManualComparison(leftID, rightID int64) (*DuplicateAuditComparison, error) {
 	if leftID < 1 || rightID < 1 || leftID == rightID {
 		return nil, fmt.Errorf("choose two different records to compare")
@@ -2423,6 +2465,7 @@ func nullInt64Dest(target *int64, holder *sql.NullInt64) interface{ Scan(any) er
 	})
 }
 
+// MarriageCandidates returns the per-Soldier list of candidate marriage matches (used by the Marriage tab).
 func (s *SoldierService) MarriageCandidates() ([]models.Soldier, error) {
 	rows, err := s.db.Conn().Query(`SELECT ` + soldierSelectColumns + ` FROM soldiers WHERE entry_type = 'soldier' ORDER BY last_name, first_name`)
 	if err != nil {
@@ -2432,6 +2475,7 @@ func (s *SoldierService) MarriageCandidates() ([]models.Soldier, error) {
 	return scanSoldiers(rows)
 }
 
+// FormSuggestions returns the autocomplete payload for the Person Record form (units, cemeteries, ranks, etc.).
 func (s *SoldierService) FormSuggestions() (models.SoldierFormSuggestions, error) {
 	s.formSuggestionsMu.RLock()
 	if s.formSuggestions != nil {
@@ -2875,6 +2919,7 @@ func nullBoolDest(target *bool, holder *sql.NullBool) interface{ Scan(any) error
 
 type scannerFunc func(any) error
 
+// Scan runs the data-quality scan over every Soldier in the archive; surfaces issues by kind.
 func (f scannerFunc) Scan(value any) error {
 	return f(value)
 }

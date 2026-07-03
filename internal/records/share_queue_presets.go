@@ -53,6 +53,7 @@ type ShareQueuePresetService struct {
 	db *sql.DB
 }
 
+// NewShareQueuePresetService constructs a ShareQueuePresetService bound to the given database.
 func NewShareQueuePresetService(db *sql.DB) *ShareQueuePresetService {
 	return &ShareQueuePresetService{db: db}
 }

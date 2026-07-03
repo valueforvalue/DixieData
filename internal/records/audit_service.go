@@ -28,6 +28,7 @@ type AuditService struct {
 	db *db.DB
 }
 
+// DuplicateAuditSummary is a records-layer type used by the matching service.
 type DuplicateAuditSummary struct {
 	OpenFindings        int
 	ResolvedFindings    int
@@ -35,6 +36,7 @@ type DuplicateAuditSummary struct {
 	SimilarityThreshold int
 }
 
+// DuplicateAuditRunResult is a records-layer type used by the matching service.
 type DuplicateAuditRunResult struct {
 	ScannedRecords     int
 	FindingsDiscovered int
@@ -43,6 +45,7 @@ type DuplicateAuditRunResult struct {
 	OpenFindings       int
 }
 
+// DuplicateAuditFindingSummary is a records-layer type used by the matching service.
 type DuplicateAuditFindingSummary struct {
 	ID             int64
 	OtherSoldierID int64
@@ -51,11 +54,13 @@ type DuplicateAuditFindingSummary struct {
 	Reason         string
 }
 
+// ReviewQueueEntry is a records-layer type used by the matching service.
 type ReviewQueueEntry struct {
 	Soldier           models.Soldier
 	DuplicateFindings []DuplicateAuditFindingSummary
 }
 
+// DuplicateAuditComparisonField is a records-layer type used by the matching service.
 type DuplicateAuditComparisonField struct {
 	Key         string
 	Label       string
@@ -64,6 +69,7 @@ type DuplicateAuditComparisonField struct {
 	Highlighted bool
 }
 
+// DuplicateAuditComparison is a records-layer type used by the matching service.
 type DuplicateAuditComparison struct {
 	FindingID    int64
 	FindingType  string
@@ -107,6 +113,7 @@ func NewAuditService(database *db.DB) *AuditService {
 	return &AuditService{db: database}
 }
 
+// SimilarityThreshold is the name-similarity cutoff above which two Soldiers are flagged as duplicate candidates.
 func (s *AuditService) SimilarityThreshold() (int, error) {
 	threshold := defaultDuplicateAuditSimilarityThreshold
 	var raw string
@@ -124,6 +131,7 @@ func (s *AuditService) SimilarityThreshold() (int, error) {
 	return parsed, nil
 }
 
+// Summary returns the headline duplicate-audit rollup: open findings, dismissed, merged, total scanned.
 func (s *AuditService) Summary() (DuplicateAuditSummary, error) {
 	threshold, err := s.SimilarityThreshold()
 	if err != nil {
@@ -141,6 +149,7 @@ func (s *AuditService) Summary() (DuplicateAuditSummary, error) {
 	return summary, nil
 }
 
+// RunDuplicateAudit scans the archive for duplicate candidate pairs above the SimilarityThreshold; returns the per-finding summary list.
 func (s *AuditService) RunDuplicateAudit() (DuplicateAuditRunResult, error) {
 	threshold, err := s.SimilarityThreshold()
 	if err != nil {
@@ -228,6 +237,7 @@ func (s *AuditService) RunDuplicateAudit() (DuplicateAuditRunResult, error) {
 	return result, nil
 }
 
+// ResolveFinding marks one duplicate-audit finding as resolved with the user's chosen action (merge / keep separate).
 func (s *AuditService) ResolveFinding(findingID int64) error {
 	tx, err := s.db.Conn().Begin()
 	if err != nil {
@@ -252,6 +262,7 @@ func (s *AuditService) ResolveFinding(findingID int64) error {
 	return tx.Commit()
 }
 
+// ResolveFindingsForSoldier resolves every finding attached to the given Soldier with the same action.
 func (s *AuditService) ResolveFindingsForSoldier(soldierID int64) error {
 	tx, err := s.db.Conn().Begin()
 	if err != nil {
@@ -299,10 +310,12 @@ func (s *AuditService) ResolveFindingsForSoldier(soldierID int64) error {
 	return tx.Commit()
 }
 
+// ResolveFindingsForPersonRecord is the glossary-name alias of ResolveFindingsForSoldier.
 func (s *AuditService) ResolveFindingsForPersonRecord(personRecordID int64) error {
 	return s.ResolveFindingsForSoldier(personRecordID)
 }
 
+// FindingsForSoldiers returns the per-Soldier list of duplicate-audit findings.
 func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]DuplicateAuditFindingSummary, error) {
 	if len(soldierIDs) == 0 {
 		return map[int64][]DuplicateAuditFindingSummary{}, nil
@@ -386,10 +399,12 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 	return results, nil
 }
 
+// FindingsForPersonRecords is the glossary-name alias of FindingsForSoldiers.
 func (s *AuditService) FindingsForPersonRecords(personRecordIDs []int64) (map[int64][]DuplicateAuditFindingSummary, error) {
 	return s.FindingsForSoldiers(personRecordIDs)
 }
 
+// Comparison returns the per-pair compare payload (Local + candidate + per-field comparison list).
 func (s *AuditService) Comparison(findingID int64) (*DuplicateAuditComparison, error) {
 	var (
 		leftID          int64
