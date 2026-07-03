@@ -11,8 +11,10 @@ import (
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
+// CurrentSchemaVersion is the schema version the current binary expects. Bumped by every schema-touching PR (issue #266's discipline).
 const CurrentSchemaVersion = versioninfo.CurrentSchemaVersion
 
+// GetAppVersion returns the app version string for the current binary, in the v{MAJOR}.{U}.{N} shape (issue #266).
 func GetAppVersion() string {
 	return versioninfo.CurrentAppVersion()
 }

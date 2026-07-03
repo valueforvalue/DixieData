@@ -10,6 +10,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
+// SystemConfig returns the system-wide config row (one row per Local Archive).
 func (d *DB) SystemConfig(key string) (string, error) {
 	var value string
 	err := d.conn.QueryRow(`SELECT value FROM system_config WHERE key = ?`, key).Scan(&value)
@@ -22,6 +23,7 @@ func (d *DB) SystemConfig(key string) (string, error) {
 	return value, nil
 }
 
+// SetSystemConfig updates the system-wide config row.
 func (d *DB) SetSystemConfig(key, value string) error {
 	_, err := d.conn.Exec(`
 		INSERT INTO system_config(key, value)
@@ -33,6 +35,7 @@ func (d *DB) SetSystemConfig(key, value string) error {
 	return err
 }
 
+// NodePrefix returns the configured per-user node prefix (issue #180). Empty in legacy archives.
 func (d *DB) NodePrefix() (string, error) {
 	value, err := d.SystemConfig("node_prefix")
 	if err != nil {
@@ -41,6 +44,7 @@ func (d *DB) NodePrefix() (string, error) {
 	return NormalizeNodePrefix(value), nil
 }
 
+// BuildUserNodePrefix constructs a node prefix from the user's display name (lowercase, ASCII letters + digits only, truncated).
 func BuildUserNodePrefix(firstName, middleName, lastName string, birthYear int) (string, error) {
 	firstInitial := firstPrefixInitial(firstName)
 	middleInitial := firstPrefixInitial(middleName)
@@ -54,6 +58,7 @@ func BuildUserNodePrefix(firstName, middleName, lastName string, birthYear int) 
 	return firstInitial + middleInitial + lastInitial + fmt.Sprintf("%02d", birthYear%100), nil
 }
 
+// UserIdentity returns the per-user identity (node prefix + display name) configured for this Local Archive.
 func (d *DB) UserIdentity() (models.UserIdentity, error) {
 	var identity models.UserIdentity
 	var err error
@@ -87,6 +92,7 @@ func (d *DB) UserIdentity() (models.UserIdentity, error) {
 	return identity, nil
 }
 
+// IdentitySetupRequired reports whether the first-launch setup wizard still needs to run.
 func (d *DB) IdentitySetupRequired() (bool, error) {
 	complete, err := d.SystemConfig("user_identity_complete")
 	if err != nil {
@@ -102,6 +108,7 @@ func (d *DB) IdentitySetupRequired() (bool, error) {
 	return soldierCount == 0, nil
 }
 
+// ConfigureUserIdentity persists the per-user identity chosen during setup. Called once at first launch; cannot be changed without an explicit reset.
 func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birthYear int) (models.UserIdentity, error) {
 	firstName = strings.TrimSpace(firstName)
 	middleName = strings.TrimSpace(middleName)
@@ -148,6 +155,7 @@ func (d *DB) ConfigureUserIdentity(firstName, middleName, lastName string, birth
 	}, nil
 }
 
+// BackfillEntryAuditIdentity sets the audit identity (node_prefix + display_id) on every Soldiers row that lacks it. Used after ConfigureUserIdentity on legacy archives.
 func (d *DB) BackfillEntryAuditIdentity() error {
 	identity, err := d.UserIdentity()
 	if err != nil {
@@ -175,6 +183,7 @@ func (d *DB) BackfillEntryAuditIdentity() error {
 	return tx.Commit()
 }
 
+// EntryAuditIdentityBackfillNeeded reports whether the entry-audit-identity backfill still has rows to process.
 func (d *DB) EntryAuditIdentityBackfillNeeded() (bool, error) {
 	var needed int
 	if err := d.conn.QueryRow(`
@@ -200,6 +209,7 @@ func firstPrefixInitial(value string) string {
 	return ""
 }
 
+// NewSyncID returns a fresh sync ID (UUIDv4) for a newly-created row. Sync IDs are stable across import/export so a row that round-trips through a Shared Archive re-merges correctly.
 func NewSyncID() (string, error) {
 	buf := make([]byte, 16)
 	if _, err := rand.Read(buf); err != nil {

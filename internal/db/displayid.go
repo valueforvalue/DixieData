@@ -6,8 +6,10 @@ import (
 	"strings"
 )
 
+// LegacyDisplayIDNamespace is the prefix pre-issue-#180 import-archives used for display IDs (D-0042 style). New archives use the per-user namespace.
 const LegacyDisplayIDNamespace = "DXD"
 
+// NormalizeNodePrefix normalizes a node prefix to lowercase ASCII letters + digits. Used by the per-user identity (issue #180) so two users with the same Soldier get distinct display-ID namespaces.
 func NormalizeNodePrefix(prefix string) string {
 	trimmed := strings.ToUpper(strings.TrimSpace(prefix))
 	if trimmed == "" {
@@ -16,6 +18,7 @@ func NormalizeNodePrefix(prefix string) string {
 	return trimmed
 }
 
+// SanitizeID replaces unsafe characters in a freeform ID string with '-' so the result is safe to embed in a URL or display ID.
 func SanitizeID(id string, namespace string) string {
 	trimmed := strings.TrimSpace(id)
 	if trimmed == "" {
@@ -36,6 +39,7 @@ func SanitizeID(id string, namespace string) string {
 	return trimmed
 }
 
+// CanonicalDisplayID returns the canonical display-ID form for a Soldier + node prefix (e.g. P-0042).
 func CanonicalDisplayID(id string) (string, int, bool) {
 	canonical, ok := canonicalNamespaceSequence(strings.Split(strings.TrimSpace(id), "-"))
 	if !ok {
@@ -49,6 +53,7 @@ func CanonicalDisplayID(id string) (string, int, bool) {
 	return parts[0], sequence, true
 }
 
+// NextGeneratedDisplayID returns the next auto-generated display ID for a given node prefix. Counts from the highest existing ID in that namespace.
 func NextGeneratedDisplayID(namespace string, nextSequence int) string {
 	return fmt.Sprintf("%s-%05d", NormalizeNodePrefix(namespace), nextSequence)
 }
