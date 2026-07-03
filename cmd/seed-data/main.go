@@ -1,3 +1,4 @@
+// Command seed-data populates a DixieData directory with deterministic sample soldiers, records, and images.
 package main
 
 import (

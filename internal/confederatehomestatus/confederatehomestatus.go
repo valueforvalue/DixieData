@@ -1,3 +1,4 @@
+// Package confederatehomestatus normalizes Confederate Home membership status strings to canonical values.
 package confederatehomestatus
 
 import "strings"

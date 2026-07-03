@@ -1,3 +1,4 @@
+// Package persondisplay formats person names and service-line text for UI and export rendering.
 package persondisplay
 
 import "strings"

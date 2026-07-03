@@ -1,3 +1,4 @@
+// Package versioninfo defines and formats DixieData's schema, update-flow, and app release versions.
 package versioninfo
 
 import "fmt"
