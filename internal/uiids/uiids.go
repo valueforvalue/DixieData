@@ -119,6 +119,12 @@ const (
 	PanelShareAllImports  = "panel.share.all-imports"
 	PanelShareSync        = "panel.share.sync"
 	PanelShareSupport     = "panel.share.support"
+	// Issue #284: panel IDs for the dedicated /share/exports,
+	// /share/imports, /share/sync subpages. Distinct from
+	// PanelShareAllExports etc. above (which are reserved
+	// for the future "view all" surface on /share).
+	PanelShareExports = "panel.share.exports"
+	PanelShareImports = "panel.share.imports"
 )
 
 type Surface struct {

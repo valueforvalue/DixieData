@@ -1,0 +1,119 @@
+package templates
+
+import (
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// ShareExportsView renders /share/exports. Owns the Export &
+// Backup surface (the #export-section that lived inline on
+// /share pre-issue #284). Includes the Build Share Archive
+// entry point per the locked decision in #284: the Build
+// modal is reached from this page rather than its own
+// /share/build route. See handoff + issue body for the
+// rationale on the foldout collapse (3 items, not 4).
+//
+// Data: only exportRecords (for the PrintConfigModal) and
+// shareIncludeTagsEnabled (for the include-tags checkbox)
+// are needed. The Google status + drift + counts belong
+// to /share (index) and /share/sync, not this page.
+templ ShareExportsView(exportRecords []viewmodel.ExportRecordOption, shareIncludeTagsEnabled bool) {
+	@Layout("Share Exports") {
+		<div class="relative mx-auto max-w-6xl space-y-6">
+			<nav aria-label="Breadcrumb" class="text-sm text-slate-500">
+				<a href="/share" class="text-[#324253] underline-offset-2 hover:underline">← Back to /share</a>
+			</nav>
+			<div>
+				<h2 class="text-2xl gold font-bold">Share Exports</h2>
+				<p class="mt-2 text-sm text-slate-600">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
+			</div>
+			<section id={ uiids.PanelShareExports } class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Export & Backup</p>
+					<h3 class="mt-2 text-xl gold font-bold">Create files to share or preserve</h3>
+					<p class="mt-2 text-sm text-slate-500">Generate portable exports, replacement backups, and merge-ready shared archives.</p>
+				</div>
+				<div class="flex flex-col gap-3">
+					@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{
+						"data-action":       "/export/json",
+						"data-dixie-submit": "true",
+					}) {
+						<span class="font-bold">Export JSON</span>
+						<span class="text-xs text-slate-300">Hierarchical w/ version metadata</span>
+					}
+					@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
+						"data-action":       "/export/csv",
+						"data-dixie-submit": "true",
+					}) {
+						<span class="font-bold">Export Excel (.xlsx)</span>
+						<span class="text-xs text-slate-500">Typed dates, linked spouse data</span>
+					}
+					@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
+						"data-action":       "/export/ical",
+						"data-dixie-submit": "true",
+					}) {
+						<span class="font-bold">Export iCalendar</span>
+						<span class="text-xs text-slate-500">ICS w/ app and schema versions</span>
+					}
+					<form method="post" action="/export/static-archive?async=1" class="contents">
+						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left w-full", templ.Attributes{"type": "submit"}) {
+							<span class="font-bold">Export Static Web Archive</span>
+							<span class="text-xs text-slate-500">Standalone, live search, expandable cards</span>
+						}
+					</form>
+					@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
+						"data-print-config-open": "",
+					}) {
+						<span class="font-bold">Full Database Printable PDF</span>
+						<span class="text-xs text-slate-500">Landscape, configurable scope/sort/group</span>
+					}
+					@components.ButtonContent(components.ButtonPrimary, "justify-between text-left", templ.Attributes{
+						"data-action":       "/export/backup",
+						"data-dixie-submit": "true",
+					}) {
+						<span class="font-bold">Export Backup (.ddbak)</span>
+						<span class="text-xs text-slate-300">Manifest, DB, all images</span>
+					}
+					@components.ButtonContent(components.ButtonSecondary, "justify-between text-left", templ.Attributes{
+						"data-action":       "/export/shared-archive",
+						"data-dixie-submit": "true",
+					}) {
+						<span class="font-bold">Export Shared Archive (.ddshare)</span>
+						<span class="text-xs text-slate-500">For sharing into another DixieData</span>
+					}
+					<form action="/share/export-options" method="post" data-dixie-submit="true" data-reload-on-success="true" class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/65 px-4 py-3 text-sm text-slate-700 space-y-2">
+						<input type="hidden" name="include_tags" value="0"/>
+						<label class="flex items-start gap-2">
+							<input
+								type="checkbox"
+								name="include_tags"
+								value="1"
+								data-share-include-tags
+								if shareIncludeTagsEnabled {
+									checked
+								}
+								class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"
+							/>
+							<span>
+								<strong class="text-[#22303d]">Include tags</strong> in this .ddshare
+								(virtual cemeteries, research notes). Default off; recipient
+								sees your grouping on import.
+							</span>
+						</label>
+					</form>
+					<div id="build-share-archive" data-build-share-archive>
+						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left w-full", templ.Attributes{
+							"data-share-queue-open": "",
+						}) {
+							<span class="font-bold">Build Share Archive</span>
+							<span class="text-xs text-slate-500">Open the Share Queue modal (issue #182)</span>
+						}
+					</div>
+				</div>
+			</section>
+			@partials.PrintConfigModal(exportRecords)
+		</div>
+	}
+}

@@ -80,6 +80,13 @@ func (a *App) setupRoutes() {
 	r.Post("/setup", a.handleInitialSetup)
 	r.Get("/version", a.handleVersion)
 	r.Get("/share", a.handleShare)
+	// Issue #284: dedicated subpages for the Share surface.
+	// Each owns a slice of the original /share landing;
+	// the landing reorg + foldout menu update land in
+	// Slice 2. The /share/queue route already exists below.
+	r.Get("/share/exports", a.handleShareExports)
+	r.Get("/share/imports", a.handleShareImports)
+	r.Get("/share/sync", a.handleShareSync)
 	r.Get("/research-collections", a.handleResearchCollections)
 	r.Get("/research-collections/*", a.handleResearchCollectionByID)
 
