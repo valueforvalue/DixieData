@@ -186,7 +186,7 @@ templ jobStatusBody(job jobs.Job) {
 			@jobSummaryCard(job)
 		}
 		if job.Status == jobs.StatusError {
-			<div class="rounded-2xl border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.08)] p-4 text-sm text-[#6f2c26]">
+			<div class="rounded-2xl border border-review-red/[0.45] bg-review-red/[0.08] p-4 text-sm text-[#6f2c26]">
 				<p class="font-semibold">{ jobs.FailedVerb(job.Kind, false) }</p>
 				<p class="mt-1 break-words">{ job.Error }</p>
 			</div>

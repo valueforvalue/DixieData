@@ -180,7 +180,7 @@ templ CalendarDayActionMenu(day viewmodel.CalendarDayDetail) {
 			}
 		</div>
 		if strings.TrimSpace(day.Form.ErrorMessage) != "" {
-			<p class="mt-4 rounded-xl border border-[rgba(111,44,38,0.28)] bg-[rgba(111,44,38,0.08)] px-4 py-3 text-sm text-[#6f2c26]">{ day.Form.ErrorMessage }</p>
+			<p class="mt-4 rounded-xl border border-review-red/[0.28] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">{ day.Form.ErrorMessage }</p>
 		}
 		if day.Form.EditingID > 0 {
 			<form
@@ -261,5 +261,5 @@ func calendarDayStatusClass(kind string) string {
 	if kind == "success" {
 		return base + " border-[rgba(38,101,66,0.28)] bg-[rgba(38,101,66,0.09)] text-[#1f5b3b]"
 	}
-	return base + " border-[rgba(111,44,38,0.28)] bg-[rgba(111,44,38,0.08)] text-[#6f2c26]"
+	return base + " border-review-red/[0.28] bg-review-red/[0.08] text-[#6f2c26]"
 }

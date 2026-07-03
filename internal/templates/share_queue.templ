@@ -24,7 +24,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 				<h1 class="mt-2 text-2xl gold font-bold">Manage your staged subset</h1>
 				<p class="mt-2 text-sm text-slate-600">Re-order, remove, or bulk-export the Person Records you have staged for sharing. This page mirrors the Share Build modal queue so changes sync back to localStorage on every action.</p>
 				<form action={ templ.SafeURL(routebuilder.ExportSharedArchiveSubset()) } method="post" data-dixie-submit="true" data-share-queue-page-form data-clear-share-queue-on-success="true" class="mt-4 flex flex-wrap items-center gap-3">
-					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-[rgba(111,44,38,0.45)] bg-white/70 px-4 py-2 text-sm font-semibold text-[#6f2c26] hover:bg-white" disabled>
+					<button type="button" data-share-queue-page-bulk-remove class="inline-flex items-center rounded-2xl border border-review-red/[0.45] bg-white/70 px-4 py-2 text-sm font-semibold text-[#6f2c26] hover:bg-white" disabled>
 						Remove Selected
 					</button>
 					<button type="submit" data-share-queue-page-bulk-export class="inline-flex items-center rounded-2xl border border-[#8d7440] bg-[#8d7440] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#7a6635]" disabled>
@@ -72,7 +72,7 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.SourceRecordCount }</td>
 										<td class="px-2 py-3 align-top text-slate-600">{ row.PersonRecord.ImageCount }</td>
 										<td class="px-2 py-3 align-top">
-											<button type="button" data-share-queue-page-remove-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="rounded border border-[rgba(111,44,38,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white">Remove</button>
+											<button type="button" data-share-queue-page-remove-id={ fmt.Sprintf("%d", row.PersonRecord.ID) } class="rounded border border-review-red/[0.35] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white">Remove</button>
 										</td>
 									</tr>
 								}

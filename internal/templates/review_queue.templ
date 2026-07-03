@@ -53,7 +53,7 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 										<div class="min-w-0">
 											<div class="flex flex-wrap items-center gap-2">
 												<span class="gold text-xs font-semibold uppercase tracking-[0.2em]">{ entry.PersonRecord.DisplayID }</span>
-												<span class="rounded-full border border-[rgba(111,44,38,0.45)] bg-[rgba(111,44,38,0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
+												<span class="rounded-full border border-review-red/[0.45] bg-review-red/[0.12] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6f2c26]">Needs Review</span>
 											</div>
 											<p class="mt-1 font-semibold text-slate-900">{ detailHeading(entry.PersonRecord) }</p>
 											<p class="mt-2 text-sm text-[#6f2c26]">{ emptyDetail(entry.PersonRecord.ReviewReason) }</p>
@@ -144,7 +144,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d source record(s)", len(comparison.LeftPersonRecord.SourceRecords)) }</span>
 							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.LeftPersonRecord.Images)) }</span>
 							if comparison.LeftPersonRecord.NeedsReview {
-								<span class="rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
+								<span class="rounded-full border border-review-red/[0.35] bg-review-red/[0.08] px-3 py-1 text-[#6f2c26]">Needs Review</span>
 							}
 						</div>
 						<div class="mt-4 flex flex-wrap items-center gap-2">
@@ -166,7 +166,7 @@ templ ReviewQueueCompareView(comparison viewmodel.DuplicateAuditComparison) {
 							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d source record(s)", len(comparison.RightPersonRecord.SourceRecords)) }</span>
 							<span class="rounded-full border border-sepia-500/[0.35] bg-parchment-soft/[0.92] px-3 py-1 text-[#22303d]">{ fmt.Sprintf("%d image(s)", len(comparison.RightPersonRecord.Images)) }</span>
 							if comparison.RightPersonRecord.NeedsReview {
-								<span class="rounded-full border border-[rgba(111,44,38,0.35)] bg-[rgba(111,44,38,0.08)] px-3 py-1 text-[#6f2c26]">Needs Review</span>
+								<span class="rounded-full border border-review-red/[0.35] bg-review-red/[0.08] px-3 py-1 text-[#6f2c26]">Needs Review</span>
 							}
 						</div>
 						<div class="mt-4 flex flex-wrap items-center gap-2">
