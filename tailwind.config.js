@@ -56,6 +56,46 @@ module.exports = {
         // issue #252 (Phase 1) so the intent is named in code.
         "shadow-ink": "#17212b",
         "shadow-deep": "#0f172a",
+        // Palette absorption tokens — issue #252 (Phase 1).
+        // Source: docs/design/palette.png (the user-supplied
+        // 6-color palette was added to the design vocabulary so
+        // future components can reference colors by role without
+        // picking ad-hoc hex literals. No classes or template
+        // utilities reference these tokens yet; Phase 2 (separate
+        // issue) migrates the existing literals in
+        // frontend/tailwind.css and the component templates to
+        // whichever of these roles is a clear win. Phase 3 takes
+        // before/after screenshots + WCAG contrast checks.
+        //
+        // Each token is named by its role, NOT its hex. The hex
+        // is the seed value; if the value is later adjusted for
+        // contrast or accessibility, the token name stays.
+        //
+        //   accent-coral (#cd565a) — soft red, close to but
+        //     lighter/pinker than review-red (#6f2c26). Phase 2
+        //     candidate for confirmation-bad toasts where the
+        //     review-red feels too alarming.
+        //   gold-sand (#f2d185) — light sandy gold, lighter than
+        //     gold-light (#c5ab68). Phase 2 candidate for
+        //     secondary button hover or highlight surfaces.
+        //   sepia-700 (#7c6c52) — warmer / darker brown than
+        //     sepia-500 (#8d7440). Phase 2 candidate for input
+        //     borders or filled-control backgrounds.
+        //   surface-warm (#d8d8d7) — neutral warm light gray. No
+        //     current equivalent; could become a new
+        //     `--surface-2` for cards overlaid on dark surfaces.
+        //   ink-slate (#666870) — darker than ink-mid (#324253).
+        //     Phase 2 candidate for secondary text on light
+        //     surfaces (replaces the slightly-cool ink-mid).
+        //   gold-tan (#a89c8b) — between gold (#a88a46) and
+        //     sepia-500 (#8d7440). Phase 2 candidate for muted
+        //     gold accents or breadcrumb text.
+        "accent-coral": "#cd565a",
+        "gold-sand": "#f2d185",
+        "sepia-700": "#7c6c52",
+        "surface-warm": "#d8d8d7",
+        "ink-slate": "#666870",
+        "gold-tan": "#a89c8b",
       },
       borderRadius: {
         surface: "1.7rem",

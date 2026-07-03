@@ -26,6 +26,25 @@ an ADR amendment.
 | `error-red`        | `#7a2d2d`                          | Settings error text                  |
 | `error-red-bg`     | `rgba(255,245,245,0.95)`           | Settings error surface               |
 
+### Palette absorption — issue #252 (Phase 1)
+
+The six colors below were added from the user-supplied
+`Pallete.png` palette. **No template or component references
+them yet.** Phase 2 (separate issue) migrates existing literal
+hex values in `frontend/tailwind.css` + the component
+templates to whichever of these roles is a clear win. Phase 3
+takes before/after screenshots + WCAG contrast checks before
+any visual change ships.
+
+| Token          | Value     | Role                                                                |
+| -------------- | --------- | ------------------------------------------------------------------- |
+| `accent-coral` | `#cd565a` | Soft red, lighter than `review-red` — confirmation-bad toasts       |
+| `gold-sand`    | `#f2d185` | Light sandy gold, lighter than `gold-light` — hover surfaces        |
+| `sepia-700`    | `#7c6c52` | Darker brown than `sepia-500` — input borders / filled-control bg    |
+| `surface-warm` | `#d8d8d7` | Neutral warm light gray — proposed new `--surface-2`                 |
+| `ink-slate`    | `#666870` | Darker than `ink-mid` — secondary text on light surfaces            |
+| `gold-tan`     | `#a89c8b` | Between `gold` and `sepia-500` — muted gold accents / breadcrumb text |
+
 ## Radius
 
 | Token         | Value     | Use                              |
