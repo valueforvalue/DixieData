@@ -40,6 +40,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
 // DebugKind identifies which Phase 7 subcommand the user wants.
@@ -136,7 +137,21 @@ type ArchiveInventory struct {
 	Command         string            `json:"command"`
 	GeneratedAt     string            `json:"generated_at"`
 	DataDir         string            `json:"data_dir"`
+	// AppVersion is the full v{MAJOR}.{U}.{N} string (e.g.
+	// "1.1.1"). Kept as a single field for human readers +
+	// scripts that just want the full version stamp.
 	AppVersion      string            `json:"app_version"`
+	// UpdateFlowVersion is the middle number (U): the
+	// update-flow shape gate per issue #266. Exposed
+	// explicitly so scripts can compare U without re-parsing
+	// the AppVersion string. U=1 covers every legacy
+	// v1.2.{N} release.
+	UpdateFlowVersion int `json:"update_flow_version"`
+	// ReleaseCounter is the trailing number (N): the
+	// release counter, independent from the SQLite schema
+	// version. Bug-fix-only releases bump N without a schema
+	// change.
+	ReleaseCounter    int `json:"release_counter"`
 	BuildIdentity   string            `json:"build_identity"`
 	SchemaVersion   int               `json:"schema_version"`
 	ArchiveCounts   models.ArchiveCounts `json:"archive_counts"`
@@ -176,11 +191,13 @@ var inventoryRowQueries = []struct {
 // handler stays a renderer.
 func (a *App) ArchiveInventory() (ArchiveInventory, error) {
 	inv := ArchiveInventory{
-		Command:       "dixiedata debug dump",
-		DataDir:       a.dataDir,
-		AppVersion:    buildinfo.AppVersion,
-		BuildIdentity: buildinfo.BuildIdentity(),
-		RowCounts:     make(map[string]int, len(inventoryRowQueries)),
+		Command:           "dixiedata debug dump",
+		DataDir:           a.dataDir,
+		AppVersion:        buildinfo.AppVersion,
+		UpdateFlowVersion: versioninfo.CurrentUpdateFlowVersion,
+		ReleaseCounter:    versioninfo.AppRelease(),
+		BuildIdentity:     buildinfo.BuildIdentity(),
+		RowCounts:         make(map[string]int, len(inventoryRowQueries)),
 	}
 	inv.GeneratedAt = time.Unix(time.Now().Unix(), 0).UTC().Format(time.RFC3339)
 	if a.database == nil {

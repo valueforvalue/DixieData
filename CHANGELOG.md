@@ -83,6 +83,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Legacy GitHub release tags (`v1.2.N`) still parse cleanly
   via `parseVersion` per #266 decision 1.
 
+### Changed
+
+- **CLI JSON output exposes `update_flow_version` + `release_counter`**
+  explicitly (issue #293, follow-up). The v1.U.N shape is now
+  parseable without re-tokenizing `app_version`:
+  - `dixiedata debug dump --json` adds `update_flow_version`
+    + `release_counter` to the `ArchiveInventory` payload.
+  - `dixiedata migrate status --json` adds the same two fields.
+  Regression net: new `audit/smoke_cli_version_shape.mjs`
+  drives both subcommands and asserts the new fields are
+  present, positive, and well-typed. Mirrors `smoke_settings_diagnostics.mjs`
+  structure but exercises CLI subprocesses instead of HTTP.
+  `TestArchiveInventoryOnEmptyDB` (Go unit) asserts the same
+  field contracts at the package level.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).

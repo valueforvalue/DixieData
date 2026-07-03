@@ -499,6 +499,15 @@ func TestArchiveInventoryOnEmptyDB(t *testing.T) {
 	if inv.AppVersion == "" {
 		t.Error("AppVersion empty")
 	}
+	// Issue #293 regression net: the v1.U.N shape split
+	// exposes U + N as explicit JSON fields so scripts can
+	// compare them without re-parsing the AppVersion string.
+	if inv.UpdateFlowVersion < 1 {
+		t.Errorf("UpdateFlowVersion = %d, want >= 1", inv.UpdateFlowVersion)
+	}
+	if inv.ReleaseCounter < 1 {
+		t.Errorf("ReleaseCounter = %d, want >= 1", inv.ReleaseCounter)
+	}
 	if inv.SchemaVersion == 0 {
 		t.Error("SchemaVersion = 0, want non-zero (migrations should have run)")
 	}
