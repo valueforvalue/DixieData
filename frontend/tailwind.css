@@ -248,6 +248,19 @@ html { scrollbar-gutter: stable; }
     pointer-events: none;
   }
   .jobs-progress-overlay > * { pointer-events: auto; }
+  /* Toast variants — colors via token @apply so a future token
+     change in tailwind.config.js flows through (issue #291,
+     Phase 2 toasts). Each toast kind maps 1:1 to an existing
+     ADR-0003 token at the exact same hex + alpha:
+       success  → success-green + success-green-bg
+       error    → review-red    + error-red-bg
+       warning  → warning       + warning_bg (kept as warning per existing token name)
+       info     → info          + info-bg
+       default  → review-red-tint (border) + bg-amber-50 (bg)
+     The Tailwind default opacity scale (0/5/10/20/25/30/40/50/60/70/75/80/90/95/100)
+     does not include 0.78, 0.86, 0.98, 0.99 — use the
+     arbitrary opacity form `[0.NN]` so the literal alpha
+     survives the migration unchanged. */
   .toast-card {
     pointer-events: auto;
     display: flex;
@@ -255,25 +268,25 @@ html { scrollbar-gutter: stable; }
     justify-content: space-between;
     gap: 0.75rem;
     border-radius: 1.35rem;
-    border: 1px solid rgba(111, 44, 38, 0.78);
+    @apply border-review-red/[0.78];
     background: rgba(255, 248, 230, 0.98);
     box-shadow: 0 22px 45px rgba(21, 29, 38, 0.3);
     padding: 0.95rem 1.1rem;
   }
   .toast-card[data-toast-kind="success"] {
-    border-color: rgba(41, 82, 45, 0.86);
+    @apply border-success-green/[0.86];
     background: rgba(242, 252, 244, 0.99);
   }
   .toast-card[data-toast-kind="error"] {
-    border-color: rgba(111, 44, 38, 0.86);
+    @apply border-review-red/[0.86];
     background: rgba(255, 241, 239, 0.99);
   }
   .toast-card[data-toast-kind="warning"] {
-    border-color: rgba(217, 119, 6, 0.86);
+    @apply border-warning/[0.86];
     background: rgba(255, 251, 235, 0.99);
   }
   .toast-card[data-toast-kind="info"] {
-    border-color: rgba(37, 99, 235, 0.86);
+    @apply border-info/[0.86];
     background: rgba(239, 246, 255, 0.99);
   }
   .toast-card { transition: opacity 0.3s ease-out; }
