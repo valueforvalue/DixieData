@@ -56,6 +56,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Old `.ddbak` archives keep their old `AppVersion` string
   and continue to load.
 
+### Changed
+
+- **CLI + UI version emit switched to `v1.{U}.{N}` shape** (issue
+  #293, follow-up to #266). `internal/buildinfo/buildinfo.go`
+  `AppVersion` now sources `versioninfo.AppVersion()` (new
+  shape, U=1 / N=1 today) instead of `CurrentAppVersion()`
+  (legacy `v1.2.{schema}`). Every downstream emit site
+  picks up the new shape automatically because they all
+  read `buildinfo.AppVersion`:
+  - `debug dump` (`ArchiveInventory.AppVersion` JSON field
+    and the text-mode `App version:` line)
+  - `migrate status` JSON + text mode
+  - `restore point create` / `restore point list` JSON
+  - `export backup` / `export shared` source/target version
+  - `import backup` source/target version
+  - `update.Settings.CurrentVersion` (Settings panel UI)
+  - `BackupManifest.app_version` in every new `.ddbak`
+  - `cmd/gold-master/main.go` portable-output `app_version`
+  Regression net: `internal/db/migration_backup_test.go`
+  updated to assert the new shape for `TargetAppVersion`
+  (post-upgrade binary) while keeping `SourceAppVersion`
+  pinned to the legacy `AppVersionForSchema(1)` string
+  (pre-upgrade binary) — that asymmetry is now intentional
+  and reflects the upgrade boundary (legacy → new shape).
+  Legacy GitHub release tags (`v1.2.N`) still parse cleanly
+  via `parseVersion` per #266 decision 1.
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).

@@ -47,7 +47,13 @@ func TestOpenCreatesRetainedPreMigrationBackup(t *testing.T) {
 	if backup.SourceSchemaVersion != 1 || backup.TargetSchemaVersion != CurrentSchemaVersion {
 		t.Fatalf("backup = %#v", backup)
 	}
-	if backup.SourceAppVersion != versioninfo.AppVersionForSchema(1) || backup.TargetAppVersion != GetAppVersion() {
+	// SourceAppVersion uses the historical v1.2.{schema} shape so
+	// the pre-upgrade metadata matches the legacy `AppVersionForSchema`
+	// field name and is parseable by older DixieData release binaries
+	// (issue #266 decision 1: legacy strings parse to U=1). TargetAppVersion
+	// uses the new v1.{U}.{N} shape so the upgrade path reflects the
+	// binary that wrote the backup.
+	if backup.SourceAppVersion != versioninfo.AppVersionForSchema(1) || backup.TargetAppVersion != versioninfo.AppVersion() {
 		t.Fatalf("backup app versions = %#v", backup)
 	}
 

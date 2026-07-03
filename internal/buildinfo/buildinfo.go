@@ -20,8 +20,21 @@ const (
 	BackupFormatVersion       = 3
 )
 
+// AppVersion is the release-line version string in the
+// v{MAJOR}.{U}.{N} shape (issue #266). It drives every
+// CLI emission (`debug dump`, `migrate status`, `restore
+// point create/list`, export/import SourceAppVersion/
+// TargetAppVersion), the update UI's Settings panel
+// (`update.Settings.CurrentVersion`), the BackupManifest
+// `app_version` field, and `cmd/gold-master/main.go`
+// portable-output emit sites. Switched from
+// `versioninfo.CurrentAppVersion()` (legacy `v1.2.{schema}`)
+// on 2026-07-03; legacy callers of `AppVersionForSchema` /
+// `CurrentAppVersion` still work for parse/serialise of old
+// .ddbak archives and old GitHub release tags (issue #266
+// decision 1: legacy strings parse to U=1).
 var (
-	AppVersion    = versioninfo.CurrentAppVersion()
+	AppVersion    = versioninfo.AppVersion()
 	SchemaVersion = versioninfo.CurrentSchemaVersion
 )
 
