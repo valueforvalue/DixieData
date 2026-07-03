@@ -1615,11 +1615,11 @@ func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
 
 	app.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusSeeOther, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
 	}
-	if location := rec.Header().Get("Location"); location != "/calendar" {
-		t.Fatalf("redirect location = %q", location)
+	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/calendar" {
+		t.Fatalf("X-DixieData-Redirect = %q want /calendar (Option C: dispatcher navigates from this header)", got)
 	}
 	if app.setupRequired {
 		t.Fatal("expected setup requirement to be cleared")

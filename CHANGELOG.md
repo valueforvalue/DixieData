@@ -11,6 +11,34 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Initial-setup submit feedback** (issue #263). The `/setup`
+  credentials form already had `data-dixie-submit` on the
+  form and `data-busy-label="Saving…"` on the submit button
+  (so the JS handler disables the button and sets
+  `aria-busy="true"` on click), but the server-side POST
+  branch returned a silent `303` to `/calendar` — no toast
+  header, no redirect contract the dispatcher reads. After
+  the fix the handler writes the Option C contract
+  (`200 OK` + `X-DixieData-Redirect: /calendar` +
+  `X-DixieData-Toast: "Identity saved. Loading DixieData…"`
+  + `X-DixieData-Toast-Type: success`), so the
+  `dispatchDixieDataForm` interceptor navigates and shows
+  the success toast atomically on landing. Rapid double-clicks
+  during the slow DB write are now blocked by the disabled
+  submit button + `aria-busy` state the JS already set up.
+  `redirect_headers_test.go::exemptFunctions["handleInitialSetup"]`
+  comment updated to reflect the new contract (GET-only
+  303 carve-out). Regression net: new
+  `internal/appshell/initial_setup_test.go::TestHandleInitialSetupPostSetsDixieRedirectAndToast`
+  boots a fresh sqlite archive, posts the credentials
+  form, and asserts the three headers + the cleared
+  `setupRequired` flag;
+  `TestHandleInitialSetupGetStillRedirectsToCalendarWhenNotRequired`
+  pins the GET branch's 303 + Location behaviour so the
+  exemption comment stays meaningful.
+
 ### Added
 
 - **Tracer-bullets discipline.** New section in
