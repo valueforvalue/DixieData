@@ -9,6 +9,12 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
+templ CalendarDayDetailPage(day viewmodel.CalendarDayDetail) {
+	@Layout("Anniversary — " + calendarDayHeading(day.Month, day.Day)) {
+		@CalendarDayDetail(day)
+	}
+}
+
 templ CalendarDayDetail(day viewmodel.CalendarDayDetail) {
 	<div class="space-y-6">
 		<div>

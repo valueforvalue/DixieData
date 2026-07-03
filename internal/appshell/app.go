@@ -1447,7 +1447,17 @@ func (a *App) renderCalendarDayDetail(w http.ResponseWriter, r *http.Request, mo
 	if statusCode != http.StatusOK {
 		w.WriteHeader(statusCode)
 	}
-	presentation.CalendarDayDetail(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)
+	// HTMX callers (the calendar page's #details-pane target) set
+	// the HX-Request header and need the bare fragment so the swap
+	// re-renders only the day detail inside the parent page's
+	// already-styled shell. Direct navigation (saved URL, deep
+	// link, curl) has no header and needs the Layout shell so
+	// app.css + the top-nav + the floating dock load.
+	if r.Header.Get("HX-Request") == "true" {
+		presentation.CalendarDayDetail(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)
+	} else {
+		presentation.CalendarDayDetailPage(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)
+	}
 }
 
 func findCalendarItem(items []models.CalendarItem, itemID int64) (models.CalendarItem, bool) {

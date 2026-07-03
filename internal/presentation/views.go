@@ -41,6 +41,24 @@ func CalendarDayDetail(day records.CalendarDay, editingID int64, itemType, title
 	}, statusKind, statusMessage))
 }
 
+// CalendarDayDetailPage wraps the bare CalendarDayDetail
+// fragment in the Layout shell so direct navigation to
+// /anniversary/<month>/<day> loads app.css + the top-nav
+// + the floating dock instead of shipping an unstyled
+// fragment. The HTMX swap path (where the parent calendar
+// page already loaded the stylesheets) continues to use
+// the bare CalendarDayDetail component via the HX-Request
+// branch in appshell.
+func CalendarDayDetailPage(day records.CalendarDay, editingID int64, itemType, title, notes, errorMessage, statusKind, statusMessage string) templ.Component {
+	return templates.CalendarDayDetailPage(viewmodel.CalendarDayDetailFromDomain(day, viewmodel.CalendarItemForm{
+		EditingID:    editingID,
+		ItemType:     itemType,
+		Title:        title,
+		Notes:        notes,
+		ErrorMessage: errorMessage,
+	}, statusKind, statusMessage))
+}
+
 func SoldierList(soldiers []models.Soldier, page, total int, query string, suggestions models.SoldierFormSuggestions) templ.Component {
 	return templates.SoldierList(viewmodel.PersonRecordsFromModels(soldiers), page, total, query, viewmodel.PersonRecordFormSuggestionsFromModel(suggestions))
 }
