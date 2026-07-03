@@ -46,6 +46,37 @@ Introduce `stable` as the released-code branch. Freeze `main` at
 its current HEAD. Update the promotion chain documented in ADR
 0008 from `dev → main` to `dev → stable`.
 
+### Branch protection (both `main` and `stable`)
+
+Both `main` and `stable` get the **same** standard GitHub branch
+protection rules:
+
+- No direct pushes (require a PR).
+- No force-pushes.
+- No branch deletion.
+- Require CI green (`build`, `test`, `audit` workflows) before
+  merge.
+
+This is symmetric by design. `main` is protected so the
+'frozen legacy' rule is enforced by GitHub, not just by docs;
+`stable` is protected so the 'released code home' rule is
+enforced the same way. Both branches look identical to a
+contributor trying to push directly: the push is rejected with
+a redirect to a PR.
+
+`dev` is **not** protected. AGENTS.md §Branch policy already
+documents direct commits to `dev` as the default flow; adding
+protection would break the agent + human commit pattern that
+ships most work.
+
+This is a change from the prior state (`main` was unprotected
+before this ADR). The protection is added in the same PR that
+introduces `stable` so the three-branch model ships as a
+coherent unit. The protection rule is documented in
+`.github/BRANCH_PROTECTION.md` (a new file in this PR) so
+future agents have a checklist to apply the rules via `gh api`
+or the GitHub UI.
+
 ### The chain
 
 ```
@@ -119,6 +150,67 @@ scripts/release-github.ps1
 
 (Replacing `main` with `stable` in the ADR 0008
 example. Everything else is identical.)
+
+### The promote flow (PR via GitHub UI)
+
+The user picks **PR via GitHub UI** as the promotion flow
+(2026-07-03 issue follow-up). The chain is:
+
+1. **Operator runs `make promote-dry-run`** — runs the gate
+   chain (gates 1-9 from ADR 0008) and prints the result.
+   No push, no tag, no PR. The operator reads the output to
+   decide whether to proceed.
+2. **Operator runs `make promote`** — runs the gate chain
+   (halts on failure). On success, it opens a PR
+   `dev → stable` via `gh pr create` with the gate-chain
+   output embedded in the PR body. The PR title is
+   `promote: dev → stable (v{MAJOR}.{U}.{N})` where the
+   version comes from `versioninfo.go`. No code is merged
+   yet; the PR is the proposal.
+3. **Operator reviews the PR in the GitHub UI** — reads the
+   diff, the gate-chain output, the commit log
+   (`git log <last-tag>..HEAD --oneline`), and any CI
+   annotations. The operator is the merge authority; no
+   auto-merge is configured.
+4. **Operator merges the PR via the GitHub UI** — the merge
+   button is the promotion. CI re-runs as part of the merge
+   branch protection rules (require CI green before merge).
+5. **Operator runs `scripts/release-github.ps1`** — tags the
+   merge commit as `v{MAJOR}.{U}.{N}`, pushes the tag,
+   opens a draft GitHub release. The release artifact is
+   what users get via the in-place update flow.
+
+### Conflict policy (dev diverges from stable)
+
+The user picks **merge dev into stable** (2026-07-03 issue
+follow-up). When `dev` has commits `stable` doesn't have:
+
+- `make promote` aborts with a clear message: "dev has
+  commits stable doesn't have. Run `make promote-prep` to
+  sync." The dry-run variant (`make promote-dry-run`)
+  detects the same divergence and prints it.
+- `make promote-prep` runs `git fetch origin`, then
+  `git checkout stable && git pull origin stable`, then
+  `git checkout dev && git pull origin dev`, then prints
+  the divergence as a `git log <stable>..<dev> --oneline`
+  summary. The operator reads the summary and decides.
+- If the divergence is **non-conflicting** (e.g. dev added
+  new files that stable doesn't touch), the operator runs
+  `git checkout stable && git merge --no-ff origin/dev` and
+  resolves any conflicts locally, then re-runs
+  `make promote` to open the PR.
+- If the divergence is **conflicting** (e.g. the same line
+  was edited on both branches), the operator resolves
+  conflicts locally per ADR 0008 §"Pre-promotion
+  checklist." The resolution is committed to `stable`
+  directly via a hot-fix PR (not via `make promote`); then
+  `make promote` runs to open the standard promotion PR
+  with the conflict already resolved.
+
+Cherry-pick and rebase were considered (see
+§"Alternatives considered"). Merge wins because it matches
+the existing `dev → main` flow that operators are familiar
+with, and it preserves the commit graph (no rewrites).
 
 ## Alternatives considered
 
@@ -209,11 +301,14 @@ move "main" to a different name, and Alt 1 is rejected).
   `stable`. `main` is frozen at `31a8901`."
 - `CHANGELOG.md` [Unreleased] — Maintenance entry.
 - `docs/RELEASING.md` §Release workflow — replace "merge to
-  `main`" with "merge to `stable`."
+  `main`" with "merge to `stable`." Add the promote-flow
+  steps (`make promote-dry-run`, `make promote`, PR review,
+  merge via UI, `scripts/release-github.ps1`).
 - `docs/adr/0008-promotion-protocol.md` — single-line
   cross-reference at the top of §"Implementation notes":
   "**As of 2026-07-03**, the destination branch is `stable`,
   not `main`. See ADR 0009."
+- `docs/adr/0009-stable-branch-promotion.md` — this file.
 - `.github/PULL_REQUEST_TEMPLATE.md` — update "every PR to
   `dev` or `main`" to "every PR to `dev` or `stable`."
 - `.github/workflows/test.yml` — replace `branches: [dev, main]`
@@ -223,10 +318,25 @@ move "main" to a different name, and Alt 1 is rejected).
   check for "PR targets stable."
 - `.github/workflows/build.yml` — same `branches:` change.
 - `.github/workflows/audit.yml` — same.
-- `Makefile` — add `STABLE_BRANCH ?= stable` constant for any
-  future `promote` target that needs the destination name.
+- `.github/BRANCH_PROTECTION.md` — **new file**. Documents
+  the standard protection rules applied to both `main` and
+  `stable` so future agents have a checklist to apply them
+  via `gh api` or the GitHub UI.
+- `Makefile` — add `make promote`, `make promote-dry-run`,
+  `make promote-prep` targets per ADR 0008 §"The promotion
+  command." Targets call into the existing gate chain
+  (`release-pipeline` minus the final `release-github` gate)
+  and open the PR via `gh pr create`. Add `STABLE_BRANCH
+  ?= stable` constant for any future code that needs the
+  destination name.
 - `scripts/release-github.ps1` — comments + docstring only;
-  no behavior change.
+  no behavior change. Update inline references from "main" to
+  "stable" so future maintainers see the correct destination.
+- `scripts/promote-prep.sh` — **new file**. Implements the
+  `make promote-prep` step: fetches origin, prints the
+  divergence between `dev` and `stable`, and instructs the
+  operator on conflict resolution per the conflict policy
+  above.
 
 ### Branch operations
 
