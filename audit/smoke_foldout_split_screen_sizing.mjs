@@ -1,39 +1,48 @@
 // audit/smoke_foldout_split_screen_sizing.mjs — regression net
-// for issue #288 slice 3: the Share foldout panel must respond
-// to the split-screen layout-mode CSS rule (frontend/tailwind.css,
-// `html[data-layout-mode="split-screen"] .foldout-panel`) by
-// dropping the 14rem min-width floor and stretching to fit the
-// viewport instead of clipping past its right edge.
+// for issue #288 (viewport-cap fix) AND its followup (the
+// slice-2 regression that swapped "no overflow on any size" for
+// "panel hugs right edge of trigger at 14rem, but the slice-2
+// layout-mode rule stretched the panel to calc(100vw-2rem) and
+// pushed the left edge off-screen at split-screen viewports).
 //
-// The auto-layout JS sets `data-layout-mode="split-screen"` on
-// the <html> root at viewport widths ≤ 1000px
-// (splitScreenBreakpointPx in frontend/app.js). Two viewport
-// scenarios:
+// The unified contract the foldout panel honors at every
+// viewport ≥ 640px:
+//   1. The panel is anchored to the trigger's right edge
+//      (class: absolute right-0 top-full).
+//   2. The panel width collapses to the templ class's
+//      min-w-[14rem] floor (224px on a 16px root) because the
+//      4-item menu fits comfortably in 14rem.
+//   3. The slice-1 max-w-[calc(100vw-2rem)] cap bounds the
+//      width from above so a future menu item with a long
+//      label can never overflow the viewport.
+//   4. The panel's left edge sits inside the viewport at
+//      (triggerRight - 224px). The trigger is never close to
+//      the left edge of the page (top-nav lives inside
+//      .app-shell with padding); the panel always lands
+//      safely inside the viewport.
 //
-//   1. Split-screen (viewport 900×1200): the layout-mode rule
-//      wins. Panel min-width drops to 0, width caps to
-//      calc(100vw - 2rem). Assert the computed min-width and
-//      width reflect that, NOT the templ default min-w-[14rem].
-//   2. Relaxed (viewport 1600×1200): the layout-mode rule does
-//      NOT match (data-layout-mode="relaxed"). The templ default
-//      min-w-[14rem] wins. Assert the computed min-width is
-//      14rem (≈224px) and the width is auto.
+// At ≤ 640px the legacy media query re-centers the panel
+// (left: 0; right: 0). Tested separately by the screenshot
+// diff harness; not asserted in this probe.
 //
-// Both scenarios also assert the viewport-cap
-// (max-w-[calc(100vw-2rem)]) is honored — the slice-1 cap is
-// always on, the layout-mode rule only governs the min-width
-// floor in split-screen.
+// The probe sweeps 7 viewport widths spanning the split-screen
+// / relaxed boundary (1000px) and asserts:
+//   (a) data-layout-mode flips correctly at the 1000px
+//       breakpoint (regression net for the JS auto-detect);
+//   (b) the panel's left edge is ≥ 0 (no left clipping);
+//   (c) the panel's right edge is ≤ viewportWidth (no right
+//       clipping — the slice-1 cap firing);
+//   (d) the panel width stays at the 14rem floor (regression
+//       net against the reverted slice-2 rule that stretched
+//       it to calc(100vw-2rem));
+//   (e) all 4 menuitems render + remain in-viewport.
 //
 // Companion tests:
-//   - Internal: internal/templates/components/foldout_test.go
+//   - internal/templates/components/foldout_test.go
 //     (TestFoldout_PanelResponsiveSizing) locks slice 1's
-//     templ-rendered class tokens.
-//   - Internal: internal/templates/layout_test.go (the
-//     "split-screen foldout-panel override (issue #288 slice 2)"
-//     entry) locks slice 2's compiled CSS rule.
-//   - This probe locks the user-visible behavior end-to-end:
-//     a real Chromium viewport, a real layout-mode auto-detect,
-//     a real panel-open click, computed style after layout.
+//     templ-rendered class tokens (min-w-[14rem] +
+//     max-w-[calc(100vw-2rem)]).
+//   - This probe locks the user-visible behavior end-to-end.
 
 const PORT = 9993;
 const SCRATCH = "C:/Development/DixieData/.scratch/webmode";
@@ -67,159 +76,91 @@ let Playwright = null;
 try { Playwright = await import("playwright"); }
 catch (e) { console.error("playwright import failed:", e.message); process.exit(2); }
 
+// 7 widths spanning the split-screen / relaxed boundary at
+// 1000px. Drop the 640-equivalent — the legacy @media query
+// re-centers the panel there and is orthogonal to this probe.
+const VIEWPORTS = [800, 900, 1000, 1100, 1200, 1400, 1600];
+
 try {
   await ready();
   await wait(2000);
 
   const browser = await Playwright.chromium.launch({ headless: true });
 
-  // === Scenario 1: split-screen (viewport 900×1200) ===
-  // splitScreenBreakpointPx = 1000. 900 < 1000, so the JS
-  // auto-detect sets data-layout-mode="split-screen" on <html>.
-  console.log("Scenario 1: split-screen viewport (900×1200)");
-  {
-    const ctx = await browser.newContext({ viewport: { width: 900, height: 1200 } });
+  for (const viewportWidth of VIEWPORTS) {
+    console.log(`\nViewport ${viewportWidth}×1200`);
+    const ctx = await browser.newContext({ viewport: { width: viewportWidth, height: 1200 } });
     const page = await ctx.newPage();
     page.on("pageerror", (err) => console.log("    [pageerror]", err.message));
 
     await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
-    await wait(1000);
+    await wait(800);
 
+    // (a) layout-mode auto-detect at this width.
+    const expectedMode = viewportWidth <= 1000 ? "split-screen" : "relaxed";
     const mode = await page.evaluate(() => document.documentElement.getAttribute("data-layout-mode"));
-    record("layout-mode-is-split-screen-at-900px", mode === "split-screen", { mode });
+    record(`layout-mode-correct@${viewportWidth}`, mode === expectedMode, { mode, expected: expectedMode });
 
-    // Open the foldout. Use real click path — synthetic
-    // dispatchEvent would bypass the same bubble phase the
-    // first-click regression net (#283 followup) was bitten
-    // by; we want the same code path the user hits.
+    // Open the panel via the real click path (page.locator).
+    // Synthetic dispatchEvent would bypass the bubble-phase
+    // ordering that first-click regressions (#283) were
+    // bitten by; we want the same code path the user hits.
     await page.locator("[data-foldout-trigger='layout.share.menu']").first().click({ force: true });
     await wait(300);
 
-    // Computed styles on the panel after layout has run.
-    // min-width: 0 + width: calc(100vw - 2rem) should both
-    // come out of the split-screen CSS rule, NOT the templ
-    // default (min-w-[14rem] = 224px, width: auto).
-    const styles = await page.evaluate(() => {
+    // Measured geometry: panel edges, width, panel min-width
+    // (computed), mode.
+    const geom = await page.evaluate(() => {
       const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
       if (!(panel instanceof HTMLElement)) return null;
       const cs = getComputedStyle(panel);
+      const pr = panel.getBoundingClientRect();
+      const items = Array.from(panel.querySelectorAll('[role="menuitem"]'));
       return {
-        minWidth: cs.minWidth,
-        width: cs.width,
-        maxWidth: cs.maxWidth,
-        panelClass: panel.className,
-      };
-    });
-    record("split-screen-panel-rendered", styles !== null, styles);
-    if (styles) {
-      // The split-screen rule sets min-width: 0 — must NOT be
-      // 14rem / 224px (which would mean the rule never matched).
-      record("split-screen-min-width-dropped", styles.minWidth === "0px", { minWidth: styles.minWidth });
-      // The split-screen rule caps width to calc(100vw - 2rem)
-      // = 868px at viewport 900. Must NOT be auto and must be
-      // within ±1px of (viewport - 2rem) for sub-pixel slack.
-      const widthPx = parseFloat(styles.width);
-      record("split-screen-width-is-viewport-cap", Math.abs(widthPx - (900 - 32)) < 1, { width: styles.width });
-      // Slice-1 cap (max-w-[calc(100vw-2rem)]) always on. This
-      // is the user-visible "can never overflow the viewport"
-      // invariant — verify even in split-screen where the
-      // layout-mode rule is also active. Equals the viewport
-      // cap; doesn't shrink the rendered width further because
-      // width already equals the cap.
-      const maxPx = parseFloat(styles.maxWidth);
-      record("split-screen-max-width-capped-to-viewport", Math.abs(maxPx - (900 - 32)) < 1, { maxWidth: styles.maxWidth });
-    }
-
-    // Visual confirm: the panel's right edge stays inside
-    // the viewport. If the rule were missing (regression to
-    // pre-#288), the panel could overflow the right edge.
-    const insideViewport = await page.evaluate(() => {
-      const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
-      if (!(panel instanceof HTMLElement)) return null;
-      const r = panel.getBoundingClientRect();
-      return {
-        right: r.right,
+        panelLeft: pr.left,
+        panelRight: pr.right,
+        panelWidth: pr.width,
+        panelMinWidth: cs.minWidth,
+        panelMaxWidth: cs.maxWidth,
         viewportWidth: window.innerWidth,
-        inside: r.right <= window.innerWidth + 1, // 1px slack for sub-pixel rounding
-        left: r.left,
-        top: r.top,
-        bottom: r.bottom,
+        itemCount: items.length,
+        items: items.map((it) => {
+          const r = it.getBoundingClientRect();
+          return {
+            text: it.textContent.trim(),
+            inViewport: r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth,
+            hasSize: r.width > 0 && r.height > 0,
+          };
+        }),
       };
     });
-    record("split-screen-panel-inside-viewport-right-edge", insideViewport && insideViewport.inside === true, insideViewport);
+    record(`panel-rendered@${viewportWidth}`, geom !== null, geom);
+    if (!geom) { await ctx.close(); continue; }
 
-    // Items still readable (1px+ height, in viewport).
-    const itemsRendered = await page.evaluate(() => {
-      const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
-      const items = panel ? Array.from(panel.querySelectorAll('[role="menuitem"]')) : [];
-      return items.map((it) => {
-        const r = it.getBoundingClientRect();
-        return {
-          text: it.textContent.trim(),
-          inViewport: r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth,
-          hasSize: r.width > 0 && r.height > 0,
-        };
-      });
-    });
-    record("split-screen-4-items-rendered", itemsRendered.length === 4, { count: itemsRendered.length });
-    for (const it of itemsRendered) {
-      record(`split-screen-item-visible:${it.text}`, it.inViewport === true && it.hasSize === true, it);
-    }
+    // (b) no left clipping. The panel-left-edge ≥ 0
+    // invariant — this is the regression net for the slice-2
+    // followup where panelLeft went to -240 at 900px.
+    record(`no-left-clipping@${viewportWidth}`, geom.panelLeft >= -0.5, { panelLeft: geom.panelLeft });
 
-    await ctx.close();
-  }
+    // (c) no right clipping. The slice-1 max-w-[calc(100vw-2rem)]
+    // cap must keep panelRight inside the viewport. 0.5px
+    // slack for sub-pixel rounding.
+    record(`no-right-clipping@${viewportWidth}`, geom.panelRight <= geom.viewportWidth + 0.5, { panelRight: geom.panelRight, viewportWidth: geom.viewportWidth });
 
-  // === Scenario 2: relaxed (viewport 1600×1200) ===
-  // 1600 > 1000 → data-layout-mode="relaxed". The split-screen
-  // rule does NOT match. The templ default min-w-[14rem] wins.
-  // This is the regression-net corollary: slice 2 only changes
-  // sizing under split-screen; the wide-screen layout stays
-  // exactly as it was pre-#288.
-  console.log("\nScenario 2: relaxed viewport (1600×1200)");
-  {
-    const ctx = await browser.newContext({ viewport: { width: 1600, height: 1200 } });
-    const page = await ctx.newPage();
-    page.on("pageerror", (err) => console.log("    [pageerror]", err.message));
+    // (d) panel width stays at the 14rem floor (regression
+    // net against the reverted slice-2 layout-mode rule that
+    // stretched it to calc(100vw-2rem) at split-screen).
+    // 14rem on a 16px root = 224px. panelMinWidth is the
+    // computed min-width (e.g. "224px"); panelWidth is the
+    // actual rendered width. Both should equal 224px.
+    const minPx = parseFloat(geom.panelMinWidth);
+    const widPx = geom.panelWidth;
+    record(`panel-width-collapses-to-floor@${viewportWidth}`, Math.abs(minPx - 224) < 1 && Math.abs(widPx - 224) < 1, { panelMinWidth: geom.panelMinWidth, panelWidth: widPx });
 
-    await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
-    await wait(1000);
-
-    const mode = await page.evaluate(() => document.documentElement.getAttribute("data-layout-mode"));
-    record("layout-mode-is-relaxed-at-1600px", mode === "relaxed", { mode });
-
-    await page.locator("[data-foldout-trigger='layout.share.menu']").first().click({ force: true });
-    await wait(300);
-
-    const styles = await page.evaluate(() => {
-      const panel = document.querySelector("[data-foldout-panel='layout.share.menu']");
-      if (!(panel instanceof HTMLElement)) return null;
-      const cs = getComputedStyle(panel);
-      return {
-        minWidth: cs.minWidth,
-        width: cs.width,
-        maxWidth: cs.maxWidth,
-      };
-    });
-    record("relaxed-panel-rendered", styles !== null, styles);
-    if (styles) {
-      // 14rem floor: the templ default should still apply.
-      // 14rem on a 16px root = 224px. Browsers may report
-      // min-width in px.
-      const minPx = parseFloat(styles.minWidth);
-      record("relaxed-min-width-is-14rem-floor", Math.abs(minPx - 224) < 1, { minWidth: styles.minWidth });
-      // width: 14rem templ class has no explicit width, so the
-      // ul collapses to its min-width when its content fits
-      // inside it. Wide viewport means 4 single-word menuitems
-      // ("Export" / "Import" / "Share Queue" / "Sync") fit
-      // comfortably in 14rem, so computed width == min-width.
-      // The contract under test is: the 14rem floor applies, NOT
-      // that width is literally "auto" (a no-op assertion since
-      // "auto" + min-width with fitting content == min-width).
-      const widthPx = parseFloat(styles.width);
-      record("relaxed-width-collapses-to-floor", Math.abs(widthPx - 224) < 1, { width: styles.width, minWidth: styles.minWidth });
-      // Slice-1 viewport cap still on (1568px at viewport 1600).
-      const maxPx = parseFloat(styles.maxWidth);
-      record("relaxed-max-width-capped-to-viewport", Math.abs(maxPx - (1600 - 32)) < 1, { maxWidth: styles.maxWidth });
+    // (e) all 4 menuitems render + remain in-viewport.
+    record(`4-items-rendered@${viewportWidth}`, geom.itemCount === 4, { itemCount: geom.itemCount });
+    for (const it of geom.items) {
+      record(`item-visible@${viewportWidth}:${it.text}`, it.inViewport && it.hasSize, it);
     }
 
     await ctx.close();
