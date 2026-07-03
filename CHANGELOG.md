@@ -313,6 +313,50 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   The audit classifies Block 16 as Reversible at the SQL level;
   the `migrate down` runner drops the log table without refusal.
 
+- **Pre-downgrade snapshot is taken automatically** (issue #273
+  follow-up, post-PR-2). The audit's open question Q1 / design
+  decision Q5 called for a direction-aware snapshot helper so the
+  DOWN runner can roll back if the downgrade produces a corrupted
+  schema. The follow-up adds:
+  - `RetainedBackupRecord.Direction` field (json: `direction,omitempty`).
+    New `DirectionLabel()` method returns `"upgrade"` for legacy
+    records persisted before the field existed (backward compat).
+  - `preSchemaDowngradeBackupKind` constant + `directionDowngrade` /
+    `directionUpgrade` direction values + `snapshotFileNameDowngrade`
+    (`dixiedata-pre-downgrade.db`) / `snapshotFileNameUpgrade`
+    (`dixiedata-pre-upgrade.db`).
+  - `CreatePreSchemaChangeBackup(input, direction, snapshot)` is
+    the unified implementation. `CreatePreSchemaUpgradeBackup`
+    becomes a thin wrapper (no caller change). New
+    `CreatePreSchemaDowngradeBackup` is the DOWN-path wrapper.
+  - `snapshotFileNameFor(direction)` helper centralises the
+    on-disk filename choice.
+  - `RestoreDatabaseSnapshot` is unchanged (the path is
+    direction-agnostic).
+  - The CLI's `runAdminMigrateDown` now calls
+    `manager.CreatePreSchemaDowngradeBackup(...)` BEFORE the
+    runner fires, so the operator has a fresh copy of the live
+    schema even when the runner refuses on an Irreversible block.
+    The output reports the snapshot ID and prints
+    "pre-downgrade snapshot <id> is available for rollback" on
+    refusal. On success, the snapshot is in the index for future
+    restore.
+  Regression net (new tests in `retained_backup_manager_test.go` +
+  updated `TestRunAdminMigrateDown_ManifestPrinted`):
+  - `TestRetainedBackupManagerDowngradeSnapshot` — Kind, Direction,
+    on-disk filename, restore path, no stale upgrade filename.
+  - `TestRetainedBackupManagerMixedUpgradeAndDowngradeSnapshots` —
+    same manager can hold both kinds in one index.
+  - `TestRetainedBackupRecordDirectionLabelDefaultsUpgrade` —
+    backward-compat default for legacy records.
+  - `TestCreatePreSchemaChangeBackupRejectsUnknownDirection` —
+    programmer-error guard.
+  - `TestRunAdminMigrateDown_ManifestPrinted` now also asserts the
+    pre-downgrade snapshot line + rollback hint.
+  - Existing `TestRetainedBackupManagerCreateAndRestoreDatabaseSnapshot`
+    + `TestRetainedBackupManagerPrunesOlderBackupsByCount` pass
+    unchanged (the UP path is unchanged).
+
 ### Fixed
 
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
