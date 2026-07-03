@@ -91,13 +91,10 @@ func ResearchPackView(pack records.ResearchPack) templ.Component {
 	return templates.ResearchPackView(viewmodel.ResearchPackFromDomain(pack))
 }
 
-func ShareView(status models.GoogleStatus, conflicts []models.MergeReviewConflict, exportRecords []models.Soldier, counts models.ArchiveCounts, shareIncludeTags bool, recentJobs []viewmodel.RecentJobEntry) templ.Component {
+func ShareView(conflicts []models.MergeReviewConflict, counts models.ArchiveCounts, recentJobs []viewmodel.RecentJobEntry) templ.Component {
 	return templates.ShareView(
-		viewmodel.GoogleStatusFromModel(status),
 		viewmodel.MergeReviewConflictsFromModels(conflicts),
-		viewmodel.ExportRecordOptionsFromModels(exportRecords),
 		viewmodelCountsFromModels(counts),
-		shareIncludeTags,
 		recentJobs,
 	)
 }
@@ -197,4 +194,36 @@ func viewmodelCountsFromModels(counts models.ArchiveCounts) viewmodel.ArchiveCou
 // app uses.
 func ShareQueuePage(rows []viewmodel.ShareQueueRow) templ.Component {
 	return templates.ShareQueuePage(rows)
+}
+
+// Issue #284: wrappers for the dedicated /share/exports,
+// /share/imports, /share/sync subpages. Each is a thin
+// adapter from the handler's domain types into the
+// viewmodel shape the templ component expects, mirroring
+// the pattern set by ShareView above.
+
+// ShareExportsView wraps templates.ShareExportsView. The
+// exports subpage needs the export-records list (for the
+// PrintConfigModal partial) and the include-tags flag
+// (for the .ddshare checkbox).
+func ShareExportsView(exportRecords []models.Soldier, shareIncludeTags bool) templ.Component {
+	return templates.ShareExportsView(
+		viewmodel.ExportRecordOptionsFromModels(exportRecords),
+		shareIncludeTags,
+	)
+}
+
+// ShareImportsView wraps templates.ShareImportsView. The
+// imports subpage is a static launchpad — no domain
+// data, no viewmodel adaptation needed.
+func ShareImportsView() templ.Component {
+	return templates.ShareImportsView()
+}
+
+// ShareSyncView wraps templates.ShareSyncView. The sync
+// subpage renders the same Google Integration card the
+// /share landing used to render, so the same domain
+// model + viewmodel adapter is reused.
+func ShareSyncView(status models.GoogleStatus) templ.Component {
+	return templates.ShareSyncView(viewmodel.GoogleStatusFromModel(status))
 }

@@ -9,102 +9,116 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-// TestSharePrintConfigModalIsCentered is the regression test for
-// issue #128. The print-config modal must render with the
-// CSS classes that center it horizontally (justify-center) and
-// vertically (items-center on >=640px viewports). Without the
-// justify-center class the inner card aligns to the start edge of
-// the overlay, which the user perceived as "loading on the left
-// of the page instead of center".
-func TestSharePrintConfigModalIsCentered(t *testing.T) {
+// TestShareLandingHasNoModals (issue #284) asserts the /share
+// landing is modal-free. The print-config and
+// google-calendar-preferences modals moved to /share/exports
+// and /share/sync respectively. The subpages own their own
+// modals now. This is the inverse of the pre-#284 tests
+// (TestSharePrintConfigModalIsCentered +
+// TestShareModalsAreOverlayDivs) which were deleted because
+// the modals no longer live on this page.
+func TestShareLandingHasNoModals(t *testing.T) {
 	var buf bytes.Buffer
-	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf); err != nil {
+	if err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf); err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	content := buf.String()
-	for _, needle := range []string{
-		`id="share-print-config-modal"`,
-		`justify-center`,
-		`items-center`,
+	for _, id := range []string{
+		"share-print-config-modal",
+		"google-calendar-preferences-modal",
 	} {
-		if !strings.Contains(content, needle) {
-			t.Errorf("ShareView print-config modal missing centering class %s; full HTML:\n%s", needle, content)
-		}
-	}
-	if !strings.Contains(content, `data-print-config-modal`) {
-		t.Errorf("ShareView print-config modal missing data-print-config-modal hook used by showOverlayModal")
-	}
-}
-
-// TestShareModalsAreOverlayDivs asserts the print-config and
-// google-calendar-preferences modals render as
-// <div role="dialog" aria-modal="true"> overlays, not native
-// <dialog> elements.
-//
-// The native <dialog> swap in issue #117 introduced WebView2
-// focus-event reentry that crashed every native SaveFileDialog
-// and OpenFileDialog opened from inside the modal (or from any
-// sibling export button). Reverting to the div overlay restores
-// pre-#117 behaviour while keeping focus trap + ESC close
-// implemented manually in app.js.
-func TestShareModalsAreOverlayDivs(t *testing.T) {
-	var buf bytes.Buffer
-	if err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf); err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-	content := buf.String()
-	for _, id := range []string{"share-print-config-modal", "google-calendar-preferences-modal"} {
-		divNeedle := `<div id="` + id + `" role="dialog" aria-modal="true"`
-		if !strings.Contains(content, divNeedle) {
-			t.Fatalf("ShareView should render %s as a div overlay with role/aria-modal; got:\n%s", id, content)
-		}
-		dialogNeedle := `<dialog id="` + id + `"`
-		if strings.Contains(content, dialogNeedle) {
-			t.Fatalf("ShareView must not render %s as a native <dialog>; it regresses to the WebView2 focus-event crash", id)
+		if strings.Contains(content, `id="`+id+`"`) {
+			t.Errorf("/share landing must not contain modal %q (moved to subpage)", id)
 		}
 	}
 }
 
-func TestShareViewShowsPrintableExportHelp(t *testing.T) {
+// TestShareViewShowsSubOverviewHelp (issue #284) asserts
+// the /share landing carries the help copy that used to
+// be inline on the pre-#284 landing. The export /
+// import / print-config help moved to the subpages; the
+// landing keeps the high-level "what is this page"
+// summary and the Support & Diagnostics help. The
+// subpage-level help (single-record vs full-database
+// PDF, "Analyses the archive first", etc.) is now
+// covered by the per-subpage render tests in
+// share_subpages_handlers_test.go.
+func TestShareViewShowsSubOverviewHelp(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+	err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 
 	content := buf.String()
 	for _, needle := range []string{
+		// Landing-level help: what /share is, what
+		// the Quick Actions surface offers, and the
+		// Support & Diagnostics section.
+		"Share Archive",
+		"Export, back up, import, and restore your DixieData local archive",
+		"Quick actions",
+		"Support & Diagnostics",
+		"Troubleshooting bundle",
+		"Export Feedback Log",
+		"Bug Report Bundle",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("/share landing missing sub-overview help %q", needle)
+		}
+	}
+	// Subpage-specific help must NOT be on the landing
+	// (it moved to the subpages).
+	for _, forbidden := range []string{
 		"Which export should I choose?",
 		"Single-record portrait",
 		"Single-record landscape",
-		"Full database printable PDF",
-		"Full Database Printable PDF",
 		"Import Memorial JSON (.json)",
 		"Analyses the archive first",
 	} {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing export help content %s", needle)
+		if strings.Contains(content, forbidden) {
+			t.Errorf("/share landing should not contain %q (moved to subpage)", forbidden)
 		}
 	}
 }
 
-func TestShareViewKeepsResponsiveImportLayoutContract(t *testing.T) {
+// TestShareViewKeepsSubOverviewLayoutContract (issue #284)
+// asserts the /share landing uses the new sub-overview
+// grid (lg:grid-cols-4 for the Quick Actions) and the
+// full-width Support & Diagnostics card. The old
+// responsive-two-col grid that wrapped the inline
+// sections is gone with the sections.
+func TestShareViewKeepsSubOverviewLayoutContract(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+	err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 
 	content := buf.String()
 	for _, needle := range []string{
-		`class="responsive-two-col relative grid gap-6"`,
-		`class="rounded-2xl border border-[rgba(141,116,64,0.35)] bg-white/70 p-4"`,
-		`class="secondary-button justify-start text-left"`,
-		`Import Memorial JSON (.json)`,
-		`id="memorial-preview-target"`,
+		// New sub-overview Quick Actions grid.
+		`sm:grid-cols-2 lg:grid-cols-4`,
+		// Support & Diagnostics card stays on /share
+		// and uses the same full-width card shape the
+		// other pages use.
+		"Support & Diagnostics",
+		`/export/feedback-log`,
+		`/export/bug-report`,
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing responsive/split-screen contract %s", needle)
+			t.Errorf("/share landing missing sub-overview layout contract %q", needle)
+		}
+	}
+	// The old 2-col responsive grid that wrapped the
+	// three inline sections is gone with the sections.
+	for _, forbidden := range []string{
+		`class="responsive-two-col relative grid gap-6"`,
+		`id="memorial-preview-target"`,
+		`memorial-preview-target`,
+	} {
+		if strings.Contains(content, forbidden) {
+			t.Errorf("/share landing should not contain %q (moved to subpage)", forbidden)
 		}
 	}
 }

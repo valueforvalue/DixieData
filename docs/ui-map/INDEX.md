@@ -32,7 +32,10 @@ below but worth knowing:
 | 05 | Soldier Detail | `panel.soldier.detail.summary`, `panel.soldier.detail.records`, `panel.soldier.detail.images` | — | `overlay.image.viewer` | [wireframes/05-soldier-detail.md](wireframes/05-soldier-detail.md) |
 | 06 | Soldier New | `panel.soldier.form.scratchpad`, `panel.soldier.form.records`, `panel.soldier.form.images` | — | — | [wireframes/06-soldier-new.md](wireframes/06-soldier-new.md) |
 | 07 | Soldier Edit | (same as New) | — | — | [wireframes/07-soldier-edit.md](wireframes/07-soldier-edit.md) |
-| 08 | Share / Export | `panel.export.actions`, `panel.export.google` | — | `overlay.print-config.modal`, `overlay.google-calendar-prefs.modal` | [wireframes/08-export.md](wireframes/08-export.md) |
+| 08 | Share (landing) | `panel.share.quick-actions`, `panel.share.recent`, `panel.share.support` | — | — | [wireframes/08-export.md](wireframes/08-export.md) |
+| 08a | Share / Exports | `panel.share.exports` | — | `overlay.print-config.modal` | [wireframes/08a-exports.md](wireframes/08a-exports.md) |
+| 08b | Share / Imports | `panel.share.imports` | — | — | [wireframes/08b-imports.md](wireframes/08b-imports.md) |
+| 08c | Share / Sync | — | — | `overlay.google-calendar-prefs.modal` | [wireframes/08c-sync.md](wireframes/08c-sync.md) |
 | 09 | Insights | `panel.insights.overview`, `panel.insights.cemeteries`, `panel.insights.homes`, `panel.insights.pensions`, `panel.insights.units`, `panel.insights.chronology`, `panel.insights.duplicate-audit` | — | `overlay.print-config.modal` | [wireframes/09-insights.md](wireframes/09-insights.md) |
 | 10 | Insights Drilldown | (panel-only) | — | — | [wireframes/10-insights-drilldown.md](wireframes/10-insights-drilldown.md) |
 | 11 | Review Queue | `panel.review-queue.list` | — | — | [wireframes/11-review-queue.md](wireframes/11-review-queue.md) |

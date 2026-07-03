@@ -496,37 +496,24 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	status, err := a.google.Status()
-	if err != nil {
-		respondInternal(w, r, "Could not load Google integration status.", err)
-		return
-	}
+	// Issue #284: the /share landing slimmed to a
+	// sub-overview. The Export & Backup, Import & Restore,
+	// and Google Integration surfaces moved to
+	// /share/exports, /share/imports, /share/sync
+	// respectively; each subpage handler loads only its
+	// own data. The landing only needs the merge-review
+	// conflicts, archive counts (for the empty-state), and
+	// the recent-jobs list (for the activity card).
 	conflicts, err := a.backup.PendingMergeConflicts()
 	if err != nil {
 		respondInternal(w, r, "Could not load pending merge conflicts.", err)
 		return
 	}
-	exportRecords, err := a.listAllSoldiers()
-	if err != nil {
-		respondInternal(w, r, "Could not enumerate person records for export.", err)
-		return
-	}
-	drift, err := a.google.CalendarDriftStatus(exportRecords)
-	if err != nil {
-		respondInternal(w, r, "Could not compute Google Calendar drift.", err)
-		return
-	}
-	status.LastSyncedAt = drift.LastSyncedAt
-	status.DriftAdded = drift.Added
-	status.DriftUpdated = drift.Updated
-	status.DriftRemoved = drift.Removed
-	status.OutOfSync = drift.OutOfSync
 	domainCounts, err := a.soldiers.ArchiveCounts()
 	if err != nil {
 		respondInternal(w, r, "Could not load archive counts.", err)
 		return
 	}
-	shareIncludeTags := a.archiveMeta.IncludeTags(r.Context(), records.ArchiveKindShared)
 	// Issue #265: surface the last 3 terminal jobs in the
 	// /share landing's "Recent activity" card. The registry
 	// is optional in tests + the headless CLI, so guard the
@@ -536,7 +523,7 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	if a.jobs != nil {
 		recentJobs = buildRecentJobEntries(a.jobs.RecentJobs(3))
 	}
-	presentation.ShareView(status, conflicts, exportRecords, domainCounts, shareIncludeTags, recentJobs).Render(r.Context(), w)
+	presentation.ShareView(conflicts, domainCounts, recentJobs).Render(r.Context(), w)
 }
 
 // buildRecentJobEntries converts the jobs.Registry output

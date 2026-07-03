@@ -1,29 +1,29 @@
 // audit/smoke_share_landing.mjs — regression net for
-// issue #265: the /share landing page reorg. The page
-// gained a Quick Actions section + a Recent Activity
-// section above the existing 2-col grid. This probe
-// verifies the user-visible state after the reorg:
+// issue #265 (Quick Actions + Recent Activity reorg)
+// AND issue #284 (the sub-overview landing reorg that
+// replaced the inline Export/Import/Google sections
+// with a sub-overview of 4 navigate-to-subpage tiles).
+// This probe verifies the user-visible state after both
+// reorgs:
 //
 //   1. /share loads with no errors
 //   2. Quick Actions section is present (id="panel.share.quick-actions")
-//   3. Quick Actions has exactly 3 tiles
+//   3. Quick Actions has exactly 4 tiles (issue #284)
 //   4. Quick Actions tiles are <a> elements (anchors, not divs)
-//      with the expected labels (Export JSON, Load Backup, Share Queue)
-//   5. The 3 tile hrefs match the deep-link anchors
-//      (Export → #export-section; Load Backup →
-//      #import-section; Share Queue → /share/queue)
+//      with the expected labels (Export, Import, Share Queue, Sync)
+//   5. The 4 tile hrefs navigate to the 3 dedicated subpages
+//      + /share/queue (Export → /share/exports; Import →
+//      /share/imports; Share Queue → /share/queue; Sync → /share/sync)
 //   6. Recent Activity section is present
 //      (id="panel.share.recent")
 //   7. Recent Activity shows the empty-state copy when
 //      no jobs exist (initial state on a fresh scratch)
-//   8. After firing an export job via the JSON tile, the
-//      Recent Activity section shows that job in its
-//      list (within a few seconds of the worker finishing)
-//   9. The existing all-exports section (#export-section)
-//      is still present below the new sections
-//   10. The existing all-imports section (#import-section)
-//      is still present below
-//   11. Resize to 480px → all sections are still readable
+//   8. The old inline #export-section + #import-section
+//      anchors are GONE from the landing (issue #284 —
+//      the sections moved to /share/exports + /share/imports)
+//   9. Section ordering: Quick Actions + Recent + Support &
+//      Diagnostics + (conditional) Merge Review
+//   10. Resize to 480px → all sections are still readable
 //       (no horizontal scroll on the body)
 
 const PORT = 9993;
@@ -90,15 +90,17 @@ try {
     };
   });
   record("quick-actions-section-exists", quickActions && quickActions.exists === true, quickActions);
-  record("quick-actions-has-3-tiles", quickActions && quickActions.tileCount === 3, { tileCount: quickActions && quickActions.tileCount });
+  record("quick-actions-has-4-tiles", quickActions && quickActions.tileCount === 4, { tileCount: quickActions && quickActions.tileCount });
   record("quick-actions-tiles-are-anchors", quickActions && quickActions.tiles.every((t) => t.tag === "A"), { tags: quickActions && quickActions.tiles.map((t) => t.tag) });
-  record("quick-actions-tile-labels", quickActions && quickActions.tiles.map((t) => t.label).join("|") === "Export JSON|Load Backup|Share Queue", { labels: quickActions && quickActions.tiles.map((t) => t.label) });
+  record("quick-actions-tile-labels", quickActions && quickActions.tiles.map((t) => t.label).join("|") === "Export|Import|Share Queue|Sync", { labels: quickActions && quickActions.tiles.map((t) => t.label) });
 
-  // === Step 3: tile hrefs (Export JSON + Load Backup submit data-action; Share Queue is a direct link to /share/queue) ===
-  console.log("\nStep 3: Quick Actions tile hrefs");
-  // Share Queue tile should have href="/share/queue" since it doesn't submit a form.
-  const shareQueueHref = quickActions && quickActions.tiles[2] && quickActions.tiles[2].href;
-  record("share-queue-tile-direct-link", shareQueueHref === "/share/queue", { href: shareQueueHref });
+  // === Step 3: tile hrefs (all 4 tiles are navigate-to-subpage
+  // links per the locked decision in #284; the in-page anchor
+  // + data-action submit model from #265 was replaced) ===
+  console.log("\nStep 3: Quick Actions tile hrefs (issue #284)");
+  const expectedHrefs = ["/share/exports", "/share/imports", "/share/queue", "/share/sync"];
+  const actualHrefs = quickActions && quickActions.tiles.map((t) => t.href);
+  record("tile-hrefs-navigate-to-subpages", actualHrefs && actualHrefs.join("|") === expectedHrefs.join("|"), { actualHrefs, expectedHrefs });
 
   // === Step 4: Recent Activity section present ===
   console.log("\nStep 4: Recent Activity section present");
@@ -117,31 +119,36 @@ try {
   // disjunction.
   record("recent-section-renders-empty-state-or-rows", recentSection && (recentSection.hasEmptyState !== recentSection.hasRows), { hasEmptyState: recentSection && recentSection.hasEmptyState, hasRows: recentSection && recentSection.hasRows, rowCount: recentSection && recentSection.rowCount });
 
-  // === Step 5: existing all-exports + all-imports sections still present below ===
-  console.log("\nStep 5: existing sections still present");
-  const existingSections = await page.evaluate(() => ({
+  // === Step 5: old inline sections are GONE from /share (issue #284) ===
+  // The Export & Backup (#export-section) and Import & Restore
+  // (#import-section) inline cards moved to /share/exports +
+  // /share/imports respectively. They must NOT be on the
+  // landing anymore.
+  console.log("\nStep 5: old inline sections removed from /share (issue #284)");
+  const oldSections = await page.evaluate(() => ({
     exportSection: document.getElementById("export-section") !== null,
     importSection: document.getElementById("import-section") !== null,
+    googleIntegration: document.body.textContent.includes("Connect Google Account"),
   }));
-  record("all-exports-section-still-present", existingSections.exportSection === true, existingSections);
-  record("all-imports-section-still-present", existingSections.importSection === true, existingSections);
+  record("inline-export-section-gone", oldSections.exportSection === false, oldSections);
+  record("inline-import-section-gone", oldSections.importSection === false, oldSections);
+  record("inline-google-integration-gone", oldSections.googleIntegration === false, oldSections);
 
-  // === Step 6: section ordering — Quick Actions + Recent appear before Export & Backup ===
+  // === Step 6: section ordering — Quick Actions + Recent + Support & Diagnostics ===
   console.log("\nStep 6: section ordering");
   const order = await page.evaluate(() => {
     const quickActions = document.getElementById("panel.share.quick-actions");
     const recent = document.getElementById("panel.share.recent");
-    const exportSection = document.getElementById("export-section");
-    if (!quickActions || !recent || !exportSection) return null;
-    // Compare top offsets; lower offset = higher on page.
+    const supportHeader = Array.from(document.querySelectorAll("p")).find((p) => p.textContent.trim() === "Support & Diagnostics");
+    if (!quickActions || !recent) return null;
     return {
       quickActionsTop: quickActions.getBoundingClientRect().top,
       recentTop: recent.getBoundingClientRect().top,
-      exportTop: exportSection.getBoundingClientRect().top,
+      supportTop: supportHeader ? supportHeader.getBoundingClientRect().top : null,
     };
   });
   record("quick-actions-above-recent", order && order.quickActionsTop < order.recentTop, order);
-  record("recent-above-export", order && order.recentTop < order.exportTop, order);
+  record("recent-above-support", order && order.supportTop !== null && order.recentTop < order.supportTop, order);
 
   // === Step 7: 480px responsive — the /share CONTENT does not
   // overflow horizontally. The top-nav may overflow at 480px
@@ -174,33 +181,30 @@ try {
   await page.setViewportSize({ width: 1600, height: 1200 });
   await wait(500);
 
-  // === Step 8: fire an export + verify Recent activity populates ===
-  console.log("\nStep 8: fire an export + verify Recent activity populates");
-  // Re-navigate to /share to reset state after the viewport
-  // changes in step 7 (some browsers don't refire the dispatcher
-  // listeners on viewport change alone).
+  // === Step 8: navigate to /share/exports via the Export tile
+  // and verify the export-subpage loads (issue #284) ===
+  console.log("\nStep 8: Export tile navigates to /share/exports (issue #284)");
   await page.goto(`http://127.0.0.1:${PORT}/share`, { waitUntil: "networkidle" });
-  await wait(1500);
-  const onShareForExport = await page.evaluate(() => {
-    const section = document.getElementById("panel.share.quick-actions");
-    const tile = section ? section.querySelector("a") : null;
-    return {
-      url: window.location.pathname,
-      sectionExists: !!section,
-      tileExists: !!tile,
-      tileHref: tile && tile.getAttribute("href"),
-      tileDataAction: tile && tile.getAttribute("data-action"),
-      tileDataSubmit: tile && tile.hasAttribute("data-dixie-submit"),
-    };
-  });
-  console.log("  pre-click state:", onShareForExport);
-  // Capture the POST request fired by the dispatcher when the
-  // Export JSON tile is clicked. The dispatcher intercepts the
-  // click (preventDefault), builds a synthetic form, and POSTs
-  // /export/json. The server responds with a 303 + X-DixieData-
-  // Redirect pointing at /jobs/{id}. The browser then navigates
-  // to /jobs/{id} (or, with data-reload-on-success, reloads the
-  // current page — depends on the dispatcher branch).
+  await wait(1000);
+  const exportTile = page.locator("#panel\\.share\\.quick-actions a").first();
+  await exportTile.click({ force: true, timeout: 5000 });
+  await page.waitForURL(/\/share\/exports$/, { timeout: 5000 }).catch(() => null);
+  const exportUrl = page.url();
+  record("export-tile-navigates-to-exports-subpage", /\/share\/exports$/.test(exportUrl), { url: exportUrl });
+  // Verify the /share/exports page carries the Export JSON
+  // action (which used to be the in-landing quick action).
+  const onExportsSubpage = await page.evaluate(() => ({
+    hasExportJsonAction: Array.from(document.querySelectorAll("[data-action='/export/json']")).length > 0,
+    hasBuildShareArchive: document.getElementById("build-share-archive") !== null,
+    hasIncludeTagsCheckbox: document.querySelector("[data-share-include-tags]") !== null,
+  }));
+  record("exports-subpage-has-export-json-action", onExportsSubpage.hasExportJsonAction, onExportsSubpage);
+  record("exports-subpage-has-build-share-archive", onExportsSubpage.hasBuildShareArchive, onExportsSubpage);
+  record("exports-subpage-has-include-tags-checkbox", onExportsSubpage.hasIncludeTagsCheckbox, onExportsSubpage);
+
+  // === Step 9: fire an export from /share/exports + verify
+  // Recent activity populates on /share (issue #265) ===
+  console.log("\nStep 9: fire an export from /share/exports + verify Recent activity populates");
   const requests = [];
   page.on("request", (req) => {
     if (req.url().includes("/export/") || req.url().includes("/jobs/")) {
@@ -208,38 +212,10 @@ try {
     }
   });
   const postPromise = page.waitForRequest((req) => req.url().endsWith("/export/json") && req.method() === "POST", { timeout: 10000 }).catch(() => null);
-  // Use Playwright's locator click — fires a real mouse click
-  // event that the dispatcher's document-level listener picks
-  // up. page.evaluate(tile.click()) dispatches a synthetic
-  // click event that doesn't bubble through the document the
-  // same way.
-  // Dispatch a click event via the DOM API (MouseEvent) that
-  // bubbles through the document. The dispatcher's
-  // document-level listener picks it up; page.locator().click()
-  // was timing out despite the element being present, likely
-  // because the layout's persistent jobs-progress overlay or
-  // floating-dock covers the tile in the test viewport.
-  const dispatched = await page.evaluate(() => {
-    // Use getElementById (not querySelector) because the id
-    // contains dots — querySelector("#panel.share.quick-actions")
-    // would parse as id="panel" + class="share quick-actions".
-    const section = document.getElementById("panel.share.quick-actions");
-    const tile = section ? section.querySelector("a") : null;
-    if (!(tile instanceof HTMLElement)) {
-      return { error: "no tile", sectionExists: !!section };
-    }
-    const evt = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
-    const result = tile.dispatchEvent(evt);
-    return { dispatched: true, defaultPrevented: !result, href: tile.getAttribute("href") };
-  });
-  console.log("  click dispatch:", JSON.stringify(dispatched, null, 2));
-  // Give the dispatcher time to fire
-  await wait(500);
-  // Give the dispatcher time to fire
-  await wait(500);
+  const exportBtn = page.locator("[data-action='/export/json']").first();
+  await exportBtn.click({ force: true, timeout: 5000 });
   const postReq = await postPromise;
-  console.log("  captured POST requests:", requests);
-  record("export-json-tile-posts-to-handler", postReq !== null, { url: postReq && postReq.url() });
+  record("export-json-button-posts-to-handler", postReq !== null, { url: postReq && postReq.url() });
 
   // Wait for the worker to finish (small archive → a few seconds).
   await wait(5000);

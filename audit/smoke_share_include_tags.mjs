@@ -58,9 +58,12 @@ try {
   const page = await ctx.newPage();
   page.on("pageerror", (err) => console.log("    [pageerror]", err.message));
 
-  // === Step 1: load /share + assert checkbox is present ===
-  console.log("Step 1: load /share + assert checkbox present");
-  await page.goto(`http://127.0.0.1:${PORT}/share`, { waitUntil: "networkidle" });
+  // === Step 1: load /share/exports + assert checkbox is present ===
+  // Issue #284: the include_tags checkbox moved from the
+  // inline /share landing to the dedicated /share/exports
+  // subpage (where the Export & Backup section now lives).
+  console.log("Step 1: load /share/exports + assert checkbox present");
+  await page.goto(`http://127.0.0.1:${PORT}/share/exports`, { waitUntil: "networkidle" });
   await wait(500);
 
   // 1. Checkbox present

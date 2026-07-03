@@ -1,0 +1,155 @@
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/templates/partials"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// ShareSyncView renders /share/sync. Owns the Google
+// Integration surface (the third card on the original
+// /share landing pre-issue #284). The Merge Review
+// section stays on /share (the index) per the locked
+// decision in #284.
+//
+// Data: full Google status (Connected, calendar IDs,
+// last sync, drift counters, shared client state) and
+// the drift counts (Added/Updated/Removed) come from
+// CalendarDriftStatus. The render shape mirrors the
+// original Google Integration card verbatim — no
+// visual change in Slice 1.
+templ ShareSyncView(status viewmodel.GoogleStatus) {
+	@Layout("Share Sync") {
+		<div class="relative mx-auto max-w-6xl space-y-6">
+			<nav aria-label="Breadcrumb" class="text-sm text-slate-500">
+				<a href="/share" class="text-[#324253] underline-offset-2 hover:underline">← Back to /share</a>
+			</nav>
+			<div>
+				<h2 class="text-2xl gold font-bold">Share Sync</h2>
+				<p class="mt-2 text-sm text-slate-600">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
+			</div>
+			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+				<div>
+					<h3 class="text-xl gold font-bold">Google Integration</h3>
+					<p class="mt-2 text-sm text-slate-500">Connect a Google account to upload backups to Drive and sync anniversary events to Google Calendar.</p>
+					if status.SharedClientAvailable {
+						<p class="mt-1 text-xs text-slate-500">Shared Google app credentials were detected. Users can click Connect without entering a client ID or secret.</p>
+						<p class="mt-1 text-xs text-slate-500">Loaded from: <code>{ status.SharedClientSource }</code></p>
+					} else {
+						<p class="mt-1 text-xs text-slate-500">Save settings first, then connect the account in your browser.</p>
+						<p class="mt-1 text-xs text-slate-500">If you want shared settings, place <code>google-oauth-defaults.json</code> next to <code>DixieData.exe</code>.</p>
+					}
+				</div>
+				<div class="responsive-two-col grid gap-4">
+					<div class="col-span-2 flex flex-wrap gap-3">
+						@components.Button("Connect Google Account", components.ButtonPrimary, "", templ.Attributes{
+							"data-action":       "/integrations/google/connect",
+							"data-dixie-submit": "true",
+						})
+						@components.Button("Disconnect", components.ButtonSecondary, "", templ.Attributes{
+							"data-action":       "/integrations/google/disconnect",
+							"data-dixie-submit": "true",
+						})
+					</div>
+					<div class="col-span-2 flex flex-wrap gap-3">
+						@components.Button("Upload Backup to Google Drive", components.ButtonPrimary, "", templ.Attributes{
+							"data-action":       "/integrations/google/backup",
+							"data-dixie-submit": "true",
+						})
+						@components.Button("Export CSV to Google Sheets", components.ButtonSecondary, "", templ.Attributes{
+							"data-action":       "/integrations/google/sheets/export",
+							"data-dixie-submit": "true",
+						})
+					</div>
+					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-3">
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Calendar</p>
+						<div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+							@components.Button("Use Calendar", components.ButtonSecondary, "", templ.Attributes{
+								"data-action":          "/integrations/google/calendar/use-managed",
+								"data-dixie-submit":    "true",
+								"data-progress-label":  "Configuring DixieData Calendar...",
+								"data-busy-group":      "google-calendar-actions",
+							})
+							@components.Button("Sync", components.ButtonSecondary, "", templ.Attributes{
+								"data-action":          "/integrations/google/calendar/sync-managed",
+								"data-dixie-submit":    "true",
+								"data-progress-label":  "Syncing DixieData Calendar...",
+								"data-busy-group":      "google-calendar-actions",
+							})
+							@components.Button("Unsync", components.ButtonSecondary, "", templ.Attributes{
+								"data-action":          "/integrations/google/calendar/unsync-managed",
+								"data-dixie-submit":    "true",
+								"data-confirm":         "Remove all Google Calendar events previously created by DixieData?",
+								"data-progress-label":  "Unsyncing DixieData Calendar...",
+								"data-busy-group":      "google-calendar-actions",
+							})
+							@components.Button("Preferences", components.ButtonSecondary, "", templ.Attributes{
+								"data-google-calendar-preferences-open": "",
+							})
+						</div>
+						<p class="text-xs text-slate-500">Compact flow: <strong>Use</strong> once, then <strong>Sync</strong>. Preference changes apply globally on next sync.</p>
+					</div>
+					<div class="col-span-2 rounded-2xl border border-[rgba(141,116,64,0.28)] bg-white/70 p-4 space-y-2">
+						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">DixieData Test Calendar</p>
+						<div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+							@components.Button("Use Test", components.ButtonSecondary, "", templ.Attributes{
+								"data-action":          "/integrations/google/calendar/use-test",
+								"data-dixie-submit":    "true",
+								"data-progress-label":  "Configuring DixieData Test Calendar...",
+								"data-busy-group":      "google-calendar-actions",
+							})
+							@components.Button("Test Sync", components.ButtonSecondary, "", templ.Attributes{
+								"data-action":          "/integrations/google/calendar/sync-test",
+								"data-dixie-submit":    "true",
+								"data-progress-label":  "Running DixieData Test Sync...",
+								"data-busy-group":      "google-calendar-actions",
+							})
+							@components.Button("Test Unsync", components.ButtonSecondary, "", templ.Attributes{
+								"data-action":          "/integrations/google/calendar/unsync-test",
+								"data-dixie-submit":    "true",
+								"data-progress-label":  "Removing DixieData Test events...",
+								"data-busy-group":      "google-calendar-actions",
+							})
+						</div>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.06)] px-4 py-3 text-sm text-slate-600">
+					Status:
+					if status.Connected {
+						<strong class="ml-1 text-[#22303d]">Connected</strong>
+					} else {
+						<strong class="ml-1 text-[#6f2c26]">Not connected</strong>
+					}
+					if status.UsingSharedClient {
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">using shared OAuth app</span>
+					} else if status.SharedClientAvailable {
+						<span class="ml-2 text-xs uppercase tracking-[0.18em] text-[#8d7440]">shared OAuth app available</span>
+					}
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-sm text-slate-600">
+					<div><strong>DixieData Calendar ID:</strong> { status.ManagedCalendarID }</div>
+					<div class="mt-1"><strong>DixieData Test Calendar ID:</strong> { status.TestCalendarID }</div>
+					if strings.TrimSpace(status.LastSyncedAt) != "" {
+						<div class="mt-1 text-xs text-slate-500">Last synced: { status.LastSyncedAt }</div>
+					}
+					<div class="mt-2">
+						if status.OutOfSync {
+							<strong class="text-[#6f2c26]">Out of sync</strong>
+						} else {
+							<strong class="text-[#29522d]">In sync</strong>
+						}
+						<span class="ml-2 text-xs text-slate-500">Added { fmt.Sprintf("%d", status.DriftAdded) } • Updated { fmt.Sprintf("%d", status.DriftUpdated) } • Removed { fmt.Sprintf("%d", status.DriftRemoved) }</span>
+					</div>
+				</div>
+				<div class="rounded-2xl border border-[rgba(141,116,64,0.45)] bg-[rgba(36,48,61,0.04)] px-4 py-3 text-xs leading-6 text-slate-500">
+					Shared deployment option: place a <code>google-oauth-defaults.json</code> file next to <code>DixieData.exe</code> with the app-wide client ID and secret. Then end users can simply click <strong>Connect Google Account</strong> and choose their own account.
+				</div>
+				<div id="google-status" class="text-sm text-slate-500"></div>
+			</div>
+			@partials.GoogleCalendarPreferencesModal(status)
+		</div>
+	}
+}

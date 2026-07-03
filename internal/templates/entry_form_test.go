@@ -180,88 +180,90 @@ func TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts(t *testing.T) {
 	}
 }
 
-func TestShareViewIncludesSeparatedImportAndExportActions(t *testing.T) {
+// TestShareLandingIsSubOverview (issue #284) verifies the
+// /share landing is now a sub-overview: 4 Quick Action tiles
+// linking to the 3 subpages + Share Queue, plus the
+// Support & Diagnostics card. The Export & Backup, Import &
+// Restore, and Google Integration surfaces moved to
+// /share/exports, /share/imports, and /share/sync
+// respectively (each has its own test in
+// share_subpages_handlers_test.go via the handler). The
+// per-section assertions from the pre-#284 version of this
+// test (TestShareViewIncludesSeparatedImportAndExportActions)
+// moved with the sections.
+func TestShareLandingIsSubOverview(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, nil, []viewmodel.ExportRecordOption{{
-		ID:          1,
-		DisplayID:   "ABC-00001",
-		DisplayName: "John Carter",
-		EntryType:   "soldier",
-	}}, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+	err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 
 	content := buf.String()
-	if !strings.Contains(content, "Export & Backup") || !strings.Contains(content, "Import & Restore") {
-		t.Fatalf("share view missing separated import/export sections")
-	}
-	if !strings.Contains(content, "/import/backup") || !strings.Contains(content, "Load Backup (.ddbak)") {
-		t.Fatalf("share view missing backup import action")
-	}
-	if !strings.Contains(content, "/export/shared-archive") || !strings.Contains(content, "Export Shared Archive (.ddshare)") {
-		t.Fatalf("share view missing shared archive export action")
-	}
-	if !strings.Contains(content, "/export/static-archive") || !strings.Contains(content, "Export Static Web Archive") {
-		t.Fatalf("share view missing static web archive export action")
-	}
-	if !strings.Contains(content, "/export/database-pdf") || !strings.Contains(content, "Full Database Printable PDF") {
-		t.Fatalf("share view missing full database printable export action")
-	}
+	// Header + page summary.
 	for _, needle := range []string{
-		`name="scope" value="all"`,
-		`name="scope" value="filtered"`,
-		`name="scope" value="selected"`,
-		`name="selected_ids"`,
-		`name="filter_buried_in"`,
-		`name="filter_entry_type"`,
-		`name="filter_unit"`,
-		`name="filter_pension_state"`,
-		`name="filter_confederate_home_status"`,
-		`data-print-filter-panel`,
-		`data-print-buried-filter`,
-		"John Carter",
+		"Share Archive",
+		"Export, back up, import, and restore your DixieData local archive",
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing printable export control %s", needle)
+			t.Errorf("/share landing missing %q", needle)
 		}
 	}
-	for _, needle := range []string{"data-print-config-modal", "overflow-y-auto", "max-h-[calc(100vh-2rem)]", "sm:max-h-[calc(100vh-4rem)]"} {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing printable export control %s", needle)
-		}
-	}
+	// Quick Actions tiles link to the 3 subpages + Share
+	// Queue (4 tiles). The Build Share Archive menu item
+	// was folded into /share/exports per the locked
+	// decision.
 	for _, needle := range []string{
-		`Export Feedback Log`,
-		`Bug Report Bundle`,
-		`data-print-config-close`,
-		`class="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end"`,
-		`data-print-config-submit`,
-		`data-pdf-pref-key="fullBiographyPage"`,
-		`w-full px-4 sm:w-auto`,
-		`w-full sm:w-auto`,
+		`href="/share/exports"`,
+		`href="/share/imports"`,
+		`href="/share/sync"`,
+		`href="/share/queue"`,
 	} {
 		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing mobile-safe overlay fragment %s", needle)
+			t.Errorf("/share landing missing Quick Action link %q", needle)
 		}
 	}
-	if !strings.Contains(content, "/import/shared-archive") || !strings.Contains(content, "Import Shared Archive (.ddshare)") {
-		t.Fatalf("share view missing shared archive import action")
+	// Support & Diagnostics stays on /share (deferred to
+	// #255 for a possible move to /settings). The
+	// ".ddbak" / ".ddshare" extension copy is on the
+	// /share/exports and /share/imports subpages, not
+	// here.
+	for _, needle := range []string{
+		"Support & Diagnostics",
+		"Troubleshooting bundle",
+		"/export/feedback-log",
+		"Export Feedback Log",
+		"/export/bug-report",
+		"Bug Report Bundle",
+	} {
+		if !strings.Contains(content, needle) {
+			t.Errorf("/share landing missing Support & Diagnostics %q", needle)
+		}
 	}
-	if !strings.Contains(content, "/export/bug-report") || !strings.Contains(content, "Support & Diagnostics") {
-		t.Fatalf("share view missing diagnostics section")
-	}
-	if !strings.Contains(content, "/export/feedback-log") || !strings.Contains(content, "Export Feedback Log") {
-		t.Fatalf("share view missing feedback log export action")
-	}
-	if !strings.Contains(content, ".ddbak") || !strings.Contains(content, ".ddshare") {
-		t.Fatalf("share view missing custom archive extension copy")
+	// The old inline Export/Import/Google sections are
+	// gone from the landing. The new subpages own them.
+	for _, forbidden := range []string{
+		"Export & Backup",
+		"Import & Restore",
+		"Google Integration",
+		"/import/backup",         // on the imports subpage now
+		"/export/shared-archive",  // on the exports subpage now
+		"/export/static-archive",  // on the exports subpage now
+		"/import/shared-archive",  // on the imports subpage now
+		"data-print-config-modal", // on the exports subpage now
+	} {
+		if strings.Contains(content, forbidden) {
+			t.Errorf("/share landing should not contain %q (moved to subpage)", forbidden)
+		}
 	}
 }
 
 func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{
+	// Issue #284: the Merge Review section is gated on
+	// len(conflicts) > 0 in the new slim landing. Pass a
+	// single conflict so the section renders. Pre-#284 the
+	// section rendered unconditionally.
+	err := ShareView([]viewmodel.MergeReviewConflict{
 		{
 			ID:                7,
 			ConflictType:      "soldier-update",
@@ -269,7 +271,7 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 			Reason:            "Shared record changed notes.",
 			IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00007", FirstName: "John", LastName: "Taylor"},
 		},
-	}, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+	}, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -288,42 +290,43 @@ func TestShareViewShowsMergeReviewStatus(t *testing.T) {
 
 func TestShareViewUsesManagedGoogleCalendarActions(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{
-		Connected:         true,
-		ManagedCalendarID: "managed-123",
-		TestCalendarID:    "test-456",
-		LastSyncedAt:      "2026-06-08T20:00:00Z",
-		OutOfSync:         true,
-		DriftAdded:        2,
-		DriftUpdated:      1,
-		DriftRemoved:      3,
-	}, nil, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+	// Issue #284: the Google Integration card moved to
+	// /share/sync. The /share landing is now a sub-overview
+	// that does NOT include the card or its controls. The
+	// full Google surface is tested via the new subpage
+	// handler in share_subpages_handlers_test.go.
+	err := ShareView(nil, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 
 	content := buf.String()
-	for _, needle := range []string{
+	// Issue #284: the Google Integration card moved to
+	// /share/sync. The /share landing is now a sub-overview
+	// that does NOT include the card or its controls. The
+	// full Google surface is tested via the new subpage
+	// handler in share_subpages_handlers_test.go.
+	for _, forbidden := range []string{
+		"Google Integration",
 		"/integrations/google/calendar/use-managed",
 		"/integrations/google/calendar/sync-managed",
 		"/integrations/google/calendar/unsync-managed",
 		"/integrations/google/calendar/use-test",
 		"/integrations/google/calendar/sync-test",
 		"/integrations/google/calendar/unsync-test",
-		"Use Calendar",
-		"Sync",
-		"Unsync",
-		"Preferences",
-		"Use Test",
-		"Test Sync",
-		"Test Unsync",
-		"Compact flow:",
-		"Added 2 • Updated 1 • Removed 3",
-		"Out of sync",
+		"data-action=\"/integrations/google/connect\"",
+		"data-action=\"/integrations/google/backup\"",
+		"data-action=\"/integrations/google/sheets/export\"",
+		"data-google-calendar-preferences-open",
 		`data-busy-group="google-calendar-actions"`,
+		"Compact flow:",
+		"Out of sync",
+		"DixieData Calendar ID",
+		"DixieData Test Calendar ID",
+		"Last synced:",
 	} {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("share view missing managed google calendar content: %s", needle)
+		if strings.Contains(content, forbidden) {
+			t.Errorf("/share landing should not contain %q (moved to /share/sync)", forbidden)
 		}
 	}
 	if strings.Contains(content, "/integrations/google/calendar/sync\"") || strings.Contains(content, "Sync Google Calendar") {
@@ -371,7 +374,7 @@ func TestSettingsViewShowsResponsiveLayoutControls(t *testing.T) {
 
 func TestShareViewMergeReviewUsesSharedSummaryFormatting(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{
+	err := ShareView([]viewmodel.MergeReviewConflict{
 		{
 			ID:                7,
 			ConflictType:      "soldier-update",
@@ -396,7 +399,7 @@ func TestShareViewMergeReviewUsesSharedSummaryFormatting(t *testing.T) {
 				EntryType:            "wife",
 			},
 		},
-	}, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+	}, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -617,22 +620,17 @@ func TestNewEntryFormIncludesFindAGraveScrapeWarning(t *testing.T) {
 
 func TestShareViewIncludesMergeReviewPanel(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{{
+	// Issue #284: Merge Review section is gated on
+	// len(conflicts) > 0. Pass a conflict so the panel
+	// renders and the per-conflict keep-shared action is
+	// present.
+	err := ShareView([]viewmodel.MergeReviewConflict{{
 		ID:                42,
 		ConflictType:      "soldier-update",
-		Reason:            "Shared archive changed notes.",
-		IncomingDisplayID: "TDM65-00042",
-		LocalRecord: &viewmodel.Soldier{
-			DisplayID: "TDM65-00042",
-			FirstName: "Local",
-			LastName:  "Version",
-		},
-		IncomingRecord: viewmodel.Soldier{
-			DisplayID: "TDM65-00042",
-			FirstName: "Shared",
-			LastName:  "Version",
-		},
-	}}, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+		IncomingDisplayID: "STC38-00042",
+		Reason:            "Shared record changed notes.",
+		IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00042", FirstName: "John", LastName: "Taylor"},
+	}}, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -796,22 +794,17 @@ func TestSearchResultsPaginationUsesNavLandmark(t *testing.T) {
 
 func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 	var buf bytes.Buffer
-	err := ShareView(viewmodel.GoogleStatus{}, []viewmodel.MergeReviewConflict{{
+	// Issue #284: Merge Review section is gated on
+	// len(conflicts) > 0. Pass a display-id-collision
+	// conflict so the per-conflict keep-both + keep-shared
+	// actions render.
+	err := ShareView([]viewmodel.MergeReviewConflict{{
 		ID:                99,
 		ConflictType:      "display-id-collision",
-		Reason:            "Shared record collides on display ID.",
-		IncomingDisplayID: "TDM65-LOCAL-COLLIDE",
-		LocalRecord: &viewmodel.Soldier{
-			DisplayID: "TDM65-LOCAL-COLLIDE",
-			FirstName: "Thomas",
-			LastName:  "Lewis",
-		},
-		IncomingRecord: viewmodel.Soldier{
-			DisplayID: "TDM65-LOCAL-COLLIDE",
-			FirstName: "Andrew",
-			LastName:  "Morris",
-		},
-	}}, nil, viewmodel.ArchiveCounts{}, false, nil).Render(context.Background(), &buf)
+		IncomingDisplayID: "STC38-00099",
+		Reason:            "Incoming share uses an existing local display ID.",
+		IncomingRecord:    viewmodel.Soldier{DisplayID: "STC38-00099", FirstName: "John", LastName: "Taylor"},
+	}}, viewmodel.ArchiveCounts{}, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
