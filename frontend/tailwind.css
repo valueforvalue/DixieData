@@ -45,11 +45,11 @@ html { scrollbar-gutter: stable; }
       radial-gradient(circle at top right, rgba(255,255,255,0.28), transparent 18%),
       repeating-linear-gradient(135deg, rgba(34,45,57,0.025) 0, rgba(34,45,57,0.025) 6px, transparent 6px, transparent 18px),
       linear-gradient(180deg, var(--bg-sepia-top) 0%, var(--bg-sepia-mid) 42%, var(--bg-sepia-bottom) 100%);
-    color: #22303d;
+    @apply text-ink;
     font-family: "Helvetica Neue", Arial, sans-serif;
   }
   .gold {
-    color: #a88a46;
+    @apply text-gold;
     font-family: Georgia, "Times New Roman", serif;
   }
   .card {
@@ -333,7 +333,7 @@ html { scrollbar-gutter: stable; }
     align-items: center;
   }
   .layout-mode-summary strong {
-    color: #22303d;
+    @apply text-ink;
   }
   .top-nav-link,
   .top-nav-primary,
