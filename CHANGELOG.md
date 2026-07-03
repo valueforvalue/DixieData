@@ -11,7 +11,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`dixiedata debug dump --json` user_identity field shape** (issue #272).
+  `models.UserIdentity` had no `json:"..."` struct tags, so
+  `encoding/json` emitted PascalCase keys (`FirstName`,
+  `MiddleName`, `LastName`, `BirthYear`, `NodePrefix`). Renaming
+  fixed: keys are now `first_name`, `middle_name`, `last_name`,
+  `birth_year`, `node_prefix`. The key shape now matches every
+  other `--json` emitter in the dispatcher (snake_case +
+  plural-for-collections). After the fix the `user_identity`
+  payload in `debug dump --json` matches the convention the
+  CI consumers expect.
+
 ### Added
+
+- **CLI JSON key naming lock** (issue #272). New
+  `internal/appshell/cli_json_keys_test.go` runs the live admin
+  + debug subcommands in `--json` mode and asserts every key at
+  every nesting depth is snake_case (lowercase letters / digits /
+  underscores; no leading/trailing or consecutive underscores).
+  Future emitters that drift to camelCase (e.g. reusing an
+  unkeyed Go struct) fail the test before merge. Lightweight
+  survey helper: `looksPlural()` + `walkKeys()` walking the
+  parsed JSON tree, skipping root-level arrays (those wrap
+  record collections; future follow-up). The test caught the
+  UserIdentity issue above on its first run, confirming the
+  convention was implicit but unverified.
 
 - **Phase 3 visual + WCAG contrast audit harness** (issue #292).
   The Phase 2 token migration (#291) advertised byte-equivalent

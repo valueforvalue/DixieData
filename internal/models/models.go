@@ -368,11 +368,11 @@ type MergeReviewConflict struct {
 }
 
 type UserIdentity struct {
-	FirstName  string
-	MiddleName string
-	LastName   string
-	BirthYear  int
-	NodePrefix string
+	FirstName  string `json:"first_name"`
+	MiddleName string `json:"middle_name"`
+	LastName   string `json:"last_name"`
+	BirthYear  int    `json:"birth_year"`
+	NodePrefix string `json:"node_prefix"`
 }
 
 type InitialSetupForm struct {
