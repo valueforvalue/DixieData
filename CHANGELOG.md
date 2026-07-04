@@ -247,6 +247,32 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     set (mirrors the existing `DIXIEDATA_DEVTOOLS=1` line).
   - `internal/appshell/debug_mode_env_test.go` (NEW, 3 tests)
     pins the env-vs-settings contract.
+- **Dev badge still invisible despite `e3eb552` env seeding fix**
+  (issue #309 follow-up #2). Root cause: the head `<script>`
+  in `internal/templates/layout.templ` used `{ debug.IsDebugMode(ctx) }`
+  (single-brace Go expression syntax) inside a `<script>` block
+  -- but templ uses `{{ value }}` (double-brace JS-interpolation
+  syntax) inside script tags; single braces are emitted VERBATIM.
+  Result: the rendered HTML was
+  `window.DIXIEDATA_DEVTOOLS = { debug.IsDebugMode(ctx) };`
+  -- an object literal evaluating to a junk object, NOT a bool.
+  `window.DIXIEDATA_DEVTOOLS === true` always false; the JS
+  badge-unhide branch never ran. Fixed to `{{ debug.IsDebugMode(ctx) }}`
+  per templ docs. Regression net: new test
+  `TestLayout_DevBadgeRendersOnlyWhenDebugMode` in
+  `internal/templates/layout_dev_badge_render_test.go` renders
+  Layout() under 3 ctx states (debug-on, debug-off, untagged)
+  and asserts the rendered HTML actually contains
+  `DIXIEDATA_DEVTOOLS = true` (or `false`) -- not the literal
+  source syntax.
+
+  - `internal/templates/layout.templ` -- head `<script>` uses
+    `{{ debug.IsDebugMode(ctx) }}` instead of the wrong
+    `{ debug.IsDebugMode(ctx) }`. Added a comment block
+    explaining the templ syntax asymmetry so a future reader
+    doesn't reintroduce the bug.
+  - `internal/templates/layout_dev_badge_render_test.go` (NEW,
+    3 sub-tests) -- the regression test.
 
 ### Removed
 
