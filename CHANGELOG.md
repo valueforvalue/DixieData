@@ -410,6 +410,38 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Editing an Event silently wiped every attached Source
+  Record** (issue #340, found by audit sweep). Root cause:
+  v60 slot #329 reused the shared `records` table for
+  per-Event sources because the `event_source_links` M-to-M
+  schema blocker was unsolved. `SoldierService.Update` calls
+  `replaceRecords(tx, id, ...)` which `DELETE`s every row
+  where `person_record_id = id` and re-inserts from
+  `soldier.Records`. The Event edit form has no records
+  input, so `parseEventForm` returned an Event with
+  `Records: nil` and every Update wiped every attached
+  source. Fix: schema v61 adds a dedicated `event_sources`
+  table keyed by `event_id`; `EventService.{List,Attach,
+  Detach}SourcesForEvent` migrate to read / write it;
+  `Soldier.EventSources []models.Record` is the new
+  read-side projection (Person Records always leave it
+  empty); `viewmodel.PersonRecord.EventSources` + the
+  `event_detail.templ` Sources panel read from there.
+  Regression net: new tests
+  `TestEventService_UpdateEventPreservesAttachedSources`
+  (the test that would have caught the bug — attaches a
+  source, runs an Update, asserts it survives),
+  `TestEventService_SourceRoundTripOnEventSourcesTable`,
+  `TestEventService_GetEventByIDReturnsEventSourcesField`.
+  Existing `TestHandleEventSourcesAndScratchpad` stays
+  green. Schema: `internal/db/schema.go` (inline + new
+  block-61 migration in `migrations.go`); the inline v60
+  `records`-table reuse is removed end-to-end.
+  Decomposition: `docs/agents/notes/v61-event-sources-decomposition.md`
+  and bug repro `docs/agents/notes/v61-bug-repro.md`.
+  Files: 12 modified across 6 atomic commits
+  (db + versioninfo + records + models + viewmodel +
+  templates + tests).
 - **Per-Event Sources / Tags panels navigated to a raw
   fragment URL on attach / detach** (issue #341, found by
   audit sweep). Root cause: the POST handlers for
