@@ -344,8 +344,14 @@ and the regression net filename.
 
 - **One slice = one commit = one PR (or push to dev).** Per
   [`AGENTS.md`](../../AGENTS.md): direct commits to `dev` for
-  slices that touch one logical change; feature branches only for
-  multi-commit work, new surfaces, or user request.
+  slices that touch one reviewable unit (typically one
+  user-visible capability or one well-scoped bug fix, including
+  its tests + docs + slice-internal refactors); feature branches
+  only for multi-commit work, new surfaces, or user request.
+  The old "one commit = one logical change; if the message
+  splits in half, you have two commits" rule was retired because
+  it produced over-decomposition — see the AGENTS.md §Commits
+  rewrite for the rationale.
 - **`main` is always stable.** Promotion requires explicit user
   direction and a passing full suite. See `AGENTS.md`.
 

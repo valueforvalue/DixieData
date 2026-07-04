@@ -48,8 +48,40 @@ See `CONTEXT.md` for the full glossary and anti-patterns.
 
 ## Commits and branches
 
-- **One commit = one logical change.** If the message splits cleanly in half and each half still stands alone, you have two commits. Recurring failure: a 200-line "fix export buttons" commit that bundles the templ + handler + audit test + regression net + CHANGELOG. That should be 4 commits.
-- **Commit message shape:** `<area>: <imperative summary>` for the subject (≤72 chars), blank line, then 1–3 bullets explaining *why* and what the regression net is. Reference the issue number if one exists (`issue #130`). Look at recent commits with `git log --oneline -20` for the in-repo house style.
+- **One commit = one reviewable unit.** Default: one user-visible
+  capability or one well-scoped bug fix, including its tests +
+  docs + slice-internal refactors. A multi-layer feature can be
+  a single commit when the layers only make sense together — the
+  v60 slice-3 foundation commit `d09e852` (18 files, 1491
+  insertions) is the canonical example; the slice decomposition
+  doc at `docs/agents/notes/slice3-decomposition.md` exists as
+  archaeology for that case. For features that decompose into
+  independently reviewable pieces (e.g. v61's `event_sources`
+  table migration across db / service / viewmodel / UI / docs),
+  prefer one commit per piece — but the test is **"can a
+  reviewer understand the complete shape of this change from the
+  diff alone?"** not **"does the message split cleanly in
+  half?"** Over-splitting (the previous rule) produced 6 commits
+  for one bug fix in v61, each with multi-paragraph commit
+  messages describing what the *next* slice would do — the
+  message became a prediction the agent had to write before
+  having the final answer, and the sequence was hard to review
+  in isolation. Under-splitting is a smaller risk: a single
+  reviewable commit beats four commits where each one is
+  unreadable without the others.
+- **The actual recurring failure** the repo has seen is
+  **decomposition without a plan** — large commits that bundle
+  templ + handler + audit test + regression net + CHANGELOG
+  because no one wrote the slice plan first. The fix for that
+  is **slice the plan first, ship the slices** — see
+  `docs/agents/notes/v61-event-sources-decomposition.md` for a
+  worked example (6 slices, each independently reviewable, each
+  preceded by a RED test per `docs/agents/tdd.md`).
+- **Commit message shape:** `<area>: <imperative summary>` for the
+  subject (≤72 chars), blank line, then 1–3 bullets explaining
+  *why* and what the regression net is. Reference the issue
+  number if one exists (`issue #130`). Look at recent commits
+  with `git log --oneline -20` for the in-repo house style.
 
 ### Branch policy
 

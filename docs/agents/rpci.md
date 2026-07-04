@@ -78,9 +78,15 @@ slices that map to commits.
   verify.
 - For each slice, list: files touched, success criteria, the
   regression net (test name, smoke probe, manual step).
-- Identify the commit/PR boundary. One commit per logical
-  change, per `AGENTS.md`. If a slice bundles two logical
-  changes, split it.
+- Identify the commit/PR boundary. One commit per
+  reviewable unit, per `AGENTS.md`. A slice is its own
+  commit when the layers only make sense together (default).
+  If a slice decomposes into independently reviewable
+  pieces, plan the commits up front so the sequence isn't
+  invented mid-stream (the v61
+  `event_sources` decomposition at
+  `docs/agents/notes/v61-event-sources-decomposition.md` is
+  the worked example).
 - Surface decisions that need user input. **Don't hide them
   in the body of a slice** — list them as `## Decisions` at
   the top so the Critique phase catches them.
@@ -122,8 +128,9 @@ the decisions are surfaced.
   testable in 5 minutes? Does the regression net catch a
   future regression, or does it just confirm the fix?"
 - Check: does the plan match `AGENTS.md`? (One commit per
-  slice? Bug-pattern greps run? CHANGELOG updated? smoke
-  probe in the right format?)
+  reviewable unit — usually per slice, sometimes grouped
+  when layers only make sense together? Bug-pattern greps
+  run? CHANGELOG updated? smoke probe in the right format?)
 - If the critique surfaces a missing slice, a wrong commit
   boundary, or a decision the user wants to revisit, revise
   the plan and re-critique. Don't move to Implement with
