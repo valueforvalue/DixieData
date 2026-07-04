@@ -18,10 +18,9 @@
 //   POST   /soldiers/{id}/events/{eventId}/attach   link event to person
 //   POST   /soldiers/{id}/events/{eventId}/detach   unlink event
 //   POST   /soldiers/{id}/events/quick-add     create + link in one tx
+//   POST   /soldiers/{id}/events/attach-by-display-id  link by EVT-NNNNN
 //
 // Sources, scratchpad, research-log, tags, images, and per-event
-// PDF handlers are tracked as follow-up issues per the
-// out-of-scope section of the RPCI spec.
 package appshell
 
 import (
@@ -297,6 +296,41 @@ func (a *App) handleDetachEvent(w http.ResponseWriter, r *http.Request, personID
 	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d", personID))
 }
 
+// handleAttachEventByDisplayID wires the inline "Add existing
+// event" form (issue #320 slice #325) to the linking flow.
+// The form has a single `display_id` input; the handler
+// resolves the Event via events.GetEventByDisplayID and
+// delegates to handleAttachEvent for the duplicate-link and
+// not-found paths. The attach-by-ID route is a separate
+// endpoint (POST /soldiers/{id}/events/attach-by-display-id)
+// so the URL surface for the existing /attach path (which
+// takes an eventId path segment) stays unchanged.
+func (a *App) handleAttachEventByDisplayID(w http.ResponseWriter, r *http.Request, personID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the attach form.", err)
+		return
+	}
+	if _, err := a.soldiers.GetByID(personID); err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", personID), err)
+		return
+	}
+	displayID := strings.TrimSpace(r.FormValue("display_id"))
+	if displayID == "" {
+		respondValidation(w, r, "Provide an Event Display ID like EVT-00001.", nil)
+		return
+	}
+	resolved, err := a.events.GetEventByDisplayID(displayID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Event %q not found.", displayID), err)
+		return
+	}
+	a.handleAttachEvent(w, r, personID, resolved.Event.ID)
+}
+
 // handleQuickAddEvent creates a new Event and links it to a
 // Person Record in one user action. The form fields are the
 // same as /events/new plus the implicit link to the central
@@ -424,6 +458,18 @@ func (a *App) handleQuickAddEventRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	a.handleQuickAddEvent(w, r, id)
 }
+
+// handleAttachEventByDisplayIDRoute is the chi route shim for
+// /soldiers/{id}/events/attach-by-display-id.
+func (a *App) handleAttachEventByDisplayIDRoute(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/soldiers/", "/events/attach-by-display-id")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handleAttachEventByDisplayID(w, r, id)
+}
+
 
 // parseIntFromPath extracts the integer id embedded between
 // two literal path segments. Used by the route shims to

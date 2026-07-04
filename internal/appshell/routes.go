@@ -109,7 +109,7 @@ func (a *App) setupRoutes() {
 	r.Post("/soldiers/{id:[0-9]+}/events/{eventId:[0-9]+}/attach", a.handleAttachEventRoute)
 	r.Post("/soldiers/{id:[0-9]+}/events/{eventId:[0-9]+}/detach", a.handleDetachEventRoute)
 	r.Post("/soldiers/{id:[0-9]+}/events/quick-add", a.handleQuickAddEventRoute)
-
+	r.Post("/soldiers/{id:[0-9]+}/events/attach-by-display-id", a.handleAttachEventByDisplayIDRoute)
 	r.Get("/review-queue", a.handleReviewQueue)
 	r.Post("/review-queue/bulk", a.handleReviewQueueBulk)
 	r.Get("/review-queue/compare/*", a.handleReviewQueueCompare)

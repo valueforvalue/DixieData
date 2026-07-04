@@ -577,3 +577,13 @@ func PersonEventDetach(soldierID, eventID int64) string {
 func PersonEventQuickAdd(soldierID int64) string {
 	return fmt.Sprintf("/soldiers/%d/events/quick-add", soldierID)
 }
+// PersonEventAttachByDisplayID returns the URL for the inline
+// "Add existing event" form on the Person Record → Events tab
+// (issue #320 slice #325). The form posts a single
+// `display_id` field; the handler resolves it via
+// events.GetEventByDisplayID and delegates to
+// handleAttachEvent. Registered as POST
+// /soldiers/{id}/events/attach-by-display-id in routes.go.
+func PersonEventAttachByDisplayID(soldierID int64) string {
+	return fmt.Sprintf("/soldiers/%d/events/attach-by-display-id", soldierID)
+}
