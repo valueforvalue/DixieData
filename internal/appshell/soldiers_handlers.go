@@ -329,6 +329,16 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 		respondValidation(w, r, "Could not read the soldier form.", err)
 		return
 	}
+	// v60 (issue #320, slot #330): the JS-side syncEntryTypeFields
+	// swaps the form action to /events/new when entry_type=event
+	// is selected, so this branch only fires for a defensive
+	// server-side guard — if a researcher hand-curls the form
+	// to /soldiers with entry_type=event, we forward them to
+	// /events/new instead of silently creating a wrong subtype.
+	if entryType := strings.TrimSpace(strings.ToLower(r.FormValue("entry_type"))); entryType == models.EntryTypeEvent {
+		a.handleNewEvent(w, r)
+		return
+	}
 	firstName := strings.TrimSpace(r.FormValue("first_name"))
 	lastName := strings.TrimSpace(r.FormValue("last_name"))
 	if firstName == "" && lastName == "" {
