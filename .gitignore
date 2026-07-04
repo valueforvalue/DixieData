@@ -71,8 +71,14 @@ tests/goldmaster/playwright/playwright-report/
 
 # rpiv-workflow runtime state
 .rpiv/runs/
-.rpiv/artifacts/
 .rpiv/workflows/runs/
+# Issue drafts and design artifacts are tracked. The .rpiv/artifacts/
+# tree is a mixed convention — runtime state (discover/, research/,
+# plans/, designs/, handoffs/) is gitignored; durable issue bodies
+# and design docs that need to ship with the code are tracked under
+# .rpiv/artifacts/issues/ and .rpiv/artifacts/designs-published/.
+!.rpiv/artifacts/issues/
+!.rpiv/artifacts/issues/**
 
 # Session-local survey source material (digested into docs/agents/pdf-field-survey.json)
 TDM65-*.pdf
