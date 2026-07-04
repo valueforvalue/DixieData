@@ -1,7 +1,7 @@
 package components
 
 // DevPageBadge renders the floating "where am I" pill in the
-// bottom-right corner of every page when the debug launcher is
+// bottom-left corner of every page when the debug launcher is
 // active (DIXIEDATA_DEVTOOLS=1 in the environment makes the
 // layout inject debug.IsDebugMode(ctx) = true, which this badge
 // uses as its gate). Hidden by default with `class="hidden"` --
@@ -14,6 +14,14 @@ package components
 // function (callable from devtools). If the three disagree, the
 // layout is broken.
 //
+// Position: previously `bottom-3 right-3` but that overlapped
+// the floating-dock Quick Nav button (issue #313). Moved to
+// `bottom-3 left-3` -- the persistent share-queue pill is
+// bottom-center at `bottom-[6.5rem]`, the floating dock is
+// full-width at the bottom, and the floating-nav panel opens
+// at `bottom-[5.5rem] right-4`, so left-of-center at the
+// bottom is clear.
+//
 // contentPath is the same URL path the JS side derives from
 // window.location.pathname; the server pre-fills the badge text
 // so there's no flash of stale content before JS hydrates.
@@ -21,7 +29,7 @@ templ DevPageBadge(contentPath string) {
 	<div
 		data-dixie-page-badge
 		data-current-path={ contentPath }
-		class="fixed bottom-3 right-3 z-30 hidden items-center gap-2 rounded-full border border-amber-700/[0.45] bg-amber-100/[0.96] px-3 py-1 text-xs font-mono font-semibold text-amber-950 shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+		class="fixed bottom-3 left-3 z-30 hidden items-center gap-2 rounded-full border border-amber-700/[0.45] bg-amber-100/[0.96] px-3 py-1 text-xs font-mono font-semibold text-amber-950 shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
 	>
 		<span data-dixie-page-badge-icon aria-hidden="true">🐞</span>
 		<span data-dixie-page-badge-path>{ contentPath }</span>

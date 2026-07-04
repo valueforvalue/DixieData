@@ -35,7 +35,9 @@ func TestDevPageBadge_RendersWithPath(t *testing.T) {
 
 // TestDevPageBadge_DefaultsHidden asserts the badge ships with
 // `class="hidden"` so JS controls the visibility. Without this
-// flag the badge would always show in production.
+// flag the badge would always show in production. The corner
+// anchor (left vs right) was changed from right-3 to left-3 in
+// issue #313 to clear the floating-dock Quick Nav button.
 func TestDevPageBadge_DefaultsHidden(t *testing.T) {
 	out := new(strings.Builder)
 	err := DevPageBadge("/").Render(context.Background(), out)
@@ -43,8 +45,8 @@ func TestDevPageBadge_DefaultsHidden(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	content := out.String()
-	if !strings.Contains(content, `class="fixed bottom-3 right-3 z-30 hidden`) {
-		t.Errorf("badge must default to class=\"... hidden ...\"; got: %s", content)
+	if !strings.Contains(content, `class="fixed bottom-3 left-3 z-30 hidden`) {
+		t.Errorf("badge must default to class=\"... hidden ...\" anchored at bottom-3 left-3; got: %s", content)
 	}
 }
 

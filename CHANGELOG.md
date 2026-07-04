@@ -273,6 +273,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     doesn't reintroduce the bug.
   - `internal/templates/layout_dev_badge_render_test.go` (NEW,
     3 sub-tests) -- the regression test.
+- **Dev badge moved from bottom-right to bottom-left**
+  (issue #313). The original `bottom-3 right-3` anchor
+  overlapped the floating-dock `Menu` button (the Quick Nav
+  entry point). Moved to `bottom-3 left-3` -- the persistent
+  share-queue pill is bottom-center at `bottom-[6.5rem]` and
+  the floating-nav panel opens at `bottom-[5.5rem] right-4`,
+  so the left-of-center bottom is clear.
+
+  - `internal/templates/components/dev_page_badge.templ` --
+    `right-3` -> `left-3`. Comment block updated to explain the
+    position rationale + reference issue #313.
+  - `internal/templates/components/dev_page_badge_test.go` --
+    `TestDevPageBadge_DefaultsHidden` now asserts
+    `class="... bottom-3 left-3 ...` so a future regression
+    to the right-3 anchor fails the test.
 
 ### Removed
 
