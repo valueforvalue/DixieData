@@ -311,3 +311,144 @@ func TestEventService_ListEvents(t *testing.T) {
 		t.Errorf("page 3 len = %d, want 1", len(page3))
 	}
 }
+
+// TestEventService_UpdateEventPreservesAttachedSources is the
+// regression test for issue #340 (the data-loss bug discovered
+// 2026-07-04). v60 slot #329 reused the shared `records` table
+// for per-Event sources, but SoldierService.Update calls
+// replaceRecords which DELETEs every row where
+// person_record_id = soldierID and re-inserts from
+// soldier.Records. The Event edit form has no records field,
+// so parseEventForm returned an Event with Records: nil, and
+// every Event Update wiped every attached source. v61 moves
+// Event sources to a dedicated event_sources table, which
+// replaceRecords never touches.
+//
+// This test would FAIL on v60 (sources wiped: want 1, got 0)
+// and PASS on v61+. See docs/agents/notes/v61-bug-repro.md.
+func TestEventService_UpdateEventPreservesAttachedSources(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	eventSvc := NewEventService(soldierSvc)
+
+	ev, err := eventSvc.CreateEvent(models.Soldier{Kind: "Battle"})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	_, err = eventSvc.AttachSourceToEvent(ev.ID, models.Record{
+		RecordType: "Pension Application",
+		AppID:      "APP-1880-7701",
+		Details:    "Filed 1880, Co. B, 4th VA Infantry",
+	})
+	if err != nil {
+		t.Fatalf("AttachSourceToEvent: %v", err)
+	}
+
+	// Sanity: source is attached immediately after create.
+	if got := sourcesLen(t, eventSvc, ev.ID); got != 1 {
+		t.Fatalf("post-attach sources = %d, want 1", got)
+	}
+
+	// The bug-trigger: any non-trivial Update used to wipe
+	// sources via replaceRecords. With v61 the new table is
+	// outside replaceRecords' DELETE scope.
+	ev.Kind = "Engagement"
+	ev.Description = "Updated description; sources must survive."
+	if err := eventSvc.UpdateEvent(*ev); err != nil {
+		t.Fatalf("UpdateEvent: %v", err)
+	}
+
+	if got := sourcesLen(t, eventSvc, ev.ID); got != 1 {
+		t.Errorf("sources wiped on Update: want 1, got %d (issue #340 regression)", got)
+	}
+
+	// Also verify the source is still functionally attached
+	// (detach still works, count drops by 1).
+	all, err := eventSvc.ListSourcesForEvent(ev.ID)
+	if err != nil {
+		t.Fatalf("ListSourcesForEvent: %v", err)
+	}
+	if len(all) != 1 || all[0].AppID != "APP-1880-7701" {
+		t.Errorf("surviving source shape: want 1 source with AppID=APP-1880-7701, got %+v", all)
+	}
+}
+
+// TestEventService_SourceRoundTripOnEventSourcesTable pins
+// the new SQL contract: List returns rows in id order; Attach
+// mints sync_id when empty; Detach refuses to drop a row
+// belonging to a different Event.
+func TestEventService_SourceRoundTripOnEventSourcesTable(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	eventSvc := NewEventService(soldierSvc)
+
+	ev, err := eventSvc.CreateEvent(models.Soldier{Kind: "Battle"})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	id1, err := eventSvc.AttachSourceToEvent(ev.ID, models.Record{
+		RecordType: "Pension",
+		AppID:      "APP-1",
+		Details:    "first",
+	})
+	if err != nil {
+		t.Fatalf("AttachSourceToEvent 1: %v", err)
+	}
+	if id1 == 0 {
+		t.Errorf("AttachSourceToEvent returned id=0; want positive")
+	}
+
+	// Attach with an explicit sync_id (simulates a distributed-
+	// merge re-attach).
+	explicitSyncID := "explicit-sync-id-test"
+	id2, err := eventSvc.AttachSourceToEvent(ev.ID, models.Record{
+		SyncID:     explicitSyncID,
+		RecordType: "Roster",
+		AppID:      "APP-2",
+		Details:    "second",
+	})
+	if err != nil {
+		t.Fatalf("AttachSourceToEvent 2: %v", err)
+	}
+
+	list, err := eventSvc.ListSourcesForEvent(ev.ID)
+	if err != nil {
+		t.Fatalf("ListSourcesForEvent: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("list len = %d, want 2", len(list))
+	}
+	if list[0].ID != id1 || list[1].ID != id2 {
+		t.Errorf("list order = [%d, %d], want [%d, %d]", list[0].ID, list[1].ID, id1, id2)
+	}
+	if list[1].SyncID != explicitSyncID {
+		t.Errorf("explicit sync_id not preserved: got %q, want %q", list[1].SyncID, explicitSyncID)
+	}
+
+	// Detach with wrong event id must be rejected.
+	if err := eventSvc.DetachSourceFromEvent(ev.ID+1, id1); err == nil {
+		t.Errorf("detach with wrong event id succeeded; want error")
+	}
+	if got := sourcesLen(t, eventSvc, ev.ID); got != 2 {
+		t.Errorf("cross-event detach leaked: list len = %d, want 2", got)
+	}
+
+	// Real detach drops the row.
+	if err := eventSvc.DetachSourceFromEvent(ev.ID, id1); err != nil {
+		t.Fatalf("DetachSourceFromEvent: %v", err)
+	}
+	if got := sourcesLen(t, eventSvc, ev.ID); got != 1 {
+		t.Errorf("post-detach list len = %d, want 1", got)
+	}
+}
+
+func sourcesLen(t *testing.T, eventSvc *EventService, eventID int64) int {
+	t.Helper()
+	rows, err := eventSvc.ListSourcesForEvent(eventID)
+	if err != nil {
+		t.Fatalf("ListSourcesForEvent: %v", err)
+	}
+	return len(rows)
+}

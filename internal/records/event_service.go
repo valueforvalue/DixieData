@@ -61,20 +61,32 @@ func NewEventService(soldiers *SoldierService) *EventService {
 }
 
 // ListSourcesForEvent returns the Source Records attached to the
-// Event. Source Records live in the `records` table keyed by
-// person_record_id (issue #320 v60 renamed soldier_id to
-// person_record_id; Events are soldiers rows so the same FK
-// applies). Returns the row.Records projection populated by
-// SoldierService.GetByID.
+// Event. Source Records live in the dedicated event_sources
+// table (issue #340 / v61). v60 reused the shared records
+// table, but SoldierService.Update's replaceRecords REPLACE-only
+// semantics silently destroyed every attached source on every
+// Event Edit. The v61 fix moves Event sources to their own
+// table so the Update path leaves them alone.
 func (e *EventService) ListSourcesForEvent(eventID int64) ([]models.Record, error) {
-	row, err := e.soldiers.GetByID(eventID)
+	rows, err := e.soldiers.db.Conn().Query(
+		`SELECT id, sync_id, record_type, app_id, details
+		 FROM event_sources
+		 WHERE event_id = ?
+		 ORDER BY id`, eventID)
 	if err != nil {
 		return nil, err
 	}
-	if row.EntryType != models.EntryTypeEvent {
-		return nil, fmt.Errorf("person record %d is %q, not an Event", eventID, row.EntryType)
+	defer rows.Close()
+	out := make([]models.Record, 0)
+	for rows.Next() {
+		var r models.Record
+		if err := rows.Scan(&r.ID, &r.SyncID, &r.RecordType, &r.AppID, &r.Details); err != nil {
+			return nil, err
+		}
+		r.PersonRecordID = eventID
+		out = append(out, r)
 	}
-	return row.Records, nil
+	return out, rows.Err()
 }
 
 // ListTagsForEvent returns the Tags attached to the Event
@@ -126,16 +138,15 @@ func (e *EventService) DetachTagFromEvent(eventID, tagID int64) error {
 	return err
 }
 
-// AttachSourceToEvent inserts a row into `records` for the given
-// Event. Source Records are FK-linked to person_record_id (which is
-// soldiers.id, and Events are soldiers rows), so the same table
-// supports both Person and Event sources.
+// AttachSourceToEvent inserts a row into event_sources for the
+// given Event. The PersonRecordID / PersonSyncID fields on the
+// supplied source are ignored (events use event_id /
+// event_sync_id); the handler layer only carries record_type,
+// app_id, and details. SyncID is minted if absent (distributed-
+// merge ready).
 func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record) (int64, error) {
 	if eventID < 1 {
 		return 0, fmt.Errorf("event id must be positive")
-	}
-	if source.PersonRecordID != eventID {
-		source.PersonRecordID = eventID
 	}
 	if strings.TrimSpace(source.SyncID) == "" {
 		syncID, err := db.NewSyncID()
@@ -152,8 +163,8 @@ func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record) 
 		source.PersonSyncID = eventRow.SyncID
 	}
 	res, err := e.soldiers.db.Conn().Exec(
-		`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
-		source.SyncID, source.PersonRecordID, source.PersonSyncID, source.RecordType, source.AppID, source.Details,
+		`INSERT INTO event_sources (sync_id, event_id, event_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+		source.SyncID, eventID, source.PersonSyncID, source.RecordType, source.AppID, source.Details,
 	)
 	if err != nil {
 		return 0, err
@@ -161,12 +172,12 @@ func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record) 
 	return res.LastInsertId()
 }
 
-// DetachSourceFromEvent removes a single source row by its primary
-// key. Verifies the row belongs to the given Event so a malicious
-// sourceId cannot drop an unrelated row.
+// DetachSourceFromEvent removes a single source row by its
+// primary key. Verifies the row belongs to the given Event so a
+// malicious sourceId cannot drop an unrelated row.
 func (e *EventService) DetachSourceFromEvent(eventID, sourceID int64) error {
 	res, err := e.soldiers.db.Conn().Exec(
-		`DELETE FROM records WHERE id = ? AND person_record_id = ?`,
+		`DELETE FROM event_sources WHERE id = ? AND event_id = ?`,
 		sourceID, eventID,
 	)
 	if err != nil {
