@@ -133,7 +133,36 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   submit to `/soldiers/new` — no regression.
   Test `TestHandleCreateSoldierDispatchesToNewEvent`
   covers the dispatch path.
+- **Per-Event Sources panel** (issue #320, slot #329). New
+  Event routes: `GET /events/{id}/sources` (renders the
+  fragment), `POST .../sources/attach` (inserts a `records`
+  row keyed by `person_record_id`), `POST
+  .../sources/{sourceId}/detach` (removes the row). The
+  `EventService` gains `ListSourcesForEvent`,
+  `AttachSourceToEvent`, `DetachSourceFromEvent`; the
+  `eventsFacade` interface mirrors the three entries. UI:
+  a new "Source Records" section on `event_detail.templ`
+  lists attached rows with `app_id` + `record_type` +
+  `details` and an inline `<form>` post-back to
+  `.../sources/attach`. Test:
+  `TestHandleEventSourcesAndScratchpad` round-trips
+  attach→detach against a fresh Event. Files: 1 new + 5
+  modified.
+- **Per-Event Scratch Pad pill-button** (issue #320, slot
+  #330). Event detail page now renders an "Open Scratch
+  Pad" pill-button that posts to `/scratchpad/open` with
+  the Event's `display_id`. The existing
+  `handleScratchpadOpen` route is display-ID-agnostic;
+  the native launcher creates a per-Event scratch pad file
+  under `.dixiedata/scratchpads/` using the `EVT-NNNNN`
+  display id as the stem. No service-layer change
+  required — `a.database.Scratchpad(displayID)` /
+  `SaveScratchpad(displayID, content)` already key on
+  display id. Test:
+  `TestHandleEventSourcesAndScratchpad` asserts the
+  button + input render with the Event's display id.
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
+
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:
   - **Always-visible breadcrumb** rendered between the top-nav

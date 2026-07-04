@@ -108,6 +108,13 @@ func (a *App) setupRoutes() {
 	r.Get("/events/{id:[0-9]+}/research-log", a.handleEventResearchLogRoute)
 	r.Post("/events/{id:[0-9]+}/research-log/tasks", a.handleEventResearchLogRoute)
 	r.Post("/events/{id:[0-9]+}/research-log/tasks/{entryId:[0-9]+}/resolve", a.handleEventResearchLogRoute)
+	// Issue #320 slice #329: per-Event Sources panel. Source
+	// Records are rows in the `records` table keyed by
+	// person_record_id (Events are soldiers rows so the FK applies
+	// unchanged). The handler dispatches on r.URL.Path suffix.
+	r.Get("/events/{id:[0-9]+}/sources", a.handleEventSourcesRoute)
+	r.Post("/events/{id:[0-9]+}/sources/attach", a.handleEventSourcesRoute)
+	r.Post("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/detach", a.handleEventSourcesRoute)
 	// Events tab. The /events sub-path on a Person Record
 	// page is dispatched from a dedicated route shim so
 	// the literal path wins over the generic

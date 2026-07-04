@@ -32,6 +32,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -683,4 +684,107 @@ func (a *App) handleEventPDF(w http.ResponseWriter, r *http.Request, eventID int
 		p.Set(20, "Rendering Event Record PDF")
 		return a.export.ExportEventPDF(path, event, linked)
 	}, path, w)
+}
+
+// handleEventSourcesRoute is the chi route shim for
+// /events/{id}/sources and its sub-paths (issue #320 slice #329).
+// Mirrors the research-log path-suffix dispatcher: GET returns the
+// linked sources; POST /attach creates a new source record row;
+// POST /{sourceId}/detach removes it.
+func (a *App) handleEventSourcesRoute(w http.ResponseWriter, r *http.Request) {
+	prefix := "/events/"
+	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
+	parts := strings.SplitN(trimmed, "/", 2)
+	if len(parts) < 2 || parts[1] == "" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	eventID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	suffix := parts[1]
+	switch r.Method {
+	case http.MethodGet:
+		a.handleEventSourcesGet(w, r, eventID)
+	case http.MethodPost:
+		switch suffix {
+		case "sources/attach":
+			a.handleEventSourceAttach(w, r, eventID)
+		default:
+			if strings.HasPrefix(suffix, "sources/") && strings.HasSuffix(suffix, "/detach") {
+				mid := strings.TrimPrefix(suffix, "sources/")
+				mid = strings.TrimSuffix(mid, "/detach")
+				sourceID, err := strconv.ParseInt(mid, 10, 64)
+				if err != nil {
+					respondValidation(w, r, "Invalid source id.", err)
+					return
+				}
+				a.handleEventSourceDetach(w, r, eventID, sourceID)
+				return
+			}
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleEventSourcesGet renders the Sources panel fragment for the
+// Event. Returns a plain-text list of attached sources so the panel
+// can be lazy-loaded as an htmx fragment.
+func (a *App) handleEventSourcesGet(w http.ResponseWriter, r *http.Request, eventID int64) {
+	sources, err := a.events.ListSourcesForEvent(eventID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Sources for event record %d not found.", eventID), err)
+		return
+	}
+	if len(sources) == 0 {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = fmt.Fprint(w, `<p class="text-xs text-slate-500">No Source Records attached yet.</p>`)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	for _, src := range sources {
+		_, _ = fmt.Fprintf(w, `<div class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm"><span class="font-mono text-xs text-slate-500">%s</span> &middot; %s &middot; %s</div>`,
+			html.EscapeString(strings.TrimSpace(src.AppID)),
+			html.EscapeString(src.RecordType),
+			html.EscapeString(src.Details),
+		)
+	}
+}
+
+// handleEventSourceAttach creates a new source record row for the
+// Event. The form fields mirror the Person-Record source row shape
+// (record_type, app_id, details).
+func (a *App) handleEventSourceAttach(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the source form.", err)
+		return
+	}
+	source := models.Record{
+		RecordType: strings.TrimSpace(r.FormValue("record_type")),
+		AppID:      strings.TrimSpace(r.FormValue("app_id")),
+		Details:    strings.TrimSpace(r.FormValue("details")),
+	}
+	if _, err := a.events.AttachSourceToEvent(eventID, source); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not attach source to event record %d.", eventID), err)
+		return
+	}
+	setToastHeader(w, "Success: source attached.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/sources", eventID))
+	fmt.Fprint(w, "Source attached.")
+}
+
+// handleEventSourceDetach removes a source record row from the
+// Event. Service verifies the row belongs to the Event.
+func (a *App) handleEventSourceDetach(w http.ResponseWriter, r *http.Request, eventID, sourceID int64) {
+	if err := a.events.DetachSourceFromEvent(eventID, sourceID); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not detach source %d from event record %d.", sourceID, eventID), err)
+		return
+	}
+	setToastHeader(w, "Success: source detached.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/sources", eventID))
+	fmt.Fprint(w, "Source detached.")
 }
