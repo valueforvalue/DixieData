@@ -133,6 +133,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   submit to `/soldiers/new` — no regression.
   Test `TestHandleCreateSoldierDispatchesToNewEvent`
   covers the dispatch path.
+- **Service Timeline from linked Event Records** (issue #320,
+  slot #337). `SoldierService.ServiceTimeline` now joins
+  `event_person_links` for the central soldier and pushes a
+  Timeline Marker per linked Event. Date sources from the
+  Event's `begin_date` (falls back to `end_date` when begin
+  is empty); missing dates are skipped. Marker carries
+  `kind` as title prefix, Event `description`, and Event
+  Display ID as the source label. Existing record-derived
+  markers stay intact. Test
+  `TestSoldierService_ServiceTimelineIncludesLinkedEvents`
+  covers the round trip.
 - **Per-Event Tags chips** (issue #320, slot #333). New
   Event routes: `GET /events/{id}/tags` (renders the chip
   fragment), `POST .../tags` (adds a `person_record_tags`

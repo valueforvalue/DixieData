@@ -1240,6 +1240,37 @@ func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, err
 		}
 	}
 
+	// Issue #320 slice #337: derive Service Timeline events
+	// from the Event Records linked to this soldier. Each
+	// linked Event contributes a Timeline Marker sourced from
+	// the Event's begin_date (or end_date when begin is empty).
+	eventLinks, linkErr := s.linkedEventsForTimeline(soldierID)
+	if linkErr != nil {
+		return nil, linkErr
+	}
+	for _, event := range eventLinks {
+		if strings.TrimSpace(event.beginDate) == "" && strings.TrimSpace(event.endDate) == "" {
+			continue
+		}
+		primary := strings.TrimSpace(event.beginDate)
+		if primary == "" {
+			primary = strings.TrimSpace(event.endDate)
+		}
+		partial, err := dates.ParseCanonical(primary)
+		if err != nil || !partial.HasAny() {
+			continue
+		}
+		timeline.Events = append(timeline.Events, newServiceTimelineEvent(
+			"Linked Event: "+strings.TrimSpace(event.kind),
+			partial,
+			event.displayID,
+			strings.TrimSpace(event.description),
+			"event",
+			false,
+			200,
+		))
+	}
+
 	sort.SliceStable(timeline.Events, func(i, j int) bool {
 		return serviceTimelineEventLess(timeline.Events[i], timeline.Events[j])
 	})
@@ -3005,12 +3036,52 @@ func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
 	}
 	out := make([]models.Soldier, 0, len(ids))
 	for _, id := range ids {
-		if s, ok := index[id]; ok {
-			out = append(out, s)
+		if soldier, ok := index[id]; ok {
+			out = append(out, soldier)
 		}
 	}
 	return out, nil
 }
+
+
+
+
+type linkedTimelineEvent struct {
+	kind        string
+	beginDate   string
+	endDate     string
+	description string
+	displayID   string
+}
+
+// linkedEventsForTimeline returns the linked Event Records for
+// the central soldier (issue #320 slice #337). Each Event's
+// per-row fields are returned in a slim projection so the
+// ServiceTimeline builder can mint a Timeline Marker without a
+// per-Event GetByID round trip.
+func (s *SoldierService) linkedEventsForTimeline(soldierID int64) ([]linkedTimelineEvent, error) {
+	rows, err := s.db.Conn().Query(
+		`SELECT s.id, s.kind, s.begin_date, s.end_date, s.description, s.display_id
+		 FROM soldiers s
+		 JOIN event_person_links epl ON epl.event_id = s.id
+		 WHERE epl.person_id = ?`, soldierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []linkedTimelineEvent
+	for rows.Next() {
+		var row linkedTimelineEvent
+		var id int64
+		if err := rows.Scan(&id, &row.kind, &row.beginDate, &row.endDate, &row.description, &row.displayID); err != nil {
+			return nil, err
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+
 
 func searchableFirstName(soldier models.Soldier) string {
 	return strings.TrimSpace(strings.TrimSpace(soldier.FirstName) + " " + strings.TrimSpace(soldier.MiddleName))
