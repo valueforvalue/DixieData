@@ -4564,4 +4564,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   in commit `c136789`; the failing-test concern from the
   audit is moot on this branch.
 
+- **Goroutine leak detection via `goleak`** (issue #318 Slice 2).
+  Added `go.uber.org/goleak v1.3.0` as a direct dep and a shared
+  `internal/leaktest/leaktest.go` helper. `TestMain` in the root
+  `main_test.go` plus `internal/jobs/zzz_goleak_test.go`,
+  `internal/appshell/zzz_goleak_test.go`, and
+  `internal/archive/zzz_goleak_test.go` install the gate.
+  Catches the `docs/COMMON_BUGS.md` §4.1 class automatically
+  — a test that starts a goroutine without cancelling its
+  context fails the package suite with the leak's stack
+  trace. Go's `TestMain` is per-package so root-only coverage
+  wouldn't gate the packages where leaks actually live;
+  per-package opt-in via `zzz_goleak_test.go` extends the
+  gate to the highest-leverage surfaces (jobs, appshell,
+  archive). Default matchers ignore net/http keepalive /
+  readLoop / writeLoop + runtime pollWait so the signal is
+  DixieData leaks, not stdlib noise.
+
 ## v1.1.16 - Gold Master
