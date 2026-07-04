@@ -60,12 +60,12 @@ _Avoid_: None, blank status
 An evidence-backed chronological view of a Soldier's known life or service events.
 _Avoid_: Notes, narrative
 
-**Timeline Event**:
+**Timeline Marker**:
 A dated item shown on a Service Timeline.
-_Avoid_: Claim, service event
+_Avoid_: Claim, service event, timeline event
 
 **Service Event**:
-A Timeline Event specifically about military service.
+A Timeline Marker specifically about military service.
 _Avoid_: Timeline event
 
 **Research Collection**:
@@ -128,6 +128,10 @@ _Avoid_: Spouse
 A Spouse Record subtype used when the archive should describe the person as a widow rather than a wife.
 _Avoid_: Spouse
 
+**Event Record**:
+A primary archive entry for a dated event in Civil War history (a Battle, a Campaign, a Death, a Marriage, a Hospital stay, etc.). Has a free-text `kind` (no enum), optional begin and end dates in MM/DD/YYYY canonical-date form, an optional long-form Description with a per-PDF excerpt override, and zero or more attached images (reusing the `images` table). Carries the same paper trail as a Person Record (Source Records, Claims, Findings, Scratch Pad, Research Log, Tags, Review Queue). Linked to one or more Person Records via the `event_person_links` many-to-many junction. Lives in the same `soldiers` table as every other Person Record subtype; the column `entry_type = 'event'` distinguishes it. Display ID namespace: `EVT-NNNNN`.
+_Avoid_: timeline event, archive event, cross-record link, historical event (too generic)
+
 ## Relationships
 
 - A **Person Record** may have zero or more **Source Records**
@@ -137,8 +141,8 @@ _Avoid_: Spouse
 - One or more **Claims** may support a **Finding**
 - A **Person Record** may have a **Scratch Pad**
 - A **Service Timeline** is derived from **Findings** about a **Soldier**
-- A **Service Timeline** contains one or more **Timeline Events**
-- A **Service Event** is a kind of **Timeline Event**
+- A **Service Timeline** contains one or more **Timeline Markers**
+- A **Service Event** is a kind of **Timeline Marker**
 - A **Research Collection** groups related archive material inside a **Local Archive**
 - A **Research Pack** packages archive material for a defined scope
 - A **Unit Membership** may contribute evidence to a **Unit Camaraderie Graph**
@@ -151,6 +155,9 @@ _Avoid_: Spouse
 - A **Spouse Record** is a kind of **Person Record**
 - A **Spouse Record** may be linked to exactly one **Soldier**
 - A **Wife** and a **Widow** are subtypes of **Spouse Record**
+- A **Event Record** is a kind of **Person Record**
+- An **Event Record** may link to one or more **Person Records**
+- A **Person Record** may be linked to one or more **Event Records**
 - A **Person Record** may have zero or more **Tags**
 - A **Tag** may be applied to zero or more **Person Records**
 
@@ -179,7 +186,7 @@ already defined)
 - "facts" and source-derived assertions needed separation — resolved: use **Claim** for assertions extracted from a **Source Record**.
 - "claim" still needed a stronger research conclusion term — resolved: use **Finding** for a researcher-endorsed conclusion supported by one or more **Claims**.
 - "timeline evidence" needed a confidence boundary — resolved: the visible **Service Timeline** is derived from **Findings**, with **Claims** as support beneath it.
-- "event" needed a timeline-specific hierarchy — resolved: use **Timeline Event** for any dated timeline item and **Service Event** for the military-service subset.
+- "event" needed a timeline-specific hierarchy — resolved: use **Timeline Marker** for any dated timeline item and **Service Event** for the military-service subset. The dated-event-as-archive-entry concept is **Event Record** (a Person Record subtype), distinct from the on-timeline rendering.
 - "notes" risked covering both informal and structured research writing — resolved: use **Scratch Pad** for informal per-record notes and **Research Log** for structured research activity.
 - "collection" and "pack" risked collapsing into the same idea — resolved: use **Research Collection** for in-archive grouping and **Research Pack** for a prepared scoped bundle.
 - "camaraderie" risked meaning mere unit assignment — resolved: use **Unit Membership** for factual service in a unit and **Unit Camaraderie Graph** for inferred soldier-to-soldier relationships.
@@ -190,6 +197,7 @@ already defined)
 - "spouse", "wife", and "widow" were used interchangeably — resolved: use **Spouse Record** as the umbrella term, with **Wife** and **Widow** as specific subtypes when the distinction matters.
 - "virtual cemetery" was used generically for any Person Record grouping — resolved: use **Tag** as the generic term; reserve "virtual cemetery" for a specific FindAGrave pattern that the user explicitly names.
 - "old doc", "legacy doc", and "archived doc" risked ambiguity with the archive terms above — resolved: use **Historical Artifact** for retained-for-traceability docs that are not loaded by default.
+- "person-scoped FK columns" risked carrying the soldier subtype's name into Event Record rows — resolved: the v60 schema renames `soldier_id` to `person_record_id` in `records`, `images`, `scratchpad_cache`, `research_tasks`, and the merge-review / duplicate-audit side columns. The self-referential `spouse_soldier_id` (Soldier-to-Spouse) is intentionally left as-is because it is a Soldier-to-Soldier relationship, not a Person Record FK.
 
 ## Adding features
 
