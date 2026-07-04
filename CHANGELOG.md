@@ -4132,6 +4132,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     `docs/agents/htmx-guard-conventions.md` ("Target selector
     rule" section).
 
+  - **htmx-guard polling-stop regression net (issue #316, slice 3)**
+    — new Go test `internal/templates/jobs_templ_test.go`
+    renders `jobs.JobStatusFragment` and
+    `jobs.JobStatusSlotFragment` against all 5 `JobStatus` values
+    (Done, Error, Cancelled, Interrupted, Running). For the 4
+    terminal states the rendered output MUST contain
+    `hx-trigger="none"` and MUST NOT contain `hx-trigger="every 2s"`.
+    For `StatusRunning` the inverse must hold.
+
+    A pure-JS lint cannot read the templ `if` branch condition
+    (it lives in generated Go), so polling-stop is the one
+    rule in #316 that lands as a templ-rendering test rather
+    than a `discover_htmx_guard` walker. Confirms the rule the
+    comment block in `jobs.templ:139-146` documents.
+
+    10 subtests pass (2 test functions × 5 status cases).
+    Both `JobStatusFragment` (rendered on `/jobs/{id}`) and
+    `JobStatusSlotFragment` (rendered into the layout overlay)
+    are covered; the slot fragment lives in a separate templ
+    file (`job_slot_fragment.templ`) with an identical
+    polling branch shape but a distinct rendering path, so it
+    needs its own test.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
