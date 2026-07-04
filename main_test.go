@@ -6,7 +6,37 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"go.uber.org/goleak"
 )
+
+// TestMain runs goleak.VerifyTestMain at test teardown. Catches the
+// goroutine leak class documented in docs/COMMON_BUGS.md §4.1
+// (e.g. commit history shows multiple `fix:` commits for leaked
+// goroutines in jobs, scrape, and server-sent event handlers).
+// A test that starts a goroutine and forgets to cancel its
+// context will fail the suite with the leaked goroutine's stack
+// trace, naming the source file:line.
+//
+// Default matcher ignores the standard library runtime goroutines
+// (finalizer, sweep, scavenger) so the noise is bounded. If a new
+// legitimate leak surfaces in DixieData code, prefer fixing the
+// leak over adding an IgnoreTopFunction / IgnoreAnyFunction
+// matcher — every ignored entry is a future silent regression.
+//
+// Refs issue #318 Slice 2.
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(
+		m,
+		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"),
+		goleak.IgnoreTopFunction("net/http.(*persistConn).writeLoop"),
+		goleak.IgnoreTopFunction("net/http.(*persistConn).readLoop"),
+		goleak.IgnoreTopFunction("net/http.http2ClientConnReadLoop"),
+		goleak.IgnoreTopFunction("net/http.http2ServerConnKeepAlive"),
+		goleak.IgnoreTopFunction("net/http.(*http2ClientConn).readLoop"),
+	)
+	os.Exit(m.Run())
+}
 
 // TestVersionFlag verifies that handleVersionFlag returns
 // the right output + done=true for both --version and -v.

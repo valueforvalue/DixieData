@@ -10,6 +10,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/xuri/excelize/v2 v2.9.1
+	go.uber.org/goleak v1.3.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.276.0
 	modernc.org/sqlite v1.33.1
