@@ -1240,31 +1240,33 @@ func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, err
 		}
 	}
 
-	// Issue #320 slice #337: derive Service Timeline events
-	// from the Event Records linked to this soldier. Each
-	// linked Event contributes a Timeline Marker sourced from
-	// the Event's begin_date (or end_date when begin is empty).
-	eventLinks, linkErr := s.linkedEventsForTimeline(soldierID)
-	if linkErr != nil {
-		return nil, linkErr
+	// Issue #320 slice #337: append one Timeline Marker per
+	// Event Record linked to this soldier via
+	// event_person_links. Date sourcing: the Event's
+	// begin_date wins; when begin_date is empty, end_date is
+	// used as the fallback. Events with neither date are
+	// skipped (the user has not yet back-filled the timeline
+	// fields). The marker is sorted inline below alongside
+	// the existing Birth / Death / record-derived markers,
+	// so the user sees a single chronological view.
+	linkedMarkers, err := s.linkedEventsForTimeline(soldierID)
+	if err != nil {
+		return nil, err
 	}
-	for _, event := range eventLinks {
-		if strings.TrimSpace(event.beginDate) == "" && strings.TrimSpace(event.endDate) == "" {
-			continue
-		}
-		primary := strings.TrimSpace(event.beginDate)
+	for _, marker := range linkedMarkers {
+		primary := strings.TrimSpace(marker.BeginDate)
 		if primary == "" {
-			primary = strings.TrimSpace(event.endDate)
+			primary = strings.TrimSpace(marker.EndDate)
 		}
-		partial, err := dates.ParseCanonical(primary)
-		if err != nil || !partial.HasAny() {
+		partial, parseErr := dates.ParseCanonical(primary)
+		if parseErr != nil || !partial.HasAny() {
 			continue
 		}
 		timeline.Events = append(timeline.Events, newServiceTimelineEvent(
-			"Linked Event: "+strings.TrimSpace(event.kind),
+			"Linked Event: "+strings.TrimSpace(marker.Kind),
 			partial,
-			event.displayID,
-			strings.TrimSpace(event.description),
+			marker.DisplayID,
+			strings.TrimSpace(marker.Description),
 			"event",
 			false,
 			200,
@@ -3044,44 +3046,63 @@ func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
 }
 
 
-
-
-type linkedTimelineEvent struct {
-	kind        string
-	beginDate   string
-	endDate     string
-	description string
-	displayID   string
+// LinkedEventTimelineMarker is the slim projection of an Event
+// Record suitable for inclusion on a Person Record's Service
+// Timeline (issue #320 slice #337). It carries only the fields
+// the timeline builder reads so the query stays narrow and the
+// builder can mint a ServiceTimelineEvent without an extra
+// GetByID round trip per Event.
+type LinkedEventTimelineMarker struct {
+	Kind        string // Event kind (free-text: "Battle", "Hospital Stay", ...)
+	BeginDate   string // canonical MM[/DD]/YYYY; falls back to EndDate
+	EndDate     string // canonical MM[/DD]/YYYY; used only if BeginDate is empty
+	Description string // long-form Event description; surfaced as the marker description
+	DisplayID   string // EVT-NNNNN; surfaced as the marker source label
 }
 
-// linkedEventsForTimeline returns the linked Event Records for
-// the central soldier (issue #320 slice #337). Each Event's
-// per-row fields are returned in a slim projection so the
-// ServiceTimeline builder can mint a Timeline Marker without a
-// per-Event GetByID round trip.
-func (s *SoldierService) linkedEventsForTimeline(soldierID int64) ([]linkedTimelineEvent, error) {
+// linkedEventsForTimeline returns the Event Records linked to
+// the central soldier via event_person_links, projected onto
+// LinkedEventTimelineMarker so ServiceTimeline can mint one
+// Timeline Marker per Event without an extra SoldierService.
+// GetByID round trip per Event. The query is index-friendly:
+// event_person_links has UNIQUE (event_id, person_id) so the
+// join hits the existing index, and the WHERE clause filters
+// by the indexed person_id side.
+//
+// Returns an empty slice (not nil) when no Events are linked.
+// Returns an error only on query failure; per-row scan errors
+// propagate. Dates are returned as the raw TEXT they were stored
+// as on the soldiers row; ServiceTimeline parses them through
+// dates.ParseCanonical.
+func (s *SoldierService) linkedEventsForTimeline(soldierID int64) ([]LinkedEventTimelineMarker, error) {
+	if soldierID < 1 {
+		return nil, fmt.Errorf("linkedEventsForTimeline: soldier id must be positive")
+	}
 	rows, err := s.db.Conn().Query(
-		`SELECT s.id, s.kind, s.begin_date, s.end_date, s.description, s.display_id
+		`SELECT s.kind, s.begin_date, s.end_date, s.description, s.display_id
 		 FROM soldiers s
 		 JOIN event_person_links epl ON epl.event_id = s.id
-		 WHERE epl.person_id = ?`, soldierID)
+		 WHERE epl.person_id = ?`,
+		soldierID,
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("linkedEventsForTimeline query: %w", err)
 	}
 	defer rows.Close()
-	var out []linkedTimelineEvent
+
+	markers := make([]LinkedEventTimelineMarker, 0)
 	for rows.Next() {
-		var row linkedTimelineEvent
-		var id int64
-		if err := rows.Scan(&id, &row.kind, &row.beginDate, &row.endDate, &row.description, &row.displayID); err != nil {
-			return nil, err
+		var m LinkedEventTimelineMarker
+		if err := rows.Scan(&m.Kind, &m.BeginDate, &m.EndDate, &m.Description, &m.DisplayID); err != nil {
+			return nil, fmt.Errorf("linkedEventsForTimeline scan: %w", err)
 		}
-		out = append(out, row)
+		markers = append(markers, m)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("linkedEventsForTimeline rows: %w", err)
+	}
+	return markers, nil
 }
-
-
 
 func searchableFirstName(soldier models.Soldier) string {
 	return strings.TrimSpace(strings.TrimSpace(soldier.FirstName) + " " + strings.TrimSpace(soldier.MiddleName))
