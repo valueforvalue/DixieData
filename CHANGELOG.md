@@ -4482,4 +4482,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (one-shot destination; cost is acceptable for the page's
   single visit per session).
 
+- **Removed three fluff test files** (issue #318 Slice 0).
+  `internal/routebuilder/routebuilder_test.go` (60+
+  one-liner string-concat asserts), `internal/persondisplay/
+  display_test.go` (2 trivial format asserts), and
+  `internal/debug/trace/trace_test.go` (3 stdlib-semantics
+  tests in a `//go:build debug` no-op package) — none caught
+  real bugs per the test-strategy audit. The two useful
+  edge cases from `routebuilder_test.go` (URL-escape + trim)
+  folded into a single table-driven
+  `internal/routebuilder/routebuilder_edge_test.go`.
+  Net: -356 LOC of test code, +19 LOC of real coverage.
+  Test file count: 172 → 170.
+
 ## v1.1.16 - Gold Master
