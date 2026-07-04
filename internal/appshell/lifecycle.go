@@ -149,10 +149,17 @@ func (a *App) startup(ctx context.Context) {
 	a.restorePoints = update.NewRestorePointManager(a.dataDir)
 	// Load local settings + apply DebugMode. Settings takes effect on
 	// the next slog call (debug.SetDebugMode raises/lowers the level
-	// floor).
+	// floor). The DIXIEDATA_DEBUG=1 env var (set by the `make debug`
+	// launcher, script in scripts/build-common.ps1) is an OR'd-in
+	// override -- the env wins so a dev launcher turns the badge on
+	// regardless of the persisted settings toggle. Issue #309
+	// surfaced this; the badge was invisible on fresh `make debug`
+	// runs because settings default to OFF and the appshell never
+	// consulted the env. envBool helpers live in internal/debug.
 	if settings, err := records.LoadLocalSettings(a.dataDir); err == nil {
-		a.debugMode.Store(settings.DebugMode)
-		debug.SetDebugMode(settings.DebugMode)
+		enabled := decideDebugModeAtStartupSettings(settings.DebugMode)
+		a.debugMode.Store(enabled)
+		debug.SetDebugMode(enabled)
 	} else {
 		fmt.Printf("warning: could not load local settings: %v\n", err)
 	}
@@ -508,4 +515,21 @@ func migrateLogsToSiblingDir(dataDir string) (int, error) {
 	}
 
 	return moved, nil
+}
+
+// decideDebugModeAtStartupSettings returns whether Debug Mode
+// should be enabled at launch. Extracted from the seeding
+// block in (*App).startup so the contract is testable without
+// dragging in the full Wails bootstrap (database open, stress
+// log, etc.). The env wins so the `make debug` launcher (which
+// sets DIXIEDATA_DEBUG=1, scripts/build-common.ps1) can override
+// a persisted OFF toggle for a single session.
+//
+// Exposed as a package-private function so the test file
+// (debug_mode_env_test.go) in the same package can pin the
+// behavior; the test failures in that file surfaced the issue
+// (#309 dev-badge invisible because settings defaults to OFF
+// and the env was never consulted).
+func decideDebugModeAtStartupSettings(settingsDebugMode bool) bool {
+	return settingsDebugMode || debug.EnvBool("DIXIEDATA_DEBUG")
 }
