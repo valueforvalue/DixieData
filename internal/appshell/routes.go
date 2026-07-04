@@ -70,6 +70,40 @@ func (a *App) setupRoutes() {
 	r.Post("/soldiers/*", a.handleSoldierByID)
 	r.Put("/soldiers/*", a.handleSoldierByID)
 	r.Delete("/soldiers/*", a.handleSoldierByID)
+	// v60 (issue #320): Event Record routes. Registered
+	// before the /soldiers/* catch-all so the literal /events
+	// prefix matches first. The /events/{id:[0-9]+}/edit
+	// path uses chi's regex capture to bind the id; the
+	// handler reads the id from the URL path itself so the
+	// route stays consistent with the /soldiers/{id:[0-9]+}
+	// pattern. The per-event image routes + per-event PDF
+	// route are deferred to follow-up issues (out of scope
+	// for the v1 landing per the RPCI spec's "Slice 4"
+	// section).
+	r.Get("/events", a.handleEvents)
+	r.Get("/events/new", a.handleNewEvent)
+	r.Post("/events/new", a.handleNewEvent)
+	r.Get("/events/{id:[0-9]+}", a.handleEventByID)
+	r.Post("/events/{id:[0-9]+}", a.handleEventByID)
+	r.Put("/events/{id:[0-9]+}", a.handleEventByID)
+	r.Delete("/events/{id:[0-9]+}", a.handleEventByID)
+	// /events/{id}/edit dispatches to handleEditEvent via
+	// dedicated route shims; the handler reads the id from
+	// the URL path so the sub-path stays in one place.
+	r.Get("/events/{id:[0-9]+}/edit", a.handleEditEventRoute)
+	r.Post("/events/{id:[0-9]+}/edit", a.handleEditEventRoute)
+	// /soldiers/{id}/events/* routes: Person Record →
+	// Events tab. The /events sub-path on a Person Record
+	// page is dispatched from a dedicated route shim so
+	// the literal path wins over the generic
+	// /soldiers/* catch-all. The /events/quick-add path is
+	// also registered here (not dispatched from
+	// handleSoldierByID) so the create+link transaction
+	// gets a single dedicated handler.
+	r.Get("/soldiers/{id:[0-9]+}/events", a.handlePersonEventsTabRoute)
+	r.Post("/soldiers/{id:[0-9]+}/events/{eventId:[0-9]+}/attach", a.handleAttachEventRoute)
+	r.Post("/soldiers/{id:[0-9]+}/events/{eventId:[0-9]+}/detach", a.handleDetachEventRoute)
+	r.Post("/soldiers/{id:[0-9]+}/events/quick-add", a.handleQuickAddEventRoute)
 
 	r.Get("/review-queue", a.handleReviewQueue)
 	r.Post("/review-queue/bulk", a.handleReviewQueueBulk)

@@ -505,3 +505,75 @@ func ExportSharedArchiveSubset() string {
 func GoogleCalendarPreferencesSave() string {
 	return "/integrations/google/calendar/preferences/save"
 }
+// v60 (issue #320): Event Record route helpers. The /events/*
+// tree is the slice-3 UI surface for the new Event Record
+// subtype; the /soldiers/{id}/events/* tree is the Events tab
+// on the Person Record detail page.
+
+// EventList returns the URL for the Events list page. Registered
+// as GET /events in routes.go.
+func EventList() string {
+	return "/events"
+}
+
+// EventNew returns the URL for the new-Event form (both GET
+// render and POST create). Registered as GET/POST /events/new
+// in routes.go.
+func EventNew() string {
+	return "/events/new"
+}
+
+// EventDetail returns the URL for the Event detail page.
+// Registered as GET/PUT/DELETE /events/{id} in routes.go.
+func EventDetail(id int64) string {
+	return fmt.Sprintf("/events/%d", id)
+}
+
+// EventEdit returns the URL for the edit-Event form (both GET
+// render and POST update). Registered as GET/POST
+// /events/{id}/edit in routes.go.
+func EventEdit(id int64) string {
+	return fmt.Sprintf("/events/%d/edit", id)
+}
+
+// EventImagesDelete returns the URL for the image-delete form
+// target on an Event. Registered as DELETE /events/{id}/images
+// in routes.go.
+func EventImagesDelete(id int64) string {
+	return fmt.Sprintf("/events/%d/images", id)
+}
+
+// EventPDF returns the URL for the per-Event PDF export.
+// Registered as POST /events/{id}/pdf in routes.go.
+func EventPDF(id int64) string {
+	return fmt.Sprintf("/events/%d/pdf", id)
+}
+
+// PersonEventsTab returns the URL for the Events tab on a
+// Person Record detail page. Registered as GET
+// /soldiers/{id}/events in routes.go.
+func PersonEventsTab(soldierID int64) string {
+	return fmt.Sprintf("/soldiers/%d/events", soldierID)
+}
+
+// PersonEventAttach returns the URL for attaching an Event to
+// a Person Record. Registered as POST
+// /soldiers/{id}/events/{eventId}/attach in routes.go.
+func PersonEventAttach(soldierID, eventID int64) string {
+	return fmt.Sprintf("/soldiers/%d/events/%d/attach", soldierID, eventID)
+}
+
+// PersonEventDetach returns the URL for detaching an Event
+// from a Person Record. Registered as POST
+// /soldiers/{id}/events/{eventId}/detach in routes.go.
+func PersonEventDetach(soldierID, eventID int64) string {
+	return fmt.Sprintf("/soldiers/%d/events/%d/detach", soldierID, eventID)
+}
+
+// PersonEventQuickAdd returns the URL for the Person Record →
+// Quick-add Event button. Creates an Event + the linking
+// event_person_links row in one transaction. Registered as
+// POST /soldiers/{id}/events/quick-add in routes.go.
+func PersonEventQuickAdd(soldierID int64) string {
+	return fmt.Sprintf("/soldiers/%d/events/quick-add", soldierID)
+}

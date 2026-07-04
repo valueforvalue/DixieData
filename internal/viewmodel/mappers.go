@@ -60,6 +60,15 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		Biography:             input.Biography,
 		PDFExcerptOverride:    input.PDFExcerptOverride,
 		Notes:                 input.Notes,
+		// v60 (issue #320): Event Record subtype fields. The
+		// source models.Soldier already carries Kind /
+		// BeginDate / EndDate / Description; the viewmodel
+		// projection copies them so .templ files can render
+		// event-only fields without importing internal/models.
+		Kind:                  input.Kind,
+		BeginDate:             input.BeginDate,
+		EndDate:               input.EndDate,
+		Description:           input.Description,
 		NeedsReview:           input.NeedsReview,
 		ReviewReason:          input.ReviewReason,
 		AddedBy:               input.AddedBy,

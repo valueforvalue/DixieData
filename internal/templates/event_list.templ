@@ -1,0 +1,67 @@
+// v60 (issue #320): Event Record list page.
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ EventList(events []viewmodel.PersonRecord, page, total int) {
+	@Layout("Events") {
+		<div class="relative mx-auto max-w-4xl">
+			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<h2 class="text-2xl gold font-bold">Event Records</h2>
+				<a href={ templ.SafeURL(routebuilder.EventNew()) } class="primary-button">+ Add Event Record</a>
+			</div>
+			if len(events) == 0 {
+				@components.EmptyState("No event records yet", "Create the first event record.", "")
+			} else {
+				<div class="space-y-3">
+					for _, event := range events {
+						@EventCard(event)
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+templ EventCard(event viewmodel.PersonRecord) {
+	<div class="card rounded-2xl p-4 sm:p-5">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+			<div class="min-w-0">
+				<span class="gold text-xs font-mono">{ event.DisplayID }</span>
+				if strings.TrimSpace(event.Kind) != "" {
+					<p class="mt-1 text-sm text-slate-700">{ event.Kind }</p>
+				}
+			</div>
+			<a href={ templ.SafeURL(fmt.Sprintf("/events/%d", event.ID)) } class="pill-link self-start sm:self-auto">View Event</a>
+		</div>
+	</div>
+}
+
+func eventDateRange(event viewmodel.PersonRecord) string {
+	begin := strings.TrimSpace(event.BeginDate)
+	end := strings.TrimSpace(event.EndDate)
+	switch {
+	case begin != "" && end != "":
+		return begin + " — " + end
+	case begin != "":
+		return begin
+	case end != "":
+		return end
+	}
+	return ""
+}
+
+func eventBadgeLabel(event viewmodel.PersonRecord) string {
+	if event.EntryType == models.EntryTypeEvent {
+		return "Event"
+	}
+	return entryBadgeLabel(event)
+}

@@ -1,0 +1,116 @@
+// v60 (issue #320): Event Record detail page. Renders
+// the kind pill, begin / end dates, long-form description
+// (or PDF excerpt override when set), and a section
+// listing the linked Person Records. The "Sources",
+// "Scratch Pad", "Research Log", "Tags", and "Images"
+// apply-sites are tracked as follow-up issues per the
+// RPCI spec's out-of-scope list for the v1 landing.
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord) {
+	@Layout(eventDetailTitle(event)) {
+		<div class="relative mx-auto max-w-4xl">
+			<div class="mb-4 flex flex-wrap gap-3">
+				<button
+					type="button"
+					data-history-back
+					data-fallback-href="/events"
+					data-fallback-label="Back to Events"
+					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text"
+				>← Back to Events</button>
+			</div>
+			<div class="relative card rounded-3xl p-5 sm:p-8">
+				<div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+					<div>
+						<span class="gold text-xs font-mono">{ event.DisplayID }</span>
+						<div class="mt-2 flex flex-wrap items-baseline gap-3">
+							if strings.TrimSpace(event.Kind) != "" {
+								<span class="rounded-full border border-sepia-500/[0.4] bg-white/70 px-3 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ event.Kind }</span>
+							}
+							<h2 class="text-2xl font-bold text-[#22303d]">{ eventTitle(event) }</h2>
+						</div>
+						if event.BeginDate != "" || event.EndDate != "" {
+							<p class="mt-2 text-sm text-slate-600">{ eventDateRange(event) }</p>
+						}
+					</div>
+					<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+						<a href={ templ.SafeURL(routebuilder.EventEdit(event.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Event</a>
+						<button
+							type="button"
+							class="secondary-button w-full justify-center sm:w-auto"
+							data-action={ fmt.Sprintf("/events/%d", event.ID) }
+							data-method="DELETE"
+							data-confirm="Delete this Event Record? It will also remove every link to Person Records and any images attached. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover."
+							data-dixie-submit="true"
+						>Delete Event</button>
+					</div>
+				</div>
+				if strings.TrimSpace(event.Description) != "" {
+					<section class="mb-6">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Description</p>
+						if strings.TrimSpace(event.PDFExcerptOverride) != "" {
+							<div class="mt-2 rounded-2xl border border-amber-700/30 bg-amber-50/80 p-4 text-sm text-amber-950">
+								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-900">PDF Excerpt Override active</p>
+								<p class="mt-2 whitespace-pre-line">{ event.PDFExcerptOverride }</p>
+							</div>
+						}
+						<div class="prose prose-slate mt-3 max-w-none whitespace-pre-line text-sm leading-relaxed text-slate-700">{ event.Description }</div>
+					</section>
+				}
+				if strings.TrimSpace(event.Notes) != "" {
+					<section class="mb-6">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Internal Notes</p>
+						<p class="mt-2 whitespace-pre-line text-sm text-slate-600">{ event.Notes }</p>
+					</section>
+				}
+				<section class="relative">
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Linked Person Records</p>
+						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d linked", len(linked)) }</span>
+					</div>
+					if len(linked) == 0 {
+						@components.EmptyState("No linked Person Records", "Attach this event to a Person Record from the Person Record detail page's Events tab.", "")
+					} else {
+						<ul class="space-y-2">
+							for _, person := range linked {
+								<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
+									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", person.ID)) } class="pill-link">{ person.DisplayID }</a>
+								</li>
+							}
+						</ul>
+					}
+				</section>
+			</div>
+		</div>
+	}
+}
+
+func eventDetailTitle(event viewmodel.PersonRecord) string {
+	if strings.TrimSpace(event.DisplayID) != "" {
+		return "Event " + event.DisplayID
+	}
+	return "Event Record"
+}
+
+func eventTitle(event viewmodel.PersonRecord) string {
+	kind := strings.TrimSpace(event.Kind)
+	range_ := eventDateRange(event)
+	switch {
+	case kind != "" && range_ != "":
+		return kind + " · " + range_
+	case kind != "":
+		return kind
+	case range_ != "":
+		return range_
+	}
+	return "Unnamed Event"
+}
