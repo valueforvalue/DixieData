@@ -25,12 +25,16 @@
 package appshell
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -453,4 +457,71 @@ func parsePersonEventIDs(path string) (int64, int64, error) {
 		return 0, 0, err
 	}
 	return personID, eventID, nil
+}
+
+// handleEventPDFRoute is the chi route shim for /events/{id}/pdf.
+// Parses the id from the URL path and delegates to handleEventPDF.
+func (a *App) handleEventPDFRoute(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/events/", "/pdf")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handleEventPDF(w, r, id)
+}
+
+// handleEventPDF renders an Event Record (issue #320 v1) to a
+// single PDF via the typst-backed export pipeline. Mirrors the
+// soldier PDF handler pattern: SaveFileDialog (Wails runtime +
+// test seam override) -> enterInFlight dedup -> enqueueExport.
+//
+// The Event's linked Person Records are pre-projected here so
+// the typst template can render the "Linked Person Records"
+// table without a DB lookup. The slim per-Person projection
+// matches the shape exported.ExportEventPDF expects.
+func (a *App) handleEventPDF(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the Event PDF export form.", err)
+		return
+	}
+
+	eventWithLinks, err := a.events.GetEventByID(eventID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", eventID), err)
+		return
+	}
+	event := eventWithLinks.Event
+	linked, err := a.events.ListForEvent(eventID)
+	if err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not load linked records for Event %d.", eventID), err)
+		return
+	}
+
+	dupKey := fmt.Sprintf("event-pdf|%d|%s", eventID, eventPDFName(event))
+	admitted, entry := a.enterInFlight(dupKey)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	defer a.leaveInFlight(dupKey, entry)
+
+	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
+		DefaultFilename: eventPDFName(event),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil || path == "" {
+		respondError(w, r, KindValidation, "Event PDF export cancelled.", nil)
+		return
+	}
+
+	a.enqueueExport(dupKey, "event_pdf", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(20, "Rendering Event Record PDF")
+		return a.export.ExportEventPDF(path, event, linked)
+	}, path, w)
 }

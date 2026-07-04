@@ -13,6 +13,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Per-Event PDF export** (issue #320, slice #322). New `GET
+  /events/{id}/pdf` route renders the Event Record card via
+  the typst-backed Registry (new `templates/event_landscape.typ`
+  template, `record_types: [event]`). Routes through
+  `ExportService.ExportEventPDF(outputPath, event, linked)`;
+  the slim per-Person projection for the "Linked Person
+  Records" table is pre-computed in the handler so the
+  typst template stays DB-free. UI: a new "Export PDF"
+  button on `event_detail.templ` posts to the route via
+  the existing `dispatchDixieDataForm` flow.
+  `pdf_excerpt_override` takes precedence over `description`
+  when set (D3); otherwise the long-form Description is
+  rendered. `eventPDFName` returns `Event-<DisplayID>.pdf`.
+  Tests: `TestHandleEventPDF` (handler end-to-end with
+  `saveFileDialogOverride` test seam) and
+  `TestExportService_ExportEventPDF` (registry path
+  through `extractPDFText`). Files: 5 new + 7 modified.
+
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:

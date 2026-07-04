@@ -106,6 +106,10 @@ type exportFacade interface {
 	ExportSoldierPDF(outputPath string, soldier models.Soldier, options archive.PDFOptions) error
 	ExportSoldierJPG(outputPath string, soldier models.Soldier, options archive.PDFOptions) ([]string, error)
 	ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error
+	// ExportEventPDF renders a per-Event PDF (issue #320 v1).
+	// The linked slice is the slim per-Person projection for
+	// the "Linked Person Records" table on the event card.
+	ExportEventPDF(outputPath string, event models.Soldier, linked []models.Soldier) error
 	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options archive.PDFOptions) error
 	ExportImages(outputPath string, images []models.Image) error
 	SetRegistry(reg *render.Registry)
