@@ -1,8 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { sep as PATH_SEP } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const PROBE = join(ROOT, 'audit/discover_htmx_guard.mjs');
@@ -197,6 +198,149 @@ func BadHandler(w http.ResponseWriter, r *http.Request) {
     assert.equal(r.status, 1, `expected exit 1 in --strict mode, got ${r.status}`);
     assert.ok(r.stdout.includes('--strict: treating as a CI failure.'),
       `expected strict confirmation line\nstdout: ${r.stdout}`);
+  });
+});
+
+// ---- Slice 2: templ target walker ----
+
+function writeTemplFixture(dir, files) {
+  // files: { 'relative/path.templ': 'content', ... }
+  for (const [rel, content] of Object.entries(files)) {
+    const full = join(dir, rel);
+    const idx = full.lastIndexOf(PATH_SEP);
+    if (idx > 0) mkdirSync(full.substring(0, idx), { recursive: true });
+    writeFileSync(full, content);
+  }
+}
+
+test('templ walker exits 0 on clean templ dir (no orphan targets)', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'clean.templ'), `package templates
+templ Clean() {
+	<div id="results" hx-get="/x" hx-target="#results">OK</div>
+}
+`);
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(!/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `clean templ dir should NOT have violations\nstdout: ${r.stdout}`);
+    assert.ok(/Templ orphan target violations: 0/.test(r.stdout),
+      `expected zero-count summary line\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker flags a #X target with no matching id', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'orphan.templ'), `package templates
+templ Broken() {
+	<div hx-get="/y" hx-target="#nonexistent">Bug</div>
+}
+`);
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `expected templ violation section\nstdout: ${r.stdout}`);
+    assert.ok(/hx-target="#nonexistent"/.test(r.stdout),
+      `expected #nonexistent selector in output\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker ignores hx-target="this" (htmx self pseudo)', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'self.templ'), `package templates
+templ Self() {
+	<span hx-get="/x" hx-target="this">OK</span>
+}
+`);
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(!/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `this pseudo must not be flagged\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker ignores non-# selectors ([data-...], body, .cls)', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'mixed.templ'), `package templates
+templ Mixed() {
+	<div hx-get="/x" hx-target="body"></div>
+	<div hx-get="/y" hx-target="[data-bar]"></div>
+	<div hx-get="/z" hx-target=".cls"></div>
+}
+`);
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(!/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `non-# selectors must not be flagged\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker catches data-results-target orphan', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'results.templ'), `package templates
+templ Results() {
+	<form data-results-target="#missing-result-region">x</form>
+}
+`);
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(/data-results-target="#missing-result-region"/.test(r.stdout),
+      `data-results-target orphan should be flagged\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker accepts data-results-target with matching id', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'results.templ'), `package templates
+templ Results() {
+	<div id="present-region"></div>
+	<form data-results-target="#present-region">x</form>
+}
+`);
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(!/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `data-results-target with matching id should pass\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker recurses into subdirectories (partials/)', () => {
+  withTempDir((dir) => {
+    writeTemplFixture(dir, {
+      'partials/modal.templ': `package templates
+templ Modal() {
+	<div hx-get="/x" hx-target="#nonexistent-subdir">x</div>
+}
+`,
+    });
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `subdirectory orphan should be flagged\nstdout: ${r.stdout}`);
+    assert.ok(r.stdout.includes('partials/modal.templ'),
+      `expected partials/ path in output\nstdout: ${r.stdout}`);
+  });
+});
+
+test('templ walker accepts an id defined in a sibling file', () => {
+  withTempDir((dir) => {
+    writeTemplFixture(dir, {
+      'a.templ': `package templates
+templ Define() { <div id="shared-id"></div> }
+`,
+      'b.templ': `package templates
+templ Use() { <div hx-get="/x" hx-target="#shared-id">y</div> }
+`,
+    });
+    const r = runProbe({ HTMX_GUARD_TEMPL_DIR: dir });
+    assert.ok(!/TEMPL ORPHAN TARGET VIOLATIONS/.test(r.stdout),
+      `id declared in sibling file should satisfy target reference\nstdout: ${r.stdout}`);
+  });
+});
+
+test('--strict exits 1 when templ orphan target exists', () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, 'orphan.templ'), `package templates
+templ Broken() { <div hx-get="/y" hx-target="#nonexistent">x</div> }
+`);
+    const r = spawnSync('node', [PROBE, '--strict'], {
+      encoding: 'utf8',
+      env: { ...process.env, HTMX_GUARD_TEMPL_DIR: dir },
+    });
+    assert.equal(r.status, 1, `expected exit 1 in --strict mode, got ${r.status}`);
   });
 });
 
