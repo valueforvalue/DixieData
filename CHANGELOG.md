@@ -35,6 +35,67 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     `TestShareExportsSubpage_Renders` to assert the new button
     text + `href`, and to no-longer-find the old data attribute.
 
+- **Share Build modal deleted entirely** (issue #310, PR 2 of 3).
+  After PR 1 left the modal as a dead route, this PR removes the
+  templ file, the handlers (`handleShareQueueModal`,
+  `handleShareQueuePreview`, `handleShareQueueClear`), the
+  routes (`GET /share/queue/modal`, `POST /share/queue/preview`,
+  `POST /share/queue/clear`), the route-builder constants
+  (`ShareQueueModal`, `ShareQueuePreview`, `ShareQueueClear`),
+  the modal-only JS (`shareQueueModal`, `loadShareQueueModal`,
+  the issue #308 lazy-load fix, `openShareQueueModal`,
+  `installShareQueueModal`, the modal `refreshShareQueueModal`,
+  `refreshShareQueuePreview`, `clearShareQueue`), the Saved
+  Queues JS (`shareQueuePresetStatus`, `saveCurrentQueueAsPreset`,
+  `loadShareQueuePreset`, `deleteShareQueuePreset`,
+  `refreshShareQueuePresets` — all ported onto the page in PR 3),
+  7 modal-only Go tests, and the two `uiids.ID` constants
+  (`OverlayShareQueue`, `PanelShareQueuePreview`) that no
+  longer apply. `addToShareQueue` / `removeFromShareQueue`
+  retained and rewritten to update `updateShareQueuePill()`
+  instead of refreshing the modal.
+
+  Net removal: ~340 lines of JS, 70 lines of templ, ~240 lines
+  of Go (handlers + tests + route-builder). The /share/queue
+  page (issue #193) absorbs every action the modal used to
+  provide. PR 3 ports Saved Queues onto the page so the user
+  can save / load / delete preset queues from the same surface.
+
+  - `internal/templates/share_queue_modal.templ` (+ `_templ.go`)
+    — deleted.
+  - `internal/appshell/share_queue_handlers.go` — deleted 3
+    handlers + 1 helper (`buildShareQueuePreviewFragment`).
+    Top-of-file doc-comment rewritten.
+  - `internal/appshell/routes.go` — deleted 3 routes + their
+    "share/queue/* static-before-wildcard" comment block.
+  - `internal/appshell/route_wildcard_test.go` — dropped the
+    `/share/queue/modal` shadow pair (the route no longer
+    exists).
+  - `internal/routebuilder/routebuilder.go` — deleted 3
+    constants.
+  - `frontend/app.js` — net -334 lines (cache vars, query
+    function, lazy-load, modal refresh, preset functions,
+    openShareQueueModal, installShareQueueModal).
+  - `internal/appshell/share_queue_handlers_test.go` — deleted
+    5 modal-only tests + `seedPersonRecordWithCounts` helper.
+  - `internal/uiids/uiids.go` — deleted `OverlayShareQueue` +
+    `PanelShareQueuePreview`; updated Registry descriptions
+    for the retained `PanelShareQueueList` and
+    `PanelShareQueuePresets` to say "Share Queue page" rather
+    than "Share Build modal".
+
+### Removed
+
+- **Share Build modal at `/share/queue/modal`** (issue #182,
+  delete via #310 PR 2). The modal was a strict subset of the
+  `/share/queue` page and was never rendered after issue #284
+  split `/share` into subpages; issue #308 re-enabled it via
+  lazy-fetch, but the modal is now gone entirely. All trigger
+  surfaces (Build Share Archive button on `/share/exports`,
+  persistent Share Queue pill) navigate to `/share/queue`
+  instead. Saved Queues presets that lived on the modal are
+  ported onto the page in #310 PR 3.
+
 ### Added
 
 - **App version split into `v{MAJOR}.{U}.{N}`** (issue #266,

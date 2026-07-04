@@ -434,32 +434,11 @@ func SharePage() string {
 	return "/share"
 }
 
-// ShareQueueModal returns the URL for the Share Build modal
-// fragment. Registered as GET /share/queue/modal in routes.go.
-func ShareQueueModal() string {
-	return "/share/queue/modal"
-}
-
 // SharePrintRecordsFragment returns the URL for the print-records
 // lazy-load fragment endpoint. Registered as GET /share/print-records-fragment
-// in routes.go. Returned by the modal's open handler so the filter
-// panel + record picker populate on click instead of on initial
-// page load (issue #234).
+// in routes.go.
 func SharePrintRecordsFragment() string {
 	return "/share/print-records-fragment"
-}
-
-// ShareQueuePreview returns the URL for the live preview
-// fragment endpoint. Registered as POST /share/queue/preview
-// in routes.go.
-func ShareQueuePreview() string {
-	return "/share/queue/preview"
-}
-
-// ShareQueueClear returns the URL for the Clear Queue action.
-// Registered as POST /share/queue/clear in routes.go.
-func ShareQueueClear() string {
-	return "/share/queue/clear"
 }
 
 // ShareQueuePage (issue #193) returns the URL for the

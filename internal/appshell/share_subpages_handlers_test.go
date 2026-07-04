@@ -13,7 +13,7 @@ import (
 // expected content. These tests don't exercise the data
 // loading (exportRecords, Google status) in depth — they
 // are the smoke-level "did the route work" assertions,
-// matching the bar set by TestShareQueuePreview. The
+// matching the bar set by TestShareQueuePage (issue #193). The
 // handler-level tests for the existing /share route
 // continue to cover the data path; the new subpages are
 // thin extractions of inline sections and the data path
