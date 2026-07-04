@@ -71,6 +71,12 @@ type PersonRecord struct {
 	SourceRecordCount     int
 	ImageCount            int
 	SourceRecords         []SourceRecord
+	// EventSources is populated only for Event Record rows
+	// (entry_type = 'event'). Person Records always leave it
+	// empty. Issue #340 / v61: per-Event sources live in their
+	// own event_sources table; SourceRecords (above) belongs to
+	// Person Records.
+	EventSources          []SourceRecord
 	Images                []Image
 	Tags                  []TagOption
 }
