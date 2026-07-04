@@ -4055,6 +4055,50 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Regression net: `audit/smoke_memorial_json_preview.mjs`
   (7/7 assertions).
 
+### Maintenance
+
+- **htmx-guard lint probes (issue #316, slice 1)** — two new
+  static-analysis walkers under `audit/` (sibling to
+  `discover_orphan_handlers.mjs`) catch recurring
+  attribute-drift classes:
+
+  - **`discover_htmx_guard.mjs` toast-no-redirect walker** —
+    for every `func` in `internal/appshell/*.go` (excluding
+    `_test.go`), flags any function whose body calls
+    `setInfoToastHeader(w, ...)` but lacks ALL of
+    `X-DixieData-Redirect`, `writeExportRedirect(`,
+    `enqueueExport(`, `respondDuplicateInFlight(`. Catches
+    the toast-without-redirect class (commit `70878ac →
+    3612dab` is the canonical repo incident). Brace-walks
+    the function body so nested closures do not
+    false-positive.
+
+  - **`discover_htmx_guard.mjs` JS submit coexistence
+    walker** — walks `frontend/app.js` for every
+    `addEventListener("submit", ...)` site. Legitimate
+    sites are either doc-level delegates branching on
+    `data-dixie-submit` (route to `dispatchDixieDataForm`),
+    or utility submits carrying `// htmx-guard:
+    utility-submit` on the preceding line. Both shapes are
+    documented at `docs/agents/htmx-guard-conventions.md`.
+
+  - **`audit/discover_htmx_guard.test.mjs`** — 10-test
+    regression net covering all branches (toast-no-redirect
+    flag, clean handler, test-file skip, definition-site
+    skip, JS submit flag, data-dixie-submit delegate
+    acceptance, marker acceptance, `--strict` exit code).
+
+  - **Makefile targets:** `make lint-htmx-guard`
+    (informational), `make lint-htmx-guard-strict` (CI
+    failure mode), `make lint-htmx-guard-test` (run the
+    10-test suite).
+
+  - **Follow-up #317** filed to retire the marker
+    convention once a canonical `dispatchUtilitySubmit(form)`
+    exists and the 3 marked sites migrate to use it. Slice 1
+    ships with the markers as documented debt; the cleanup
+    is a separate task.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
