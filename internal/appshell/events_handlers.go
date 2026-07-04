@@ -19,8 +19,13 @@
 //   POST   /soldiers/{id}/events/{eventId}/detach   unlink event
 //   POST   /soldiers/{id}/events/quick-add     create + link in one tx
 //   POST   /soldiers/{id}/events/attach-by-display-id  link by EVT-NNNNN
+//   GET    /events/{id}/research-log          Event research log (slice #328)
+//   POST   /events/{id}/research-log/tasks    add a research task to an Event
+//   POST   /events/{id}/research-log/tasks/{entryId}/resolve  resolve a task
 //
 // Sources, scratchpad, research-log, tags, images, and per-event
+// PDF handlers are tracked as follow-up issues per the
+// out-of-scope section of the RPCI spec.
 package appshell
 
 import (
@@ -400,6 +405,115 @@ func parseEventForm(r *http.Request) (models.Soldier, error) {
 		PDFExcerptOverride: r.FormValue("pdf_excerpt_override"),
 		Notes:              r.FormValue("notes"),
 	}, nil
+}
+
+
+// handleEventResearchLog dispatches /events/{id}/research-log
+// requests (issue #320 slice #328). The research_tasks table
+// is FK-linked to soldiers(id) and Event records are rows in
+// the same table (entry_type = 'event'), so the handler can
+// call a.soldiers.ResearchLog/AddResearchTask/
+// ResolveResearchTask directly. Only the redirect URL
+// differs from the Person-Record counterpart.
+//
+//   GET    /events/{id}/research-log                          log page
+//   POST   /events/{id}/research-log/tasks                    create task
+//   POST   /events/{id}/research-log/tasks/{entryId}/resolve  resolve task
+func (a *App) handleEventResearchLog(w http.ResponseWriter, r *http.Request, eventID int64) {
+	suffix := strings.TrimPrefix(r.URL.Path, fmt.Sprintf("/events/%d/research-log", eventID))
+	suffix = strings.TrimPrefix(suffix, "/")
+	switch r.Method {
+	case http.MethodGet:
+		if suffix != "" {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		log, err := a.soldiers.ResearchLog(eventID)
+		if err != nil {
+			respondNotFound(w, r, fmt.Sprintf("Research log for event record %d not found.", eventID), err)
+			return
+		}
+		presentation.ResearchLogView(*log).Render(r.Context(), w)
+	case http.MethodPost:
+		if suffix == "tasks" {
+			a.handleEventResearchTaskCreate(w, r, eventID)
+			return
+		}
+		if strings.HasPrefix(suffix, "tasks/") && strings.HasSuffix(suffix, "/resolve") {
+			taskSection := strings.TrimPrefix(suffix, "tasks/")
+			taskSection = strings.TrimSuffix(taskSection, "/resolve")
+			taskID, err := strconv.ParseInt(taskSection, 10, 64)
+			if err != nil {
+				respondValidation(w, r, "Invalid research task id.", err)
+				return
+			}
+			a.handleEventResearchTaskResolve(w, r, eventID, taskID)
+			return
+		}
+		http.Error(w, "not found", http.StatusNotFound)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleEventResearchTaskCreate is the Event-side equivalent of
+// the Person-Record handleResearchTaskCreate. Re-uses the
+// same service methods (research_tasks is subtype-agnostic
+// at the schema level) and only differs on the redirect URL.
+func (a *App) handleEventResearchTaskCreate(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the research task form.", err)
+		return
+	}
+	title := strings.TrimSpace(r.FormValue("title"))
+	notes := strings.TrimSpace(r.FormValue("notes"))
+	evidenceType := strings.TrimSpace(r.FormValue("evidence_type"))
+	if err := a.soldiers.AddResearchTask(eventID, title, notes, evidenceType); err != nil {
+		setToastHeaderWithType(w, "Research task could not be saved.", "error")
+		respondInternal(w, r, fmt.Sprintf("Could not save research task for event record %d.", eventID), err)
+		return
+	}
+	setToastHeader(w, "Success: research task added.")
+	w.Header().Set("X-DixieData-Redirect", eventResearchLogRedirect(eventID))
+	fmt.Fprint(w, "Research task saved.")
+}
+
+// handleEventResearchTaskResolve closes a research task on an
+// Event. Service delegation matches the create path; the
+// redirect URL is the only meaningful difference.
+func (a *App) handleEventResearchTaskResolve(w http.ResponseWriter, r *http.Request, eventID, taskID int64) {
+	if err := a.soldiers.ResolveResearchTask(eventID, taskID); err != nil {
+		setToastHeaderWithType(w, "Research task could not be resolved.", "error")
+		respondInternal(w, r, fmt.Sprintf("Could not resolve research task %d for event record %d.", taskID, eventID), err)
+		return
+	}
+	setToastHeader(w, "Success: research task resolved.")
+	w.Header().Set("X-DixieData-Redirect", eventResearchLogRedirect(eventID))
+	fmt.Fprint(w, "Research task resolved.")
+}
+
+// eventResearchLogRedirect returns the post-action URL for
+// Event research log mutations. Kept as a helper so future
+// sub-types can branch to their own URL without touching
+// the handlers.
+func eventResearchLogRedirect(eventID int64) string {
+	return fmt.Sprintf("/events/%d/research-log", eventID)
+}
+
+// handleEventResearchLogRoute is the chi route shim for
+// /events/{id}/research-log and its sub-paths.
+func (a *App) handleEventResearchLogRoute(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/events/"), "/")
+	if len(parts) < 2 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handleEventResearchLog(w, r, id)
 }
 
 // handleEditEventRoute is the chi route shim for

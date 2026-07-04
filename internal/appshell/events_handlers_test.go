@@ -7,6 +7,8 @@
 package appshell
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -677,4 +679,98 @@ func TestHandleBrowseEventsFilter(t *testing.T) {
 		t.Fatalf("/browse status = %d, want 200", allResp.StatusCode)
 	}
 }
+
 func extractDisplayID(string) string { return "" }
+
+// TestHandleEventResearchLog covers issue #320 slot #328:
+// the per-Event research log. Seeds an Event, GETs the
+// log page (200), POSTs a research task, asserts the
+// task title appears, then POSTs the resolve action
+// and confirms the task is now resolved. Re-uses
+// SoldierService through the handler — research_tasks
+// is FK-linked to soldiers(id), and Event rows live in
+// the same table.
+func TestHandleEventResearchLog(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Battle of Atlanta", "07/22/1864", "07/22/1864", "Decisive engagement")
+
+	// GET log page (no tasks yet).
+	getResp, err := http.Get(server.URL + "/events/" + intStr(event.ID) + "/research-log")
+	if err != nil {
+		t.Fatalf("GET /events/%d/research-log: %v", event.ID, err)
+	}
+	getResp.Body.Close()
+	if getResp.StatusCode != http.StatusOK {
+		t.Errorf("GET log page status = %d, want 200", getResp.StatusCode)
+	}
+
+	// POST a task via the create form.
+	taskTitle := "Verify casualty figures for Atlanta"
+	createResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/research-log/tasks", url.Values{
+		"title":         {taskTitle},
+		"notes":         {"Check Fox & Warner, Civil War Battles app."},
+		"evidence_type": {"archive"},
+	})
+	if err != nil {
+		t.Fatalf("POST create: %v", err)
+	}
+	defer createResp.Body.Close()
+	if createResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(createResp.Body)
+		t.Fatalf("create status = %d (body=%q), want 200", createResp.StatusCode, string(body))
+	}
+	if got := createResp.Header.Get("X-DixieData-Redirect"); !strings.Contains(got, "/events/"+intStr(event.ID)+"/research-log") {
+		t.Errorf("create redirect = %q, want /events/%d/research-log", got, event.ID)
+	}
+
+	// GET the log page; the task title must appear.
+	body := get(t, server, "/events/"+intStr(event.ID)+"/research-log")
+	if !strings.Contains(body, taskTitle) {
+		t.Errorf("research log page missing task title %q after create", taskTitle)
+	}
+
+	// Grab the new task id via the service.
+	log, err := app.soldiers.ResearchLog(event.ID)
+	if err != nil {
+		t.Fatalf("ResearchLog: %v", err)
+	}
+	var taskID int64
+	for _, task := range log.Tasks {
+		if strings.TrimSpace(task.Title) == taskTitle {
+			taskID = task.ID
+			break
+		}
+	}
+	if taskID == 0 {
+		t.Fatalf("research log missing newly-created task %q; tasks=%+v", taskTitle, log.Tasks)
+	}
+
+	// POST resolve.
+	resolvePath := fmt.Sprintf("/events/%d/research-log/tasks/%d/resolve", event.ID, taskID)
+	resolveResp, err := http.PostForm(server.URL+resolvePath, url.Values{})
+	if err != nil {
+		t.Fatalf("POST %s: %v", resolvePath, err)
+	}
+	resolveResp.Body.Close()
+	if resolveResp.StatusCode != http.StatusOK {
+		t.Errorf("resolve status = %d, want 200", resolveResp.StatusCode)
+	}
+	if got := resolveResp.Header.Get("X-DixieData-Redirect"); !strings.Contains(got, "/events/"+intStr(event.ID)+"/research-log") {
+		t.Errorf("resolve redirect = %q, want /events/%d/research-log", got, event.ID)
+	}
+
+	// Confirm the task is now resolved in the service.
+	resolved, err := app.soldiers.ResearchLog(event.ID)
+	if err != nil {
+		t.Fatalf("ResearchLog post-resolve: %v", err)
+	}
+	for _, task := range resolved.Tasks {
+		if task.ID == taskID && strings.TrimSpace(task.Status) != "resolved" {
+			t.Errorf("task %d still has status %q after resolve", taskID, task.Status)
+		}
+	}
+}
+
