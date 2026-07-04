@@ -449,6 +449,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Build Share Archive button + Share Queue pill do nothing on click**
+  (issue #308). The Share Build modal at `/share/queue/modal` was never
+  server-rendered into any page, so `openShareQueueModal()` in
+  `frontend/app.js` queried the DOM and silently early-returned. Added
+  `loadShareQueueModal()` that fetches the modal HTML on demand, inserts
+  it into `document.body` (hidden), and caches the node for subsequent
+  opens — mirrors the lazy-load pattern from issue #234's
+  `loadPrintRecordsFragment`. Both call sites (the button on
+  `/share/exports` and the persistent layout pill) now open the modal
+  correctly.
+
 - **In-place-safety walker false-positives on SQL comments** (issue #268).
   `classifySchemaLine` in `internal/appshell/cli_debug_inplace.go`
   used `strings.Contains` to match destructive keywords (DROP
