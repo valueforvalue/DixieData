@@ -1,0 +1,70 @@
+// Event Record panel fragments (issue #320 follow-up, issue
+// #341). The Sources and Tags chips sections on
+// event_detail.templ are swapped in-place by the JS dispatcher
+// when the user attaches / detaches. To keep the page render
+// and the fragment-return render in lock-step, both contexts
+// call the helpers in this file.
+//
+// The helpers accept viewmodel.SourceRecord and
+// viewmodel.TagOption slices plus the parent event id so the
+// detach URLs are constructed the same way. The handlers in
+// internal/appshell/events_handlers.go Render these helpers
+// after each write (attach / detach) and write the resulting
+// HTML into the matching #data-event-sources-list /
+// #data-event-tags-list div via data-results-target.
+//
+// Style mirrors event_detail.templ exactly so the swap is
+// visually identical to the initial page render.
+package templates
+
+import (
+	"fmt"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// EventSourcesListFragment renders the per-Event Sources list
+// (rows or empty state) for both the initial page render and
+// the post-attach / post-detach fragment swap. When sources is
+// empty, the EmptyState card matches the on-page copy exactly.
+templ EventSourcesListFragment(eventID int64, sources []viewmodel.SourceRecord) {
+	if len(sources) == 0 {
+		@components.EmptyState("No Source Records attached", "Attach source documents from the /sources authoring flow then link them to this Event.", "")
+	} else {
+		<ul class="space-y-2">
+			for _, src := range sources {
+				<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
+					<span class="font-mono text-xs text-slate-500">{ src.AppID }</span>
+					<span class="ml-2 font-semibold">{ src.SourceRecordType }</span>
+					<p class="mt-1 whitespace-pre-line text-xs text-slate-600">{ src.Details }</p>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// EventTagsListFragment renders the per-Event Tags chips (or
+// empty state) for both the initial page render and the
+// post-detach fragment swap. The detach buttons carry
+// data-results-target="#data-event-tags-list" so the next click
+// re-renders this fragment in place.
+templ EventTagsListFragment(eventID int64, tags []viewmodel.TagOption) {
+	if len(tags) == 0 {
+		@components.EmptyState("No tags attached", "Add tags to group this Event with related Person Records.", "")
+	} else {
+		<div class="flex flex-wrap gap-2">
+			for _, tag := range tags {
+				<span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs">
+					<span class="font-semibold">{ tag.Name }</span>
+					<button
+						type="button"
+						data-action={ templ.SafeURL(fmt.Sprintf("/events/%d/tags/%d/detach", eventID, tag.ID)) }
+						data-dixie-submit="true"
+						data-results-target="#data-event-tags-list"
+						class="ghost-link text-slate-500 hover:text-red-700"
+					>&times;</button>
+				</span>
+			}
+		</div>
+	}
+}
