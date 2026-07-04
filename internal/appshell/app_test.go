@@ -830,51 +830,6 @@ func TestHandleEditSoldierPreselectsLinkedSpouse(t *testing.T) {
 	}
 }
 
-func TestHandleScrapeFindAGravePopulatesNewSoldierForm(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
-	database, err := db.Open(dataDir)
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	defer database.Close()
-
-	app := NewApp()
-	app.dataDir = dataDir
-	app.database = database
-	if err := app.reloadServices(); err != nil {
-		t.Fatalf("reloadServices: %v", err)
-	}
-	configureTestIdentity(t, app)
-	app.setupRoutes()
-
-	source, err := os.ReadFile(repoFixturePath(t, "tests", "testdata", "findagrave-source.html"))
-	if err != nil {
-		t.Fatalf("ReadFile source: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/soldiers/scrape-findagrave", strings.NewReader(url.Values{
-		"findagrave_source": {string(source)},
-	}.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-
-	app.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	body := rec.Body.String()
-	if !strings.Contains(body, `name="first_name" value="Elbert"`) || !strings.Contains(body, `name="middle_name" value="Dixon"`) {
-		t.Fatalf("scrape response missing populated name fields: %q", body)
-	}
-	if !strings.Contains(body, `name="buried_in" value="Antioch Cemetery, Woodruff, Spartanburg County, South Carolina, USA"`) {
-		t.Fatalf("scrape response missing burial field: %q", body)
-	}
-	if !strings.Contains(body, "Review scraped data carefully before saving.") || !strings.Contains(body, "Harriet Clement Anderson") {
-		t.Fatalf("scrape response missing warnings/spouse preview: %q", body)
-	}
-}
-
 func TestHandleScratchpadOpenLaunchesNativeScratchpad(t *testing.T) {
 	app := NewApp()
 	stub := &scratchpadStub{}

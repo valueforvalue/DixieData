@@ -35,7 +35,6 @@ import (
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
-	"github.com/valueforvalue/DixieData/internal/findagrave"
 	"github.com/valueforvalue/DixieData/internal/integrations"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -1281,10 +1280,6 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 
 	needsReview := r.FormValue("existing_needs_review") == "1"
 	reviewReason := r.FormValue("existing_review_reason")
-	if findAGraveNeedsReview(r) {
-		needsReview = true
-		reviewReason = findAGraveReviewReason(r)
-	}
 
 	return models.Soldier{
 		ID:                    id,
@@ -1319,19 +1314,6 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		ReviewReason:          reviewReason,
 		Records:               parseRecordInputs(r),
 	}, nil
-}
-
-func findAGraveNeedsReview(r *http.Request) bool {
-	score, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("scrape_confidence_score")))
-	return strings.TrimSpace(r.FormValue("scrape_source_label")) != "" && score > 0 && score < 70
-}
-
-func findAGraveReviewReason(r *http.Request) string {
-	if !findAGraveNeedsReview(r) {
-		return ""
-	}
-	score, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("scrape_confidence_score")))
-	return fmt.Sprintf("Low-confidence Find a Grave scrape (%d/100). Verify memorial details before clearing review.", score)
 }
 
 func (a *App) newSoldierDefaults() (models.Soldier, error) {
@@ -1503,10 +1485,6 @@ func parseOptionalBoundedInt(value, field string, min, max int) (int, error) {
 }
 
 func (a *App) renderEntryForm(w http.ResponseWriter, r *http.Request, soldier models.Soldier, isEdit bool, errorMessage string, statusCode int) {
-	a.renderEntryFormWithScrapeState(w, r, soldier, isEdit, errorMessage, models.FindAGraveScrapeState{}, statusCode, false)
-}
-
-func (a *App) renderEntryFormWithScrapeState(w http.ResponseWriter, r *http.Request, soldier models.Soldier, isEdit bool, errorMessage string, scrape models.FindAGraveScrapeState, statusCode int, fragmentOnly bool) {
 	candidates, err := a.soldiers.MarriageCandidates()
 	if err != nil {
 		respondInternal(w, r, "Could not load marriage candidates for the entry form.", err)
@@ -1518,37 +1496,11 @@ func (a *App) renderEntryFormWithScrapeState(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.WriteHeader(statusCode)
-	if fragmentOnly {
-		presentation.EntryFormFragment(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
-		return
-	}
 	if errorMessage != "" {
-		presentation.EntryFormWithError(soldier, candidates, suggestions, scrape, isEdit, errorMessage).Render(r.Context(), w)
+		presentation.EntryFormWithError(soldier, candidates, suggestions, isEdit, errorMessage).Render(r.Context(), w)
 		return
 	}
-	presentation.EntryForm(soldier, candidates, suggestions, scrape, isEdit).Render(r.Context(), w)
-}
-
-func applyFindAGraveAutofill(base models.Soldier, result findagrave.Result) models.Soldier {
-	base.FirstName = result.FirstName
-	base.MiddleName = result.MiddleName
-	base.LastName = result.LastName
-	base.BirthDate = result.BirthDate
-	base.BirthInfo = result.BirthInfo
-	base.DeathDate = result.DeathDate
-	base.BuriedIn = result.BuriedIn
-	if strings.TrimSpace(result.MemorialID) != "" || strings.TrimSpace(result.MemorialURL) != "" {
-		details := strings.TrimSpace(result.MemorialURL)
-		if details == "" {
-			details = "Find a Grave memorial"
-		}
-		base.Records = []models.Record{{
-			RecordType: "Find a Grave",
-			AppID:      strings.TrimSpace(result.MemorialID),
-			Details:    details,
-		}}
-	}
-	return base
+	presentation.EntryForm(soldier, candidates, suggestions, isEdit).Render(r.Context(), w)
 }
 
 func parseOptionalCanonicalDate(value, field string) (string, error) {

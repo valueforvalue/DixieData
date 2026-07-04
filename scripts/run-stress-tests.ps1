@@ -121,11 +121,6 @@ Invoke-GoTestCompile -Title "Generate garbage DB and corrupt import coverage" `
     -Package ".\tests\stress" `
     -GoTestArgs @("-count=1")
 
-Invoke-FuzzStep -Title "Run Find a Grave fuzz target" `
-    -Package ".\tests\stress" `
-    -FuzzTarget "FuzzFindAGraveParseHTMLDoesNotPanic" `
-    -FuzzTime "5s"
-
 Invoke-GoTestCompile -Title "Hammer bridge with race detector" `
     -Package ".\tests\stress" `
     -GoTestArgs @(

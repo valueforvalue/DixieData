@@ -12,92 +12,21 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ EntryForm(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool) {
+templ EntryForm(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, isEdit bool) {
 	@Layout(formTitle(s, isEdit)) {
-		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, "")
+		@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, "")
 	}
 }
 
-templ EntryFormWithError(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+templ EntryFormWithError(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, isEdit bool, errorMessage string) {
 	@Layout(formTitle(s, isEdit)) {
-		@EntryFormFragment(s, spouseCandidates, suggestions, scrape, isEdit, errorMessage)
+		@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, errorMessage)
 	}
 }
 
-templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, scrape viewmodel.FindAGraveScrapeState, isEdit bool, errorMessage string) {
+templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, isEdit bool, errorMessage string) {
 	<div id="entry-form-shell" data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } class="relative mx-auto max-w-4xl">
 		<h2 class="text-2xl gold font-bold mb-6">{ formTitle(s, isEdit) }</h2>
-		if !isEdit {
-			<details class="card mb-5 rounded-3xl p-4">
-				<summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3">
-					<div>
-						<h3 class="text-base font-semibold text-slate-800">Scrape Find a Grave</h3>
-						<p class="mt-1 text-xs text-slate-600">Paste raw memorial HTML to autofill this form.</p>
-					</div>
-					<div class="flex flex-wrap items-center gap-2 text-xs">
-						if scrape.SourceLabel != "" {
-							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ scrape.SourceLabel }</span>
-						}
-						if len(scrape.WarningLines) > 0 {
-							<span class="rounded-full border border-amber-700/30 bg-amber-50 px-3 py-1 text-amber-900">{ fmt.Sprintf("%d warning(s)", len(scrape.WarningLines)) }</span>
-						}
-						if scrape.ConfidenceScore > 0 {
-							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("Confidence %d/100", scrape.ConfidenceScore) }</span>
-						}
-						if len(scrape.Spouses) > 0 {
-							<span class="rounded-full border border-slate-300 bg-white/70 px-3 py-1 text-slate-600">{ fmt.Sprintf("%d spouse record memorial(s)", len(scrape.Spouses)) }</span>
-						}
-						if scrape.ErrorMessage != "" {
-							<span class="rounded-full border border-[#6f2c26]/30 bg-review-red/[0.08] px-3 py-1 text-[#6f2c26]">Needs attention</span>
-						}
-					</div>
-				</summary>
-				<div class="mt-4 space-y-3">
-					<p class="text-sm text-slate-600">Paste Find a Grave memorial HTML to prefill this form, then verify every field manually before saving.</p>
-					<form action={ templ.SafeURL(routebuilder.SoldierScrapeFindAGrave()) } data-dixie-submit="true" class="space-y-3">
-						<label class="block text-sm text-slate-500" for="ef-findagrave_source">Find a Grave HTML Source</label>
-						<textarea name="findagrave_source" rows="4" class="field-input min-h-24" placeholder="Paste Find a Grave memorial HTML here" id="ef-findagrave_source">{ scrape.Input }</textarea>
-						<div class="flex flex-wrap items-center gap-3">
-							@components.Button("Fetch Data", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
-						</div>
-					</form>
-					if scrape.ErrorMessage != "" {
-						<div class="rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
-							<strong class="font-semibold">Scrape failed.</strong>
-							<span class="ml-1">{ scrape.ErrorMessage }</span>
-						</div>
-					}
-					if len(scrape.WarningLines) > 0 {
-						<div class="rounded-2xl border border-amber-700/40 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-							<p class="font-semibold">Review scraped data carefully before saving.</p>
-							<ul class="mt-2 list-disc space-y-1 pl-5">
-								for _, warning := range scrape.WarningLines {
-									<li>{ warning }</li>
-								}
-							</ul>
-						</div>
-					}
-					if len(scrape.Spouses) > 0 {
-						<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700">
-							<p class="font-semibold text-slate-800">Spouse record memorials found</p>
-							<ul class="mt-2 space-y-1">
-								for _, spouse := range scrape.Spouses {
-									<li>
-										<span class="font-medium">{ spouse.Name }</span>
-										if spouse.MemorialID != "" {
-											<span class="text-slate-500"> · Memorial ID { spouse.MemorialID }</span>
-										}
-										if spouse.URL != "" {
-											<a href={ spouse.URL } class="ml-2 add-link" target="_blank" rel="noreferrer">Open</a>
-										}
-									</li>
-								}
-							</ul>
-						</div>
-					}
-				</div>
-			</details>
-		}
 		if errorMessage != "" {
 			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
 				<strong class="font-semibold">Save failed.</strong>
@@ -123,10 +52,6 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 		>
 			<input type="hidden" name="existing_needs_review" value={ boolFlag(s.NeedsReview) }/>
 			<input type="hidden" name="existing_review_reason" value={ s.ReviewReason }/>
-			if scrape.SourceLabel != "" {
-				<input type="hidden" name="scrape_source_label" value={ scrape.SourceLabel }/>
-				<input type="hidden" name="scrape_confidence_score" value={ fmt.Sprintf("%d", scrape.ConfidenceScore) }/>
-			}
 			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>

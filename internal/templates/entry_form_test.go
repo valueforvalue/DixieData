@@ -11,7 +11,7 @@ import (
 
 func TestEntryFormOmitsInlineScratchPadLauncher(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestEntryFormOmitsInlineScratchPadLauncher(t *testing.T) {
 
 func TestEntryFormKeepsDisplayIDReadonlyOnEdit(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, true).Render(context.Background(), &buf)
+	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, true).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestEntryFormEditIncludesDraftVersionAndStaleDraftControls(t *testing.T) {
 		ID:        42,
 		DisplayID: "DXD-00042",
 		UpdatedAt: "2026-06-07T18:00:00Z",
-	}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, true).Render(context.Background(), &buf)
+	}, nil, viewmodel.SoldierFormSuggestions{}, true).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestEntryFormIncludesSpouseFields(t *testing.T) {
 	var buf bytes.Buffer
 	err := EntryForm(viewmodel.Soldier{EntryType: "wife", LinkedSoldierID: 7}, []viewmodel.Soldier{
 		{ID: 7, DisplayID: "TDM65-DXD-00007", FirstName: "John", LastName: "Smith"},
-	}, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	}, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestEntryFormShowsPrefixVisibilityToggle(t *testing.T) {
 	err := EntryForm(viewmodel.Soldier{
 		Prefix:               "Capt.",
 		ShowPrefixBeforeName: true,
-	}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	}, nil, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestEntryFormShowsPrefixVisibilityToggle(t *testing.T) {
 
 func TestEntryFormSeparatesBiographyAndInternalNotes(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestEntryFormSeparatesBiographyAndInternalNotes(t *testing.T) {
 
 func TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts(t *testing.T) {
 	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{ID: 42, DisplayID: "DXD-00042"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{}, true).Render(context.Background(), &buf)
+	err := EntryForm(viewmodel.Soldier{ID: 42, DisplayID: "DXD-00042"}, nil, viewmodel.SoldierFormSuggestions{}, true).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -578,7 +578,7 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 		BuriedIn:         []string{"Oakwood Cemetery"},
 		ConfederateHome:  []string{},
 		SourceRecordType: []string{"Pension"},
-	}, viewmodel.FindAGraveScrapeState{}, false).Render(context.Background(), &buf)
+	}, false).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -586,9 +586,6 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	content := buf.String()
 	if !strings.Contains(content, "Local draft only.") || !strings.Contains(content, `data-draft-key="new-soldier"`) {
 		t.Fatalf("new entry form missing local draft status indicator")
-	}
-	if !strings.Contains(content, `<details class="card mb-5 rounded-3xl p-4">`) {
-		t.Fatalf("new entry form should collapse the scrape panel by default")
 	}
 	if !strings.Contains(content, `name="confederate_home_status"`) || !strings.Contains(content, `name="confederate_home_name"`) {
 		t.Fatalf("new entry form missing confederate home fields")
@@ -616,37 +613,6 @@ func TestNewEntryFormIncludesLocalDraftIndicator(t *testing.T) {
 	}
 	if !strings.Contains(content, `value="Co. A, 1st Texas Infantry"`) || !strings.Contains(content, `value="Oakwood Cemetery"`) {
 		t.Fatalf("new entry form missing suggestion values")
-	}
-}
-
-func TestNewEntryFormIncludesFindAGraveScrapeWarning(t *testing.T) {
-	var buf bytes.Buffer
-	err := EntryForm(viewmodel.Soldier{DisplayID: "STC38-00001"}, nil, viewmodel.SoldierFormSuggestions{}, viewmodel.FindAGraveScrapeState{
-		Input:        "https://www.findagrave.com/memorial/11523031/elbert_dixon-anderson",
-		SourceLabel:  "Parsed from pasted HTML",
-		WarningLines: []string{"Verify all scraped data manually before saving."},
-		Spouses: []viewmodel.ScrapedRelative{{
-			Name:       "Harriet Clement Anderson",
-			MemorialID: "11523035",
-			URL:        "https://www.findagrave.com/memorial/11523035/harriet-anderson",
-		}},
-	}, false).Render(context.Background(), &buf)
-	if err != nil {
-		t.Fatalf("Render: %v", err)
-	}
-
-	content := buf.String()
-	if !strings.Contains(content, "Scrape Find a Grave") || !strings.Contains(content, `name="findagrave_source"`) {
-		t.Fatalf("entry form missing Find a Grave scrape UI")
-	}
-	if !strings.Contains(content, "Parsed from pasted HTML") || !strings.Contains(content, "1 warning(s)") || !strings.Contains(content, "1 spouse record memorial(s)") {
-		t.Fatalf("entry form missing compact scrape summary badges")
-	}
-	if !strings.Contains(content, "Review scraped data carefully before saving.") {
-		t.Fatalf("entry form missing scrape review warning")
-	}
-	if !strings.Contains(content, "Harriet Clement Anderson") || !strings.Contains(content, "Memorial ID 11523035") {
-		t.Fatalf("entry form missing scraped spouse preview")
 	}
 }
 
