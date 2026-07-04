@@ -27,6 +27,11 @@ Tick these before any recon. Five skills, ~30 seconds:
 - [ ] **Index** — read [`docs/agents/INDEX.md`](INDEX.md) to know
        which tier-1/2 docs (CLI plan, Typst tips, UI map wireframes)
        to load for this task.
+- [ ] **TDD anchor** — read [`docs/agents/tdd.md`](tdd.md). Every
+       slice pins its user-facing acceptance criterion with a
+       failing test BEFORE the slice lands. The TDD protocol sits
+       inside the vertical-slice discipline above; it does not
+       replace it.
 
 Add to the checklist when the feature touches:
 

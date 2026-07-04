@@ -11,6 +11,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- **TDD protocol** (`docs/agents/tdd.md`). New agent-facing
+  doc that anchors every slice to a failing acceptance test
+  written BEFORE the slice code lands. Targets three failure
+  modes that shipped in 2026-07 fixes: modal invoker wiring
+  that silently early-returns (`d5541a7`), adjacent-state
+  races the slice's own smoke probe misses (`d8f73b7`), and
+  orphan-handler / fragment-as-redirect drift caught only by
+  post-merge audit probes (`d3e0a02`). The protocol sits
+  inside the vertical-slice discipline from
+  `feature-protocol.md`; it does not replace it. Wiring: a
+  6th pre-flight checklist item in `feature-protocol.md`,
+  a new step 1.5 (RED test before GREEN change) in
+  `rpci.md` §I, and Tier-0 status in `INDEX.md`. No new
+  test harness — uses the repo's existing testify handler
+  tests, `bytes.Buffer`+`Render` templ tests, and
+  `audit/smoke_*.mjs` Playwright probes.
+
 ### Added
 
 - **Per-Event PDF export** (issue #320, slice #322). New `GET
