@@ -175,8 +175,19 @@ six slices back-to-back is the AI-slop failure mode the
 **Activities per slice:**
 1. Read the files you'll touch (recon is cheap, do it again
    even after the plan is written — things move).
-2. Make the change. Smallest diff that satisfies the success
-   criterion. No drive-by refactors.
+1.5. **RED: write the failing acceptance test first.** Per
+   [`tdd.md`](tdd.md), the test pins the slice's user-facing
+   acceptance criterion. For Go backend: a handler/service test
+   in `internal/<layer>/<file>_test.go`. For UI: a smoke probe
+   in `audit/smoke_<feature>.mjs` that asserts response shape
+   AND `page.url()` AND the relevant DOM state. Run it; confirm
+   it fails for the right reason. No slice code yet.
+2. **GREEN: make the change.** Smallest diff that satisfies
+   the failing test. No drive-by refactors. Run the RED test
+   green. Then run the adjacent-behavior sweep (per `tdd.md`
+   §Step 3) — every smoke probe and handler test that touches
+   the screen family or shares the JS dispatcher. Fix or
+   escalate any red; never silence.
 3. Add the regression net. For Go: a test in
    `internal/<layer>/<file>_test.go`. For UI: an
    `audit/smoke_<feature>.mjs` probe (live binary + headless
