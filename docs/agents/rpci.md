@@ -100,17 +100,32 @@ slices that map to commits.
 - Q1: ...
 - Q2: ...
 
-## Slices
-### Slice 1: <name>
+## Slice 1 (tracer bullet — fully detailed)
 - Files: <paths>
 - Success criteria: <observable>
 - Regression net: <test/probe>
-### Slice 2: ...
+
+## Subsequent slices (stub only — fill in only when their turn arrives)
+- Slice 2: <one-line shape — what end-to-end capability it adds>
+- Slice 3: <one-line shape>
+- ...
 ```
 
-**Stop when:** Each slice can be implemented by a focused
-agent in one sitting, the success criteria are testable, and
-the decisions are surfaced.
+**Stub-vs-detailed rule:** Slice 1 is the only slice that ships
+in this session. Slice 2+ get one-line stubs because the
+agent cannot predict their shape before Slice 1 ships — the
+article's "outrunning your headlights" failure mode is the
+agent writing detailed Slice 2-6 plans from the same
+prediction that just produced Slice 1's plan. The right
+moment to detail Slice 2 is at the *start* of Slice 2's
+session, after Slice 1's commit is green and the user has
+seen the working surface. \`docs/agents/feature-protocol.md\`
+§\"Feature issue template\" mirrors this rule for the issue
+body.
+
+**Stop when:** Slice 1 is fully detailed (Files, Success
+criteria, Regression net), the decisions are surfaced, and
+each subsequent slice has a one-line shape.
 
 ### C — Critique
 
@@ -260,7 +275,10 @@ which decisions the user is approving.
   atomic units, decompose into a design artifact first
   (`.rpiv/artifacts/designs/`) and reference it from the
   plan. The plan's job is to sequence, not to enumerate
-  every micro-step.
+  every micro-step. The stub-vs-detailed rule above
+  amplifies this: a 10-slice plan with 10 detailed
+  sections is the AI-slop trap in the article's example
+  (build everything in one leap, only then validate).
 - **Implementing during Plan.** Recon, asking questions, and
   writing a plan are all fine. Running `make` targets that
   mutate state, writing files, or scaffolding handlers is

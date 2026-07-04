@@ -202,6 +202,41 @@ func (s *Soldiers) Get(id int64) SoldierDTO { ... }
 The mapper is private. The DTO is the contract. Persistence
 structs can grow columns without breaking UI.
 
+## Prefactor before slicing
+
+The `/to-issues` skill mandates: "Look for opportunities to
+prefactor the code to make the implementation easier.
+'Make the change easy, then make the easy change.'" The
+DixieData process docs previously didn't surface this — the
+3-tier commit rule defines what commits look like but never
+asks "is the existing shape compatible with what we want
+to build?"
+
+Run the `/improve-codebase-architecture` skill in **lite
+mode** before writing the slice plan:
+
+- Explore only — no HTML report, no user-facing deliverable
+- Look for module shapes that will force the slices to take
+  workarounds
+- Look for facades / dispatchers / type unions that the new
+  feature will leak across
+- Look for existing tests that the new feature will silently
+  break
+
+If a prefactor is identified (typically 1-3 file touches, no
+new user-visible capability), it ships as a separate slice
+*BEFORE* the feature slices. The prefactor is not Tier 1
+(no user-visible outcome) — it lands in `### Maintenance`
+CHANGELOG and gets its own atomic commit.
+
+**Worked example:** issue #340 (v60 slot #329 reused the
+`records` table for Event sources because no prefactor pass
+caught the table-shape conflict). The workaround caused a
+silent data-loss bug on every Event Update four months
+later. The v61 fix (`docs/agents/notes/v61-event-sources-decomposition.md`)
+is the kind of refactor a prefactor pass would have
+surfaced at planning time.
+
 ## Pipeline phasing
 
 Features scale the artifact weight with complexity:
@@ -224,8 +259,17 @@ phase transitions.
 ## Feature issue template
 
 Use this when filing an enhancement. Mirrors the bug template in
-[`docs/agents/issue-tracker.md`](issue-tracker.md) — every section
-is required unless marked optional.
+[`docs/agents/issue-tracker.md`](issue-tracker.md).
+
+**AI-agent note:** the template's `## Slice plan` section is
+filled in **one slice at a time, in the session that ships the
+slice**. Don't pre-write Slice 2 in the original issue body —
+Slice 1's feedback may invalidate the Slice 2 stub. Each slice
+gets its own RED test + GREEN implementation + commit +
+close-session rhythm (per `docs/agents/rpci.md` Implement phase
+and the article's "fresh context per slice" rule). The
+stub-vs-detailed pattern mirrors the
+[`rpci.md`](rpci.md) Plan output template.
 
 ```markdown
 ## Summary
@@ -234,17 +278,11 @@ is required unless marked optional.
 ## User story
 <As a <role>, I want <capability>, so that <outcome>.>
 
-## Locked decisions
-<Numbered list of decisions already settled during recon /
-interview. Each one cites the source: "Decided in <PR/issue/chat
-on YYYY-MM-DD>". Locked decisions are NOT re-opened during the
-Critique phase unless the user explicitly says so.>
-
-## Proposed UX
-<Per apply-site, what the user sees. References the screen by name
-("the /soldiers/{id} detail page") and the surface by ID
-(`page.detail`, `panel.summary`). For CLI work, write the command
-surface: `dixiedata <cmd> --flag`.>
+## Acceptance criteria
+- [ ] <Observable in 5 minutes: "User can apply N tags to a
+      Person Record via the detail page; chips render with
+      monogram + name + × remove.">
+- [ ] <Observable in 5 minutes>
 
 ## Apply sites (v1 checklist)
 - [ ] <Surface 1 — e.g. "Person Record detail page tag editor">
@@ -256,45 +294,17 @@ The feature is not "shipped" until every box is checked. Backend-only
 landings require a tracked follow-up issue for each missing UI
 surface; see Backend-First Law in `CONTEXT.md`.
 
-## Glossary changes (if any)
-<Quote the new entry exactly as it should appear in `CONTEXT.md`
-under "## Language" and "## Relationships". If the feature uses
-existing terms only, write "None." — don't propose a glossary
-change just because the feature exists.>
-
-## Schema sketch (if any)
-<For features that add tables/columns, paste the migration SQL
-with the version bump + the seed data. Reference the most recent
-migration file in `docs/migrations/` for shape.>
-
-## Acceptance criteria
-- [ ] <Observable: "User can apply N tags to a Person Record via
-      the detail page; chips render with monogram + name + × remove.">
-- [ ] <Observable: "...">
-
 ## Slice plan
-### Slice 1: <name>
+
+### Slice 1 (tracer bullet — fully detailed)
 - Files: <paths>
 - Success criteria: <observable, testable in 5 min>
 - Regression net: <unit test, smoke probe, or manual step>
 
-### Slice 2: <name>
+### Subsequent slices (stub only — fill in when their turn arrives)
+- Slice 2: <one-line shape — what end-to-end capability it adds>
+- Slice 3: <one-line shape>
 - ...
-
-## Test plan
-- **Unit** — <file: TestXxx> (~N cases)
-- **Handler** — <file: TestXxx> (~N cases)
-- **Migration** — <file: TestXxx> (if schema changed)
-- **Smoke probe** — `audit/smoke_<feature>.mjs` (per UI apply-site)
-
-## Files
-- <bulleted list of every file that will be touched>
-
-## Regression net
-- <unit test names + audit/smoke probe filenames>
-
-## Related
-- <issue numbers, ADR numbers, `docs/COMMON_BUGS.md` section refs>
 ```
 
 ### What goes in each section
@@ -303,11 +313,6 @@ migration file in `docs/migrations/` for shape.>
 it from the researcher's perspective, not the engineer's. "I want
 to organise Person Records by ad-hoc categories" — not "add a tag
 table with a many-to-many join."
-
-**Locked decisions** is the durable record of what was settled
-before implementation. Re-opening a locked decision during Plan or
-Critique is a scope-creep red flag; capture the decision in a
-comment on the issue, don't silently re-decide.
 
 **Apply sites** is a checklist, not prose. Prose hides gaps;
 checkboxes make them visible. Issue body must list every v1 surface
@@ -330,6 +335,47 @@ Each slice names its tier in the subject (`Slice C: row chips`)
 and ships the whole tier in one commit. Backend-only slices MUST
 list their matching UI apply-site in the acceptance criteria of
 the same PR (or a linked follow-up issue with its own checklist).
+
+### Detailed design (follow-up section — 6+ file cross-layer features only)
+
+For features that match the **full protocol** tier (6+ files
+across layers), the issue body above is the entry point but
+the detailed design lives in a separate artifact. The 13-section
+template that used to live here was over-prescribed for AI
+agents: filling in 13 sections produces horizontal-slice prose
+(all sections written from the agent's prediction before any
+slice ships). The article at https://www.aihero.dev/tracer-bullets
+calls this "outrunning your headlights." The collapsed 5-section
+template above is the new default; this follow-up section is
+the escape hatch for features that genuinely need the heavy
+artifacts.
+
+Add these to `docs/RESEARCH.md` / `docs/PRD.md` / `docs/TASKS.csv`
+per the Pipeline phasing table, and reference them from the
+issue body:
+
+- **Locked decisions** — numbered list with the source of each
+  decision ("Decided in <PR/issue/chat on YYYY-MM-DD>"). Re-opening
+  a locked decision during Plan or Critique is a scope-creep red
+  flag.
+- **Proposed UX** — per apply-site, what the user sees. References
+  the screen by name and the surface by ID. For CLI work, the
+  command surface (`dixiedata <cmd> --flag`).
+- **Glossary changes** — quote the new entry exactly as it should
+  appear in `CONTEXT.md`. The glossary is the contract; UI copy,
+  ADRs, and future features depend on it. Don't ship the feature
+  without the glossary update in the same PR.
+- **Schema sketch** — for features that add tables/columns, the
+  migration SQL with the version bump + the seed data. Reference
+  the most recent migration file in `docs/migrations/` for shape.
+- **Test plan** — unit / handler / migration / smoke probe coverage.
+- **Files** — bulleted list of every file that will be touched.
+- **Regression net** — unit test names + audit/smoke probe filenames.
+- **Related** — issue numbers, ADR numbers, `docs/COMMON_BUGS.md`
+  section refs.
+
+These sections live in the artifact file (not the issue body) so
+the issue stays scannable for triage.
 
 ## CHANGELOG law
 
