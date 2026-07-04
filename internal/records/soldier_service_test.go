@@ -1277,6 +1277,57 @@ func TestSoldierService_ServiceTimeline(t *testing.T) {
 	}
 }
 
+// TestSoldierService_ServiceTimelineIncludesLinkedEvents covers issue
+// #320 slice #337: Timeline Markers derived from Event Records linked
+// to a Soldier via event_person_links. Creates a soldier + an event +
+// the link, then asserts the timeline includes the event as a
+// "Linked Event: <kind>" marker with the begin_date.
+func TestSoldierService_ServiceTimelineIncludesLinkedEvents(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+	events := NewEventService(svc)
+
+	soldier, err := svc.Create(models.Soldier{
+		DisplayID: "TLM-0002",
+		FirstName: "William",
+		LastName:  "Walker",
+		Unit:      "5th Alabama",
+		BirthDate: "07/04/1840",
+	})
+	if err != nil {
+		t.Fatalf("Create soldier: %v", err)
+	}
+	event, err := events.CreateEvent(models.Soldier{
+		Kind:        "Battle of Antietam",
+		BeginDate:   "09/17/1862",
+		EndDate:     "09/17/1862",
+		Description: "Single-day engagement.",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if _, err := events.AttachEventToPerson(event.ID, soldier.ID); err != nil {
+		t.Fatalf("AttachEventToPerson: %v", err)
+	}
+
+	timeline, err := svc.ServiceTimeline(soldier.ID)
+	if err != nil {
+		t.Fatalf("ServiceTimeline: %v", err)
+	}
+	var found bool
+	for _, ev := range timeline.Events {
+		if ev.Title == "Linked Event: Battle of Antietam" {
+			found = true
+			if ev.SourceLabel == "" {
+				t.Errorf("event source label empty")
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("timeline missing linked-event marker; events=%#v", timeline.Events)
+	}
+}
+
 func TestSoldierService_ResearchLogLifecycle(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
