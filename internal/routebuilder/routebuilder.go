@@ -128,12 +128,6 @@ func SoldierSearchAdvanced() string {
 	return "/soldiers/search/advanced"
 }
 
-// SoldierScrapeFindAGrave returns the URL for the Find a Grave scraper
-// form. Registered as POST /soldiers/scrape-findagrave in routes.go.
-func SoldierScrapeFindAGrave() string {
-	return "/soldiers/scrape-findagrave"
-}
-
 // SoldierCreate returns the URL for the new-soldier POST endpoint.
 // Registered as POST /soldiers in routes.go.
 func SoldierCreate() string {

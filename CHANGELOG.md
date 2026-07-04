@@ -568,6 +568,25 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **Remove the deprecated Find a Grave paste-HTML scrape form**
+  from `/soldiers/new` (issue #319). The canonical replacement is
+  the `/share/imports` memorial-json import via Tampermonkey.
+  Surface removed: the `<details>Scrape Find a Grave</details>`
+  block, the `POST /soldiers/scrape-findagrave` route and handler,
+  the `internal/findagrave/` parser package, the dedicated fuzz
+  test + 3919-line fixture, the findagrave-stress step in
+  `scripts/run-stress-tests.ps1`, the `FindAGraveScrapeState` +
+  `ScrapedRelative` types in `models` and `viewmodel`, the
+  `SoldierScrapeFindAGrave()` route helper, and the matching
+  `applyFindAGraveAutofill` / `renderEntryFormWithScrapeState` /
+  `findAGraveNeedsReview` / `findAGraveReviewReason` helpers.
+  Docs updated: `docs/SERVICES.md`, `docs/RESEARCH.md`,
+  `docs/user-manual.md`, `docs/ui-map/routes.md`,
+  `docs/ui-map/wireframes/03-soldiers-list.md`,
+  `docs/ui-map/wireframes/06-soldier-new.md`. Find a Grave
+  evidence-source + CSV-import + calendar-link-helper surfaces
+  stay (different feature). 2 commits; net -5457 lines.
+
 - **`docs/agents/cli-plan.md` pins the export leaf-verb
   aliases** to clear a pre-existing cli-coverage drift.
   The detector scans `dixiedata <verb>` lines and only saw

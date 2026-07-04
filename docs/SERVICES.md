@@ -172,7 +172,7 @@ Cross-cutting (any screen):
 | **Trigger / Outcome** | User types in search → HTMX debounced request fires → results render in `#soldier-list` without full page reload. |
 | **Inputs / Outputs** | In: `q` (basic), or filter set (advanced: scope, sort, entry_type, pension_state, unit, etc.). Out: matching rows + link to detail. |
 | **Happy path** | (1) User lands on `/soldiers` with empty query → recent records hydrate. (2) User types in basic search → 200ms-debounced HTMX GET `/soldiers/search`. (3) User switches to Advanced tab → `/soldiers/search/advanced` swap. (4) User clicks a row → `/soldiers/{id}`. |
-| **Failure modes** | (a) Empty query → recent results. (b) No matches → `EmptyStateCard`. (c) Audit walker found a false-positive match (scrapes FindAGrave form first) — documented. |
+| **Failure modes** | (a) Empty query → recent results. (b) No matches → `EmptyStateCard`. |
 | **DOM roots** | `panel.soldiers.search.basic`, `panel.soldiers.search.advanced`, `panel.soldiers.results`, `tab.soldiers.search.{basic,advanced}`, `#soldier-list`. |
 | **Backend it calls** | `app.handleSoldiersList`, `app.handleSoldierSearch` (basic + advanced). |
 | **Cross-refs** | [wireframe](ui-map/wireframes/03-soldiers-list.md), [routes](ui-map/routes.md#soldiers--search--browse). |
@@ -261,13 +261,13 @@ Cross-cutting (any screen):
 
 | Field | Value |
 |---|---|
-| **Purpose** | Create a new Person Record with optional FindAGrave prefill. |
-| **Trigger / Outcome** | User clicks "+ Add Person Record" CTA → form renders; on submit → POST `/soldiers` → redirect to `/soldiers/{id}`. |
-| **Inputs / Outputs** | In: form fields (name, type, dates, units, pensions, etc.) + optional FindAGrave scrape. Out: new Person Record + Display ID. |
-| **Happy path** | (1) User opens `<details>Scrape Find a Grave</details>` (collapsed). (2) Pastes memorial URL + clicks Fetch Data. (3) Form pre-fills, warnings render. (4) User picks Entry Type (Soldier/Spouse/Person). (5) Submits → toast + redirect to detail. |
-| **Failure modes** | (a) Missing first/last name → 422 with field error (fixed `b7e659d`). (b) Scrape fails → inline error callout, user can still submit manually. (c) Duplicate detected → review queue redirect. |
+| **Purpose** | Create a new Person Record. |
+| **Trigger / Outcome** | User clicks "+Add Person Record" CTA → form renders; on submit → POST `/soldiers` → redirect to `/soldiers/{id}`. |
+| **Inputs / Outputs** | In: form fields (name, type, dates, units, pensions, etc.). Out: new Person Record + Display ID. |
+| **Happy path** | (1) User opens `/soldiers/new`. (2) User picks Entry Type (Soldier/Spouse/Person). (3) Fills fields. (4) Submits → toast + redirect to detail. |
+| **Failure modes** | (a) Missing first/last name → 422 with field error (fixed `b7e659d`). (b) Duplicate detected → review queue redirect. |
 | **DOM roots** | `panel.soldier.form.scratchpad`, `panel.soldier.form.records`, `panel.soldier.form.images`. |
-| **Backend it calls** | `app.handleSoldierNew`, `app.handleSoldierCreate`, `app.handleScrapeFindAGrave`. |
+| **Backend it calls** | `app.handleSoldierNew`, `app.handleSoldierCreate`. |
 | **Cross-refs** | [wireframe](ui-map/wireframes/06-soldier-new.md), [routes](ui-map/routes.md#soldiers--search--browse). |
 
 ### Bugs
@@ -292,7 +292,7 @@ Cross-cutting (any screen):
 |---|---|
 | **Purpose** | Edit an existing Person Record; add Source Records + images; toggle Review Queue. |
 | **Trigger / Outcome** | User clicks Edit pill on detail → form pre-populates; on submit → PUT `/soldiers/{id}` → toast + redirect. |
-| **Inputs / Outputs** | Same as New, minus FindAGrave scrape (hidden on edit). |
+| **Inputs / Outputs** | Same as New. |
 | **Happy path** | (1) User opens Edit. (2) Edits field. (3) Adds Source Record row. (4) Imports images. (5) Submits → toast + redirect to detail. |
 | **Failure modes** | (a) Optimistic concurrency conflict → toast + revert. (b) Image import fails → inline error. |
 | **DOM roots** | Same as Soldier New. |

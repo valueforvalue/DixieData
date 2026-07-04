@@ -410,27 +410,6 @@ func InitialSetupFormFromModel(input models.InitialSetupForm) InitialSetupForm {
 	return InitialSetupForm(input)
 }
 
-// ScrapedRelativeFromModel converts a domain-type value into its viewmodel projection.
-func ScrapedRelativeFromModel(input models.ScrapedRelative) ScrapedRelative {
-	return ScrapedRelative(input)
-}
-
-// FindAGraveScrapeStateFromModel converts a domain-type value into its viewmodel projection.
-func FindAGraveScrapeStateFromModel(input models.FindAGraveScrapeState) FindAGraveScrapeState {
-	spouses := make([]ScrapedRelative, 0, len(input.Spouses))
-	for _, spouse := range input.Spouses {
-		spouses = append(spouses, ScrapedRelativeFromModel(spouse))
-	}
-	return FindAGraveScrapeState{
-		Input:           input.Input,
-		SourceLabel:     input.SourceLabel,
-		ErrorMessage:    input.ErrorMessage,
-		WarningLines:    append([]string(nil), input.WarningLines...),
-		Spouses:         spouses,
-		ConfidenceScore: input.ConfidenceScore,
-	}
-}
-
 // GoogleSettingsFromModel converts a domain-type value into its viewmodel projection.
 func GoogleSettingsFromModel(input models.GoogleSettings) GoogleSettings {
 	return GoogleSettings{
