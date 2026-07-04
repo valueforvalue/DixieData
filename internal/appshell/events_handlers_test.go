@@ -815,4 +815,79 @@ func TestHandleEventResearchLog(t *testing.T) {
 		}
 	}
 }
+// TestHandleEventSourcesAndScratchpad covers issue #320 slots
+// #329 + #330: the per-Event Sources panel + Open Scratch Pad
+// button. Seeds an Event, GETs /sources (panel renders "No
+// Source Records"), POSTs an attach (event persists the
+// record), detaches it via the /detach endpoint, and asserts
+// the scratchpad form on event detail posts to /scratchpad/
+// open with the Event's display_id.
+func TestHandleEventSourcesAndScratchpad(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Battle of Gettysburg", "07/01/1863", "07/03/1863", "Pivotal engagement")
+
+	getResp, err := http.Get(server.URL + "/events/" + intStr(event.ID) + "/sources")
+	if err != nil {
+		t.Fatalf("GET sources: %v", err)
+	}
+	body := readAll(t, getResp)
+	getResp.Body.Close()
+	if getResp.StatusCode != http.StatusOK {
+		t.Errorf("GET /sources status = %d, want 200", getResp.StatusCode)
+	}
+	if !strings.Contains(body, "No Source Records") {
+		t.Errorf("expected empty Sources panel copy; got %q", body)
+	}
+
+	attachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/sources/attach", url.Values{
+		"record_type": {"Pension Application"},
+		"app_id":      {"APP-1880-7701"},
+		"details":     {"Filed 1880, Co. B, 4th VA Infantry"},
+	})
+	if err != nil {
+		t.Fatalf("POST sources/attach: %v", err)
+	}
+	attachResp.Body.Close()
+	if attachResp.StatusCode != http.StatusOK {
+		t.Errorf("attach status = %d, want 200", attachResp.StatusCode)
+	}
+
+	sources, err := app.events.ListSourcesForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListSourcesForEvent: %v", err)
+	}
+	if len(sources) != 1 {
+		t.Fatalf("want 1 source attached, got %d", len(sources))
+	}
+
+	detachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/sources/"+intStr(sources[0].ID)+"/detach", url.Values{})
+	if err != nil {
+		t.Fatalf("POST sources/detach: %v", err)
+	}
+	detachResp.Body.Close()
+	if detachResp.StatusCode != http.StatusOK {
+		t.Errorf("detach status = %d, want 200", detachResp.StatusCode)
+	}
+
+	after, err := app.events.ListSourcesForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListSourcesForEvent post-detach: %v", err)
+	}
+	if len(after) != 0 {
+		t.Errorf("want 0 sources after detach, got %d", len(after))
+	}
+
+	// Scratchpad: event detail renders an Open Scratch Pad form
+	// pointing at /scratchpad/open with the Event's display_id.
+	detailBody := get(t, server, "/events/"+intStr(event.ID))
+	if !strings.Contains(detailBody, "Open Scratch Pad") {
+		t.Errorf("event detail missing Open Scratch Pad button; got %q", detailBody)
+	}
+	if !strings.Contains(detailBody, fmt.Sprintf(`value="%s"`, event.DisplayID)) {
+		t.Errorf("event detail missing scratchpad display_id input; got %q", detailBody)
+	}
+}
 

@@ -54,14 +54,27 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 								class="pill-link w-full justify-center sm:w-auto"
 							>Export PDF</button>
 						</form>
-						<a href={ templ.SafeURL(routebuilder.EventEdit(event.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Event</a>
-						<a href={ templ.SafeURL(routebuilder.EventResearchLog(event.ID)) } class="secondary-button w-full justify-center sm:w-auto">Research Log</a>
-						<button
-							type="button"
-							class="secondary-button w-full justify-center sm:w-auto"
-							data-action={ fmt.Sprintf("/events/%d", event.ID) }
-							data-dixie-submit="true"
-						>Delete Event</button>
+				<a href={ templ.SafeURL(routebuilder.EventEdit(event.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Event</a>
+				<a href={ templ.SafeURL(routebuilder.EventResearchLog(event.ID)) } class="secondary-button w-full justify-center sm:w-auto">Research Log</a>
+				<form
+					action="/scratchpad/open"
+					method="post"
+					data-dixie-submit="true"
+					class="contents"
+				>
+					<input type="hidden" name="display_id" value={ event.DisplayID }/>
+					<button
+						type="submit"
+						class="secondary-button w-full justify-center sm:w-auto"
+						data-scratchpad-open="true"
+					>Open Scratch Pad</button>
+				</form>
+				<button
+					type="button"
+					class="secondary-button w-full justify-center sm:w-auto"
+					data-action={ fmt.Sprintf("/events/%d", event.ID) }
+					data-dixie-submit="true"
+				>Delete Event</button>
 					</div>
 				</div>
 				if strings.TrimSpace(event.Description) != "" {
@@ -98,6 +111,38 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 							}
 						</ul>
 					}
+				</section>
+				<section class="relative mt-6">
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", event.SourceRecordCount) }</span>
+					</div>
+					if len(event.SourceRecords) == 0 {
+						@components.EmptyState("No Source Records attached", "Attach source documents from the /sources authoring flow then link them to this Event.", "")
+					} else {
+						<ul class="space-y-2">
+							for _, src := range event.SourceRecords {
+								<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
+									<span class="font-mono text-xs text-slate-500">{ src.AppID }</span>
+									<span class="ml-2 font-semibold">{ src.SourceRecordType }</span>
+									<p class="mt-1 whitespace-pre-line text-xs text-slate-600">{ src.Details }</p>
+								</li>
+							}
+						</ul>
+					}
+					<form
+						action={ templ.SafeURL(fmt.Sprintf("/events/%d/sources/attach", event.ID)) }
+						method="post"
+						data-dixie-submit="true"
+						class="mt-4 grid gap-3 sm:grid-cols-3"
+					>
+						<input type="text" name="record_type" placeholder="Source type (Pension, Roster, ...)" class="field-input sm:col-span-1" required/>
+						<input type="text" name="app_id" placeholder="App / source number" class="field-input sm:col-span-1" required/>
+						<input type="text" name="details" placeholder="Short details" class="field-input sm:col-span-1"/>
+						<div class="sm:col-span-3 flex justify-end">
+							<button type="submit" class="pill-link">Attach Source</button>
+						</div>
+					</form>
 				</section>
 			</div>
 		</div>

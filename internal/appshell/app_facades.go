@@ -178,4 +178,7 @@ type eventsFacade interface {
 	DetachEventFromPerson(eventID, personID int64) error
 	ListForPerson(personID int64) ([]personRecord, error)
 	ListForEvent(eventID int64) ([]personRecord, error)
+	ListSourcesForEvent(eventID int64) ([]models.Record, error)
+	AttachSourceToEvent(eventID int64, source models.Record) (int64, error)
+	DetachSourceFromEvent(eventID, sourceID int64) error
 }

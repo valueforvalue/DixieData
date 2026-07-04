@@ -60,6 +60,75 @@ func NewEventService(soldiers *SoldierService) *EventService {
 	return &EventService{soldiers: soldiers}
 }
 
+// ListSourcesForEvent returns the Source Records attached to the
+// Event. Source Records live in the `records` table keyed by
+// person_record_id (issue #320 v60 renamed soldier_id to
+// person_record_id; Events are soldiers rows so the same FK
+// applies). Returns the row.Records projection populated by
+// SoldierService.GetByID.
+func (e *EventService) ListSourcesForEvent(eventID int64) ([]models.Record, error) {
+	row, err := e.soldiers.GetByID(eventID)
+	if err != nil {
+		return nil, err
+	}
+	if row.EntryType != models.EntryTypeEvent {
+		return nil, fmt.Errorf("person record %d is %q, not an Event", eventID, row.EntryType)
+	}
+	return row.Records, nil
+}
+
+// AttachSourceToEvent inserts a row into `records` for the given
+// Event. Source Records are FK-linked to person_record_id (which is
+// soldiers.id, and Events are soldiers rows), so the same table
+// supports both Person and Event sources.
+func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record) (int64, error) {
+	if eventID < 1 {
+		return 0, fmt.Errorf("event id must be positive")
+	}
+	if source.PersonRecordID != eventID {
+		source.PersonRecordID = eventID
+	}
+	if strings.TrimSpace(source.SyncID) == "" {
+		syncID, err := db.NewSyncID()
+		if err != nil {
+			return 0, err
+		}
+		source.SyncID = syncID
+	}
+	if source.PersonSyncID == "" {
+		eventRow, err := e.soldiers.GetByID(eventID)
+		if err != nil {
+			return 0, err
+		}
+		source.PersonSyncID = eventRow.SyncID
+	}
+	res, err := e.soldiers.db.Conn().Exec(
+		`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+		source.SyncID, source.PersonRecordID, source.PersonSyncID, source.RecordType, source.AppID, source.Details,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// DetachSourceFromEvent removes a single source row by its primary
+// key. Verifies the row belongs to the given Event so a malicious
+// sourceId cannot drop an unrelated row.
+func (e *EventService) DetachSourceFromEvent(eventID, sourceID int64) error {
+	res, err := e.soldiers.db.Conn().Exec(
+		`DELETE FROM records WHERE id = ? AND person_record_id = ?`,
+		sourceID, eventID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return fmt.Errorf("source %d not attached to event %d", sourceID, eventID)
+	}
+	return nil
+}
+
 // CreateEvent mints a new EVT-NNNNN Display ID (via
 // (*DB).NextEventID), populates the per-subtype columns
 // (kind/begin_date/end_date/description), and persists the row
@@ -338,6 +407,7 @@ func (e *EventService) linksForEvent(eventID int64) ([]EventLink, error) {
 	}
 	return links, rows.Err()
 }
+
 
 // ErrDuplicateLink is returned by AttachEventToPerson when the
 // (event_id, person_id) pair already exists in event_person_links.
