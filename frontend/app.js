@@ -3992,6 +3992,7 @@
     panel.dataset.shareQueuePresetsInstalled = "true";
     const saveForm = panel.querySelector("[data-share-queue-preset-save]");
     if (saveForm instanceof HTMLFormElement) {
+      // htmx-guard: utility-submit
       saveForm.addEventListener("submit", (ev) => {
         ev.preventDefault();
         saveCurrentQueueAsPresetPage(panel, saveForm);
@@ -4063,6 +4064,7 @@
     // existing dispatchDixieDataForm picks up the submit.
     const exportForm = document.querySelector("[data-share-queue-page-form]");
     if (exportForm instanceof HTMLFormElement) {
+      // htmx-guard: utility-submit (stages hidden fields for the dispatchDixieDataForm delegate)
       exportForm.addEventListener("submit", () => {
         const ids = getSelectedIdsOnPage();
         // Drop any prior injected ids to avoid duplicates
@@ -5311,6 +5313,7 @@
       }
     }
   });
+  // htmx-guard: utility-submit (PDF preferences persistence)
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (form instanceof HTMLFormElement && form.matches("form[data-pdf-pref-scope]")) {
