@@ -55,12 +55,11 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 							>Export PDF</button>
 						</form>
 						<a href={ templ.SafeURL(routebuilder.EventEdit(event.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Event</a>
+						<a href={ templ.SafeURL(routebuilder.EventResearchLog(event.ID)) } class="secondary-button w-full justify-center sm:w-auto">Research Log</a>
 						<button
 							type="button"
 							class="secondary-button w-full justify-center sm:w-auto"
 							data-action={ fmt.Sprintf("/events/%d", event.ID) }
-							data-method="DELETE"
-							data-confirm="Delete this Event Record? It will also remove every link to Person Records and any images attached. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover."
 							data-dixie-submit="true"
 						>Delete Event</button>
 					</div>

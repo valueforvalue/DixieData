@@ -101,6 +101,27 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Display ID is in the body, the `/events/{id}`
   row URL is present, and the Soldier's name is
   absent.
+- **Per-Event research log** (issue #320, slot #328).
+  `GET  /events/{id}/research-log`,
+  `POST /events/{id}/research-log/tasks`,
+  `POST /events/{id}/research-log/tasks/{entryId}/resolve`.
+  The handler dispatches on `r.URL.Path` suffix, with
+  `handleEventResearchTaskCreate` and
+  `handleEventResearchTaskResolve` mirroring the
+  Person-Record handlers but re-aiming the redirect
+  header at the Event-side URL (`/events/{id}/research-log`).
+  Three `routebuilder.EventResearchLog*` helpers
+  added; chi route shim uses parts-by-index parsing so the
+  trailing `/tasks/...` segments survive. New
+  "Research Log" pill-button on `event_detail.templ`
+  links to the new URL. Service layer deliberately NOT
+  re-shaped — `research_tasks` is FK-linked to
+  `soldiers(id)`, so `a.soldiers.ResearchLog(eventID)` /
+  `AddResearchTask` / `ResolveResearchTask` already
+  work on Event rows; the only seam is the redirect
+  URL. Test `TestHandleEventResearchLog` covers the
+  full round trip (GET → POST create → GET (title in
+  body) → POST resolve → service confirms resolved).
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:

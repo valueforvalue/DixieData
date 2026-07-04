@@ -549,6 +549,31 @@ func EventPDF(id int64) string {
 	return fmt.Sprintf("/events/%d/pdf", id)
 }
 
+// EventResearchLog returns the URL for the per-Event
+// GET /events/{id}/research-log in routes.go. The page
+// surfaces the same research_tasks rows the Person-Record
+// side does, routed through the same SoldierService.
+func EventResearchLog(eventID int64) string {
+	return fmt.Sprintf("/events/%d/research-log", eventID)
+}
+
+// EventResearchLogTasks is the action URL for the inline
+// "Add research task" form on the per-Event research log
+// page. Registered as POST
+// /events/{id}/research-log/tasks in routes.go.
+func EventResearchLogTasks(eventID int64) string {
+	return fmt.Sprintf("/events/%d/research-log/tasks", eventID)
+}
+
+// EventResearchLogResolve is the action URL for the inline
+// "Resolve task" form. Registered as POST
+// /events/{id}/research-log/tasks/{entryId}/resolve in
+// routes.go.
+func EventResearchLogResolve(eventID, taskID int64) string {
+	return fmt.Sprintf("/events/%d/research-log/tasks/%d/resolve", eventID, taskID)
+}
+
+
 // PersonEventsTab returns the URL for the Events tab on a
 // Person Record detail page. Registered as GET
 // /soldiers/{id}/events in routes.go.

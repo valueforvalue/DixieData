@@ -98,13 +98,22 @@ func (a *App) setupRoutes() {
 	// tests so the Wails native dialog is bypassed in CI.
 	r.Get("/events/{id:[0-9]+}/pdf", a.handleEventPDFRoute)
 	r.Post("/events/{id:[0-9]+}/pdf", a.handleEventPDFRoute)
+	// Issue #320 slice #328: per-Event research log. The
+	// routes mirror the /soldiers/{id}/research-log shape
+	// (GET list, POST /tasks create, POST /tasks/{id}/resolve
+	// close) but dispatch through a.soldiers.ResearchLog /
+	// AddResearchTask / ResolveResearchTask because the
+	// research_tasks table is FK-linked to soldiers(id) and
+	// Events are rows in the same table (entry_type = 'event').
+	r.Get("/events/{id:[0-9]+}/research-log", a.handleEventResearchLogRoute)
+	r.Post("/events/{id:[0-9]+}/research-log/tasks", a.handleEventResearchLogRoute)
+	r.Post("/events/{id:[0-9]+}/research-log/tasks/{entryId:[0-9]+}/resolve", a.handleEventResearchLogRoute)
 	// Events tab. The /events sub-path on a Person Record
 	// page is dispatched from a dedicated route shim so
 	// the literal path wins over the generic
 	// /soldiers/* catch-all. The /events/quick-add path is
 	// also registered here (not dispatched from
 	// handleSoldierByID) so the create+link transaction
-	// gets a single dedicated handler.
 	r.Get("/soldiers/{id:[0-9]+}/events", a.handlePersonEventsTabRoute)
 	r.Post("/soldiers/{id:[0-9]+}/events/{eventId:[0-9]+}/attach", a.handleAttachEventRoute)
 	r.Post("/soldiers/{id:[0-9]+}/events/{eventId:[0-9]+}/detach", a.handleDetachEventRoute)
