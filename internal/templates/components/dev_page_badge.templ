@@ -1,0 +1,36 @@
+package components
+
+// DevPageBadge renders the floating "where am I" pill in the
+// bottom-right corner of every page when the debug launcher is
+// active (DIXIEDATA_DEVTOOLS=1 in the environment makes the
+// layout inject debug.IsDebugMode(ctx) = true, which this badge
+// uses as its gate). Hidden by default with `class="hidden"` --
+// the JS installDevPageBadge() function in app.js removes the
+// class once it confirms window.DIXIEDATA_DEVTOOLS === true.
+//
+// The badge is one of three witnesses for "what page am I on"
+// (issue #309): the breadcrumb (always visible to users), the
+// dev badge (visible to devs), and the JS toolbox's dixie.page()
+// function (callable from devtools). If the three disagree, the
+// layout is broken.
+//
+// contentPath is the same URL path the JS side derives from
+// window.location.pathname; the server pre-fills the badge text
+// so there's no flash of stale content before JS hydrates.
+templ DevPageBadge(contentPath string) {
+	<div
+		data-dixie-page-badge
+		data-current-path={ contentPath }
+		class="fixed bottom-3 right-3 z-30 hidden items-center gap-2 rounded-full border border-amber-700/[0.45] bg-amber-100/[0.96] px-3 py-1 text-xs font-mono font-semibold text-amber-950 shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+	>
+		<span data-dixie-page-badge-icon aria-hidden="true">🐞</span>
+		<span data-dixie-page-badge-path>{ contentPath }</span>
+		<span
+			data-dixie-page-badge-attrs
+			class="ml-2 max-w-[18rem] truncate rounded bg-amber-200/[0.7] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-900"
+			title="data-dixie-page attribute for cross-checking"
+		>
+			<span data-dixie-page-badge-label>{ labelFromPath(contentPath) }</span>
+		</span>
+	</div>
+}

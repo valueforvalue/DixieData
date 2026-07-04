@@ -21,6 +21,9 @@ import (
 // status inline (e.g. /jobs/{id} shows the running job's progress
 // bar in the body and would render the same progress twice if the
 // popup also appeared). Defaults to false everywhere else.
+//
+// currentPath is read implicitly via layoutCurrentPath() (set by
+// SetCurrentPagePath before render). See layout_helpers.go.
 templ Layout(title string, omitJobsOverlay ...bool) {
 	<!DOCTYPE html>
 	// lang is hard-coded to "en" for now. DixieData may be used by
@@ -57,12 +60,22 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 			})();
 		</script>
 		<link rel="stylesheet" href="/app.css"/>
+		// Issue #309: expose debug-mode state to the JS layer
+		// so the dev badge can unhide itself and the toolbox's
+		// install routine can skip in production builds.
+		// debug.IsDebugMode(ctx) returns true only when the
+		// appshell requested debug mode via the per-request
+		// context (or the debug launcher's DIXIEDATA_DEBUG=1).
+		<script>
+			window.DIXIEDATA_DEVTOOLS = { debug.IsDebugMode(ctx) };
+		</script>
 		<script defer src="/debug.js"></script>
+		<script defer src="/debug-toolbox.js"></script>
 		<script defer src="/htmx.min.js"></script>
 		<script defer src="/app.js"></script>
 		<!-- CSS moved to frontend/tailwind.css by PR1. -->
 	</head>
-		<body class="min-h-screen" data-layout-mode="relaxed" data-layout-mode-preference="auto">
+		<body class="min-h-screen" data-layout-mode="relaxed" data-layout-mode-preference="auto" data-dixie-page={ layoutCurrentPath() }>
 			<div class="toast-region" data-toast-region aria-live="polite" aria-atomic="true"></div>
 			if len(omitJobsOverlay) == 0 || !omitJobsOverlay[0] {
 				// Floating popup that shows the most-recent active
@@ -109,6 +122,15 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					<a href="/soldiers/new" class="primary-button top-nav-primary">Add Person Record</a>
 				</nav>
 			</header>
+			// Issue #309: always-visible breadcrumb trail. The
+			// dev badge + JS toolbox are witnesses for the same
+			// current-page fact (see breadcrumbs/comment near the
+			// toolbox); if this and the dev badge disagree, layout
+			// is broken. The breadcrumb renders both server-side
+			// (initial paint, no flash) and JS-updates on htmx
+			// swap via the same path-resolution helper the toolbox
+			// ports to JS.
+			@components.Breadcrumb(layoutCurrentPath())
 			<main>
 				{ children... }
 			</main>
@@ -228,6 +250,15 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					</button>
 				}
 			</footer>
+			// Issue #309: floating dev badge (bottom-right).
+			// Hidden by default; installDevPageBadge() in app.js
+			// removes the `hidden` class once it confirms
+			// window.DIXIEDATA_DEVTOOLS === true. Production
+			// users never see this; the debug launcher's
+			// DIXIEDATA_DEVTOOLS=1 env var is the gate.
+			if debug.IsDebugMode(ctx) {
+				@components.DevPageBadge(layoutCurrentPath())
+			}
 		</div>
 	</body>
 	</html>

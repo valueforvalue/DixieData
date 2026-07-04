@@ -4812,6 +4812,27 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    // Issue #309: install the debug toolbox onto window.dixie
+    // (the toolbox is loaded as a separate script tag so it's
+    // already defined by the time DOMContentLoaded fires).
+    // Then unhide the floating dev badge if debug mode is on.
+    if (typeof installDixieDebugToolbox === "function") {
+      try {
+        installDixieDebugToolbox();
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("debug toolbox install failed", err);
+        }
+      }
+    }
+    if (window.DIXIEDATA_DEVTOOLS === true) {
+      const badge = document.querySelector("[data-dixie-page-badge]");
+      if (badge instanceof HTMLElement) {
+        badge.classList.remove("hidden");
+        badge.classList.add("inline-flex");
+      }
+    }
+
     // Option C: strip pass deleted. htmx keeps running for the GET
     // polling fragments (/jobs/active, /jobs/{id}) — it doesn't
     // double-fire because no hx-post / hx-get on a click handler
@@ -4863,6 +4884,36 @@
         const target = evt.detail && evt.detail.elt;
         if (target instanceof HTMLElement) {
           initializeDynamicContent(target);
+        }
+      });
+      // Issue #309: after a full-page swap (htmx navigates to a new
+      // URL with pushUrl), refresh the breadcrumb + dev badge so
+      // they reflect the new path (the server-rendered HTML for
+      // the new page won't be re-rendered -- it's an in-place
+      // swap). Body data-dixie-page updates so dixie.page() agrees
+      // with the rendered URL.
+      window.htmx.on("htmx:afterSwap", (evt) => {
+        const path = window.location.pathname || "/";
+        const body = document.body;
+        if (body instanceof HTMLElement) {
+          body.setAttribute("data-dixie-page", path);
+        }
+        const badge = document.querySelector("[data-dixie-page-badge]");
+        if (badge instanceof HTMLElement) {
+          const pathEl = badge.querySelector("[data-dixie-page-badge-path]");
+          if (pathEl) pathEl.textContent = path;
+          if (window.DIXIEDATA_DEVTOOLS === true) {
+            badge.classList.remove("hidden");
+            badge.classList.add("inline-flex");
+          }
+        }
+        const crumb = document.querySelector("[data-dixie-breadcrumb]");
+        if (crumb instanceof HTMLElement) {
+          crumb.setAttribute("data-current-path", path);
+          // The server-rendered crumbs are static HTML; for now
+          // we mark the path so any consumer (CSS attribute
+          // selector, browser devtools) sees it. A future PR
+          // could re-render crumbs client-side if needed.
         }
       });
       // The server-side blockIfFragment helper (appshell/fragment_guard.go)
