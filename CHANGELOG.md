@@ -4099,6 +4099,39 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     ships with the markers as documented debt; the cleanup
     is a separate task.
 
+  - **htmx-guard orphan target walker (issue #316, slice 2)** —
+    extension to `audit/discover_htmx_guard.mjs` that scans every
+    `internal/templates/**/*.templ` file (recursive, covers
+    `partials/`) for `hx-target`, `data-results-target`, and
+    `data-status-target` attributes. Flags any `#X` selector whose
+    `id="X"` does not exist anywhere in the templ tree. htmx +
+    `dispatchDixieDataForm` both write into the resolved element;
+    a missing id is a silent no-op UX bug (user sees no feedback).
+
+    Rules:
+
+    - `#X` selectors MUST have a matching `id="X"` somewhere in
+      the templ tree.
+    - `hx-target="this"` (htmx self-pseudo) is always allowed.
+    - All other selectors (`[data-...]`, `body`, `.cls`,
+      `:nth(...)`) are valid CSS without an id counterpart and
+      pass.
+
+    Mirrors the same # vs non-# rule already encoded in
+    `internal/htmxattr/htmxattr.go:155-167` — the templ walker
+    is the static-analysis twin of the runtime `validateTarget`
+    helper.
+
+    9 new tests in `audit/discover_htmx_guard.test.mjs` covering
+    clean baseline, orphan detection, `this` skip, non-`#`
+    skip, `data-results-target` coverage, subdirectory recursion,
+    cross-file id resolution, and `--strict` exit code (19/19
+    total tests pass).
+
+    Conventions doc updated at
+    `docs/agents/htmx-guard-conventions.md` ("Target selector
+    rule" section).
+
 ## v1.2.55 - 2026-06-25
 
 ### Added

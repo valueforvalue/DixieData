@@ -60,6 +60,39 @@ a navigation/data submit (i.e., the listener does not funnel through
   a static source scan. Use `audit/smoke_*.mjs` for runtime contract
   tests.
 
+## Target selector rule
+
+The probe's third walker (`/audit/discover_htmx_guard.mjs →
+findTemplOrphanTargets`) scans every `.templ` file under
+`internal/templates/**` for `hx-target`, `data-results-target`, and
+`data-status-target` attributes. The rule is straightforward:
+
+- `#X` selectors MUST have a matching `id="X"` somewhere in the
+  templ tree. htmx and `dispatchDixieDataForm` both write into
+  the resolved element; a `#X` with no matching `id` is a silent
+  no-op and a UX bug (no error, no feedback).
+- `this` is always allowed (htmx self-targeting pseudo).
+- Any other selector (`[data-bar]`, `body`, `.cls`, `:nth(...)`) is
+  allowed without validation. htmx accepts any valid CSS selector.
+
+Example violation (no `id="nonexistent-target"` anywhere):
+
+```html
+<!-- ❌ violation -->
+<div hx-get="/x" hx-target="#nonexistent-target">...</div>
+
+<!-- ✅ valid -->
+<div id="results" hx-get="/x" hx-target="#results">...</div>
+<div hx-get="/y" hx-target="this">...</div>
+<div hx-get="/z" hx-target="body">...</div>
+```
+
+If an exotic non-`#` target needs documentation (e.g. a runtime-
+created element), add a `// htmx-guard: known-target` comment on
+the preceding templ line and extend the probe to honor it. Today
+no marker is required because all current targets fall within the
+three valid forms above.
+
 ## Author checklist
 
 When you add any of the following to `frontend/app.js`:
@@ -90,3 +123,6 @@ violation. Run `make lint-htmx-guard` to invoke the probe locally.
 - `docs/COMMON_BUGS.md` §1.10, §3.4 — the bug classes this catches
 - `frontend/app.js:5225` — the canonical `data-dixie-submit` doc-level delegate (no marker needed; the listener itself gates on `data-dixie-submit`)
 - `frontend/app.js:3117` — `dispatchDixieDataForm` definition
+- `internal/htmxattr/htmxattr.go:155-167` — the Go-side `validateTarget`
+  helper that already encodes the same # vs non-# selector rule;
+  slice 4 of #316 will enable its dev-build panic.

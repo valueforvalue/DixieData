@@ -4,6 +4,7 @@ import { join } from 'node:path';
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
 const APPSHELL_DIR = join(ROOT, 'internal/appshell');
 const JS_FILE = join(ROOT, 'frontend/app.js');
+const TEMPL_DIR = join(ROOT, 'internal/templates');
 
 const TOAST_MARKER = 'setInfoToastHeader(';
 const REDIRECT_MARKERS = [
@@ -12,6 +13,13 @@ const REDIRECT_MARKERS = [
   'enqueueExport(',
   'respondDuplicateInFlight(',
 ];
+
+// Slice 2: target attrs the walker scans in templ files. `hx-target`
+// is the canonical htmx attribute; `data-results-target` and
+// `data-status-target` are project-specific dispatch extensions. Any
+// future target attr the dispatchDixieDataForm JS reads should be added
+// here so the walker stays the source of truth.
+const TARGET_ATTRS = ['hx-target', 'data-results-target', 'data-status-target'];
 
 const STRICT = process.argv.includes('--strict');
 
@@ -182,15 +190,109 @@ function classify(lines, i, body, endLine, prev, violations) {
   });
 }
 
+// ---- Slice 2: orphan hx-target / data-*-target walker ----
+
+// Recursive walker for *.templ files under TEMPL_DIR. Returns absolute
+// paths. Used by both the id-set collector and the target scanner.
+function listTemplRec(dir) {
+  const out = [];
+  function walk(d) {
+    let entries;
+    try { entries = readdirSync(d); } catch { return; }
+    for (const name of entries) {
+      const p = join(d, name);
+      let s;
+      try { s = statSync(p); } catch { continue; }
+      if (s.isDirectory()) {
+        walk(p);
+      } else if (name.endsWith('.templ')) {
+        out.push(p);
+      }
+    }
+  }
+  walk(dir);
+  return out;
+}
+
+// Collect all `id="X"` declarations across templ files into a Set.
+// The walker treats this set as the registry of *legitimate*
+// `hx-target="#X"` and `data-*-target="#X"` destinations. Templates
+// that omit their target's id from the registry are orphaned at
+// runtime — htmx silent-swaps into a null target.
+function collectTemplIds(files) {
+  const ids = new Set();
+  const re = /\bid\s*=\s*"([^"]+)"/g;
+  for (const f of files) {
+    const text = readText(f);
+    for (const m of text.matchAll(re)) ids.add(m[1]);
+  }
+  return ids;
+}
+
+// For each templ file, extract every `attr="VAL"` instance where attr
+// is one of TARGET_ATTRS. Returns [{ file, line, attr, selector }].
+function extractTargets(files) {
+  const out = [];
+  const re = new RegExp('\\b(' + TARGET_ATTRS.join('|') + ')\\s*=\\s*"([^"]+)"', 'g');
+  for (const f of files) {
+    const text = readText(f);
+    const lines = text.split('\n');
+    // Build a line offset index so we can resolve match.index → line.
+    const lineOffsets = [0];
+    for (let i = 0; i < lines.length - 1; i++) {
+      lineOffsets.push(lineOffsets[i] + lines[i].length + 1);
+    }
+    for (const m of text.matchAll(re)) {
+      const attr = m[1];
+      const selector = m[2];
+      const offset = m.index;
+      // Binary-search-free linear scan — files are short.
+      let lineNum = 1;
+      for (let i = 0; i < lineOffsets.length; i++) {
+        if (lineOffsets[i] > offset) break;
+        lineNum = i + 1;
+      }
+      out.push({ file: f, line: lineNum, attr, selector });
+    }
+  }
+  return out;
+}
+
+function findTemplOrphanTargets(dir) {
+  const files = listTemplRec(dir);
+  if (files.length === 0) return [];
+  const ids = collectTemplIds(files);
+  const targets = extractTargets(files);
+  const violations = [];
+  for (const t of targets) {
+    const sel = t.selector;
+    // htmx `this` pseudo — always targets the originating element.
+    if (sel === 'this') continue;
+    // Only flag #X selectors. Non-# selectors ([data-...], body, .cls,
+    // :nth, etc.) are valid CSS without an id counterpart; the
+    // dispatcher and htmx handle them. Same rule htmxattr.go already
+    // encodes (lines 155-167 in internal/htmxattr/htmxattr.go).
+    if (!sel.startsWith('#')) continue;
+    // Strip the `#` prefix and check the id-set.
+    const id = sel.slice(1);
+    if (!ids.has(id)) {
+      violations.push(t);
+    }
+  }
+  return violations;
+}
+
 function main() {
   console.log('=== htmx-guard lint ===');
   console.log('Probes: toast-no-redirect (Go) + JS submit coexistence (frontend/app.js)');
+  console.log('         + orphan hx-target / data-*-target (templ files)');
   console.log('');
 
   // Allow overriding paths via env for test fixtures. CI/default uses
   // the canonical files.
   const goDir = process.env.HTMX_GUARD_GO_DIR || APPSHELL_DIR;
   const jsFile = process.env.HTMX_GUARD_JS_FILE || JS_FILE;
+  const templDir = process.env.HTMX_GUARD_TEMPL_DIR || TEMPL_DIR;
 
   // Toast walker.
   const goFiles = listGo(goDir);
@@ -207,10 +309,14 @@ function main() {
     file: jsFile, ...v,
   }));
 
-  const total = toastViolations.length + jsViolations.length;
+  // Templ target walker (slice 2).
+  const templViolations = findTemplOrphanTargets(templDir);
+
+  const total = toastViolations.length + jsViolations.length + templViolations.length;
 
   console.log(`Toast-no-redirect violations: ${toastViolations.length}`);
   console.log(`JS submit coexistence violations: ${jsViolations.length}`);
+  console.log(`Templ orphan target violations: ${templViolations.length}`);
   console.log('');
 
   if (toastViolations.length > 0) {
@@ -237,6 +343,20 @@ function main() {
       const rel = v.file.split(/[/\\]/).slice(-1)[0];
       console.log(`  ${rel}:${v.line}-${v.endLine}`);
       console.log(`    ${v.excerpt}`);
+    }
+    console.log('');
+  }
+
+  if (templViolations.length > 0) {
+    console.log('=== TEMPL ORPHAN TARGET VIOLATIONS ===');
+    console.log('Each entry is a #X selector in a templ file with no matching');
+    console.log('id="X" elsewhere in the same glob. htmx silent-swaps into a null');
+    console.log('target; user sees no feedback. Non-# selectors (this, body,');
+    console.log('[data-...], .cls) are always ignored.');
+    console.log('');
+    for (const v of templViolations) {
+      const rel = v.file.split(/[/\\]/).slice(-2).join('/');
+      console.log(`  ${rel}:${v.line}  ${v.attr}="${v.selector}"`);
     }
     console.log('');
   }
