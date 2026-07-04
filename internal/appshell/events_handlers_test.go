@@ -300,7 +300,45 @@ func TestHandleUpdateEvent(t *testing.T) {
 	}
 }
 
-// TestHandleEventPDF verifies the per-Event PDF export
+// TestHandlePersonEventsTab verifies the lazy-loaded fragment
+// for the Person Record → Events tab (issue #320 slice #324).
+// Replaces the slice-3 303 redirect with a 200 + htmx fragment
+// containing the linked-events table (D5 of #322, no biography
+// excerpt).
+func TestHandlePersonEventsTab(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	person := createSoldier(t, app, "Test Person")
+	event := createEvent(t, app, "Battle of Springfield", "10/25/1864", "10/25/1864", "Decisive engagement")
+	if _, err := app.events.AttachEventToPerson(event.ID, person.ID); err != nil {
+		t.Fatalf("AttachEventToPerson: %v", err)
+	}
+
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(person.ID) + "/events")
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d/events: %v", person.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d/events status = %d, want 200", person.ID, resp.StatusCode)
+	}
+	body := readAll(t, resp)
+	// The fragment is wrapped in a <div class="space-y-3"> root
+	// by person_events_tab.templ. The linked event's Display ID
+	// must appear in the body so the lazy-load actually returns
+	// useful content (D5 of #322).
+	if !strings.Contains(body, event.DisplayID) {
+		t.Errorf("fragment missing linked event Display ID %q", event.DisplayID)
+	}
+	if !strings.Contains(body, "Battle") {
+		t.Errorf("fragment missing linked event kind %q", "Battle")
+	}
+	if !strings.Contains(body, "linked") {
+		t.Errorf("fragment missing 'linked' count label")
+	}
+}
 // (issue #320 v1). The test substitutes the Wails native
 // save dialog with a temp file via saveFileDialogOverride so
 // the render path is exercised end-to-end without a desktop

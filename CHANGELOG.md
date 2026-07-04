@@ -30,7 +30,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `saveFileDialogOverride` test seam) and
   `TestExportService_ExportEventPDF` (registry path
   through `extractPDFText`). Files: 5 new + 7 modified.
-
+- **Person Record → Events tab fragment** (issue #320, slice
+  #324). `GET /soldiers/{id}/events` now returns an htmx
+  fragment (table of linked Event Records — Display ID +
+  Kind + Date Range, D2/D5 of #322) instead of the slice-3
+  303 redirect to the Person Record detail page. New
+  `internal/templates/person_events_tab.templ`; new
+  `presentation.PersonEventsTab` adapter; finished the
+  half-built `handlePersonEventsTab` handler from slice 3
+  (the body was previously empty — see `events_handlers.go`
+  history). Test: `TestHandlePersonEventsTab` walks the
+  full attach-then-fragment round-trip. UI integration on
+  `soldier_card.templ` is deferred to a follow-up — the
+  fragment is reachable via direct URL today.
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:
