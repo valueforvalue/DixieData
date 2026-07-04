@@ -342,6 +342,16 @@ func FromContext(ctx context.Context) *slog.Logger {
 	}
 	return slog.Default()
 }
+// EnvBool reads a boolean env var. Accepts 1, true, yes
+// (case-insensitive). Exported because callers outside the
+// debug package (e.g. appshell seeding debug mode from the
+// DIXIEDATA_DEBUG env var at launch -- issue #309) need to
+// share the same boolean-parsing rules as the debug package
+// itself.
+func EnvBool(name string) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(name)))
+	return v == "1" || v == "true" || v == "yes"
+}
 
 // envBool reads a boolean env var. Accepts 1, true, yes (case-insensitive).
 func envBool(name string) bool {

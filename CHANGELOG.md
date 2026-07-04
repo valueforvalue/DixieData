@@ -218,6 +218,36 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     PR 3 consumes the same JSON endpoints that the modal
     used; no service-side changes needed.
 
+### Fixed
+
+- **Dev badge invisible on `make debug` runs** (issue #309
+  follow-up discovered during smoke). Root cause:
+  `appshell.App.debugMode` was seeded solely from
+  `records.LoadLocalSettings.DebugMode` (default OFF on fresh
+  install). The env var `DIXIEDATA_DEBUG=1` was honored by
+  `internal/debug.log.debugMode` but never reached
+  `appshell.App.debugMode`, so `debug.IsDebugMode(ctx)`
+  returned false and the new `@components.DevPageBadge(...)`
+  branch in the layout never rendered. Fix has two parts:
+  `scripts/build-common.ps1` now defaults `DIXIEDATA_DEBUG=1`
+  (alongside the existing `DIXIEDATA_DEVTOOLS=1`) so the
+  `make debug` launcher enables debug mode; the seeding block
+  in `(*App).startup()` now OR's in the env via the new
+  `decideDebugModeAtStartupSettings()` helper so a launcher-
+  set env override beats a persisted OFF toggle.
+
+  - `internal/appshell/lifecycle.go` — new package-private
+    helper `decideDebugModeAtStartupSettings(bool)` extracted
+    from the seeding block; existing block now calls it.
+  - `internal/debug/log.go` — `envBool` is now wrapped by an
+    exported `EnvBool` so callers outside `internal/debug` can
+    share the same boolean-parsing rules.
+  - `scripts/build-common.ps1` — the Run-DixieData-Debug.ps1
+    launcher now defaults `DIXIEDATA_DEBUG=1` if not already
+    set (mirrors the existing `DIXIEDATA_DEVTOOLS=1` line).
+  - `internal/appshell/debug_mode_env_test.go` (NEW, 3 tests)
+    pins the env-vs-settings contract.
+
 ### Removed
 
 - **Share Build modal at `/share/queue/modal`** (issue #182,

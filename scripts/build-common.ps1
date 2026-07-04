@@ -516,6 +516,12 @@ if (-not (Test-Path $exePath)) {
 # .\Run-DixieData-Debug.ps1`.
 if (-not $env:GOTRACEBACK) { $env:GOTRACEBACK = "all" }
 if (-not $env:DIXIEDATA_DEVTOOLS) { $env:DIXIEDATA_DEVTOOLS = "1" }
+# Issue #309: also default Debug Mode ON for `make debug` so the
+# new dev badge (bottom-right corner) appears without the user
+# having to toggle it in Settings first. appshell seeds its
+# debugMode flag from this env var; the existing 🐞 Debug
+# footer button + the in-app Debug Console also light up.
+if (-not $env:DIXIEDATA_DEBUG) { $env:DIXIEDATA_DEBUG = "1" }
 # Default --log-to-stderr ON for debug sessions so panic +
 # structured-log lines surface inline instead of requiring
 # a separate `dixiedata logs path` round-trip. Override with
