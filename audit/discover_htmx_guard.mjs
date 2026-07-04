@@ -121,14 +121,58 @@ function findToastViolations(file) {
 // We detect (A) by brace-walking the listener and checking for either
 // `data-dixie-submit` or `dispatchDixieDataForm` anywhere in the body.
 // We detect (B) by reading the line above.
+// Walks the JS source line-by-line and returns a Set of 1-indexed
+// line numbers that fall inside the body of any of the canonical
+// utility-submit helpers — dispatchUtilitySubmit, dispatchSubmitPrep.
+// The walker's purpose is to find app-code addEventListener sites
+// that bypass the helpers; it should NOT flag the helpers'
+// internal implementation as a violation of itself. Returns a Set
+// so the per-line check in the walker is O(1).
+function collectHelperInternalLines(lines) {
+  const internals = new Set();
+  const fnRe = /^\s*(?:async\s+)?function\s+(dispatchUtilitySubmit|dispatchSubmitPrep)\s*\(/;
+  for (let i = 0; i < lines.length; i++) {
+    if (!fnRe.test(lines[i])) continue;
+    // The opening brace is at the end of this line OR on a
+    // subsequent line — find it.
+    let depth = 0;
+    let started = false;
+    let j = i;
+    for (; j < lines.length; j++) {
+      for (const ch of lines[j]) {
+        if (ch === '{') { depth++; started = true; }
+        else if (ch === '}') { depth--; }
+      }
+      if (started && depth === 0) break;
+    }
+    // Mark every line BETWEEN the opener and the closer (exclusive).
+    for (let k = i + 1; k < j; k++) internals.add(k + 1);
+  }
+  return internals;
+}
+
 function findJsSubmitViolations(file) {
   const text = readText(file);
   const lines = text.split('\n');
   const violations = [];
 
+  // Pre-scan: build a Set of line numbers (1-indexed) that fall
+  // inside the body of one of the canonical utility-submit helpers
+  // (dispatchUtilitySubmit, dispatchSubmitPrep). addEventListener
+  // sites at those lines are the helpers' internal implementation —
+  // not app code that the walker should flag. The walker consults
+  // the set per-line and skips internal sites.
+  const helperInternals = collectHelperInternalLines(lines);
+
   const siteRe = /addEventListener\(\s*["']submit["']\s*,/;
   for (let i = 0; i < lines.length; i++) {
     if (!siteRe.test(lines[i])) continue;
+    // Skip addEventListener calls that are inside one of the
+    // canonical utility-submit helpers' bodies. Those are
+    // implementation details of the helpers themselves; the
+    // contract is enforced by which app code CALLS them, not by
+    // what's inside.
+    if (helperInternals.has(i + 1)) continue;
     // Find the body of this listener via brace walk starting at the
     // first `{` on this line OR forward up to the next `=> {`.
     const openerIdx = lines[i].indexOf('{');
@@ -180,7 +224,19 @@ function classify(lines, i, body, endLine, prev, violations) {
   if (body.includes("matches(\"[data-dixie-submit]\")") || body.includes("matches('[data-dixie-submit]'")) {
     return;
   }
-  // Case B: marker on preceding line.
+  // Case C: routes through one of the canonical utility-submit
+  // helpers — dispatchUtilitySubmit (preventDefault + local
+  // handler) or dispatchSubmitPrep (run callback, allow default
+  // to continue). Either pattern means the listener is canonical
+  // and the marker comment is not required. Mirrors the
+  // issue #317 follow-up to slice 1's marker convention.
+  if (body.includes('dispatchUtilitySubmit(') || body.includes('dispatchSubmitPrep(')) {
+    return;
+  }
+  // Case B: marker on preceding line. Retained for sites that
+  // haven't migrated to the new helpers yet — the slice 1 marker
+  // convention predates the helpers. Once all historically-marked
+  // sites migrate (issue #317), this rule retires.
   if (/^\s*\/\/\s*htmx-guard:\s*utility-submit\b/.test(prev)) return;
   // Otherwise: violation.
   violations.push({
