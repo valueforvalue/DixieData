@@ -77,6 +77,55 @@ func (e *EventService) ListSourcesForEvent(eventID int64) ([]models.Record, erro
 	return row.Records, nil
 }
 
+// ListTagsForEvent returns the Tags attached to the Event
+// (person_record_tags row join). Re-uses the same table as
+// Person Record tags since v60 renamed the FK to
+// person_record_id; Events are soldiers rows.
+func (e *EventService) ListTagsForEvent(eventID int64) ([]Tag, error) {
+	rows, err := e.soldiers.db.Conn().Query(
+		`SELECT t.id, t.name, t.normalized_name, t.created_at
+		 FROM tags t
+		 JOIN person_record_tags pt ON pt.tag_id = t.id
+		 WHERE pt.person_id = ?
+		 ORDER BY t.name COLLATE NOCASE`, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Tag
+	for rows.Next() {
+		var t Tag
+		if err := rows.Scan(&t.ID, &t.Name, &t.NormalizedName, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// AddTagToEvent inserts a person_record_tags row for the Event.
+// INSERT OR IGNORE so duplicate-add is a no-op.
+func (e *EventService) AddTagToEvent(eventID, tagID int64) error {
+	if eventID < 1 || tagID < 1 {
+		return fmt.Errorf("event and tag ids must be positive")
+	}
+	_, err := e.soldiers.db.Conn().Exec(
+		`INSERT OR IGNORE INTO person_record_tags (person_id, tag_id) VALUES (?, ?)`,
+		eventID, tagID)
+	return err
+}
+
+// DetachTagFromEvent removes the person_record_tags row.
+func (e *EventService) DetachTagFromEvent(eventID, tagID int64) error {
+	if eventID < 1 || tagID < 1 {
+		return fmt.Errorf("event and tag ids must be positive")
+	}
+	_, err := e.soldiers.db.Conn().Exec(
+		`DELETE FROM person_record_tags WHERE person_id = ? AND tag_id = ?`,
+		eventID, tagID)
+	return err
+}
+
 // AttachSourceToEvent inserts a row into `records` for the given
 // Event. Source Records are FK-linked to person_record_id (which is
 // soldiers.id, and Events are soldiers rows), so the same table

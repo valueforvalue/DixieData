@@ -133,6 +133,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   submit to `/soldiers/new` — no regression.
   Test `TestHandleCreateSoldierDispatchesToNewEvent`
   covers the dispatch path.
+- **Per-Event Tags chips** (issue #320, slot #333). New
+  Event routes: `GET /events/{id}/tags` (renders the chip
+  fragment), `POST .../tags` (adds a `person_record_tags`
+  row), `POST .../tags/{tagId}/detach` (removes the row).
+  `EventService` gains `ListTagsForEvent`,
+  `AddTagToEvent`, `DetachTagFromEvent`; the `eventsFacade`
+  mirrors the three entries. The same `person_record_tags`
+  junction covers both Person + Event tags since v60's
+  `person_record_id` rename applies to Events too.
+  `event_detail.templ` renders a "Tags" section listing
+  chips with detach buttons. Test:
+  `TestHandleEventTags` round-trips add→detach.
 - **Per-Event Sources panel** (issue #320, slot #329). New
   Event routes: `GET /events/{id}/sources` (renders the
   fragment), `POST .../sources/attach` (inserts a `records`

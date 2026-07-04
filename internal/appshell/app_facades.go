@@ -181,4 +181,7 @@ type eventsFacade interface {
 	ListSourcesForEvent(eventID int64) ([]models.Record, error)
 	AttachSourceToEvent(eventID int64, source models.Record) (int64, error)
 	DetachSourceFromEvent(eventID, sourceID int64) error
+	ListTagsForEvent(eventID int64) ([]records.Tag, error)
+	AddTagToEvent(eventID, tagID int64) error
+	DetachTagFromEvent(eventID, tagID int64) error
 }

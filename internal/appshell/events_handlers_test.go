@@ -7,6 +7,7 @@
 package appshell
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -888,6 +889,81 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	}
 	if !strings.Contains(detailBody, fmt.Sprintf(`value="%s"`, event.DisplayID)) {
 		t.Errorf("event detail missing scratchpad display_id input; got %q", detailBody)
+	}
+}
+// TestHandleEventTags covers issue #320 slot #333: per-Event
+// Tags chips. Seeds an Event + a tag, GETs the panel (empty),
+// attaches the tag, asserts it renders, then detaches it and
+// re-asserts the empty state. Calls the same path-suffix
+// dispatcher as the sources/research-log panels.
+func TestHandleEventTags(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Siege of Vicksburg", "05/18/1863", "07/04/1863", "")
+	tag, err := app.tags.UpsertByName(context.Background(), "siege")
+	if err != nil {
+		t.Fatalf("tags.UpsertByName: %v", err)
+	}
+
+	getResp, err := http.Get(server.URL + "/events/" + intStr(event.ID) + "/tags")
+	if err != nil {
+		t.Fatalf("GET tags: %v", err)
+	}
+	body := readAll(t, getResp)
+	getResp.Body.Close()
+	if getResp.StatusCode != http.StatusOK {
+		t.Errorf("GET /tags status = %d, want 200", getResp.StatusCode)
+	}
+	if !strings.Contains(body, "No tags attached yet.") {
+		t.Errorf("expected empty Tags panel copy; got %q", body)
+	}
+
+	addResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags", url.Values{
+		"tag_id": {intStr(tag.ID)},
+	})
+	if err != nil {
+		t.Fatalf("POST tags: %v", err)
+	}
+	addResp.Body.Close()
+	if addResp.StatusCode != http.StatusOK {
+		t.Errorf("add status = %d, want 200", addResp.StatusCode)
+	}
+
+	after, err := app.events.ListTagsForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListTagsForEvent: %v", err)
+	}
+	if len(after) != 1 || after[0].ID != tag.ID {
+		t.Fatalf("want 1 tag attached, got %+v", after)
+	}
+
+	chipResp, err := http.Get(server.URL + "/events/" + intStr(event.ID) + "/tags")
+	if err != nil {
+		t.Fatalf("GET tags post-add: %v", err)
+	}
+	chipBody := readAll(t, chipResp)
+	chipResp.Body.Close()
+	if !strings.Contains(chipBody, "siege") {
+		t.Errorf("tag chip missing after add; got %q", chipBody)
+	}
+
+	detachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags/"+intStr(tag.ID)+"/detach", url.Values{})
+	if err != nil {
+		t.Fatalf("POST detach: %v", err)
+	}
+	detachResp.Body.Close()
+	if detachResp.StatusCode != http.StatusOK {
+		t.Errorf("detach status = %d, want 200", detachResp.StatusCode)
+	}
+
+	final, err := app.events.ListTagsForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListTagsForEvent post-detach: %v", err)
+	}
+	if len(final) != 0 {
+		t.Errorf("want 0 tags after detach, got %d", len(final))
 	}
 }
 
