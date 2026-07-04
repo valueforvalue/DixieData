@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/models"
 )
 
 type DataQualityMode string
@@ -85,6 +86,19 @@ func (s *SoldierService) RunDataQualityScan(modeRaw string) (DataQualityScanResu
 	for _, candidate := range candidates {
 		issues = append(issues, evaluateQualityIssues(candidate, spouseTypes, mode)...)
 	}
+
+	// v60 (issue #320): Event Records with zero links to any
+	// Person Record are review-queue candidates. The Event exists
+	// but is orphaned (the researcher created it but hasn't
+	// attached it to anyone yet, or the attached Person Records
+	// were all deleted). This check fires for every Event Record
+	// regardless of scan mode (the zero-link condition is a
+	// structural integrity issue, not a content-quality issue).
+	eventLinkIssues, err := s.loadEventZeroLinkIssues()
+	if err != nil {
+		return DataQualityScanResult{}, err
+	}
+	issues = append(issues, eventLinkIssues...)
 
 	if mode == DataQualityModeAdvanced {
 		advancedIssues, err := s.loadAdvancedSourceRecordIssues()
@@ -455,4 +469,81 @@ func buildIssueName(first, middle, last string) string {
 		return "Unnamed Record"
 	}
 	return strings.Join(strings.Fields(name), " ")
+}
+
+// loadEventZeroLinkIssues (issue #320) returns one
+// DataQualityIssue per Event Record that has zero
+// event_person_links rows. The Event exists but is orphaned
+// (no Person Record references it). The Event is still
+// reachable via the EVT-NNNNN Display ID, but the researcher
+// probably forgot to attach it; the review queue surfaces the
+// Event so they can either attach Person Records or delete it.
+//
+// The Event's user-facing name on a review-queue card is
+// composed from kind + begin_date + end_date, not first/last
+// name (Events have no Person Record name parts). The Display
+// ID still uses the EVT-NNNNN namespace.
+func (s *SoldierService) loadEventZeroLinkIssues() ([]DataQualityIssue, error) {
+	rows, err := s.db.Conn().Query(
+		`SELECT s.id, s.display_id, s.kind, s.begin_date, s.end_date
+		 FROM soldiers s
+		 LEFT JOIN event_person_links epl ON epl.event_id = s.id
+		 WHERE s.entry_type = ? AND epl.id IS NULL
+		 ORDER BY s.updated_at DESC, s.id DESC`,
+		models.EntryTypeEvent,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var issues []DataQualityIssue
+	for rows.Next() {
+		var (
+			id          int64
+			displayID   string
+			kind        string
+			beginDate   string
+			endDate     string
+		)
+		if err := rows.Scan(&id, &displayID, &kind, &beginDate, &endDate); err != nil {
+			return nil, err
+		}
+		name := buildEventIssueName(kind, beginDate, endDate)
+		issues = append(issues, DataQualityIssue{
+			SoldierID: id,
+			DisplayID: displayID,
+			Name:      name,
+			EntryType: models.EntryTypeEvent,
+			Group:     "Event Integrity",
+			Code:      "event-zero-links",
+			Severity:  "medium",
+			Summary:   "Event Record is not linked to any Person Record.",
+			Detail:    "Event exists but has zero event_person_links rows. Attach at least one Person Record, or delete the Event if it was created by accident.",
+		})
+	}
+	return issues, rows.Err()
+}
+
+// buildEventIssueName composes a user-facing label for an Event
+// Record on a review-queue card. Pattern: "{kind} ({begin} - {end})"
+// with the missing date fields stripped. Falls back to
+// "Unnamed Event" when nothing is set.
+func buildEventIssueName(kind, beginDate, endDate string) string {
+	kind = strings.TrimSpace(kind)
+	beginDate = strings.TrimSpace(beginDate)
+	endDate = strings.TrimSpace(endDate)
+	switch {
+	case kind != "" && beginDate != "" && endDate != "":
+		return fmt.Sprintf("%s (%s - %s)", kind, beginDate, endDate)
+	case kind != "" && beginDate != "":
+		return fmt.Sprintf("%s (%s)", kind, beginDate)
+	case kind != "" && endDate != "":
+		return fmt.Sprintf("%s (- %s)", kind, endDate)
+	case kind != "":
+		return kind
+	case beginDate != "" || endDate != "":
+		return fmt.Sprintf("%s - %s", beginDate, endDate)
+	default:
+		return "Unnamed Event"
+	}
 }

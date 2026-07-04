@@ -201,10 +201,10 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	}
 	stampCreateAuditFields(s.currentAuditActor(), &soldier)
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
-		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt)
+		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, soldier.Kind, soldier.BeginDate, soldier.EndDate, soldier.Description)
 	if err != nil {
 		return nil, err
 	}
@@ -362,9 +362,9 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 	}
 	stampUpdateAuditFields(s.currentAuditActor(), before, &soldier)
 
-	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, relationship_label=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, show_prefix_before_name=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, biography=?, pdf_excerpt_override=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=? WHERE id=?`,
+	_, err = tx.Exec(`UPDATE soldiers SET display_id=?, sync_id=?, entry_type=?, spouse_soldier_id=?, relationship_label=?, maiden_name=?, pension_id=?, application_id=?, prefix=?, show_prefix_before_name=?, first_name=?, middle_name=?, last_name=?, suffix=?, rank=?, rank_in=?, rank_out=?, unit=?, pension_state=?, confederate_home_status=?, confederate_home_name=?, death_year=?, death_month=?, death_day=?, birth_date=?, death_date=?, birth_info=?, buried_in=?, biography=?, pdf_excerpt_override=?, notes=?, needs_review=?, review_reason=?, added_by=?, last_edited_by=?, last_edited_fields=?, last_edited_at=?, updated_at=?, kind=?, begin_date=?, end_date=?, description=? WHERE id=?`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName,
-		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.ID)
+		soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.UpdatedAt, soldier.Kind, soldier.BeginDate, soldier.EndDate, soldier.Description, soldier.ID)
 	if err != nil {
 		return err
 	}
@@ -2329,6 +2329,16 @@ func normalizeSoldierEntry(tx *sql.Tx, soldier *models.Soldier) error {
 		soldier.RelationshipLabel = ""
 		return nil
 	}
+	// v60 (issue #320): Event Records are not Persons — they have
+	// no spouse. Bypass the spouse-required check the same way the
+	// Soldier case does. Clear the spouse_soldier_id defensively
+	// in case a form posts it for an Event.
+	if soldier.EntryType == "event" {
+		soldier.SpouseSoldierID = 0
+		soldier.RelationshipLabel = ""
+		soldier.MaidenName = ""
+		return nil
+	}
 	if soldier.SpouseSoldierID < 1 {
 		return fmt.Errorf("spouse_soldier_id required")
 	}
@@ -2360,6 +2370,9 @@ func normalizeEntryType(entryType string) string {
 		return "widow"
 	case "linked_person":
 		return "linked_person"
+	// v60 (issue #320): Event Record subtype.
+	case "event":
+		return "event"
 	default:
 		return "soldier"
 	}
