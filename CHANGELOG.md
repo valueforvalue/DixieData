@@ -4155,6 +4155,53 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     polling branch shape but a distinct rendering path, so it
     needs its own test.
 
+  - **htmx-guard validateTarget dev-build panic (issue #316,
+    slice 4)** — enable the panic in
+    `internal/htmxattr/htmxattr.go::validateTarget` for `#X`
+    selectors whose X is not in the htmlids registry. Caught in
+    dev/test builds; production behavior unchanged. Catches the
+    typo class (e.g. `#browze-results`) at the moment the templ
+    renders, before the page ships.
+
+    Lands as TWO commits (sequence matters):
+
+    1. **New package `internal/htmlids`** — mirrors the
+       `internal/uiids` shape but tracks DASHED HTML id strings
+       (the literal `id="..."` values templ emits and htmx
+       selectors point at) instead of DOTTED logical surface
+       ids. `uiids` stays untouched — it's the right shape for
+       what it tracks. Initial registry: `BrowseResults`,
+       `SoldierList`.
+
+    2. **`validateTarget` panic + test rewrite** — switches the
+       `validateTarget` body from a `uiids.Has()` lookup (which
+       could never match `#browse-results` against
+       `uiids.PanelBrowseResults = "panel.browse.results"`) to
+       `htmlids.Has()`. Adopts a 2-file clean-break strategy:
+       `TestMuxAdHocTargetDoesNotPanic` was the test that
+       previously accepted `#feedback-form`; with the panic
+       enabled it would always fail, so it is REPLACED by
+       `TestMuxPanicsOnUnknownRegistryTarget` (#typo),
+       `TestMuxAcceptsRegisteredSelectors` (loops the htmlids
+       registry and asserts every entry produces a valid Mux),
+       and `TestMuxTargetNonHashSelectorsPass` (body /
+       [data-...] / .cls / this all still allowed).
+
+    The plan §Slice 4 promised 1 LOC; the actual implementation
+    is ~140 LOC across two commits. The original "1 LOC" was a
+    miscalculation — `uiids` uses dotted notation for logical
+    surfaces while hx-target uses dashed notation for CSS
+    selectors, and the two registries must be separate to
+    answer different questions (WHAT is the page vs WHAT is the
+    element id). Conflating them would force one notation to
+    leak into the other.
+
+    `TestMuxSelectEmitted` switched its sample from
+    `#countsForm` (a synthetic fixture not in either registry)
+    to `#browse-results` (a real registered selector), so the
+    test continues to verify Select rendering without firing
+    the panic.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added
