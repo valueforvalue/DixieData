@@ -3671,9 +3671,67 @@
       counter.textContent = String(ids.length);
     }
   }
+  let shareQueueModalCache = null;
+  let shareQueueModalInflight = null;
+
   function shareQueueModal() {
     const modal = document.querySelector("[data-share-queue-modal],[id='overlay.share-queue.modal']");
     return modal instanceof HTMLElement ? modal : null;
+  }
+
+  // loadShareQueueModal fetches the Share Build modal HTML on demand and
+  // inserts it into document.body. The modal is normally NOT server-rendered
+  // into any page, so the click handler in openShareQueueModal() would
+  // silently early-return when the user opens the Build Share Archive button
+  // on /share/exports or the persistent Share Queue pill at the bottom of
+  // any page (issue #308). Caches the inserted node + an in-flight Promise
+  // so concurrent clicks dedupe to a single fetch; mirrors the pattern
+  // from loadPrintRecordsFragment (issue #234).
+  function loadShareQueueModal() {
+    if (shareQueueModalCache !== null) {
+      return Promise.resolve(shareQueueModalCache);
+    }
+    if (document.body !== null && shareQueueModalCache === null && shareQueueModal() !== null) {
+      // The modal was already inserted (e.g. by /share/queue/modal itself
+      // being part of a future page render). Cache the live reference.
+      shareQueueModalCache = shareQueueModal();
+      return Promise.resolve(shareQueueModalCache);
+    }
+    if (shareQueueModalInflight !== null) {
+      return shareQueueModalInflight;
+    }
+    shareQueueModalInflight = fetch("/share/queue/modal", {
+      headers: { Accept: "text/html" },
+    })
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error("share-queue modal fetch failed: " + resp.status);
+        }
+        return resp.text();
+      })
+      .then((html) => {
+        const template = document.createElement("template");
+        template.innerHTML = html.trim();
+        const node = template.content.firstElementChild;
+        if (!(node instanceof HTMLElement)) {
+          throw new Error("share-queue modal fetch returned non-element HTML");
+        }
+        // Keep it hidden until showOverlayModal() opens it; prevents a
+        // flash of unstyled modal during the click→fetch→insert gap.
+        node.classList.add("hidden");
+        document.body.appendChild(node);
+        shareQueueModalCache = node;
+        shareQueueModalInflight = null;
+        return node;
+      })
+      .catch((err) => {
+        shareQueueModalInflight = null;
+        if (typeof console !== "undefined") {
+          console.warn("share-queue modal load failed", err);
+        }
+        throw err;
+      });
+    return shareQueueModalInflight;
   }
   function refreshShareQueueModal() {
     const modal = shareQueueModal();
@@ -3952,12 +4010,13 @@
     }
   }
   function openShareQueueModal() {
-    const modal = shareQueueModal();
-    if (!(modal instanceof HTMLElement)) return;
-    installShareQueueModal();
-    refreshShareQueueModal();
-    refreshShareQueuePresets();
-    showOverlayModal(modal);
+    loadShareQueueModal().then((modal) => {
+      if (!(modal instanceof HTMLElement)) return;
+      installShareQueueModal();
+      refreshShareQueueModal();
+      refreshShareQueuePresets();
+      showOverlayModal(modal);
+    });
   }
   function installShareQueueGlobals() {
     // Persistent pill click.
