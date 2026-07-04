@@ -4257,6 +4257,36 @@ the Added / Changed / Fixed / Removed lists stay scannable.
        retire; this commit keeps the marker rule as a
        fallback for any unmigrated reader.
 
+  - **htmx-guard: migrate utility-submit sites to helpers
+    (issue #317, follow-up)** — three historically-
+    annotated sites in `frontend/app.js` migrated to
+    route through `dispatchUtilitySubmit` (line 3995,
+    share-queue preset save) and `dispatchSubmitPrep`
+    (line 4067, share-queue export form staged hiddens;
+    line 5316, PDF preferences persistence). The three
+    `// htmx-guard: utility-submit` markers removed.
+
+    `dispatchSubmitPrep` is the right helper for sites 2
+    and 3 — both forms are `data-dixie-submit="true"`
+    and a downstream dispatcher runs after the prep hook.
+    The helper does NOT preventDefault so the data-dixie-
+    submit dispatcher continues to fire.
+
+    Conventions doc updated — the "The marker" section
+    becomes "The helpers" section, with a separate
+    "deprecated, retained as fallback" subsection for
+    the marker. Author checklist updated to require the
+    helpers, not the marker. Marker rule REMAINS in the
+    probe as defensive fallback for any future
+    contributor or legacy reader who reaches for the old
+    convention.
+
+    Probe stays clean on dev HEAD across the migration;
+    full short `./...` suite unaffected (helpers are
+    pure JS).
+
+    Closes #317.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added

@@ -18,44 +18,72 @@ attribute-drift classes:
    canonical example.
 
 2. **JS submit coexistence** — `frontend/app.js` has multiple
-   `addEventListener("submit", ...)` sites. The codebase has two
+   `addEventListener("submit", ...)` sites. The codebase has three
    semantically distinct kinds of `<form>` submit:
 
    | Kind | Signal | Canonical dispatcher | Template attribute |
    |---|---|---|---|
    | **Navigation/data submit** | the form carries `data-dixie-submit` | `dispatchDixieDataForm` | `data-dixie-submit="true"` |
-   | **Utility submit** | the form does NOT carry `data-dixie-submit` (drafts, prefs, presets) | bespoke handler with `// htmx-guard: utility-submit` marker | none |
+   | **Utility submit** (preventDefault) | the form does NOT carry `data-dixie-submit` and the submit is fully owned by the JS | `dispatchUtilitySubmit(form, callback)` | none |
+   | **Submit-prep** (allow default to bubble) | the form has its own submit semantics downstream and the JS only stages data | `dispatchSubmitPrep(form, callback)` | none (often also `data-dixie-submit="true"`) |
 
    Drift in either direction is the bug class this probe catches.
 
-## The marker
+## The helpers
+
+```js
+// Utility submit — preventDefault + run callback.
+dispatchUtilitySubmit(form, (form) => saveCurrentQueueAsPresetPage(panel, form));
+
+// Submit-prep — run callback, then let the submit continue
+// (form is typically data-dixie-submit="true" and the dispatcher's
+// own submit will fire next).
+dispatchSubmitPrep(exportForm, (form) => stageHiddenFieldsBeforeSubmit(form));
+```
+
+Both helpers are the **canonical, recognized** submit shapes for
+utility-form submits in `frontend/app.js`. The walker accepts a
+listener without ceremony when it sees a call to either helper
+inside its body.
+
+### When to use which
+
+- **`dispatchUtilitySubmit`** — when your submit handler fully owns
+  the submit (prevents the default, runs a local side-effect, no
+  network IO). Example: the share-queue preset save (line 3995).
+
+- **`dispatchSubmitPrep`** — when your submit handler is a
+  side-effect that runs BEFORE another submit flow (the form is
+  `data-dixie-submit="true"` and a downstream dispatcher will
+  fetch). Example: the share-queue export form (line 4067) which
+  stages hidden `selected_ids` inputs before the
+  `dispatchDixieDataForm` delegate runs. Example: the PDF
+  preferences persistence (line 5316) on
+  `form[data-pdf-pref-scope]` which writes localStorage before
+  the PDF-export dispatcher fires.
+
+### The marker convention (deprecated, retained as fallback)
 
 ```js
 // htmx-guard: utility-submit
 form.addEventListener("submit", (ev) => { ... });
 ```
 
-The `// htmx-guard: utility-submit` comment sits on the line immediately
-preceding any `form.addEventListener("submit", ...)` site that is NOT
-a navigation/data submit (i.e., the listener does not funnel through
-`dispatchDixieDataForm`).
+The `// htmx-guard: utility-submit` comment was the slice-1 marker
+that the walker accepted before the helpers existed. All three
+historically-marked sites migrated to helpers (issue #317 closed
+that debt), but the probe still accepts the marker as a fallback
+so that legacy reader code or future contributors who don't know
+about the helpers are flagged less aggressively.
 
-### Rules
-
-1. The marker MUST be on the line directly preceding the `addEventListener("submit"` call (no blank line between).
-2. The marker applies to the immediately-following `addEventListener("submit"` site ONLY — a marker 10 lines above does not count.
-3. Doc-level handlers (`document.addEventListener("submit", ...)`) MUST
-   either branch on `data-dixie-submit` inside the listener body
-   (delivering to `dispatchDixieDataForm`) OR carry the
-   `// htmx-guard: utility-submit` marker.
-4. The probe treats a marker as authoritative — there is no per-marker
-   allowlist of WHICH utility submits are legitimate. Future utility
-   submits require the marker too.
+**New code should use the helpers**, not the marker. The marker
+is documented here only so future readers recognize what
+`// htmx-guard: utility-submit` means in a comment search.
 
 ### What the probe does NOT do
 
 - It does not refactor existing utilities into `dispatchDixieDataForm`.
-  That is the follow-up issue (see #316 close comment).
+  That is the follow-up issue (issue #317) — closed in commit `c2f59df`.
 - It does not lint TypeScript types or actual runtime behavior — it is
   a static source scan. Use `audit/smoke_*.mjs` for runtime contract
   tests.
@@ -102,9 +130,16 @@ When you add any of the following to `frontend/app.js`:
 - `document.addEventListener("submit", ...)` that handles a form
   other than `data-dixie-submit`.
 
-You MUST add the `// htmx-guard: utility-submit` marker on the
-preceding line. The CI probe `make lint-htmx-guard` will fail
-otherwise.
+You MUST route the submit through one of the canonical helpers:
+
+```js
+dispatchUtilitySubmit(form, callback);  // preventDefault + cb
+dispatchSubmitPrep(form, callback);     // cb, allow default to bubble
+```
+
+The CI probe `make lint-htmx-guard` will fail otherwise. The
+deprecated `// htmx-guard: utility-submit` marker is retained as
+a fallback but new code should use the helpers.
 
 When you add a `form.addEventListener("submit", ...)` on a
 `<form data-dixie-submit>` form that does NOT route through
