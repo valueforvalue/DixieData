@@ -226,7 +226,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 					<div class="rounded-2xl border border-sepia-500/[0.24] bg-white/85 p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)] transition hover:bg-parchment-soft/[0.55]">
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
-								<a href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="block text-base font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(record) }</a>
+								<a href={ recordBrowseURL(record) } class="block text-base font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(record) }</a>
 								<div class="mt-1 font-mono text-xs text-[#6f2c26]">{ record.DisplayID }</div>
 							</div>
 							<input type="checkbox" value={ fmt.Sprintf("%d", record.ID) } data-browse-select data-browse-label={ record.DisplayID } aria-label={ fmt.Sprintf("Select %s", record.DisplayID) } class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" id={ fmt.Sprintf("browse-card-%d", record.ID) }/>
@@ -259,7 +259,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 						}
 						<div class="mt-3 flex items-center justify-between text-xs">
 							<span class="text-slate-500">Last edited { browseTimestamp(record.LastEditedAt, record.UpdatedAt, record.CreatedAt) }</span>
-							<a href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="font-semibold text-[#8d7440] hover:text-[#6f2c26]">View &rarr;</a>
+							<a href={ recordBrowseURL(record) } class="font-semibold text-[#8d7440] hover:text-[#6f2c26]">View &rarr;</a>
 						</div>
 					</div>
 				}
@@ -283,7 +283,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 						</thead>
 						<tbody>
 							for _, record := range records {
-								<tr data-browse-row-href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="border-t border-sepia-500/[0.16] transition hover:bg-parchment-soft/[0.46]">
+								<tr data-browse-row-href={ recordBrowseURL(record) } class="border-t border-sepia-500/[0.16] transition hover:bg-parchment-soft/[0.46]">
 									<td class="px-4 py-3 align-top">
 										<div class="flex items-center gap-2">
 											<input type="checkbox" value={ fmt.Sprintf("%d", record.ID) } data-browse-select data-browse-label={ record.DisplayID } aria-label={ fmt.Sprintf("Select %s", record.DisplayID) } class="h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]" id={ fmt.Sprintf("browse-row-%d", record.ID) }/>
@@ -294,7 +294,7 @@ templ BrowseResults(records []viewmodel.PersonRecord, state viewmodel.BrowseStat
 									</td>
 									<td class="px-4 py-3 align-top font-mono text-[#6f2c26]" data-browse-column="display_id">{ record.DisplayID }</td>
 									<td class="px-4 py-3 align-top" data-browse-column="name">
-										<a href={ fmt.Sprintf("/soldiers/%d", record.ID) } class="font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(record) }</a>
+										<a href={ recordBrowseURL(record) } class="font-semibold text-[#22303d] hover:text-[#6f2c26]">{ detailHeading(record) }</a>
 									</td>
 									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="entry_type">{ entryBadgeLabel(record) }</td>
 									<td class="px-4 py-3 align-top text-slate-600" data-browse-column="rank_out">{ browseCellValue(detailDisplayRank(record)) }</td>
@@ -517,6 +517,18 @@ func browseActiveFilters(state viewmodel.BrowseState) []string {
 	}
 	return filters
 }
+
+// recordBrowseURL returns the detail-page URL for a browse row.
+// Person Records route to /soldiers/{id}; Events route to
+// /events/{id}. The browse SQL filter is subtype-agnostic
+// (issue #320 slice #327), so the same paginated list can
+func recordBrowseURL(record viewmodel.PersonRecord) string {
+	if strings.TrimSpace(record.EntryType) == models.EntryTypeEvent {
+		return fmt.Sprintf("/events/%d", record.ID)
+	}
+	return fmt.Sprintf("/soldiers/%d", record.ID)
+}
+
 
 func browseEntryTypeLabel(entryType string) string {
 	switch strings.TrimSpace(strings.ToLower(entryType)) {

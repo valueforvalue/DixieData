@@ -626,4 +626,55 @@ func get(t *testing.T, server *httptest.Server, path string) string {
 	defer resp.Body.Close()
 	return readAll(t, resp)
 }
+// TestHandleBrowseEventsFilter covers issue #320 slice #327:
+// selecting "Event" in the browse entry-type filter must
+// return a list of Event rows whose row URL points at
+// /events/{id} (not /soldiers/{id}, which 404s for Events).
+// The test seeds one Event and one Soldier, GETs
+// /browse?entry_type=event, and asserts the Event's
+// Display ID is in the body while the Soldier's is NOT,
+// plus the row-href data attribute targets /events/{id}.
+func TestHandleBrowseEventsFilter(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Battle of Atlanta", "07/22/1864", "07/22/1864", "Decisive engagement")
+	if _, err := app.soldiers.Create(models.Soldier{FirstName: "Nathan", LastName: "Bedford", EntryType: models.EntryTypeSoldier}); err != nil {
+		t.Fatalf("seed Soldier: %v", err)
+	}
+
+	resp, err := http.Get(server.URL + "/browse?entry_type=event&page_size=50")
+	if err != nil {
+		t.Fatalf("GET /browse?entry_type=event: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	body := readAll(t, resp)
+
+	// The Event's Display ID must be present.
+	if !strings.Contains(body, event.DisplayID) {
+		t.Errorf("body missing Event Display ID %q", event.DisplayID)
+	}
+	// The Event's row must link to /events/{id}, not /soldiers/{id}.
+	if !strings.Contains(body, "/events/"+intStr(event.ID)) {
+		t.Errorf("browse row did not link to /events/%d (recordBrowseURL regression): %s", event.ID, body)
+	}
+	// Soldier "Nathan Bedford" must NOT appear (filter is event-only).
+	if strings.Contains(body, "Nathan") {
+		t.Errorf("browse with entry_type=event should not show Soldier rows; got Nathan in body")
+	}
+
+	// Round-trip: rows for /browse (no filter) include both subtypes.
+	allResp, err := http.Get(server.URL + "/browse?page_size=50")
+	if err != nil {
+		t.Fatalf("GET /browse: %v", err)
+	}
+	allResp.Body.Close()
+	if allResp.StatusCode != http.StatusOK {
+		t.Fatalf("/browse status = %d, want 200", allResp.StatusCode)
+	}
+}
 func extractDisplayID(string) string { return "" }

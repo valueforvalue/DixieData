@@ -83,6 +83,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   destructive force-push. Chunk 5 is documented in the
   notes file but not emitted as a separate patch because
   chunks 4 and 5 share `events_handlers.go` + `routes.go`.
+- **Browse filter Event branch routes Events correctly**
+  (issue #320, slot #327). The browse entry-type filter
+  dropdown already had an "Event" option (slice #320.7),
+  and `BrowsePage`'s SQL predicate already filtered by
+  `LOWER(TRIM(entry_type)) = ?` — Events were being
+  returned, but their row URLs pointed at
+  `/soldiers/{id}` (which 404s for Events). New helper
+  `recordBrowseURL(record)` in `browse.templ` returns
+  `/events/{id}` for Events and `/soldiers/{id}` for
+  everything else; four call sites updated (mobile
+  card title link, mobile card "View →" link, table-row
+  `data-browse-row-href`, table name link). Test
+  `TestHandleBrowseEventsFilter` covers the round
+  trip: seeds one Event + one Soldier, GETs
+  `/browse?entry_type=event`, asserts the Event's
+  Display ID is in the body, the `/events/{id}`
+  row URL is present, and the Soldier's name is
+  absent.
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:
