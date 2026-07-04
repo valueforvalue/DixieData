@@ -20,6 +20,17 @@ the DixieData-specific anchors, per-layer recipes, and
 anti-patterns extracted from the recent `fix:` commits
 below.
 
+**Scope of application:** this protocol applies to all new
+Tier-2 vertical slices whose slice plan is written **after
+the commit that introduces this doc** (commit `260e1f1`,
+`docs(agents): TDD discipline anchored in vertical-slice
+protocol`, 2026-07-04). Slices that landed before that
+commit (e.g. the v60 Event Records slots #322-#338, the
+v61 fix for #340) are not retroactively required to comply
+— rewriting them to add the RED step would be
+drive-by churn, not TDD. The protocol's regression net is
+the **forward** slice commits, not the historical ones.
+
 ## The DixieData failure modes TDD prevents
 
 Three classes of bug have shipped to `dev` in 2026-07 alone.
@@ -166,12 +177,30 @@ for **adjacent surfaces** — anything in the same screen
 family, anything that shares the JS dispatcher, anything
 that the slice's render touches.
 
+The screen family is keyed off `docs/ui-map/INDEX.md` —
+look up the slice's screen row and pick the 2-4 adjacent
+rows (same screen family, sibling tabs, screens that share
+the same JS dispatcher like `dispatchUtilitySubmit`,
+screens that share the same handler cluster). Then run
+the smoke probes + handler tests for those rows only.
+Don't blanket-run every probe (slow) — the slice's
+`feature-protocol.md` checklist + uiids registry should
+give you the exact 2-4 probe names. **Caveat:** as of
+this doc, `docs/ui-map/INDEX.md` is stale for the v60 Event
+Records surface + the Share foldout + the floating-dock
+Menu (issue #342). For surfaces not yet in INDEX.md, fall
+back to grep'ing the slice's templ + handler files for
+shared `data-dixie-submit` / `dispatchUtilitySubmit`
+callers and pick the smoke probes that touch those.
+
 Concretely:
 
 ```bash
-# Run every smoke probe that touches the screen family.
-# "screen family" = same screen or adjacent tab.
-ls audit/smoke_*.mjs | xargs -I {} node {}
+# Run the named 2-4 smoke probes for the slice's screen
+# family (NOT a blanket ls | xargs — that runs every probe
+# and is too slow to be the per-slice gate).
+node audit/smoke_<feature_a>.mjs
+node audit/smoke_<feature_b>.mjs
 
 # Run every test in the slice's package + sibling packages
 # that share a service or handler.
@@ -242,10 +271,22 @@ over-mock.
   No mocks. The repo uses `pgregory.net/rapid` for property
   tests when the input domain is interesting.
 - **Migration test:** if the slice ships a schema change,
-  the test applies the migration to a fresh DB and asserts
-  the schema version is what the slice's bump claims. This
-  is the `goleak`-adjacent discipline: catch drift at the
-  test, not at the user's first update.
+  the slice's RED step extends the existing reversibility
+  catalogue test in `internal/db/migrations_test.go`: add
+  the new block ID to the `want` map (with its
+  `Reversibility` classification) and bump the
+  `Migrations() length` expectation. The map-driven test
+  fails for the slice's RED step because the new block
+  isn't in the map yet; the GREEN step adds it. Downgrade
+  tests in `internal/db/migrate_down_test.go` may also
+  need the boundary updated if the new block is
+  Reversible/PartiallyReversible (the test asserts which
+  targets the applyDownSchema refuses). A separate
+  fresh-DB applySchema test (`TestApplySchemaF*`) does
+  not exist in the repo as of this doc — a future slice
+  could add one as a `pgregory.net/rapid`-shaped
+  characterization test, but it's not required by this
+  protocol today.
 
 ### templ
 
@@ -345,20 +386,27 @@ existing agent docs:
 3. **`docs/agents/INDEX.md`** — add `tdd.md` to Tier 0
    (cross-cuts every feature work, every bug fix).
 
-The orphan-handler probe (failure mode #3) moves from CI
-to pre-commit. Add to `.git/hooks/pre-commit` (or the
-repo's Husky config if one exists):
+### Failure-mode-#3 probe status (as of this commit)
 
-```bash
-node audit/discover_orphan_handlers.mjs
-```
+The orphan-handler probe that catches failure mode #3 is
+**not yet wired to a pre-commit hook or CI step.** As of
+this doc's commit it runs **manually** per `AGENTS.md`'s
+"Before pushing" checklist (`node
+audit/discover_orphan_handlers.mjs`), exits 0 even when
+orphans are found (informational mode), and produces an
+~80-line list that the agent reads rather than a binary
+pass / fail. The probe's value is the audit signal — both
+#340 and #341 in this audit round were caught because the
+probe's output read \"GET /events/{id}/sources\" /
+\"GET /events/{id}/tags\" as orphan handlers, which the
+agent then connected to the X-DixieData-Redirect
+fragment-as-page nav failure mode.
 
-If the slice's commit touches `internal/appshell/routes.go`
-or `internal/templates/*.templ`, the probe runs against the
-slice's diff and exits non-zero on any new orphan. The
-slice can't merge until the orphan is wired or the route is
-removed. (Implementation lives in the same commit as this
-doc's wiring edits.)
+A future slice should move the probe into pre-commit (or a
+Husky hook if the repo adopts one) and exit non-zero on
+orphan growth. Until that lands, the manual run is the
+gate; agents must read the output rather than rely on an
+exit code.
 
 ## When NOT to TDD
 
