@@ -1,0 +1,73 @@
+From: Jeremy Morris <valueforvalue76@gmail.com>
+Date: Sat Jul 4 13:00:00 2026 -0500
+Subject: [events] slice 3 / 3: presentation Event* adapters
+X-Slice3-Chunk: 03-presentation
+
+Slice 3 decomposition patch (issue #326). See
+docs/agents/notes/slice3-decomposition.md for the 8-group
+decomposition rationale. This patch is the source-level diff
+for the files in group 03-presentation, extracted from commit d09e852.
+
+diff --git a/internal/presentation/views.go b/internal/presentation/views.go
+index 3adc34b..105af46 100644
+--- a/internal/presentation/views.go
++++ b/internal/presentation/views.go
+@@ -193,6 +193,58 @@ func EntryFormFragment(soldier models.Soldier, spouseCandidates []models.Soldier
+ 	return templates.EntryFormFragment(viewmodel.PersonRecordFromModel(soldier), viewmodel.PersonRecordsFromModels(spouseCandidates), viewmodel.PersonRecordFormSuggestionsFromModel(suggestions), isEdit, errorMessage)
+ }
+ 
++// v60 (issue #320): Event Record presentation helpers. Each
++// adapts the EventService's domain types (models.Soldier rows
++// for the Event itself, records.EventWithLinks for the read
++// side) into the viewmodel shape the Event templates consume.
++// Mirrors the SoldierList / SoldierDetail / EntryForm pattern
++// the rest of the app uses — handlers stay on the domain
++// surface; presentation owns the viewmodel translation.
++
++// EventList wraps templates.EventList. Used by the /events
++// landing page.
++func EventList(events []models.Soldier, page, total int) templ.Component {
++	return templates.EventList(viewmodel.PersonRecordsFromModels(events), page, total)
++}
++
++// EventDetail wraps templates.EventDetail. The links slice
++// (records.EventLink rows) is projected to the viewmodel
++// shape the Linked Person Records section renders. The
++// model.Soldier rows in the links are mapped via the existing
++// PersonRecordFromModel helper.
++func EventDetail(event *records.EventWithLinks) templ.Component {
++	linked := make([]viewmodel.PersonRecord, 0, len(event.Links))
++	for _, link := range event.Links {
++		// listForEvent returns the linked Person Records in
++		// display-ID order; the link table here carries the
++		// junction metadata (id, sync IDs) but the Linked
++		// Person Records section only needs the
++		// PersonRecord projection. Pull each linked Person by
++		// id via the listForEvent result if available, but
++		// for the v1 detail page the simplest projection is
++		// to keep the junction row itself: id + display_id +
++		// sync_id + created_at.
++		linked = append(linked, viewmodel.PersonRecord{
++			ID:        link.PersonID,
++			DisplayID: link.PersonDisplay,
++		})
++	}
++	return templates.EventDetail(viewmodel.PersonRecordFromModel(event.Event), linked)
++}
++
++// EventForm wraps templates.EventForm. The handler builds the
++// defaults from newEventDefaults (or the existing row on edit)
++// and hands the resulting models.Soldier to this helper.
++func EventForm(event models.Soldier, isEdit bool) templ.Component {
++	return templates.EventForm(viewmodel.PersonRecordFromModel(event), isEdit)
++}
++
++// EventFormWithError mirrors EntryFormWithError: same body,
++// toast header for the form-level validation message.
++func EventFormWithError(event models.Soldier, isEdit bool, errorMessage string) templ.Component {
++	return templates.EventFormWithError(viewmodel.PersonRecordFromModel(event), isEdit, errorMessage)
++}
++
+ // viewmodelCountsFromModels translates models.ArchiveCounts to the
+ // viewmodel-shaped counts struct the templates consume. Mirrors the
+ // pattern used for every other domain-to-viewmodel conversion in this

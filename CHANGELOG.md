@@ -65,9 +65,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Tests: `TestHandlePersonEventsTabUnlink`,
   `TestHandleAttachEventByDisplayID` (success +
   duplicate + not-found + empty-validation), and
-  `TestHandlePersonEventsTabQuickAdd`. Files: 1
   modified + 4 (routebuilder + handler + route +
   CHANGELOG).
+- **Slice 3 decomposition reference (issue #320, slot #326)**.
+  The slice-3 foundation commit `d09e852` (18 files,
+  1491 insertions) is now documented as 8 logical route
+  groups in `docs/agents/notes/slice3-decomposition.md`.
+  Seven mbox-clean patches in
+  `docs/agents/notes/slice3-patches/` reconstruct the
+  slice-3 source tree from `a363b6d` (slice-3 parent)
+  — `git am`-ing them in order produces a tree matching
+  `d09e852` bit-for-bit (verified via worktree). The
+  alternative `git rebase -i a363b6d` strategy would
+  rewrite four published children (#322, #339, #324,
+  #325), so it was deferred to preserve the audit trail;
+  the patches realize the decomposition intent without
+  destructive force-push. Chunk 5 is documented in the
+  notes file but not emitted as a separate patch because
+  chunks 4 and 5 share `events_handlers.go` + `routes.go`.
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:
