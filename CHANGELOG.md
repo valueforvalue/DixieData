@@ -4611,4 +4611,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   readLoop / writeLoop + runtime pollWait so the signal is
   DixieData leaks, not stdlib noise.
 
+- **Property tests in `internal/dates`** (issue #318 Slice 3).
+  Added `pgregory.net/rapid v1.2.0` and
+  `internal/dates/dates_property_test.go` with 7 properties:
+  full-date roundtrip (Format → Parse → Format), year-only
+  roundtrip, never-panic on arbitrary input, normalization
+  idempotence, all-zero formatting sentinel, Display never
+  panics, and ParseBirthInfo year extraction under randomised
+  word boundaries. Catches the `docs/COMMON_BUGS.md` §9.2
+  (normalization) class automatically. Local `make test`
+  runs 20 iterations per property (rapid default under
+  `-short`); CI workflow bumped to 500 (`-short` / 5 = 100
+  iterations) so ≥100 random inputs land on every PR.
+  Existing hand-written `dates_test.go` stays — properties
+  complement, not replace, the table-driven coverage.
+
 ## v1.1.16 - Gold Master
