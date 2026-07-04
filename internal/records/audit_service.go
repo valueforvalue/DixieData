@@ -99,8 +99,8 @@ type auditCandidate struct {
 
 type duplicateAuditFindingCandidate struct {
 	PairKey         string
-	LeftSoldierID   int64
-	RightSoldierID  int64
+	LeftRecordID   int64
+	RightRecordID  int64
 	FindingType     string
 	Reason          string
 	HighlightFields string
@@ -191,18 +191,18 @@ func (s *AuditService) RunDuplicateAudit() (DuplicateAuditRunResult, error) {
 				finding.FindingType, finding.Reason, finding.HighlightFields, now, state.ID); err != nil {
 				return DuplicateAuditRunResult{}, err
 			}
-			affected[finding.LeftSoldierID] = struct{}{}
-			affected[finding.RightSoldierID] = struct{}{}
+			affected[finding.LeftRecordID] = struct{}{}
+			affected[finding.RightRecordID] = struct{}{}
 			continue
 		}
-		if _, err := tx.Exec(`INSERT INTO duplicate_audit_findings (pair_key, left_soldier_id, right_soldier_id, finding_type, reason, highlight_fields, status, created_at, last_detected_at)
+		if _, err := tx.Exec(`INSERT INTO duplicate_audit_findings (pair_key, left_record_id, right_record_id, finding_type, reason, highlight_fields, status, created_at, last_detected_at)
 			VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
-			finding.PairKey, finding.LeftSoldierID, finding.RightSoldierID, finding.FindingType, finding.Reason, finding.HighlightFields, now, now); err != nil {
+			finding.PairKey, finding.LeftRecordID, finding.RightRecordID, finding.FindingType, finding.Reason, finding.HighlightFields, now, now); err != nil {
 			return DuplicateAuditRunResult{}, err
 		}
 		result.FindingsCreated++
-		affected[finding.LeftSoldierID] = struct{}{}
-		affected[finding.RightSoldierID] = struct{}{}
+		affected[finding.LeftRecordID] = struct{}{}
+		affected[finding.RightRecordID] = struct{}{}
 	}
 
 	for key, state := range existing {
@@ -215,8 +215,8 @@ func (s *AuditService) RunDuplicateAudit() (DuplicateAuditRunResult, error) {
 		if _, err := tx.Exec(`DELETE FROM duplicate_audit_findings WHERE id = ?`, state.ID); err != nil {
 			return DuplicateAuditRunResult{}, err
 		}
-		affected[state.LeftSoldierID] = struct{}{}
-		affected[state.RightSoldierID] = struct{}{}
+		affected[state.LeftRecordID] = struct{}{}
+		affected[state.RightRecordID] = struct{}{}
 	}
 
 	for soldierID := range affected {
@@ -246,7 +246,7 @@ func (s *AuditService) ResolveFinding(findingID int64) error {
 	defer tx.Rollback()
 
 	var leftID, rightID int64
-	err = tx.QueryRow(`SELECT left_soldier_id, right_soldier_id FROM duplicate_audit_findings WHERE id = ?`, findingID).Scan(&leftID, &rightID)
+	err = tx.QueryRow(`SELECT left_record_id, right_record_id FROM duplicate_audit_findings WHERE id = ?`, findingID).Scan(&leftID, &rightID)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func (s *AuditService) ResolveFindingsForSoldier(soldierID int64) error {
 	}
 	defer tx.Rollback()
 
-	rows, err := tx.Query(`SELECT id, left_soldier_id, right_soldier_id FROM duplicate_audit_findings WHERE status = 'open' AND (left_soldier_id = ? OR right_soldier_id = ?)`, soldierID, soldierID)
+	rows, err := tx.Query(`SELECT id, left_record_id, right_record_id FROM duplicate_audit_findings WHERE status = 'open' AND (left_record_id = ? OR right_record_id = ?)`, soldierID, soldierID)
 	if err != nil {
 		return err
 	}
@@ -328,9 +328,9 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 	}
 	args = append(args, args[:len(soldierIDs)]...)
 	rows, err := s.db.Conn().Query(`
-		SELECT id, left_soldier_id, right_soldier_id, reason
+		SELECT id, left_record_id, right_record_id, reason
 		FROM duplicate_audit_findings
-		WHERE status = 'open' AND (left_soldier_id IN (`+strings.Join(placeholders, ",")+`) OR right_soldier_id IN (`+strings.Join(placeholders, ",")+`))
+		WHERE status = 'open' AND (left_record_id IN (`+strings.Join(placeholders, ",")+`) OR right_record_id IN (`+strings.Join(placeholders, ",")+`))
 		ORDER BY id ASC`, args...)
 	if err != nil {
 		return nil, err
@@ -414,7 +414,7 @@ func (s *AuditService) Comparison(findingID int64) (*DuplicateAuditComparison, e
 		highlightFields string
 		status          string
 	)
-	err := s.db.Conn().QueryRow(`SELECT left_soldier_id, right_soldier_id, finding_type, reason, highlight_fields, status FROM duplicate_audit_findings WHERE id = ?`, findingID).
+	err := s.db.Conn().QueryRow(`SELECT left_record_id, right_record_id, finding_type, reason, highlight_fields, status FROM duplicate_audit_findings WHERE id = ?`, findingID).
 		Scan(&leftID, &rightID, &findingType, &reason, &highlightFields, &status)
 	if err != nil {
 		return nil, err
@@ -477,12 +477,12 @@ func (s *AuditService) loadCandidates() ([]auditCandidate, error) {
 type duplicateAuditFindingState struct {
 	ID             int64
 	Status         string
-	LeftSoldierID  int64
-	RightSoldierID int64
+	LeftRecordID  int64
+	RightRecordID int64
 }
 
 func loadExistingDuplicateAuditFindings(tx *sql.Tx) (map[string]duplicateAuditFindingState, error) {
-	rows, err := tx.Query(`SELECT id, pair_key, status, left_soldier_id, right_soldier_id FROM duplicate_audit_findings`)
+	rows, err := tx.Query(`SELECT id, pair_key, status, left_record_id, right_record_id FROM duplicate_audit_findings`)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +494,7 @@ func loadExistingDuplicateAuditFindings(tx *sql.Tx) (map[string]duplicateAuditFi
 			state   duplicateAuditFindingState
 			pairKey string
 		)
-		if err := rows.Scan(&state.ID, &pairKey, &state.Status, &state.LeftSoldierID, &state.RightSoldierID); err != nil {
+		if err := rows.Scan(&state.ID, &pairKey, &state.Status, &state.LeftRecordID, &state.RightRecordID); err != nil {
 			return nil, err
 		}
 		states[pairKey] = state
@@ -515,8 +515,8 @@ func discoverDuplicateAuditFindings(candidates []auditCandidate, threshold int) 
 		}
 		found[pairKey] = duplicateAuditFindingCandidate{
 			PairKey:         pairKey,
-			LeftSoldierID:   leftID,
-			RightSoldierID:  rightID,
+			LeftRecordID:   leftID,
+			RightRecordID:  rightID,
 			FindingType:     findingType,
 			Reason:          duplicateAuditReasonPrefix + reason,
 			HighlightFields: strings.Join(uniqueStringsPreserveOrder(highlightFields), ","),
@@ -800,7 +800,7 @@ func (s *AuditService) syncSoldierDuplicateReviewStateTx(tx *sql.Tx, soldierID i
 	rows, err := tx.Query(`
 		SELECT reason
 		FROM duplicate_audit_findings
-		WHERE status = 'open' AND (left_soldier_id = ? OR right_soldier_id = ?)
+		WHERE status = 'open' AND (left_record_id = ? OR right_record_id = ?)
 		ORDER BY id ASC`, soldierID, soldierID)
 	if err != nil {
 		return err

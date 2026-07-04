@@ -16,6 +16,13 @@ const (
 	EntryTypeWife         = "wife"
 	EntryTypeWidow        = "widow"
 	EntryTypeLinkedPerson = "linked_person"
+	// EntryTypeEvent marks a Person Record row as an Event Record
+	// (issue #320). Event Records have no person-specific fields
+	// (no first_name/last_name/rank/unit); instead they carry
+	// begin_date / end_date / description / kind. They link to
+	// one or more Person Records via the event_person_links
+	// junction table. Free-text kind (no enum).
+	EntryTypeEvent = "event"
 )
 
 // AllEntryTypes returns the canonical entry-type values in display order.
@@ -26,13 +33,14 @@ func AllEntryTypes() []string {
 		EntryTypeWife,
 		EntryTypeWidow,
 		EntryTypeLinkedPerson,
+		EntryTypeEvent,
 	}
 }
 
 // IsValidEntryType reports whether s is one of the canonical entry types.
 func IsValidEntryType(s string) bool {
 	switch s {
-	case EntryTypeSoldier, EntryTypeWife, EntryTypeWidow, EntryTypeLinkedPerson:
+	case EntryTypeSoldier, EntryTypeWife, EntryTypeWidow, EntryTypeLinkedPerson, EntryTypeEvent:
 		return true
 	}
 	return false

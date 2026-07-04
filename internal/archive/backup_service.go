@@ -1681,7 +1681,7 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 // conflicts the user has not yet resolved. Surfaced on the Merge
 // Review Ledger page.
 func (b *BackupService) PendingMergeConflicts() ([]models.MergeReviewConflict, error) {
-	rows, err := b.db.Conn().Query(`SELECT id, session_id, conflict_type, reason, COALESCE(local_soldier_id, 0), COALESCE(local_display_id, ''), source_display_id, COALESCE(resolution, ''), created_at, local_data, source_data
+	rows, err := b.db.Conn().Query(`SELECT id, session_id, conflict_type, reason, COALESCE(local_record_id, 0), COALESCE(local_display_id, ''), source_display_id, COALESCE(resolution, ''), created_at, local_data, source_data
 		FROM merge_review_conflicts
 		WHERE COALESCE(resolution, '') = ''
 		ORDER BY created_at, id`)
@@ -1697,7 +1697,7 @@ func (b *BackupService) PendingMergeConflicts() ([]models.MergeReviewConflict, e
 			localJSON  sql.NullString
 			sourceJSON string
 		)
-		if err := rows.Scan(&conflict.ID, &conflict.SessionID, &conflict.ConflictType, &conflict.Reason, &conflict.LocalSoldierID, &conflict.LocalDisplayID, &conflict.SourceDisplayID, &conflict.Resolution, &conflict.CreatedAt, &localJSON, &sourceJSON); err != nil {
+		if err := rows.Scan(&conflict.ID, &conflict.SessionID, &conflict.ConflictType, &conflict.Reason, &conflict.LocalRecordID, &conflict.LocalDisplayID, &conflict.SourceDisplayID, &conflict.Resolution, &conflict.CreatedAt, &localJSON, &sourceJSON); err != nil {
 			return nil, err
 		}
 		if strings.TrimSpace(localJSON.String) != "" {
@@ -1728,7 +1728,7 @@ func (b *BackupService) ConflictLedger(soldierID int64) (*SourceConflictLedger, 
 	rows, err := b.db.Conn().Query(`
 		SELECT id, conflict_type, reason, source_display_id, COALESCE(resolution, ''), created_at, COALESCE(resolved_at, ''), COALESCE(local_data, ''), source_data
 		FROM merge_review_conflicts
-		WHERE local_soldier_id = ?
+		WHERE local_record_id = ?
 		ORDER BY created_at DESC, id DESC
 	`, soldierID)
 	if err != nil {
@@ -1881,14 +1881,14 @@ func upsertSharedRecord(tx *sql.Tx, targetSoldierID int64, soldierSyncID string,
 	var existingID int64
 	err := tx.QueryRow(`SELECT id FROM records WHERE sync_id = ?`, syncID).Scan(&existingID)
 	if err == nil {
-		_, err = tx.Exec(`UPDATE records SET soldier_id = ?, soldier_sync_id = ?, record_type = ?, app_id = ?, details = ? WHERE id = ?`,
+		_, err = tx.Exec(`UPDATE records SET person_record_id = ?, person_sync_id = ?, record_type = ?, app_id = ?, details = ? WHERE id = ?`,
 			targetSoldierID, soldierSyncID, record.RecordType, record.AppID, record.Details, existingID)
 		return true, err
 	}
 	if err != sql.ErrNoRows {
 		return false, err
 	}
-	_, err = tx.Exec(`INSERT INTO records (sync_id, soldier_id, soldier_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+	_, err = tx.Exec(`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
 		syncID, targetSoldierID, soldierSyncID, record.RecordType, record.AppID, record.Details)
 	return false, err
 }
@@ -1917,7 +1917,7 @@ func upsertSharedImage(tx *sql.Tx, targetSoldierID int64, soldierSyncID string, 
 			existing.filePath != image.FilePath ||
 			existing.caption != image.Caption ||
 			existing.isPrimary != image.IsPrimary
-		if _, updateErr := tx.Exec(`UPDATE images SET soldier_id = ?, soldier_sync_id = ?, file_name = ?, file_path = ?, caption = ?, is_primary = ? WHERE id = ?`,
+		if _, updateErr := tx.Exec(`UPDATE images SET person_record_id = ?, person_sync_id = ?, file_name = ?, file_path = ?, caption = ?, is_primary = ? WHERE id = ?`,
 			targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary, existing.id); updateErr != nil {
 			return true, changed, updateErr
 		}
@@ -1925,7 +1925,7 @@ func upsertSharedImage(tx *sql.Tx, targetSoldierID int64, soldierSyncID string, 
 	} else if scanErr != sql.ErrNoRows {
 		return false, false, scanErr
 	}
-	_, err = tx.Exec(`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	_, err = tx.Exec(`INSERT INTO images (sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		syncID, targetSoldierID, soldierSyncID, image.FileName, image.FilePath, image.Caption, image.IsPrimary)
 	return false, false, err
 }
@@ -2094,7 +2094,7 @@ func insertMergeReviewConflict(tx *sql.Tx, sessionID, conflictType, reason strin
 		localDisplayID = localSnapshot.Soldier.DisplayID
 	}
 	_, err = tx.Exec(`INSERT INTO merge_review_conflicts
-		(session_id, conflict_type, reason, soldier_sync_id, local_soldier_id, local_display_id, source_display_id, local_data, source_data)
+		(session_id, conflict_type, reason, soldier_sync_id, local_record_id, local_display_id, source_display_id, local_data, source_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		sessionID, conflictType, reason, sourceSnapshot.Soldier.SyncID, nullableInt64(localSoldierID), localDisplayID, sourceSnapshot.Soldier.DisplayID, nullableString(localJSON), sourceJSON)
 	return err
@@ -2107,12 +2107,12 @@ func loadMergeReviewConflict(tx *sql.Tx, conflictID int64) (models.MergeReviewCo
 		localJSON   sql.NullString
 		sourceJSON  string
 	)
-	err := tx.QueryRow(`SELECT c.id, c.session_id, c.conflict_type, c.reason, COALESCE(c.local_soldier_id, 0), COALESCE(c.local_display_id, ''), c.source_display_id,
+	err := tx.QueryRow(`SELECT c.id, c.session_id, c.conflict_type, c.reason, COALESCE(c.local_record_id, 0), COALESCE(c.local_display_id, ''), c.source_display_id,
 		COALESCE(c.resolution, ''), c.created_at, c.local_data, c.source_data, s.source_root
 		FROM merge_review_conflicts c
 		JOIN merge_review_sessions s ON s.id = c.session_id
 		WHERE c.id = ?`, conflictID).
-		Scan(&conflict.ID, &conflict.SessionID, &conflict.ConflictType, &conflict.Reason, &conflict.LocalSoldierID, &conflict.LocalDisplayID, &conflict.SourceDisplayID,
+		Scan(&conflict.ID, &conflict.SessionID, &conflict.ConflictType, &conflict.Reason, &conflict.LocalRecordID, &conflict.LocalDisplayID, &conflict.SourceDisplayID,
 			&conflict.Resolution, &conflict.CreatedAt, &localJSON, &sourceJSON, &sessionRoot)
 	if err != nil {
 		return models.MergeReviewConflict{}, "", err
@@ -2142,7 +2142,7 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 	}
 	preserveLocalIdentifiers := decision != "keep-both" && conflict.LocalSoldier != nil
 	if preserveLocalIdentifiers {
-		sourceSnapshot.Soldier.ID = conflict.LocalSoldierID
+		sourceSnapshot.Soldier.ID = conflict.LocalRecordID
 		sourceSnapshot.Soldier.DisplayID = conflict.LocalSoldier.DisplayID
 		sourceSnapshot.Soldier.SyncID = conflict.LocalSoldier.SyncID
 		sourceSnapshot.Soldier.AddedBy = conflict.LocalSoldier.AddedBy
@@ -2159,7 +2159,7 @@ func applySharedConflictResolution(tx *sql.Tx, conflict models.MergeReviewConfli
 	}
 	if decision == "keep-both" && conflict.LocalSoldier != nil {
 		reviewReason := fmt.Sprintf("Potential duplicate preserved during shared merge against %s.", strings.TrimSpace(sourceSnapshot.Soldier.DisplayID))
-		if err := setReviewStatusTx(tx, conflict.LocalSoldierID, true, reviewReason); err != nil {
+		if err := setReviewStatusTx(tx, conflict.LocalRecordID, true, reviewReason); err != nil {
 			return err
 		}
 		if err := setReviewStatusTx(tx, targetID, true, fmt.Sprintf("Potential duplicate imported from shared record %s.", strings.TrimSpace(conflict.LocalSoldier.DisplayID))); err != nil {
@@ -2356,7 +2356,7 @@ func loadSoldierSnapshotByID(tx *sql.Tx, soldierID int64) (*mergeReviewSnapshot,
 }
 
 func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, error) {
-	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE soldier_id = ? ORDER BY id`, soldierID)
+	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, soldierID)
 	if err != nil {
 		return nil, err
 	}
@@ -2364,7 +2364,7 @@ func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, erro
 	records := []models.Record{}
 	for rows.Next() {
 		var record models.Record
-		if err := rows.Scan(&record.ID, &record.SyncID, &record.SoldierID, &record.SoldierSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
 			return nil, err
 		}
 		records = append(records, record)
@@ -2373,7 +2373,7 @@ func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, erro
 }
 
 func loadImagesForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Image, error) {
-	rows, err := tx.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY is_primary DESC, id`, soldierID)
+	rows, err := tx.Query(`SELECT `+imageSelectColumns+` FROM images WHERE person_record_id = ? ORDER BY is_primary DESC, id`, soldierID)
 	if err != nil {
 		return nil, err
 	}
@@ -2381,7 +2381,7 @@ func loadImagesForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Image, error)
 	images := []models.Image{}
 	for rows.Next() {
 		var image models.Image
-		if err := rows.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
+		if err := rows.Scan(&image.ID, &image.SyncID, &image.PersonRecordID, &image.PersonSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
 			return nil, err
 		}
 		images = append(images, image)
@@ -2467,11 +2467,11 @@ func normalizeSharedSoldierSnapshot(soldier models.Soldier) models.Soldier {
 	soldier.Images = append([]models.Image(nil), soldier.Images...)
 	for index := range soldier.Records {
 		soldier.Records[index].ID = 0
-		soldier.Records[index].SoldierID = 0
+		soldier.Records[index].PersonRecordID = 0
 	}
 	for index := range soldier.Images {
 		soldier.Images[index].ID = 0
-		soldier.Images[index].SoldierID = 0
+		soldier.Images[index].PersonRecordID = 0
 	}
 	soldier.ID = 0
 	soldier.SpouseSoldierID = 0

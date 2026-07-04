@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 // Reversibility classifies a single migration block by whether its
@@ -138,8 +139,15 @@ var ErrDowngradeRefused = errors.New("schema downgrade refused")
 //              claims was added was never actually added at the SQL
 //              level, see the catalogue for the doc-vs-code mismatch)
 //   Block 17 - research_log.evidence_type rename (v55, issue #106)
+//   Block 18 (block-60) - v60 Event Records + FK rename to
+//              person_record_id (issue #320). 4 sub-blocks: create
+//              event_person_links table, 8 RENAME COLUMN statements,
+//              FTS5 trigger DROP+RECREATE, sync_id backfill. Partially
+//              reversible. The FTS5 layer is no-op DOWN because the
+//              cycle is idempotent and re-running with old column
+//              names would require temporarily reverting the renames.
 //
-// Block 18 (the terminal `PRAGMA user_version` write) is NOT in the
+// Block 19 (the terminal `PRAGMA user_version` write) is NOT in the
 // slice — it's bookkeeping applied by applySchema after the slice
 // iteration completes, mirroring the UP path's terminal write.
 var migrations = []Migration{
@@ -440,6 +448,191 @@ var migrations = []Migration{
 		},
 		Down: refuseDown,
 	},
+	// Block 18 (block-60) — v60 Event Records + FK rename to
+	// person_record_id (issue #320). Four sub-blocks run in a
+	// single transaction:
+	//
+	//   A. CREATE TABLE event_person_links (M-to-M Event↔Person
+	//      junction) + 3 indexes. Pure additive; Reversible.
+	//   B. 8 RENAME COLUMN statements (soldier_id → person_record_id
+	//      in records/images/scratchpad_cache/research_tasks;
+	//      local_soldier_id/left_soldier_id/right_soldier_id →
+	//      local_record_id/left_record_id/right_record_id in
+	//      merge_review_conflicts + duplicate_audit_findings).
+	//      Idempotent: each statement is guarded by columnExists
+	//      (renames only fire on pre-v60 DBs that still have the
+	//      old column name). SQLite >=3.35 supports ALTER TABLE
+	//      RENAME COLUMN. Reversible via inverse RENAME COLUMN.
+	//   C. FTS5 trigger DROP+RECREATE for the 3 scratchpad_cache
+	//      triggers + the 6 soldiers_fts triggers. SQLite does
+	//      NOT auto-update trigger text on RENAME COLUMN, so the
+	//      triggers must be dropped and recreated with the new
+	//      column name; otherwise the next INSERT/UPDATE/DELETE
+	//      on the parent table throws 'no such column: new.<old>'.
+	//      Also renames the FTS5 internal column
+	//      soldiers_fts.soldier_id → person_record_id.
+	//   D. UPDATE records SET person_sync_id (backfill in case
+	//      Block 2 didn't add it; idempotent via the WHERE
+	//      clause).
+	//
+	// Reversibility: PartiallyReversible. RENAME COLUMN is
+	// reversible; CREATE TABLE/DROP TABLE is reversible; the FTS5
+	// trigger DROP+RECREATE cycle is reversible (FTS5 is a derived
+	// index, no data loss). The inverse path may be lossy if
+	// user-added columns are non-empty in a v60-only DB.
+	{
+		ID:            "block-60-event-records-event-person-links-fk-rename",
+		Reversibility: PartiallyReversible,
+		Reason: "8 RENAME COLUMN + CREATE TABLE event_person_links + FTS5 trigger DROP+RECREATE. RENAME COLUMN is reversible; FTS5 cycle is reversible (FTS5 is derived). DOWN reflows column names; user-added Event data is preserved.",
+		Up: func(tx *sql.Tx) error {
+			// Sub-block A: CREATE TABLE event_person_links + indexes.
+			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS event_person_links (
+				id             INTEGER PRIMARY KEY AUTOINCREMENT,
+				event_id       INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+				person_id      INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+				sync_id        TEXT,
+				event_sync_id  TEXT,
+				person_sync_id TEXT,
+				created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE (event_id, person_id)
+			)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_event_person_links_event ON event_person_links(event_id)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_event_person_links_person ON event_person_links(person_id)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_event_person_links_sync_id ON event_person_links(sync_id)`); err != nil {
+				return err
+			}
+
+			// Sub-block B: 8 RENAME COLUMN statements. Each guarded by
+			// columnExists so the block is idempotent on a v60 fresh
+			// install (where the new column name is already inline).
+			renames := []struct{ table, from, to string }{
+				{"records", "soldier_id", "person_record_id"},
+				{"images", "soldier_id", "person_record_id"},
+				{"scratchpad_cache", "soldier_id", "person_record_id"},
+				{"research_tasks", "soldier_id", "person_record_id"},
+				{"merge_review_conflicts", "local_soldier_id", "local_record_id"},
+				{"merge_review_conflicts", "left_soldier_id", "left_record_id"},
+				{"merge_review_conflicts", "right_soldier_id", "right_record_id"},
+				{"duplicate_audit_findings", "left_soldier_id", "left_record_id"},
+				{"duplicate_audit_findings", "right_soldier_id", "right_record_id"},
+			}
+			for _, r := range renames {
+				exists, err := columnExists(tx, r.table, r.from)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					continue
+				}
+				stmt := fmt.Sprintf(`ALTER TABLE %s RENAME COLUMN %s TO %s`, r.table, r.from, r.to)
+				if _, err := tx.Exec(stmt); err != nil {
+					return err
+				}
+			}
+
+			// Sub-block C: FTS5 trigger DROP+RECREATE. The 3
+			// scratchpad_cache triggers reference the parent
+			// column; the 6 soldiers_fts triggers reference both
+			// the FTS5 internal column and (for the scratchpad
+			// triggers) the parent column. After the renames
+			// above, all of these must be dropped and recreated
+			// with the new column name.
+			if err := ensureSoldierFTS(tx); err != nil {
+				return err
+			}
+
+			// Sub-block D: backfill person_sync_id on records/images
+			// in case the v59→v60 upgrade skipped the standard
+			// phase1 migration. Idempotent: the WHERE clause skips
+			// rows that already have a non-empty sync_id.
+			if _, err := tx.Exec(`UPDATE records
+				SET person_sync_id = (
+					SELECT soldiers.sync_id
+					FROM soldiers
+					WHERE soldiers.id = records.person_record_id
+				)
+				WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`UPDATE images
+				SET person_sync_id = (
+					SELECT soldiers.sync_id
+					FROM soldiers
+					WHERE soldiers.id = images.person_record_id
+				)
+				WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			// Sub-block D inverse: not strictly needed (the WHERE
+			// clause is idempotent on re-run). Skipped for the
+			// DOWN path because person_sync_id already exists on
+			// legacy v60 DBs.
+			//
+			// Sub-block C inverse: ensureSoldierFTS is itself
+			// idempotent (DROP+CREATE+INSERT...SELECT cycle whose
+			// net effect is zero data loss). Running it again with
+			// the original column names would require temporarily
+			// reverting the renames, which is not safe. The DOWN
+			// path for the FTS5 layer is therefore a no-op — the
+			// triggers reference person_record_id regardless of
+			// the soldiers_fts internal column name.
+			//
+			// Sub-block B inverse: 8 RENAME COLUMN statements to
+			// revert. Idempotent.
+			renames := []struct{ table, from, to string }{
+				{"records", "person_record_id", "soldier_id"},
+				{"images", "person_record_id", "soldier_id"},
+				{"scratchpad_cache", "person_record_id", "soldier_id"},
+				{"research_tasks", "person_record_id", "soldier_id"},
+				{"merge_review_conflicts", "local_record_id", "local_soldier_id"},
+				{"merge_review_conflicts", "left_record_id", "left_soldier_id"},
+				{"merge_review_conflicts", "right_record_id", "right_soldier_id"},
+				{"duplicate_audit_findings", "left_record_id", "left_soldier_id"},
+				{"duplicate_audit_findings", "right_record_id", "right_soldier_id"},
+			}
+			for _, r := range renames {
+				exists, err := columnExists(tx, r.table, r.from)
+				if err != nil {
+					return err
+				}
+				if !exists {
+					continue
+				}
+				stmt := fmt.Sprintf(`ALTER TABLE %s RENAME COLUMN %s TO %s`, r.table, r.from, r.to)
+				if _, err := tx.Exec(stmt); err != nil {
+					return err
+				}
+			}
+
+			// Sub-block A inverse: DROP TABLE event_person_links +
+			// the 3 indexes. CASCADE on the FK ensures the table
+			// is droppable even if linked rows exist.
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_person_links_sync_id`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_person_links_person`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_person_links_event`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP TABLE IF EXISTS event_person_links`); err != nil {
+				return err
+			}
+
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every
@@ -555,6 +748,13 @@ func applyAddColumnLoop(tx *sql.Tx) error {
 		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
 		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`},
 		{table: "images", column: "is_primary", sql: `ALTER TABLE images ADD COLUMN is_primary BOOLEAN DEFAULT 0`},
+		// v60 (issue #320): Event Record subtype columns. Added via
+		// the applyAddColumnLoop so the v1 → v60 upgrade path picks
+		// them up. Fresh installs get them inline in the const schema.
+		{table: "soldiers", column: "kind", sql: `ALTER TABLE soldiers ADD COLUMN kind TEXT`},
+		{table: "soldiers", column: "begin_date", sql: `ALTER TABLE soldiers ADD COLUMN begin_date TEXT`},
+		{table: "soldiers", column: "end_date", sql: `ALTER TABLE soldiers ADD COLUMN end_date TEXT`},
+		{table: "soldiers", column: "description", sql: `ALTER TABLE soldiers ADD COLUMN description TEXT`},
 	} {
 		exists, err := columnExists(tx, migration.table, migration.column)
 		if err != nil {
@@ -640,7 +840,7 @@ func applyImagesIsPrimary(tx *sql.Tx) error {
 	if _, err := tx.Exec(`UPDATE images SET is_primary = 1 WHERE id IN (
 		SELECT MIN(id)
 		FROM images
-		GROUP BY soldier_id
+		GROUP BY person_record_id
 		HAVING MAX(CASE WHEN is_primary = 1 THEN 1 ELSE 0 END) = 0
 	)`); err != nil {
 		return err

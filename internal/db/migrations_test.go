@@ -125,6 +125,7 @@ func TestMigrationsReversibilityMapping(t *testing.T) {
 		"block-15-archive-meta-seed":           Reversible,
 		"block-16-entry-type-discipline":       Reversible,
 		"block-17-research-log-evidence-rename": Irreversible,
+		"block-60-event-records-event-person-links-fk-rename": PartiallyReversible,
 	}
 
 	for _, m := range Migrations() {

@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
-	recordSelectColumns  = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
-	imageSelectColumns   = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
+	soldierSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description`
+	recordSelectColumns  = `id, sync_id, person_record_id, person_sync_id, record_type, app_id, details`
+	imageSelectColumns   = `id, sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary`
 )
 
 // SoldierService is a re-export of records.SoldierService (or pkg/render.SoldierService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
@@ -124,6 +124,8 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		confederateHomeName   sql.NullString
 		birthInfo             sql.NullString
 		buriedIn              sql.NullString
+		biography             sql.NullString
+		pdfExcerptOverride    sql.NullString
 		notes                 sql.NullString
 		reviewReason          sql.NullString
 		addedBy               sql.NullString
@@ -131,6 +133,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		lastEditedFields      sql.NullString
 		lastEditedAt          sql.NullString
 		createdAt             sql.NullString
+		kind                  sql.NullString
+		beginDate             sql.NullString
+		endDate               sql.NullString
+		description           sql.NullString
 		deathYear             sql.NullInt64
 		deathMonth            sql.NullInt64
 		deathDay              sql.NullInt64
@@ -170,6 +176,8 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.DeathDate, &deathDate),
 		nullStringDest(&s.BirthInfo, &birthInfo),
 		nullStringDest(&s.BuriedIn, &buriedIn),
+		nullStringDest(&s.Biography, &biography),
+		nullStringDest(&s.PDFExcerptOverride, &pdfExcerptOverride),
 		nullStringDest(&s.Notes, &notes),
 		&s.NeedsReview,
 		nullStringDest(&s.ReviewReason, &reviewReason),
@@ -179,6 +187,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.LastEditedAt, &lastEditedAt),
 		nullStringDest(&s.CreatedAt, &createdAt),
 		nullStringDest(&s.UpdatedAt, &updatedAt),
+		nullStringDest(&s.Kind, &kind),
+		nullStringDest(&s.BeginDate, &beginDate),
+		nullStringDest(&s.EndDate, &endDate),
+		nullStringDest(&s.Description, &description),
 	}
 }
 

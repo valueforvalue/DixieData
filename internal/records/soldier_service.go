@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
-	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.soldier_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.soldier_id = soldiers.id)`
-	recordSelectColumns      = `id, sync_id, soldier_id, soldier_sync_id, record_type, app_id, details`
-	imageSelectColumns       = `id, sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary`
+	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description`
+	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.person_record_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.person_record_id = soldiers.id)`
+	recordSelectColumns      = `id, sync_id, person_record_id, person_sync_id, record_type, app_id, details`
+	imageSelectColumns       = `id, sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary`
 )
 
 // SoldierService is the central domain service: CRUD on Soldiers
@@ -248,27 +248,27 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 		return nil, err
 	}
 
-	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE soldier_id = ? ORDER BY id`, id)
+	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var r models.Record
-		if err := rows.Scan(&r.ID, &r.SyncID, &r.SoldierID, &r.SoldierSyncID, &r.RecordType, &r.AppID, &r.Details); err != nil {
+		if err := rows.Scan(&r.ID, &r.SyncID, &r.PersonRecordID, &r.PersonSyncID, &r.RecordType, &r.AppID, &r.Details); err != nil {
 			return nil, err
 		}
 		soldier.Records = append(soldier.Records, r)
 	}
 
-	imgRows, err := conn.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY is_primary DESC, id`, id)
+	imgRows, err := conn.Query(`SELECT `+imageSelectColumns+` FROM images WHERE person_record_id = ? ORDER BY is_primary DESC, id`, id)
 	if err != nil {
 		return nil, err
 	}
 	defer imgRows.Close()
 	for imgRows.Next() {
 		var img models.Image
-		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
+		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.PersonRecordID, &img.PersonSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
 			return nil, err
 		}
 		soldier.Images = append(soldier.Images, img)
@@ -296,27 +296,27 @@ func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, erro
 		return nil, err
 	}
 
-	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE soldier_id = ? ORDER BY id`, soldier.ID)
+	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, soldier.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var record models.Record
-		if err := rows.Scan(&record.ID, &record.SyncID, &record.SoldierID, &record.SoldierSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
 			return nil, err
 		}
 		soldier.Records = append(soldier.Records, record)
 	}
 
-	imgRows, err := conn.Query(`SELECT `+imageSelectColumns+` FROM images WHERE soldier_id = ? ORDER BY is_primary DESC, id`, soldier.ID)
+	imgRows, err := conn.Query(`SELECT `+imageSelectColumns+` FROM images WHERE person_record_id = ? ORDER BY is_primary DESC, id`, soldier.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer imgRows.Close()
 	for imgRows.Next() {
 		var img models.Image
-		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.SoldierID, &img.SoldierSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
+		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.PersonRecordID, &img.PersonSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
 			return nil, err
 		}
 		soldier.Images = append(soldier.Images, img)
@@ -404,7 +404,7 @@ func (s *SoldierService) AddImage(soldierID int64, fileName, filePath, caption s
 		return err
 	}
 	_, err = s.db.Conn().Exec(
-		`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO images (sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		imageSyncID,
 		soldierID,
 		soldierSyncID,
@@ -434,7 +434,7 @@ func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
 	}
 
 	_, err := s.db.Conn().Exec(
-		fmt.Sprintf(`DELETE FROM images WHERE soldier_id = ? AND id IN (%s)`, strings.Join(placeholders, ",")),
+		fmt.Sprintf(`DELETE FROM images WHERE person_record_id = ? AND id IN (%s)`, strings.Join(placeholders, ",")),
 		args...,
 	)
 	if err != nil {
@@ -449,13 +449,13 @@ func (s *SoldierService) DeleteImages(soldierID int64, imageIDs []int64) error {
 // SetPrimaryImage marks one image as the portrait shown on the Person Record header.
 func (s *SoldierService) SetPrimaryImage(soldierID, imageID int64) error {
 	var count int
-	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ? AND id = ?`, soldierID, imageID).Scan(&count); err != nil {
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE person_record_id = ? AND id = ?`, soldierID, imageID).Scan(&count); err != nil {
 		return err
 	}
 	if count == 0 {
 		return sql.ErrNoRows
 	}
-	if _, err := s.db.Conn().Exec(`UPDATE images SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE soldier_id = ?`, imageID, soldierID); err != nil {
+	if _, err := s.db.Conn().Exec(`UPDATE images SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE person_record_id = ?`, imageID, soldierID); err != nil {
 		return err
 	}
 	return s.touchAuditFields(soldierID, "primary_image")
@@ -465,7 +465,7 @@ func (s *SoldierService) SetPrimaryImage(soldierID, imageID int64) error {
 func (s *SoldierService) GetImageByID(imageID int64) (*models.Image, error) {
 	row := s.db.Conn().QueryRow(`SELECT `+imageSelectColumns+` FROM images WHERE id = ?`, imageID)
 	var image models.Image
-	if err := row.Scan(&image.ID, &image.SyncID, &image.SoldierID, &image.SoldierSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
+	if err := row.Scan(&image.ID, &image.SyncID, &image.PersonRecordID, &image.PersonSyncID, &image.FileName, &image.FilePath, &image.Caption, &image.IsPrimary); err != nil {
 		return nil, err
 	}
 	return &image, nil
@@ -590,9 +590,9 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 	if err := db.WithBusyRetry(3, func() error {
 		return conn.QueryRow(`
 		SELECT COUNT(*) FROM (
-			SELECT soldier_id AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
+			SELECT person_record_id AS id FROM soldiers_fts WHERE soldiers_fts MATCH ?
 			UNION
-			SELECT soldier_id AS id FROM records WHERE `+recordSearchLikeClause()+`
+			SELECT person_record_id AS id FROM records WHERE `+recordSearchLikeClause()+`
 		) matches
 	`, append([]interface{}{matchQuery}, recordArgs...)...).Scan(&total)
 	}); err != nil {
@@ -617,7 +617,7 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 	if err := db.WithBusyRetry(3, func() error {
 		r, qErr := conn.Query(`
 		WITH matches AS (
-			SELECT soldier_id,
+			SELECT person_record_id,
 				COALESCE(snippet(soldiers_fts, 19, '', '', '...', 12), '') AS biography_snippet,
 				COALESCE(snippet(soldiers_fts, 20, '', '', '...', 12), '') AS notes_snippet,
 				COALESCE(snippet(soldiers_fts, 21, '', '', '...', 12), '') AS scratch_snippet,
@@ -625,13 +625,13 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 			FROM soldiers_fts
 			WHERE soldiers_fts MATCH ?
 			UNION
-			SELECT soldier_id, '', '', '', 1000.0
+			SELECT person_record_id, '', '', '', 1000.0
 			FROM records
 			WHERE `+recordSearchLikeClause()+`
 		)
 		SELECT `+soldierListSelectColumns+`, COALESCE(MAX(biography_snippet), ''), COALESCE(MAX(notes_snippet), ''), COALESCE(MAX(scratch_snippet), '')
 		FROM soldiers
-		JOIN matches ON matches.soldier_id = soldiers.id
+		JOIN matches ON matches.person_record_id = soldiers.id
 		GROUP BY soldiers.id
 		ORDER BY MIN(score), last_name, first_name
 		LIMIT ? OFFSET ?
@@ -682,7 +682,7 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 func quickSearchLikeClause() string {
 	return `display_id LIKE ? OR pension_id LIKE ? OR application_id LIKE ? OR prefix LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR last_name LIKE ? OR suffix LIKE ? OR unit LIKE ? OR rank LIKE ? OR rank_in LIKE ? OR rank_out LIKE ? OR pension_state LIKE ? OR confederate_home_status LIKE ? OR confederate_home_name LIKE ? OR buried_in LIKE ? OR maiden_name LIKE ? OR relationship_label LIKE ? OR biography LIKE ? OR notes LIKE ? OR EXISTS (
 		SELECT 1 FROM records
-		WHERE records.soldier_id = soldiers.id
+		WHERE records.person_record_id = soldiers.id
 			AND (record_type LIKE ? OR app_id LIKE ? OR details LIKE ?)
 	)`
 }
@@ -894,7 +894,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 		appendContainsFilter("unit", search.Unit)
 	}
 	if search.RecordType != "" {
-		whereParts = append(whereParts, "EXISTS (SELECT 1 FROM records WHERE records.soldier_id = soldiers.id AND records.record_type LIKE ?)")
+		whereParts = append(whereParts, "EXISTS (SELECT 1 FROM records WHERE records.person_record_id = soldiers.id AND records.record_type LIKE ?)")
 		args = append(args, "%"+search.RecordType+"%")
 	}
 	if search.PensionState != "" {
@@ -1077,7 +1077,7 @@ func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize in
 // fields (biography, notes, pdf_excerpt_override, last_edited_fields,
 // sync_id, audit timestamps) that the recent-search view never
 // renders. Audit issue #119 (finding 7.2).
-const recentSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at`
+const recentSelectColumns = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description`
 
 // RecentByIDs returns the Soldiers with the given IDs in the order they appear in the input slice. Used to populate the Recent Edits list.
 func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, error) {
@@ -1264,9 +1264,9 @@ func (s *SoldierService) ResearchLog(soldierID int64) (*ResearchLog, error) {
 		return nil, err
 	}
 	rows, err := s.db.Conn().Query(`
-		SELECT id, soldier_id, title, notes, evidence_type, status, created_at, COALESCE(updated_at, ''), COALESCE(resolved_at, '')
+		SELECT id, person_record_id, title, notes, evidence_type, status, created_at, COALESCE(updated_at, ''), COALESCE(resolved_at, '')
 		FROM research_tasks
-		WHERE soldier_id = ?
+		WHERE person_record_id = ?
 		ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, created_at DESC, id DESC
 	`, soldierID)
 	if err != nil {
@@ -1305,7 +1305,7 @@ func (s *SoldierService) AddResearchTask(soldierID int64, title, notes, evidence
 	evidenceType = normalizeResearchEvidenceType(evidenceType)
 	notes = strings.TrimSpace(notes)
 	_, err := s.db.Conn().Exec(`
-		INSERT INTO research_tasks (soldier_id, title, notes, evidence_type, status, updated_at)
+		INSERT INTO research_tasks (person_record_id, title, notes, evidence_type, status, updated_at)
 		VALUES (?, ?, ?, ?, 'open', ?)
 	`, soldierID, title, notes, evidenceType, currentSQLiteTimestamp())
 	return err
@@ -1316,7 +1316,7 @@ func (s *SoldierService) ResolveResearchTask(soldierID, taskID int64) error {
 	result, err := s.db.Conn().Exec(`
 		UPDATE research_tasks
 		SET status = 'resolved', updated_at = ?, resolved_at = ?
-		WHERE id = ? AND soldier_id = ? AND status <> 'resolved'
+		WHERE id = ? AND person_record_id = ? AND status <> 'resolved'
 	`, currentSQLiteTimestamp(), currentSQLiteTimestamp(), taskID, soldierID)
 	if err != nil {
 		return err
@@ -1408,8 +1408,8 @@ func (s *SoldierService) ResearchCollectionsHub(currentSoldierID int64) (*Resear
 		hub.Current = current
 	}
 	rows, err := s.db.Conn().Query(`
-		SELECT c.id, c.name, COALESCE(c.description, ''), c.created_at, COALESCE(c.updated_at, ''), COUNT(i.soldier_id),
-		       CASE WHEN ? > 0 AND EXISTS (SELECT 1 FROM research_collection_items existing WHERE existing.collection_id = c.id AND existing.soldier_id = ?) THEN 1 ELSE 0 END
+		SELECT c.id, c.name, COALESCE(c.description, ''), c.created_at, COALESCE(c.updated_at, ''), COUNT(i.person_record_id),
+		       CASE WHEN ? > 0 AND EXISTS (SELECT 1 FROM research_collection_items existing WHERE existing.collection_id = c.id AND existing.person_record_id = ?) THEN 1 ELSE 0 END
 		FROM research_collections c
 		LEFT JOIN research_collection_items i ON i.collection_id = c.id
 		GROUP BY c.id, c.name, c.description, c.created_at, c.updated_at
@@ -1453,7 +1453,7 @@ func (s *SoldierService) AddSoldierToResearchCollection(collectionID, soldierID 
 		return err
 	}
 	result, err := s.db.Conn().Exec(`
-		INSERT OR IGNORE INTO research_collection_items (collection_id, soldier_id, created_at)
+		INSERT OR IGNORE INTO research_collection_items (collection_id, person_record_id, created_at)
 		VALUES (?, ?, ?)
 	`, collectionID, soldierID, currentSQLiteTimestamp())
 	if err != nil {
@@ -1488,7 +1488,7 @@ func (s *SoldierService) ResearchCollectionDetail(collectionID int64, currentSol
 		detail.Current = current
 	}
 	if err := s.db.Conn().QueryRow(`
-		SELECT c.id, c.name, COALESCE(c.description, ''), c.created_at, COALESCE(c.updated_at, ''), COUNT(i.soldier_id)
+		SELECT c.id, c.name, COALESCE(c.description, ''), c.created_at, COALESCE(c.updated_at, ''), COUNT(i.person_record_id)
 		FROM research_collections c
 		LEFT JOIN research_collection_items i ON i.collection_id = c.id
 		WHERE c.id = ?
@@ -1499,7 +1499,7 @@ func (s *SoldierService) ResearchCollectionDetail(collectionID int64, currentSol
 	rows, err := s.db.Conn().Query(`
 		SELECT `+soldierListSelectColumns+`
 		FROM soldiers
-		WHERE id IN (SELECT soldier_id FROM research_collection_items WHERE collection_id = ?)
+		WHERE id IN (SELECT person_record_id FROM research_collection_items WHERE collection_id = ?)
 		ORDER BY last_name, first_name
 	`, collectionID)
 	if err != nil {
@@ -1524,8 +1524,7 @@ func (s *SoldierService) ResearchCollectionDetail(collectionID int64, currentSol
 
 func scanSoldier(row *sql.Row) (*models.Soldier, error) {
 	var s models.Soldier
-	err := row.Scan(soldierScanDest(&s)...)
-	if err != nil {
+	if err := row.Scan(soldierScanDest(&s)...); err != nil {
 		return nil, err
 	}
 	hydrateLegacyDeathParts(&s)
@@ -2051,7 +2050,7 @@ func (s *SoldierService) ManualComparison(leftID, rightID int64) (*DuplicateAudi
 }
 
 func replaceRecords(tx *sql.Tx, soldierID int64, soldierSyncID string, records []models.Record) error {
-	if _, err := tx.Exec(`DELETE FROM records WHERE soldier_id = ?`, soldierID); err != nil {
+	if _, err := tx.Exec(`DELETE FROM records WHERE person_record_id = ?`, soldierID); err != nil {
 		return err
 	}
 	for _, record := range normalizeRecords(records) {
@@ -2062,12 +2061,12 @@ func replaceRecords(tx *sql.Tx, soldierID int64, soldierSyncID string, records [
 			}
 			record.SyncID = syncID
 		}
-		record.SoldierSyncID = soldierSyncID
+		record.PersonSyncID = soldierSyncID
 		if _, err := tx.Exec(
-			`INSERT INTO records (sync_id, soldier_id, soldier_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
 			record.SyncID,
 			soldierID,
-			record.SoldierSyncID,
+			record.PersonSyncID,
 			record.RecordType,
 			record.AppID,
 			record.Details,
@@ -2126,6 +2125,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		lastEditedFields      sql.NullString
 		lastEditedAt          sql.NullString
 		createdAt             sql.NullString
+		kind                  sql.NullString
+		beginDate             sql.NullString
+		endDate               sql.NullString
+		description           sql.NullString
 		deathYear             sql.NullInt64
 		deathMonth            sql.NullInt64
 		deathDay              sql.NullInt64
@@ -2176,6 +2179,10 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.LastEditedAt, &lastEditedAt),
 		nullStringDest(&s.CreatedAt, &createdAt),
 		nullStringDest(&s.UpdatedAt, &updatedAt),
+		nullStringDest(&s.Kind, &kind),
+		nullStringDest(&s.BeginDate, &beginDate),
+		nullStringDest(&s.EndDate, &endDate),
+		nullStringDest(&s.Description, &description),
 	}
 }
 
@@ -2251,6 +2258,10 @@ func recentScanDest(s *models.Soldier) []interface{} {
 		lastEditedAt         sql.NullString
 		createdAt            sql.NullString
 		updatedAt            sql.NullString
+		kind                 sql.NullString
+		beginDate            sql.NullString
+		endDate              sql.NullString
+		description          sql.NullString
 	)
 
 	return []interface{}{
@@ -2292,6 +2303,10 @@ func recentScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.LastEditedAt, &lastEditedAt),
 		nullStringDest(&s.CreatedAt, &createdAt),
 		nullStringDest(&s.UpdatedAt, &updatedAt),
+		nullStringDest(&s.Kind, &kind),
+		nullStringDest(&s.BeginDate, &beginDate),
+		nullStringDest(&s.EndDate, &endDate),
+		nullStringDest(&s.Description, &description),
 	}
 }
 
@@ -2785,14 +2800,14 @@ func loadSoldierAuditSnapshot(tx *sql.Tx, soldierID int64) (*models.Soldier, err
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE soldier_id = ? ORDER BY id`, soldierID)
+	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, soldierID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var record models.Record
-		if err := rows.Scan(&record.ID, &record.SyncID, &record.SoldierID, &record.SoldierSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
 			return nil, err
 		}
 		soldier.Records = append(soldier.Records, record)
@@ -2848,7 +2863,7 @@ func (s *SoldierService) soldierSyncIDByID(soldierID int64) (string, error) {
 
 func (s *SoldierService) shouldAssignPrimaryImage(soldierID int64) (bool, error) {
 	var count int
-	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ?`, soldierID).Scan(&count); err != nil {
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE person_record_id = ?`, soldierID).Scan(&count); err != nil {
 		return false, err
 	}
 	return count == 0, nil
@@ -2856,22 +2871,22 @@ func (s *SoldierService) shouldAssignPrimaryImage(soldierID int64) (bool, error)
 
 func (s *SoldierService) ensurePrimaryImage(soldierID int64) error {
 	var count int
-	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ?`, soldierID).Scan(&count); err != nil {
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE person_record_id = ?`, soldierID).Scan(&count); err != nil {
 		return err
 	}
 	if count == 0 {
 		return nil
 	}
 	var primaryCount int
-	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE soldier_id = ? AND is_primary = 1`, soldierID).Scan(&primaryCount); err != nil {
+	if err := s.db.Conn().QueryRow(`SELECT COUNT(1) FROM images WHERE person_record_id = ? AND is_primary = 1`, soldierID).Scan(&primaryCount); err != nil {
 		return err
 	}
 	if primaryCount > 0 {
 		return nil
 	}
 	_, err := s.db.Conn().Exec(`UPDATE images SET is_primary = CASE WHEN id = (
-		SELECT id FROM images WHERE soldier_id = ? ORDER BY id LIMIT 1
-	) THEN 1 ELSE 0 END WHERE soldier_id = ?`, soldierID, soldierID)
+		SELECT id FROM images WHERE person_record_id = ? ORDER BY id LIMIT 1
+	) THEN 1 ELSE 0 END WHERE person_record_id = ?`, soldierID, soldierID)
 	return err
 }
 

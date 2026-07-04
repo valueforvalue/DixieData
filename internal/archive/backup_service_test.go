@@ -1767,7 +1767,7 @@ func TestBackupService_ConflictLedger(t *testing.T) {
 		t.Fatalf("insert session: %v", err)
 	}
 	if _, err := d.Conn().Exec(`
-		INSERT INTO merge_review_conflicts (session_id, conflict_type, reason, soldier_sync_id, local_soldier_id, local_display_id, source_display_id, local_data, source_data, resolution, resolved_at)
+		INSERT INTO merge_review_conflicts (session_id, conflict_type, reason, soldier_sync_id, local_record_id, local_display_id, source_display_id, local_data, source_data, resolution, resolved_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`, "session-ledger", "soldier-update", "Shared archive changed unit and pension ID.", created.SyncID, created.ID, created.DisplayID, "SRC-0001", localJSON, sourceJSON, "keep-local"); err != nil {
 		t.Fatalf("insert conflict: %v", err)

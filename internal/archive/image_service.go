@@ -44,7 +44,7 @@ func (s *ImageService) EnsureShardedStorage(dataDir string) error {
 	rows, err := s.db.Conn().Query(`
 		SELECT images.id, COALESCE(images.file_path, ''), COALESCE(images.file_name, ''), COALESCE(soldiers.display_id, '')
 		FROM images
-		JOIN soldiers ON soldiers.id = images.soldier_id`)
+		JOIN soldiers ON soldiers.id = images.person_record_id`)
 	if err != nil {
 		return err
 	}
