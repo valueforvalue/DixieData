@@ -23,6 +23,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/templates"
 	"github.com/valueforvalue/DixieData/internal/update"
 )
 
@@ -423,6 +424,14 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Inject debug-mode flag into the request context so templates can
 	// render the Debug Console button without needing the App struct.
 	ctx := debug.WithDebugMode(r.Context(), a.debugMode.Load())
+	// Issue #309: stash the URL path on the templates package's
+	// package-level state so the Layout breadcrumb + dev badge
+	// can render without every page's templ signature growing a
+	// currentPath param. SetCurrentPagePath + ClearCurrentPagePath
+	// bracket the inner mux serve so a panic in render doesn't leak
+	// the previous request's path to the next one.
+	templates.SetCurrentPagePath(r.URL.Path)
+	defer templates.ClearCurrentPagePath()
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 

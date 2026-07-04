@@ -11,6 +11,102 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **Page indicator + dev badge + JS debug toolbox** (issue #309).
+  Three independent witnesses for "what page am I on", each
+  visible/accessible to a different audience:
+
+  - **Always-visible breadcrumb** rendered between the top-nav
+    header and `<main>` on every page. Maps the URL path to a
+    chain of crumbs via the Go helper
+    `components.BreadcrumbCrumbs()`; clickable crumbs navigate
+    to parent pages. Last crumb has `aria-current="page"`.
+
+  - **Floating dev badge** in the bottom-right corner, gated by
+    `debug.IsDebugMode(ctx)` (the same gate that controls the
+    existing 🐞 Debug footer button -- issue #309 piggy-backs
+    on the existing debug-mode infrastructure instead of
+    inventing a new env var). Hidden by default with
+    `class="hidden"`; `installDixieDebugToolbox()` JS removes
+    the hidden class on `window.DIXIEDATA_DEVTOOLS === true`
+    (the layout injects this from
+    `debug.IsDebugMode(ctx)` in the head `<script>`). Shows the
+    URL path + `data-dixie-page` attribute for cross-checking.
+
+  - **JS debug toolbox** at `window.dixie.*`, callable from
+    devtools, all read-only. Nine functions: `page()`,
+    `queue()`, `lastNetwork(n?)`, `activity()`, `settings()`,
+    `storage()`, `errors()`, `route(path)`, `help()`. Network
+    log is fed by a `fetch` wrapper; errors come from a global
+    `error` + `unhandledrejection` listener. Loaded as a
+    separate script (`/debug-toolbox.js`).
+
+  **Behavior preserved:** the breadcrumb + dev badge + toolbox
+  always agree. If they disagree, the layout is broken. The
+  `data-dixie-page` attribute on `<body>` is the single source
+  of truth for the page identity; the breadcrumb reads it, the
+  badge reads it, `dixie.page()` reads it. The Go algorithm in
+  `internal/templates/components/breadcrumb_helpers.go` is
+  mirrored 1:1 in JS at `frontend/debug-toolbox.js`; the test
+  `TestBreadcrumbCrumbs_KeyRoutes` pins both halves together
+  (sync point for future changes).
+
+  - **New files:**
+    - `frontend/debug-toolbox.js` (~470 lines: 9 functions +
+      install + network/error capture).
+    - `internal/templates/components/breadcrumb.templ` (new
+      component, ~35 lines).
+    - `internal/templates/components/breadcrumb_helpers.go`
+      (~290 lines: path -> crumbs algorithm + helpers).
+    - `internal/templates/components/breadcrumb_test.go` (24
+      test cases pinning the algorithm).
+    - `internal/templates/components/dev_page_badge.templ`
+      (new component, ~40 lines).
+    - `internal/templates/components/dev_page_badge_test.go`
+      (3 badge + 1 breadcrumb tests).
+    - `internal/templates/layout_helpers.go` (the
+      `currentPagePath` package-level state + Set/Get helpers;
+      avoids threading a `currentPath` arg through 30+ page
+      templ signatures).
+
+  - **Modified files:**
+    - `internal/templates/layout.templ` — `<script>` injects
+      `window.DIXIEDATA_DEVTOOLS`; `<body>` gets
+      `data-dixie-page`; breadcrumb rendered between header
+      and main; dev badge rendered in footer (dev-only).
+    - `internal/appshell/lifecycle.go` — `ServeHTTP` calls
+      `templates.SetCurrentPagePath(r.URL.Path)` +
+      `defer templates.ClearCurrentPagePath()` so the package-
+      level currentPath is set for every full-page render and
+      reset after.
+    - `internal/appshell/routes.go` — new route
+      `/debug-toolbox.js` serves the file.
+    - `frontend/app.js` — `installDixieDebugToolbox()` called
+      on `DOMContentLoaded`; badge unhides when
+      `window.DIXIEDATA_DEVTOOLS === true`; new htmx
+      `htmx:afterSwap` handler updates breadcrumb + badge +
+      body data-dixie-page after full-page navigations.
+    - `CHANGELOG.md` — this entry.
+
+  **No new Go packages**, **no new npm packages**.
+
+  **Regression net:**
+  - `make test` green across all 30 packages.
+  - `internal/buildinfo` doc-coverage floor test still upholds
+    the 70% rule.
+  - New tests: `TestBreadcrumbCrumbs_KeyRoutes` (24 cases),
+    `TestBreadcrumbCrumbs_StripsQueryString`,
+    `TestBreadcrumbCrumbs_UnknownRoute`,
+    `TestDevPageBadge_RendersWithPath`,
+    `TestDevPageBadge_DefaultsHidden`, `TestBreadcrumb_Renders`.
+
+  **Manual smoke:** run `make debug` and visit each page;
+  the breadcrumb should always show `Home > <Section> > <Leaf>`
+  (or the right shape for the path); the dev badge should
+  appear in the bottom-right; `window.dixie.page()` in devtools
+  returns the same path + crumb chain the breadcrumb shows.
+
 ### Changed
 
 - **Build Share Archive button + Share Queue pill now navigate to

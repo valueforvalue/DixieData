@@ -1,0 +1,67 @@
+package components
+
+import "fmt"
+
+// Breadcrumb renders the "where am I" trail that lives between
+// the top-nav header and the page content (issue #309). Three
+// independent witnesses for the same fact: this breadcrumb, the
+// JS toolbox's `dixie.page()` function, and the dev-only badge
+// that appears in the bottom-right corner of every page. If any
+// pair disagrees, that's a bug -- the design goal.
+//
+// currentPath is read by the caller (typically the appshell
+// handler) and passed in. The templ renders the crumb chain
+// statically; the JS toolbox updates the breadcrumb's text on
+// htmx swaps via the same helper that re-renders the badge so
+// the three surfaces stay in lockstep.
+//
+// `aria-label="Breadcrumb"` on the <nav> gives assistive tech the
+// canonical signal; the separator between crumbs is a glyph
+// (`›`) inside `<span aria-hidden="true">` so it isn't read
+// aloud.
+//
+// When the current page is a single-tier (e.g. "/calendar"),
+// the breadcrumb renders "Home > Calendar" so users always have
+// a Home link to click back to.
+templ Breadcrumb(currentPath string) {
+	<nav
+		aria-label="Breadcrumb"
+		data-dixie-breadcrumb
+		data-current-path={ currentPath }
+		class="mx-auto w-full max-w-6xl px-4 pt-3 pb-1 text-xs text-slate-500"
+	>
+		<ol class="flex flex-wrap items-center gap-1" itemscope itemtype="https://schema.org/BreadcrumbList">
+			for i, crumb := range BreadcrumbCrumbs(currentPath) {
+				<li
+					class="flex items-center gap-1"
+					itemprop="itemListElement"
+					itemscope
+					itemtype="https://schema.org/ListItem"
+				>
+					if i > 0 {
+						<span aria-hidden="true" class="text-slate-400">›</span>
+					}
+					if crumb.IsCurrent {
+						<span
+							itemprop="name"
+							aria-current="page"
+							data-dixie-page-label={ crumb.Label }
+							class="font-semibold text-[#22303d]"
+						>
+							{ crumb.Label }
+						</span>
+					} else {
+						<a
+							href={ templ.SafeURL(crumb.Href) }
+							itemprop="item"
+							class="rounded px-1 py-0.5 hover:bg-sepia-500/[0.08] hover:text-[#22303d]"
+						>
+							<span itemprop="name">{ crumb.Label }</span>
+						</a>
+					}
+					<meta itemprop="position" content={ fmt.Sprintf("%d", i+1) }/>
+				</li>
+			}
+		</ol>
+	</nav>
+}
