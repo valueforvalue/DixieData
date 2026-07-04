@@ -1,0 +1,312 @@
+From: Jeremy Morris <valueforvalue76@gmail.com>
+Date: Sat Jul 4 13:00:00 2026 -0500
+Subject: [events] slice 3 / 8: event_detail + browse filter + layout + JS gate
+X-Slice3-Chunk: 08-detail-nav-filter-jsgate
+
+Slice 3 decomposition patch (issue #326). See
+docs/agents/notes/slice3-decomposition.md for the 8-group
+decomposition rationale. This patch is the source-level diff
+for the files in group 08-detail-nav-filter-jsgate, extracted from commit d09e852.
+
+diff --git a/frontend/app.js b/frontend/app.js
+index 125a632..27094f5 100644
+--- a/frontend/app.js
++++ b/frontend/app.js
+@@ -2510,6 +2510,13 @@
+     if (!(select instanceof HTMLSelectElement)) {
+       return;
+     }
++    // v60 (issue #320): Event Record is its own subtype with
++    // no person-specific fields (no first/last name, no rank
++    // / unit, no pension). The data-event-only-field wrapper
++    // gates the kind / begin_date / end_date / description
++    // inputs; this dispatcher also forces soldier-only and
++    // spouse-only fields to hide for the event entry type.
++    const eventEntry = select.value === "event";
+     const specialEntry = select.value === "wife" || select.value === "widow" || select.value === "linked_person";
+     const widowEntry = select.value === "widow";
+     const spouseEntry = select.value === "wife" || select.value === "widow";
+@@ -2523,8 +2530,15 @@
+     form.querySelectorAll("[data-linked-person-field]").forEach((section) => {
+       setSectionEnabled(section, linkedPersonEntry);
+     });
++    form.querySelectorAll("[data-event-only-field]").forEach((section) => {
++      setSectionEnabled(section, eventEntry);
++    });
+     form.querySelectorAll("[data-soldier-only-field]").forEach((section) => {
+-      setSectionEnabled(section, isSoldierEntryType(select.value));
++      // v60: soldier-only fields also hide for Event records
++      // because Events have no rank, no unit, no pension id,
++      // no service dates — those concepts live on the linked
++      // Person Record rows instead.
++      setSectionEnabled(section, isSoldierEntryType(select.value) && !eventEntry);
+     });
+     form.querySelectorAll("[data-soldier-or-widow-field]").forEach((section) => {
+       // Show the pension fields (state, id, application id) for any
+@@ -2534,13 +2548,23 @@
+       // can also file for their husband's pension while he's alive
+       // (in case he becomes disabled) or for widow's pension later.
+       // linked_person stays hidden — the role is non-pensioner.
+-      setSectionEnabled(section, isSoldierEntryType(select.value) || spouseEntry);
++      // v60: Event Records also stay hidden — they don't file
++      // pensions (the linked Person Record does).
++      setSectionEnabled(section, (isSoldierEntryType(select.value) || spouseEntry) && !eventEntry);
+     });
+     syncConfederateHomeFields(form);
+   }
+ 
+   function isSoldierEntryType(value) {
+-    return value !== "wife" && value !== "widow" && value !== "linked_person";
++    // v60 (issue #320): Event is its own subtype. The
++    // helper returns false for Event so the existing
++    // data-soldier-only-field + data-soldier-or-widow-field
++    // gates stay accurate; the data-event-only-field gate
++    // handles the inverse. (Sync without the !event guard
++    // already happens for non-Soldier subtypes; this keeps
++    // the same shape for Event as for the other
++    // Person-Record subtypes.)
++    return value !== "wife" && value !== "widow" && value !== "linked_person" && value !== "event";
+   }
+ 
+   function initializeEntryTypeForms() {
+diff --git a/internal/templates/browse.templ b/internal/templates/browse.templ
+index 0305f82..dc6723a 100644
+--- a/internal/templates/browse.templ
++++ b/internal/templates/browse.templ
+@@ -82,6 +82,12 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState,
+ 							<option value={ models.EntryTypeLinkedPerson } if state.EntryType == models.EntryTypeLinkedPerson { selected }>Person Record</option>
+ 							<option value={ models.EntryTypeWife } if state.EntryType == models.EntryTypeWife { selected }>Wife</option>
+ 							<option value={ models.EntryTypeWidow } if state.EntryType == models.EntryTypeWidow { selected }>Widow</option>
++							// v60 (issue #320): Event Record option. The
++							// value drives the browse-service predicate;
++							// the label "Event" mirrors the entry-form
++							// option so the same word always names the
++							// same subtype.
++							<option value={ models.EntryTypeEvent } if state.EntryType == models.EntryTypeEvent { selected }>Event</option>
+ 						</select>
+ 					</div>
+ 					<div>
+@@ -509,9 +515,6 @@ func browseActiveFilters(state viewmodel.BrowseState) []string {
+ 	if reviewStatus := strings.TrimSpace(state.ReviewStatus); reviewStatus != "" {
+ 		filters = append(filters, "Review Status: "+browseReviewStatusLabel(reviewStatus))
+ 	}
+-	if confederateHomeStatus := strings.TrimSpace(state.ConfederateHomeStatus); confederateHomeStatus != "" {
+-		filters = append(filters, "Confederate Home Status: "+confederateHomeStatus)
+-	}
+ 	return filters
+ }
+ 
+@@ -525,6 +528,12 @@ func browseEntryTypeLabel(entryType string) string {
+ 		return "Wife"
+ 	case models.EntryTypeWidow:
+ 		return "Widow"
++	// v60 (issue #320): Event Record label. Mirrors
++	// entryBadgeLabel on soldier_card.templ so a browse row
++	// chip and a detail-page chip always render the same
++	// word for the same subtype.
++	case models.EntryTypeEvent:
++		return "Event"
+ 	default:
+ 		return entryType
+ 	}
+diff --git a/internal/templates/entry_form_helpers.go b/internal/templates/entry_form_helpers.go
+index 1cf02ab..1176e72 100644
+--- a/internal/templates/entry_form_helpers.go
++++ b/internal/templates/entry_form_helpers.go
+@@ -146,12 +146,24 @@ func entryTypes() []entryTypeOption {
+ 		{Value: models.EntryTypeLinkedPerson, Label: "Person Record"},
+ 		{Value: models.EntryTypeWife, Label: "Wife"},
+ 		{Value: models.EntryTypeWidow, Label: "Widow"},
++		// v60 (issue #320): the Event entry type is intentionally
++		// NOT in this list. Events are created through the
++		// dedicated /events/new handler + event_form.templ
++		// surface, not through /soldiers/new. Mixing the two
++		// would force the form parser to dispatch between
++		// SoldierService.Create and EventService.CreateEvent
++		// (and would require the JS dispatcher to swap the
++		// form action between /soldiers and /events/new based
++		// on entry type) — both add real risk for the v1
++		// landing. The dedicated path keeps the form-level
++		// validation per-form and the entry-type select stays
++		// a single, stable dropdown.
+ 	}
+ }
+ 
+ func normalizedEntryType(s viewmodel.PersonRecord) string {
+ 	switch s.EntryType {
+-	case models.EntryTypeWife, models.EntryTypeWidow, models.EntryTypeLinkedPerson:
++	case models.EntryTypeWife, models.EntryTypeWidow, models.EntryTypeLinkedPerson, models.EntryTypeEvent:
+ 		return s.EntryType
+ 	default:
+ 		return models.EntryTypeSoldier
+diff --git a/internal/templates/event_detail.templ b/internal/templates/event_detail.templ
+new file mode 100644
+index 0000000..de0e915
+--- /dev/null
++++ b/internal/templates/event_detail.templ
+@@ -0,0 +1,116 @@
++// v60 (issue #320): Event Record detail page. Renders
++// the kind pill, begin / end dates, long-form description
++// (or PDF excerpt override when set), and a section
++// listing the linked Person Records. The "Sources",
++// "Scratch Pad", "Research Log", "Tags", and "Images"
++// apply-sites are tracked as follow-up issues per the
++// RPCI spec's out-of-scope list for the v1 landing.
++package templates
++
++import (
++	"fmt"
++	"strings"
++
++	"github.com/valueforvalue/DixieData/internal/routebuilder"
++	"github.com/valueforvalue/DixieData/internal/templates/components"
++	"github.com/valueforvalue/DixieData/internal/viewmodel"
++)
++
++templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord) {
++	@Layout(eventDetailTitle(event)) {
++		<div class="relative mx-auto max-w-4xl">
++			<div class="mb-4 flex flex-wrap gap-3">
++				<button
++					type="button"
++					data-history-back
++					data-fallback-href="/events"
++					data-fallback-label="Back to Events"
++					class="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-research-border hover:bg-research-bg hover:text-research-text"
++				>← Back to Events</button>
++			</div>
++			<div class="relative card rounded-3xl p-5 sm:p-8">
++				<div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
++					<div>
++						<span class="gold text-xs font-mono">{ event.DisplayID }</span>
++						<div class="mt-2 flex flex-wrap items-baseline gap-3">
++							if strings.TrimSpace(event.Kind) != "" {
++								<span class="rounded-full border border-sepia-500/[0.4] bg-white/70 px-3 py-1 text-sm font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ event.Kind }</span>
++							}
++							<h2 class="text-2xl font-bold text-[#22303d]">{ eventTitle(event) }</h2>
++						</div>
++						if event.BeginDate != "" || event.EndDate != "" {
++							<p class="mt-2 text-sm text-slate-600">{ eventDateRange(event) }</p>
++						}
++					</div>
++					<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
++						<a href={ templ.SafeURL(routebuilder.EventEdit(event.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Event</a>
++						<button
++							type="button"
++							class="secondary-button w-full justify-center sm:w-auto"
++							data-action={ fmt.Sprintf("/events/%d", event.ID) }
++							data-method="DELETE"
++							data-confirm="Delete this Event Record? It will also remove every link to Person Records and any images attached. This cannot be undone from within the app. Restore from your most recent .ddbak if you need to recover."
++							data-dixie-submit="true"
++						>Delete Event</button>
++					</div>
++				</div>
++				if strings.TrimSpace(event.Description) != "" {
++					<section class="mb-6">
++						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Description</p>
++						if strings.TrimSpace(event.PDFExcerptOverride) != "" {
++							<div class="mt-2 rounded-2xl border border-amber-700/30 bg-amber-50/80 p-4 text-sm text-amber-950">
++								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-900">PDF Excerpt Override active</p>
++								<p class="mt-2 whitespace-pre-line">{ event.PDFExcerptOverride }</p>
++							</div>
++						}
++						<div class="prose prose-slate mt-3 max-w-none whitespace-pre-line text-sm leading-relaxed text-slate-700">{ event.Description }</div>
++					</section>
++				}
++				if strings.TrimSpace(event.Notes) != "" {
++					<section class="mb-6">
++						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Internal Notes</p>
++						<p class="mt-2 whitespace-pre-line text-sm text-slate-600">{ event.Notes }</p>
++					</section>
++				}
++				<section class="relative">
++					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
++						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Linked Person Records</p>
++						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d linked", len(linked)) }</span>
++					</div>
++					if len(linked) == 0 {
++						@components.EmptyState("No linked Person Records", "Attach this event to a Person Record from the Person Record detail page's Events tab.", "")
++					} else {
++						<ul class="space-y-2">
++							for _, person := range linked {
++								<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
++									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", person.ID)) } class="pill-link">{ person.DisplayID }</a>
++								</li>
++							}
++						</ul>
++					}
++				</section>
++			</div>
++		</div>
++	}
++}
++
++func eventDetailTitle(event viewmodel.PersonRecord) string {
++	if strings.TrimSpace(event.DisplayID) != "" {
++		return "Event " + event.DisplayID
++	}
++	return "Event Record"
++}
++
++func eventTitle(event viewmodel.PersonRecord) string {
++	kind := strings.TrimSpace(event.Kind)
++	range_ := eventDateRange(event)
++	switch {
++	case kind != "" && range_ != "":
++		return kind + " · " + range_
++	case kind != "":
++		return kind
++	case range_ != "":
++		return range_
++	}
++	return "Unnamed Event"
++}
+diff --git a/internal/templates/layout.templ b/internal/templates/layout.templ
+index 3858a99..ab1563d 100644
+--- a/internal/templates/layout.templ
++++ b/internal/templates/layout.templ
+@@ -107,6 +107,11 @@ templ Layout(title string, omitJobsOverlay ...bool) {
+ 					<a href="/calendar" class="pill-link top-nav-link">Calendar</a>
+ 					<a href="/soldiers" class="pill-link top-nav-link">Search/Quick View</a>
+ 					<a href="/browse" class="pill-link top-nav-link">Browse</a>
++					// v60 (issue #320): Event Record nav link.
++					// Sits next to Browse so researchers can
++					// reach the Event list from the same
++					// surface they use for Person Records.
++					<a href="/events" class="pill-link top-nav-link">Events</a>
+ 					<a href="/review-queue" class="pill-link top-nav-link inline-flex items-center gap-2">
+ 							Review Queue
+ 							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this"></span>
+diff --git a/internal/templates/soldier_card.templ b/internal/templates/soldier_card.templ
+index c844b48..63aa171 100644
+--- a/internal/templates/soldier_card.templ
++++ b/internal/templates/soldier_card.templ
+@@ -816,6 +816,15 @@ func isWidowEntry(s viewmodel.PersonRecord) bool {
+ 	return s.EntryType == models.EntryTypeWidow
+ }
+ 
++// v60 (issue #320): Event Record entry-type predicate. Used
++// by detail-heading / subheading logic and the entry-form
++// JS dispatcher to gate the event-only field set. Mirrors
++// isSoldierEntry / isWidowEntry so a single switch in the JS
++// dispatcher covers every Person Record subtype.
++func isEventEntry(s viewmodel.PersonRecord) bool {
++	return s.EntryType == models.EntryTypeEvent
++}
++
+ func entryBadgeLabel(s viewmodel.PersonRecord) string {
+ 	switch s.EntryType {
+ 	case models.EntryTypeWife:
+@@ -824,6 +833,12 @@ func entryBadgeLabel(s viewmodel.PersonRecord) string {
+ 		return "Widow"
+ 	case models.EntryTypeLinkedPerson:
+ 		return "Person Record"
++	// v60 (issue #320): Event Record badge. Used on browse
++	// rows, Person Record detail chips, and the entry-form
++	// header so the user always sees the entry type without
++	// re-reading the form.
++	case models.EntryTypeEvent:
++		return "Event"
+ 	default:
+ 		return "Soldier"
+ 	}

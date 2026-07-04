@@ -1,0 +1,145 @@
+From: Jeremy Morris <valueforvalue76@gmail.com>
+Date: Sat Jul 4 13:00:00 2026 -0500
+Subject: [events] slice 3 / 7: event_form.templ
+X-Slice3-Chunk: 07-event-form-templ
+
+Slice 3 decomposition patch (issue #326). See
+docs/agents/notes/slice3-decomposition.md for the 8-group
+decomposition rationale. This patch is the source-level diff
+for the files in group 07-event-form-templ, extracted from commit d09e852.
+
+diff --git a/internal/templates/event_form.templ b/internal/templates/event_form.templ
+new file mode 100644
+index 0000000..736dc6c
+--- /dev/null
++++ b/internal/templates/event_form.templ
+@@ -0,0 +1,129 @@
++// v60 (issue #320): Event Record form. Renders the new + edit
++// surfaces for the Event Record subtype. The form carries
++// only the Event-specific fields (kind, begin_date, end_date,
++// description, pdf_excerpt_override, notes) — no person-
++// specific inputs (first/last name, rank, unit, pension),
++// no entry-type selector, no marriage candidates.
++//
++// The form posts to /events/new (POST) or /events/{id}
++// (PUT) depending on isEdit. The handler routes through
++// a.events.CreateEvent / a.events.UpdateEvent which set
++// entry_type="event" and clear the person-specific fields
++// defensively.
++package templates
++
++import (
++	"fmt"
++	"strings"
++
++	"github.com/valueforvalue/DixieData/internal/routebuilder"
++	"github.com/valueforvalue/DixieData/internal/templates/components"
++	"github.com/valueforvalue/DixieData/internal/viewmodel"
++)
++
++templ EventForm(s viewmodel.PersonRecord, isEdit bool) {
++	@Layout(eventFormTitle(s, isEdit)) {
++		@EventFormFragment(s, isEdit, "")
++	}
++}
++
++templ EventFormWithError(s viewmodel.PersonRecord, isEdit bool, errorMessage string) {
++	@Layout(eventFormTitle(s, isEdit)) {
++		@EventFormFragment(s, isEdit, errorMessage)
++	}
++}
++
++templ EventFormFragment(s viewmodel.PersonRecord, isEdit bool, errorMessage string) {
++	<div class="relative mx-auto max-w-4xl">
++		<h2 class="text-2xl gold font-bold mb-6">{ eventFormTitle(s, isEdit) }</h2>
++		if errorMessage != "" {
++			<div class="mb-5 rounded-2xl border border-[#6f2c26] bg-review-red/[0.08] px-4 py-3 text-sm text-[#6f2c26]">
++				<strong class="font-semibold">Save failed.</strong>
++				<span class="ml-1">{ errorMessage }</span>
++			</div>
++		}
++		<form
++			if isEdit {
++				action={ fmt.Sprintf("/events/%d", s.ID) }
++				method="post"
++			} else {
++				action={ templ.SafeURL(routebuilder.EventNew()) }
++				method="post"
++			}
++			data-dixie-submit="true"
++			class="card rounded-3xl p-5 sm:p-8 space-y-5"
++		>
++			<input type="hidden" name="display_id" value={ s.DisplayID }/>
++			<input type="hidden" name="entry_type" value="event"/>
++			<div class="grid gap-4 sm:grid-cols-2">
++				<div>
++					<label class="block text-sm text-slate-500 mb-1" for="event-display_id">Display ID</label>
++					<input type="text" value={ s.DisplayID } readonly class="field-input bg-slate-100 text-slate-500" id="event-display_id"/>
++					<p class="mt-2 text-xs text-slate-500">Auto-allocated EVT-NNNNN on first save.</p>
++				</div>
++				<div>
++					<label class="block text-sm text-slate-500 mb-1" for="event-kind">Kind</label>
++					<input type="text" name="kind" value={ s.Kind } class="field-input" placeholder="Battle, Hospital Stay, Death, ..." id="event-kind"/>
++					<p class="mt-2 text-xs text-slate-500">Free-text. Use any label that names the event for your archive.</p>
++				</div>
++				<div>
++					<label class="block text-sm text-slate-500 mb-1" for="event-begin_date">Begin Date</label>
++					<input type="text" name="begin_date" value={ s.BeginDate } class="field-input" placeholder="MM/DD/YYYY or 11/00/1863" id="event-begin_date"/>
++				</div>
++				<div>
++					<label class="block text-sm text-slate-500 mb-1" for="event-end_date">End Date</label>
++					<input type="text" name="end_date" value={ s.EndDate } class="field-input" placeholder="MM/DD/YYYY or 11/00/1863" id="event-end_date"/>
++				</div>
++			</div>
++			<div>
++				<label class="block text-sm text-slate-500 mb-1" for="event-description">Description</label>
++				<textarea name="description" rows="6" class="field-input min-h-36" id="event-description">{ s.Description }</textarea>
++				<p class="mt-2 text-xs text-slate-500">Long-form narrative for the event. Mirrors the Person Record biography field.</p>
++			</div>
++			<details>
++				<summary class="cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Advanced: PDF Excerpt Override</summary>
++				<div class="mt-3">
++					<label class="block text-sm text-slate-500 mb-1" for="event-pdf_excerpt_override">PDF Excerpt Override</label>
++					<textarea name="pdf_excerpt_override" rows="4" class="field-input min-h-32" id="event-pdf_excerpt_override">{ s.PDFExcerptOverride }</textarea>
++					<p class="mt-2 text-xs text-slate-500">Optional. Shorter text used by the per-Event PDF export when the full description does not fit.</p>
++				</div>
++			</details>
++			<div>
++				<label class="block text-sm text-slate-500 mb-1" for="event-notes">Internal Notes</label>
++				<textarea name="notes" rows="3" class="field-input min-h-24" id="event-notes">{ s.Notes }</textarea>
++			</div>
++			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
++				if isEdit {
++					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
++				} else {
++					@components.Button("Create Event Record", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
++				}
++				<button
++					type="button"
++					data-history-back
++					data-fallback-href={ eventFormBackHref(s, isEdit) }
++					data-fallback-label="Cancel"
++					class="ghost-link w-full px-4 py-2 sm:w-auto"
++				>Cancel</button>
++			</div>
++		</form>
++	</div>
++}
++
++func eventFormTitle(s viewmodel.PersonRecord, isEdit bool) string {
++	label := "Event Record"
++	if strings.TrimSpace(s.DisplayID) != "" {
++		label = "Event " + s.DisplayID
++	}
++	if isEdit {
++		return "Edit " + label
++	}
++	return "New " + label
++}
++
++func eventFormBackHref(s viewmodel.PersonRecord, isEdit bool) string {
++	if isEdit && s.ID > 0 {
++		return fmt.Sprintf("/events/%d", s.ID)
++	}
++	return "/events"
++}

@@ -1,0 +1,7 @@
+Chunk 5 ("handlers/routes /soldiers/{id}/events/* M-to-M") is documented
+in docs/agents/notes/slice3-decomposition.md §"The 8 logical groups"
+group 5. It shares two source files (internal/appshell/events_handlers.go
+and internal/appshell/routes.go) with chunk 4; both files are emitted in
+full by chunk 4's patch. To apply chunk 5's handlers in isolation, use
+`git log -L <funcname>:internal/appshell/events_handlers.go d09e852~1..d09e852`
+per handler function and emit individual handler-scoped patches.
