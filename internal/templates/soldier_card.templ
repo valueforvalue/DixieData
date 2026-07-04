@@ -816,6 +816,15 @@ func isWidowEntry(s viewmodel.PersonRecord) bool {
 	return s.EntryType == models.EntryTypeWidow
 }
 
+// v60 (issue #320): Event Record entry-type predicate. Used
+// by detail-heading / subheading logic and the entry-form
+// JS dispatcher to gate the event-only field set. Mirrors
+// isSoldierEntry / isWidowEntry so a single switch in the JS
+// dispatcher covers every Person Record subtype.
+func isEventEntry(s viewmodel.PersonRecord) bool {
+	return s.EntryType == models.EntryTypeEvent
+}
+
 func entryBadgeLabel(s viewmodel.PersonRecord) string {
 	switch s.EntryType {
 	case models.EntryTypeWife:
@@ -824,6 +833,12 @@ func entryBadgeLabel(s viewmodel.PersonRecord) string {
 		return "Widow"
 	case models.EntryTypeLinkedPerson:
 		return "Person Record"
+	// v60 (issue #320): Event Record badge. Used on browse
+	// rows, Person Record detail chips, and the entry-form
+	// header so the user always sees the entry type without
+	// re-reading the form.
+	case models.EntryTypeEvent:
+		return "Event"
 	default:
 		return "Soldier"
 	}

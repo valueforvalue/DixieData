@@ -153,3 +153,25 @@ type updaterFacade interface {
 	Check() (update.CheckResult, error)
 	PrepareLatest() (update.PreparedUpdate, error)
 }
+
+// v60 (issue #320): Event Record facade. Mirrors the focused
+// shape of personRecordsFacade: every method is Event-only so
+// the events_handlers.go can depend on a small interface and
+// stay decoupled from the full SoldierService surface. The
+// underlying reads/writes still flow through SoldierService for
+// the row itself; the junction-table CRUD lives entirely in
+// EventService. Handlers MUST route event operations through
+// this facade — never call a.soldiers methods that would bleed
+// Person Record semantics onto Event rows.
+type eventsFacade interface {
+	ListEvents(page, pageSize int) ([]models.Soldier, error)
+	GetEventByID(id int64) (*records.EventWithLinks, error)
+	GetEventByDisplayID(displayID string) (*records.EventWithLinks, error)
+	CreateEvent(event personRecord) (*personRecord, error)
+	UpdateEvent(event personRecord) error
+	DeleteEvent(id int64) error
+	AttachEventToPerson(eventID, personID int64) (int64, error)
+	DetachEventFromPerson(eventID, personID int64) error
+	ListForPerson(personID int64) ([]personRecord, error)
+	ListForEvent(eventID int64) ([]personRecord, error)
+}

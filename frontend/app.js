@@ -2510,6 +2510,13 @@
     if (!(select instanceof HTMLSelectElement)) {
       return;
     }
+    // v60 (issue #320): Event Record is its own subtype with
+    // no person-specific fields (no first/last name, no rank
+    // / unit, no pension). The data-event-only-field wrapper
+    // gates the kind / begin_date / end_date / description
+    // inputs; this dispatcher also forces soldier-only and
+    // spouse-only fields to hide for the event entry type.
+    const eventEntry = select.value === "event";
     const specialEntry = select.value === "wife" || select.value === "widow" || select.value === "linked_person";
     const widowEntry = select.value === "widow";
     const spouseEntry = select.value === "wife" || select.value === "widow";
@@ -2523,8 +2530,15 @@
     form.querySelectorAll("[data-linked-person-field]").forEach((section) => {
       setSectionEnabled(section, linkedPersonEntry);
     });
+    form.querySelectorAll("[data-event-only-field]").forEach((section) => {
+      setSectionEnabled(section, eventEntry);
+    });
     form.querySelectorAll("[data-soldier-only-field]").forEach((section) => {
-      setSectionEnabled(section, isSoldierEntryType(select.value));
+      // v60: soldier-only fields also hide for Event records
+      // because Events have no rank, no unit, no pension id,
+      // no service dates — those concepts live on the linked
+      // Person Record rows instead.
+      setSectionEnabled(section, isSoldierEntryType(select.value) && !eventEntry);
     });
     form.querySelectorAll("[data-soldier-or-widow-field]").forEach((section) => {
       // Show the pension fields (state, id, application id) for any
@@ -2534,13 +2548,23 @@
       // can also file for their husband's pension while he's alive
       // (in case he becomes disabled) or for widow's pension later.
       // linked_person stays hidden — the role is non-pensioner.
-      setSectionEnabled(section, isSoldierEntryType(select.value) || spouseEntry);
+      // v60: Event Records also stay hidden — they don't file
+      // pensions (the linked Person Record does).
+      setSectionEnabled(section, (isSoldierEntryType(select.value) || spouseEntry) && !eventEntry);
     });
     syncConfederateHomeFields(form);
   }
 
   function isSoldierEntryType(value) {
-    return value !== "wife" && value !== "widow" && value !== "linked_person";
+    // v60 (issue #320): Event is its own subtype. The
+    // helper returns false for Event so the existing
+    // data-soldier-only-field + data-soldier-or-widow-field
+    // gates stay accurate; the data-event-only-field gate
+    // handles the inverse. (Sync without the !event guard
+    // already happens for non-Soldier subtypes; this keeps
+    // the same shape for Event as for the other
+    // Person-Record subtypes.)
+    return value !== "wife" && value !== "widow" && value !== "linked_person" && value !== "event";
   }
 
   function initializeEntryTypeForms() {

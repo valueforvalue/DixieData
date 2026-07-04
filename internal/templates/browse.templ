@@ -82,6 +82,12 @@ templ BrowseView(records []viewmodel.PersonRecord, state viewmodel.BrowseState, 
 							<option value={ models.EntryTypeLinkedPerson } if state.EntryType == models.EntryTypeLinkedPerson { selected }>Person Record</option>
 							<option value={ models.EntryTypeWife } if state.EntryType == models.EntryTypeWife { selected }>Wife</option>
 							<option value={ models.EntryTypeWidow } if state.EntryType == models.EntryTypeWidow { selected }>Widow</option>
+							// v60 (issue #320): Event Record option. The
+							// value drives the browse-service predicate;
+							// the label "Event" mirrors the entry-form
+							// option so the same word always names the
+							// same subtype.
+							<option value={ models.EntryTypeEvent } if state.EntryType == models.EntryTypeEvent { selected }>Event</option>
 						</select>
 					</div>
 					<div>
@@ -509,9 +515,6 @@ func browseActiveFilters(state viewmodel.BrowseState) []string {
 	if reviewStatus := strings.TrimSpace(state.ReviewStatus); reviewStatus != "" {
 		filters = append(filters, "Review Status: "+browseReviewStatusLabel(reviewStatus))
 	}
-	if confederateHomeStatus := strings.TrimSpace(state.ConfederateHomeStatus); confederateHomeStatus != "" {
-		filters = append(filters, "Confederate Home Status: "+confederateHomeStatus)
-	}
 	return filters
 }
 
@@ -525,6 +528,12 @@ func browseEntryTypeLabel(entryType string) string {
 		return "Wife"
 	case models.EntryTypeWidow:
 		return "Widow"
+	// v60 (issue #320): Event Record label. Mirrors
+	// entryBadgeLabel on soldier_card.templ so a browse row
+	// chip and a detail-page chip always render the same
+	// word for the same subtype.
+	case models.EntryTypeEvent:
+		return "Event"
 	default:
 		return entryType
 	}

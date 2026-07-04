@@ -67,6 +67,12 @@ type App struct {
 	database                *db.DB
 	soldiers                personRecordsFacade
 	anniversary             anniversaryFacade
+	// v60 (issue #320): Event Record service. Wired in
+	// reloadServices() alongside soldiers (it borrows the same
+	// database handle). Handlers route Event-only operations
+	// through a.events, not a.soldiers, so the focused facade
+	// stays decoupled from the full SoldierService surface.
+	events                  eventsFacade
 	calendar                calendarFacade
 	analytics               analyticsFacade
 	audit                   reviewFacade
@@ -1273,6 +1279,23 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 	if err != nil {
 		return models.Soldier{}, err
 	}
+	// v60 (issue #320): Event Record subtype fields. The form
+	// parser keeps them on the same models.Soldier payload so
+	// the existing INSERT/UPDATE statement writes all 43 columns
+	// in one transaction (the v60 schema widened
+	// soldierSelectColumns to 43 cols; slice 2 widened the
+	// INSERT/UPDATE statements to match). For non-Event rows
+	// these fields stay empty and the service layer
+	// (normalizeSoldierEntry event branch) clears them
+	// defensively.
+	beginDate, err := parseOptionalCanonicalDate(r.FormValue("begin_date"), "begin_date")
+	if err != nil {
+		return models.Soldier{}, err
+	}
+	endDate, err := parseOptionalCanonicalDate(r.FormValue("end_date"), "end_date")
+	if err != nil {
+		return models.Soldier{}, err
+	}
 	spouseSoldierID, err := parseOptionalInt64(r.FormValue("spouse_soldier_id"), "spouse_soldier_id")
 	if err != nil {
 		return models.Soldier{}, err
@@ -1312,10 +1335,29 @@ func parseSoldierForm(r *http.Request, id int64) (models.Soldier, error) {
 		Notes:                 r.FormValue("notes"),
 		NeedsReview:           needsReview,
 		ReviewReason:          reviewReason,
+		// v60 (issue #320): Event Record subtype fields. The
+		// form's Kind text input + Begin / End date text inputs +
+		// Description long-form textarea land here. For Person
+		// Record rows these stay empty; the service layer
+		// (normalizeSoldierEntry) clears them defensively for
+		// non-Event rows so the row never lands in the database
+		// with stale data from a previous Event edit.
+		Kind:                  r.FormValue("kind"),
+		BeginDate:             beginDate,
+		EndDate:               endDate,
+		Description:           r.FormValue("description"),
 		Records:               parseRecordInputs(r),
 	}, nil
 }
 
+// newSoldierDefaults builds the starting values for the
+// /soldiers/new form. The Display ID is pre-allocated via
+// (*DB).NextDXDID so the field is read-only but present on
+// first render. The PensionState + ConfederateHomeStatus
+// defaults use the NotApplicable constants from the
+// pensionstate + confederatehomestatus packages so the
+// form's selects render an explicit "Not Applicable" row
+// as the default.
 func (a *App) newSoldierDefaults() (models.Soldier, error) {
 	displayID, err := a.database.NextDXDID()
 	if err != nil {
@@ -1901,6 +1943,12 @@ func findChromeExecutable() (string, error) {
 func (a *App) reloadServices() error {
 	soldierSvc := records.NewSoldierService(a.database)
 	a.soldiers = soldierSvc
+	// v60 (issue #320): wire the Event Service immediately after
+	// the SoldierService so the constructor's "borrows
+	// SoldierService.db" precondition holds. Reload after a
+	// .ddbak restore replaces the same handle; the Event facade
+	// is rebuilt against the fresh soldierSvc reference.
+	a.events = records.NewEventService(soldierSvc)
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)

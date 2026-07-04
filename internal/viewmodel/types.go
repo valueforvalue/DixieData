@@ -42,6 +42,19 @@ type PersonRecord struct {
 	Biography             string
 	PDFExcerptOverride    string
 	Notes                 string
+	// v60 (issue #320): Event Record subtype fields. Kind is
+	// free-text (e.g. "Battle", "Earthquake", "Hospital Stay");
+	// BeginDate / EndDate follow the soldiers MM/DD/YYYY canonical
+	// date shape so the existing date filter predicates apply.
+	// Description is the long-form write-up (mirrors the
+	// Person Record Biography field). All four are also stored
+	// on the domain models.Soldier type; the viewmodel copies
+	// them so .templ files can render event-only fields without
+	// importing internal/models directly.
+	Kind                  string
+	BeginDate             string
+	EndDate               string
+	Description           string
 	NeedsReview           bool
 	ReviewReason          string
 	AddedBy               string

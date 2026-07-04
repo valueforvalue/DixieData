@@ -118,6 +118,21 @@ func (e *EventService) UpdateEvent(event models.Soldier) error {
 	return e.soldiers.Update(event)
 }
 
+// DeleteEvent removes an Event Record. Re-fetches the row
+// first to defend against a stale-write race. The cascade
+// on event_person_links is handled by the SQLite schema's
+// ON DELETE CASCADE on the FK (issue #320 v60 schema).
+func (e *EventService) DeleteEvent(id int64) error {
+	existing, err := e.soldiers.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if existing.EntryType != models.EntryTypeEvent {
+		return fmt.Errorf("person record %d is %q, not an Event", id, existing.EntryType)
+	}
+	return e.soldiers.Delete(id)
+}
+
 // GetEventByID fetches an Event Record + its linked Person
 // Records. Returns ErrNotFound if the row is missing or is
 // not an Event.

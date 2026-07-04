@@ -1,0 +1,456 @@
+// events_handlers.go holds the Event Record HTTP handlers for
+// slice 3 of issue #320. The handlers route through a.events
+// (the eventsFacade wired in app.go:reloadServices) and never
+// call a.soldiers for Event-only operations.
+//
+// Per the RPCI spec (events_handlers.go is the slice-3
+// apply-site), the handlers cover the v1 user-facing surface:
+//
+//   GET    /events                              list page
+//   GET    /events/new                          new-event form
+//   POST   /events/new                          create event
+//   GET    /events/{id}                         event detail page
+//   PUT    /events/{id}                         update event
+//   DELETE /events/{id}                         delete event
+//   GET    /events/{id}/edit                    edit-event form
+//   POST   /events/{id}/edit                    update event (alias)
+//   GET    /soldiers/{id}/events                Person Events tab
+//   POST   /soldiers/{id}/events/{eventId}/attach   link event to person
+//   POST   /soldiers/{id}/events/{eventId}/detach   unlink event
+//   POST   /soldiers/{id}/events/quick-add     create + link in one tx
+//
+// Sources, scratchpad, research-log, tags, images, and per-event
+// PDF handlers are tracked as follow-up issues per the
+// out-of-scope section of the RPCI spec.
+package appshell
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/records"
+)
+
+// handleEvents renders the /events list page. Method must be
+// GET; POST is rejected with 405. The list excludes the
+// linked-Person-Records subquery for efficiency; the detail
+// page is where the link set is rendered.
+func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	page := parsePage(r.URL.Query().Get("page"))
+	events, err := a.events.ListEvents(page, 50)
+	if err != nil {
+		respondInternal(w, r, "Could not list event records.", err)
+		return
+	}
+	// total = len(events) keeps the presentation.EventList
+	// signature stable. The "Showing N of M" copy on the
+	// list page reads correctly for the v1 landing; once
+	// the EventService grows a Count() method the total
+	// here can switch to the real value.
+	total := len(events)
+	presentation.EventList(events, page, total).Render(r.Context(), w)
+}
+
+// newEventDefaults builds the starting values for the
+// /events/new form. The Display ID is pre-allocated via
+// (*DB).NextEventID so the field is read-only but present on
+// first render (mirrors newSoldierDefaults for the Person
+// Record form). The entry_type is hard-coded to "event" so
+// the form's hidden entry_type field stays consistent with
+// the persisted row.
+func (a *App) newEventDefaults() (models.Soldier, error) {
+	displayID, err := a.database.NextEventID()
+	if err != nil {
+		return models.Soldier{}, err
+	}
+	return models.Soldier{
+		DisplayID: displayID,
+		EntryType: models.EntryTypeEvent,
+	}, nil
+}
+
+// handleNewEvent renders the GET form for /events/new and
+// processes the POST that creates a new Event Record. The
+// form body is parsed by parseEventForm; the service layer's
+// CreateEvent enforces entry_type=event and clears the
+// person-specific fields defensively.
+func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		defaults, err := a.newEventDefaults()
+		if err != nil {
+			respondInternal(w, r, "Could not build the new-event defaults.", err)
+			return
+		}
+		presentation.EventForm(defaults, false).Render(r.Context(), w)
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			respondValidation(w, r, "Could not read the event form.", err)
+			return
+		}
+		event, err := parseEventForm(r)
+		if err != nil {
+			defaults, defaultsErr := a.newEventDefaults()
+			if defaultsErr != nil {
+				http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
+			return
+		}
+		created, err := a.events.CreateEvent(event)
+		if err != nil {
+			defaults, defaultsErr := a.newEventDefaults()
+			if defaultsErr != nil {
+				http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
+			return
+		}
+		// Option C: dispatchDixieDataForm reads
+		// X-DixieData-Redirect and navigates the client to
+		// the new event's detail page.
+		writeExportRedirect(w, fmt.Sprintf("/events/%d", created.ID))
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleEventByID dispatches /events/{id} requests:
+//   GET    -> render detail page
+//   PUT    -> update event
+//   DELETE -> delete event
+// The /events/{id}/edit and /events/{id}/pdf sub-paths route
+// through dedicated handlers and are NOT matched here; the
+// chi router routes /events/{id:[0-9]+}/edit and
+// /events/{id:[0-9]+}/pdf as their own paths.
+func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/events/", "")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		event, err := a.events.GetEventByID(id)
+		if err != nil {
+			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", id), err)
+			return
+		}
+		presentation.EventDetail(event).Render(r.Context(), w)
+	case http.MethodPut:
+		if err := r.ParseForm(); err != nil {
+			respondValidation(w, r, "Could not read the event form.", err)
+			return
+		}
+		event, err := a.events.GetEventByID(id)
+		if err != nil {
+			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", id), err)
+			return
+		}
+		updated, err := parseEventForm(r)
+		if err != nil {
+			presentation.EventFormWithError(event.Event, true, err.Error()).Render(r.Context(), w)
+			return
+		}
+		updated.ID = id
+		if err := a.events.UpdateEvent(updated); err != nil {
+			presentation.EventFormWithError(event.Event, true, err.Error()).Render(r.Context(), w)
+			return
+		}
+		writeExportRedirect(w, fmt.Sprintf("/events/%d", id))
+	case http.MethodDelete:
+		if err := a.events.DeleteEvent(id); err != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not delete event record %d.", id), err)
+			return
+		}
+		writeExportRedirect(w, "/events")
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleEditEvent renders the /events/{id}/edit form on GET
+// and processes the POST that updates the Event. Both
+// verbs reach the same UpdateEvent service call.
+func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) {
+	switch r.Method {
+	case http.MethodGet:
+		event, err := a.events.GetEventByID(id)
+		if err != nil {
+			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", id), err)
+			return
+		}
+		presentation.EventForm(event.Event, true).Render(r.Context(), w)
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			respondValidation(w, r, "Could not read the event form.", err)
+			return
+		}
+		event, err := parseEventForm(r)
+		if err != nil {
+			existing, fetchErr := a.events.GetEventByID(id)
+			if fetchErr != nil {
+				http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			presentation.EventFormWithError(existing.Event, true, err.Error()).Render(r.Context(), w)
+			return
+		}
+		event.ID = id
+		if err := a.events.UpdateEvent(event); err != nil {
+			existing, fetchErr := a.events.GetEventByID(id)
+			if fetchErr != nil {
+				http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			presentation.EventFormWithError(existing.Event, true, err.Error()).Render(r.Context(), w)
+			return
+		}
+		writeExportRedirect(w, fmt.Sprintf("/events/%d", id))
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handlePersonEventsTab renders the Events section on a
+// Person Record detail page. The route is
+// /soldiers/{id}/events. For the v1 landing the handler
+// redirects to the Person Record detail page; the Events
+// section is rendered server-side on that page when the
+// optimization can lazy-load the section as an htmx
+func (a *App) handlePersonEventsTab(w http.ResponseWriter, r *http.Request, personID int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := a.soldiers.GetByID(personID); err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", personID), err)
+		return
+	}
+	// Option C: dispatchDixieDataForm reads
+	// X-DixieData-Redirect. Use writeExportRedirect so the
+	// htmx client navigates to the Person Record detail
+	// page with the right header (the Option C contract
+	// requires every post-then-navigate response to set
+	// X-DixieData-Redirect; a bare http.Redirect with a
+	// 303 status fails the
+	// TestPostThenNavigateUsesDixieRedirect regression
+	// probe).
+}
+
+// handleAttachEvent links an existing Event to a Person
+// Record by creating a row in event_person_links. The
+// request body is empty (no form fields). On duplicate-link
+// errors the handler returns 409 via respondConflict; the
+// toast header surfaces the user-friendly message.
+func (a *App) handleAttachEvent(w http.ResponseWriter, r *http.Request, personID, eventID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := a.soldiers.GetByID(personID); err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", personID), err)
+		return
+	}
+	if _, err := a.events.GetEventByID(eventID); err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", eventID), err)
+		return
+	}
+	if _, err := a.events.AttachEventToPerson(eventID, personID); err != nil {
+		if errors.Is(err, records.ErrDuplicateLink) {
+			respondConflict(w, r, "This event is already linked to this person record.", err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not link event %d to person record %d.", eventID, personID), err)
+		return
+	}
+	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d", personID))
+}
+
+// handleDetachEvent removes the event_person_links row that
+// connects an Event to a Person Record. Idempotent: a
+// missing link is treated as success (the EventService
+// silently no-ops in that case).
+func (a *App) handleDetachEvent(w http.ResponseWriter, r *http.Request, personID, eventID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.events.DetachEventFromPerson(eventID, personID); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not unlink event %d from person record %d.", eventID, personID), err)
+		return
+	}
+	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d", personID))
+}
+
+// handleQuickAddEvent creates a new Event and links it to a
+// Person Record in one user action. The form fields are the
+// same as /events/new plus the implicit link to the central
+// Person Record. The handler calls CreateEvent (which mints
+// the EVT-NNNNN Display ID) then attaches the new event to
+// the Person Record. A failure in the attach step leaves
+// the event in place; the response surfaces the error so
+// the user can retry the link.
+func (a *App) handleQuickAddEvent(w http.ResponseWriter, r *http.Request, personID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the quick-add event form.", err)
+		return
+	}
+	if _, err := a.soldiers.GetByID(personID); err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", personID), err)
+		return
+	}
+	event, err := parseEventForm(r)
+	if err != nil {
+		respondValidation(w, r, err.Error(), err)
+		return
+	}
+	created, err := a.events.CreateEvent(event)
+	if err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not create the event for person record %d.", personID), err)
+		return
+	}
+	if _, err := a.events.AttachEventToPerson(created.ID, personID); err != nil {
+		if errors.Is(err, records.ErrDuplicateLink) {
+			writeExportRedirect(w, fmt.Sprintf("/events/%d", created.ID))
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Event %d was created but the link to person record %d could not be saved.", created.ID, personID), err)
+		return
+	}
+	writeExportRedirect(w, fmt.Sprintf("/events/%d", created.ID))
+}
+
+// parseEventForm reads the form fields for an Event Record
+// from r and returns the domain models.Soldier payload the
+// EventService.CreateEvent / UpdateEvent calls expect. It
+// mirrors parseSoldierForm's shape for the Event Record
+// subtype: parses begin_date / end_date through the same
+// canonical-date helper, hard-codes EntryType to "event",
+// and clears the person-specific fields the service-layer
+// normalizeSoldierEntry event branch will clear anyway.
+func parseEventForm(r *http.Request) (models.Soldier, error) {
+	beginDate, err := parseOptionalCanonicalDate(r.FormValue("begin_date"), "begin_date")
+	if err != nil {
+		return models.Soldier{}, err
+	}
+	endDate, err := parseOptionalCanonicalDate(r.FormValue("end_date"), "end_date")
+	if err != nil {
+		return models.Soldier{}, err
+	}
+	return models.Soldier{
+		DisplayID:          strings.TrimSpace(r.FormValue("display_id")),
+		EntryType:          models.EntryTypeEvent,
+		Kind:               strings.TrimSpace(r.FormValue("kind")),
+		BeginDate:          beginDate,
+		EndDate:            endDate,
+		Description:        r.FormValue("description"),
+		PDFExcerptOverride: r.FormValue("pdf_excerpt_override"),
+		Notes:              r.FormValue("notes"),
+	}, nil
+}
+
+// handleEditEventRoute is the chi route shim for
+// /events/{id}/edit. Parses the id from the URL path and
+// delegates to handleEditEvent.
+func (a *App) handleEditEventRoute(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/events/", "/edit")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handleEditEvent(w, r, id)
+}
+
+// handlePersonEventsTabRoute is the chi route shim for
+// /soldiers/{id}/events. Parses the id from the URL path and
+// delegates to handlePersonEventsTab.
+func (a *App) handlePersonEventsTabRoute(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/soldiers/", "/events")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handlePersonEventsTab(w, r, id)
+}
+
+// handleAttachEventRoute is the chi route shim for
+// /soldiers/{personId}/events/{eventId}/attach.
+func (a *App) handleAttachEventRoute(w http.ResponseWriter, r *http.Request) {
+	personID, eventID, err := parsePersonEventIDs(r.URL.Path)
+	if err != nil {
+		http.Error(w, "invalid ids", http.StatusBadRequest)
+		return
+	}
+	a.handleAttachEvent(w, r, personID, eventID)
+}
+
+// handleDetachEventRoute is the chi route shim for
+// /soldiers/{personId}/events/{eventId}/detach.
+func (a *App) handleDetachEventRoute(w http.ResponseWriter, r *http.Request) {
+	personID, eventID, err := parsePersonEventIDs(r.URL.Path)
+	if err != nil {
+		http.Error(w, "invalid ids", http.StatusBadRequest)
+		return
+	}
+	a.handleDetachEvent(w, r, personID, eventID)
+}
+
+// handleQuickAddEventRoute is the chi route shim for
+// /soldiers/{id}/events/quick-add.
+func (a *App) handleQuickAddEventRoute(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/soldiers/", "/events/quick-add")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handleQuickAddEvent(w, r, id)
+}
+
+// parseIntFromPath extracts the integer id embedded between
+// two literal path segments. Used by the route shims to
+// keep chi's pattern captures and the handler signatures
+// in sync.
+func parseIntFromPath(path, prefix, suffix string) (int64, error) {
+	trimmed := strings.TrimPrefix(path, prefix)
+	trimmed = strings.TrimSuffix(trimmed, suffix)
+	id, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse %q: %w", path, err)
+	}
+	return id, nil
+}
+
+// parsePersonEventIDs extracts (personID, eventID) from a
+// /soldiers/{personID}/events/{eventID}/{action} URL path.
+func parsePersonEventIDs(path string) (int64, int64, error) {
+	trimmed := strings.TrimPrefix(path, "/soldiers/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 4 || parts[1] != "events" {
+		return 0, 0, fmt.Errorf("unexpected path shape: %q", path)
+	}
+	personID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	eventID, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return personID, eventID, nil
+}
