@@ -362,6 +362,22 @@ css: ## Rebuild Tailwind bundle
 
 audit: ## Re-run token-saver audit (scripts/token-audit.ps1)
 
+# Issue #316 — htmx-guard lint probes (toast-no-redirect + JS submit
+# coexistence). Defaults to informational mode (exit 0, lists drift).
+# Use `make lint-htmx-guard-strict` for CI failure mode.
+#
+# Run this on every PR that touches internal/appshell/*.go,
+# internal/htmxattr/*.go, or frontend/app.js. Sibling convention
+# for the discover_orphan_handlers probe.
+lint-htmx-guard: ## htmx-guard lint (informational; exit 1 → make lint-htmx-guard-strict)
+	node audit/discover_htmx_guard.mjs
+
+lint-htmx-guard-strict: ## htmx-guard lint as a CI failure
+	node audit/discover_htmx_guard.mjs --strict
+
+lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
+	node audit/discover_htmx_guard.test.mjs
+
 # Kill any leftover dixiedata-web / DixieData / seed-data processes
 # from a previous probe run. Without this, the next `make debug`
 # fails with `unlinkat ... dixiedata-web.exe: The process cannot
