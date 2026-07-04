@@ -38,6 +38,14 @@ func TestShareQueuePage_Empty(t *testing.T) {
 		"No Person Records staged",
 		"Remove Selected",
 		"Export Selected as .ddshare",
+		// Issue #310 PR 3: Saved Queues presets card.
+		"Saved Queues",
+		`data-share-queue-preset-save`,
+		`data-share-queue-preset-list`,
+		`data-share-queue-preset-empty`,
+		`data-share-queue-preset-status`,
+		`name="name"`,
+		"Save current queue",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Errorf("page missing %s; got %s", needle, content)
