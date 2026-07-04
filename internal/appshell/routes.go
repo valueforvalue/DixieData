@@ -92,7 +92,12 @@ func (a *App) setupRoutes() {
 	// the URL path so the sub-path stays in one place.
 	r.Get("/events/{id:[0-9]+}/edit", a.handleEditEventRoute)
 	r.Post("/events/{id:[0-9]+}/edit", a.handleEditEventRoute)
-	// /soldiers/{id}/events/* routes: Person Record →
+	// /events/{id}/pdf dispatches the per-Event PDF export
+	// (issue #320 v1). Mirrors the /soldiers/{id}/pdf route
+	// shape; the handler uses a.saveFileDialogOverride in
+	// tests so the Wails native dialog is bypassed in CI.
+	r.Get("/events/{id:[0-9]+}/pdf", a.handleEventPDFRoute)
+	r.Post("/events/{id:[0-9]+}/pdf", a.handleEventPDFRoute)
 	// Events tab. The /events sub-path on a Person Record
 	// page is dispatched from a dedicated route shim so
 	// the literal path wins over the generic

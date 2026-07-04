@@ -1627,6 +1627,18 @@ func soldierPDFNameNoImages(soldier models.Soldier) string {
 	return pdfReportName(base, archive.PDFOptions{Orientation: "L", IncludeImages: false}, true)
 }
 
+// eventPDFName returns the per-Event PDF file name (D4: prefix
+// distinguishes from per-Person PDF when both end up in the
+// same download folder). Display ID is the EVT-NNNNN allocated
+// by NextEventID; falls back to the kind slug when absent.
+func eventPDFName(event models.Soldier) string {
+	base := strings.TrimSpace(event.DisplayID)
+	if base == "" {
+		base = "Event"
+	}
+	return sanitizedFileStem("Event-"+base, "event-record") + ".pdf"
+}
+
 func monthPDFName(month int, options archive.PDFOptions) string {
 	return pdfReportName(fmt.Sprintf("%s report", monthNameValue(month)), options, false)
 }

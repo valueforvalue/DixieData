@@ -43,6 +43,17 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 						}
 					</div>
 					<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+						<form
+							action={ templ.SafeURL(routebuilder.EventPDF(event.ID)) }
+							method="post"
+							data-dixie-submit="true"
+							class="contents"
+						>
+							<button
+								type="submit"
+								class="pill-link w-full justify-center sm:w-auto"
+							>Export PDF</button>
+						</form>
 						<a href={ templ.SafeURL(routebuilder.EventEdit(event.ID)) } class="pill-link w-full justify-center sm:w-auto">Edit Event</a>
 						<button
 							type="button"

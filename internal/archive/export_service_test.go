@@ -522,6 +522,65 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	}
 }
 
+// TestExportService_ExportEventPDF verifies the per-Event PDF
+// export (issue #320 v1). The test exercises the full
+// typst-backed Registry path: the new event_landscape.typ
+// template is resolved, the per-Event payload (Kind, BeginDate,
+// EndDate, Description) is rendered, and the Linked Person
+// Records table appears.
+func TestExportService_ExportEventPDF(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
+	configureExportIdentity(t, d)
+
+	outPath := filepath.Join(t.TempDir(), "event.pdf")
+	event := models.Soldier{
+		DisplayID:          "EVT-00001",
+		EntryType:          models.EntryTypeEvent,
+		Kind:               "Battle",
+		BeginDate:          "07/01/1863",
+		EndDate:            "07/03/1863",
+		Description:        "Decisive engagement in Adams County, Pennsylvania.",
+		PDFExcerptOverride: "Printable override — short.",
+	}
+	linked := []models.Soldier{
+		{DisplayID: "DXD-00042", FirstName: "John", LastName: "Smith", BirthDate: "01/00/1835", DeathDate: "07/01/1863"},
+		{DisplayID: "DXD-00043", FirstName: "William", LastName: "Jones", BirthDate: "01/00/1840", DeathDate: "07/03/1863"},
+	}
+	if err := exportSvc.ExportEventPDF(outPath, event, linked); err != nil {
+		t.Fatalf("ExportEventPDF: %v", err)
+	}
+
+	data, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if len(data) == 0 || string(data[:4]) != "%PDF" {
+		t.Fatalf("output is not a PDF (prefix=%q)", string(data[:min(8, len(data))]))
+	}
+	text := extractPDFText(t, outPath)
+	if !strings.Contains(text, "Battle") {
+		t.Errorf("event PDF missing kind %q", "Battle")
+	}
+	// D3: pdf_excerpt_override takes precedence over description
+	if !strings.Contains(text, "Printable override") {
+		t.Errorf("event PDF should honor pdf_excerpt_override (D3); got: %s", text)
+	}
+	if strings.Contains(text, "Decisive engagement in Adams County") {
+		t.Errorf("event PDF should NOT render description when pdf_excerpt_override is set (D3)")
+	}
+	// D2 + D5: linked Person Records table — Display ID + name + dates
+	for _, displayID := range []string{"DXD-00042", "DXD-00043"} {
+		if !strings.Contains(text, displayID) {
+			t.Errorf("event PDF missing linked Person Record %s", displayID)
+		}
+	}
+	if !strings.Contains(text, "John") || !strings.Contains(text, "Smith") {
+		t.Errorf("event PDF missing linked Person Record name")
+	}
+}
+
 func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)

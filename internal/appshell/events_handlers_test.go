@@ -10,12 +10,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
+	"os"
+	"path/filepath"
 	"strings"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
- )
+)
 func TestHandleEventsEmptyList(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
@@ -92,7 +95,7 @@ func TestHandleNewEventPostCreatesEvent(t *testing.T) {
 	// /events/{id} is the SQLite row id; the DisplayID
 	// is the EVT-NNNNN string allocated by NextEventID.
 	idStr := strings.TrimPrefix(redirect, "/events/")
-	id, perr := parseInt64(idStr)
+	id, perr := strconv.ParseInt(idStr, 10, 64)
 	if perr != nil {
 		t.Fatalf("parse id %q: %v", idStr, perr)
 	}
@@ -297,6 +300,68 @@ func TestHandleUpdateEvent(t *testing.T) {
 	}
 }
 
+// TestHandleEventPDF verifies the per-Event PDF export
+// (issue #320 v1). The test substitutes the Wails native
+// save dialog with a temp file via saveFileDialogOverride so
+// the render path is exercised end-to-end without a desktop
+// dialog. Asserts:
+//   - the rendered file starts with %PDF-
+//   - the file name matches eventPDFName (D4: Event-<DisplayID>.pdf)
+//   - the in-flight dedup key is cleared so a second request succeeds
+func TestHandleEventPDF(t *testing.T) {
+	app := newStressApp(t)
+
+	created := createEvent(t, app, "Battle of Springfield", "10/25/1864", "10/25/1864", "Decisive engagement")
+
+	want := filepath.Join(t.TempDir(), eventPDFName(created))
+	app.saveFileDialogOverride = func(opts any) (string, error) { return want, nil }
+	defer func() { app.saveFileDialogOverride = nil }()
+
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	form := url.Values{}
+	req, _ := http.NewRequest(http.MethodPost, server.URL+"/events/"+intStr(created.ID)+"/pdf", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /events/%d/pdf: %v", created.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /events/%d/pdf status = %d, want 200", created.ID, resp.StatusCode)
+	}
+
+	// File name: D4 says Event-<DisplayID>.pdf
+	if !strings.HasSuffix(want, eventPDFName(created)) {
+		t.Errorf("file name = %q, want suffix %q", want, eventPDFName(created))
+	}
+
+	// Wait for the export job to complete (typst cold-start is
+	// slow on Windows; the 200 OK + X-DixieData-Redirect returns
+	// immediately while the render runs in a background goroutine).
+	waitForEventPDFJob(t, app, want)
+
+	body, err := os.ReadFile(want)
+	if err != nil {
+		t.Fatalf("read %q: %v", want, err)
+	}
+	if len(body) < 4 || string(body[:4]) != "%PDF" {
+		t.Errorf("file body = %q... (len=%d), want prefix %%PDF-", string(body[:min(8, len(body))]), len(body))
+	}
+	// first one cleared the key when the export completed).
+	req2, _ := http.NewRequest(http.MethodPost, server.URL+"/events/"+intStr(created.ID)+"/pdf", strings.NewReader(""))
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("second POST /events/%d/pdf: %v", created.ID, err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		t.Errorf("second POST status = %d, want 200 (in-flight key not cleared)", resp2.StatusCode)
+	}
+}
+
 // --- test helpers ---
 
 // createSoldier seeds a minimal Person Record (entry_type
@@ -373,11 +438,21 @@ func intStr(n int64) string {
 	return string(digits[i:])
 }
 
-// parseInt64 parses a string to int64. Used by the
-// CreateEvent test to recover the row id from the
-// /events/{id} redirect.
-func parseInt64(s string) (int64, error) {
-	return strconv.ParseInt(s, 10, 64)
+// waitForEventPDFJob polls until the per-Event PDF export
+// job completes. The job creates the output file via
+// os.Create inside ExportEventPDF; typst then writes the
+// content asynchronously. We exit when the file size is
+// non-zero (the file is complete) or after 60s.
+func waitForEventPDFJob(t *testing.T, app *App, outPath string) {
+	t.Helper()
+	deadline := time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(100 * time.Millisecond)
+		if info, err := os.Stat(outPath); err == nil && info.Size() > 0 {
+			return
+		}
+	}
+	t.Fatalf("event PDF job did not produce a non-empty file at %q within 60s", outPath)
 }
 // extractDisplayID was a placeholder helper kept for
 // earlier test scaffolding. The CreateEvent test now

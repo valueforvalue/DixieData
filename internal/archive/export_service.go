@@ -177,8 +177,27 @@ func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier
 	return e.exportSingleRecordViaRegistry(outputPath, soldier, PDFOptions{}, "soldier")
 }
 
-// ExportMonthlyAnniversaryPDF is a thin facade. The Registry
-// path uses the 'anniversary' template.
+// ExportEventPDF renders an Event Record (issue #320 v1) to a
+// single-record PDF. The per-Event payload uses models.Soldier
+// with EntryType="event" and the v60 columns (Kind, BeginDate,
+// EndDate, Description, PDFExcerptOverride). The linked array
+// is the per-Event projection from EventService.ListForEvent;
+// each element is a slim models.Soldier used to render the
+// "Linked Person Records" table.
+//
+// Routes through the same typst-backed Registry as the
+// per-soldier exports. The Registry's Resolve method picks
+// templates/event_landscape.typ via the defaultTemplateName
+// mapping for recordType="event" + orientation "L".
+func (e *ExportService) ExportEventPDF(outputPath string, event models.Soldier, linked []models.Soldier) error {
+	if e.registry == nil {
+		return errPDFRegistryMissing
+	}
+	return e.exportEventViaRegistry(outputPath, event, linked)
+}
+
+// ExportMonthlyAnniversaryPDF renders the monthly anniversary
+// report. The Registry path uses the 'anniversary' template.
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
 	if e.registry == nil {
 		return errPDFRegistryMissing
@@ -333,6 +352,11 @@ func recordTypeForSoldier(soldier models.Soldier) string {
 		return "wife"
 	case "linked_person":
 		return "linked_person"
+	case "event":
+		// issue #320 v1: Event Records route through the
+		// Registry with recordType="event" and resolve to
+		// templates/event_landscape.typ via defaultTemplateName.
+		return "event"
 	default:
 		return "soldier"
 	}
@@ -425,6 +449,80 @@ func (e *ExportService) archiveBranding(printerFriendly bool) map[string]string 
 	}
 	_ = printerFriendly
 	return branding
+}
+
+// exportEventViaRegistry renders a single Event Record (issue
+// #320 v1) via the typst-backed Registry. The per-Event payload
+// uses models.Soldier (EntryType=event); the linked array is
+// the slim per-Person projection used to render the "Linked
+// Person Records" table on the per-Event PDF card.
+//
+// The template (templates/event_landscape.typ) reads
+// data["linked"] as a list of {display_id, name, range} dicts;
+// the pre-projection here keeps the typst template DB-free.
+func (e *ExportService) exportEventViaRegistry(outputPath string, event models.Soldier, linked []models.Soldier) error {
+	settings := PrintSettings{
+		Orientation:          "L",
+		SingleRecordTemplate: "event_landscape",
+	}.Normalize()
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	linkedDicts := make([]map[string]any, 0, len(linked))
+	for _, p := range linked {
+		name := strings.TrimSpace(p.FirstName + " " + p.MiddleName + " " + p.LastName)
+		if name == "" {
+			name = strings.TrimSpace(p.DisplayID)
+		}
+		linkedDicts = append(linkedDicts, map[string]any{
+			"display_id": strings.TrimSpace(p.DisplayID),
+			"name":       name,
+			"range":      soldierDateRangeLabel(p),
+		})
+	}
+
+	data := map[string]any{
+		"soldier":  event,
+		"linked":   linkedDicts,
+		"options":  PDFOptions{Orientation: "L", IncludeImages: false}.Normalize("L", true),
+		"settings": settings,
+		"branding": e.archiveBranding(false),
+	}
+	return e.registry.Render(context.Background(), settings, "event", data, f)
+}
+
+// soldierDateRangeLabel renders a Person Record's begin/end
+// dates as a compact "<from> — <to>" label for the Event PDF's
+// linked Person Records table. Mirrors the per-Person card's
+// "May 22, 1844 — June 7, 1863" shape but without a separate
+// helper dependency. Falls back to the DisplayID range string
+// when no dates are present.
+func soldierDateRangeLabel(s models.Soldier) string {
+	parts := func(raw string) (year, month, day string) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" || raw == "0000-00-00" {
+			return "", "", ""
+		}
+		segs := strings.Split(raw, "/")
+		if len(segs) != 3 {
+			return "", "", ""
+		}
+		return strings.TrimSpace(segs[2]), strings.TrimSpace(segs[0]), strings.TrimSpace(segs[1])
+	}
+	fromY, _, _ := parts(s.BirthDate)
+	toY, _, _ := parts(s.DeathDate)
+	switch {
+	case fromY != "" && toY != "":
+		return fromY + " — " + toY
+	case fromY != "":
+		return fromY + " —"
+	case toY != "":
+		return "— " + toY
+	}
+	return ""
 }
 
 // exportAnniversaryViaRegistry renders the anniversary report
