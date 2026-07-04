@@ -4495,4 +4495,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   Net: -356 LOC of test code, +19 LOC of real coverage.
   Test file count: 172 → 170.
 
+- **Skipped `internal/buildinfo` doc-audit tests in `-short`**
+  (issue #318 Slice 0). The 3 tests
+  (`TestEveryInternalPackageHasSynopsis`,
+  `TestNoWrongStarterDocComments`,
+  `TestPerPackageDocCoverageFloor`) shell out to `go doc`
+  per-package across 150+ internal + pkg packages; each
+  subprocess cold-starts at ~100ms, totaling 70s of
+  wall-clock for the package. The audit catches missing
+  `// Package foo` doc comments per the Go Doc audit
+  Phase 1+2 — real value, but too heavy for every
+  `make test` invocation. Now skipped in `-short` with a
+  message pointing at the explicit invocation. `make test`
+  drops from ~125s to ~62s on this repo. Audit still runs
+  under `go test -count=1 ./internal/buildinfo/...` or any
+  CI lane that drops `-short`.
+
 ## v1.1.16 - Gold Master
