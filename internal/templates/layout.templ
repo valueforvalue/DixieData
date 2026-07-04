@@ -66,8 +66,17 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 		// debug.IsDebugMode(ctx) returns true only when the
 		// appshell requested debug mode via the per-request
 		// context (or the debug launcher's DIXIEDATA_DEBUG=1).
+		//
+		// NB: templ uses {{ value }} (double braces) for JS
+		// interpolation inside <script> blocks -- NOT the
+		// single-brace Go expression syntax that works in
+		// HTML attributes. Single braces inside <script> are
+		// emitted verbatim, which would break the JS at parse
+		// time. Bug surfaced in issue #309 follow-up after the
+		// make-debug launcher env-fix (commit e3eb552) didn't
+		// surface the badge.
 		<script>
-			window.DIXIEDATA_DEVTOOLS = { debug.IsDebugMode(ctx) };
+			window.DIXIEDATA_DEVTOOLS = {{ debug.IsDebugMode(ctx) }};
 		</script>
 		<script defer src="/debug.js"></script>
 		<script defer src="/debug-toolbox.js"></script>
