@@ -55,10 +55,15 @@ jobs:
           Restore-DixieDataTypstBinary -Root $root
         timeout-minutes: 5
 
-      - name: Go test (short)
+      - name: Go test (short, race detector)
         shell: pwsh
         run: |
-          go test ./... -short -count=1
+          # -race requires cgo. CI runners have gcc on ubuntu-latest;
+          # local Windows dev envs typically do not, so this gate lives
+          # in CI only. Catches the concurrency bug class per
+          # docs/COMMON_BUGS.md §4.1 (goroutine leak / race).
+          $env:CGO_ENABLED = '1'
+          go test -race ./... -short -count=1
         timeout-minutes: 15
 
       # Mirror the trace harness across both build-tag modes so the
