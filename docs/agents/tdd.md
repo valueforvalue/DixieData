@@ -229,7 +229,7 @@ Existing rule from `feature-protocol.md`. Refactor candidates:
 
 The RED test lives in the same commit as the slice code it
 pins. Inline, atomic, reviewable. Standard Go convention;
-matches the repo's "one commit = one logical change" rule
+matches the repo's "one commit = one reviewable unit" rule
 from `AGENTS.md`.
 
 ## What's the seam?
