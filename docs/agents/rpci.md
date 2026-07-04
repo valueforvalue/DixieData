@@ -135,8 +135,31 @@ explicit "Approve, start" or "looks good, go" is the gate.
 **Stop when:** The user has signed off and the only remaining
 work is mechanical execution.
 
-### I — Implement
+**Autonomous clause (opt-in per session).** When the user
+replies with one of:
+- "all recommended" / "take the recommended defaults" / "yes to all"
 
+the agent MAY treat the response as explicit approval of every
+decision the agent surfaced in the Plan or Critique phase of
+the same session, and proceed to the Implement phase without
+re-asking. The agent MUST:
+1. Echo the list of approved decisions in the implementation
+   commit message or PR body for traceability.
+2. Continue to surface any *new* decisions discovered during
+   Implementation (mid-build surprises) for explicit approval
+   before acting.
+3. NOT treat the autonomous clause as blanket approval of
+   future RPCI sessions — it is per-session and per-decision-list.
+
+The agent MUST NOT auto-progress on:
+- System reminders about open todos
+- Absence of user response (silence is not consent)
+- Vague or partial responses ("looks good" with no decision list referenced)
+
+The default for ambiguous responses remains: stay in Critique,
+a replacement for the gate.
+
+### I — Implement
 **Goal:** Execute the plan slice by slice, with regression
 tests confirming each slice before the next starts.
 
@@ -196,8 +219,17 @@ Surface forms the user might use:
 - "run RPCI before coding"
 - "let's RPCI the new export template UI"
 
-## Anti-patterns
+Once the agent has surfaced its Plan or Critique decisions, the
+user MAY reply with a single-phrase approval that takes the
+recommended defaults across the board (see the **Autonomous
+clause** under `### C — Critique`):
+- "all recommended" / "take the recommended defaults" / "yes to all"
 
+Vague replies ("looks good", "go ahead") do NOT trigger the
+autonomous clause — the agent must stay in Critique and ask
+which decisions the user is approving.
+
+## Anti-patterns
 - **Skipping Critique.** The user explicitly asked for this
   flow because past sessions shipped plans that the user
   would have rejected if asked. Don't let urgency skip the
