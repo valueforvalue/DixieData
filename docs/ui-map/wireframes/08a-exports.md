@@ -92,11 +92,14 @@ Import + Sync surfaces to find the export buttons.
   behavior. The modal markup is included via
   `@partials.PrintConfigModal(exportRecords)` which passes the
   full export-records list.
-- **Build Share Archive** is a dispatch on `data-share-queue-open`
-  which opens the modal loaded by the `/share/queue/modal`
-  endpoint. The modal markup is NOT pre-rendered on this page —
-  it's lazy-loaded by the dispatcher. The form fields are then
-  populated from localStorage by the queue's client-side helper.
+- **Open Share Queue** is an `<a href="/share/queue">` link
+  (issue #310 PR 1). Clicking it navigates to the
+  `/share/queue` management page (issue #193) which is the
+  single Share Queue management surface post-issue #310.
+  The modal at `/share/queue/modal` was deleted in issue
+  #310 PR 2; the page absorbs every action the modal used to
+  provide (view staged list, export subset, save / load
+  presets — presets land on the page in PR 3).
 - **`include_tags` checkbox** is per-kind (shared archive kind
   only). The other kinds (backup, static-archive) don't have
   this option because the recipient's archive controls tags on

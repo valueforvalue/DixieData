@@ -164,12 +164,11 @@ const (
 	PanelTagDetail           = "panel.tags.detail"
 // OverlayTagPicker is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	OverlayTagPicker         = "overlay.tag.picker"
-	// Issue #182: Share Queue surfaces.
-	OverlayShareQueue         = "overlay.share-queue.modal"
+	// Issue #193 / #310: Share Queue surfaces are now page-mounted.
+	// PanelShareQueueList hosts the per-row table on /share/queue;
+	// PanelShareQueuePresets hosts the Saved Queues card (PR 3).
 // PanelShareQueueList is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareQueueList       = "panel.share-queue.list"
-// PanelShareQueuePreview is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
-	PanelShareQueuePreview    = "panel.share-queue.preview"
 // PanelShareQueuePresets is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareQueuePresets    = "panel.share-queue.presets"
 	// Issue #264: Share top-nav foldout. The trigger is a
@@ -291,10 +290,8 @@ var Registry = []Surface{
 	{ID: PanelTagsList, Kind: "panel", Description: "Tag table on the /tags management page."},
 	{ID: PanelTagDetail, Kind: "panel", Description: "Single tag detail page showing the membership list with Remove buttons."},
 	{ID: OverlayTagPicker, Kind: "overlay", Description: "Inline tag-picker overlay used on the soldier detail page and in the Browse bulk-tag toolbar."},
-	{ID: OverlayShareQueue, Kind: "overlay", Description: "Share Build modal listing the user's queued Person Records (issue #182); opens from the persistent Share Queue pill on the layout shell."},
-	{ID: PanelShareQueueList, Kind: "panel", Description: "Per-row queued Person Records list inside the Share Build modal; each row carries a remove button + a per-row checkbox."},
-	{ID: PanelShareQueuePreview, Kind: "panel", Description: "Live preview pane inside the Share Build modal showing the Soldiers / Source Records / Images count summary."},
-	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues section inside the Share Build modal (issue #192) listing named presets with Load + Delete per row."},
+	{ID: PanelShareQueueList, Kind: "panel", Description: "Per-row queued Person Records table on the /share/queue management page (issue #193); each row carries a remove button + a per-row checkbox for bulk actions."},
+	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues card on the /share/queue management page (issue #310 PR 3, ported from the Share Build modal in issue #192) listing named presets with Load + Delete per row."},
 	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
 	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
 	{ID: PanelShareQuickActions, Kind: "panel", Description: "Quick Actions card on /share (issue #265). Three large tiles: Export JSON, Import .ddbak, Share Queue. Above the fold."},
