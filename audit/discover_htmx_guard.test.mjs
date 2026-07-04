@@ -201,6 +201,84 @@ func BadHandler(w http.ResponseWriter, r *http.Request) {
   });
 });
 
+// ---- Issue #317 follow-up: helper recognition ----
+
+test('JS submit walker accepts a listener that routes through dispatchUtilitySubmit', () => {
+  const tmp = join(tmpdir(), `_probe_utility_submit_${Date.now()}.js`);
+  writeFileSync(tmp, `dispatchUtilitySubmit(form, (form) => saveAsPreset(form));
+`);
+  try {
+    const r = runProbe({ HTMX_GUARD_JS_FILE: tmp });
+    assert.ok(!/JS SUBMIT COEXISTENCE VIOLATIONS/.test(r.stdout),
+      `dispatchUtilitySubmit call should not be flagged\nstdout: ${r.stdout}`);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+});
+
+test('JS submit walker accepts a listener that routes through dispatchSubmitPrep', () => {
+  const tmp = join(tmpdir(), `_probe_submit_prep_${Date.now()}.js`);
+  writeFileSync(tmp, `dispatchSubmitPrep(form, (form) => stageFields(form));
+`);
+  try {
+    const r = runProbe({ HTMX_GUARD_JS_FILE: tmp });
+    assert.ok(!/JS SUBMIT COEXISTENCE VIOLATIONS/.test(r.stdout),
+      `dispatchSubmitPrep call should not be flagged\nstdout: ${r.stdout}`);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+});
+
+test('JS submit walker accepts dispatchUtilitySubmit nested inside a conditional', () => {
+  // Site 3 (data-pdf-pref-scope) pattern: the helper is called
+  // inside an `if (form.matches(...))` block. The probe's body
+  // substring match should still recognize it as legitimate.
+  const tmp = join(tmpdir(), `_probe_utility_cond_${Date.now()}.js`);
+  writeFileSync(tmp, `document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (form instanceof HTMLFormElement && form.matches("form[data-pdf-pref-scope]")) {
+    dispatchSubmitPrep(form, () => persistPDFPreferences(form));
+  }
+});
+`);
+  try {
+    const r = runProbe({ HTMX_GUARD_JS_FILE: tmp });
+    assert.ok(!/JS SUBMIT COEXISTENCE VIOLATIONS/.test(r.stdout),
+      `nested helper call should not be flagged\nstdout: ${r.stdout}`);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+});
+
+test('JS submit walker does NOT flag addEventListener inside the helper bodies themselves', () => {
+  // The helpers' internal addEventListener("submit") sites must
+  // not be flagged as violations — they are implementation
+  // details. Verifies the helperInternals pre-scan.
+  const tmp = join(tmpdir(), `_probe_helper_internal_${Date.now()}.js`);
+  writeFileSync(tmp, `function dispatchUtilitySubmit(form, callback) {
+  if (!(form instanceof HTMLFormElement)) return;
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    callback(form);
+  });
+}
+
+function dispatchSubmitPrep(form, callback) {
+  if (!(form instanceof HTMLFormElement)) return;
+  form.addEventListener("submit", () => {
+    callback(form);
+  });
+}
+`);
+  try {
+    const r = runProbe({ HTMX_GUARD_JS_FILE: tmp });
+    assert.ok(!/JS SUBMIT COEXISTENCE VIOLATIONS/.test(r.stdout),
+      `helper internals must not be flagged\nstdout: ${r.stdout}`);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+});
+
 // ---- Slice 2: templ target walker ----
 
 function writeTemplFixture(dir, files) {

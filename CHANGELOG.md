@@ -4217,6 +4217,46 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     Closes #316's CI gate promise that slices 1-4 explicitly
     deferred.
 
+  - **htmx-guard: dispatchUtilitySubmit + dispatchSubmitPrep
+    (issue #317)** — new sibling helpers in `frontend/app.js`
+    replace the `// htmx-guard: utility-submit` marker
+    convention. The two helpers are the canonical submit
+    semantics for utility-form submits (those without
+    `data-dixie-submit`):
+
+    - `dispatchUtilitySubmit(form, callback)` —
+      `preventDefault` + run the callback. Used for
+      local-only handlers like the share-queue preset
+      save.
+    - `dispatchSubmitPrep(form, callback)` — run the
+      callback but allow the submit to continue. Used
+      for pre-submit hooks on forms that already have
+      their own submit semantics downstream (e.g. the
+      share-queue export form stages hidden fields then
+      the data-dixie-submit dispatcher takes over).
+
+    Lands as two commits:
+
+    1. **Helpers + probe acceptance** (this commit) —
+       both helpers added to `frontend/app.js`; the
+       walker's classification gains a new "Case C"
+       branch that recognizes calls to either helper as
+       legitimate; pre-scan to skip addEventListener
+       sites that live inside the helpers' own bodies
+       (avoid flagging the helpers' implementation
+       details as violations of themselves). 4 new
+       tests cover helper acceptance + nested helper
+       call + helper-internal skip.
+
+    2. **(next commit)** migration of the 3 marked
+       sites to route through the helpers + removal of
+       the 3 marker comments + update to
+       `docs/agents/htmx-guard-conventions.md`
+       replacing the marker section with a helpers
+       section. After that commit the marker rule can
+       retire; this commit keeps the marker rule as a
+       fallback for any unmigrated reader.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added

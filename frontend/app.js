@@ -3114,6 +3114,62 @@
     return firstEmpty && lastEmpty;
   }
 
+  // dispatchUtilitySubmit is the canonical dispatcher for
+  // utility-form submits — forms that do NOT carry data-dixie-submit
+  // and whose submit handler runs a local side-effect instead of a
+  // navigation/data action (e.g. saveCurrentQueueAsPresetPage,
+  // a future "Save as draft" button). Wraps the form with a
+  // submit listener that preventDefaults and runs the callback.
+  //
+  // Symmetric with dispatchDixieDataForm (which handles nav/data
+  // submits on data-dixie-submit forms). Together they are the
+  // two valid submit semantics; the htmx-guard probe recognizes both.
+  //
+  // Signature: dispatchUtilitySubmit(form, callback) — `form` is
+  // an HTMLFormElement, `callback` is a function that takes the
+  // form as its only argument. The callback's return value is
+  // ignored; any thrown error propagates.
+  //
+  // The submit event listener is attached exactly once per
+  // (form, callback) pair via a marker dataset attribute, so
+  // callers can invoke this helper idempotently.
+  function dispatchUtilitySubmit(form, callback) {
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.dataset && form.dataset.utilitySubmitInstalled === "true") return;
+    if (form.dataset) form.dataset.utilitySubmitInstalled = "true";
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      callback(form);
+    });
+  }
+
+  // dispatchSubmitPrep is the canonical helper for submit-prep
+  // listeners — body code runs a side-effect (stage hidden fields,
+  // persist a preference, etc.) and then ALLOWS the submit to
+  // continue. Use this when a <form data-dixie-submit="true"> (or
+  // any other form that has its own submit semantics downstream)
+  // needs a pre-submit hook.
+  //
+  // Signature: dispatchSubmitPrep(form, callback) — caller is
+  // responsible for ensuring the listener body actually wants to
+  // run; helpers below filter by form.matches("...") before
+  // calling. Unlike dispatchUtilitySubmit, this does NOT
+  // preventDefault — the natural submit flow continues.
+  //
+  // As with dispatchUtilitySubmit, the listener is installed exactly
+  // once per form. Marker dataset attribute is shared with the
+  // utility-submit install so the two helpers' install statuses
+  // don't conflict (in practice a form uses one or the other,
+  // not both).
+  function dispatchSubmitPrep(form, callback) {
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.dataset && form.dataset.utilitySubmitInstalled === "true") return;
+    if (form.dataset) form.dataset.utilitySubmitInstalled = "true";
+    form.addEventListener("submit", () => {
+      callback(form);
+    });
+  }
+
   async function dispatchDixieDataForm(button) {
     // Issue #248: when a button carries a data-action URL, that
     // URL represents the click target's intent and wins over the
