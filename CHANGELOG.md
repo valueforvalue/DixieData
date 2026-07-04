@@ -586,7 +586,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
-- **v60 schema: Event Record subtype + FK rename to
+- **RPCI protocol: add Autonomous clause** (issue #339).
+  `docs/agents/rpci.md` §Critique now documents a per-session
+  shortcut: when the user replies with "all recommended" /
+  "take the recommended defaults" / "yes to all", the agent
+  MAY proceed to Implement without re-asking each surfaced
+  decision. Locks the boundary: the agent MUST echo the
+  approved decisions in the commit body, MUST surface any
+  new mid-Implement decisions for explicit approval, and
+  MUST NOT treat the clause as blanket approval of future
+  RPCI sessions. Anti-pattern list: no auto-progress on
+  system reminders, no consent-by-silence, no vague-reply
+  shortcut. The "Invocation" section lists the new surface
+  forms alongside the existing "do RPCI on X" patterns.
+  Captured during issue #320 slice #322; the agent had
+  already drafted D1-D5 in chat and a no-decision-changes
+  reply was waiting on the gate for multiple turns. The
+  amendment unblocks that case without weakening the
+  primary explicit-approval gate.
   `person_record_id`** (issue #320, slice 1 + 1.5). Adds the
   `event_person_links` many-to-many junction, 4 new columns on
   `soldiers` (`kind`, `begin_date`, `end_date`, `description`)
