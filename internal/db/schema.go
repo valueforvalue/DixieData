@@ -310,6 +310,28 @@ CREATE TABLE IF NOT EXISTS event_person_links (
 CREATE INDEX IF NOT EXISTS idx_event_person_links_event  ON event_person_links(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_person_links_person ON event_person_links(person_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_person_links_sync_id ON event_person_links(sync_id);
+
+-- v61 (issue #340): event_sources — per-Event Source Records.
+-- Events are soldiers rows (entry_type = 'event'); they need
+-- their own source-record table because the shared records
+-- table is REPLACE-only at the soldier (replaceRecords wipes
+-- every row on Update), which silently destroyed any sources
+-- the user attached via the per-Event Sources panel. The
+-- schema mirrors the records column shape (record_type,
+-- app_id, details, sync_id) so the EventService can swap
+-- signatures. ON DELETE CASCADE on event_id ensures sources
+-- disappear with their parent Event.
+CREATE TABLE IF NOT EXISTS event_sources (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    sync_id         TEXT,
+    event_id        INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    event_sync_id   TEXT,
+    record_type     TEXT NOT NULL,
+    app_id          TEXT NOT NULL,
+    details         TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_event_sources_event ON event_sources(event_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_sources_sync_id ON event_sources(sync_id);
 `
 
 const phase1DistributedMergeMigration = `

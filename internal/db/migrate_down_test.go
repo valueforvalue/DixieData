@@ -90,15 +90,21 @@ func TestApplyDownSchema_PartialReversibleStepDown(t *testing.T) {
 	}
 	defer database.Close()
 
-	// DOWN from v60 to v59 succeeds because Block 60
+	// DOWN from v61 to v60 succeeds because Block 61
+	// (block-61-event-sources) is Reversible. DOWN from v61 to
+	// v59 also succeeds because Block 60
 	// (block-60-event-records-event-person-links-fk-rename) is
-	// PartiallyReversible. DOWN to any v < 59 must refuse because
-	// Block 17 (the Irreversible evidence_type rename) blocks any
-	// path crossing v55 → v54.
-	for target := 0; target < CurrentSchemaVersion-1; target++ {
+	// PartiallyReversible. DOWN to any v < 58 must refuse
+	// because Block 17 (the Irreversible evidence_type rename)
+// blocks any path that crosses v55 → v54; the smallest delta
+// that includes block-17 from v61 is 3 (61→60→59→58). Targets
+// in [0, 58] all cross block-17 and must refuse. Targets 59
+// and 60 don't cross block-17 and are allowed (the test is
+// about the irreversible boundary, not the schema ceiling).
+	for target := 0; target <= 58; target++ {
 		err := applyDownSchema(database, target)
 		if !errors.Is(err, ErrDowngradeRefused) {
-			t.Errorf("applyDownSchema to v%d: err = %v, want ErrDowngradeRefused (every v<N<59 must refuse)", target, err)
+			t.Errorf("applyDownSchema to v%d: err = %v, want ErrDowngradeRefused (every v<=58 must refuse because block-17 is Irreversible)", target, err)
 		}
 	}
 }

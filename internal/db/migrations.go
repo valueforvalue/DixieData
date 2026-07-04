@@ -146,6 +146,11 @@ var ErrDowngradeRefused = errors.New("schema downgrade refused")
 //              reversible. The FTS5 layer is no-op DOWN because the
 //              cycle is idempotent and re-running with old column
 //              names would require temporarily reverting the renames.
+//   Block 19 (block-61) - v61 per-Event Source Records
+//              (issue #340). Pure additive: CREATE TABLE
+//              event_sources + 2 indexes. Reversible. Fixes the
+//              slot #329 data-loss bug where the shared records
+//              table was REPLACE-wiped on every Event Update.
 //
 // Block 19 (the terminal `PRAGMA user_version` write) is NOT in the
 // slice — it's bookkeeping applied by applySchema after the slice
@@ -630,6 +635,60 @@ var migrations = []Migration{
 				return err
 			}
 
+			return nil
+		},
+	},
+	// Block 19 (block-61) — v61 per-Event Source Records table
+	// (issue #340). Replaces the v60 slot #329 hack of writing
+	// Event sources into the shared `records` table, which
+	// collided with the replaceRecords REPLACE-only semantics
+	// in SoldierService.Update and silently destroyed attached
+	// sources on every Event Edit. The new event_sources table
+	// is keyed by event_id (soldiers.id for entry_type='event'
+	// rows) and mirrors the records column shape so the
+	// EventService can swap implementations without changing
+	// handler / viewmodel signatures.
+	//
+	// Reversibility: Reversible. The Up path is pure additive
+	// (CREATE TABLE IF NOT EXISTS + 2 CREATE INDEX IF NOT
+	// EXISTS). The Down path drops the unique index, the event
+	// index, and the table itself. No data migration needed
+	// because the orphan rows from v60's records-table reuse
+	// are inert after the v61 EventService rewrite (slice 2).
+	{
+		ID:            "block-61-event-sources",
+		Reversibility: Reversible,
+		Reason: "Pure additive: CREATE TABLE IF NOT EXISTS event_sources + 2 CREATE INDEX IF NOT EXISTS. Inverse: DROP INDEX + DROP TABLE. No data migration; the v60 records-table orphans become inert after slice 2's service rewrite.",
+		Up: func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS event_sources (
+				id              INTEGER PRIMARY KEY AUTOINCREMENT,
+				sync_id         TEXT,
+				event_id        INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+				event_sync_id   TEXT,
+				record_type     TEXT NOT NULL,
+				app_id          TEXT NOT NULL,
+				details         TEXT NOT NULL DEFAULT ''
+			)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_event_sources_event ON event_sources(event_id)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_event_sources_sync_id ON event_sources(sync_id)`); err != nil {
+				return err
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_sources_sync_id`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_sources_event`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP TABLE IF EXISTS event_sources`); err != nil {
+				return err
+			}
 			return nil
 		},
 	},
