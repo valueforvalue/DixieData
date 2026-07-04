@@ -4511,4 +4511,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   under `go test -count=1 ./internal/buildinfo/...` or any
   CI lane that drops `-short`.
 
+- **CI race detector gate enabled** (issue #318 Slice 1).
+  `.github/workflows/test.yml::Go test (short, race detector)`
+  now runs `go test -race ./... -short -count=1` with
+  `CGO_ENABLED=1`. Catches the concurrency bug class per
+  `docs/COMMON_BUGS.md` §4.1 (race condition). Local
+  `make test` is unchanged — the `-race` flag requires cgo,
+  which the Windows dev env typically lacks. CI has gcc on
+  `ubuntu-latest`. A race bug will surface as a PR CI failure
+  rather than a local `make test` failure. The previous
+  `TestMuxSelectEmitted` registry drift was already resolved
+  in commit `c136789`; the failing-test concern from the
+  audit is moot on this branch.
+
 ## v1.1.16 - Gold Master
