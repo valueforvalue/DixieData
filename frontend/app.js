@@ -2553,6 +2553,17 @@
       setSectionEnabled(section, (isSoldierEntryType(select.value) || spouseEntry) && !eventEntry);
     });
     syncConfederateHomeFields(form);
+    // v60 (issue #320, slot #330): when entry_type=event the
+    // /soldiers/new form posts to /events/new so the dedicated
+    // Event handler (handleNewEvent) owns the CreateEvent path.
+    // The /soldiers/new route still works for the other
+    // subtypes; this swap is purely URL-level so the form's
+    // parse-and-create logic stays on the receiving handler.
+    const createAction = select.value === "event" ? "/events/new" : "/soldiers";
+    if (form.dataset.entryTypeFormAction !== createAction) {
+      form.action = createAction;
+      form.dataset.entryTypeFormAction = createAction;
+    }
   }
 
   function isSoldierEntryType(value) {

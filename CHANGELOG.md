@@ -122,6 +122,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   URL. Test `TestHandleEventResearchLog` covers the
   full round trip (GET → POST create → GET (title in
   body) → POST resolve → service confirms resolved).
+- **Re-introduce Event option in entryTypes()** (issue
+  #320, slot #330). The `Event` option is back in the
+  `/soldiers/new` entry-type dropdown. The JS-side
+  `syncEntryTypeFields` swaps the form action URL to
+  `/events/new` when Event is selected; server-side
+  `handleCreateSoldier` short-circuits to
+  `handleNewEvent` as a defensive guard for hand-curled
+  posts. Soldier/Wife/Widow/Person subtypes still
+  submit to `/soldiers/new` — no regression.
+  Test `TestHandleCreateSoldierDispatchesToNewEvent`
+  covers the dispatch path.
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:

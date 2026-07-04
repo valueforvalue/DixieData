@@ -146,18 +146,16 @@ func entryTypes() []entryTypeOption {
 		{Value: models.EntryTypeLinkedPerson, Label: "Person Record"},
 		{Value: models.EntryTypeWife, Label: "Wife"},
 		{Value: models.EntryTypeWidow, Label: "Widow"},
-		// v60 (issue #320): the Event entry type is intentionally
-		// NOT in this list. Events are created through the
-		// dedicated /events/new handler + event_form.templ
-		// surface, not through /soldiers/new. Mixing the two
-		// would force the form parser to dispatch between
-		// SoldierService.Create and EventService.CreateEvent
-		// (and would require the JS dispatcher to swap the
-		// form action between /soldiers and /events/new based
-		// on entry type) — both add real risk for the v1
-		// landing. The dedicated path keeps the form-level
-		// validation per-form and the entry-type select stays
-		// a single, stable dropdown.
+		// v60 (issue #320, slot #330): Event is now a first-class
+		// entry-type option on /soldiers/new. The form parser
+		// branches on entry_type=event and routes the create
+		// through events.CreateEvent instead of soldiers.Create.
+		// The JS dispatcher (syncEntryTypeFields) swaps the
+		// form action URL to /events/new when Event is
+		// selected, and the data-event-only-field gate keeps
+		// the Event-only fields (kind/begin_date/end_date/
+		// description) from leaking into a Soldier submit.
+		{Value: models.EntryTypeEvent, Label: "Event"},
 	}
 }
 

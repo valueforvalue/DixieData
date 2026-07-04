@@ -106,6 +106,48 @@ func TestHandleNewEventPostCreatesEvent(t *testing.T) {
 	}
 }
 
+// TestHandleCreateSoldierDispatchesToNewEvent covers issue #320
+// slot #330: the JS-side action-swap for entry_type=event
+// (syncEntryTypeFields) sets the form action to /events/new
+// on the client, but a researcher can still hand-curl the
+// form to /soldiers with entry_type=event. The handler
+// must forward them to /events/new instead of silently
+// creating a Soldier row with entry_type=event.
+func TestHandleCreateSoldierDispatchesToNewEvent(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	form := url.Values{}
+	form.Set("entry_type", "event")
+	form.Set("kind", "Battle")
+	form.Set("begin_date", "07/01/1863")
+	form.Set("end_date", "07/03/1863")
+	form.Set("description", "Battle submitted via /soldiers with entry_type=event")
+	form.Set("display_id", "EVT-SUBMIT-VIA-SOLDIERS")
+	resp, err := http.PostForm(server.URL+"/soldiers", form)
+	if err != nil {
+		t.Fatalf("POST /soldiers (event entry_type): %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /soldiers status = %d, want 200 (Option C redirect)", resp.StatusCode)
+	}
+	redirect := resp.Header.Get("X-DixieData-Redirect")
+	if !strings.HasPrefix(redirect, "/events/") {
+		t.Fatalf("expected X-DixieData-Redirect to /events/{id}; got %q", redirect)
+	}
+	// No Soldier row may have been created.
+	if s := app.soldiers; s == nil {
+		t.Fatalf("app.soldiers is nil")
+	}
+	idStr := strings.TrimPrefix(redirect, "/events/")
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+	if got, err := app.events.GetEventByID(id); err != nil || got == nil {
+		t.Errorf("Event row missing after /soldiers entry_type=event dispatch: got=%v err=%v", got, err)
+	}
+}
+
 // TestHandleEventByIDGetDetail verifies GET /events/{id}
 // renders the detail page for an existing event.
 func TestHandleEventByIDGetDetail(t *testing.T) {
