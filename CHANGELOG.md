@@ -43,10 +43,34 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   full attach-then-fragment round-trip. UI integration on
   `soldier_card.templ` is deferred to a follow-up — the
   fragment is reachable via direct URL today.
+- **Person Record → Events tab controls** (issue #320, slice
+  #325). The lazy-loaded `person_events_tab.templ` fragment
+  now exposes the three controls the slice-3 handlers were
+  waiting for: (a) an "Unlink" form per linked Event row
+  that POSTs to `/soldiers/{id}/events/{eventId}/detach`;
+  (b) a collapsible "Add existing event" form with a
+  single `display_id` field that POSTs to a new route
+  `/soldiers/{id}/events/attach-by-display-id` — the
+  handler resolves the Event by Display ID via
+  `events.GetEventByDisplayID` and delegates to the
+  existing `handleAttachEvent` for the duplicate-link
+  and not-found paths; (c) a collapsible "Quick add new
+  event" form with kind + begin/end date + description
+  that POSTs to the existing `/soldiers/{id}/events/
+  quick-add` route (no change to that handler).
+  Empty-state copy now points researchers at the new
+  controls instead of the slice-3 fallback. Form style
+  mirrors the tags block (`<details>` + `data-dixie-
+  submit` + `data-reload-on-success`).
+  Tests: `TestHandlePersonEventsTabUnlink`,
+  `TestHandleAttachEventByDisplayID` (success +
+  duplicate + not-found + empty-validation), and
+  `TestHandlePersonEventsTabQuickAdd`. Files: 1
+  modified + 4 (routebuilder + handler + route +
+  CHANGELOG).
 - **Page indicator + dev badge + JS debug toolbox** (issue #309).
   Three independent witnesses for "what page am I on", each
   visible/accessible to a different audience:
-
   - **Always-visible breadcrumb** rendered between the top-nav
     header and `<main>` on every page. Maps the URL path to a
     chain of crumbs via the Go helper

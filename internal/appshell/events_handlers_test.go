@@ -496,4 +496,134 @@ func waitForEventPDFJob(t *testing.T, app *App, outPath string) {
 // earlier test scaffolding. The CreateEvent test now
 // recovers the row id from the redirect URL directly via
 // parseInt64. Kept as a no-op for any future reference.
+// TestHandlePersonEventsTabUnlink covers slice #325 (issue #320):
+// the inline Unlink form on each linked-event row in the
+// Person Events tab fragment posts to
+// /soldiers/{id}/events/{eventId}/detach. The test attaches an
+// event, hits the detach form via the route that the template
+// emits, then re-asks the fragment and asserts the Event is no
+// longer in the body.
+func TestHandlePersonEventsTabUnlink(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	person := createSoldier(t, app, "Tab Unlink Person")
+	event := createEvent(t, app, "Skirmish", "06/12/1864", "", "Engagement")
+	if _, err := app.events.AttachEventToPerson(event.ID, person.ID); err != nil {
+		t.Fatalf("AttachEventToPerson: %v", err)
+	}
+
+	resp, err := http.PostForm(server.URL+"/soldiers/"+intStr(person.ID)+"/events/"+intStr(event.ID)+"/detach", url.Values{})
+	if err != nil {
+		t.Fatalf("POST /detach: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("detach status = %d, want 200", resp.StatusCode)
+	}
+	got := get(t, server, "/soldiers/"+intStr(person.ID)+"/events")
+	if !strings.Contains(got, "0 linked") {
+		t.Errorf("detach: fragment should show '0 linked', got: %s", got)
+	}
+}
+
+// TestHandleAttachEventByDisplayID covers the new "Add existing
+// event" control from slice #325: a single-form-field POST that
+// resolves the target Event by Display ID. Not-found,
+// validation, success, and duplicate-link (already-linked)
+// paths are all exercised.
+func TestHandleAttachEventByDisplayID(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	person := createSoldier(t, app, "Tab Attach Person")
+	target := createEvent(t, app, "Battle", "10/25/1864", "10/25/1864", "Decisive")
+
+	// Success: attach by Display ID.
+	resp, err := http.PostForm(server.URL+"/soldiers/"+intStr(person.ID)+"/events/attach-by-display-id", url.Values{"display_id": {target.DisplayID}})
+	if err != nil {
+		t.Fatalf("POST attach-by-display-id: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("attach-by-display-id status = %d, want 200", resp.StatusCode)
+	}
+
+	// Fragment must list the linked Event now.
+	got := get(t, server, "/soldiers/"+intStr(person.ID)+"/events")
+	if !strings.Contains(got, target.DisplayID) {
+		t.Errorf("fragment missing %q after attach-by-display-id", target.DisplayID)
+	}
+
+	// Duplicate-link: posting the same Display ID again must not
+	// silently re-attach (the existing link is rejected; the
+	// handler returns 409 or a JS-toaster-wrapped 200 with a
+	// body indicating the conflict — either way, the test's
+	// post-condition is that the link count is unchanged and
+	// a second Event row was NOT created.
+	dup, _ := http.PostForm(server.URL+"/soldiers/"+intStr(person.ID)+"/events/attach-by-display-id", url.Values{"display_id": {target.DisplayID}})
+	dup.Body.Close()
+	linkCountAfter, _ := app.events.ListForPerson(person.ID)
+	if len(linkCountAfter) != 1 {
+		t.Errorf("duplicate attach should leave link count at 1; got %d", len(linkCountAfter))
+	}
+	miss, _ := http.PostForm(server.URL+"/soldiers/"+intStr(person.ID)+"/events/attach-by-display-id", url.Values{"display_id": {"EVT-99999"}})
+	miss.Body.Close()
+	if miss.StatusCode != http.StatusNotFound {
+		t.Errorf("not-found attach status = %d, want 404", miss.StatusCode)
+	}
+
+	// Validation: empty Display ID returns 400.
+	empty, _ := http.PostForm(server.URL+"/soldiers/"+intStr(person.ID)+"/events/attach-by-display-id", url.Values{"display_id": {""}})
+	empty.Body.Close()
+	if empty.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty attach status = %d, want 400", empty.StatusCode)
+	}
+}
+
+// TestHandlePersonEventsTabQuickAdd covers the Quick-add Event
+// form on the Person Events tab (slice #325). Submits kind +
+// dates + description via the existing /quick-add route that
+// the template emits and asserts a fresh Event with the
+// supplied kind is now linked to the Person Record.
+func TestHandlePersonEventsTabQuickAdd(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	person := createSoldier(t, app, "Tab QuickAdd Person")
+	form := url.Values{
+		"kind":        {"Skirmish"},
+		"begin_date":  {"06/12/1864"},
+		"end_date":    {"06/12/1864"},
+		"description": {"Brief encounter"},
+	}
+	resp, err := http.PostForm(server.URL+"/soldiers/"+intStr(person.ID)+"/events/quick-add", form)
+	if err != nil {
+		t.Fatalf("POST /quick-add: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("quick-add status = %d, want 200", resp.StatusCode)
+	}
+
+	got := get(t, server, "/soldiers/"+intStr(person.ID)+"/events")
+	if !strings.Contains(got, "Skirmish") {
+		t.Errorf("fragment missing kind %q after quick-add", "Skirmish")
+	}
+}
+
+// get is a tiny helper that does a GET and returns the body as
+// a string. Failed reads fail the test.
+func get(t *testing.T, server *httptest.Server, path string) string {
+	t.Helper()
+	resp, err := http.Get(server.URL + path)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	return readAll(t, resp)
+}
 func extractDisplayID(string) string { return "" }
