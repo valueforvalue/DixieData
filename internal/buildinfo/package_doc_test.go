@@ -30,6 +30,9 @@ import (
 // synopsis so the operator can fix it with one `// Package foo
 // ...` line.
 func TestEveryInternalPackageHasSynopsis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("doc audit is heavy (subprocess-per-package); skipped in -short. Run `go test -count=1 ./internal/buildinfo/...` to audit.")
+	}
 	root := repoRoot(t)
 	packages := discoverPackages(t, root)
 	if len(packages) == 0 {
@@ -100,6 +103,9 @@ func TestEveryInternalPackageHasSynopsis(t *testing.T) {
 // because the failure message prints the file:line + identifier
 // name + first word, which is enough context to fix.
 func TestNoWrongStarterDocComments(t *testing.T) {
+	if testing.Short() {
+		t.Skip("doc audit is heavy (subprocess-per-package); skipped in -short. Run `go test -count=1 ./internal/buildinfo/...` to audit.")
+	}
 	root := repoRoot(t)
 	var findings []wrongStarterFinding
 	for _, path := range allGoFiles(t, root) {
@@ -532,6 +538,9 @@ func docCoverageForPackage(t *testing.T, pkgPath string) (int, int, float64) {
 // Packages with < 5 exported identifiers are skipped because the
 // percentage metric is too noisy for tiny packages.
 func TestPerPackageDocCoverageFloor(t *testing.T) {
+	if testing.Short() {
+		t.Skip("doc audit is heavy (subprocess-per-package); skipped in -short. Run `go test -count=1 ./internal/buildinfo/...` to audit.")
+	}
 	root := repoRoot(t)
 	packages := discoverPackages(t, root)
 
