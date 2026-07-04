@@ -36,7 +36,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/htmlids"
 )
 
 // allowedSwap lists the hx-swap values DixieData uses. Centralised so
@@ -62,9 +62,10 @@ type Mux struct {
 	// Post is the hx-post URL. Wrapped in templ.SafeURL when emitted.
 	Post string
 	// Target is the hx-target selector. If it starts with "#" the
-	// remainder is checked against the uiids registry; non-matches
-	// log a warning but still emit (ad-hoc selectors are allowed for
-	// transient panels that don't earn a registry entry).
+	// remainder is checked against the htmlids registry; non-matches
+	// PANIC in dev builds (issue #316 slice 4) so the typo is caught
+	// before the page ships. Ad-hoc selectors are no longer accepted
+	// — add the id to internal/htmlids if a new Mux target needs it.
 	Target string
 	// Select is the hx-select selector. Same validation as Target.
 	Select string
@@ -90,7 +91,8 @@ type Mux struct {
 //     (htmx itself ignores one of them; we emit both, htmx picks).
 //   - Swap must be in the allowlist (or empty).
 //   - Target and Select, if they start with "#", must match a
-//     registry entry; otherwise a warning is logged.
+//     htmlids registry entry; otherwise a dev-build panic fires
+//     with the offending selector.
 func (m Mux) Attrs() templ.Attributes {
 	validateSwap(m.Swap)
 	validateTarget(m.Target)
@@ -145,8 +147,9 @@ func validateTarget(target string) {
 	}
 	// Only validate registry-style selectors that begin with "#".
 	// Class selectors (".foo"), attribute selectors ("[data-...]"),
-	// and IDs that intentionally don't live in the registry (like
-	// "#feedback-form") are allowed without warning.
+	// the htmx self-targeting pseudo ("this"), and bare element
+	// names ("body") are valid CSS that does not require an entry
+	// in the htmlids registry.
 	if !strings.HasPrefix(target, "#") {
 		return
 	}
@@ -154,13 +157,11 @@ func validateTarget(target string) {
 	if id == "" {
 		return
 	}
-	if !uiids.Has(id) {
-		// Use a panic only for development visibility; production
-		// builds can swap this for slog.Warn if the noise becomes
-		// a problem. Keep as Warn for now: targets may legitimately
-		// point at ad-hoc elements (form id, modal id, etc.).
-		// Uncomment the panic to enforce strictness:
-		//   panic(fmt.Sprintf("htmxattr: target %q is not in the uiids registry", target))
-		_ = id
+	if !htmlids.Has(id) {
+		// Dev-build panic (issue #316 slice 4). Catches typos like
+		// #browze-results before the page ships. Every Mux{Target}
+		// call site must have its id registered in
+		// internal/htmlids/htmlids.go.
+		panic(fmt.Sprintf("htmxattr: target %q is not in the htmlids registry", target))
 	}
 }

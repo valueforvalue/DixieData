@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/htmlids"
 )
 
 func TestMuxZeroValueEmitsNothing(t *testing.T) {
@@ -104,9 +104,12 @@ func TestMuxConfirmEmitted(t *testing.T) {
 }
 
 func TestMuxSelectEmitted(t *testing.T) {
-	got := Mux{Select: "#countsForm"}.Attrs()
-	if got["hx-select"] != "#countsForm" {
-		t.Fatalf("hx-select = %v", got["hx-select"])
+	// Use a selector that's registered in htmlids so the dev-build
+	// panic does not fire — this test verifies Select rendering,
+	// not target validation.
+	got := Mux{Select: "#browse-results"}.Attrs()
+	if got["hx-select"] != "#browse-results" {
+		t.Fatalf("hx-select = %v, want #browse-results", got["hx-select"])
 	}
 }
 
@@ -136,10 +139,10 @@ func TestMuxWhitespaceTreatedAsEmpty(t *testing.T) {
 }
 
 func TestMuxTargetFromRegistryResolvesCleanly(t *testing.T) {
-	// All registry IDs must work as hx-target without panic. Loop the
-	// registry to make sure none have a weird character that breaks
-	// htmx.
-	for _, s := range uiids.Registry {
+	// All htmlids registry selectors must work as hx-target without
+	// panic. Loop the registry to make sure none have a weird
+	// character that breaks htmx.
+	for _, s := range htmlids.Registry {
 		target := "#" + s.ID
 		got := Mux{Target: target}.Attrs()
 		if got["hx-target"] != target {
@@ -148,15 +151,68 @@ func TestMuxTargetFromRegistryResolvesCleanly(t *testing.T) {
 	}
 }
 
-func TestMuxAdHocTargetDoesNotPanic(t *testing.T) {
-	// IDs that aren't in the registry are allowed; we don't want to
-	// break transient panels that don't earn a registry entry.
+func TestMuxPanicsOnUnknownRegistryTarget(t *testing.T) {
+	// #typo is the canonical case: a Target id that's not in the
+	// htmlids registry. Dev-build panic fires (issue #316 slice 4).
 	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("ad-hoc target should not panic, got %v", r)
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for unknown registry target, got none")
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("panic value = %T (%v), want string", r, r)
+		}
+		if !strings.Contains(msg, "htmlids registry") {
+			t.Fatalf("panic message = %q, want substring 'htmlids registry'", msg)
+		}
+		if !strings.Contains(msg, "#typo") {
+			t.Fatalf("panic message = %q, want substring '#typo'", msg)
 		}
 	}()
-	Mux{Target: "#feedback-form"}.Attrs()
+	Mux{Target: "#typo"}.Attrs()
+}
+
+// TestMuxAcceptsRegisteredSelectors covers every selector
+// currently in the htmlids registry; mirrors the registry's
+// TestRegistryHasKnownSelectors test so a future addition to one
+// forces the other to be updated.
+func TestMuxAcceptsRegisteredSelectors(t *testing.T) {
+	for _, id := range htmlids.Registry {
+		target := "#" + id.ID
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("registered selector %q should not panic, got %v", target, r)
+				}
+			}()
+			got := Mux{Target: target}.Attrs()
+			if got["hx-target"] != target {
+				t.Fatalf("registered selector %q should pass through verbatim", target)
+			}
+		}()
+	}
+}
+
+// TestMuxTargetNonHashSelectorsPass verifies that non-# selectors
+// (body, [data-...], .cls, this) never trigger the htmlids
+// validation. Symmetric with the audit probe slice-2 walker; both
+// treat the same set of selectors as legitimate.
+func TestMuxTargetNonHashSelectorsPass(t *testing.T) {
+	cases := []string{"body", "[data-jobs-progress-region]", ".cls", "this"}
+	for _, sel := range cases {
+		t.Run(sel, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("non-# selector %q should not panic, got %v", sel, r)
+				}
+			}()
+			got := Mux{Target: sel}.Attrs()
+			if got["hx-target"] != sel {
+				t.Fatalf("non-# selector %q should pass through verbatim", sel)
+			}
+		})
+	}
 }
 
 func TestMuxFullFields(t *testing.T) {
@@ -177,19 +233,7 @@ func TestMuxFullFields(t *testing.T) {
 	}
 }
 
-func TestRegistryHasKnownSurfaces(t *testing.T) {
-	// Sanity: the registry must contain at least the most-used
-	// surfaces; if a future rename drops one, the route builders that
-	// emit these IDs will panic in TestMuxTargetFromRegistryResolvesCleanly.
-	for _, id := range []string{
-		uiids.PageBrowse,
-		uiids.PageSoldierDetail,
-		uiids.PanelBrowseResults,
-		uiids.PanelJobStatus,
-		uiids.OverlayFloatingMenu,
-	} {
-		if !uiids.Has(id) {
-			t.Fatalf("registry missing expected surface %q", id)
-		}
-	}
-}
+// TestRegistryHasKnownSurfaces moved to internal/uiids/uiids_test.go
+// as TestRegistryIncludesResponsiveFoundationSurfaces. The
+// uiids.Set membership check lives with the registry it tests,
+// not in a downstream package's test file.
