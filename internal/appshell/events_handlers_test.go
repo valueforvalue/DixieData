@@ -822,7 +822,12 @@ func TestHandleEventResearchLog(t *testing.T) {
 // Source Records"), POSTs an attach (event persists the
 // record), detaches it via the /detach endpoint, and asserts
 // the scratchpad form on event detail posts to /scratchpad/
-// open with the Event's display_id.
+// open with the Event's display_id. Issue #341: also asserts the
+// POST handlers return swap-friendly fragments (no
+// X-DixieData-Redirect header, response body matches the
+// data-results-target shape on event_detail.templ) so the JS
+// dispatcher swaps the response into #data-event-sources-list in
+// place rather than navigating to the fragment URL.
 func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
@@ -851,9 +856,18 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST sources/attach: %v", err)
 	}
+	attachBody := readAll(t, attachResp)
 	attachResp.Body.Close()
 	if attachResp.StatusCode != http.StatusOK {
 		t.Errorf("attach status = %d, want 200", attachResp.StatusCode)
+	}
+	// Issue #341: POST must NOT redirect; the body is the fragment
+	// that the JS dispatcher swaps into #data-event-sources-list.
+	if got := attachResp.Header.Get("X-DixieData-Redirect"); got != "" {
+		t.Errorf("POST sources/attach set X-DixieData-Redirect=%q; want empty (issue #341)", got)
+	}
+	if !strings.Contains(attachBody, "APP-1880-7701") {
+		t.Errorf("POST sources/attach response missing attached source; got %q", attachBody)
 	}
 
 	sources, err := app.events.ListSourcesForEvent(event.ID)
@@ -868,9 +882,16 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST sources/detach: %v", err)
 	}
+	detachBody := readAll(t, detachResp)
 	detachResp.Body.Close()
 	if detachResp.StatusCode != http.StatusOK {
 		t.Errorf("detach status = %d, want 200", detachResp.StatusCode)
+	}
+	if got := detachResp.Header.Get("X-DixieData-Redirect"); got != "" {
+		t.Errorf("POST sources/detach set X-DixieData-Redirect=%q; want empty (issue #341)", got)
+	}
+	if !strings.Contains(detachBody, "No Source Records") {
+		t.Errorf("POST sources/detach response missing empty state; got %q", detachBody)
 	}
 
 	after, err := app.events.ListSourcesForEvent(event.ID)
@@ -890,12 +911,29 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	if !strings.Contains(detailBody, fmt.Sprintf(`value="%s"`, event.DisplayID)) {
 		t.Errorf("event detail missing scratchpad display_id input; got %q", detailBody)
 	}
+	// Issue #341: the event detail page must wrap the sources
+	// list in #data-event-sources-list and the attach form must
+	// carry data-results-target so the JS dispatcher can swap the
+	// POST response into the list in place.
+	if !strings.Contains(detailBody, "id=\"data-event-sources-list\"") {
+		t.Errorf("event detail missing sources list wrapper id; got %q", detailBody)
+	}
+	if !strings.Contains(detailBody, "data-results-target=\"#data-event-sources-list\"") {
+		t.Errorf("event detail missing sources attach data-results-target; got %q", detailBody)
+	}
+	if !strings.Contains(detailBody, "id=\"data-event-tags-list\"") {
+		t.Errorf("event detail missing tags list wrapper id; got %q", detailBody)
+	}
 }
-// TestHandleEventTags covers issue #320 slot #333: per-Event
-// Tags chips. Seeds an Event + a tag, GETs the panel (empty),
-// attaches the tag, asserts it renders, then detaches it and
-// re-asserts the empty state. Calls the same path-suffix
-// dispatcher as the sources/research-log panels.
+// TestHandleEventTags covers issue #320 slot #333 (per-Event
+// Tags chips) and issue #341 (fragment-vs-redirect wiring).
+// Seeds an Event + a tag, GETs the panel (empty), attaches the
+// tag, asserts the POST response is a swap-friendly fragment
+// with no X-DixieData-Redirect header (otherwise the JS
+// dispatcher navigates to the fragment URL and the user sees
+// raw HTML as a page), then detaches it and re-asserts the
+// empty state. Calls the same path-suffix dispatcher as the
+// sources/research-log panels.
 func TestHandleEventTags(t *testing.T) {
 	app := newStressApp(t)
 	server := httptest.NewServer(app)
@@ -916,7 +954,7 @@ func TestHandleEventTags(t *testing.T) {
 	if getResp.StatusCode != http.StatusOK {
 		t.Errorf("GET /tags status = %d, want 200", getResp.StatusCode)
 	}
-	if !strings.Contains(body, "No tags attached yet.") {
+	if !strings.Contains(body, "No tags attached") {
 		t.Errorf("expected empty Tags panel copy; got %q", body)
 	}
 
@@ -926,9 +964,26 @@ func TestHandleEventTags(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST tags: %v", err)
 	}
+	addBody := readAll(t, addResp)
 	addResp.Body.Close()
 	if addResp.StatusCode != http.StatusOK {
 		t.Errorf("add status = %d, want 200", addResp.StatusCode)
+	}
+	// Issue #341: the POST must NOT set X-DixieData-Redirect,
+	// otherwise the JS dispatcher does a full-page nav to the
+	// fragment URL and the user sees raw HTML as a page.
+	if got := addResp.Header.Get("X-DixieData-Redirect"); got != "" {
+		t.Errorf("POST tags set X-DixieData-Redirect=%q; want empty (issue #341)", got)
+	}
+	// Response body should be the post-add fragment — a chip
+	// span containing the tag name + a detach button carrying the
+	// data-results-target so the next click re-renders this
+	// fragment in place.
+	if !strings.Contains(addBody, "siege") {
+		t.Errorf("POST tags response missing tag chip; got %q", addBody)
+	}
+	if !strings.Contains(addBody, "data-results-target=\"#data-event-tags-list\"") {
+		t.Errorf("POST tags chip missing data-results-target; got %q", addBody)
 	}
 
 	after, err := app.events.ListTagsForEvent(event.ID)
@@ -948,14 +1003,31 @@ func TestHandleEventTags(t *testing.T) {
 	if !strings.Contains(chipBody, "siege") {
 		t.Errorf("tag chip missing after add; got %q", chipBody)
 	}
+	// Issue #341: the GET fragment is the swap target on a fresh
+	// page load — it must carry the data-results-target on the
+	// detach button so a user-initiated detach also re-renders in
+	// place (no full-page nav).
+	if !strings.Contains(chipBody, "data-results-target=\"#data-event-tags-list\"") {
+		t.Errorf("GET tags chip missing data-results-target; got %q", chipBody)
+	}
 
 	detachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags/"+intStr(tag.ID)+"/detach", url.Values{})
 	if err != nil {
 		t.Fatalf("POST detach: %v", err)
 	}
+	detachBody := readAll(t, detachResp)
 	detachResp.Body.Close()
 	if detachResp.StatusCode != http.StatusOK {
 		t.Errorf("detach status = %d, want 200", detachResp.StatusCode)
+	}
+	// Issue #341: detach POST must return a fragment, not redirect.
+	if got := detachResp.Header.Get("X-DixieData-Redirect"); got != "" {
+		t.Errorf("POST detach set X-DixieData-Redirect=%q; want empty (issue #341)", got)
+	}
+	// After detach, the response body should re-render the empty
+	// state — same shape as the initial GET.
+	if !strings.Contains(detachBody, "No tags attached") {
+		t.Errorf("POST detach response missing empty state; got %q", detachBody)
 	}
 
 	final, err := app.events.ListTagsForEvent(event.ID)

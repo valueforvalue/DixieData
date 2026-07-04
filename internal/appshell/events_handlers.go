@@ -32,7 +32,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,6 +42,8 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/templates"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 // handleEvents renders the /events list page. Method must be
@@ -736,33 +737,43 @@ func (a *App) handleEventSourcesRoute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleEventSourcesGet renders the Sources panel fragment for the
-// Event. Returns a plain-text list of attached sources so the panel
-// can be lazy-loaded as an htmx fragment.
-func (a *App) handleEventSourcesGet(w http.ResponseWriter, r *http.Request, eventID int64) {
-	sources, err := a.events.ListSourcesForEvent(eventID)
+// renderEventSourcesListFragment loads the Event's source
+// records and writes the per-Event Sources list HTML into w.
+// Shared by GET /events/{id}/sources (lazy-load probe) and
+// the POST attach / detach handlers (in-place swap target).
+// The fragment matches the on-page event_detail.templ render
+// via the templ helper EventSourcesListFragment so the
+// data-results-target swap is visually identical to the
+// initial page render.
+func (a *App) renderEventSourcesListFragment(w http.ResponseWriter, r *http.Request, eventID int64) {
+	rows, err := a.events.ListSourcesForEvent(eventID)
 	if err != nil {
 		respondNotFound(w, r, fmt.Sprintf("Sources for event record %d not found.", eventID), err)
 		return
 	}
-	if len(sources) == 0 {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = fmt.Fprint(w, `<p class="text-xs text-slate-500">No Source Records attached yet.</p>`)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	for _, src := range sources {
-		_, _ = fmt.Fprintf(w, `<div class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm"><span class="font-mono text-xs text-slate-500">%s</span> &middot; %s &middot; %s</div>`,
-			html.EscapeString(strings.TrimSpace(src.AppID)),
-			html.EscapeString(src.RecordType),
-			html.EscapeString(src.Details),
-		)
+	if err := templates.EventSourcesListFragment(eventID, viewmodel.SourceRecordsFromModels(rows)).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not render sources for event record %d.", eventID), err)
 	}
+}
+
+// handleEventSourcesGet renders the Sources panel fragment for
+// the Event. Reachable as a lazy-load probe (orphan-handler
+// probe flagged it; intended JS consumer is the post-attach /
+// post-detach data-results-target swap on event_detail.templ).
+func (a *App) handleEventSourcesGet(w http.ResponseWriter, r *http.Request, eventID int64) {
+	a.renderEventSourcesListFragment(w, r, eventID)
 }
 
 // handleEventSourceAttach creates a new source record row for the
 // Event. The form fields mirror the Person-Record source row shape
-// (record_type, app_id, details).
+// (record_type, app_id, details). After the write, the handler
+// re-renders the Sources list fragment so the JS dispatcher can
+// swap the result into #data-event-sources-list in place (no page
+// navigation). Issue #341 — previously this handler set
+// X-DixieData-Redirect, which sent the browser to the
+// fragment-returning GET endpoint and displayed raw HTML as a
+// page.
 func (a *App) handleEventSourceAttach(w http.ResponseWriter, r *http.Request, eventID int64) {
 	if err := r.ParseForm(); err != nil {
 		respondValidation(w, r, "Could not read the source form.", err)
@@ -778,20 +789,21 @@ func (a *App) handleEventSourceAttach(w http.ResponseWriter, r *http.Request, ev
 		return
 	}
 	setToastHeader(w, "Success: source attached.")
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/sources", eventID))
-	fmt.Fprint(w, "Source attached.")
+	a.renderEventSourcesListFragment(w, r, eventID)
 }
 
 // handleEventSourceDetach removes a source record row from the
-// Event. Service verifies the row belongs to the Event.
+// Event. Service verifies the row belongs to the Event. After
+// the write, the handler re-renders the Sources list fragment
+// so the JS dispatcher can swap the result into
+// #data-event-sources-list in place. Issue #341.
 func (a *App) handleEventSourceDetach(w http.ResponseWriter, r *http.Request, eventID, sourceID int64) {
 	if err := a.events.DetachSourceFromEvent(eventID, sourceID); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not detach source %d from event record %d.", sourceID, eventID), err)
 		return
 	}
 	setToastHeader(w, "Success: source detached.")
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/sources", eventID))
-	fmt.Fprint(w, "Source detached.")
+	a.renderEventSourcesListFragment(w, r, eventID)
 }
 
 
@@ -840,29 +852,41 @@ func (a *App) handleEventTagsRoute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleEventTagsGet renders the Tags chip fragment for the Event.
-// Plain HTML chips + detach buttons; the form to add a new tag posts
-// back to the same path.
-func (a *App) handleEventTagsGet(w http.ResponseWriter, r *http.Request, eventID int64) {
+// renderEventTagsListFragment loads the Event's tags and writes
+// the per-Event Tags chip HTML into w. Shared by GET
+// /events/{id}/tags (lazy-load probe) and the POST detach handler
+// (in-place swap target). The fragment matches the on-page
+// event_detail.templ render via the templ helper
+// EventTagsListFragment so the data-results-target swap is
+// visually identical to the initial page render.
+func (a *App) renderEventTagsListFragment(w http.ResponseWriter, r *http.Request, eventID int64) {
 	tags, err := a.events.ListTagsForEvent(eventID)
 	if err != nil {
 		respondNotFound(w, r, fmt.Sprintf("Tags for event record %d not found.", eventID), err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if len(tags) == 0 {
-		_, _ = fmt.Fprint(w, `<p class="text-xs text-slate-500">No tags attached yet.</p>`)
-		return
+	if err := templates.EventTagsListFragment(eventID, viewmodel.TagsFromModels(tags)).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not render tags for event record %d.", eventID), err)
 	}
-	for _, tag := range tags {
-		_, _ = fmt.Fprintf(w, `<span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs"><span class="font-semibold">%s</span><button type="button" data-action="/events/%d/tags/%d/detach" data-dixie-submit="true" class="ghost-link text-slate-500 hover:text-red-700">&times;</button></span>`,
-			html.EscapeString(tag.Name), eventID, tag.ID)
-	}
+}
+
+// handleEventTagsGet renders the Tags chip fragment for the Event.
+// Reachable as a lazy-load probe (orphan-handler probe flagged it;
+// intended JS consumer is the post-detach data-results-target swap
+// on event_detail.templ).
+func (a *App) handleEventTagsGet(w http.ResponseWriter, r *http.Request, eventID int64) {
+	a.renderEventTagsListFragment(w, r, eventID)
 }
 
 // handleEventTagAdd attaches a tag id to the Event. The form posts
 // the tag id as a hidden field; the handler trusts the id after
-// validating it's positive.
+// validating it's positive. After the write, the handler
+// re-renders the Tags list fragment so the JS dispatcher can
+// swap the result into #data-event-tags-list in place. Issue
+// #341 — previously this handler set X-DixieData-Redirect,
+// which sent the browser to the fragment-returning GET endpoint
+// and displayed raw HTML as a page.
 func (a *App) handleEventTagAdd(w http.ResponseWriter, r *http.Request, eventID int64) {
 	if err := r.ParseForm(); err != nil {
 		respondValidation(w, r, "Could not read the tag form.", err)
@@ -878,17 +902,18 @@ func (a *App) handleEventTagAdd(w http.ResponseWriter, r *http.Request, eventID 
 		return
 	}
 	setToastHeader(w, "Success: tag attached.")
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/tags", eventID))
-	fmt.Fprint(w, "Tag attached.")
+	a.renderEventTagsListFragment(w, r, eventID)
 }
 
 // handleEventTagDetach removes the tag binding from the Event.
+// After the write, the handler re-renders the Tags list
+// fragment so the JS dispatcher can swap the result into
+// #data-event-tags-list in place. Issue #341.
 func (a *App) handleEventTagDetach(w http.ResponseWriter, r *http.Request, eventID, tagID int64) {
 	if err := a.events.DetachTagFromEvent(eventID, tagID); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not detach tag %d from event record %d.", tagID, eventID), err)
 		return
 	}
 	setToastHeader(w, "Success: tag detached.")
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/tags", eventID))
-	fmt.Fprint(w, "Tag detached.")
+	a.renderEventTagsListFragment(w, r, eventID)
 }

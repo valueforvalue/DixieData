@@ -117,23 +117,14 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
 						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", event.SourceRecordCount) }</span>
 					</div>
-					if len(event.SourceRecords) == 0 {
-						@components.EmptyState("No Source Records attached", "Attach source documents from the /sources authoring flow then link them to this Event.", "")
-					} else {
-						<ul class="space-y-2">
-							for _, src := range event.SourceRecords {
-								<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
-									<span class="font-mono text-xs text-slate-500">{ src.AppID }</span>
-									<span class="ml-2 font-semibold">{ src.SourceRecordType }</span>
-									<p class="mt-1 whitespace-pre-line text-xs text-slate-600">{ src.Details }</p>
-								</li>
-							}
-						</ul>
-					}
+					<div id="data-event-sources-list">
+						@EventSourcesListFragment(event.ID, event.SourceRecords)
+					</div>
 					<form
 						action={ templ.SafeURL(fmt.Sprintf("/events/%d/sources/attach", event.ID)) }
 						method="post"
 						data-dixie-submit="true"
+						data-results-target="#data-event-sources-list"
 						class="mt-4 grid gap-3 sm:grid-cols-3"
 					>
 						<input type="text" name="record_type" placeholder="Source type (Pension, Roster, ...)" class="field-input sm:col-span-1" required/>
@@ -146,17 +137,8 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 				</section>
 				<section class="relative mt-6">
 					<p class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Tags</p>
-					<div data-event-tags class="flex flex-wrap gap-2">
-						if len(event.Tags) == 0 {
-							@components.EmptyState("No tags attached", "Add tags to group this Event with related Person Records.", "")
-						} else {
-							for _, tag := range event.Tags {
-								<span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs">
-									<span class="font-semibold">{ tag.Name }</span>
-									<button type="button" data-action={ templ.SafeURL(fmt.Sprintf("/events/%d/tags/%d/detach", event.ID, tag.ID)) } data-dixie-submit="true" class="ghost-link text-slate-500 hover:text-red-700">&times;</button>
-								</span>
-							}
-						}
+					<div id="data-event-tags-list">
+						@EventTagsListFragment(event.ID, event.Tags)
 					</div>
 				</section>
 			</div>

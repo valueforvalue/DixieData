@@ -391,6 +391,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Per-Event Sources / Tags panels navigated to a raw
+  fragment URL on attach / detach** (issue #341, found by
+  audit sweep). Root cause: the POST handlers for
+  `attach` / `detach` set `X-DixieData-Redirect` pointing at
+  the per-panel GET endpoint, and the GET endpoints
+  returned raw fragment HTML. `dispatchUtilitySubmit`
+  reads `X-DixieData-Redirect` and runs
+  `window.location.assign(...)`, so the browser landed on
+  a fragment URL and displayed raw HTML as a full page
+  (the orphan-handler probe flagged the GETs as orphans,
+  which was the diagnostic trail). Fix: the Sources +
+  Tags GET endpoints and POST handlers now render via the
+  shared `EventSourcesListFragment` / `EventTagsListFragment`
+  templ helpers (matching the on-page render), the
+  `event_detail.templ` attach form + tag detach buttons
+  carry `data-results-target="#data-event-sources-list"`
+  and `#data-event-tags-list`, and the POST handlers no
+  longer set `X-DixieData-Redirect` so the JS dispatcher
+  swaps the response body into the matching div in place.
+  Tests: `TestHandleEventTags` + `TestHandleEventSourcesAndScratchpad`
+  assert no `X-DixieData-Redirect` header on POST and that
+  the response body matches the swap target shape.
+  Files: 1 new (`internal/templates/event_panels.templ`),
+  3 modified (templ + handler + test).
 - **Dev badge invisible on `make debug` runs** (issue #309
   follow-up discovered during smoke). Root cause:
   `appshell.App.debugMode` was seeded solely from
