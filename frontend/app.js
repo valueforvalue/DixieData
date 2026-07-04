@@ -4048,11 +4048,9 @@
     panel.dataset.shareQueuePresetsInstalled = "true";
     const saveForm = panel.querySelector("[data-share-queue-preset-save]");
     if (saveForm instanceof HTMLFormElement) {
-      // htmx-guard: utility-submit
-      saveForm.addEventListener("submit", (ev) => {
-        ev.preventDefault();
-        saveCurrentQueueAsPresetPage(panel, saveForm);
-      });
+      // Routes through the canonical utility-submit helper (issue
+      // #317) — replaces the slice-1 marker convention.
+      dispatchUtilitySubmit(saveForm, (form) => saveCurrentQueueAsPresetPage(panel, form));
     }
     refreshShareQueuePresetsPage(panel);
   }
@@ -4120,12 +4118,17 @@
     // existing dispatchDixieDataForm picks up the submit.
     const exportForm = document.querySelector("[data-share-queue-page-form]");
     if (exportForm instanceof HTMLFormElement) {
-      // htmx-guard: utility-submit (stages hidden fields for the dispatchDixieDataForm delegate)
-      exportForm.addEventListener("submit", () => {
+      // Pre-submit hook: stage hidden fields, then the
+      // data-dixie-submit dispatcher takes over. Routes through
+      // the canonical submit-prep helper (issue #317) — replaces
+      // the slice-1 marker convention. The helper ALLOWS the
+      // submit to continue (no preventDefault), so the downstream
+      // dispatch still fires.
+      dispatchSubmitPrep(exportForm, (form) => {
         const ids = getSelectedIdsOnPage();
         // Drop any prior injected ids to avoid duplicates
         // (the form might be reused across multiple submits).
-        const prior = exportForm.querySelectorAll("input[type=hidden][data-share-queue-page-staged-id]");
+        const prior = form.querySelectorAll("input[type=hidden][data-share-queue-page-staged-id]");
         prior.forEach((el) => el.remove());
         for (const id of ids) {
           const inp = document.createElement("input");
@@ -4133,7 +4136,7 @@
           inp.name = "selected_ids";
           inp.value = String(id);
           inp.dataset.shareQueuePageStagedId = "1";
-          exportForm.appendChild(inp);
+          form.appendChild(inp);
         }
       });
     }
@@ -5369,11 +5372,15 @@
       }
     }
   });
-  // htmx-guard: utility-submit (PDF preferences persistence)
+  // Pre-submit hook for PDF preferences persistence (issue #317
+  // — was a marker-annotated raw addEventListener under slice 1).
+  // Routes through the canonical submit-prep helper, which
+  // ALLOWS the submit to continue (the form is a
+  // data-dixie-submit form whose dispatcher will fetch a PDF).
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (form instanceof HTMLFormElement && form.matches("form[data-pdf-pref-scope]")) {
-      persistPDFPreferences(form);
+      dispatchSubmitPrep(form, (f) => persistPDFPreferences(f));
     }
   });
   document.addEventListener("change", (event) => {
