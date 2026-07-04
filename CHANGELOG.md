@@ -4202,6 +4202,21 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     test continues to verify Select rendering without firing
     the panic.
 
+  - **htmx-guard CI wiring (issue #316, follow-up)** — new step
+    in `.github/workflows/test.yml` runs `make
+    lint-htmx-guard-strict && make lint-htmx-guard-test` after
+    the Cli-coverage drift detector. The strict walker is the
+    CI failure gate; the test suite is the regression net on
+    the probe itself. Both targets are Node-based so the
+    existing `actions/setup-node@v4` step above already
+    provides the toolchain — no extra setup. Same `shell:
+    bash` style as the Cli-coverage sibling. Wired at PR-push
+    on `dev` and `stable`; failure blocks the merge via the
+    branch-protection rule.
+
+    Closes #316's CI gate promise that slices 1-4 explicitly
+    deferred.
+
 ## v1.2.55 - 2026-06-25
 
 ### Added

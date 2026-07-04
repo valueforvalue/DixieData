@@ -91,6 +91,22 @@ jobs:
           node scripts/cli-coverage.mjs
         timeout-minutes: 2
 
+      # htmx-guard lint (issue #316). Three static-analysis walkers
+      # — toast-no-redirect (Go brace-walk), JS submit coexistence
+      # (frontend/app.js), and orphan hx-target (templ files) —
+      # that catch the attribute-drift bug classes documented in
+      # docs/COMMON_BUGS.md §1.5, §1.8, §3.4, §3.5. Two make
+      # targets chained: the strict walker is the CI gate, the
+      # probe test suite is the regression net on the probe
+      # itself. Same Node 20 toolchain already configured above
+      # for the frontend build (actions/setup-node).
+      - name: htmx-guard lint (issue #316)
+        shell: bash
+        run: |
+          make lint-htmx-guard-strict
+          make lint-htmx-guard-test
+        timeout-minutes: 5
+
       # Schema-touching detector (build-protocol.md §4). If the
       # PR has any commit subject matching feat(db) / feat(schema)
       # / fix(db) AND CurrentSchemaVersion is unchanged from the
