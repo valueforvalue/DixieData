@@ -96,6 +96,13 @@ type Soldier struct {
 	ImageCount            int      `json:"-"`
 	Records               []Record `json:"records,omitempty"`
 	Images                []Image  `json:"images,omitempty"`
+	// EventSources is populated only for Event Record rows
+	// (entry_type = 'event'). Person Records always leave it
+	// nil. Issue #340 / v61: per-Event sources live in their own
+	// event_sources table so they survive SoldierService.Update
+	// (which would otherwise wipe the shared records table via
+	// replaceRecords).
+	EventSources          []Record `json:"event_sources,omitempty"`
 }
 
 // ArchiveCounts is the headline-number rollup surfaced on the

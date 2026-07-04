@@ -263,8 +263,11 @@ func (e *EventService) DeleteEvent(id int64) error {
 }
 
 // GetEventByID fetches an Event Record + its linked Person
-// Records. Returns ErrNotFound if the row is missing or is
-// not an Event.
+// Records + its attached Source Records. Returns ErrNotFound
+// if the row is missing or is not an Event. The Event's
+// Sources are loaded into row.EventSources from the dedicated
+// event_sources table (issue #340 / v61); row.Records stays
+// empty because v60's records-table reuse was removed.
 func (e *EventService) GetEventByID(id int64) (*EventWithLinks, error) {
 	row, err := e.soldiers.GetByID(id)
 	if err != nil {
@@ -277,12 +280,19 @@ func (e *EventService) GetEventByID(id int64) (*EventWithLinks, error) {
 	if err != nil {
 		return nil, err
 	}
+	sources, err := e.ListSourcesForEvent(id)
+	if err != nil {
+		return nil, err
+	}
+	row.EventSources = sources
 	return &EventWithLinks{Event: *row, Links: links}, nil
 }
 
 // GetEventByDisplayID fetches an Event by its EVT-NNNNN Display
-// ID. Returns ErrNotFound if no row matches or the matched row
-// is not an Event.
+// ID + its linked Person Records + its attached Source Records.
+// Returns ErrNotFound if no row matches or the matched row is
+// not an Event. Sources are loaded from event_sources (issue
+// #340 / v61) and stored on row.EventSources.
 func (e *EventService) GetEventByDisplayID(displayID string) (*EventWithLinks, error) {
 	row, err := e.soldiers.GetByDisplayID(displayID)
 	if err != nil {
@@ -295,6 +305,11 @@ func (e *EventService) GetEventByDisplayID(displayID string) (*EventWithLinks, e
 	if err != nil {
 		return nil, err
 	}
+	sources, err := e.ListSourcesForEvent(row.ID)
+	if err != nil {
+		return nil, err
+	}
+	row.EventSources = sources
 	return &EventWithLinks{Event: *row, Links: links}, nil
 }
 

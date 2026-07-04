@@ -452,3 +452,44 @@ func sourcesLen(t *testing.T, eventSvc *EventService, eventID int64) int {
 	}
 	return len(rows)
 }
+
+// TestEventService_GetEventByIDReturnsEventSourcesField pins the
+// read-side projection for slice 4 of the v61 decomposition.
+// GetEventByID must populate row.EventSources from the dedicated
+// event_sources table so the view-model layer can render the
+// per-Event Sources panel without a second SELECT.
+func TestEventService_GetEventByIDReturnsEventSourcesField(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	eventSvc := NewEventService(soldierSvc)
+
+	ev, err := eventSvc.CreateEvent(models.Soldier{Kind: "Battle"})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	_, err = eventSvc.AttachSourceToEvent(ev.ID, models.Record{
+		RecordType: "Pension Application",
+		AppID:      "APP-1880-7701",
+		Details:    "Filed 1880",
+	})
+	if err != nil {
+		t.Fatalf("AttachSourceToEvent: %v", err)
+	}
+
+	got, err := eventSvc.GetEventByID(ev.ID)
+	if err != nil {
+		t.Fatalf("GetEventByID: %v", err)
+	}
+	if len(got.Event.EventSources) != 1 {
+		t.Fatalf("EventSources len = %d, want 1", len(got.Event.EventSources))
+	}
+	if got.Event.EventSources[0].AppID != "APP-1880-7701" {
+		t.Errorf("EventSources[0].AppID = %q, want APP-1880-7701", got.Event.EventSources[0].AppID)
+	}
+	// Records must stay empty — the v60 records-table reuse is
+	// removed; row.Records belongs to Person Records only.
+	if len(got.Event.Records) != 0 {
+		t.Errorf("Event.Records len = %d, want 0 (Event sources moved off records table)", len(got.Event.Records))
+	}
+}
