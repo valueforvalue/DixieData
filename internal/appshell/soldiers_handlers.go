@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/findagrave"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -314,38 +313,6 @@ func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.renderEntryForm(w, r, defaults, false, "", http.StatusOK)
-}
-
-func (a *App) handleScrapeFindAGrave(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		respondValidation(w, r, "Could not read the Find-a-Grave scrape form.", err)
-		return
-	}
-
-	defaults, err := a.newSoldierDefaults()
-	if err != nil {
-		respondInternal(w, r, "Could not build the new-record defaults.", err)
-		return
-	}
-
-	scrape := models.FindAGraveScrapeState{Input: strings.TrimSpace(r.FormValue("findagrave_source"))}
-	result, err := findagrave.ParseInput(r.Context(), scrape.Input)
-	if err != nil {
-		scrape.ErrorMessage = err.Error()
-		a.renderEntryFormWithScrapeState(w, r, defaults, false, "", scrape, http.StatusBadRequest, true)
-		return
-	}
-
-	scrape.SourceLabel = result.SourceLabel
-	scrape.WarningLines = result.Warnings
-	scrape.Spouses = result.Spouses
-	scrape.ConfidenceScore = result.ConfidenceScore
-	autofilled := applyFindAGraveAutofill(defaults, result)
-	a.renderEntryFormWithScrapeState(w, r, autofilled, false, "", scrape, http.StatusOK, true)
 }
 
 func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {

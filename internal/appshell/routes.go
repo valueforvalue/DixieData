@@ -62,7 +62,6 @@ func (a *App) setupRoutes() {
 	r.Delete("/soldiers/display/*", a.handleSoldierByDisplayID)
 	r.Get("/soldiers/new", a.handleNewSoldier)
 	r.Post("/soldiers/new", a.handleNewSoldier)
-	r.Post("/soldiers/scrape-findagrave", a.handleScrapeFindAGrave)
 	r.Get("/soldiers/{id:[0-9]+}/tags", a.handleTagAutocomplete)
 	r.Post("/soldiers/{id:[0-9]+}/tags", a.handleAttachTag)
 	r.Post("/soldiers/{id:[0-9]+}/tags/{tagId:[0-9]+}", a.handleDetachTag)

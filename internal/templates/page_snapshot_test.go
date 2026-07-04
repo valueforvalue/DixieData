@@ -173,7 +173,7 @@ func TestPageSnapshotEntryForm(t *testing.T) {
 	suggestions := viewmodel.PersonRecordFormSuggestions{}
 
 	doc := renderIntoDoc(t, "EntryForm", func(ctx context.Context, w *bytes.Buffer) error {
-		return EntryForm(soldier, nil, suggestions, viewmodel.FindAGraveScrapeState{}, false).Render(ctx, w)
+		return EntryForm(soldier, nil, suggestions, false).Render(ctx, w)
 	})
 
 	required := []string{
