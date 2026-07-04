@@ -4019,14 +4019,14 @@
     });
   }
   function installShareQueueGlobals() {
-    // Persistent pill click.
-    const pill = document.querySelector("[data-share-queue-pill]");
-    if (pill instanceof HTMLElement) {
-      pill.addEventListener("click", () => {
-        openShareQueueModal();
-      });
-    }
-    // Per-row [+] Queue buttons.
+    // Per-row [+] Queue buttons. The persistent pill at the
+    // bottom of every page and the Build Share Archive button on
+    // /share/exports are now <a href="/share/queue"> links that
+    // navigate to the /share/queue management page directly
+    // (issue #310, PR 1: retarget triggers to navigate). The
+    // pill still toggles its visibility + count via
+    // updateShareQueuePill() using the data-share-queue-pill
+    // attribute and the data-share-queue-pill-count child.
     document.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
@@ -4047,13 +4047,6 @@
         return;
       }
     });
-    // Pill open from /share Build Share button.
-    const shareBtn = document.querySelector("[data-share-queue-open]");
-    if (shareBtn instanceof HTMLElement) {
-      shareBtn.addEventListener("click", () => {
-        openShareQueueModal();
-      });
-    }
     installShareQueuePage();
   }
 

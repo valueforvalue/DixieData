@@ -11,6 +11,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Changed
+
+- **Build Share Archive button + Share Queue pill now navigate to
+  `/share/queue`** (issue #310, PR 1 of 3). Both were previously
+  `<button data-share-queue-open>` / `<button data-share-queue-pill>`
+  that opened the Share Build modal — a strict subset of what the
+  full `/share/queue` management page offers. They are now `<a
+  href="/share/queue">` styled to keep their visual surface. The
+  pill still toggles visibility + count via `updateShareQueuePill()`
+  using the `data-share-queue-pill` attribute; only the click
+  target changed. The Share Build modal still exists for now; PR 2
+  deletes it, PR 3 ports the Saved Queues presets to the page.
+
+  - `internal/templates/share_exports.templ` — button → link,
+    text "Build Share Archive" → "Open Share Queue", tooltip
+    updated. `routebuilder` added to imports.
+  - `internal/templates/layout.templ` — pill button → pill link.
+  - `frontend/app.js::installShareQueueGlobals()` — removed the
+    two modal-open click handlers; kept the `data-share-queue-add`
+    delegation + `installShareQueuePage()`.
+  - `internal/appshell/share_subpages_handlers_test.go` — updated
+    `TestShareExportsSubpage_Renders` to assert the new button
+    text + `href`, and to no-longer-find the old data attribute.
+
 ### Added
 
 - **App version split into `v{MAJOR}.{U}.{N}`** (issue #266,

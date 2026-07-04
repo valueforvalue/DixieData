@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/templates/partials"
 	"github.com/valueforvalue/DixieData/internal/uiids"
@@ -9,11 +10,10 @@ import (
 
 // ShareExportsView renders /share/exports. Owns the Export &
 // Backup surface (the #export-section that lived inline on
-// /share pre-issue #284). Includes the Build Share Archive
-// entry point per the locked decision in #284: the Build
-// modal is reached from this page rather than its own
-// /share/build route. See handoff + issue body for the
-// rationale on the foldout collapse (3 items, not 4).
+// /share pre-issue #284). The Open Share Queue link sends the
+// user to /share/queue (issue #310, PR 1) rather than opening
+// the Share Build modal here directly. See handoff + issue body
+// for the rationale on the foldout collapse (3 items, not 4).
 //
 // Data: only exportRecords (for the PrintConfigModal) and
 // shareIncludeTagsEnabled (for the include-tags checkbox)
@@ -104,12 +104,10 @@ templ ShareExportsView(exportRecords []viewmodel.ExportRecordOption, shareInclud
 						</label>
 					</form>
 					<div id="build-share-archive" data-build-share-archive>
-						@components.ButtonContent(components.ButtonSecondary, "justify-between text-left w-full", templ.Attributes{
-							"data-share-queue-open": "",
-						}) {
-							<span class="font-bold">Build Share Archive</span>
-							<span class="text-xs text-slate-500">Open the Share Queue modal (issue #182)</span>
-						}
+						<a href={ templ.SafeURL(routebuilder.ShareQueuePage()) } class="secondary-button justify-between text-left w-full" data-share-queue-open-as-link>
+							<span class="font-bold">Open Share Queue</span>
+							<span class="text-xs text-slate-500">Review and export your queued Person Records (issue #310)</span>
+						</a>
 					</div>
 				</div>
 			</section>
