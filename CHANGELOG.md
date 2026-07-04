@@ -568,6 +568,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **v60 schema: Event Record subtype + FK rename to
+  `person_record_id`** (issue #320, slice 1 + 1.5). Adds the
+  `event_person_links` many-to-many junction, 4 new columns on
+  `soldiers` (`kind`, `begin_date`, `end_date`, `description`)
+  for the Event Record subtype, renames `soldier_id` to
+  `person_record_id` in 6 tables (8 columns total) to reflect
+  that the FK now references any Person Record subtype, and
+  rewrites the FTS5 trigger text (SQLite does not auto-update
+  trigger SQL on `RENAME COLUMN`; the migration block drops
+  and recreates the affected triggers). Bumps
+  `CurrentSchemaVersion` 59 → 60. New `models.EntryTypeEvent`
+  constant; new `(*DB).NextEventID()` mints `EVT-NNNNN`
+  Display IDs. Glossary: adds the **Event Record** entry;
+  renames **Timeline Event** → **Timeline Marker**. The
+  `spouse_soldier_id` self-FK is intentionally NOT renamed
+  (it is a Soldier-to-Soldier relationship, not a Person
+  Record FK). The Go struct field renames
+  (`Record.SoldierID` → `PersonRecordID`, etc.) keep their
+  `json:"soldier_id"` tags so v59 `.ddshare` archives
+  round-trip through a v60 binary. v60 → v59 downgrade works
+  (PartiallyReversible); v59 → v58 still refuses (Block 17
+  is Irreversible). 2 commits; net +522 / -800.
+
 - **Remove the deprecated Find a Grave paste-HTML scrape form**
   from `/soldiers/new` (issue #319). The canonical replacement is
   the `/share/imports` memorial-json import via Tampermonkey.
