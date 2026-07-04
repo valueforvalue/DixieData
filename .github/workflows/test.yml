@@ -63,7 +63,13 @@ jobs:
           # in CI only. Catches the concurrency bug class per
           # docs/COMMON_BUGS.md §4.1 (goroutine leak / race).
           $env:CGO_ENABLED = '1'
-          go test -race ./... -short -count=1
+          # -rapid.checks=500 ensures pgregory.net/rapid property
+          # tests (internal/dates/dates_property_test.go) run ≥100
+          # iterations even under -short (which halves by 5x).
+          # rapid flags must follow -args so the test binary
+          # receives them as test-package flags, not build flags.
+          # issue #318 Slice 3.
+          go test -race ./... -short -count=1 -args -rapid.checks=500
         timeout-minutes: 15
 
       # Mirror the trace harness across both build-tag modes so the
