@@ -242,18 +242,17 @@ func (a *App) handlePersonEventsTab(w http.ResponseWriter, r *http.Request, pers
 		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", personID), err)
 		return
 	}
-	// Option C: dispatchDixieDataForm reads
-	// X-DixieData-Redirect. Use writeExportRedirect so the
-	// htmx client navigates to the Person Record detail
-	// page with the right header (the Option C contract
-	// requires every post-then-navigate response to set
-	// X-DixieData-Redirect; a bare http.Redirect with a
-	// 303 status fails the
-	// TestPostThenNavigateUsesDixieRedirect regression
-	// probe).
+	// Issue #320 slice #324: render the Events tab fragment
+	// instead of redirecting to the Person Record detail page.
+	// The section on soldier_card.templ uses hx-get to fetch
+	// this route; the response swaps innerHTML.
+	linked, err := a.events.ListForPerson(personID)
+	if err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not load linked Event Records for Person %d.", personID), err)
+		return
+	}
+	presentation.PersonEventsTab(personID, linked).Render(r.Context(), w)
 }
-
-// handleAttachEvent links an existing Event to a Person
 // Record by creating a row in event_person_links. The
 // request body is empty (no form fields). On duplicate-link
 // errors the handler returns 409 via respondConflict; the

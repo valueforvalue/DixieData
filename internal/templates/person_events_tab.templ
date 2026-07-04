@@ -1,0 +1,57 @@
+// person_events_tab.templ — lazy-loaded fragment for the Person
+// Record → Events tab (issue #320 slice #324). The route handler
+// (handlePersonEventsTab) renders this fragment; soldier_card.templ
+// uses hx-get to fetch the response and swap innerHTML.
+//
+// The linked slice is the per-Person projection from
+// eventsFacade.ListForPerson. Renders Display ID + Kind + Date
+// Range only (D2 of #322). Add/Quick-add forms are NOT rendered
+// here — they live on the Event PDF surface and the dedicated
+// routes (/soldiers/{id}/events/{eventId}/attach, /quick-add).
+// The detail page's existing section header ("Event Records")
+// stays in soldier_card.templ so the hx-swap is a no-op visually.
+package templates
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ PersonEventsTab(personID int64, linked []viewmodel.PersonRecord) {
+	<div class="space-y-3">
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Event Records</p>
+			<span class="text-xs text-slate-500">{ fmt.Sprintf("%d linked", len(linked)) }</span>
+		</div>
+		if len(linked) == 0 {
+			<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+				No Event Records are linked to this Person Record yet. Use <strong>Quick add new event</strong> from another Person Record's Events tab, or attach an existing Event from the <a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", personID)) } class="text-[#8d7440] underline">Person Record</a> form.
+			</p>
+		} else {
+			<ul class="space-y-2">
+				for _, event := range linked {
+					<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
+						<div class="flex flex-wrap items-baseline justify-between gap-2">
+							<a href={ templ.SafeURL(routebuilder.EventDetail(event.ID)) } class="pill-link">
+								{ strings.TrimSpace(event.DisplayID) }
+							</a>
+							if strings.TrimSpace(event.Kind) != "" {
+								<span class="rounded-full border border-sepia-500/[0.4] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+									{ event.Kind }
+								</span>
+							}
+							if event.BeginDate != "" || event.EndDate != "" {
+								<span class="text-xs text-slate-500">
+									{ eventDateRange(event) }
+								</span>
+							}
+						</div>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

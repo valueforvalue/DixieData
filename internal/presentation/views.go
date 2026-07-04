@@ -245,6 +245,16 @@ func EventFormWithError(event models.Soldier, isEdit bool, errorMessage string) 
 	return templates.EventFormWithError(viewmodel.PersonRecordFromModel(event), isEdit, errorMessage)
 }
 
+// PersonEventsTab wraps templates.PersonEventsTab. The lazy-load
+// fragment for the Person Record → Events tab (issue #320 slice
+// #324). The linked slice is the per-Person projection from
+// eventsFacade.ListForPerson; the template renders it as a
+// table of Display ID + Kind + Date Range (D2 of #322 applied
+// here too — no biography excerpt).
+func PersonEventsTab(personID int64, linked []models.Soldier) templ.Component {
+	return templates.PersonEventsTab(personID, viewmodel.PersonRecordsFromModels(linked))
+}
+
 // viewmodelCountsFromModels translates models.ArchiveCounts to the
 // viewmodel-shaped counts struct the templates consume. Mirrors the
 // pattern used for every other domain-to-viewmodel conversion in this
