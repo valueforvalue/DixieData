@@ -115,10 +115,10 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 				<section class="relative mt-6">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
-						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", event.SourceRecordCount) }</span>
+						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.EventSources)) }</span>
 					</div>
 					<div id="data-event-sources-list">
-						@EventSourcesListFragment(event.ID, event.SourceRecords)
+						@EventSourcesListFragment(event.ID, event.EventSources)
 					</div>
 					<form
 						action={ templ.SafeURL(fmt.Sprintf("/events/%d/sources/attach", event.ID)) }

@@ -85,6 +85,12 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		SourceRecordCount:     input.RecordCount,
 		ImageCount:            input.ImageCount,
 		SourceRecords:         SourceRecordsFromModels(input.Records),
+		// Issue #340 / v61: Event sources now live in their own
+		// table. For Person Records this stays empty; for Events
+		// it carries the per-Event sources. The Sources panel on
+		// event_detail.templ reads EventSources (slice 5 of the
+		// v61 decomposition) instead of SourceRecords.
+		EventSources:          SourceRecordsFromModels(input.EventSources),
 		Images:                ImagesFromModels(input.Images),
 	}
 }

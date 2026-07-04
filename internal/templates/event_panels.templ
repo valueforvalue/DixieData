@@ -27,6 +27,10 @@ import (
 // (rows or empty state) for both the initial page render and
 // the post-attach / post-detach fragment swap. When sources is
 // empty, the EmptyState card matches the on-page copy exactly.
+// Issue #340 / v61: sources come from the new EventSources
+// viewmodel field, which mirrors models.Soldier.EventSources
+// (populated by EventService.GetEventByID from the
+// event_sources table).
 templ EventSourcesListFragment(eventID int64, sources []viewmodel.SourceRecord) {
 	if len(sources) == 0 {
 		@components.EmptyState("No Source Records attached", "Attach source documents from the /sources authoring flow then link them to this Event.", "")
