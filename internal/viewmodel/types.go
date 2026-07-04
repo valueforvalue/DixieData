@@ -255,31 +255,6 @@ type TagOption struct {
 	NormalizedName string
 }
 
-// ScrapedRelative is the per-scraped-row payload the Find a Grave
-// import flow renders before the user confirms the merge into a
-// Soldier. Carries the scraped name + dates + cemetery so the user
-// can decide whether to attach, merge, or discard.
-type ScrapedRelative struct {
-	Name       string
-	MemorialID string
-	URL        string
-	BirthYear  string
-	DeathYear  string
-}
-
-// FindAGraveScrapeState is the per-job scratch state for a Find a
-// Grave scrape: the URL being scraped, the rows extracted so far,
-// and the per-row decision (attach / merge / discard). Persisted
-// across form submits until the user confirms the final list.
-type FindAGraveScrapeState struct {
-	Input           string
-	SourceLabel     string
-	ErrorMessage    string
-	WarningLines    []string
-	Spouses         []ScrapedRelative
-	ConfidenceScore int
-}
-
 // InitialSetupForm is the form payload the first-launch setup
 // wizard collects: the user's timezone (default: buildinfo
 // .CalendarTimeZone), the dataDir confirmation, the optional

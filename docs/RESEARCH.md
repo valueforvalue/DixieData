@@ -387,7 +387,6 @@ enumerates 19 sites across 8 templates:
 
 | Template | Site | Pattern |
 |---|---|---|
-| `entry_form.templ` | 57 | `hx-post="/soldiers/scrape-findagrave"` |
 | `entry_form.templ` | 113 | `hx-post="/soldiers"` |
 | `entry_form.templ` | 794 | `hx-post="/settings/debug-mode"` |
 | `entry_form.templ` | 813 | `hx-post="/settings/initialize"` |

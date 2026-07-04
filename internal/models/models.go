@@ -167,23 +167,6 @@ type SoldierFormSuggestions struct {
 	RelationshipLabel   []string
 }
 
-type ScrapedRelative struct {
-	Name       string
-	MemorialID string
-	URL        string
-	BirthYear  string
-	DeathYear  string
-}
-
-type FindAGraveScrapeState struct {
-	Input           string
-	SourceLabel     string
-	ErrorMessage    string
-	WarningLines    []string
-	Spouses         []ScrapedRelative
-	ConfidenceScore int
-}
-
 // Record is a Source Record attached to a Soldier: a pension
 // application, a roster entry, a death record, etc. Carries the
 // kind (claim, finding, source), the source-document metadata, and

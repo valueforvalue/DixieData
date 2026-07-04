@@ -725,7 +725,7 @@ Static assets: `/app.js`, `/app.css`, `/htmx.min.js`, `/index.html`, `/media/`
 
 Calendar: `/`, `/calendar`, `/calendar/`, `/anniversary/`
 
-Person Records: `/soldiers`, `/soldiers/{id}`, `/soldiers/display/{display_id}`, `/soldiers/new`, `/soldiers/scrape-findagrave`
+Person Records: `/soldiers`, `/soldiers/{id}`, `/soldiers/display/{display_id}`, `/soldiers/new`
 
 Search: `/soldiers/search`, `/soldiers/search/recent`, `/soldiers/search/advanced`
 

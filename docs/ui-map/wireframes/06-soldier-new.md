@@ -11,12 +11,6 @@
 ```
 ┌── EntryForm ──────────────────────────────────────────────────────┐
 │ h2 "New Person Record"                                           │
-│ <details Scrape Find a Grave> (collapsed by default)             │
-│   source label, warnings count, confidence, spouses, error chips  │
-│   <textarea name=findagrave_source> + <Fetch Data> btn            │
-│   error callout (if scrape failed)                                │
-│   warnings list (review scraped data)                              │
-│   spouses found list                                              │
 ├───────────────────────────────────────────────────────────────────┤
 │ [panel.soldier.form.scratchpad]                                  │
 │  (data-record-persistence block — local draft status / undo)      │
@@ -25,7 +19,6 @@
 │                                                                    │
 │ <form> hx-post SoldierCreate() hx-target="body" enctype=multipart│
 │   <hidden> existing_needs_review, existing_review_reason,         │
-│            scrape_source_label, scrape_confidence_score          │
 │                                                                    │
 │   § Identity & Relationship                                      │
 │     Display ID (readonly) | Person Record Type (select)           │
@@ -71,8 +64,7 @@
 | `panel.soldier.form.records` | Source Records section | Add/remove rows |
 | `panel.soldier.form.images` | Images section | Import-after-create gate |
 
-Scrape Find a Grave is a `<details>` not in uiids.Registry. Person
-Record Link sub-section is a `<div>` not registered.
+Person Record Link sub-section is a `<div>` not registered.
 
 ## Atomic components
 
@@ -86,7 +78,6 @@ Record Link sub-section is a `<div>` not registered.
 
 | Trigger | Verb | URL | Target | Swap | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Scrape form submit | POST | `routebuilder.SoldierScrapeFindAGrave()` | `#entry-form-shell` | `outerHTML` | Replaces entire shell with new fragment |
 | Form submit (Create) | POST | `routebuilder.SoldierCreate()` | `body` | default | Full redirect to new record |
 | Add Source Record btn | — | — | — | — | JS-only (`data-record-add`) — clones `<template>` |
 | Image import btn | (disabled) | — | — | — | Gates until record exists |
@@ -99,10 +90,6 @@ Global only.
 
 - **Save error**: rendered as top-of-form red callout (re-uses form
   fragment via `EntryFormWithError`).
-- **Scrape success**: same form re-renders with scraped values
-  pre-filled; no separate "preview" step.
-- **Scrape error**: scrape details collapse stays open with red
-  callout.
 - **Person Record Type=Linked Person**: shows Relationship Label,
   hides Maiden Name; toggled via `data-entry-type-special` JS.
 - **Entry Type=Widow**: Pension/Application fields appear.
@@ -112,9 +99,6 @@ Global only.
 
 - **`hx-target="body"` on the form** — relies on server returning a
   303 redirect. Verify handler does so.
-- **`hx-swap="outerHTML"` on the scrape form** — replaces the entire
-  shell (`#entry-form-shell`). If the user has scrolled, focus is
-  lost. Verify the new shell preserves scroll position.
 - **`data-record-add`** + `<template data-record-template>` is
   client-side JS — verify rows added on the client get included in
   the form submission (named inputs match).

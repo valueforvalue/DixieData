@@ -44,7 +44,6 @@ templ screen that renders it. URL builders live in
 | `/soldiers/{id}/pdf` | `routebuilder.SoldierPDF(id)` | — (PDF) | Printable |
 | `/soldiers/{id}/images/download` | `routebuilder.SoldierImagesDownload(id)` | — (binary) | ZIP download |
 | `/soldiers/{id}/images/{imageID}/primary` | `routebuilder.SoldierImagesPrimary(...)` | — | Set primary image |
-| `/soldiers/{id}/scrape/findagrave` | `routebuilder.SoldierScrapeFindAGrave()` | (HTMX) | Scrape |
 | `/soldiers/{id}/review-flag` | `routebuilder.SoldierReviewFlag(id)` | — | Flag for review |
 | `/soldiers/{id}/research-log/tasks` POST | `routebuilder.ResearchLogTasksCreate(soldierID)` | — | Create task |
 | `/soldiers/{id}/camaraderie` | `routebuilder.SoldierCamaraderie(id)` | `camaraderie.templ` | HTMX swap |

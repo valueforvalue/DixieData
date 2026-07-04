@@ -2,8 +2,7 @@
 
 - **Route**: `/soldiers` (GET, full page render)
 - **Builders**: `routebuilder.SoldierSearch(browse)`,
-  `routebuilder.SoldierSearchAdvanced()`,
-  `routebuilder.SoldierScrapeFindAGrave()`
+  `routebuilder.SoldierSearchAdvanced()`
 - **Template**: `internal/templates/soldier_card.templ`
 - **Layout**: both
 - **Owner**: package `templates`
