@@ -3714,6 +3714,7 @@
       }
     });
     installShareQueuePage();
+    installShareQueuePresetsPage();
   }
 
   // ----- /share/queue management page (issue #193) -----
@@ -3819,6 +3820,186 @@
   // section, never the tbody, so event handlers + flag persist
   // across re-renders.
   const ShareQueueListSectionID = "panel.share-queue.list";
+  const ShareQueuePresetsSectionID = "panel.share-queue.presets";
+
+  // shareQueuePresetStatusPage writes a transient message into the
+  // presets panel on the /share/queue page. Ported from the modal
+  // helper of the same name (share_queue_modal.templ) when the
+  // modal was deleted in issue #310 PR 2; PR 3 re-mounts the
+  // presets UI on the page.
+  function shareQueuePresetStatusPage(panel, text) {
+    if (!(panel instanceof HTMLElement)) return;
+    const slot = panel.querySelector("[data-share-queue-preset-status]");
+    if (!(slot instanceof HTMLElement)) return;
+    if (!text) {
+      slot.textContent = "";
+      slot.classList.add("hidden");
+      return;
+    }
+    slot.textContent = text;
+    slot.classList.remove("hidden");
+  }
+
+  // saveCurrentQueueAsPresetPage POSTs the current localStorage
+  // queue to /share/queue/presets and refreshes the preset list.
+  // Mirrors the modal save handler; uses the page's presets panel
+  // instead of querying the modal's [data-share-queue-modal].
+  async function saveCurrentQueueAsPresetPage(panel, form) {
+    if (!(panel instanceof HTMLElement)) return;
+    if (!(form instanceof HTMLFormElement)) return;
+    const ids = readShareQueue();
+    if (ids.length === 0) {
+      shareQueuePresetStatusPage(panel, "Stage at least one Person Record before saving.");
+      return;
+    }
+    const nameInput = form.querySelector("input[name=name]");
+    const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
+    if (!name) {
+      shareQueuePresetStatusPage(panel, "Give the preset a name first.");
+      return;
+    }
+    try {
+      const fd = new FormData();
+      fd.set("name", name);
+      for (const id of ids) fd.append("soldier_ids", String(id));
+      const response = await fetch("/share/queue/presets", { method: "POST", body: fd });
+      if (response.status === 409) {
+        shareQueuePresetStatusPage(panel, "A preset with that name already exists. Pick a different name.");
+        return;
+      }
+      if (!response.ok) {
+        shareQueuePresetStatusPage(panel, "Could not save the preset.");
+        return;
+      }
+      if (nameInput instanceof HTMLInputElement) nameInput.value = "";
+      shareQueuePresetStatusPage(panel, "Saved.");
+      await refreshShareQueuePresetsPage(panel);
+    } catch (err) {
+      shareQueuePresetStatusPage(panel, "Could not save the preset.");
+    }
+  }
+
+  // loadShareQueuePresetPage GETs /share/queue/presets/{id}/apply,
+  // writes the returned soldier_ids back to localStorage, and
+  // re-renders the page's table + pill. If the queue already has
+  // items, confirms with the user (same as the deleted modal).
+  async function loadShareQueuePresetPage(panel, id) {
+    if (!(panel instanceof HTMLElement)) return;
+    const ids = readShareQueue();
+    if (ids.length > 0) {
+      if (!window.confirm("Replace the current Share Queue with the preset's contents?")) {
+        return;
+      }
+    }
+    try {
+      const response = await fetch(`/share/queue/presets/${id}/apply`, { method: "GET" });
+      if (response.status === 404) {
+        shareQueuePresetStatusPage(panel, "That preset no longer exists.");
+        await refreshShareQueuePresetsPage(panel);
+        return;
+      }
+      if (!response.ok) {
+        shareQueuePresetStatusPage(panel, "Could not load the preset.");
+        return;
+      }
+      const data = await response.json();
+      const newIds = Array.isArray(data && data.soldier_ids) ? data.soldier_ids : [];
+      writeShareQueue(newIds);
+      renderShareQueuePage();
+      shareQueuePresetStatusPage(panel, "Loaded preset.");
+    } catch (err) {
+      shareQueuePresetStatusPage(panel, "Could not load the preset.");
+    }
+  }
+
+  // deleteShareQueuePresetPage DELETEs /share/queue/presets/{id}
+  // and refreshes the list. Confirms with the user (same as the
+  // deleted modal).
+  async function deleteShareQueuePresetPage(panel, id) {
+    if (!(panel instanceof HTMLElement)) return;
+    if (!window.confirm("Delete this saved preset? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`/share/queue/presets/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        shareQueuePresetStatusPage(panel, "Could not delete the preset.");
+        return;
+      }
+      shareQueuePresetStatusPage(panel, "Deleted.");
+      await refreshShareQueuePresetsPage(panel);
+    } catch (err) {
+      shareQueuePresetStatusPage(panel, "Could not delete the preset.");
+    }
+  }
+
+  // refreshShareQueuePresetsPage fetches /share/queue/presets and
+  // renders the preset list into the page's [data-share-queue-preset-list]
+  // <ul>. The empty-state div is toggled based on whether any presets
+  // returned.
+  async function refreshShareQueuePresetsPage(panel) {
+    if (!(panel instanceof HTMLElement)) return;
+    const list = panel.querySelector("[data-share-queue-preset-list]");
+    const empty = panel.querySelector("[data-share-queue-preset-empty]");
+    if (!(list instanceof HTMLElement)) return;
+    while (list.firstChild) list.removeChild(list.firstChild);
+    let presets = [];
+    try {
+      const response = await fetch("/share/queue/presets", { method: "GET" });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.presets)) presets = data.presets;
+      }
+    } catch (err) {
+      // Network blip -- show the empty state rather than throwing.
+    }
+    for (const preset of presets) {
+      const li = document.createElement("li");
+      li.className = "flex items-center justify-between gap-2 rounded border border-[rgba(141,116,64,0.2)] bg-white/80 px-2 py-1";
+      const label = document.createElement("span");
+      label.className = "truncate font-semibold text-[#22303d]";
+      label.textContent = preset.name;
+      const right = document.createElement("div");
+      right.className = "flex shrink-0 items-center gap-1";
+      const load = document.createElement("button");
+      load.type = "button";
+      load.className = "rounded border border-[rgba(141,116,64,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8d7440] hover:bg-white";
+      load.textContent = "Load";
+      load.addEventListener("click", () => loadShareQueuePresetPage(panel, preset.id));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "rounded border border-[rgba(111,44,38,0.35)] bg-white/85 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6f2c26] hover:bg-white";
+      del.textContent = "Delete";
+      del.addEventListener("click", () => deleteShareQueuePresetPage(panel, preset.id));
+      right.appendChild(load);
+      right.appendChild(del);
+      li.appendChild(label);
+      li.appendChild(right);
+      list.appendChild(li);
+    }
+    if (empty instanceof HTMLElement) {
+      empty.classList.toggle("hidden", presets.length > 0);
+    }
+  }
+
+  // installShareQueuePresetsPage wires the Saved Queues card on
+  // /share/queue. Idempotent (uses a dataset flag). Called from
+  // installShareQueuePage once the page is confirmed mounted.
+  function installShareQueuePresetsPage() {
+    const panel = document.querySelector(`section[id="${ShareQueuePresetsSectionID}"]`);
+    if (!(panel instanceof HTMLElement)) return;
+    if (panel.dataset.shareQueuePresetsInstalled === "true") return;
+    panel.dataset.shareQueuePresetsInstalled = "true";
+    const saveForm = panel.querySelector("[data-share-queue-preset-save]");
+    if (saveForm instanceof HTMLFormElement) {
+      saveForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        saveCurrentQueueAsPresetPage(panel, saveForm);
+      });
+    }
+    refreshShareQueuePresetsPage(panel);
+  }
+
   function installShareQueuePage() {
     const section = document.querySelector(`section[id="${ShareQueueListSectionID}"]`);
     if (!(section instanceof HTMLElement)) return;

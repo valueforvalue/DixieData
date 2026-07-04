@@ -84,6 +84,44 @@ the Added / Changed / Fixed / Removed lists stay scannable.
     `PanelShareQueuePresets` to say "Share Queue page" rather
     than "Share Build modal".
 
+- **Saved Queues presets ported onto the `/share/queue`
+  management page** (issue #310, PR 3 of 3, completes the
+  fold). The presets card that lived on the Share Build modal
+  is now a `<section id="panel.share-queue.presets">` between
+  the page header + the queue table. Save form (name input +
+  Save button), preset list (Load / Delete per row), empty
+  state, and the status message slot all live on the page now.
+  The five preset JS functions deleted in PR 2 are re-added as
+  `shareQueuePresetStatusPage`, `saveCurrentQueueAsPresetPage`,
+  `loadShareQueuePresetPage`, `deleteShareQueuePresetPage`,
+  `refreshShareQueuePresetsPage` + a new
+  `installShareQueuePresetsPage` installer; they query the
+  page panel via `[data-share-queue-preset-list]` /
+  `[data-share-queue-preset-status]` and reuse the same
+  `/share/queue/presets` JSON endpoints that the modal called.
+  No Go-side changes. The user's mental model is now: "open
+  `/share/queue` to stage, save, load, and export — everything
+  happens on one page."
+
+  - `internal/templates/share_queue.templ` — added the Saved
+    Queues card (line ~36) using `uiids.PanelShareQueuePresets`.
+    Doc-comment updated to mention PR 3.
+  - `frontend/app.js` — +190 lines (5 page-scoped preset
+    helpers + installer + `ShareQueuePresetsSectionID`
+    constant). `installShareQueueGlobals()` calls
+    `installShareQueuePresetsPage()` after
+    `installShareQueuePage()` so the card hydrates on every
+    page load.
+  - `internal/appshell/share_queue_handlers_test.go` —
+    `TestShareQueuePage_Empty` now also asserts the Saved
+    Queues card presence (`Saved Queues` heading,
+    `[data-share-queue-preset-save]` form, etc.) so a future
+    regression that drops the card fails the test.
+  - `internal/appshell/share_queue_presets_handlers.go` +
+    `internal/records/share_queue_presets.go` — UNCHANGED.
+    PR 3 consumes the same JSON endpoints that the modal
+    used; no service-side changes needed.
+
 ### Removed
 
 - **Share Build modal at `/share/queue/modal`** (issue #182,

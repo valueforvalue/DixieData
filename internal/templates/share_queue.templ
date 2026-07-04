@@ -1,11 +1,18 @@
-// /share/queue management page (issue #193). The queue
-// itself lives in the browser's localStorage under
-// dixiedata.share-queue; the page reads it as a comma-
-// separated ?ids=1,2,3 query string the client populates
-// on load + after every queue mutation. The server re-
-// hydrates the soldier rows from the archive so the table
-// can show Display ID + Name + Unit + Source Records
-// counts without re-running the heavy browse pipeline.
+// /share/queue management page (issue #193, presets added in
+// issue #310 PR 3). The queue itself lives in the browser's
+// localStorage under dixiedata.share-queue; the page reads it
+// as a comma-separated ?ids=1,2,3 query string the client
+// populates on load + after every queue mutation. The server
+// re-hydrates the soldier rows from the archive so the table
+// can show Display ID + Name + Unit + Source Records counts
+// without re-running the heavy browse pipeline.
+//
+// Issue #310 PR 3 ports the Saved Queues presets UI onto this
+// page from the Share Build modal (the modal itself was deleted
+// in PR 2). The page's `id={ uiids.PanelShareQueuePresets }`
+// card hosts the Save form + preset list + status message,
+// driven by the same `/share/queue/presets` JSON endpoints that
+// the modal used.
 package templates
 
 import (
@@ -33,6 +40,19 @@ templ ShareQueuePage(rows []viewmodel.ShareQueueRow) {
 					<span data-share-queue-page-status class="ml-auto text-xs text-slate-500" aria-live="polite"></span>
 				</form>
 			</div>
+			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueuePresets }>
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Saved Queues</p>
+				<p class="mt-2 text-sm text-slate-600">Reuse a previously-named queue without re-staging every row from Browse. Saves live in the share_queue_presets table (issue #192).</p>
+				<form data-share-queue-preset-save class="mt-4 flex flex-wrap items-center gap-2">
+					<input type="text" name="name" placeholder="Name this queue (e.g. Shiloh Cemetery)" aria-label="Preset name" class="min-w-0 flex-1 rounded-full border border-sepia-500/[0.35] bg-white/85 px-3 py-1.5 text-sm" required/>
+					<button type="submit" class="inline-flex items-center rounded-full border border-[#8d7440] bg-[#8d7440] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white hover:bg-[#7a6635]">Save current queue</button>
+				</form>
+				<ul data-share-queue-preset-list class="mt-4 space-y-1 max-h-40 overflow-y-auto text-sm"></ul>
+				<div data-share-queue-preset-empty class="mt-3 rounded-2xl border border-sepia-500/[0.2] bg-white/70 p-3 text-xs text-slate-500">
+					No saved queues yet. Stage some rows above and save under a name.
+				</div>
+				<p data-share-queue-preset-status class="mt-3 hidden text-xs text-[#6f2c26]" role="status" aria-live="polite"></p>
+			</section>
 			<section class="card rounded-3xl p-5 sm:p-8" id={ uiids.PanelShareQueueList }>
 				if len(rows) == 0 {
 					<div class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4 text-sm text-slate-600">
