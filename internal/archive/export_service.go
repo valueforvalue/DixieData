@@ -491,11 +491,11 @@ func (e *ExportService) firstFindAGraveLinks(calendar map[int][]models.Soldier) 
 		placeholders = append(placeholders, "?")
 		args = append(args, id)
 	}
-	q := `SELECT soldier_id, details FROM records
+	q := `SELECT person_record_id, details FROM records
 	      WHERE LOWER(record_type) LIKE '%find a grave%'
 	        AND (details LIKE 'http://%' OR details LIKE 'https://%')
-	        AND soldier_id IN (` + strings.Join(placeholders, ",") + `)
-	      ORDER BY soldier_id, id`
+	        AND person_record_id IN (` + strings.Join(placeholders, ",") + `)
+	      ORDER BY person_record_id, id`
 	rows, err := e.db.Conn().Query(q, args...)
 	if err != nil {
 		return nil, err
@@ -508,7 +508,7 @@ func (e *ExportService) firstFindAGraveLinks(calendar map[int][]models.Soldier) 
 		if err := rows.Scan(&sid, &details); err != nil {
 			return nil, err
 		}
-		// First row per soldier_id wins; ORDER BY id ASC guarantees
+		// First row per person_record_id wins; ORDER BY id ASC guarantees
 		// the earliest-inserted FaG record is selected.
 		key := strconv.FormatInt(sid, 10)
 		if _, ok := out[key]; !ok {

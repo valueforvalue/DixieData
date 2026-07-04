@@ -335,7 +335,7 @@ func TestSoldierService_PersistsBuriedInAndRecords(t *testing.T) {
 		t.Fatalf("records len = %d", len(got.Records))
 	}
 	for _, record := range got.Records {
-		if record.SyncID == "" || record.SoldierSyncID != got.SyncID {
+		if record.SyncID == "" || record.PersonSyncID != got.SyncID {
 			t.Fatalf("record identity mismatch: %#v soldier=%#v", record, got)
 		}
 	}
@@ -393,7 +393,7 @@ func TestSoldierService_AddImagePersistsIdentityFields(t *testing.T) {
 	if len(got.Images) != 1 {
 		t.Fatalf("images len = %d", len(got.Images))
 	}
-	if got.Images[0].SyncID == "" || got.Images[0].SoldierSyncID != got.SyncID {
+	if got.Images[0].SyncID == "" || got.Images[0].PersonSyncID != got.SyncID {
 		t.Fatalf("image identity mismatch: %#v soldier=%#v", got.Images[0], got)
 	}
 	if !got.Images[0].IsPrimary {
@@ -1115,14 +1115,14 @@ func TestSoldierService_ByIDs_PopulatesCounts(t *testing.T) {
 	// first: 2 records + 1 image.
 	for i := 0; i < 2; i++ {
 		if _, err := conn.Exec(
-			`INSERT INTO records (soldier_id, record_type, app_id, details) VALUES (?, ?, ?, ?)`,
+			`INSERT INTO records (person_record_id, record_type, app_id, details) VALUES (?, ?, ?, ?)`,
 			first.ID, "pension", fmt.Sprintf("APP-%d", i), fmt.Sprintf("details %d", i),
 		); err != nil {
 			t.Fatalf("insert first record: %v", err)
 		}
 	}
 	if _, err := conn.Exec(
-		`INSERT INTO images (soldier_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO images (person_record_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
 		first.ID, "a.jpg", "/tmp/a.jpg", "cap",
 	); err != nil {
 		t.Fatalf("insert first image: %v", err)
@@ -1131,7 +1131,7 @@ func TestSoldierService_ByIDs_PopulatesCounts(t *testing.T) {
 	// second: 0 records + 5 images.
 	for i := 0; i < 5; i++ {
 		if _, err := conn.Exec(
-			`INSERT INTO images (soldier_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
+			`INSERT INTO images (person_record_id, file_name, file_path, caption) VALUES (?, ?, ?, ?)`,
 			second.ID, fmt.Sprintf("b-%d.jpg", i), fmt.Sprintf("/tmp/b-%d.jpg", i), fmt.Sprintf("cap %d", i),
 		); err != nil {
 			t.Fatalf("insert second image: %v", err)

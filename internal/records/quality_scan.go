@@ -229,7 +229,7 @@ func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, e
 	rows, err := s.db.Conn().Query(`
 		SELECT s.id, COALESCE(s.display_id, ''), COALESCE(s.first_name, ''), COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COUNT(r.id)
 		FROM soldiers s
-		JOIN records r ON r.soldier_id = s.id
+		JOIN records r ON r.person_record_id = s.id
 		WHERE TRIM(COALESCE(r.record_type, '')) = ''
 		  AND TRIM(COALESCE(r.app_id, '')) = ''
 		  AND TRIM(COALESCE(r.details, '')) = ''

@@ -67,6 +67,15 @@ type Soldier struct {
 	LastEditedAt          string   `json:"last_edited_at"`
 	CreatedAt             string   `json:"created_at"`
 	UpdatedAt             string   `json:"updated_at"`
+	// v60 (issue #320): per-subtype columns for the Event Record
+	// subtype. Kind is free-text (no enum); BeginDate / EndDate
+	// follow the soldiers MM/DD/YYYY canonical-date shape so the
+	// existing date filter predicates work; Description mirrors
+	// the per-Person biography for the long-form write-up.
+	Kind                  string   `json:"kind,omitempty"`
+	BeginDate             string   `json:"begin_date,omitempty"`
+	EndDate               string   `json:"end_date,omitempty"`
+	Description           string   `json:"description,omitempty"`
 	SearchMatchField      string   `json:"-"`
 	SearchMatchSnippet    string   `json:"-"`
 	SpouseDisplayID       string   `json:"-"`
@@ -170,13 +179,13 @@ type SoldierFormSuggestions struct {
 // Record is a Source Record attached to a Soldier: a pension
 // application, a roster entry, a death record, etc. Carries the
 // kind (claim, finding, source), the source-document metadata, and
-// the per-record text content. Linked to a Soldier by SoldierID.
+// the per-record text content. Linked to a Soldier by PersonRecordID.
 // See CONTEXT.md §Domain vocabulary for the "Source Record" term.
 type Record struct {
 	ID            int64  `json:"id"`
 	SyncID        string `json:"sync_id"`
-	SoldierID     int64  `json:"soldier_id"`
-	SoldierSyncID string `json:"soldier_sync_id"`
+	PersonRecordID int64  `json:"soldier_id"`
+	PersonSyncID  string `json:"soldier_sync_id"`
 	RecordType    string `json:"record_type"`
 	AppID         string `json:"app_id"`
 	Details       string `json:"details"`
@@ -191,8 +200,8 @@ type Record struct {
 type Image struct {
 	ID            int64  `json:"id"`
 	SyncID        string `json:"sync_id"`
-	SoldierID     int64  `json:"soldier_id"`
-	SoldierSyncID string `json:"soldier_sync_id"`
+	PersonRecordID int64  `json:"soldier_id"`
+	PersonSyncID  string `json:"soldier_sync_id"`
 	FileName      string `json:"file_name"`
 	FilePath      string `json:"file_path"`
 	Caption       string `json:"caption"`
@@ -380,7 +389,7 @@ type MergeReviewConflict struct {
 	SessionID       string
 	ConflictType    string
 	Reason          string
-	LocalSoldierID  int64
+	LocalRecordID   int64
 	LocalDisplayID  string
 	SourceDisplayID string
 	Resolution      string

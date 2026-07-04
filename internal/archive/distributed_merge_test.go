@@ -100,7 +100,7 @@ func TestBackupService_ImportSQLiteBackupMigratesSchema(t *testing.T) {
 	if len(restored.Records) != 1 {
 		t.Fatalf("records len = %d", len(restored.Records))
 	}
-	if restored.Records[0].SyncID == "" || restored.Records[0].SoldierSyncID != restored.SyncID {
+	if restored.Records[0].SyncID == "" || restored.Records[0].PersonSyncID != restored.SyncID {
 		t.Fatalf("record identity mismatch: %#v soldier=%#v", restored.Records[0], restored)
 	}
 }
@@ -215,7 +215,7 @@ func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
 		t.Fatalf("author A records len = %d", len(sharedAFinal.Records))
 	}
 	for _, record := range sharedAFinal.Records {
-		if record.SyncID == "" || record.SoldierSyncID != sharedAFinal.SyncID {
+		if record.SyncID == "" || record.PersonSyncID != sharedAFinal.SyncID {
 			t.Fatalf("author A record identity mismatch: %#v soldier=%#v", record, sharedAFinal)
 		}
 	}
@@ -223,7 +223,7 @@ func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
 		t.Fatalf("author B images len = %d", len(sharedBFinal.Images))
 	}
 	for _, image := range sharedBFinal.Images {
-		if image.SyncID == "" || image.SoldierSyncID != sharedBFinal.SyncID {
+		if image.SyncID == "" || image.PersonSyncID != sharedBFinal.SyncID {
 			t.Fatalf("author B image identity mismatch: %#v soldier=%#v", image, sharedBFinal)
 		}
 	}
@@ -276,14 +276,16 @@ CREATE TABLE soldiers (
 );
 CREATE TABLE records (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    soldier_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_record_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_sync_id     TEXT,
     record_type  TEXT,
     app_id       TEXT,
     details      TEXT
 );
 CREATE TABLE images (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    soldier_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_record_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_sync_id     TEXT,
     file_name    TEXT,
     file_path    TEXT,
     caption      TEXT
@@ -299,7 +301,7 @@ CREATE VIRTUAL TABLE soldiers_fts USING fts5(
 	if _, err := conn.Exec(`INSERT INTO soldiers (display_id, is_generated, first_name, last_name, death_year, death_month, death_day, birth_info, notes, created_at) VALUES ('DXD-00001', 1, 'Legacy', 'Soldier', 1863, 5, 7, 'b. Jan. 13, 1842, Blount Co., AL, U.S.A.', 'legacy note', '2026-01-02 03:04:05')`); err != nil {
 		t.Fatalf("insert soldier: %v", err)
 	}
-	if _, err := conn.Exec(`INSERT INTO records (soldier_id, record_type, app_id, details) VALUES (1, 'Roster', 'APP-1', 'Legacy record')`); err != nil {
+	if _, err := conn.Exec(`INSERT INTO records (person_record_id, record_type, app_id, details) VALUES (1, 'Roster', 'APP-1', 'Legacy record')`); err != nil {
 		t.Fatalf("insert record: %v", err)
 	}
 	if _, err := conn.Exec(`PRAGMA user_version = 1`); err != nil {

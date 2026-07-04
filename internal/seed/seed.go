@@ -222,7 +222,7 @@ func insertRecord(conn *sql.DB, soldier models.Soldier, record models.Record) er
 		return err
 	}
 	_, err = conn.Exec(
-		`INSERT INTO records (sync_id, soldier_id, soldier_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
 		syncID,
 		soldier.ID,
 		soldier.SyncID,
@@ -284,7 +284,7 @@ func insertImage(conn *sql.DB, soldier models.Soldier, image models.Image) error
 		return err
 	}
 	_, err = conn.Exec(
-		`INSERT INTO images (sync_id, soldier_id, soldier_sync_id, file_name, file_path, caption) VALUES (?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO images (sync_id, person_record_id, person_sync_id, file_name, file_path, caption) VALUES (?, ?, ?, ?, ?, ?)`,
 		syncID,
 		soldier.ID,
 		soldier.SyncID,

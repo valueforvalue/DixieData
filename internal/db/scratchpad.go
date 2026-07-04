@@ -27,7 +27,7 @@ func (d *DB) Scratchpad(displayID string) (string, time.Time, error) {
 	err := d.conn.QueryRow(`
 		SELECT COALESCE(c.scratch_pad, ''), COALESCE(unixepoch(c.updated_at), 0)
 		FROM soldiers s
-		LEFT JOIN scratchpad_cache c ON c.soldier_id = s.id
+		LEFT JOIN scratchpad_cache c ON c.person_record_id = s.id
 		WHERE s.display_id = ?`,
 		displayID,
 	).Scan(&content, &updatedUnix)
@@ -51,9 +51,9 @@ func (d *DB) SaveScratchpad(displayID, content string) error {
 		return err
 	}
 	_, err = d.conn.Exec(`
-		INSERT INTO scratchpad_cache (soldier_id, scratch_pad, updated_at)
+		INSERT INTO scratchpad_cache (person_record_id, scratch_pad, updated_at)
 		VALUES (?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(soldier_id) DO UPDATE SET
+		ON CONFLICT(person_record_id) DO UPDATE SET
 			scratch_pad = excluded.scratch_pad,
 			updated_at = CURRENT_TIMESTAMP`,
 		soldierID, content,
@@ -113,9 +113,9 @@ func (d *DB) ImportLegacyScratchpadFiles() error {
 			return err
 		}
 		if _, err := tx.Exec(`
-			INSERT INTO scratchpad_cache (soldier_id, scratch_pad, updated_at)
+			INSERT INTO scratchpad_cache (person_record_id, scratch_pad, updated_at)
 			VALUES (?, ?, CURRENT_TIMESTAMP)
-			ON CONFLICT(soldier_id) DO UPDATE SET
+			ON CONFLICT(person_record_id) DO UPDATE SET
 				scratch_pad = excluded.scratch_pad,
 				updated_at = CURRENT_TIMESTAMP`,
 			soldierID, string(content),

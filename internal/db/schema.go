@@ -66,14 +66,27 @@ CREATE TABLE IF NOT EXISTS soldiers (
     last_edited_fields TEXT,
     last_edited_at DATETIME,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at   DATETIME
+    updated_at   DATETIME,
+    -- v60 (issue #320): per-subtype columns for the Event Record
+    -- subtype. kind is free-text (no enum); begin_date / end_date
+    -- follow the soldiers MM/DD/YYYY canonical-date shape so the
+    -- existing date filter predicates work; description mirrors
+    -- the per-Person biography for the long-form write-up.
+    -- pdf_excerpt_override (declared above) is reused as the
+    -- per-row short override: 'short version of the row's
+    -- long-form text' — biography for Soldier/Spouse, description
+    -- for Event Record.
+    kind         TEXT,
+    begin_date   TEXT,
+    end_date     TEXT,
+    description  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS records (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     sync_id      TEXT,
-    soldier_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
-    soldier_sync_id TEXT,
+    person_record_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_sync_id TEXT,
     record_type  TEXT,
     app_id       TEXT,
     details      TEXT
@@ -82,8 +95,8 @@ CREATE TABLE IF NOT EXISTS records (
 CREATE TABLE IF NOT EXISTS images (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     sync_id      TEXT,
-    soldier_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
-    soldier_sync_id TEXT,
+    person_record_id   INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_sync_id TEXT,
     file_name    TEXT,
     file_path    TEXT,
     caption      TEXT,
@@ -111,7 +124,7 @@ CREATE TABLE IF NOT EXISTS merge_review_conflicts (
     conflict_type    TEXT NOT NULL,
     reason           TEXT NOT NULL,
     soldier_sync_id  TEXT NOT NULL,
-    local_soldier_id INTEGER,
+    local_record_id INTEGER,
     local_display_id TEXT,
     source_display_id TEXT NOT NULL,
     local_data       TEXT,
@@ -137,8 +150,8 @@ CREATE TABLE IF NOT EXISTS shared_merge_aliases (
 CREATE TABLE IF NOT EXISTS duplicate_audit_findings (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     pair_key         TEXT UNIQUE NOT NULL,
-    left_soldier_id  INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
-    right_soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    left_record_id  INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    right_record_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
     finding_type     TEXT NOT NULL,
     reason           TEXT NOT NULL,
     highlight_fields TEXT NOT NULL,
@@ -150,7 +163,7 @@ CREATE TABLE IF NOT EXISTS duplicate_audit_findings (
 
 CREATE TABLE IF NOT EXISTS research_tasks (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    soldier_id     INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_record_id     INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
     title         TEXT NOT NULL,
     notes         TEXT,
     evidence_type TEXT NOT NULL DEFAULT 'general',
@@ -179,7 +192,7 @@ CREATE TABLE IF NOT EXISTS export_templates (
     last_used_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Issue #192: saved Share Queue presets. Stores the (soldier_id,
+-- Issue #192: saved Share Queue presets. Stores the (person_record_id,
 -- display_id) pairs that make up a reusable subset for the
 -- .ddshare export pipeline. Local-only like export_templates;
 -- no sync_id since these don't migrate between archives. The
@@ -211,9 +224,9 @@ CREATE TABLE IF NOT EXISTS research_collections (
 
 CREATE TABLE IF NOT EXISTS research_collection_items (
     collection_id INTEGER NOT NULL REFERENCES research_collections(id) ON DELETE CASCADE,
-    soldier_id    INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_record_id    INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (collection_id, soldier_id)
+    PRIMARY KEY (collection_id, person_record_id)
 );
 
 CREATE TABLE IF NOT EXISTS calendar_items (
@@ -269,13 +282,34 @@ CREATE INDEX IF NOT EXISTS idx_merge_review_conflicts_resolution ON merge_review
 CREATE INDEX IF NOT EXISTS idx_import_batches_created_at ON import_batches(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_shared_merge_aliases_canonical ON shared_merge_aliases(canonical_person_id);
 CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_status ON duplicate_audit_findings(status);
-CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_soldier_id);
-CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_soldier_id);
-CREATE INDEX IF NOT EXISTS idx_research_tasks_soldier ON research_tasks(soldier_id, status, created_at);
-CREATE INDEX IF NOT EXISTS idx_research_collection_items_soldier ON research_collection_items(soldier_id, collection_id);
+CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_left ON duplicate_audit_findings(left_record_id);
+CREATE INDEX IF NOT EXISTS idx_duplicate_audit_findings_right ON duplicate_audit_findings(right_record_id);
+CREATE INDEX IF NOT EXISTS idx_research_tasks_soldier ON research_tasks(person_record_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_research_collection_items_soldier ON research_collection_items(person_record_id, collection_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_items_day ON calendar_items(month, day, item_type, title);
 CREATE INDEX IF NOT EXISTS idx_person_record_tags_tag    ON person_record_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_person_record_tags_person ON person_record_tags(person_id);
+
+-- v60 (issue #320): event_person_links — many-to-many junction
+-- between Event Record rows (soldiers.entry_type = 'event') and
+-- any Person Record row. One Battle links to N Soldiers; one
+-- Soldier fights in N Battles. The triple sync_id column mirrors
+-- records.person_sync_id for distributed-merge support so two
+-- nodes sharing Event Records can dedupe on (event_sync_id,
+-- person_sync_id) when the row IDs differ.
+CREATE TABLE IF NOT EXISTS event_person_links (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id       INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_id      INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    sync_id        TEXT,
+    event_sync_id  TEXT,
+    person_sync_id TEXT,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (event_id, person_id)
+);
+CREATE INDEX IF NOT EXISTS idx_event_person_links_event  ON event_person_links(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_person_links_person ON event_person_links(person_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_person_links_sync_id ON event_person_links(sync_id);
 `
 
 const phase1DistributedMergeMigration = `
@@ -314,34 +348,34 @@ WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_id');
 CREATE UNIQUE INDEX IF NOT EXISTS idx_soldiers_sync_id ON soldiers(sync_id);
 
 UPDATE records
-SET soldier_sync_id = (
+SET person_sync_id = (
     SELECT soldiers.sync_id
     FROM soldiers
-    WHERE soldiers.id = records.soldier_id
+    WHERE soldiers.id = records.person_record_id
 )
-WHERE soldier_sync_id IS NULL OR TRIM(soldier_sync_id) = '';
+WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = '';
 
 UPDATE records
 SET sync_id = ` + syncIDSQL + `
 WHERE sync_id IS NULL OR TRIM(sync_id) = '';
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_records_sync_id ON records(sync_id);
-CREATE INDEX IF NOT EXISTS idx_records_soldier_sync_id ON records(soldier_sync_id);
+CREATE INDEX IF NOT EXISTS idx_records_soldier_sync_id ON records(person_sync_id);
 
 UPDATE images
-SET soldier_sync_id = (
+SET person_sync_id = (
     SELECT soldiers.sync_id
     FROM soldiers
-    WHERE soldiers.id = images.soldier_id
+    WHERE soldiers.id = images.person_record_id
 )
-WHERE soldier_sync_id IS NULL OR TRIM(soldier_sync_id) = '';
+WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = '';
 
 UPDATE images
 SET sync_id = ` + syncIDSQL + `
 WHERE sync_id IS NULL OR TRIM(sync_id) = '';
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sync_id ON images(sync_id);
-CREATE INDEX IF NOT EXISTS idx_images_soldier_sync_id ON images(soldier_sync_id);
+CREATE INDEX IF NOT EXISTS idx_images_soldier_sync_id ON images(person_sync_id);
 `
 
 const phase2CanonicalDatesMigration = `
@@ -541,6 +575,15 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		query = `PRAGMA table_info(import_batches)`
 	case "duplicate_audit_findings":
 		query = `PRAGMA table_info(duplicate_audit_findings)`
+	// v60 (issue #320): scratchpad_cache + research_tasks are created
+	// by Block 14 (ensureSoldierFTS) and Block 4 (phase1) respectively;
+	// supporting them here lets the v60 RENAME COLUMN statements run
+	// idempotently on fresh installs (where the table already has
+	// person_record_id) without erroring.
+	case "scratchpad_cache":
+		query = `PRAGMA table_info(scratchpad_cache)`
+	case "research_tasks":
+		query = `PRAGMA table_info(research_tasks)`
 	default:
 		return false, fmt.Errorf("unsupported table for schema introspection: %s", table)
 	}
@@ -571,11 +614,11 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 func ensureSoldierFTS(tx *sql.Tx) error {
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS scratchpad_cache (
-			soldier_id INTEGER PRIMARY KEY REFERENCES soldiers(id) ON DELETE CASCADE,
+			person_record_id INTEGER PRIMARY KEY REFERENCES soldiers(id) ON DELETE CASCADE,
 			scratch_pad TEXT NOT NULL DEFAULT '',
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`DELETE FROM scratchpad_cache WHERE soldier_id NOT IN (SELECT id FROM soldiers)`,
+		`DELETE FROM scratchpad_cache WHERE person_record_id NOT IN (SELECT id FROM soldiers)`,
 		`DROP TRIGGER IF EXISTS soldiers_fts_ai`,
 		`DROP TRIGGER IF EXISTS soldiers_fts_au`,
 		`DROP TRIGGER IF EXISTS soldiers_fts_ad`,
@@ -584,7 +627,7 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 		`DROP TRIGGER IF EXISTS scratchpad_cache_ad`,
 		`DROP TABLE IF EXISTS soldiers_fts`,
 		`CREATE VIRTUAL TABLE soldiers_fts USING fts5(
-			soldier_id UNINDEXED,
+			person_record_id UNINDEXED,
 			display_id,
 			pension_id,
 			application_id,
@@ -609,37 +652,37 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 		)`,
 		`CREATE TRIGGER soldiers_fts_ai AFTER INSERT ON soldiers BEGIN
 			INSERT INTO soldiers_fts (
-				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
 				biography, notes, scratch_pad
 			) VALUES (
 				new.id, new.id, COALESCE(new.display_id, ''), COALESCE(new.pension_id, ''), COALESCE(new.application_id, ''), COALESCE(new.prefix, ''), COALESCE(new.first_name, ''),
 				COALESCE(new.middle_name, ''), COALESCE(new.last_name, ''), COALESCE(new.suffix, ''), COALESCE(new.unit, ''), COALESCE(new.rank, ''), COALESCE(new.rank_in, ''),
 				COALESCE(new.rank_out, ''), COALESCE(new.pension_state, ''), COALESCE(new.confederate_home_status, ''), COALESCE(new.confederate_home_name, ''), COALESCE(new.buried_in, ''),
-				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.biography, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
+				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.biography, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE person_record_id = new.id), '')
 			);
 		END`,
 		`CREATE TRIGGER soldiers_fts_au AFTER UPDATE ON soldiers BEGIN
 			DELETE FROM soldiers_fts WHERE rowid = old.id;
 			INSERT INTO soldiers_fts (
-				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
 				biography, notes, scratch_pad
 			) VALUES (
 				new.id, new.id, COALESCE(new.display_id, ''), COALESCE(new.pension_id, ''), COALESCE(new.application_id, ''), COALESCE(new.prefix, ''), COALESCE(new.first_name, ''),
 				COALESCE(new.middle_name, ''), COALESCE(new.last_name, ''), COALESCE(new.suffix, ''), COALESCE(new.unit, ''), COALESCE(new.rank, ''), COALESCE(new.rank_in, ''),
 				COALESCE(new.rank_out, ''), COALESCE(new.pension_state, ''), COALESCE(new.confederate_home_status, ''), COALESCE(new.confederate_home_name, ''), COALESCE(new.buried_in, ''),
-				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.biography, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE soldier_id = new.id), '')
+				COALESCE(new.maiden_name, ''), COALESCE(new.relationship_label, ''), COALESCE(new.biography, ''), COALESCE(new.notes, ''), COALESCE((SELECT scratch_pad FROM scratchpad_cache WHERE person_record_id = new.id), '')
 			);
 		END`,
 		`CREATE TRIGGER soldiers_fts_ad AFTER DELETE ON soldiers BEGIN
 			DELETE FROM soldiers_fts WHERE rowid = old.id;
-			DELETE FROM scratchpad_cache WHERE soldier_id = old.id;
+			DELETE FROM scratchpad_cache WHERE person_record_id = old.id;
 		END`,
 		`CREATE TRIGGER scratchpad_cache_ai AFTER INSERT ON scratchpad_cache BEGIN
-			DELETE FROM soldiers_fts WHERE rowid = new.soldier_id;
+			DELETE FROM soldiers_fts WHERE rowid = new.person_record_id;
 			INSERT INTO soldiers_fts (
-				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
 				biography, notes, scratch_pad
 			)
@@ -649,12 +692,12 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
 				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
 			FROM soldiers s
-			WHERE s.id = new.soldier_id;
+			WHERE s.id = new.person_record_id;
 		END`,
 		`CREATE TRIGGER scratchpad_cache_au AFTER UPDATE ON scratchpad_cache BEGIN
-			DELETE FROM soldiers_fts WHERE rowid = new.soldier_id;
+			DELETE FROM soldiers_fts WHERE rowid = new.person_record_id;
 			INSERT INTO soldiers_fts (
-				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
 				biography, notes, scratch_pad
 			)
@@ -664,12 +707,12 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
 				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(new.scratch_pad, '')
 			FROM soldiers s
-			WHERE s.id = new.soldier_id;
+			WHERE s.id = new.person_record_id;
 		END`,
 		`CREATE TRIGGER scratchpad_cache_ad AFTER DELETE ON scratchpad_cache BEGIN
-			DELETE FROM soldiers_fts WHERE rowid = old.soldier_id;
+			DELETE FROM soldiers_fts WHERE rowid = old.person_record_id;
 			INSERT INTO soldiers_fts (
-				rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+				rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 				unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
 				biography, notes, scratch_pad
 			)
@@ -679,10 +722,10 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 				COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
 				COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), ''
 			FROM soldiers s
-			WHERE s.id = old.soldier_id;
+			WHERE s.id = old.person_record_id;
 		END`,
 		`INSERT INTO soldiers_fts (
-			rowid, soldier_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
+			rowid, person_record_id, display_id, pension_id, application_id, prefix, first_name, middle_name, last_name, suffix,
 			unit, soldier_rank, rank_in_text, rank_out_text, pension_state, confederate_home_status, confederate_home_name, buried_in, maiden_name, relationship_label,
 			biography, notes, scratch_pad
 		)
@@ -692,7 +735,7 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 			COALESCE(s.rank_out, ''), COALESCE(s.pension_state, ''), COALESCE(s.confederate_home_status, ''), COALESCE(s.confederate_home_name, ''), COALESCE(s.buried_in, ''),
 			COALESCE(s.maiden_name, ''), COALESCE(s.relationship_label, ''), COALESCE(s.biography, ''), COALESCE(s.notes, ''), COALESCE(c.scratch_pad, '')
 		FROM soldiers s
-		LEFT JOIN scratchpad_cache c ON c.soldier_id = s.id`,
+		LEFT JOIN scratchpad_cache c ON c.person_record_id = s.id`,
 	}
 	for _, statement := range statements {
 		if _, err := tx.Exec(statement); err != nil {

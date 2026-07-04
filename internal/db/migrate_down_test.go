@@ -90,9 +90,12 @@ func TestApplyDownSchema_PartialReversibleStepDown(t *testing.T) {
 	}
 	defer database.Close()
 
-	// Every legal one-step DOWN from v59 must refuse because
-	// Block 17 (the most recent block) is Irreversible.
-	for target := 0; target < CurrentSchemaVersion; target++ {
+	// DOWN from v60 to v59 succeeds because Block 60
+	// (block-60-event-records-event-person-links-fk-rename) is
+	// PartiallyReversible. DOWN to any v < 59 must refuse because
+	// Block 17 (the Irreversible evidence_type rename) blocks any
+	// path crossing v55 → v54.
+	for target := 0; target < CurrentSchemaVersion-1; target++ {
 		err := applyDownSchema(database, target)
 		if !errors.Is(err, ErrDowngradeRefused) {
 			t.Errorf("applyDownSchema to v%d: err = %v, want ErrDowngradeRefused (every v<N<59 must refuse)", target, err)

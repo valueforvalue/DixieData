@@ -63,8 +63,8 @@ CREATE TABLE soldiers (
 CREATE TABLE records (
 	id              INTEGER PRIMARY KEY AUTOINCREMENT,
 	sync_id         TEXT,
-	soldier_id      INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
-	soldier_sync_id TEXT,
+	person_record_id      INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+	person_sync_id TEXT,
 	record_type     TEXT,
 	app_id          TEXT,
 	details         TEXT
@@ -73,8 +73,8 @@ CREATE TABLE records (
 CREATE TABLE images (
 	id              INTEGER PRIMARY KEY AUTOINCREMENT,
 	sync_id         TEXT,
-	soldier_id      INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
-	soldier_sync_id TEXT,
+	person_record_id      INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+	person_sync_id TEXT,
 	file_name       TEXT,
 	file_path       TEXT,
 	caption         TEXT,

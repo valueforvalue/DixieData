@@ -142,7 +142,7 @@ func GenerateGarbageDatabase(dataDir string, records int) (GarbageDatabaseSummar
 			return summary, err
 		}
 		if _, err := conn.Exec(
-			`INSERT INTO records (sync_id, soldier_id, soldier_sync_id, record_type, app_id, details) VALUES (?,?,?,?,?,?)`,
+			`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?,?,?,?,?,?)`,
 			recordSyncID,
 			soldierID,
 			syncID,
@@ -227,7 +227,7 @@ CREATE TABLE soldiers (
 );
 CREATE TABLE records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    soldier_id INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
+    person_record_id INTEGER REFERENCES soldiers(id) ON DELETE CASCADE,
     record_type TEXT,
     app_id TEXT,
     details TEXT
@@ -248,7 +248,7 @@ PRAGMA user_version = 1;
 	); err != nil {
 		t.Fatalf("Insert legacy soldier: %v", err)
 	}
-	if _, err := conn.Exec(`INSERT INTO records (soldier_id, record_type, app_id, details) VALUES (1, 'Roster', 'LEG-1', 'legacy record')`); err != nil {
+	if _, err := conn.Exec(`INSERT INTO records (person_record_id, record_type, app_id, details) VALUES (1, 'Roster', 'LEG-1', 'legacy record')`); err != nil {
 		t.Fatalf("Insert legacy record: %v", err)
 	}
 }
