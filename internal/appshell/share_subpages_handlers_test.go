@@ -22,9 +22,10 @@ import (
 // TestShareExportsSubpage_Renders asserts GET /share/exports
 // returns 200 and carries the section id + breadcrumb that
 // the locked decisions in #284 require. Also asserts the
-// Build Share Archive button stays on this page (the foldout
+// Open Share Queue link stays on this page (the foldout
 // collapses the 4-item menu to 3 items; Build moves into
-// the page).
+// the page). Updated issue #310: the link now navigates
+// to /share/queue rather than opening the Share Build modal.
 func TestShareExportsSubpage_Renders(t *testing.T) {
 	app := newTagTestApp(t)
 	server := httptest.NewServer(app)
@@ -42,17 +43,20 @@ func TestShareExportsSubpage_Renders(t *testing.T) {
 	content := string(body)
 
 	mustContain(t, content, []string{
-		`href="/share"`, // breadcrumb back to /share
-		"Share Exports", // page header
-		"Export & Backup",
-		"Export JSON",
+		`href="/share"`,      // breadcrumb back to /share
+		"Share Exports",      // page header
+		"Export & Backup",    // the section heading
+		"Export JSON",        // the whole-archive export
 		"Export Shared Archive (.ddshare)",
-		"Build Share Archive", // Build button stays on this page per locked decision
+		"Open Share Queue",   // the navigate-to-queue link (issue #310)
+		`href="/share/queue"`,  // the link target (issue #310)
 		"data-share-include-tags", // the include-tags checkbox
 	})
 	mustNotContain(t, content, []string{
 		"Import Shared Archive", // belongs to /share/imports
 		"Google Integration",     // belongs to /share/sync
+		"Build Share Archive",    // pre-#310 modal button (issue #310 removed it)
+		`data-share-queue-open="`, // pre-#310 modal trigger attribute (issue #310 removed it)
 	})
 }
 
