@@ -212,24 +212,27 @@ func EventList(events []models.Soldier, page, total int) templ.Component {
 // shape the Linked Person Records section renders. The
 // model.Soldier rows in the links are mapped via the existing
 // PersonRecordFromModel helper.
-func EventDetail(event *records.EventWithLinks) templ.Component {
+// EventDetail wraps templates.EventDetail. The links slice
+// (records.EventLink rows) is projected to the viewmodel shape
+// the Linked Person Records section renders. The tags slice is
+// pulled via a tag query so the section has chip data; the
+// Event's `Records` projection flows through PersonRecordFromModel.
+func EventDetail(tags []records.Tag, event *records.EventWithLinks) templ.Component {
 	linked := make([]viewmodel.PersonRecord, 0, len(event.Links))
 	for _, link := range event.Links {
-		// listForEvent returns the linked Person Records in
-		// display-ID order; the link table here carries the
-		// junction metadata (id, sync IDs) but the Linked
-		// Person Records section only needs the
-		// PersonRecord projection. Pull each linked Person by
-		// id via the listForEvent result if available, but
-		// for the v1 detail page the simplest projection is
-		// to keep the junction row itself: id + display_id +
-		// sync_id + created_at.
 		linked = append(linked, viewmodel.PersonRecord{
 			ID:        link.PersonID,
 			DisplayID: link.PersonDisplay,
 		})
 	}
-	return templates.EventDetail(viewmodel.PersonRecordFromModel(event.Event), linked)
+	vm := viewmodel.PersonRecordFromModel(event.Event)
+	if len(tags) > 0 {
+		vm.Tags = make([]viewmodel.TagOption, 0, len(tags))
+		for _, t := range tags {
+			vm.Tags = append(vm.Tags, viewmodel.TagOption{ID: t.ID, Name: t.Name})
+		}
+	}
+	return templates.EventDetail(vm, linked)
 }
 
 // EventForm wraps templates.EventForm. The handler builds the

@@ -156,7 +156,12 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", id), err)
 			return
 		}
-		presentation.EventDetail(event).Render(r.Context(), w)
+		tags, tagErr := a.events.ListTagsForEvent(id)
+		if tagErr != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", id), tagErr)
+			return
+		}
+		presentation.EventDetail(tags, event).Render(r.Context(), w)
 	case http.MethodPut:
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the event form.", err)
@@ -787,4 +792,103 @@ func (a *App) handleEventSourceDetach(w http.ResponseWriter, r *http.Request, ev
 	setToastHeader(w, "Success: source detached.")
 	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/sources", eventID))
 	fmt.Fprint(w, "Source detached.")
+}
+
+
+// handleEventTagsRoute is the chi route shim for
+// /events/{id}/tags and its sub-paths (issue #320 slice #333).
+// Mirrors the sources / research-log path-suffix dispatcher:
+// GET renders the fragment, POST adds (no tagId segment),
+// POST .../{tagId}/detach removes.
+func (a *App) handleEventTagsRoute(w http.ResponseWriter, r *http.Request) {
+	prefix := "/events/"
+	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
+	parts := strings.SplitN(trimmed, "/", 2)
+	if len(parts) < 2 || parts[1] == "" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	eventID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	suffix := parts[1]
+	switch r.Method {
+	case http.MethodGet:
+		a.handleEventTagsGet(w, r, eventID)
+	case http.MethodPost:
+		switch suffix {
+		case "tags":
+			a.handleEventTagAdd(w, r, eventID)
+		default:
+			if strings.HasPrefix(suffix, "tags/") && strings.HasSuffix(suffix, "/detach") {
+				mid := strings.TrimPrefix(suffix, "tags/")
+				mid = strings.TrimSuffix(mid, "/detach")
+				tagID, err := strconv.ParseInt(mid, 10, 64)
+				if err != nil {
+					respondValidation(w, r, "Invalid tag id.", err)
+					return
+				}
+				a.handleEventTagDetach(w, r, eventID, tagID)
+				return
+			}
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleEventTagsGet renders the Tags chip fragment for the Event.
+// Plain HTML chips + detach buttons; the form to add a new tag posts
+// back to the same path.
+func (a *App) handleEventTagsGet(w http.ResponseWriter, r *http.Request, eventID int64) {
+	tags, err := a.events.ListTagsForEvent(eventID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Tags for event record %d not found.", eventID), err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if len(tags) == 0 {
+		_, _ = fmt.Fprint(w, `<p class="text-xs text-slate-500">No tags attached yet.</p>`)
+		return
+	}
+	for _, tag := range tags {
+		_, _ = fmt.Fprintf(w, `<span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs"><span class="font-semibold">%s</span><button type="button" data-action="/events/%d/tags/%d/detach" data-dixie-submit="true" class="ghost-link text-slate-500 hover:text-red-700">&times;</button></span>`,
+			html.EscapeString(tag.Name), eventID, tag.ID)
+	}
+}
+
+// handleEventTagAdd attaches a tag id to the Event. The form posts
+// the tag id as a hidden field; the handler trusts the id after
+// validating it's positive.
+func (a *App) handleEventTagAdd(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the tag form.", err)
+		return
+	}
+	tagID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("tag_id")), 10, 64)
+	if err != nil || tagID < 1 {
+		respondValidation(w, r, "Invalid tag id.", err)
+		return
+	}
+	if err := a.events.AddTagToEvent(eventID, tagID); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not attach tag to event record %d.", eventID), err)
+		return
+	}
+	setToastHeader(w, "Success: tag attached.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/tags", eventID))
+	fmt.Fprint(w, "Tag attached.")
+}
+
+// handleEventTagDetach removes the tag binding from the Event.
+func (a *App) handleEventTagDetach(w http.ResponseWriter, r *http.Request, eventID, tagID int64) {
+	if err := a.events.DetachTagFromEvent(eventID, tagID); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not detach tag %d from event record %d.", tagID, eventID), err)
+		return
+	}
+	setToastHeader(w, "Success: tag detached.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d/tags", eventID))
+	fmt.Fprint(w, "Tag detached.")
 }

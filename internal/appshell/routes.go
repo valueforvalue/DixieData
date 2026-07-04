@@ -115,6 +115,12 @@ func (a *App) setupRoutes() {
 	r.Get("/events/{id:[0-9]+}/sources", a.handleEventSourcesRoute)
 	r.Post("/events/{id:[0-9]+}/sources/attach", a.handleEventSourcesRoute)
 	r.Post("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/detach", a.handleEventSourcesRoute)
+	// Issue #320 slice #333: per-Event Tags chips. The
+	// person_record_tags junction FKs soldiers(id) so the
+	// same table covers Events.
+	r.Get("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
+	r.Post("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
+	r.Post("/events/{id:[0-9]+}/tags/{tagId:[0-9]+}/detach", a.handleEventTagsRoute)
 	// Events tab. The /events sub-path on a Person Record
 	// page is dispatched from a dedicated route shim so
 	// the literal path wins over the generic
