@@ -11,6 +11,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -123,4 +124,380 @@ func newArticleServiceForTest(t *testing.T) *ArticleService {
 	t.Helper()
 	d := newTestDB(t)
 	return NewArticleService(NewSoldierService(d))
+}
+
+
+// createTestSoldierForArticles is a small helper for the
+// slice-2 tests that need a Person Record with a known
+// Display ID to attach as a ref. Returns the freshly-created
+// row's id. Creates with minimal fields so the call site
+// reads cleanly.
+func createTestSoldierForArticles(t *testing.T, svc *SoldierService, displayName string) int64 {
+	t.Helper()
+	row, err := svc.Create(models.Soldier{
+		FirstName: displayName,
+		LastName:  "Ref",
+		Rank:      "Private",
+		Unit:      "Test Unit",
+		DisplayID: displayName,
+	})
+	if err != nil {
+		t.Fatalf("Create soldier %q: %v", displayName, err)
+	}
+	return row.ID
+}
+
+// TestArticleService_ListRoundTrip pins the slice-2 List
+// contract: paginated, sorted updated_at desc, snapshot
+// rows excluded. Creates 3 articles in order; asserts
+// GetList returns them with the most-recently-edited first
+// after an Update touches one to bump its updated_at.
+func TestArticleService_ListRoundTrip(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	art1, _ := service.Create(models.Article{Title: "First"})
+	art2, _ := service.Create(models.Article{Title: "Second"})
+	art3, _ := service.Create(models.Article{Title: "Third"})
+
+	// Sleep so art1's Update lands on a strictly later
+	// second than the Create timestamps (RFC3339 has second
+	// resolution; without the gap the updated_at is the same
+	// as one of the inserts and the secondary id-DESC tiebreak
+	// would put art3, not art1, at index 0).
+	time.Sleep(1100 * time.Millisecond)
+
+	// Bump art1's updated_at so it returns FIRST (most-
+	// recently-edited) instead of LAST.
+	if err := service.Update(models.Article{ID: art1.ID, Title: "First (revised)", BodyMD: "revised"}); err != nil {
+		t.Fatalf("Update art1: %v", err)
+	}
+
+	rows, total, err := service.List(1, 10)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if total != 3 {
+		t.Errorf("total = %d, want 3", total)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("len(rows) = %d, want 3", len(rows))
+	}
+	if rows[0].ID != art1.ID {
+		t.Errorf("rows[0].ID = %d, want %d (art1 last-edited)", rows[0].ID, art1.ID)
+	}
+	if rows[1].ID != art3.ID || rows[2].ID != art2.ID {
+		t.Errorf("order drift: got [%d %d %d], want [%d %d %d]",
+			rows[1].ID, rows[2].ID, art3.ID, art2.ID,
+			rows[0].ID, art1.ID)
+	}
+}
+
+// TestArticleService_GetByDisplayIDRoundTrip pins the slice-2
+// lookup-by-display-id contract. Mints ART-00001 via Create
+// (without supplying a display id), then GetByDisplayID
+// finds it. Case-insensitive match.
+func TestArticleService_GetByDisplayIDRoundTrip(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	created, _ := service.Create(models.Article{Title: "Lookup target"})
+
+	for _, candidate := range []string{
+		"ART-00001",
+		"art-00001",
+		"Art-00001",
+		"  ART-00001  ",
+	} {
+		row, err := service.GetByDisplayID(candidate)
+		if err != nil {
+			t.Errorf("GetByDisplayID(%q): %v", candidate, err)
+			continue
+		}
+		if row.ID != created.ID {
+			t.Errorf("GetByDisplayID(%q).ID = %d, want %d", candidate, row.ID, created.ID)
+		}
+	}
+
+	if _, err := service.GetByDisplayID(""); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("GetByDisplayID(\"\") err = %v, want ErrArticleNotFound", err)
+	}
+	if _, err := service.GetByDisplayID("ART-99999"); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("GetByDisplayID(ART-99999) err = %v, want ErrArticleNotFound", err)
+	}
+}
+
+// TestArticleService_UpdateRoundTrip pins the slice-2 Update
+// contract: title + subtitle + body change; updated_at
+// advances; created_at is unchanged; snapshot rows are
+// rejected with ErrArticleSnapshot.
+func TestArticleService_UpdateRoundTrip(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	created, _ := service.Create(models.Article{
+		Title: "Original", Subtitle: "orig", BodyMD: "orig body",
+	})
+	origCreated := created.CreatedAt
+	origUpdated := created.UpdatedAt
+
+	// Force a 1s gap so UpdatedAt visibly changes (RFC3339
+	// only has second resolution).
+	time.Sleep(1100 * time.Millisecond)
+
+	updated, err := service.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID after Create: %v", err)
+	}
+	if updated.Title != "Original" {
+		t.Errorf("after Create Title = %q, want %q", updated.Title, "Original")
+	}
+	if updated.CreatedAt != origCreated {
+		t.Errorf("CreatedAt drift: got %q, want %q", updated.CreatedAt, origCreated)
+	}
+
+	if err := service.Update(models.Article{
+		ID:       created.ID,
+		Title:    "Revised",
+		Subtitle: "rev",
+		BodyMD:   "new body [Private](#person/D-00001)",
+	}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	readBack, _ := service.GetByID(created.ID)
+	if readBack.Title != "Revised" {
+		t.Errorf("after Update Title = %q, want %q", readBack.Title, "Revised")
+	}
+	if readBack.Subtitle != "rev" {
+		t.Errorf("after Update Subtitle = %q, want %q", readBack.Subtitle, "rev")
+	}
+	if !strings.Contains(readBack.BodyMD, "new body") {
+		t.Errorf("after Update BodyMD missing new content: %q", readBack.BodyMD)
+	}
+	if readBack.CreatedAt != origCreated {
+		t.Errorf("CreatedAt must not change on Update: got %q, want %q", readBack.CreatedAt, origCreated)
+	}
+	if readBack.UpdatedAt == origUpdated {
+		t.Errorf("UpdatedAt must advance on Update: still %q", readBack.UpdatedAt)
+	}
+
+	// Blank-title rejection.
+	if err := service.Update(models.Article{ID: created.ID, Title: ""}); !errors.Is(err, ErrArticleTitleRequired) {
+		t.Errorf("Update blank title err = %v, want ErrArticleTitleRequired", err)
+	}
+
+	// Unknown id -> ErrArticleNotFound.
+	if err := service.Update(models.Article{ID: 999999, Title: "x"}); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("Update unknown id err = %v, want ErrArticleNotFound", err)
+	}
+}
+
+// TestArticleService_DeleteRoundTrip pins the slice-2 Delete
+// contract. After Delete the row is gone (GetByID returns
+// ErrArticleNotFound); article_refs rows cascade via the FK
+// ON DELETE CASCADE constraint.
+func TestArticleService_DeleteRoundTrip(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	soldiers := NewSoldierService(service.soldiers.db)
+	personID := createTestSoldierForArticles(t, soldiers, "D-00001")
+	created, _ := service.Create(models.Article{Title: "To delete"})
+
+	if _, err := service.AttachRef(created.ID, personID); err != nil {
+		t.Fatalf("AttachRef: %v", err)
+	}
+	refs, _ := service.ScanRefs(created.ID)
+	if len(refs) != 1 {
+		t.Fatalf("before delete: ScanRefs len = %d, want 1", len(refs))
+	}
+
+	if err := service.Delete(created.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := service.GetByID(created.ID); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("GetByID after Delete err = %v, want ErrArticleNotFound", err)
+	}
+	// Cascade: refs gone.
+	refs, _ = service.ScanRefs(created.ID)
+	if len(refs) != 0 {
+		t.Errorf("after Delete: ScanRefs len = %d, want 0 (cascade)", len(refs))
+	}
+
+	// Idempotent-delete: a second Delete on the same id
+	// returns ErrArticleNotFound (the row is gone).
+	if err := service.Delete(created.ID); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("second Delete err = %v, want ErrArticleNotFound", err)
+	}
+
+	// Unknown id.
+	if err := service.Delete(999999); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("Delete unknown id err = %v, want ErrArticleNotFound", err)
+	}
+}
+
+// TestArticleService_AttachDetachRefRoundTrip pins the
+// slice-2 ref-row contract. AttachRef returns the new row
+// id; a second attach on the same pair is a no-op (returns
+// the existing row id); DetachRef removes the row; a
+// detach on a non-existent row is a no-op (no error).
+func TestArticleService_AttachDetachRefRoundTrip(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	soldiers := NewSoldierService(service.soldiers.db)
+	personID := createTestSoldierForArticles(t, soldiers, "D-00002")
+	article, _ := service.Create(models.Article{Title: "Attach target"})
+
+	id1, err := service.AttachRef(article.ID, personID)
+	if err != nil {
+		t.Fatalf("AttachRef first: %v", err)
+	}
+	if id1 < 1 {
+		t.Errorf("AttachRef first id = %d, want > 0", id1)
+	}
+
+	// Second attach on the same pair is a no-op but returns
+	// the existing row id.
+	id2, err := service.AttachRef(article.ID, personID)
+	if err != nil {
+		t.Fatalf("AttachRef second: %v", err)
+	}
+	if id2 != id1 {
+		t.Errorf("AttachRef second id = %d, want %d (no-op returns existing)", id2, id1)
+	}
+
+	refs, _ := service.ScanRefs(article.ID)
+	if len(refs) != 1 {
+		t.Errorf("ScanRefs len = %d, want 1 (duplicate attach is no-op)", len(refs))
+	}
+
+	if err := service.DetachRef(article.ID, personID); err != nil {
+		t.Fatalf("DetachRef: %v", err)
+	}
+	refs, _ = service.ScanRefs(article.ID)
+	if len(refs) != 0 {
+		t.Errorf("after Detach ScanRefs len = %d, want 0", len(refs))
+	}
+
+	// Idempotent: detach on a non-existent row is a no-op.
+	if err := service.DetachRef(article.ID, personID); err != nil {
+		t.Errorf("Detach non-existent err = %v, want nil", err)
+	}
+
+	// Missing article.
+	if _, err := service.AttachRef(999999, personID); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("AttachRef missing article err = %v, want ErrArticleNotFound", err)
+	}
+
+	// Missing person.
+	if _, err := service.AttachRef(article.ID, 999999); !errors.Is(err, ErrRefPersonNotFound) {
+		t.Errorf("AttachRef missing person err = %v, want ErrRefPersonNotFound", err)
+	}
+}
+
+// TestArticleService_ResolveRefs pins the slice-2 token
+// parser. Four sub-cases:
+//   - body has a known token -> resolved with PersonID + DisplayID
+//   - body has an unknown token -> not resolved; PersonID == 0
+//   - body has multiple tokens -> each appears once
+//   - body has zero tokens -> empty result, no error
+func TestArticleService_ResolveRefs(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	soldiers := NewSoldierService(service.soldiers.db)
+	// Create three Person Records with explicit display ids
+	// so the resolver can match the markdown tokens.
+	p1 := createTestSoldierForArticles(t, soldiers, "D-00001")
+	_ = createTestSoldierForArticles(t, soldiers, "D-00002")
+	_ = createTestSoldierForArticles(t, soldiers, "D-00003")
+
+	t.Run("known token resolves to PersonID + DisplayID", func(t *testing.T) {
+		art, err := service.Create(models.Article{
+			Title:  "R1",
+			BodyMD: "see [Private](#person/D-00001).",
+		})
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		resolved, err := service.ResolveRefs(art.ID)
+		if err != nil {
+			t.Fatalf("ResolveRefs: %v", err)
+		}
+		if len(resolved) != 1 {
+			t.Fatalf("resolved len = %d, want 1", len(resolved))
+		}
+		r := resolved[0]
+		if !r.Resolved {
+			t.Errorf("Resolved = false, want true")
+		}
+		if r.PersonRecordID != p1 {
+			t.Errorf("PersonRecordID = %d, want %d", r.PersonRecordID, p1)
+		}
+		if r.PersonDisplayID != "D-00001" {
+			t.Errorf("PersonDisplayID = %q, want D-00001", r.PersonDisplayID)
+		}
+		if r.Token != "D-00001" {
+			t.Errorf("Token = %q, want D-00001", r.Token)
+		}
+	})
+
+	t.Run("unknown token is fail-loud (Resolved=false)", func(t *testing.T) {
+		art, err := service.Create(models.Article{
+			Title:  "R2",
+			BodyMD: "[Unknown](#person/D-99999).",
+		})
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		resolved, err := service.ResolveRefs(art.ID)
+		if err != nil {
+			t.Fatalf("ResolveRefs: %v", err)
+		}
+		if len(resolved) != 1 {
+			t.Fatalf("resolved len = %d, want 1", len(resolved))
+		}
+		if resolved[0].Resolved {
+			t.Errorf("Resolved = true, want false (fail-loud)")
+		}
+		if resolved[0].PersonRecordID != 0 {
+			t.Errorf("PersonRecordID = %d, want 0", resolved[0].PersonRecordID)
+		}
+		if resolved[0].Token != "D-99999" {
+			t.Errorf("Token = %q, want D-99999", resolved[0].Token)
+		}
+	})
+
+	t.Run("multiple tokens each appear in source order", func(t *testing.T) {
+		art, err := service.Create(models.Article{
+			Title:  "R3",
+			BodyMD: "[A](#person/D-00001) and [B](#person/D-00003) and [C](#person/D-00002).",
+		})
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		resolved, err := service.ResolveRefs(art.ID)
+		if err != nil {
+			t.Fatalf("ResolveRefs: %v", err)
+		}
+		if len(resolved) != 3 {
+			t.Fatalf("resolved len = %d, want 3", len(resolved))
+		}
+		want := []string{"D-00001", "D-00003", "D-00002"}
+		for i, r := range resolved {
+			if r.Token != want[i] {
+				t.Errorf("resolved[%d].Token = %q, want %q", i, r.Token, want[i])
+			}
+			if !r.Resolved {
+				t.Errorf("resolved[%d] not resolved: %+v", i, r)
+			}
+		}
+	})
+
+	t.Run("body without tokens returns empty", func(t *testing.T) {
+		art, err := service.Create(models.Article{
+			Title:  "R4",
+			BodyMD: "No tokens here, just plain prose.",
+		})
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		resolved, err := service.ResolveRefs(art.ID)
+		if err != nil {
+			t.Fatalf("ResolveRefs: %v", err)
+		}
+		if len(resolved) != 0 {
+			t.Errorf("resolved len = %d, want 0", len(resolved))
+		}
+	})
 }

@@ -1,43 +1,33 @@
-// articles_handlers.go covers the slice-1 Article Record HTTP
-// handlers (issue #321 slice 1). The slice-1 surface is the
-// minimum needed to flip the RED test green:
+// articles_handlers.go covers the Article Record HTTP
+// handlers (issue #321). Slice 1 ships the minimum CRUD
+// surface (GET /articles, GET/POST /articles/new, GET/POST
+// /articles/{id}); slice 2 adds the ref attach / detach
+// surface so a picker modal (slice 3) can post here. Slice 2.5
+// adds Snapshot/Restore/Delete; slice 3 adds the editor +
+// picker; slice 4 adds the PDF / Static HTML / raw-md exports.
 //
-//   GET  /articles            -- list page (empty for slice 1;
-//                                pinned by future slice 2's
-//                                "list non-empty" test).
-//   GET  /articles/new        -- editor form page (slice 1: a
-//                                minimal form; slice 3 swaps in
-//                                the markdown source + sanitized
-//                                preview + local-draft-persistence
-//                                block).
-//   POST /articles/new        -- create handler. The headline slice-1
-//                                surface: form posts here, the
-//                                handler mints a Display ID via
-//                                ArticleService.Create, then writes
-//                                the X-DixieData-Redirect header
-//                                (per the #341 / Option C convention)
-//                                and returns 200 with an empty body.
-//                                The client JS then navigates to
-//                                /articles/{row-id}.
-//   GET  /articles/{id}       -- detail page. The slice-1 surface
-//                                renders the title + body verbatim
-//                                via the body_html column. Slice 3
-//                                adds the Refs panel + the
-//                                "Cited in" reverse-lookup.
-//   POST /articles/{id}       -- alias POST for any inline form
-//                                that posts back here (slice 3+).
+// Surface overview:
+//
+//   GET    /articles                            -- list page
+//   GET    /articles/new                        -- new-article editor
+//   POST   /articles/new                        -- create handler
+//   GET    /articles/{id}                       -- detail page
+//   POST   /articles/{id}                       -- alias POST alias
+//   POST   /articles/{id}/refs                  -- attach ref
+//   DELETE /articles/{id}/refs/{personId}       -- detach ref
 //
 // Slice 1 deliberately does NOT ship:
 //   - /articles/{id}/edit (slice 3)
-//   - /articles/{id}/refs/* (slice 3 picker)
+//   - picker modal (slice 3)
 //   - /articles/{id}/snapshot, /restore, /delete (slice 2.5)
-//   - /articles/{id}/pdf, /raw (slice 4 exports)
+//   - /articles/{id}/pdf, /raw (slice 4)
 package appshell
 
 import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
@@ -48,11 +38,18 @@ import (
 )
 
 // handleArticles serves GET /articles -- the list page.
-// slice 1 ships an empty-state placeholder; slice 2 fills
-// in the query + the per-row card list.
+// slice 1 shipped an empty-state placeholder; slice 2 fills
+// in the per-row card grid by querying ArticleService.List
+// and projecting through viewmodel.ArticlesFromModels.
 func (a *App) handleArticles(w http.ResponseWriter, r *http.Request) {
-	if err := presentation.ArticlesListShell().Render(r.Context(), w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	rows, _, err := a.articles.List(1, 100)
+	if err != nil {
+		respondInternal(w, r, "Could not list articles.", err)
+		return
+	}
+	view := viewmodel.ArticlesFromModels(rows)
+	if err := presentation.ArticlesListShell(view).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, "Could not render articles list.", err)
 	}
 }
 
@@ -165,4 +162,78 @@ func (a *App) showArticle(w http.ResponseWriter, r *http.Request, id int64) {
 	if err := presentation.ArticleDetailShell(view).Render(r.Context(), w); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not render article %d.", id), err)
 	}
+}
+
+
+// handleArticleRefsAttach serves POST /articles/{id}/refs.
+// The form posts a Person Record by Display ID (the picker
+// UI inserts the Display ID); the handler looks up the
+// person row via SoldierService.GetByDisplayID, then calls
+// ArticleService.AttachRef. Refs are user-managed duplicates
+// (the unique index idx_article_refs_article_person makes a
+// duplicate attach a no-op; the handler maps that to 200 +
+// X-DixieData-Redirect back to the detail page so a duplicate
+// UI click never surfaces a server error to the user).
+//
+// Slice 2 ships the bare POST handler so the API is
+// exercisable from smoke probes + handler tests; slice 3
+// adds the inline picker modal that pops the picker view
+// first, then posts here.
+func (a *App) handleArticleRefsAttach(w http.ResponseWriter, r *http.Request) {
+	articleID, err := parseIntFromPath(r.URL.Path, "/articles/", "/refs")
+	if err != nil || articleID < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the attach form.", err)
+		return
+	}
+	displayID := strings.TrimSpace(r.PostFormValue("display_id"))
+	if displayID == "" {
+		respondValidation(w, r, "Display ID is required.", nil)
+		return
+	}
+	person, err := a.soldiers.GetByDisplayID(displayID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Person Record %q not found.", displayID), err)
+		return
+	}
+	if _, err := a.articles.AttachRef(articleID, person.ID); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not attach %s to article %d.", displayID, articleID), err)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(articleID))
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleArticleRefsDetach serves DELETE /articles/{id}/refs/{personId}.
+// Idempotent: a detach on a non-existent row returns 200
+// (the article_refs row is already gone) rather than 404 so
+// a UI double-click is safe. The handler issues an
+// X-DixieData-Redirect back to the detail page so the JS
+// dispatcher can re-render the Refs panel.
+func (a *App) handleArticleRefsDetach(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/articles/")
+	parts := strings.SplitN(path, "/refs/", 2)
+	if len(parts) != 2 {
+		respondValidation(w, r, "Invalid article or person id in URL.", nil)
+		return
+	}
+	articleID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil || articleID < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	personID, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil || personID < 1 {
+		respondValidation(w, r, "Invalid person id.", err)
+		return
+	}
+	if err := a.articles.DetachRef(articleID, personID); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not detach person %d from article %d.", personID, articleID), err)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(articleID))
+	w.WriteHeader(http.StatusOK)
 }

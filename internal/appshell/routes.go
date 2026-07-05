@@ -85,6 +85,13 @@ func (a *App) setupRoutes() {
 	r.Post("/articles/new", a.handleNewArticle)
 	r.Get("/articles/{id:[0-9]+}", a.handleArticleByID)
 	r.Post("/articles/{id:[0-9]+}", a.handleArticleByID)
+	// v62 slice 2 (issue #321): ref attach/detach routes.
+	// Picker UI (slice 3) posts to /articles/{id}/refs; the
+	// inline Refs panel renders a Delete button that posts
+	// (via hx-delete) to /articles/{id}/refs/{personId}.
+	// Idempotent detach so a UI double-click is a no-op.
+	r.Post("/articles/{id:[0-9]+}/refs", a.handleArticleRefsAttach)
+	r.Delete("/articles/{id:[0-9]+}/refs/{personId:[0-9]+}", a.handleArticleRefsDetach)
 	// v60 (issue #320): Event Record routes. Registered
 	// before the /soldiers/* catch-all so the literal /events
 	// prefix matches first. The /events/{id:[0-9]+}/edit

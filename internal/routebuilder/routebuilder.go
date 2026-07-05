@@ -449,6 +449,22 @@ func ArticleByID(id int64) string {
 	return fmt.Sprintf("/articles/%d", id)
 }
 
+// ArticleRefsAttach (issue #321 slice 2) returns the URL for
+// the per-Article ref-attach form. Registered as POST
+// /articles/{id}/refs in routes.go. Caller appends the
+// {id} segment.
+func ArticleRefsAttach(id int64) string {
+	return fmt.Sprintf("/articles/%d/refs", id)
+}
+
+// ArticleRefsDetach (issue #321 slice 2) returns the URL for
+// the per-Article per-ref detach form. Registered as DELETE
+// /articles/{id}/refs/{personId} in routes.go. Mirrors
+// ArticleLinksDetach / EventTagDetach's argument list.
+func ArticleRefsDetach(id, personId int64) string {
+	return fmt.Sprintf("/articles/%d/refs/%d", id, personId)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {

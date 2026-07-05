@@ -44,6 +44,39 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestGetArticleByIDRoundTrip` + `TestGetArticleByID_NotFound`.
   27-package test suite green; orphan-handler probe exit 0.
 
+- **Article Records full CRUD + ref-resolution + ref attach/detach** (issue
+  #321 slice 2). Closes the slice-2 surface that issue #321's stub promised
+  but did not detail. Adds `ArticleService.List` (paginated, sorted
+  `updated_at DESC, id DESC` so ties within the same second stay stable),
+  `GetByDisplayID` (case-insensitive, mirrors `SoldierService.GetByDisplayID`),
+  `Update` (mutates `title`/`subtitle`/`body_md`/`body_html`, stamps
+  `updated_at`, rejects blank titles + snapshots with `ErrArticleTitleRequired`
+  / `ErrArticleSnapshot`), `Delete` (cascades via FK `ON DELETE CASCADE` to
+  `article_refs`, returns `ErrArticleNotFound` for unknown ids and
+  `ErrArticleSnapshot` for snapshot rows), `ScanRefs`, `AttachRef` /
+  `DetachRef` (idempotent — duplicate attach is a no-op via the new
+  `idx_article_refs_article_person` UNIQUE index, duplicate detach returns
+  nil), and `ResolveRefs` (a minimal `\(\#person/D-00123\)` regex tokenizer
+  that drives the Cite-in reverse-lookup + the future PDF / Static-HTML
+  renderer's fail-loud `⚠ [Unknown: D-...]` warning per locked decision #6).
+  Adds two new routes: `POST /articles/{id}/refs` (picker-driven attach;
+  the handler maps a duplicate attach to 200 + `X-DixieData-Redirect` so
+  a UI double-click never surfaces a server error) and `DELETE
+  /articles/{id}/refs/{personId}` (idempotent detach). Adds
+  `routebuilder.ArticleRefsAttach` + `ArticleRefsDetach` helpers. Updates
+  the `GET /articles` list page to render the per-row card grid (the
+  slice-1 empty-state placeholder was deliberate, slice 2 fills it in).
+  Pinned by `TestArticleService_ListRoundTrip` +
+  `TestArticleService_GetByDisplayIDRoundTrip` +
+  `TestArticleService_UpdateRoundTrip` +
+  `TestArticleService_DeleteRoundTrip` +
+  `TestArticleService_AttachDetachRefRoundTrip` +
+  `TestArticleService_ResolveRefs` (4 sub-cases) +
+  `TestHandleArticlesListRendersArticles` +
+  `TestHandleArticleByIDNotFound` +
+  `TestHandleArticleRefsAttachDetach`. 27-package test suite green;
+  orphan-handler probe exit 0 (7 article routes registered, 0 orphans).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to
