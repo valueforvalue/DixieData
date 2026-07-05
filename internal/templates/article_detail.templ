@@ -35,7 +35,7 @@ templ ArticleDetailShell(view viewmodel.Article) {
 				if view.Subtitle != "" {
 					<p class="text-lg text-slate-600" data-article-subtitle>{ view.Subtitle }</p>
 				}
-				<div class="whitespace-pre-line text-sm leading-relaxed text-[color:var(--ink)]" data-article-body>{ view.Body }</div>
+				<div class="prose prose-sm max-w-none text-sm leading-relaxed text-[color:var(--ink)]" data-article-body>@templ.Raw(view.Body)</div>
 				if len(view.ResolvedRefs) > 0 {
 					<div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600" data-article-resolved-refs>
 						<p class="mb-2 font-semibold uppercase tracking-[0.18em] text-slate-500">Cited Person Records</p>

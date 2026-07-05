@@ -1,33 +1,67 @@
-// article_new.templ — v62 (issue #321 slice 1) new-Article form
-// shell. slice 1 ships the minimum form (title + subtitle + body)
-// so the slice-1 RED test (TestHandleArticleCRUD_RoundTrip) can
-// POST and assert the X-DixieData-Redirect + detail-page round
-// trip.
+// article_new.templ — v62 (issue #321 slice 1 + slice 3.6)
+// new-Article form. Slice 1 shipped the minimum form
+// (title + subtitle + body); slice 3.6 swaps the body
+// textarea for the markdown editor + sanitized live preview
+// + local-draft-persistence block.
 //
-// slice 3 will replace the body textarea with the full markdown
-// editor + sanitized preview + local-draft-persistence block
-// (mirroring entry_form.templ:40-105). slice 1 deliberately
-// stays minimal so the test contract is the title + body round
-// trip; the editor UX work belongs with slice 3.
+// The slice-3.6 surface uses the same data-draft-key +
+// data-record-persistence attrs as entry_form.templ so the
+// JS initializeDraftForms() helper auto-wires the
+// localStorage persistence without per-form JS.
 package templates
 
-import "github.com/valueforvalue/DixieData/internal/routebuilder"
+import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
 
 templ ArticleNewShell() {
-	@Layout("New Article") {
-		<div class="relative mx-auto max-w-4xl">
+	@ArticleArticleForm(viewmodel.Article{}, false)
+}
+
+// ArticleArticleForm renders the markdown editor for either
+// the create (isEdit=false) or the edit (isEdit=true) path.
+// The form carries the slice-3.6 local-draft-persistence
+// attrs so the JS auto-wire picks it up.
+//
+// The markdown editor is a 2-pane layout: source on the
+// left, sanitized preview on the right. The preview updates
+// live on every keystroke (250ms debounce via the JS
+// markdown-preview helper added in slice 3.6).
+templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
+	@Layout(articleFormTitle(article, isEdit)) {
+		<div class="relative mx-auto max-w-6xl">
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">New Article</h1>
-				<a
-					href={ templ.SafeURL(routebuilder.ArticleList()) }
-					class="secondary-button"
-				>← Back to Articles</a>
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">{ articleFormTitle(article, isEdit) }</h1>
+				@components.Button("← Back", components.ButtonSecondary, "", templ.Attributes{
+					"data-action":       templ.SafeURL(routebuilder.ArticleList()),
+					"data-method":       "GET",
+					"data-dixie-submit": "true",
+				})
 			</div>
 			<form
-				action={ templ.SafeURL(routebuilder.ArticleNew()) }
+				action={ articleFormAction(article, isEdit) }
 				method="post"
 				class="card rounded-3xl p-5 sm:p-8 space-y-5"
+				data-dixie-submit="true"
+				data-draft-key={ articleDraftKey(article, isEdit) }
+				data-draft-record-version={ articleDraftRecordVersion(article, isEdit) }
+				data-record-persistence-kind={ articleDraftMode(isEdit) }
+				data-draft-reset-path={ articleDraftResetPath(article, isEdit) }
+				enctype="multipart/form-data"
 			>
+				<div data-record-persistence data-record-persistence-kind={ articleDraftMode(isEdit) } class={ articleRecordPersistenceClass(isEdit) }>
+					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<strong class="font-semibold" data-record-persistence-heading>{ articleRecordPersistenceHeading(isEdit) }</strong>
+							<span class="ml-2" data-record-persistence-message>{ articleRecordPersistenceMessage(isEdit) }</span>
+						</div>
+						<div class="flex flex-col items-stretch gap-2 sm:items-end">
+							<button type="button" class="secondary-button hidden whitespace-nowrap" data-clear-draft-trigger="base">Delete saved local draft</button>
+						</div>
+					</div>
+				</div>
 				<div>
 					<label for="article-title" class="block text-sm font-semibold text-[color:var(--ink)]">Title</label>
 					<input
@@ -37,6 +71,7 @@ templ ArticleNewShell() {
 						required
 						class="field-input mt-1 w-full"
 						placeholder="e.g. 21st Mississippi at Gettysburg"
+						value={ article.Title }
 					/>
 				</div>
 				<div>
@@ -47,25 +82,56 @@ templ ArticleNewShell() {
 						name="subtitle"
 						class="field-input mt-1 w-full"
 						placeholder="optional"
+						value={ article.Subtitle }
 					/>
 				</div>
-				<div>
-					<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body</label>
-					<textarea
-						id="article-body"
-						name="body"
-						rows="12"
-						class="field-input mt-1 w-full font-mono text-sm"
-						placeholder="Write your article in Markdown. Inline Person Record references use [Name](#person/D-00123) -- the picker is coming in a later slice."
-					></textarea>
+				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					<div>
+						<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body (Markdown)</label>
+						<textarea
+							id="article-body"
+							name="body"
+							rows="20"
+							class="field-input mt-1 w-full font-mono text-sm"
+							placeholder="Write your article in Markdown. Use [Name](#person/D-00123) for Person Record references."
+							data-article-editor-source
+						>{ article.BodyMD }</textarea>
+						<p class="mt-1 text-xs text-slate-500">Markdown syntax supported. Raw HTML is stripped at save time for safety.</p>
+					</div>
+					<div>
+						<p class="block text-sm font-semibold text-[color:var(--ink)]">Live preview</p>
+						<div
+							id="article-body-preview"
+							class="prose prose-sm mt-1 min-h-[24rem] w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-[color:var(--ink)]"
+							data-article-editor-preview
+							data-article-editor-preview-source-id="article-body"
+						>If you write Markdown in the source panel, the rendered preview appears here. Updates live (250ms debounce).</div>
+					</div>
 				</div>
 				<div class="flex flex-wrap justify-end gap-3">
-					<button
-						type="submit"
-						class="primary-button"
-					>Save Article</button>
+					@components.Button("Save Article", components.ButtonPrimary, "", templ.Attributes{
+						"type": "submit",
+					})
 				</div>
 			</form>
 		</div>
 	}
+}
+
+// articleFormTitle returns the page title for the form.
+// Mirrors entry_form_helpers.go:18-25 (formTitle).
+func articleFormTitle(article viewmodel.Article, isEdit bool) string {
+	if isEdit {
+		return "Edit Article"
+	}
+	return "New Article"
+}
+
+// articleFormAction returns the form action URL. Mirrors
+// entry_form.templ:36-44 (form action).
+func articleFormAction(article viewmodel.Article, isEdit bool) templ.SafeURL {
+	if isEdit {
+		return templ.SafeURL(routebuilder.ArticleEdit(article.ID))
+	}
+	return templ.SafeURL(routebuilder.ArticleNew())
 }

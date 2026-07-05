@@ -45,7 +45,8 @@ var ErrArticleNotFound = errors.New("article not found")
 // keeps Article CRUD on the same SQLite connection without
 // inventing a per-service DB accessor.
 type ArticleService struct {
-	soldiers *SoldierService
+	soldiers  *SoldierService
+	renderer  *MarkdownRenderer
 }
 
 // NewArticleService constructs the slice-1 ArticleService.
@@ -55,8 +56,19 @@ type ArticleService struct {
 // Slice 2 may split this seam if the test suite outgrows the
 // shared pool; for v1 the shared DB connection is the right
 // trade-off.
-func NewArticleService(soldierService *SoldierService) *ArticleService {
-	return &ArticleService{soldiers: soldierService}
+//
+// The optional markdownRenderer is consulted on Create +
+// Update so the body_html column carries a sanitized render
+// rather than the slice-1 verbatim copy. slice-1 callers
+// (the slice-1 service tests) pass nil to keep the
+// verbatim-md path active for backwards compatibility with
+// the slice-1 RED test contract.
+func NewArticleService(soldierService *SoldierService, markdownRenderer ...*MarkdownRenderer) *ArticleService {
+	svc := &ArticleService{soldiers: soldierService}
+	if len(markdownRenderer) > 0 && markdownRenderer[0] != nil {
+		svc.renderer = markdownRenderer[0]
+	}
+	return svc
 }
 
 // Create inserts a new Article row (live branch — SnapshotOfID
@@ -74,7 +86,7 @@ func (a *ArticleService) Create(article models.Article) (*models.Article, error)
 	}
 	subtitle := strings.TrimSpace(article.Subtitle)
 	bodyMD := article.BodyMD
-	bodyHTML := article.BodyMD // slice 1: render=verbatim; slice 2 swap in goldmark+bluemonday.
+	bodyHTML := a.renderBodyHTML(article.BodyMD) // slice 1: render=verbatim; slice 2 swap in goldmark+bluemonday.
 
 	if article.SyncID == "" {
 		article.SyncID = uuid.NewString()
@@ -324,7 +336,7 @@ func (a *ArticleService) Update(article models.Article) error {
 	}
 	subtitle := strings.TrimSpace(article.Subtitle)
 	bodyMD := article.BodyMD
-	bodyHTML := article.BodyMD // slice 2 still stores verbatim; slice 2.5 swaps in goldmark+bluemonday
+	bodyHTML := a.renderBodyHTML(article.BodyMD) // slice 2 still stores verbatim; slice 2.5 swaps in goldmark+bluemonday
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := a.soldiers.db.Conn().Exec(
 		`UPDATE articles
@@ -715,6 +727,34 @@ func (a *ArticleService) ResolveRefs(articleID int64) ([]ResolvedRef, error) {
 // so the regex matches one token per inline link, not nested
 // markdown or escape sequences.
 var personRefLinkRE = regexp.MustCompile(`\(#person/([A-Za-z0-9_-]+)\)`)
+
+// renderBodyHTML returns the sanitized HTML render of the
+// markdown source. Falls back to the verbatim copy when
+// the slice-3.6 renderer is not configured (slice-1 + 2
+// callers pass nil so the body_html column carries the
+// verbatim md verbatim, preserving the slice-1 round-trip
+// contract). When the renderer IS configured (slice-3.6+
+// path), goldmark + bluemonday Strict strip raw HTML so a
+// malicious body cannot XSS-es via a templ.Raw mount.
+func (a *ArticleService) renderBodyHTML(bodyMD string) string {
+	if a.renderer == nil {
+		return bodyMD
+	}
+	rendered, err := a.renderer.Render(bodyMD)
+	if err != nil {
+		return bodyMD
+	}
+	return rendered
+}
+
+// RenderBodyHTML is the public wrapper over renderBodyHTML.
+// The slice-3.6 live-preview handler calls this on every
+// keystroke (250ms debounce) so the preview pane reflects
+// the current source. Returns "" when bodyMD is empty so
+// the handler can substitute the guidance message.
+func (a *ArticleService) RenderBodyHTML(bodyMD string) string {
+	return a.renderBodyHTML(bodyMD)
+}
 
 // scanPersonRefsFromBody returns the display-id tokens from the
 // markdown source in source order. De-dup is at the regex

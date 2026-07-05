@@ -26,6 +26,7 @@ type Article struct {
 	Title          string
 	Subtitle       string
 	Body           string // slice-1: verbatim md; slice 2: sanitized HTML
+	BodyMD         string // slice-3.6: the raw markdown source (for the editor's source panel)
 	CreatedAt      string
 	UpdatedAt      string
 	BackLinkURL    string
@@ -84,6 +85,7 @@ func ArticleFromModel(input models.Article) Article {
 		Title:         input.Title,
 		Subtitle:      input.Subtitle,
 		Body:          body,
+		BodyMD:        input.BodyMD,
 		CreatedAt:     input.CreatedAt,
 		UpdatedAt:     input.UpdatedAt,
 	}

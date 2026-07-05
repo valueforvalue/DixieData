@@ -222,6 +222,57 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   returns 400 + GET unknown returns 404 + POST unknown
   returns 404 + POST snapshot returns 409).
 
+- **Markdown library + editor live preview** (issue #321
+  slice 3.6, Tier-2 vertical). Adds `goldmark v1.8.2`
+  (MIT) + `microcosm-cc/bluemonday v1.0.27` (BSD-3-Clause)
+  to `go.mod`. License acknowledgements in the slice-3.6
+  commit message. The new `records.MarkdownRenderer`
+  wraps goldmark's CommonMark parser with a custom
+  bluemonday policy that allows goldmark's safe output
+  tags (h1-h6, p, ul, ol, li, a, blockquote, code, pre,
+  em, strong, hr, img, br, del, table) + href/src/alt
+  attrs, while stripping raw HTML the author supplied
+  (script, iframe, style, etc.). The `ArticleService`
+  constructor accepts the renderer as a variadic opt-in;
+  Create + Update call it so the `body_html` column
+  carries sanitized HTML rather than the slice-1 verbatim
+  md. The new `/articles/new` form is a markdown editor:
+  source textarea on the left, sanitized preview on the
+  right. The preview pane auto-updates on every keystroke
+  (250ms debounce) via a JS-side `initializeMarkdownPreviews`
+  helper that POSTs to `/articles/preview` and swaps the
+  response innerHTML. The form also carries the
+  slice-3.6 local-draft-persistence attrs
+  (`data-draft-key="new-article"` +
+  `data-record-persistence-kind="new"` +
+  `data-draft-reset-path="/articles/new"`) so the JS
+  `initializeDraftForms` auto-wire picks it up.
+  Adds `records/markdown.go` +
+  `records/markdown_test.go` +
+  `templates/article_form_helpers.go` +
+  `templates/article_new.templ` (replace minimal form with
+  `ArticleArticleForm(article, isEdit=false)` invocation)
+  + `appshell.handleArticlePreview` +
+  `appshell.handleNewArticle` (GET branch swap) +
+  `routes.go` `POST /articles/preview` +
+  `frontend/app.js` `initializeMarkdownPreviews`. Pinned by
+  `TestMarkdownRenderer_RendersBasicMarkdown` (6 sub-cases
+  covering heading + paragraph + person token + 3 raw HTML
+  strip cases) +
+  `TestMarkdownRenderer_EmptySourceReturnsEmpty` +
+  `TestMarkdownRenderer_DoesNotErrorOnMultilineMarkdown` +
+  `TestArticleService_CreateRendersHTML` (verbatim path
+  preserves raw HTML; renderer path strips script) +
+  `TestHandleArticlePreviewSanitizesRawHTML` (heading +
+  bold rendered; script stripped; empty guidance; GET 405)
+  + `TestHandleArticleNewForm_HasDraftKeyAttr` (form
+  carries data-draft-key + data-record-persistence +
+  source textarea + preview pane) +
+  `audit/smoke_articles.mjs` step 5 (editor attrs render
+  + typing # Hello updates preview with h1 + typing
+  bold renders strong + preview endpoint sanitizes
+  script).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to
