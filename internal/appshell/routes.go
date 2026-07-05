@@ -121,6 +121,15 @@ func (a *App) setupRoutes() {
 	r.Get("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
 	r.Post("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
 	r.Post("/events/{id:[0-9]+}/tags/{tagId:[0-9]+}/detach", a.handleEventTagsRoute)
+	// Issue #320 child #332 (slot 16 of 16): per-Event images
+	// gallery. GET returns the fragment (lazy-load + post-action
+	// swap target); POST /import opens the native file picker
+	// and enqueues an image_import job; POST /delete re-renders
+	// the fragment in place (no X-DixieData-Redirect, per issue
+	// #341).
+	r.Get("/events/{id:[0-9]+}/images", a.handleEventImagesRoute)
+	r.Post("/events/{id:[0-9]+}/images/import", a.handleEventImagesRoute)
+	r.Post("/events/{id:[0-9]+}/images/delete", a.handleEventImagesRoute)
 	// Events tab. The /events sub-path on a Person Record
 	// page is dispatched from a dedicated route shim so
 	// the literal path wins over the generic

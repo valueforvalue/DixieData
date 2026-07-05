@@ -1,17 +1,19 @@
 // Event Record panel fragments (issue #320 follow-up, issue
-// #341). The Sources and Tags chips sections on
-// event_detail.templ are swapped in-place by the JS dispatcher
-// when the user attaches / detaches. To keep the page render
-// and the fragment-return render in lock-step, both contexts
-// call the helpers in this file.
+// #341, issue #320 child #332). The Sources, Tags, and Images
+// sections on event_detail.templ are swapped in-place by the
+// JS dispatcher when the user attaches / detaches / imports /
+// deletes. To keep the page render and the fragment-return
+// render in lock-step, both contexts call the helpers in this
+// file.
 //
-// The helpers accept viewmodel.SourceRecord and
-// viewmodel.TagOption slices plus the parent event id so the
-// detach URLs are constructed the same way. The handlers in
+// The helpers accept viewmodel.SourceRecord, viewmodel.TagOption,
+// and viewmodel.Image slices plus the parent event id so the
+// action URLs are constructed the same way. The handlers in
 // internal/appshell/events_handlers.go Render these helpers
-// after each write (attach / detach) and write the resulting
-// HTML into the matching #data-event-sources-list /
-// #data-event-tags-list div via data-results-target.
+// after each write (attach / detach / delete) and write the
+// resulting HTML into the matching #data-event-sources-list /
+// #data-event-tags-list / #data-event-images-list div via
+// data-results-target.
 //
 // Style mirrors event_detail.templ exactly so the swap is
 // visually identical to the initial page render.
@@ -68,6 +70,49 @@ templ EventTagsListFragment(eventID int64, tags []viewmodel.TagOption) {
 						class="ghost-link text-slate-500 hover:text-red-700"
 					>&times;</button>
 				</span>
+			}
+		</div>
+	}
+}
+
+// EventImagesListFragment (issue #320 child #332, slot 16 of 16)
+// renders the per-Event Images gallery (grid of cards or empty
+// state) for both the initial page render on event_detail.templ
+// and the post-delete fragment swap. Each card carries the
+// thumbnail (via the existing imageURL helper), the caption,
+// the file name, and a delete button posting to
+// /events/{id}/images/delete with the image_id; the delete
+// button's data-results-target keeps the next render in lock
+// step with the initial page render (no X-DixieData-Redirect,
+// per issue #341). Storage path is the same sharded
+// images/<A>/<B>/EVT-NNNNN/ layout the v60 widening enabled
+// for every Person Record subtype.
+templ EventImagesListFragment(eventID int64, images []viewmodel.Image) {
+	if len(images) == 0 {
+		@components.EmptyState("No images are attached", "Use the Add Images From Computer button below to import one or more files with the desktop file picker.", "")
+	} else {
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			for _, img := range images {
+				<div data-image-card data-image-id={ fmt.Sprintf("%d", img.ID) } class="card rounded-2xl p-3">
+					<div class="mb-3 flex flex-wrap items-start justify-between gap-2">
+						<span class="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Image</span>
+						<form
+							action={ templ.SafeURL(fmt.Sprintf("/events/%d/images/delete", eventID)) }
+							method="post"
+							data-dixie-submit="true"
+							data-confirm="Delete this image?"
+							data-results-target="#data-event-images-list"
+							class="inline"
+						>
+							<input type="hidden" name="image_ids" value={ fmt.Sprintf("%d", img.ID) }/>
+							<button type="submit" class="pill-link">Delete</button>
+						</form>
+					</div>
+					<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ imageAltText(img.Caption, fmt.Sprintf("EVT-%s", img.PersonRecordSyncID)) }
+						class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
+					<div class="text-sm gold font-medium">{ img.Caption }</div>
+					<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
+				</div>
 			}
 		</div>
 	}

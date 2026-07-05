@@ -536,11 +536,30 @@ func EventEdit(id int64) string {
 	return fmt.Sprintf("/events/%d/edit", id)
 }
 
-// EventImagesDelete returns the URL for the image-delete form
-// target on an Event. Registered as DELETE /events/{id}/images
-// in routes.go.
-func EventImagesDelete(id int64) string {
-	return fmt.Sprintf("/events/%d/images", id)
+// EventImages returns the URL for the per-Event images gallery
+// fragment. Registered as GET /events/{id}/images in routes.go.
+// The fragment is the lazy-load + post-action swap target on
+// event_detail.templ (mirrors EventSources / EventTags shape).
+func EventImages(eventID int64) string {
+	return fmt.Sprintf("/events/%d/images", eventID)
+}
+
+// EventImagesImport returns the URL for the native-dialog image
+// import action on an Event. Registered as POST
+// /events/{id}/images/import in routes.go. The handler enqueues
+// an image_import background job (mirrors the Person Record
+// /soldiers/{id}/images/import path).
+func EventImagesImport(eventID int64) string {
+	return fmt.Sprintf("/events/%d/images/import", eventID)
+}
+
+// EventImagesDelete returns the URL for the per-Event bulk image
+// delete action. Registered as POST /events/{id}/images/delete
+// in routes.go. The handler takes an image_ids[] form field and
+// re-renders the images fragment in place (no
+// X-DixieData-Redirect, per issue #341).
+func EventImagesDelete(eventID int64) string {
+	return fmt.Sprintf("/events/%d/images/delete", eventID)
 }
 
 // EventPDF returns the URL for the per-Event PDF export.

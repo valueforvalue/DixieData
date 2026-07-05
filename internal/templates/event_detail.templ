@@ -142,6 +142,22 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 						@EventTagsListFragment(event.ID, event.Tags)
 					</div>
 				</section>
+				<section class="relative mt-6">
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
+						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.Images)) }</span>
+					</div>
+					<div id="data-event-images-list">
+						@EventImagesListFragment(event.ID, event.Images)
+					</div>
+					<div class="mt-4 flex flex-wrap gap-2">
+						@components.Button("Add Images From Computer", components.ButtonPrimary, "", templ.Attributes{
+							"data-action": templ.SafeURL(fmt.Sprintf("/events/%d/images/import", event.ID)),
+							"data-dixie-submit": "true",
+							"data-progress-label": "Importing images\u2026",
+						})
+					</div>
+				</section>
 			</div>
 		</div>
 	}
