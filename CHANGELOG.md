@@ -11,6 +11,17 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- **smoke_events.mjs cleanup** (issue #320 child #323 follow-up).
+  Steps 7 / 8 / 9 contained defensive re-navigation to
+  `/soldiers/{id}/events` after every tab-form POST because the
+  underlying handler bug (#345) was forcing the user away. With
+  the handler now redirecting correctly, the re-navigation
+  became a no-op — replaced with a single `if (!url.endsWith)`
+  guard that absorbs any future drift without re-navigating on
+  the happy path.
+
 ### Fixed
 
 - **Event PDF export silently produced a 0-byte file in web-mode**
