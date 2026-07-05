@@ -1608,6 +1608,10 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	if err != nil {
 		return err
 	}
+	articles, err := e.staticArchiveArticles()
+	if err != nil {
+		return err
+	}
 
 	exportRoot, err := os.MkdirTemp("", "dixiedata-static-archive-*")
 	if err != nil {
@@ -1623,13 +1627,16 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	// so the embedded JS index can render an Events tab without
 	// crashing on the existing per-Person card shape. Both arrays
 	// marshal in insertion order; events stay sorted by DisplayID
-	// via staticArchiveEvents.
+	// via staticArchiveEvents. Issue #321 slice 5.3 adds the
+	// articles array so the JS index can render an Articles tab.
 	bundle := struct {
-		Records []StaticArchiveRecord `json:"records"`
-		Events  []StaticArchiveRecord `json:"events"`
+		Records  []StaticArchiveRecord `json:"records"`
+		Events   []StaticArchiveRecord `json:"events"`
+		Articles []StaticArchiveRecord `json:"articles"`
 	}{
-		Records: records,
-		Events:  events,
+		Records:  records,
+		Events:   events,
+		Articles: articles,
 	}
 	dataPayload, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {

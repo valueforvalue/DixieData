@@ -162,9 +162,9 @@ In execution order inside the `applySchema` transaction.
 - **Classification:** **Bookkeeping** (not a migration block; this is the gate itself)
 - **DOWN inverse:** `PRAGMA user_version = <target>` + `DELETE FROM schema_version WHERE version > ?`
 
-## Per-version summary (v52 - v59)
+## Per-version summary (v52 - v62)
 
-Mapped against `docs/migrations/v52.md` through `v59.md`.
+Mapped against `docs/migrations/v52.md` through `v62.md`.
 
 | Version | Doc claim | SQL effect | Classification |
 |---|---|---|---|
@@ -174,6 +174,18 @@ Mapped against `docs/migrations/v52.md` through `v59.md`.
 | **v55** | Add CHECK (entry_type IN ('soldier','wife','widow','linked_person')) to soldiers.entry_type + rename research_log.evidence_type = 'archive' → 'local_archive' | Block 16 (log table only — CHECK constraint was never actually added) + Block 17 (rename) | **Partially Reversible** at the SQL level (log table is reversible) but **Irreversible** for the rename. Doc mismatch: `bump-version.ps1`'s refusal is based on a CHECK constraint that doesn't exist. |
 | **v58** | Add `tags`, `person_record_tags`, `archive_meta` tables (issue #183) + seed three archive_meta rows | Block 1 (three new tables + indexes) + Block 15 (seed) | **Reversible** at SQL level. **Blocked at runtime** by live read code (export pipelines SELECT from `archive_meta`; Browse filter reads `person_record_tags`). |
 | **v59** | Add `share_queue_presets` table (issue #192) | Block 1 (one new table) | **Reversible** at SQL level. **Blocked at runtime** by Share Queue modal queries. |
+| **v60** | v60 Event Records + FK rename to `person_record_id` (issue #320) | Block 18 (4 sub-blocks: events + FK rename + FTS5 rebuild + sync_id backfill) | **Partially Reversible** (RENAME COLUMN is reversible; FTS5 trigger rebuild is a no-op on DOWN; sync_id backfill is a no-op). |
+| **v61** | No schema-level changes | `CurrentSchemaVersion` 60 → 61 | **No-op**. DOWN is trivially reversible. |
+| **v62** | Add `articles` + `article_refs` tables + 4 indexes (issue #321) | Block 20 (additive: CREATE TABLE IF NOT EXISTS + 4 CREATE INDEX IF NOT EXISTS; no data migration; Articles are a greenfield entity) | **Reversible** at SQL level. Inverse: `DROP INDEX` + `DROP TABLE` for each, in reverse order. |
+
+## Block 20 — `articles` + `article_refs` (issue #321 v62)
+
+- **Where:** `internal/db/migrations.go:xxx` (the `block-3-articles` entry in the `migrations` slice; mirrors Block 18's structure)
+- **Contents:** `CREATE TABLE IF NOT EXISTS articles (...)` (id, sync_id, display_id, title, subtitle, body_md, body_html, created_at, updated_at, snapshot_of_id, is_snapshot) + `CREATE TABLE IF NOT EXISTS article_refs (...)` (id, article_id, article_sync_id, person_record_id, person_record_sync_id, person_display_id, position) + 4 `CREATE INDEX IF NOT EXISTS` (1 unique on `(article_id, person_record_id)` + 3 supporting).
+- **Classification:** **Reversible** (purely additive — no data transform, no lossy write).
+- **Inverse SQL:** `DROP INDEX IF EXISTS idx_article_refs_person` + `DROP INDEX IF EXISTS idx_article_refs_article_person` + `DROP TABLE IF EXISTS article_refs` + `DROP TABLE IF EXISTS articles`. Order matters: the unique index on article_refs must drop before the table itself.
+- **Caveat:** Tables introduced in v62 are queried by live read code (slice 4 PDF + Static HTML renderers; slice 5 archive bundle writers). A DOWN past v62 must coordinate with code that depends on them.
+- **Wire-compat note:** No wire-format changes — Articles are an internal table, not exported in any v61-era shape. The v62 `.ddshare` ships `data/articles.json` + `data/article_refs.json` (issue #321 slice 5.1).
 
 ## Recommended DOWN-feature contract
 
