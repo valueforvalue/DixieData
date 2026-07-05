@@ -461,6 +461,96 @@ async function main() {
       }
     });
 
+    await step(page, 'step-05c linked-persons-edit-section-present', async () => {
+      // Issue #361 slice 2: the Event edit form (/events/{id}/edit)
+      // must expose an inline Linked Person Records section with:
+      //   - section header "Linked Person Records"
+      //   - a display_id input for adding a new link
+      //   - the Add form posting to /events/{id}/links
+      // The seed-data soldier created earlier in the harness
+      // provides a known Display ID we can use to attach.
+      await page.click('a:has-text("Edit Event")');
+      await page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 5000 });
+      await wait(200);
+      const section = await page.evaluate((id) => {
+        const header = Array.from(document.querySelectorAll('p')).find(
+          (el) => el.textContent.trim() === 'Linked Person Records'
+        );
+        if (!header) return { hasHeader: false };
+        const sectionEl = header.closest('section');
+        const html = sectionEl ? sectionEl.outerHTML : '';
+        return {
+          hasHeader: true,
+          hasDisplayIDInput: html.includes('name="display_id"'),
+          hasAddFormAction: html.includes(`action="/events/${id}/links"`),
+          hasDixieSubmit: html.includes('data-dixie-submit="true"'),
+        };
+      }, createdEventID);
+      if (!section.hasHeader) {
+        throw new Error('edit form missing Linked Person Records section header');
+      }
+      if (!section.hasDisplayIDInput) {
+        throw new Error('edit form Linked Persons section missing display_id input');
+      }
+      if (!section.hasAddFormAction) {
+        throw new Error('edit form Linked Persons Add form missing action="/events/{id}/links"');
+      }
+      if (!section.hasDixieSubmit) {
+        throw new Error('edit form Linked Persons Add form missing data-dixie-submit="true"');
+      }
+    });
+
+    await step(page, 'step-05d attach-linked-person-via-edit-form', async () => {
+      // Issue #361 slice 2: posting the Add form on the edit
+      // page must create a link + redirect back to the edit
+      // page. Mirrors the step-05b sources-attach shape.
+      // The seeded person (SOL-NNNNN from seed-data) provides
+      // a valid Display ID we can type.
+      const personDisplayID = await page.evaluate(async (root) => {
+        const resp = await fetch(`${root}/browse`);
+        const html = await resp.text();
+        const m = html.match(/\/soldiers\/(\d+)/);
+        if (!m) return null;
+        // Fetch the soldier detail to extract the Display ID.
+        const sid = m[1];
+        const detail = await (await fetch(`${root}/soldiers/${sid}`)).text();
+        const dmatch = detail.match(/(DXD-\d+|EVT-\d+)/);
+        return dmatch ? dmatch[1] : null;
+      }, BASE);
+      if (!personDisplayID) {
+        throw new Error('step-05d setup: could not extract a Person Record Display ID from /browse');
+      }
+      // We're already on the edit page from step-05c; no need to
+      // navigate. Fill the Linked Persons Add form directly.
+      // Use the visible text input (not the hidden one in the
+      // main form) — there are two name="display_id" inputs on
+      // the page.
+      await page.fill('input[type="text"][name="display_id"]', personDisplayID);
+      // The form posts to /events/{id}/links which returns
+      // X-DixieData-Redirect: /events/{id}/edit, so we land
+      // back on the edit page (same URL we started from).
+      await Promise.all([
+        page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 10000 }),
+        page.click('button[type="submit"]:has-text("Add Link")'),
+      ]);
+      await wait(300);
+      // The link now exists; the per-row Unlink button must
+      // render with data-action="/events/{id}/links/{personId}/detach".
+      const unlinkPresent = await page.evaluate((id) => {
+        const html = document.body.innerHTML;
+        return /\/events\/\d+\/links\/\d+\/detach/.test(html);
+      }, createdEventID);
+      if (!unlinkPresent) {
+        throw new Error(`after attach, Unlink button data-action="/events/{id}/links/{personId}/detach" missing`);
+      }
+      // Verify the linked person's Display ID is visible on
+      // the page (pill-link in the list row).
+      const detailText = await page.evaluate(() => document.body.innerText);
+      if (!detailText.includes(personDisplayID)) {
+        throw new Error(`attached Person ${personDisplayID} not visible on edit page after attach`);
+      }
+    });
+
     seededPersonID = await seedPersonRecord(page);
 
     await step(page, 'step-06 person-events-tab-fragment', async () => {

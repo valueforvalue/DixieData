@@ -21,6 +21,7 @@ package templates
 
 import (
 	"fmt"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
@@ -115,5 +116,35 @@ templ EventImagesListFragment(eventID int64, images []viewmodel.Image) {
 				</div>
 			}
 		</div>
+	}
+}
+// EventLinksListFragment (issue #361 slice 2) renders the
+// per-Event Linked Person Records rows (or empty state) for
+// the Event editor's inline link/unlink surface. Each linked
+// Person carries a pill-link to /soldiers/{id} (the Person
+// detail page) plus an Unlink button posting to
+// /events/{id}/links/{personId}/detach. Per the slice-2
+// decision, the handler returns X-DixieData-Redirect (full
+// page nav back to /events/{id}/edit) rather than an in-place
+// fragment swap — this matches the Person Events tab attach
+// pattern (/soldiers/{id}/events/...) and avoids a fragment
+// ID + swap target that no longer exists on the edit page.
+templ EventLinksListFragment(eventID int64, linked []viewmodel.PersonRecord) {
+	if len(linked) == 0 {
+		@components.EmptyState("No linked Person Records", "Add a Person Record by Display ID below — type DXD-NNNNN and submit.", "")
+	} else {
+		<ul class="space-y-2">
+			for _, person := range linked {
+				<li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
+					<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", person.ID)) } class="pill-link">{ person.DisplayID }</a>
+					<button
+						type="button"
+						data-action={ templ.SafeURL(routebuilder.EventLinksDetach(eventID, person.ID)) }
+						data-dixie-submit="true"
+						class="ghost-link text-red-700 hover:text-red-900"
+					>Unlink</button>
+				</li>
+			}
+		</ul>
 	}
 }

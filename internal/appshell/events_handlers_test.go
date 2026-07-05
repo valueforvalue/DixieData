@@ -1284,3 +1284,90 @@ func TestHandleEventImages(t *testing.T) {
 	}
 }
 
+
+// TestHandleEventLinksAttachDetachByDisplayID pins slice 2 of
+// #361: the Event editor's Linked Persons section posts to
+// /events/{id}/links (Display ID form field, resolves to
+// Person ID, calls existing AttachEventToPerson) and
+// /events/{id}/links/{personId}/detach (existing
+// DetachEventFromPerson). Both must respond with
+// X-DixieData-Redirect pointing at /events/{id}/edit (the
+// editor surface, NOT the detail page, because the user is
+// mid-edit). Bad Display ID returns 400, not 500.
+func TestHandleEventLinksAttachDetachByDisplayID(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Attach Slice2", "07/01/1863", "07/03/1863", "")
+	target := createSoldier(t, app, "Slice2 Target")
+
+	// Success: POST /events/{id}/links with the target's Display ID.
+	attachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links", url.Values{
+		"display_id": {target.DisplayID},
+	})
+	if err != nil {
+		t.Fatalf("POST /events/{id}/links: %v", err)
+	}
+	attachResp.Body.Close()
+	if attachResp.StatusCode != http.StatusOK {
+		t.Errorf("attach status = %d, want 200", attachResp.StatusCode)
+	}
+	// X-DixieData-Redirect must point back at the editor, NOT
+	// the detail page (the user is mid-edit, so landing on the
+	// read-only detail page would lose their in-progress edits).
+	if got := attachResp.Header.Get("X-DixieData-Redirect"); got != "/events/"+intStr(event.ID)+"/edit" {
+		t.Errorf("attach X-DixieData-Redirect = %q, want /events/%d/edit", got, event.ID)
+	}
+
+	// Post-condition: the link exists. The detail-page panel
+	// from slice 1 will render the linked Person Record via
+	// ListForEvent; mirror that assertion here.
+	linked, err := app.events.ListForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListForEvent: %v", err)
+	}
+	if len(linked) != 1 || linked[0].ID != target.ID {
+		t.Errorf("ListForEvent = %v, want 1 Person with ID %d", linked, target.ID)
+	}
+
+	// Detach via /events/{id}/links/{personId}/detach.
+	detachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links/"+intStr(target.ID)+"/detach", nil)
+	if err != nil {
+		t.Fatalf("POST detach: %v", err)
+	}
+	detachResp.Body.Close()
+	if detachResp.StatusCode != http.StatusOK {
+		t.Errorf("detach status = %d, want 200", detachResp.StatusCode)
+	}
+	if got := detachResp.Header.Get("X-DixieData-Redirect"); got != "/events/"+intStr(event.ID)+"/edit" {
+		t.Errorf("detach X-DixieData-Redirect = %q, want /events/%d/edit", got, event.ID)
+	}
+	linkedAfter, err := app.events.ListForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListForEvent post-detach: %v", err)
+	}
+	if len(linkedAfter) != 0 {
+		t.Errorf("ListForEvent post-detach len = %d, want 0", len(linkedAfter))
+	}
+
+	// Bad Display ID: must return 404 (mirrors the soldier-side
+	// /soldiers/{id}/events/attach-by-display-id contract — the
+	// Display ID points at a row that doesn't exist), not 500.
+	missResp, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links", url.Values{
+		"display_id": {"SOL-99999"},
+	})
+	missResp.Body.Close()
+	if missResp.StatusCode != http.StatusNotFound {
+		t.Errorf("not-found attach status = %d, want 404", missResp.StatusCode)
+	}
+
+	// Empty Display ID: must return 400.
+	emptyResp, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links", url.Values{
+		"display_id": {""},
+	})
+	emptyResp.Body.Close()
+	if emptyResp.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty attach status = %d, want 400", emptyResp.StatusCode)
+	}
+}

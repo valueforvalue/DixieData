@@ -30,6 +30,35 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (Go render tests) and `step-04c` + `step-04d` in
   `audit/smoke_events.mjs` (browser smoke). No backend
   changes; no new routes.
+- **Event editor inline Linked Persons section** (issue #361
+  slice 2). The `/events/{id}/edit` page now exposes an
+  inline Linked Person Records section (below Source Records,
+  outside the main edit form to avoid HTML-invalid nested
+  forms): list of currently linked Person Records (each with
+  a pill-link to `/soldiers/{id}` + an Unlink button
+  posting to `/events/{id}/links/{personId}/detach`) plus a
+  collapsible Add form (Display ID input posting to
+  `/events/{id}/links`, full-page nav back to the editor on
+  success). Backend: new `EventService.LookupPersonIDByDisplayID`
+  helper (case-insensitive, whitespace-trimmed, returns
+  `os.ErrNotExist` on missing/empty); new handlers
+  `handleEventLinksAttach` + `handleEventLinksDetach` +
+  route shims; new `routebuilder.EventLinksAttach` +
+  `EventLinksDetach`; new `EventLinksListFragment` template
+  helper; new `LinkedPersons []PersonRecord` viewmodel
+  field + `PersonRecordsFromModels` mapper; new
+  `presentation.EventFormWithLinks` +
+  `EventFormWithErrorAndLinks` wrappers. Bad Display IDs
+  return 404 (mirrors the `/soldiers/{id}/events/
+  attach-by-display-id` contract); empty Display IDs return
+  400. Backed by `TestEventService_LookupPersonIDByDisplayID`
+  + `TestEventService_LookupPersonIDByDisplayID_NilService`
+  (service), `TestHandleEventLinksAttachDetachByDisplayID`
+  (handler), `TestEventLinksListFragment*` (fragment),
+  `TestEventFormFragmentRendersLinkedPersonsSection` (form),
+  and `step-05c` + `step-05d` in `audit/smoke_events.mjs`
+  (browser smoke). Full Go test suite (28 packages) and full
+  smoke (17 steps) green.
 
 ### Maintenance
 

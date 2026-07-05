@@ -536,6 +536,24 @@ func EventEdit(id int64) string {
 	return fmt.Sprintf("/events/%d/edit", id)
 }
 
+// EventLinksAttach returns the URL for the Event editor's Add
+// Linked Person form (issue #361 slice 2). Registered as POST
+// /events/{id}/links in routes.go. The form posts a `display_id`
+// string; the handler resolves it to a Person Record ID via
+// EventService.LookupPersonIDByDisplayID and delegates to
+// existing AttachEventToPerson.
+func EventLinksAttach(eventID int64) string {
+	return fmt.Sprintf("/events/%d/links", eventID)
+}
+
+// EventLinksDetach returns the URL for the Event editor's per-
+// row Unlink button (issue #361 slice 2). Registered as POST
+// /events/{id}/links/{personId}/detach in routes.go. Mirrors
+// PersonEventDetach (the Person-side counterpart).
+func EventLinksDetach(eventID, personID int64) string {
+	return fmt.Sprintf("/events/%d/links/%d/detach", eventID, personID)
+}
+
 // EventImages returns the URL for the per-Event images gallery
 // fragment. Registered as GET /events/{id}/images in routes.go.
 // The fragment is the lazy-load + post-action swap target on

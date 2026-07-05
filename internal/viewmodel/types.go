@@ -79,6 +79,12 @@ type PersonRecord struct {
 	EventSources          []SourceRecord
 	Images                []Image
 	Tags                  []TagOption
+	// LinkedPersons is populated only for Event Record rows
+	// (entry_type = 'event'). Carries the Person Records linked
+	// via event_person_links so the event editor can render an
+	// inline link/unlink surface without a second round-trip.
+	// Issue #361 slice 2.
+	LinkedPersons         []PersonRecord
 }
 
 // SourceRecord is the UI-shaped projection of a Source Record
