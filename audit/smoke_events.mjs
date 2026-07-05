@@ -338,6 +338,80 @@ async function main() {
       }
     });
 
+    await step(page, 'step-04c linked-persons-panel-edit-cta', async () => {
+      // Issue #361 slice 1: the Linked Persons panel on
+      // /events/{id} must surface an "Edit Event" CTA pointing
+      // at /events/{id}/edit, mirroring the post-#360 Sources
+      // panel pattern. Empty-state copy must reference the
+      // event editor (no longer tell the user to bounce
+      // through the Person Record's Events tab).
+      const linkedPanel = await page.evaluate((id) => {
+        const titleEl = Array.from(document.querySelectorAll('p')).find(
+          (el) => el.textContent.trim() === 'Linked Person Records'
+        );
+        if (!titleEl) return { found: false };
+        const section = titleEl.closest('section');
+        const html = section ? section.outerHTML : '';
+        const editHref = `/events/${id}/edit`;
+        return {
+          found: true,
+          hasEditCTA: html.includes(`data-action="${editHref}"`),
+          hasBounceCopy: /from the Person Record detail page/.test(html),
+          hasEditorCopy: /event editor/i.test(html),
+          editHref,
+        };
+      }, createdEventID);
+      if (!linkedPanel.found) {
+        throw new Error('Linked Persons panel title not found on detail page');
+      }
+      if (!linkedPanel.hasEditCTA) {
+        throw new Error(`Linked Persons panel missing Edit Event CTA pointing at ${linkedPanel.editHref}`);
+      }
+      if (linkedPanel.hasBounceCopy) {
+        throw new Error('Linked Persons empty-state copy still tells the user to attach from the Person Record detail page');
+      }
+      if (!linkedPanel.hasEditorCopy) {
+        throw new Error('Linked Persons empty-state copy missing reference to the event editor');
+      }
+    });
+
+    await step(page, 'step-04d tags-panel-edit-cta', async () => {
+      // Issue #361 slice 1: the Tags panel on /events/{id}
+      // must surface an "Edit Event" CTA pointing at
+      // /events/{id}/edit AND a count span next to the title,
+      // mirroring the Linked Persons + Sources panels.
+      const tagsPanel = await page.evaluate((id) => {
+        const titleEl = Array.from(document.querySelectorAll('p')).find(
+          (el) => el.textContent.trim() === 'Tags'
+        );
+        if (!titleEl) return { found: false };
+        const section = titleEl.closest('section');
+        if (!section) return { found: false };
+        const html = section.outerHTML;
+        const editHref = `/events/${id}/edit`;
+        // Count span: header flex-row (before the fragment div)
+        // must contain a count-shaped pattern. Use the header
+        // by truncating at the data-event-tags-list fragment div.
+        const headerEnd = html.indexOf('id="data-event-tags-list"');
+        const headerHtml = headerEnd >= 0 ? html.slice(0, headerEnd) : html;
+        return {
+          found: true,
+          hasEditCTA: html.includes(`data-action="${editHref}"`),
+          hasCount: /0 attached|0 tag|>0</.test(headerHtml),
+          editHref,
+        };
+      }, createdEventID);
+      if (!tagsPanel.found) {
+        throw new Error('Tags panel title not found on detail page');
+      }
+      if (!tagsPanel.hasEditCTA) {
+        throw new Error(`Tags panel missing Edit Event CTA pointing at ${tagsPanel.editHref}`);
+      }
+      if (!tagsPanel.hasCount) {
+        throw new Error('Tags panel header missing count-shaped element (slice 1 adds one to mirror Linked Persons + Sources)');
+      }
+    });
+
     await step(page, 'step-05 edit-round-trip', async () => {
       await page.click('a:has-text("Edit Event")');
       await page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 5000 });
