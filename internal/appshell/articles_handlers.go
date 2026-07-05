@@ -34,6 +34,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -220,6 +221,40 @@ func (a *App) loadArticleResolvedRefsForView(articleID int64) []viewmodel.Articl
 		})
 	}
 	return out
+}
+
+// handleArticlePicker serves GET /articles/{id}/picker.
+// Renders the inline Person Record picker shell: a search
+// input + a result list. The handler re-runs the search on
+// every keystroke (the hx-trigger on the input fires the
+// same endpoint with q in the query string). The picker is
+// a pure fragment -- no header, no layout -- so it can
+// swap into the picker target div on /articles/{id}.
+//
+// Implementation note: reuses SoldierService.SearchPage --
+// no new service method. The picker limit is hard-coded
+// at 25 rows; a future slice can parameterize it via the
+// search service if scrolling becomes an issue.
+func (a *App) handleArticlePicker(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	articleID, err := parseIntFromPath(r.URL.Path, "/articles/", "/picker")
+	if err != nil || articleID < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	rows, _, err := a.soldiers.SearchPage(q, 1, 25)
+	if err != nil {
+		respondInternal(w, r, "Could not search Person Records.", err)
+		return
+	}
+	viewRows := viewmodel.PersonRecordsFromModels(rows)
+	if err := components.PersonRecordPicker(articleID, q, viewRows).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, "Could not render picker.", err)
+	}
 }
 
 

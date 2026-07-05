@@ -98,6 +98,12 @@ func (a *App) setupRoutes() {
 	// /articles/{id}/restore overwrites the live row the
 	// snapshot refers to. DELETE /articles/{id}/snapshot/
 	// {snapshotID} removes only the snapshot row.
+	// v62 slice 3.3 (issue #321): picker modal. The picker
+	// renders an inline panel (search + results) that
+	// posts to the existing /articles/{id}/refs attach
+	// route. No native dialog -- uses an htmx-swapped
+	// fragment per docs/agents/dialog-guard.md.
+	r.Get("/articles/{id:[0-9]+}/picker", a.handleArticlePicker)
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)

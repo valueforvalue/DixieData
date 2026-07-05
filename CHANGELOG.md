@@ -153,6 +153,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   The Add-Ref CTA is a placeholder button for slice 3.2;
   the picker modal lands in slice 3.3.
 
+- **Article detail Person Record picker** (issue #321 slice
+  3.3). The Add-Ref CTA on `/articles/{id}` now opens an
+  inline picker: a search input + a results list that
+  re-runs on every keystroke (200ms debounce). Each result
+  row is a click-to-attach button that posts via the
+  post-Option-C `data-dixie-submit` flow to the existing
+  `/articles/{id}/refs` route. The picker is a pure
+  htmx-swapped fragment (no native dialog per
+  `docs/agents/dialog-guard.md`); the JS dispatcher
+  follows the `X-DixieData-Redirect` header back to the
+  article detail page so the Refs panel re-renders with
+  the new row. Adds
+  `components/person_record_picker.templ` (`PersonRecordPickerTrigger`
+  + `PersonRecordPicker` functions), the new
+  `handleArticlePicker` handler (reuses
+  `SoldierService.SearchPage`; no new service method), and
+  the `GET /articles/{id}/picker` route +
+  `routebuilder.ArticlePicker` helper. Pinned by
+  `TestHandleArticlePickerRendersSearchResults` (picker
+  shell + matching rows + hidden `display_id` input +
+  no-results message on miss) + the new
+  `audit/smoke_articles.mjs` step 3 (picker opens + search
+  input renders + typing "DXD" returns rows).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

@@ -492,6 +492,15 @@ func ArticleSnapshotDelete(articleID, snapshotID int64) string {
 	return fmt.Sprintf("/articles/%d/snapshot/%d", articleID, snapshotID)
 }
 
+// ArticlePicker (issue #321 slice 3.3) returns the URL for
+// the inline Person Record picker fragment on /articles/{id}.
+// Registered as GET /articles/{id}/picker in routes.go.
+// Reuses the existing SoldierService.SearchPage so no new
+// service method lands for the picker (per the slice-3 plan).
+func ArticlePicker(articleID int64) string {
+	return fmt.Sprintf("/articles/%d/picker", articleID)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {
