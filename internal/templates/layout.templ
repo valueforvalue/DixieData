@@ -112,6 +112,11 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// reach the Event list from the same
 					// surface they use for Person Records.
 					<a href="/events" class="pill-link top-nav-link">Events</a>
+					// v62 (issue #321 slice 3): Article Record
+					// nav link. Sits between Events and Review
+					// Queue so the long-form content surfaces
+					// stay grouped on the left.
+					<a href={ templ.SafeURL(routebuilder.ArticleList()) } class="pill-link top-nav-link" data-article-nav-link>Articles</a>
 					<a href="/review-queue" class="pill-link top-nav-link inline-flex items-center gap-2">
 							Review Queue
 							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this"></span>
