@@ -13,6 +13,19 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Person Events tab forms redirected away from the Events tab**
+  (issue #345, found by the Events audit smoke probe #323). The
+  attach / unlink / quick-add handlers under
+  \`/soldiers/{id}/events/\` returned an \`X-DixieData-Redirect\`
+  of \`/soldiers/{id}\` after success, throwing the researcher
+  out of the Events tab on every click. Fix: redirect target is
+  now \`/soldiers/{id}/events\` for all three success paths in
+  \`internal/appshell/events_handlers.go\` (lines 299, 315, 393).
+  The duplicate-link path of \`handleQuickAddEvent\` also routes
+  back to the Events tab instead of an Event detail. Existing
+  \`TestHandleQuickAddEvent\` test updated to pin the new
+  redirect target.
+
 - **POST /soldiers/new returned 405** (issue #346, found by
   the Events audit smoke probe #323). \`handleNewSoldier\` in
   \`internal/appshell/soldiers_handlers.go\` only honored GET

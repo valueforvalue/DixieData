@@ -343,8 +343,8 @@ func TestHandleQuickAddEvent(t *testing.T) {
 		t.Fatalf("POST quick-add status = %d", resp.StatusCode)
 	}
 	redirect := resp.Header.Get("X-DixieData-Redirect")
-	if !strings.HasPrefix(redirect, "/events/") {
-		t.Errorf("X-DixieData-Redirect = %q, want /events/{id}", redirect)
+	if !strings.HasPrefix(redirect, "/soldiers/"+intStr(person.ID)+"/events") {
+		t.Errorf("X-DixieData-Redirect = %q, want /soldiers/%d/events (issue #345)", redirect, person.ID)
 	}
 	// Verify link.
 	linked, err := app.events.ListForPerson(person.ID)
