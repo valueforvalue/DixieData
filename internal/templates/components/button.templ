@@ -54,6 +54,16 @@ templ Button(label string, kind ButtonKind, extraClass string, attrs templ.Attri
 //
 // Added in response to the soldier_card.templ migration, which
 // surfaced the bug at scale (Export JPG had two type= attributes).
+//
+// Issue #365: templ.RenderAttributes in v0.3.1001 has no case for
+// templ.SafeURL -- the value silently falls through the type
+// switch and is dropped. Unwrap templ.SafeURL here so callers can
+// safely pass templ.SafeURL(...) values for URL-shaped attributes
+// (data-action, hx-get, hx-post, etc.) without being surprised by
+// a missing attribute. The wrapper's purpose is just to mark a
+// URL as already-sanitized for templ's expression context; the
+// stringer round-trip preserves that intent (the SDK still
+// receives a plain string in the rendered attribute).
 func buttonAttrsExcludingType(attrs templ.Attributes) templ.Attributes {
 	if attrs == nil {
 		return nil
@@ -61,6 +71,10 @@ func buttonAttrsExcludingType(attrs templ.Attributes) templ.Attributes {
 	out := make(templ.Attributes, len(attrs))
 	for k, v := range attrs {
 		if k == "type" {
+			continue
+		}
+		if url, ok := v.(templ.SafeURL); ok {
+			out[k] = string(url)
 			continue
 		}
 		out[k] = v
