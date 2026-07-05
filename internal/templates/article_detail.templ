@@ -30,6 +30,10 @@ templ ArticleDetailShell(view viewmodel.Article) {
 				>← Back to Articles</a>
 				<span class="font-mono text-xs text-slate-500" data-article-display-id>{ view.DisplayID }</span>
 			</div>
+			<div class="mb-4 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white/60 px-4 py-3" data-article-export-bar>
+				@components.ArticlePDFExport(view.ID)
+				@components.ArticleRawDownload(view.ID)
+			</div>
 			<article class="card rounded-3xl p-5 sm:p-8 space-y-4">
 				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]" data-article-title>{ view.Title }</h1>
 				if view.Subtitle != "" {

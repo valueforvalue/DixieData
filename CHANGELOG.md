@@ -400,6 +400,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   rendered heading + the rendered body; ErrArticleNotFound
   for unknown ids).
 
+- **Article PDF orientation picker + raw-md download link**
+  (issue #321 slice 4.5). The `/articles/{id}` detail
+  page now renders a per-export orientation picker
+  (Portrait / Landscape) + a "Save PDF" submit button +
+  a "Save as Markdown" link. The picker posts to
+  `/articles/{id}/pdf` (slice 4.2) with the chosen
+  orientation; the raw link hits `/articles/{id}/raw`
+  (slice 4.4). The orientation picker unlocks both the
+  single-record research card (portrait) AND the wider
+  table-of-contents layout (landscape) use cases. Adds
+  `components/article_pdf_export.templ`
+  (`ArticlePDFExport` + `ArticleRawDownload`) + the
+  detail-page export bar. Pinned by
+  `audit/smoke_articles.mjs` step 8 (picker renders +
+  orientation select default=portrait + options
+  match [portrait, landscape] + submit button + raw
+  download link + PDF route returns 200) + step 9
+  (`/articles/{id}/raw` returns 200 +
+  text/markdown + Content-Disposition: attachment +
+  body non-empty). Side-issue #374 tracks the
+  symmetric orientation picker for Event Records.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

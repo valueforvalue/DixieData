@@ -1,0 +1,65 @@
+// article_pdf_export.templ -- per-export orientation picker
+// for the Article Records detail page (issue #321 slice 4.5).
+// Renders a Portrait / Landscape select + a "Save PDF" submit
+// button that posts to /articles/{id}/pdf with the chosen
+// orientation. The handler opens a guarded SaveFileDialog
+// (per docs/agents/dialog-guard.md) + writes the pre-rendered
+// PDF bytes to the user's chosen path.
+//
+// Side-issue #374: the symmetric orientation picker for Event
+// Records lands as a follow-up. Today only Articles expose the
+// picker; Events get a single landscape-only PDF button.
+package components
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+)
+
+// ArticlePDFExport renders the orientation picker + Save PDF
+// button. The select carries a default of "portrait" so a
+// researcher who clicks Save PDF without touching the picker
+// still gets a usable single-record card.
+templ ArticlePDFExport(articleID int64) {
+	<form
+		action={ templ.SafeURL(routebuilder.ArticlePDF(articleID)) }
+		method="post"
+		data-dixie-submit="true"
+		class="contents"
+		data-article-pdf-export
+		data-article-id={ fmt.Sprintf("%d", articleID) }
+	>
+		<div class="flex flex-wrap items-center gap-2">
+			<label for="article-pdf-orientation" class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">PDF orientation</label>
+			<select
+				id="article-pdf-orientation"
+				name="orientation"
+				class="field-input w-auto text-sm"
+				data-article-pdf-orientation
+			>
+				<option value="portrait" selected>Portrait</option>
+				<option value="landscape">Landscape</option>
+			</select>
+			@Button("Save PDF", ButtonPrimary, "whitespace-nowrap", templ.Attributes{
+				"type":                     "submit",
+				"data-article-pdf-submit":  "",
+				"data-article-id":          fmt.Sprintf("%d", articleID),
+			})
+		</div>
+	</form>
+}
+
+// ArticleRawDownload renders a "Save as Markdown" link that
+// downloads the body_md via /articles/{id}/raw. The
+// per-export raw affordance ships in the same commit so the
+// article detail page has both PDF + Markdown download
+// affordances together.
+templ ArticleRawDownload(articleID int64) {
+	<a
+		href={ templ.SafeURL(routebuilder.ArticleRaw(articleID)) }
+		class="secondary-button whitespace-nowrap"
+		data-article-raw-download
+		data-article-id={ fmt.Sprintf("%d", articleID) }
+	>Save as Markdown</a>
+}
