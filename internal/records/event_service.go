@@ -189,6 +189,35 @@ func (e *EventService) DetachSourceFromEvent(eventID, sourceID int64) error {
 	return nil
 }
 
+// AttachSourcesToEvent inserts a batch of source rows for the
+// given Event. Issue #357 (v1 follow-up): the Event create +
+// edit forms expose inline Source Record rows that submit
+// alongside the main form (mirrors the soldier entry form's
+// Records[] pattern). Empty rows (no record_type + no app_id +
+// no details) are skipped so the user can leave the blank row
+// in place without poisoning the data.
+//
+// Each insert mints its own SyncID; the dedicated event_sources
+// table is outside replaceRecords' DELETE scope so the Event
+// Update path does not collide (issue #340 / v61 fix).
+func (e *EventService) AttachSourcesToEvent(eventID int64, sources []models.Record) ([]int64, error) {
+	if eventID < 1 {
+		return nil, fmt.Errorf("event id must be positive")
+	}
+	ids := make([]int64, 0, len(sources))
+	for _, src := range sources {
+		if strings.TrimSpace(src.RecordType) == "" && strings.TrimSpace(src.AppID) == "" && strings.TrimSpace(src.Details) == "" {
+			continue
+		}
+		id, err := e.AttachSourceToEvent(eventID, src)
+		if err != nil {
+			return ids, fmt.Errorf("attach source %q: %w", src.RecordType, err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 // CreateEvent mints a new EVT-NNNNN Display ID (via
 // (*DB).NextEventID), populates the per-subtype columns
 // (kind/begin_date/end_date/description), and persists the row

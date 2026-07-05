@@ -92,6 +92,32 @@ templ EventFormFragment(s viewmodel.PersonRecord, isEdit bool, errorMessage stri
 				<label class="block text-sm text-slate-500 mb-1" for="event-notes">Internal Notes</label>
 				<textarea name="notes" rows="3" class="field-input min-h-24" id="event-notes">{ s.Notes }</textarea>
 			</div>
+			<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
+						<p class="mt-2 text-sm text-slate-600">Attach pension notes, roster lines, and source transcripts that should travel with this event record. Saved inline with the event on submit.</p>
+					</div>
+					@components.Button("+ Add Source Record", components.ButtonGhost, "w-full px-4 py-2 sm:w-auto", templ.Attributes{
+						"data-record-add": "",
+					})
+				</div>
+				<details open>
+					<summary class="mb-4 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Show / hide source records</summary>
+					<div data-record-list class="space-y-3">
+						if isEdit {
+							for _, record := range s.EventSources {
+								@RecordInputRow(record)
+							}
+						}
+						@RecordInputRow(viewmodel.SourceRecord{})
+					</div>
+					<template data-record-template>
+						@RecordInputRow(viewmodel.SourceRecord{})
+					</template>
+					<p class="mt-2 text-xs text-slate-500">Empty rows are skipped on save. Source records shown here appear on the detail view.</p>
+				</details>
+			</section>
 			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
 				if isEdit {
 					@components.Button("Save Changes", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
