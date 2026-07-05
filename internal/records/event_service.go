@@ -342,6 +342,27 @@ func (e *EventService) GetEventByDisplayID(displayID string) (*EventWithLinks, e
 	return &EventWithLinks{Event: *row, Links: links}, nil
 }
 
+// LookupPersonIDByDisplayID resolves a Person Record Display ID
+// (e.g. 'SOL-00042') to its numeric row ID. Used by the Event
+// editor's Add Linked Person form (issue #361 slice 2), which
+// posts a Display ID string from the user rather than forcing
+// them to know raw row IDs. Delegates to SoldierService
+// .GetByDisplayID (case-insensitive, whitespace-trimmed,
+// returns os.ErrNotExist on missing/empty) so the lookup
+// behavior matches the soldier-side attach pattern. A nil
+// receiver returns an error rather than panicking — defense
+// in depth in case the seam ever swaps to a nilable service.
+func (e *EventService) LookupPersonIDByDisplayID(displayID string) (int64, error) {
+	if e == nil || e.soldiers == nil {
+		return 0, fmt.Errorf("event service not initialized")
+	}
+	row, err := e.soldiers.GetByDisplayID(displayID)
+	if err != nil {
+		return 0, err
+	}
+	return row.ID, nil
+}
+
 // ListEvents returns a page of Event Records sorted by updated_at
 // DESC. Excludes the linked-Person-Records subquery for
 // efficiency; callers that need the link set per event should

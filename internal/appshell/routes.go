@@ -131,6 +131,17 @@ func (a *App) setupRoutes() {
 	r.Get("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
 	r.Post("/events/{id:[0-9]+}/tags", a.handleEventTagsRoute)
 	r.Post("/events/{id:[0-9]+}/tags/{tagId:[0-9]+}/detach", a.handleEventTagsRoute)
+	// Issue #361 slice 2: Event editor's Linked Persons section.
+	// POST /events/{id}/links takes a `display_id` form field
+	// and resolves it to a Person Record ID via the new
+	// LookupPersonIDByDisplayID helper, then delegates to the
+	// existing AttachEventToPerson. POST /events/{id}/links/
+	// {personId}/detach delegates to DetachEventFromPerson.
+	// Both respond with X-DixieData-Redirect pointing at
+	// /events/{id}/edit so the user lands back on the editor
+	// (not the detail page) after attaching/detaching.
+	r.Post("/events/{id:[0-9]+}/links", a.handleEventLinksAttachRoute)
+	r.Post("/events/{id:[0-9]+}/links/{personId:[0-9]+}/detach", a.handleEventLinksDetachRoute)
 	// Issue #320 child #332 (slot 16 of 16): per-Event images
 	// gallery. GET returns the fragment (lazy-load + post-action
 	// swap target); POST /import opens the native file picker

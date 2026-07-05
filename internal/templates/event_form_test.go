@@ -78,3 +78,82 @@ func TestEventFormFragmentRendersSourceRecordsSection(t *testing.T) {
 		})
 	}
 }
+// TestEventFormFragmentRendersLinkedPersonsSection pins slice
+// 2 of #361: the Event editor form (rendered for both new +
+// edit modes) must expose a Linked Person Records section
+// inline so the user can attach/detach without bouncing
+// through the Person Record's Events tab.
+//
+// RED today: the form has no Linked Persons section at all.
+// The test fails on the absence of the "Linked Person Records"
+// header + the "display_id" input + the inline Unlink button
+// shape. After slice 2 lands: the header renders, the input
+// renders with name="display_id", the Add form posts to the
+// new /events/{id}/links route, and per-row Unlink buttons
+// post to /events/{id}/links/{personId}/detach.
+//
+// Mirrors the TestEventFormFragmentRendersSourceRecordsSection
+// (issue #357) shape — same fixture (event with id=519), same
+// assertions structure.
+func TestEventFormFragmentRendersLinkedPersonsSection(t *testing.T) {
+	// Linked Persons section only renders for edit mode (you
+	// can't link a Person to an Event that doesn't exist yet
+	// — the link route requires a persisted event id). New-
+	// mode form asserts the section is ABSENT.
+	cases := []struct {
+		name           string
+		isEdit         bool
+		eventID        int64
+		wantSection    bool
+	}{
+		{"new-skips-section", false, 0, false},
+		{"edit-shows-section", true, 519, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := EventFormFragment(viewmodel.PersonRecord{
+				ID:        tc.eventID,
+				DisplayID: "EVT-00519",
+				Kind:      "Battle",
+			}, tc.isEdit, "").Render(context.Background(), &buf)
+			if err != nil {
+				t.Fatalf("Render: %v", err)
+			}
+
+			content := buf.String()
+			hasSection := strings.Contains(content, "Linked Person Records") &&
+				strings.Contains(content, `name="display_id"`)
+			if hasSection != tc.wantSection {
+				t.Errorf("Linked Persons section presence: got %v, want %v (isEdit=%v)",
+					hasSection, tc.wantSection, tc.isEdit)
+			}
+
+			if !tc.wantSection {
+				return
+			}
+			// Edit-only assertions: the Add form posts to the
+			// new /events/{id}/links route; the handler resolves
+			// the Display ID via LookupPersonIDByDisplayID and
+			// delegates to existing AttachEventToPerson.
+			if !strings.Contains(content, `action="/events/519/links"`) {
+				t.Errorf("event form Linked Persons section missing Add form action posting to /events/{id}/links")
+			}
+			// data-dixie-submit on the Add form (full-page nav
+			// to /events/{id}/edit on success).
+			if !strings.Contains(content, `data-dixie-submit="true"`) {
+				t.Errorf("event form Linked Persons Add form missing data-dixie-submit=\"true\"")
+			}
+			// Edit path: existing LinkedPersons render via
+			// the per-row Unlink button shape. The fixture has
+			// an empty LinkedPersons slice, so we only assert
+			// the empty-state copy is present, not Unlink
+			// buttons (those would require seeding a Person
+			// Record into the viewmodel).
+			if !strings.Contains(content, "No linked Person Records") {
+				t.Errorf("event form Linked Persons empty-state copy missing")
+			}
+		})
+	}
+}

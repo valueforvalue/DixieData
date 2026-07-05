@@ -2,6 +2,7 @@ package records
 
 import (
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -539,5 +540,89 @@ func TestEventService_AttachSourcesToEvent(t *testing.T) {
 	}
 	if got[1].RecordType != "Roster" {
 		t.Errorf("got[1].RecordType = %q, want Roster", got[1].RecordType)
+	}
+}
+
+// TestEventService_LookupPersonIDByDisplayID pins slice 2 of
+// #361: the Event-side attach handler resolves a Person Record
+// Display ID (e.g. 'SOL-00042') to its numeric ID so the
+// editor's Add Linked Person form can post a Display ID string
+// instead of forcing the user to know raw row IDs.
+//
+// Pre-slice, this method doesn't exist; the test fails to
+// compile against the missing symbol, which is the right kind
+// of RED (a missing public seam on the service). After the
+// slice lands, the test exercises:
+//   - happy path: existing Person Record by Display ID
+//   - case-insensitive lookup (mirrors SoldierService.GetByDisplayID)
+//   - whitespace trimming
+//   - missing Display ID returns os.ErrNotExist (sentinel the
+//     handler maps to HTTP 404 / 400)
+//   - empty Display ID returns os.ErrNotExist (matches the
+//     GetByDisplayID contract the helper delegates to)
+func TestEventService_LookupPersonIDByDisplayID(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	eventSvc := NewEventService(soldierSvc)
+
+	// Seed two Person Records (SoldierService.Create mints
+	// Display IDs like SOL-00001, SOL-00002).
+	p1, err := soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee"})
+	if err != nil {
+		t.Fatalf("Create p1: %v", err)
+	}
+	p2, err := soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson"})
+	if err != nil {
+		t.Fatalf("Create p2: %v", err)
+	}
+
+	cases := []struct {
+		name      string
+		displayID string
+		wantID    int64
+		wantErr   error
+	}{
+		{"exact-p1", p1.DisplayID, p1.ID, nil},
+		{"exact-p2", p2.DisplayID, p2.ID, nil},
+		{"lower-p1", strings.ToLower(p1.DisplayID), p1.ID, nil},
+		{"upper-p1", strings.ToUpper(p1.DisplayID), p1.ID, nil},
+		{"trimmed-p1", "  " + p1.DisplayID + "  ", p1.ID, nil},
+		{"missing", "SOL-99999", 0, os.ErrNotExist},
+		{"empty", "", 0, os.ErrNotExist},
+		{"whitespace-only", "   ", 0, os.ErrNotExist},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotID, err := eventSvc.LookupPersonIDByDisplayID(tc.displayID)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("err = %v, want errors.Is(%v)", err, tc.wantErr)
+				}
+				if gotID != 0 {
+					t.Errorf("gotID = %d on error, want 0", gotID)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if gotID != tc.wantID {
+				t.Errorf("gotID = %d, want %d", gotID, tc.wantID)
+			}
+		})
+	}
+}
+
+// TestEventService_LookupPersonIDByDisplayID_NilService confirms
+// the helper guards against a nil receiver (defense in depth —
+// SoldierService.GetByDisplayID would panic on nil; the
+// helper should return a clean error). Cheap test, catches a
+// real footgun if Slice 2 ever swaps the seam.
+func TestEventService_LookupPersonIDByDisplayID_NilService(t *testing.T) {
+	var svc *EventService
+	_, err := svc.LookupPersonIDByDisplayID("SOL-00001")
+	if err == nil {
+		t.Errorf("nil receiver should return an error, got nil")
 	}
 }

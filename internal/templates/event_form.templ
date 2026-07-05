@@ -133,6 +133,38 @@ templ EventFormFragment(s viewmodel.PersonRecord, isEdit bool, errorMessage stri
 				>Cancel</button>
 			</div>
 		</form>
+		if isEdit {
+			// Linked Persons section sits OUTSIDE the main Event
+			// edit form to avoid nested <form> (HTML-invalid; the
+			// browser silently drops the inner form, which would
+			// break the Add Link button). The Unlink buttons
+			// inside EventLinksListFragment are individual <button
+			// data-action=...> elements, not nested forms, so
+			// they're safe inside the outer form if rendered
+			// here.
+			<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5 mt-5">
+				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Linked Person Records</p>
+						<p class="mt-2 text-sm text-slate-600">Attach this event to one or more Person Records. Type a Display ID like <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">DXD-00001</code> below to add a new link; use Unlink on a row to remove.</p>
+					</div>
+				</div>
+				@EventLinksListFragment(s.ID, s.LinkedPersons)
+				<details open class="mt-4">
+					<summary class="mb-3 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Add a linked Person Record</summary>
+					<form
+						action={ templ.SafeURL(routebuilder.EventLinksAttach(s.ID)) }
+						method="post"
+						data-dixie-submit="true"
+						class="flex flex-wrap items-center gap-2"
+					>
+						<input type="text" name="display_id" required placeholder="DXD-00001" class="field-input flex-1 min-w-48" autocomplete="off"/>
+						<button type="submit" class="ghost-link px-4 py-2">Add Link</button>
+					</form>
+					<p class="mt-2 text-xs text-slate-500">Case-insensitive. Whitespace is trimmed. Display IDs look like <code class="font-mono">DXD-00001</code>.</p>
+				</details>
+			</section>
+		}
 	</div>
 }
 

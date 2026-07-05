@@ -189,6 +189,7 @@ type eventsFacade interface {
 	DeleteEvent(id int64) error
 	AttachEventToPerson(eventID, personID int64) (int64, error)
 	DetachEventFromPerson(eventID, personID int64) error
+	LookupPersonIDByDisplayID(displayID string) (int64, error)
 	ListForPerson(personID int64) ([]personRecord, error)
 	ListForEvent(eventID int64) ([]personRecord, error)
 	ListSourcesForEvent(eventID int64) ([]models.Record, error)

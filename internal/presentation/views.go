@@ -242,10 +242,32 @@ func EventForm(event models.Soldier, isEdit bool) templ.Component {
 	return templates.EventForm(viewmodel.PersonRecordFromModel(event), isEdit)
 }
 
+// EventFormWithLinks (issue #361 slice 2) renders the Event
+// edit form with the inline Linked Persons section populated.
+// The handler fetches the links via ListForEvent (slice-2
+// path) and passes them in; the presentation layer maps them
+// to viewmodel and renders. New-event callers continue to
+// use EventForm (no links possible for an un-persisted id).
+func EventFormWithLinks(event models.Soldier, linked []models.Soldier, isEdit bool) templ.Component {
+	vm := viewmodel.PersonRecordFromModel(event)
+	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	return templates.EventForm(vm, isEdit)
+}
+
 // EventFormWithError mirrors EntryFormWithError: same body,
 // toast header for the form-level validation message.
 func EventFormWithError(event models.Soldier, isEdit bool, errorMessage string) templ.Component {
 	return templates.EventFormWithError(viewmodel.PersonRecordFromModel(event), isEdit, errorMessage)
+}
+
+// EventFormWithErrorAndLinks (issue #361 slice 2) mirrors
+// EventFormWithError but populates the Linked Persons section.
+// Used by the POST error-rendering path so the user sees their
+// existing links + the validation error on the same surface.
+func EventFormWithErrorAndLinks(event models.Soldier, linked []models.Soldier, isEdit bool, errorMessage string) templ.Component {
+	vm := viewmodel.PersonRecordFromModel(event)
+	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	return templates.EventFormWithError(vm, isEdit, errorMessage)
 }
 
 // PersonEventsTab wraps templates.PersonEventsTab. The lazy-load

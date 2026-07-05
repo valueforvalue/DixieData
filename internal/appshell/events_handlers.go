@@ -43,6 +43,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/templates"
@@ -191,12 +192,28 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 		}
 		updated, sources, err := parseEventForm(r)
 		if err != nil {
-			presentation.EventFormWithError(event.Event, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 2: load links for the error
+			// render so the user sees their existing links
+			// alongside the validation error.
+			linked, lerr := a.events.ListForEvent(event.Event.ID)
+			if lerr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", event.Event.ID), lerr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinks(event.Event, linked, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		updated.ID = id
 		if err := a.events.UpdateEvent(updated); err != nil {
-			presentation.EventFormWithError(event.Event, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 2: load links for the error
+			// render so the user sees their existing links
+			// alongside the validation error.
+			linked, lerr := a.events.ListForEvent(event.Event.ID)
+			if lerr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", event.Event.ID), lerr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinks(event.Event, linked, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -228,7 +245,16 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", id), err)
 			return
 		}
-		presentation.EventForm(event.Event, true).Render(r.Context(), w)
+		// Issue #361 slice 2: populate LinkedPersons on the
+		// viewmodel so the editor can render the inline
+		// link/unlink section (mirrors how the detail page
+		// already receives `linked []viewmodel.PersonRecord`).
+		linked, err := a.events.ListForEvent(event.Event.ID)
+		if err != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", event.Event.ID), err)
+			return
+		}
+		presentation.EventFormWithLinks(event.Event, linked, true).Render(r.Context(), w)
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the event form.", err)
@@ -241,7 +267,15 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
 				return
 			}
-			presentation.EventFormWithError(existing.Event, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 2: load links for the error
+			// render so the user sees their existing links
+			// alongside the validation error.
+			linked, lerr := a.events.ListForEvent(existing.Event.ID)
+			if lerr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", existing.Event.ID), lerr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinks(existing.Event, linked, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		event.ID = id
@@ -251,7 +285,15 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
 				return
 			}
-			presentation.EventFormWithError(existing.Event, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 2: load links for the error
+			// render so the user sees their existing links
+			// alongside the validation error.
+			linked, lerr := a.events.ListForEvent(existing.Event.ID)
+			if lerr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", existing.Event.ID), lerr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinks(existing.Event, linked, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -376,6 +418,68 @@ func (a *App) handleAttachEventByDisplayID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	a.handleAttachEvent(w, r, personID, resolved.Event.ID)
+}
+
+// handleEventLinksAttach wires the Event editor's Add Linked
+// Person form (issue #361 slice 2). The form has a single
+// `display_id` input; the handler resolves the Person Record
+// via EventService.LookupPersonIDByDisplayID (case-insensitive,
+// whitespace-trimmed, returns os.ErrNotExist on missing/empty)
+// and delegates to existing AttachEventToPerson. On success,
+// redirects back to the editor surface (NOT the detail page)
+// via X-DixieData-Redirect so the user keeps their in-progress
+// edits. Mirrors /soldiers/{id}/events/attach-by-display-id
+// (the Person-side counterpart).
+func (a *App) handleEventLinksAttach(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the link form.", err)
+		return
+	}
+	if _, err := a.events.GetEventByID(eventID); err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Event %d not found.", eventID), err)
+		return
+	}
+	displayID := strings.TrimSpace(r.FormValue("display_id"))
+	if displayID == "" {
+		respondValidation(w, r, "Provide a Person Record Display ID like DXD-00001.", nil)
+		return
+	}
+	personID, err := a.events.LookupPersonIDByDisplayID(displayID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Person Record %q not found.", displayID), err)
+		return
+	}
+	if _, err := a.events.AttachEventToPerson(eventID, personID); err != nil {
+		// Duplicate-link is the only AttachEventToPerson error
+		// path that's user-actionable (the user posted a
+		// Display ID that's already linked). Other errors are
+		// infrastructure-level (db down, etc.) and surface via
+		// the standard error envelope.
+		respondError(w, r, KindConflict, fmt.Sprintf("%s is already linked to this event.", displayID), err)
+		return
+	}
+	writeExportRedirect(w, routebuilder.EventEdit(eventID))
+}
+
+// handleEventLinksDetach wires the Event editor's per-row
+// Unlink button (issue #361 slice 2). The handler reads the
+// personId path segment, calls existing DetachEventFromPerson,
+// and redirects back to the editor. Detach is idempotent at
+// the service layer, so a stale form post is harmless.
+func (a *App) handleEventLinksDetach(w http.ResponseWriter, r *http.Request, eventID, personID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.events.DetachEventFromPerson(eventID, personID); err != nil {
+		respondError(w, r, KindInternal, "Could not unlink the Person Record.", err)
+		return
+	}
+	writeExportRedirect(w, routebuilder.EventEdit(eventID))
 }
 
 // handleQuickAddEvent creates a new Event and links it to a
@@ -1134,4 +1238,38 @@ func (a *App) handleEventImagesDelete(w http.ResponseWriter, r *http.Request, ev
 
 	setToastHeader(w, fmt.Sprintf("Deleted %d image(s).", len(selected)))
 	a.renderEventImagesListFragment(w, r, eventID)
+}
+
+// handleEventLinksAttachRoute is the chi route shim for
+// /events/{id}/links (issue #361 slice 2).
+func (a *App) handleEventLinksAttachRoute(w http.ResponseWriter, r *http.Request) {
+	eventID, err := parseIntFromPath(r.URL.Path, "/events/", "/links")
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	a.handleEventLinksAttach(w, r, eventID)
+}
+
+// handleEventLinksDetachRoute is the chi route shim for
+// /events/{id}/links/{personId}/detach (issue #361 slice 2).
+func (a *App) handleEventLinksDetachRoute(w http.ResponseWriter, r *http.Request) {
+	// Path shape: /events/{eventID}/links/{personID}/detach
+	trimmed := strings.TrimPrefix(r.URL.Path, "/events/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) != 4 || parts[1] != "links" || parts[3] != "detach" {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	eventID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
+	personID, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid person id", http.StatusBadRequest)
+		return
+	}
+	a.handleEventLinksDetach(w, r, eventID, personID)
 }
