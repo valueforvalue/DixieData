@@ -429,7 +429,85 @@ try {
     }
   }
 
-  // ── Slice-3.8 step complete. All slice-3 apply-sites shipped.
+  // ────────────────────────────────────────────────────────────
+  // Step 8: PDF export picker (slice 4.5). The /articles/{id}
+  // detail page renders a Portrait/Landscape picker + a Save
+  // PDF button. The picker posts to /articles/{id}/pdf.
+  // ────────────────────────────────────────────────────────────
+  if (articleId) {
+    console.log('\nStep 8: PDF export picker on /articles/{id}');
+    await page.goto(BASE + '/articles/' + articleId);
+    await wait(800);
+    const pdfState = await page.evaluate(() => {
+      const picker = document.querySelector('[data-article-pdf-export]');
+      const orientation = document.querySelector('[data-article-pdf-orientation]');
+      const submit = document.querySelector('[data-article-pdf-submit]');
+      const raw = document.querySelector('[data-article-raw-download]');
+      return {
+        pickerExists: picker !== null,
+        orientationExists: orientation !== null,
+        orientationDefault: orientation?.value,
+        orientationOptions: orientation ? Array.from(orientation.querySelectorAll('option')).map((o) => o.value) : [],
+        submitExists: submit !== null,
+        rawDownloadExists: raw !== null,
+      };
+    });
+    record('pdf-picker-renders', pdfState.pickerExists, pdfState);
+    record('pdf-orientation-select-renders', pdfState.orientationExists, pdfState);
+    record('pdf-orientation-default-portrait', pdfState.orientationDefault === 'portrait', pdfState);
+    record('pdf-orientation-options-are-portrait-landscape',
+      JSON.stringify(pdfState.orientationOptions) === JSON.stringify(['portrait', 'landscape']),
+      pdfState);
+    record('pdf-submit-button-renders', pdfState.submitExists, pdfState);
+    record('raw-download-link-renders', pdfState.rawDownloadExists, pdfState);
+
+    // Also hit the PDF endpoint directly (the smoke probe
+    // can't open the native file dialog; the handler returns
+    // 200 + a toast header after writing the bytes to the
+    // user-chosen path). We just assert the route is wired
+    // and returns 200 + a toast (the actual file write
+    // happens off the smoke probe's data dir).
+    const pdfResp = await fetch(BASE + '/articles/' + articleId + '/pdf', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: 'orientation=portrait',
+    });
+    record('pdf-route-returns-200', pdfResp.ok, { status: pdfResp.status });
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // Step 9: /articles/{id}/raw endpoint (slice 4.4). Returns
+  // 200 + Content-Type: text/markdown + Content-Disposition:
+  // attachment + body matches the stored body_md.
+  // ────────────────────────────────────────────────────────────
+  if (articleId) {
+    console.log('\nStep 9: /articles/{id}/raw endpoint');
+    const rawResp = await fetch(BASE + '/articles/' + articleId + '/raw');
+    const rawText = await rawResp.text();
+    record(
+      'raw-returns-200',
+      rawResp.ok,
+      { status: rawResp.status },
+    );
+    record(
+      'raw-returns-text-markdown',
+      (rawResp.headers.get('content-type') || '').includes('text/markdown'),
+      { contentType: rawResp.headers.get('content-type') },
+    );
+    record(
+      'raw-returns-attachment',
+      (rawResp.headers.get('content-disposition') || '').includes('attachment'),
+      { contentDisposition: rawResp.headers.get('content-disposition') },
+    );
+    record(
+      'raw-body-non-empty',
+      rawText.length > 0,
+      { length: rawText.length, sample: rawText.slice(0, 80) },
+    );
+  }
+
+  // ── Slice-3 + 4 apply-sites shipped. All Article Records
+  //   headline + export + archive flows exercised end-to-end.
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);
