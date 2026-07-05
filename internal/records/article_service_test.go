@@ -126,6 +126,16 @@ func newArticleServiceForTest(t *testing.T) *ArticleService {
 	return NewArticleService(NewSoldierService(d))
 }
 
+// newArticleServiceForTestWithRenderer is the slice-3.6
+// companion to newArticleServiceForTest -- it wires the
+// MarkdownRenderer so Create + Update carry sanitized HTML
+// rather than the slice-1 verbatim-md path.
+func newArticleServiceForTestWithRenderer(t *testing.T) *ArticleService {
+	t.Helper()
+	d := newTestDB(t)
+	return NewArticleService(NewSoldierService(d), NewMarkdownRenderer())
+}
+
 
 // createTestSoldierForArticles is a small helper for the
 // slice-2 tests that need a Person Record with a known
@@ -769,5 +779,45 @@ func TestArticleService_ListSnapshots(t *testing.T) {
 	}
 	if len(got) != 2 {
 		t.Errorf("ListSnapshots (after other) len = %d, want 2 (other's snapshot leaked?)", len(got))
+	}
+}
+
+// TestArticleService_CreateRendersHTML pins the slice-3.6
+// Create path: when the service is constructed with a
+// MarkdownRenderer, the body_html column carries a
+// sanitized render (script stripped, markdown rendered
+// to HTML). When constructed without a renderer
+// (slice-1 contract), body_html carries the verbatim md.
+func TestArticleService_CreateRendersHTML(t *testing.T) {
+	svcPlain := newArticleServiceForTest(t)
+
+	created, err := svcPlain.Create(models.Article{
+		Title:  "Plain",
+		BodyMD: "# Heading\n\n<script>alert(1)</script>",
+	})
+	if err != nil {
+		t.Fatalf("Create plain: %v", err)
+	}
+	if !strings.Contains(created.BodyHTML, "<script>") {
+		t.Errorf("Plain service should preserve raw HTML in body_html (slice-1 contract): %q", created.BodyHTML)
+	}
+	if !strings.Contains(created.BodyHTML, "# Heading") {
+		t.Errorf("Plain service should preserve verbatim md: %q", created.BodyHTML)
+	}
+
+	svcRendered := newArticleServiceForTestWithRenderer(t)
+
+	created2, err := svcRendered.Create(models.Article{
+		Title:  "Rendered",
+		BodyMD: "# Heading\n\n<script>alert(1)</script>",
+	})
+	if err != nil {
+		t.Fatalf("Create rendered: %v", err)
+	}
+	if strings.Contains(created2.BodyHTML, "<script>") {
+		t.Errorf("Rendered service should strip script tag: %q", created2.BodyHTML)
+	}
+	if !strings.Contains(created2.BodyHTML, "<h1>") {
+		t.Errorf("Rendered service should render markdown: %q", created2.BodyHTML)
 	}
 }

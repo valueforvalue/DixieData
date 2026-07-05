@@ -587,3 +587,37 @@ func (a *App) handleArticleSnapshotDelete(w http.ResponseWriter, r *http.Request
 	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(articleID))
 	w.WriteHeader(http.StatusOK)
 }
+
+// handleArticlePreview serves GET /articles/preview?body=...
+// Returns the sanitized HTML render of the supplied
+// markdown source. Used by the slice-3.6 editor's live
+// preview pane -- the JS editor POSTs the body to this
+// endpoint on each keystroke (250ms debounce) and replaces
+// the preview div innerHTML with the response.
+//
+// The body is read from the form field name "body" so a
+// simple form-encoded POST works (htmx hx-post with
+// hx-trigger="input changed delay:250ms"). The render goes
+// through ArticleService's renderer (goldmark + bluemonday
+// custom policy) so the preview matches what the Create /
+// Update path will store.
+//
+// Empty body renders the guidance message so the preview
+// pane is never blank.
+func (a *App) handleArticlePreview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	body := r.PostFormValue("body")
+	rendered := a.articles.RenderBodyHTML(body)
+	if rendered == "" {
+		rendered = "<p class=\"text-sm text-slate-500\">If you write Markdown in the source panel, the rendered preview appears here. Updates live (250ms debounce).</p>"
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(rendered))
+}

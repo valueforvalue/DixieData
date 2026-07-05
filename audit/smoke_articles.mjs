@@ -304,7 +304,69 @@ try {
     record('revisions-delete-button-renders', revState.deleteExists, revState);
   }
 
-  // ── Slice-3.4 step complete. Slice-3.5+ steps land in follow-up commits.
+  // ────────────────────────────────────────────────────────────
+  // Step 5: /articles/new editor (slice 3.6). The form must
+  // carry the slice-3.6 local-draft attrs (data-draft-key,
+  // data-record-persistence) + the markdown source textarea
+  // + the preview pane + the live preview endpoint.
+  // ────────────────────────────────────────────────────────────
+  console.log('\nStep 5: /articles/new editor attrs');
+  await page.goto(BASE + '/articles/new');
+  await wait(800);
+  const editorState = await page.evaluate(() => {
+    const draftKey = document.querySelector('form[data-draft-key="new-article"]');
+    const persistence = document.querySelector('[data-record-persistence]');
+    const source = document.querySelector('[data-article-editor-source]');
+    const preview = document.querySelector('[data-article-editor-preview]');
+    return {
+      draftKeyExists: draftKey !== null,
+      persistenceExists: persistence !== null,
+      sourceExists: source !== null,
+      previewExists: preview !== null,
+    };
+  });
+  record('editor-draft-key-attr', editorState.draftKeyExists, editorState);
+  record('editor-persistence-attr', editorState.persistenceExists, editorState);
+  record('editor-source-textarea', editorState.sourceExists, editorState);
+  record('editor-preview-pane', editorState.previewExists, editorState);
+
+  // Type into the source textarea; assert the preview pane
+  // updates with rendered HTML (via /articles/preview).
+  if (editorState.sourceExists && editorState.previewExists) {
+    await page.fill('[data-article-editor-source]', '# Hello from smoke\n\nThis is **bold**.');
+    await wait(800);
+    const previewState = await page.evaluate(() => {
+      const preview = document.querySelector('[data-article-editor-preview]');
+      return {
+        innerHTML: preview ? preview.innerHTML : '',
+      };
+    });
+    record(
+      'editor-preview-renders-heading',
+      previewState.innerHTML.includes('<h1>'),
+      { length: previewState.innerHTML.length, sample: previewState.innerHTML.slice(0, 200) },
+    );
+    record(
+      'editor-preview-renders-bold',
+      previewState.innerHTML.includes('<strong>'),
+      { length: previewState.innerHTML.length },
+    );
+  }
+
+  // /articles/preview endpoint sanitizes raw HTML.
+  const previewResp = await fetch(BASE + '/articles/preview', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: 'body=Hello <script>alert(1)</script> world.',
+  });
+  const previewText = await previewResp.text();
+  record(
+    'preview-sanitizes-script',
+    previewResp.ok && !previewText.includes('<script>'),
+    { status: previewResp.status, containsScript: previewText.includes('<script>') },
+  );
+
+  // ── Slice-3.6 step complete. Slice-3.7+ steps land in follow-up commits.
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);

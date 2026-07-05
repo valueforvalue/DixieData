@@ -119,6 +119,14 @@ func (a *App) setupRoutes() {
 	// minimal round-trip surface before the editor UX lands.
 	r.Get("/articles/{id:[0-9]+}/edit", a.handleEditArticle)
 	r.Post("/articles/{id:[0-9]+}/edit", a.handleEditArticle)
+	// v62 slice 3.6 (issue #321): live preview endpoint.
+	// POST /articles/preview takes a form-encoded body
+	// field and returns the sanitized HTML render. The
+	// editor's preview pane POSTs on every keystroke
+	// (250ms debounce) and swaps the response innerHTML.
+	// Registered at /articles/preview (no id; the
+	// endpoint is editor-scoped, not article-scoped).
+	r.Post("/articles/preview", a.handleArticlePreview)
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)

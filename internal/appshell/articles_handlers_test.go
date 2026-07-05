@@ -848,3 +848,100 @@ func TestHandleEditArticle_RoundTripAndErrors(t *testing.T) {
 		t.Errorf("POST snapshot status = %d, want 409", respSnap.StatusCode)
 	}
 }
+
+// TestHandleArticlePreviewSanitizesRawHTML pins the slice-3.6
+// editor live-preview contract: POST /articles/preview with a
+// body containing raw <script> returns sanitized HTML (no
+// script tag, no "alert(1)" string preserved as code).
+// Markdown syntax (# heading, [link](url)) survives.
+func TestHandleArticlePreviewSanitizesRawHTML(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	// Heading + paragraph -> renders.
+	form := url.Values{}
+	form.Set("body", "# Hello\n\nThis is **bold**.")
+	resp, err := http.PostForm(server.URL+"/articles/preview", form)
+	if err != nil {
+		t.Fatalf("POST preview: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST preview status = %d, want 200", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), "<h1>") {
+		t.Errorf("Heading not rendered in preview: %s", string(body))
+	}
+	if !strings.Contains(string(body), "<strong>") {
+		t.Errorf("Bold not rendered in preview: %s", string(body))
+	}
+
+	// Raw <script> is stripped (tag removed, text content
+	// may survive but the tag itself is gone).
+	form2 := url.Values{}
+	form2.Set("body", "Hello <script>alert(1)</script> world.")
+	resp2, err := http.PostForm(server.URL+"/articles/preview", form2)
+	if err != nil {
+		t.Fatalf("POST preview script: %v", err)
+	}
+	defer resp2.Body.Close()
+	body2, _ := io.ReadAll(resp2.Body)
+	if strings.Contains(string(body2), "<script>") {
+		t.Errorf("Script tag survived sanitization: %s", string(body2))
+	}
+
+	// Empty body renders the guidance message.
+	form3 := url.Values{}
+	form3.Set("body", "")
+	resp3, err := http.PostForm(server.URL+"/articles/preview", form3)
+	if err != nil {
+		t.Fatalf("POST preview empty: %v", err)
+	}
+	defer resp3.Body.Close()
+	body3, _ := io.ReadAll(resp3.Body)
+	if !strings.Contains(string(body3), "If you write Markdown") {
+		t.Errorf("Empty guidance missing: %s", string(body3))
+	}
+
+	// GET is rejected.
+	respGet, err := http.Get(server.URL + "/articles/preview")
+	if err != nil {
+		t.Fatalf("GET preview: %v", err)
+	}
+	defer respGet.Body.Close()
+	if respGet.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("GET preview status = %d, want 405", respGet.StatusCode)
+	}
+}
+
+// TestHandleArticleNewForm_HasDraftKeyAttr pins the slice-3.6
+// local-draft-persistence attrs on the new-article form.
+func TestHandleArticleNewForm_HasDraftKeyAttr(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/articles/new")
+	if err != nil {
+		t.Fatalf("GET /articles/new: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /articles/new status = %d, want 200", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), `data-draft-key="new-article"`) {
+		t.Errorf("new-article form missing data-draft-key attr")
+	}
+	if !strings.Contains(string(body), `data-record-persistence`) {
+		t.Errorf("new-article form missing data-record-persistence attr")
+	}
+	if !strings.Contains(string(body), `data-article-editor-source`) {
+		t.Errorf("new-article form missing source textarea data-attr")
+	}
+	if !strings.Contains(string(body), `data-article-editor-preview`) {
+		t.Errorf("new-article form missing preview pane data-attr")
+	}
+}

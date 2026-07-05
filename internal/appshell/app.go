@@ -1967,7 +1967,7 @@ func (a *App) reloadServices() error {
 	// .ddbak restore replaces the same handle; the Event facade
 	// is rebuilt against the fresh soldierSvc reference.
 	a.events = records.NewEventService(soldierSvc)
-	a.articles = records.NewArticleService(soldierSvc)
+	a.articles = records.NewArticleService(soldierSvc, records.NewMarkdownRenderer())
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)

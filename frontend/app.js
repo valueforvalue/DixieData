@@ -2154,6 +2154,43 @@
     });
   }
 
+  // Issue #321 slice 3.6: markdown editor live preview.
+  // Hooks each [data-article-editor-preview] div to its
+  // paired [data-article-editor-source-id="..."] textarea;
+  // on input (250ms debounce), POST the body to
+  // /articles/preview and replace the preview's innerHTML
+  // with the sanitized HTML response. Empty body renders
+  // the guidance message so the preview pane is never
+  // blank.
+  function initializeMarkdownPreviews() {
+    document.querySelectorAll("[data-article-editor-preview]").forEach((preview) => {
+      const sourceID = preview.getAttribute("data-article-editor-preview-source-id");
+      if (!sourceID) return;
+      const source = document.getElementById(sourceID);
+      if (!(source instanceof HTMLTextAreaElement)) return;
+      let timer = null;
+      source.addEventListener("input", () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(async () => {
+          const body = source.value || "";
+          try {
+            const fd = new FormData();
+            fd.append("body", body);
+            const resp = await fetch("/articles/preview", {
+              method: "POST",
+              body: fd,
+            });
+            if (!resp.ok) return;
+            const html = await resp.text();
+            preview.innerHTML = html || "<p class=\"text-sm text-slate-500\">If you write Markdown in the source panel, the rendered preview appears here.</p>";
+          } catch (_) {
+            // Network error: leave the previous preview in place.
+          }
+        }, 250);
+      });
+    });
+  }
+
   // Floating nav toggle: the click handler is bound inline in
   // layout.templ (onclick="…toggle('hidden')") so it works even
   // before this script runs. This init function only owns the
@@ -4914,6 +4951,7 @@
     applyResponsiveLayout(document);
     initializeTabs();
     initializeDraftForms();
+    initializeMarkdownPreviews();
     initializeEntryTypeForms();
     initializeLiveCounts(document);
     initializeFloatingNav();
