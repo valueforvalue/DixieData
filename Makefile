@@ -56,9 +56,8 @@ build: SCRIPT := scripts/build-debug.ps1
 build: TARGET := build
 build: ARGS :=
 build: ## Build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
+	@$(PWSH) -NoLogo -NoProfile -File scripts/probe-clean.ps1
 	$(LOG_RECIPE)
-	-@cmd //c "taskkill /F /IM dixiedata-web.exe /T 2>nul & taskkill /F /IM DixieData.exe /T 2>nul & taskkill /F /IM seed-data.exe /T 2>nul & taskkill /F /IM gold-master.exe /T 2>nul & exit /b 0"
-	@echo probe-clean: ok
 	@mkdir -p build/bin
 	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
 	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
@@ -73,9 +72,8 @@ debug: SCRIPT := scripts/build-debug.ps1
 debug: TARGET := debug
 debug: ARGS :=
 debug: ## Debug build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
+	@$(PWSH) -NoLogo -NoProfile -File scripts/probe-clean.ps1
 	$(LOG_RECIPE)
-	-@cmd //c "taskkill /F /IM dixiedata-web.exe /T 2>nul & taskkill /F /IM DixieData.exe /T 2>nul & taskkill /F /IM seed-data.exe /T 2>nul & taskkill /F /IM gold-master.exe /T 2>nul & exit /b 0"
-	@echo probe-clean: ok
 	@mkdir -p build/bin
 	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
 	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
@@ -399,19 +397,22 @@ lint-htmx-guard-strict: ## htmx-guard lint as a CI failure
 lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
 	node audit/discover_htmx_guard.test.mjs
 
-# Kill any leftover dixiedata-web / DixieData / seed-data processes
-# from a previous probe run. Without this, the next `make debug`
-# fails with `unlinkat ... dixiedata-web.exe: The process cannot
-# access the file because it is being used by another process.`
-# Safe to run anytime — taskkill /F /IM is a no-op if the process
-# is absent.
+# Kill any leftover dixiedata-* processes from a previous probe run.
+# Without this, the next `make debug` fails with `unlinkat ...
+# dixiedata-web.exe: The process cannot access the file because it
+# is being used by another process.`
 #
-# Use cmd.exe to invoke taskkill — its exit codes (128 when no
-# match, 1 on usage error) propagate through bash's `-` prefix
-# without surfacing as make errors.
-probe-clean: ## Kill straggler dixiedata-web.exe / DixieData.exe / seed-data.exe
-	-@cmd //c "taskkill /F /IM dixiedata-web.exe /T 2>nul & taskkill /F /IM DixieData.exe /T 2>nul & taskkill /F /IM seed-data.exe /T 2>nul & taskkill /F /IM gold-master.exe /T 2>nul & exit /b 0"
-	@echo probe-clean: ok
+# Lives in scripts/probe-clean.ps1 rather than inline here because
+# the verify loop (kill → wait → re-query → retry) is too long for
+# a one-liner, and a .ps1 surfaces clear errors when a process
+# survives the kill (AV hold, protected process, re-spawn). The
+# script exits 1 if anything survives; make propagates that, so the
+# build halts with context instead of failing later at unlinkat.
+#
+# Safe to run anytime — the script is a no-op (exit 0) when no
+# target processes are alive.
+probe-clean: ## Kill + verify straggler dixiedata-*.exe processes (see scripts/probe-clean.ps1)
+	$(PWSH) -NoLogo -NoProfile -File scripts/probe-clean.ps1
 
 # UI v1 vs v2 side-by-side screenshot diff (issue #74 Phase 0 PR4).
 # Requires the dixiedata-web server to be running; see audit/README.md
