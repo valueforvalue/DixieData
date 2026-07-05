@@ -66,6 +66,31 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   images gallery slice (slot 16) so the new event handler
   can call the same helper without inheriting a stale name.
 
+- **Issue #320 (Event Records v1) sequence closure** (slot
+  16 of 16, the final slot). All 16 slots of the #320
+  closure sequence have landed on `dev` as of commit
+  `4abe1a4`. The schema foundation (slot 1, `d1832af`)
+  shipped v60 with the `event_person_links` junction and
+  the `person_record_id` FK rename across 8 columns in 6
+  tables; the service (slot 2, `a363b6d`) added
+  `EventService`; the UI surface (slot 3, `d09e852`) added
+  the Event Record detail page; slots 4-13 added Sources,
+  Tags, Research Log, Service Timeline sourcing, per-Event
+  PDF export, Scratch Pad, and the Browse filter; slot 14
+  (`d902217`) shipped the static archive `events[]` bundle;
+  slot 15 (`11f4b75`) shipped the shared-archive
+  `linkedDisplayIds` denormalization; slot 16 (`4abe1a4`,
+  this commit) shipped the Event images gallery. The
+  out-of-scope list from the original RPCI spec — Set-as-
+  Primary, image annotation, AI-assisted image tagging,
+  bulk image upload — remains as the candidate v1.1
+  surface. Browser-level smoke coverage of the new Event
+  images gallery is filed as follow-up issue #348 (the
+  Playwright harness does not yet wire a native file-picker
+  handler). Benchmarks at `docs/benchmarks/events.md`
+  (commit `69c03d0`); stress tests at
+  `tests/stress/events_stress_test.go` (issue #338).
+
 ### Added
 
 - **Event Records in the static archive bundle** (issue #320
