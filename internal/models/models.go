@@ -210,6 +210,31 @@ type Record struct {
 	Details       string `json:"details"`
 }
 
+// Article is a free-form markdown-bodied essay with inline Person
+// Record references (issue #321). Sibling to Soldier in the same
+// DB; parallel primary entity per locked decision #2 (same DB,
+// new tables) and locked decision #3 (articles + article_refs
+// split). The snapshot_of_id column holds non-null on rows that
+// are a "Save copy" snapshot of another row; the is_snapshot
+// column is the denormalized 0/1 mirror so read paths can filter
+// snapshots without a join. slice 1 mints rows in the live
+// branch (snapshot_of_id = NULL, is_snapshot = 0); slice 2.5
+// fills in the snapshot lifecycle. See CONTEXT.md §Domain
+// vocabulary (Article / Article Record / Article Snapshot).
+type Article struct {
+	ID            int64  `json:"id"`
+	SyncID        string `json:"sync_id"`
+	DisplayID     string `json:"display_id"`
+	Title         string `json:"title"`
+	Subtitle      string `json:"subtitle"`
+	BodyMD        string `json:"body_md"`
+	BodyHTML      string `json:"body_html"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+	SnapshotOfID  *int64 `json:"snapshot_of_id,omitempty"`
+	IsSnapshot    bool   `json:"is_snapshot"`
+}
+
 // Image is a per-soldier image: portrait, document scan, cemetery
 // photo. Carries the on-disk relative path under the dataDir's
 // images directory, the SHA-256 used for dedup, and the

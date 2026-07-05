@@ -1,0 +1,47 @@
+// article_detail.templ — v62 (issue #321 slice 1) Article
+// detail page. slice 1 renders the title + subtitle + body
+// verbatim from the viewmodel. Body carries the markdown source
+// (slice 1: body_md verbatim, slice 2: sanitized HTML via
+// goldmark + bluemonday).
+//
+// slice 3 will add:
+//   * the Refs panel (Person Records this article cites)
+//   * the "Cited in" reverse-lookup section (the inverse view
+//     of the Refs panel: which Person Records link to this one)
+//   * the Revisions tab (snapshot list + Restore + Delete +
+//     "Save copy" button)
+//   * the picker modal for inserting Person Record tokens
+//
+// The slice-1 surface deliberately matches the acceptance
+// criterion on issue #321: "Researcher can /articles/new to
+// create a new Article with title + subtitle + markdown body;
+// lands on /articles/{id} with the rendered detail page."
+package templates
+
+import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+import "strings"
+
+templ ArticleDetailShell(view viewmodel.Article) {
+	@Layout(view.Title) {
+		<div class="relative mx-auto max-w-4xl">
+			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+				<a
+					href={ templ.SafeURL(routebuilder.ArticleList()) }
+					class="secondary-button"
+				>← Back to Articles</a>
+				<span class="font-mono text-xs text-slate-500" data-article-display-id>{ view.DisplayID }</span>
+			</div>
+			<article class="card rounded-3xl p-5 sm:p-8 space-y-4">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]" data-article-title>{ view.Title }</h1>
+				if view.Subtitle != "" {
+					<p class="text-lg text-slate-600" data-article-subtitle>{ view.Subtitle }</p>
+				}
+				<div class="whitespace-pre-line text-sm leading-relaxed text-[color:var(--ink)]" data-article-body>{ strings.TrimSpace(view.Body) }</div>
+			</article>
+		</div>
+	}
+}

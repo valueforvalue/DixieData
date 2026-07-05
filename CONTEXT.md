@@ -132,6 +132,18 @@ _Avoid_: Spouse
 A primary archive entry for a dated event in Civil War history (a Battle, a Campaign, a Death, a Marriage, a Hospital stay, etc.). Has a free-text `kind` (no enum), optional begin and end dates in MM/DD/YYYY canonical-date form, an optional long-form Description with a per-PDF excerpt override, and zero or more attached images (reusing the `images` table). Carries the same paper trail as a Person Record (Source Records, Claims, Findings, Scratch Pad, Research Log, Tags, Review Queue). Linked to one or more Person Records via the `event_person_links` many-to-many junction. Lives in the same `soldiers` table as every other Person Record subtype; the column `entry_type = 'event'` distinguishes it. Display ID namespace: `EVT-NNNNN`.
 _Avoid_: timeline event, archive event, cross-record link, historical event (too generic)
 
+**Article**:
+A primary archive entry for a long-form, markdown-bodied essay with inline Person Record references (`[Private John Doe](#person/D-00123)`). Lives in its own `articles` table — NOT a Person Record subtype, NOT an Event Record sibling in the `soldiers` table. Articles are a parallel primary entity (sibling to Person Records + Event Records at the archive-entry level) because the authoring unit (the whole essay) does not match the per-row unit Person Records use (a single person). Articles have a title (required), an optional subtitle, a markdown body, and zero or more Person Record refs via the `article_refs` junction. They can be snapshotted ("Save copy" → read-only sibling row keyed by `snapshot_of_id`) for user-managed Revisions. Display ID namespace: `ART-NNNNN`. See issue #321 for the locked decisions + the slice plan.
+_Avoid_: note (too small), essay (too literary), document (collides with Source Record), blog post, post
+
+**Article Reference**:
+A per-row link from an Article to a Person Record, stored in the `article_refs` junction table. Carries the article id + sync_id (distributed-merge mirrors), the person record id + sync_id + a denormalized display_id cache (so the Cite-in reverse-lookup + the PDF / Static-HTML resolver can render without a join), and a `position` column reserved for a future reorder UI (mirroring #368's source-record reorder). Authored via the in-body inline syntax `[Text](#person/D-00123)`; resolved strictly via the Display ID — an unresolved token renders as `⚠ [Unknown: D-00123]` in the PDF / Static-HTML output (fail-loud; no silent fallback per locked decision #6).
+_Avoid_: citation (too literary), bookmark, cross-reference
+
+**Article Snapshot**:
+A read-only sibling row of an Article, created via the "Save copy" button (locked decision #11). Stored in the same `articles` table with `is_snapshot = 1` and `snapshot_of_id = <original-row-id>`. The read path filters snapshots (`is_snapshot = 0` only) so the live detail page is unaffected; slice 2.5 introduces the Revisions tab to list + restore + delete snapshots. Snapshot-of-snapshot is rejected; edit on a snapshot row is rejected — the original is the only writable instance per artifact.
+_Avoid_: revision (implies auto-versioned), backup (implies filesystem), diff (implies visual diff between revisions)
+
 ## Relationships
 
 - A **Person Record** may have zero or more **Source Records**
@@ -157,6 +169,9 @@ _Avoid_: timeline event, archive event, cross-record link, historical event (too
 - A **Wife** and a **Widow** are subtypes of **Spouse Record**
 - An **Event Record** is a kind of **Person Record**
 - An **Event Record** may link to one or more **Person Records**
+- An **Article** may cite zero or more **Person Records** via **Article References**
+- An **Article Snapshot** is derived from exactly one **Article** (or **Article Snapshot**)
+- A **Person Record** may appear in zero or more **Articles** via **Article References**
 - A **Person Record** may be linked to one or more **Event Records**
 - A **Person Record** may have zero or more **Tags**
 - A **Tag** may be applied to zero or more **Person Records**

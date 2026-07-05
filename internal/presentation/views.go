@@ -359,3 +359,31 @@ func ShareImportsView() templ.Component {
 func ShareSyncView(status models.GoogleStatus) templ.Component {
 	return templates.ShareSyncView(viewmodel.GoogleStatusFromModel(status))
 }
+
+
+// ArticlesListShell (issue #321 slice 1) wraps
+// templates.ArticlesListShell. The slice-1 surface is the
+// landing page with an empty-state placeholder; slice 2 fills
+// in the per-row card list and the search/filter controls.
+// No domain mapping today: the list is empty by definition.
+func ArticlesListShell() templ.Component {
+	return templates.ArticlesListShell()
+}
+
+// ArticleNewShell (issue #321 slice 1) wraps
+// templates.ArticleNewShell. The slice-1 surface is a minimal
+// title + subtitle + body form posting to /articles/new;
+// slice 3 swaps this for the markdown editor + sanitized
+// preview + local-draft-persistence block.
+func ArticleNewShell() templ.Component {
+	return templates.ArticleNewShell()
+}
+
+// ArticleDetailShell (issue #321 slice 1) wraps
+// templates.ArticleDetailShell with the per-Article viewmodel.
+// slice 1 renders title + body verbatim; slice 3 adds the
+// Refs panel + the "Cited in" reverse-lookup section + the
+// Revisions tab.
+func ArticleDetailShell(view viewmodel.Article) templ.Component {
+	return templates.ArticleDetailShell(view)
+}

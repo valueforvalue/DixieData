@@ -88,3 +88,46 @@ func (d *DB) NextEventID() (string, error) {
 	}
 	return fmt.Sprintf("%s-%05d", EventDisplayIDNamespace, maxSeq+1), nil
 }
+
+// ArticleDisplayIDNamespace is the canonical namespace for Article
+// Display IDs (issue #321). Mirrors EventDisplayIDNamespace for the
+// EVT- prefix; Articles use ART- so a /articles list, an Articles tab,
+// or a Cited-in reverse-lookup can disambiguate at a glance. The ART-
+// counter is independent of the per-Person DXD- counter and the per-
+// Event EVT- counter, so the three sequences never collide.
+const ArticleDisplayIDNamespace = "ART"
+
+// NextArticleID returns the next sequential Article Display ID in
+// the ART-NNNNN namespace (issue #321). Mirrors NextEventID but
+// namespace-scoped to ART-; queries the dedicated articles table
+// (which the slice 1 migration creates) so the max sequence is
+// computed against Article rows only, not soldiers rows.
+//
+// On a fresh archive, returns ART-00001. On an archive with an
+// existing ART-NNNNN row, returns ART-(MAX+1).
+func (d *DB) NextArticleID() (string, error) {
+	rows, err := d.conn.Query(`SELECT display_id FROM articles WHERE display_id LIKE ?`, ArticleDisplayIDNamespace+"-%")
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	maxSeq := 0
+	for rows.Next() {
+		var displayID string
+		if err := rows.Scan(&displayID); err != nil {
+			return "", err
+		}
+		_, seq, ok := CanonicalDisplayID(SanitizeID(displayID, ""))
+		if !ok {
+			continue
+		}
+		if seq > maxSeq {
+			maxSeq = seq
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s-%05d", ArticleDisplayIDNamespace, maxSeq+1), nil
+}

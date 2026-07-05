@@ -73,6 +73,12 @@ type App struct {
 	// through a.events, not a.soldiers, so the focused facade
 	// stays decoupled from the full SoldierService surface.
 	events                  eventsFacade
+	// v62 (issue #321): Article Record service. Wired in
+	// reloadServices() alongside soldiers + events. The slice-1
+	// surface is minimal (Create + GetByID); the facade debate
+	// (#343 candidate #4) deliberately deferred, so Article
+	// stays direct for v1.
+	articles                *records.ArticleService
 	calendar                calendarFacade
 	analytics               analyticsFacade
 	audit                   reviewFacade
@@ -1961,6 +1967,7 @@ func (a *App) reloadServices() error {
 	// .ddbak restore replaces the same handle; the Event facade
 	// is rebuilt against the fresh soldierSvc reference.
 	a.events = records.NewEventService(soldierSvc)
+	a.articles = records.NewArticleService(soldierSvc)
 	a.anniversary = records.NewAnniversaryService(a.database)
 	a.calendar = records.NewCalendarService(a.database)
 	a.analytics = records.NewAnalyticsService(a.database)

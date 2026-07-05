@@ -7,7 +7,7 @@ import "fmt"
 // plane ships with today. Bumped when migration files in
 // internal/db/ land. Independent from the app version string
 // (see CurrentUpdateFlowVersion below).
-const CurrentSchemaVersion = 61
+const CurrentSchemaVersion = 62
 
 // CurrentUpdateFlowVersion is the update-flow-shape gate.
 // Bumped when the auto-update mechanism itself changes shape

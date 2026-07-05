@@ -70,6 +70,21 @@ func (a *App) setupRoutes() {
 	r.Post("/soldiers/*", a.handleSoldierByID)
 	r.Put("/soldiers/*", a.handleSoldierByID)
 	r.Delete("/soldiers/*", a.handleSoldierByID)
+	// v62 (issue #321 slice 1): Article Record routes.
+	// Registered between the /soldiers catch-alls and the
+	// /events routes so the literal /articles and /articles/{id}
+	// prefixes match before any catch-all. The slice-1 surface
+	// is the Get + Post alias on /articles/{id:[0-9]+}; the
+	// /edit, /refs/*, /snapshot, /restore, /pdf, /raw paths
+	// land in slices 2.5 / 3 / 4. The /articles/* catch-all is
+	// deliberately omitted in slice 1 — adding it would let the
+	// orphan-handler probe miss a future missing-invoker route
+	// (the same anti-pattern issue #257 sweeps).
+	r.Get("/articles", a.handleArticles)
+	r.Get("/articles/new", a.handleNewArticle)
+	r.Post("/articles/new", a.handleNewArticle)
+	r.Get("/articles/{id:[0-9]+}", a.handleArticleByID)
+	r.Post("/articles/{id:[0-9]+}", a.handleArticleByID)
 	// v60 (issue #320): Event Record routes. Registered
 	// before the /soldiers/* catch-all so the literal /events
 	// prefix matches first. The /events/{id:[0-9]+}/edit

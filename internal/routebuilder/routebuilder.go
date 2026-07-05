@@ -427,6 +427,28 @@ func EventTagDetach(id, tagId int64) string {
 	return fmt.Sprintf("/events/%d/tags/%d/detach", id, tagId)
 }
 
+// ArticleList (issue #321) returns the URL for the /articles
+// landing page. Registered as GET /articles in routes.go.
+func ArticleList() string {
+	return "/articles"
+}
+
+// ArticleNew (issue #321) returns the URL for the new-article
+// editor surface. Registered as GET + POST /articles/new in
+// routes.go.
+func ArticleNew() string {
+	return "/articles/new"
+}
+
+// ArticleByID (issue #321) returns the URL for the per-Article
+// detail page. Registered as GET + POST /articles/{id} in
+// routes.go. The argument is the SQLite row id (matches the
+// /articles/{id:[0-9]+} URL pattern); the DisplayID
+// (ART-NNNNN) lives in the row but never appears in the URL.
+func ArticleByID(id int64) string {
+	return fmt.Sprintf("/articles/%d", id)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {
