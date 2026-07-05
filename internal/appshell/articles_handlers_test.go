@@ -267,3 +267,262 @@ func TestHandleArticleRefsAttachDetach(t *testing.T) {
 		t.Errorf("idempotent DELETE ref status = %d, want 200", resp.StatusCode)
 	}
 }
+
+
+// TestHandleArticleSnapshotRoundTrip pins the slice-2.5
+// POST /articles/{id}/snapshot happy path: 200 +
+// X-DixieData-Redirect; the underlying ArticleService now
+// exposes 2 rows (the source + the new snapshot row); the
+// snapshot row carries is_snapshot = 1 + snapshot_of_id =
+// source.ID.
+func TestHandleArticleSnapshotRoundTrip(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, err := app.articles.Create(models.Article{Title: "Snapshot source"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	resp, err := http.PostForm(
+		server.URL+"/articles/"+intStr(src.ID)+"/snapshot",
+		url.Values{})
+	if err != nil {
+		t.Fatalf("POST snapshot: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /articles/%d/snapshot status = %d, want 200", src.ID, resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-DixieData-Redirect"); !strings.HasPrefix(got, "/articles/") {
+		t.Errorf("X-DixieData-Redirect = %q, want /articles/{id} prefix", got)
+	}
+
+	// The snapshot row exists (via the service's
+	// GetSnapshotByID helper). Source is still live (via
+	// GetByID). The DB has 2 article rows.
+	snap, err := app.articles.GetSnapshotByID(1)
+	if err != nil {
+		// 1 is the snapshot row id -- the SQLite
+		// autoincrement starts at 1 for the first row
+		// (source) and the snapshot is row 2.
+		// We don't know the snap id without asking the
+		// service, so list All snapshots via direct SQL.
+		allRows := listAllArticleIDs(t, app)
+		if len(allRows) != 2 {
+			t.Fatalf("after snapshot: article count = %d, want 2 (source + snapshot)", len(allRows))
+		}
+		// Find the snapshot row (the one with is_snapshot = 1).
+		for _, id := range allRows {
+			if id != src.ID {
+				if _, err := app.articles.GetSnapshotByID(id); err != nil {
+					t.Errorf("expected snapshot row at id %d, got %v", id, err)
+				}
+			}
+		}
+	} else {
+		if snap == nil {
+			t.Errorf("snap unexpectedly nil")
+		}
+	}
+
+	// Source row still live.
+	if _, err := app.articles.GetByID(src.ID); err != nil {
+		t.Errorf("source row disappeared: %v", err)
+	}
+}
+
+// TestHandleArticleRestoreRoundTrip pins the slice-2.5
+// POST /articles/{id}/restore happy path: the snapshot
+// overwrites the live row's title + body; the snapshot
+// remains in place.
+func TestHandleArticleRestoreRoundTrip(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, _ := app.articles.Create(models.Article{Title: "Restore source"})
+	snap, err := app.articles.Snapshot(src.ID)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	// Mutate the snapshot directly (the slice-2.5 surface
+	// does not yet ship an Edit-snapshot handler; a future
+	// slice may).
+	if _, err := app.database.Conn().Exec(
+		`UPDATE articles SET body_md = ?, title = ? WHERE id = ? AND is_snapshot = 1`,
+		"restored body", "Restored Title", snap.ID); err != nil {
+		t.Fatalf("direct SQL update of snapshot: %v", err)
+	}
+
+	resp, err := http.PostForm(
+		server.URL+"/articles/"+intStr(snap.ID)+"/restore",
+		url.Values{})
+	if err != nil {
+		t.Fatalf("POST restore: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /articles/%d/restore status = %d, want 200", snap.ID, resp.StatusCode)
+	}
+
+	// Live row now has the restored title + body.
+	live, err := app.articles.GetByID(src.ID)
+	if err != nil {
+		t.Fatalf("GetByID(src): %v", err)
+	}
+	if live.Title != "Restored Title" {
+		t.Errorf("after Restore: title = %q, want %q", live.Title, "Restored Title")
+	}
+	if live.BodyMD != "restored body" {
+		t.Errorf("after Restore: body = %q, want %q", live.BodyMD, "restored body")
+	}
+
+	// Snapshot still in place (lookup via GetSnapshotByID).
+	if _, err := app.articles.GetSnapshotByID(snap.ID); err != nil {
+		t.Errorf("snapshot disappeared after Restore: %v", err)
+	}
+}
+
+// TestHandleArticleSnapshotDeleteRoundTrip pins the
+// slice-2.5 DELETE /articles/{id}/snapshot/{snapshotID}
+// happy path: 200 + X-DixieData-Redirect; the snapshot row
+// is gone; the live row survives.
+func TestHandleArticleSnapshotDeleteRoundTrip(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, _ := app.articles.Create(models.Article{Title: "Delete source"})
+	snap, err := app.articles.Snapshot(src.ID)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	req, err := http.NewRequest(http.MethodDelete,
+		server.URL+"/articles/"+intStr(src.ID)+"/snapshot/"+intStr(snap.ID), nil)
+	if err != nil {
+		t.Fatalf("build DELETE: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE snapshot: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("DELETE snapshot status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-DixieData-Redirect"); !strings.HasPrefix(got, "/articles/") {
+		t.Errorf("X-DixieData-Redirect = %q, want /articles/{id} prefix", got)
+	}
+
+	// Snapshot gone.
+	if _, err := app.articles.GetSnapshotByID(snap.ID); err == nil {
+		t.Errorf("snapshot not deleted: GetSnapshotByID returned nil")
+	}
+	// Source still live.
+	if _, err := app.articles.GetByID(src.ID); err != nil {
+		t.Errorf("source row disappeared: %v", err)
+	}
+}
+
+// TestHandleArticleSnapshotOfSnapshotRejected pins the
+// slice-2.5 contract: POST /articles/{id}/snapshot where
+// {id} is itself a snapshot returns 409 (snapshot-of-snapshot
+// is rejected).
+func TestHandleArticleSnapshotOfSnapshotRejected(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, _ := app.articles.Create(models.Article{Title: "Live"})
+	snap, _ := app.articles.Snapshot(src.ID)
+
+	resp, err := http.PostForm(
+		server.URL+"/articles/"+intStr(snap.ID)+"/snapshot",
+		url.Values{})
+	if err != nil {
+		t.Fatalf("POST snapshot-of-snapshot: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("snapshot-of-snapshot status = %d, want 409", resp.StatusCode)
+	}
+}
+
+// TestHandleArticleRestoreLiveRowRejected pins the
+// slice-2.5 contract: POST /articles/{id}/restore where
+// {id} is a live-branch row (not a snapshot) returns 409.
+func TestHandleArticleRestoreLiveRowRejected(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, _ := app.articles.Create(models.Article{Title: "Live"})
+
+	resp, err := http.PostForm(
+		server.URL+"/articles/"+intStr(src.ID)+"/restore",
+		url.Values{})
+	if err != nil {
+		t.Fatalf("POST restore-of-live: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("restore-of-live status = %d, want 409", resp.StatusCode)
+	}
+}
+
+// TestHandleArticleSnapshotDeleteLiveRowRejected pins the
+// slice-2.5 contract: DELETE /articles/{id}/snapshot/{snapID}
+// where {id} is a live-branch row returns 409 (DeleteSnapshot
+// is snapshots-only; live rows use the regular Delete path).
+func TestHandleArticleSnapshotDeleteLiveRowRejected(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, _ := app.articles.Create(models.Article{Title: "Live"})
+
+	// Trying to DeleteSnapshot src.ID (a live row) -- but
+	// the URL takes a snapshotID segment, so use a dummy id.
+	req, err := http.NewRequest(http.MethodDelete,
+		server.URL+"/articles/"+intStr(src.ID)+"/snapshot/"+intStr(src.ID), nil)
+	if err != nil {
+		t.Fatalf("build DELETE: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE live as snapshot: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("DeleteSnapshot-of-live status = %d, want 409", resp.StatusCode)
+	}
+}
+
+// listAllArticleIDs is a small helper used by the slice-2.5
+// handler tests to enumerate every article row id
+// (regardless of is_snapshot). It issues a direct SQL
+// query because no public ArticleService method lists every
+// row mixed; using direct SQL here is a test-only convenience
+// and avoids widening the public surface for slice-2.5.
+func listAllArticleIDs(t *testing.T, app *App) []int64 {
+	t.Helper()
+	conn := app.database.Conn()
+	rows, err := conn.Query(`SELECT id FROM articles ORDER BY id`)
+	if err != nil {
+		t.Fatalf("listAllArticleIDs: %v", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			t.Fatalf("listAllArticleIDs scan: %v", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}

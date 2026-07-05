@@ -77,6 +77,42 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestHandleArticleRefsAttachDetach`. 27-package test suite green;
   orphan-handler probe exit 0 (7 article routes registered, 0 orphans).
 
+- **Article Records snapshot lifecycle** (issue #321 slice 2.5).
+  Adds the manual snapshot surface that locked decision #11
+  promised: a user can click "Save copy" to snapshot the
+  current title + body, browse + Restore + Delete the
+  snapshots later. Service adds `Snapshot(srcID)` (creates
+  a fresh `ART-NNNNN` row with `is_snapshot = 1` +
+  `snapshot_of_id = srcID`, copies title/subtitle/body
+  verbatim, rejects snapshot-of-snapshot via
+  `ErrArticleSnapshot`), `Restore(snapshotID)` (overwrites
+  the live row the snapshot refers to with the snapshot's
+  CURRENT fields via the existing Update path; the snapshot
+  stays in place), `DeleteSnapshot(snapshotID)` (removes
+  only the snapshot row; rejects live targets with
+  `ErrArticleSnapshot`), and `GetSnapshotByID` (the
+  inverse-filter counterpart to `GetByID` so handlers can
+  find snapshot rows). Routes: `POST /articles/{id}/snapshot`,
+  `POST /articles/{id}/restore`, `DELETE /articles/{id}/
+  snapshot/{snapshotID}`. `routebuilder.ArticleSnapshot` +
+  `ArticleRestore` + `ArticleSnapshotDelete` helpers.
+  Pinned by `TestArticleService_Snapshot` (4 sub-cases:
+  happy path + snapshot-of-snapshot + source-not-found +
+  snapshot-row not in live list) +
+  `TestArticleService_Restore` (overwrite live row +
+  snapshot stays + reject non-snapshot + reject unknown) +
+  `TestArticleService_DeleteSnapshot` (only snapshot
+  removed + live untouched + idempotent-via-not-found +
+  reject live target) +
+  `TestHandleArticleSnapshotRoundTrip` +
+  `TestHandleArticleRestoreRoundTrip` +
+  `TestHandleArticleSnapshotDeleteRoundTrip` +
+  `TestHandleArticleSnapshotOfSnapshotRejected` (409) +
+  `TestHandleArticleRestoreLiveRowRejected` (409) +
+  `TestHandleArticleSnapshotDeleteLiveRowRejected` (409).
+  27-package test suite green; orphan-handler probe
+  exit 0 (10 article routes registered, 0 orphans).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

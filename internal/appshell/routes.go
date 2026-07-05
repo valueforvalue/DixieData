@@ -92,6 +92,15 @@ func (a *App) setupRoutes() {
 	// Idempotent detach so a UI double-click is a no-op.
 	r.Post("/articles/{id:[0-9]+}/refs", a.handleArticleRefsAttach)
 	r.Delete("/articles/{id:[0-9]+}/refs/{personId:[0-9]+}", a.handleArticleRefsDetach)
+	// v62 slice 2.5 (issue #321): snapshot lifecycle.
+	// POST /articles/{id}/snapshot creates a fresh row with
+	// is_snapshot = 1 + a new ART-NNNNN Display ID. POST
+	// /articles/{id}/restore overwrites the live row the
+	// snapshot refers to. DELETE /articles/{id}/snapshot/
+	// {snapshotID} removes only the snapshot row.
+	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
+	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
+	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)
 	// v60 (issue #320): Event Record routes. Registered
 	// before the /soldiers/* catch-all so the literal /events
 	// prefix matches first. The /events/{id:[0-9]+}/edit
