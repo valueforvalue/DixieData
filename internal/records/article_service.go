@@ -396,6 +396,66 @@ func (a *ArticleService) Delete(id int64) error {
 // inverts the filter so callers that own snapshot-row
 // surface area can find them. Returns ErrArticleNotFound
 // when the row does not exist OR is a live-branch row.
+// ListSnapshots returns every snapshot row pointing at the
+// given live article id, sorted by created_at DESC (most-
+// recently-snapshotted first; matches the slice-2 List
+// pagination order so the Revisions tab feels consistent).
+//
+// The slice-3 Revisions tab uses this list to render the
+// per-snapshot row with Restore + Delete affordances. Empty
+// input is rejected so a confused caller (e.g. a future
+// caller that lost the articleID context) fails fast; the
+// articleID comes from the URL path in the slice-3 handler
+// so a zero value would mean a route registration bug.
+//
+// Returns an empty slice (not nil) when the article has no
+// snapshots -- the templ loop renders cleanly without a nil
+// guard. The empty slice + a nil error together signal "no
+// revisions yet" without distinguishing that from "lookup
+// failed" (which returns an error).
+func (a *ArticleService) ListSnapshots(articleID int64) ([]models.Article, error) {
+	if articleID < 1 {
+		return nil, fmt.Errorf("ListSnapshots: article id must be positive")
+	}
+	rows, err := a.soldiers.db.Conn().Query(
+		`SELECT id, sync_id, display_id, title, subtitle, body_md, body_html,
+		        created_at, updated_at, snapshot_of_id, is_snapshot
+		 FROM articles
+		 WHERE snapshot_of_id = ? AND is_snapshot = 1
+		 ORDER BY created_at DESC, id DESC`,
+		articleID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ListSnapshots %d: %w", articleID, err)
+	}
+	defer rows.Close()
+	out := make([]models.Article, 0)
+	for rows.Next() {
+		var (
+			art          models.Article
+			snapshotOfID sql.NullInt64
+			isSnapshot   int
+		)
+		if err := rows.Scan(
+			&art.ID, &art.SyncID, &art.DisplayID, &art.Title, &art.Subtitle,
+			&art.BodyMD, &art.BodyHTML, &art.CreatedAt, &art.UpdatedAt,
+			&snapshotOfID, &isSnapshot,
+		); err != nil {
+			return nil, fmt.Errorf("ListSnapshots scan: %w", err)
+		}
+		if snapshotOfID.Valid {
+			v := snapshotOfID.Int64
+			art.SnapshotOfID = &v
+		}
+		art.IsSnapshot = isSnapshot != 0
+		out = append(out, art)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ListSnapshots rows: %w", err)
+	}
+	return out, nil
+}
+
 func (a *ArticleService) GetSnapshotByID(id int64) (*models.Article, error) {
 	if id < 1 {
 		return nil, ErrArticleNotFound

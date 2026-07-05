@@ -266,7 +266,45 @@ try {
     }
   }
 
-  // ── Slice-3.3 step complete. Slice-3.4+ steps land in follow-up commits.
+  // ────────────────────────────────────────────────────────────
+  // Step 4: Revisions tab (slice 3.4). Snapshot the article
+  // via the API, then GET the revisions fragment + assert
+  // the snapshot row + Save copy / Restore / Delete buttons
+  // render.
+  // ────────────────────────────────────────────────────────────
+  if (articleId) {
+    console.log('\nStep 4: Revisions tab renders snapshots');
+    const snapResp = await fetch(BASE + '/articles/' + articleId + '/snapshot', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: '',
+    });
+    record('snapshot-via-api', snapResp.ok, { status: snapResp.status });
+
+    await page.goto(BASE + '/articles/' + articleId + '/revisions');
+    await wait(800);
+    const revState = await page.evaluate(() => {
+      const tab = document.querySelector('[data-article-revisions-tab]');
+      const rows = document.querySelectorAll('[data-article-revisions-row]');
+      const save = document.querySelector('[data-article-revisions-save]');
+      const restore = document.querySelector('[data-article-revisions-restore]');
+      const del = document.querySelector('[data-article-revisions-delete]');
+      return {
+        tabRenders: tab !== null,
+        rowCount: rows.length,
+        saveExists: save !== null,
+        restoreExists: restore !== null,
+        deleteExists: del !== null,
+      };
+    });
+    record('revisions-tab-renders', revState.tabRenders, revState);
+    record('revisions-row-renders', revState.rowCount > 0, revState);
+    record('revisions-save-button-renders', revState.saveExists, revState);
+    record('revisions-restore-button-renders', revState.restoreExists, revState);
+    record('revisions-delete-button-renders', revState.deleteExists, revState);
+  }
+
+  // ── Slice-3.4 step complete. Slice-3.5+ steps land in follow-up commits.
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);

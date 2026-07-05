@@ -104,6 +104,13 @@ func (a *App) setupRoutes() {
 	// route. No native dialog -- uses an htmx-swapped
 	// fragment per docs/agents/dialog-guard.md.
 	r.Get("/articles/{id:[0-9]+}/picker", a.handleArticlePicker)
+	// v62 slice 3.4 (issue #321): Revisions tab fragment.
+	// The fragment lists every snapshot pointing at the
+	// live article, with per-snapshot Restore + Delete
+	// affordances. Renders only the <ul> + actions; the
+	// tab UI lives on the article_detail.templ shell so
+	// the fragment is a drop-in for the tab's data panel.
+	r.Get("/articles/{id:[0-9]+}/revisions", a.handleArticleRevisions)
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)

@@ -8,18 +8,16 @@
 // swaps the verbatim Body for the sanitized HTML render.
 //
 // The picker modal lives in components/person_record_picker.templ;
-// the slice-3.2 commit deliberately ships the "Add Ref" CTA
-// as a placeholder button + a "coming in slice 3.3" hint, so
-// the Refs panel is exercisable without the picker modal
-// blocking the slice-3.2 smoke probe.
+// the Revisions tab fragment lives in
+// components/article_revisions.templ.
 package templates
 
 import (
 	"fmt"
 
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ArticleDetailShell(view viewmodel.Article) {
@@ -68,10 +66,10 @@ templ ArticleDetailShell(view viewmodel.Article) {
 				}
 			</article>
 			@ArticleRefsPanel(view)
-			// Slice 3.4 commits land the Revisions tab + Save
-			// copy button here. Slice 3.6 swaps the verbatim
-			// Body for the sanitized HTML render. Slice 3.7
-			// adds the /articles/{id}/edit CTA on this surface.
+			@ArticleRevisionsTab(view)
+			// Slice 3.6 swaps the verbatim Body for the
+			// sanitized HTML render. Slice 3.7 adds the
+			// /articles/{id}/edit CTA on this surface.
 		</div>
 	}
 }
@@ -80,13 +78,9 @@ templ ArticleDetailShell(view viewmodel.Article) {
 // /articles/{id} detail page. One row per attached Person
 // Record, each with an Unlink button (data-action + DELETE
 // to the existing ArticleRefsDetach route per the
-// post-Option-C convention). The "Add Ref" CTA is a
-// placeholder button for slice 3.2; slice 3.3 swaps it for
-// the picker modal trigger.
-//
-// The panel renders the empty state ("No Person Records
-// attached") when refs is empty -- a researcher can attach
-// without first seeing the empty state on every visit.
+// post-Option-C convention). The "Add Ref" CTA is the
+// picker trigger (slice 3.3); clicking it opens the inline
+// picker.
 templ ArticleRefsPanel(view viewmodel.Article) {
 	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-article-refs-panel>
 		<div class="flex flex-wrap items-center justify-between gap-3">
@@ -113,7 +107,7 @@ templ ArticleRefsPanel(view viewmodel.Article) {
 							"data-method":                    "DELETE",
 							"data-dixie-submit":              "true",
 							"data-confirm":                   "Unlink this Person Record from the article?",
-							"data-article-refs-unlink":        "",
+							"data-article-refs-unlink":       "",
 							"data-article-refs-person-id":    fmt.Sprintf("%d", ref.PersonRecordID),
 							"data-article-refs-article-id":   fmt.Sprintf("%d", view.ID),
 						})
@@ -121,5 +115,23 @@ templ ArticleRefsPanel(view viewmodel.Article) {
 				}
 			</ul>
 		}
+	</section>
+}
+
+// ArticleRevisionsTab renders the Revisions tab UI + the
+// initial snapshot list. Uses the data-tab-group pattern
+// (see components/soldier_card.templ:81-92) so
+// initializeTabs() in app.js auto-wires the tab switches.
+//
+// Slice 3.4 ships this with no edit-snapshot affordance
+// (per the breq/185 follow-up); the snapshot row exposes
+// only Restore + Delete.
+templ ArticleRevisionsTab(view viewmodel.Article) {
+	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-article-revisions-tab>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">Revisions</h2>
+			<span class="font-mono text-xs text-slate-500" data-article-revisions-count>{ fmt.Sprintf("%d saved", len(view.Snapshots)) }</span>
+		</div>
+		@components.ArticleRevisionsList(view.ID, view.Snapshots)
 	</section>
 }

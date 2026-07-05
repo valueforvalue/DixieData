@@ -501,6 +501,16 @@ func ArticlePicker(articleID int64) string {
 	return fmt.Sprintf("/articles/%d/picker", articleID)
 }
 
+// ArticleRevisions (issue #321 slice 3.4) returns the URL
+// for the Revisions tab fragment on /articles/{id}. The
+// fragment is rendered by handleArticleRevisions and
+// lists every snapshot of the article (sorted created_at
+// DESC) with per-snapshot Restore + Delete affordances.
+// Registered as GET /articles/{id}/revisions in routes.go.
+func ArticleRevisions(articleID int64) string {
+	return fmt.Sprintf("/articles/%d/revisions", articleID)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {
