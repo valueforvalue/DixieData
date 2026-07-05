@@ -155,7 +155,7 @@ _Avoid_: timeline event, archive event, cross-record link, historical event (too
 - A **Spouse Record** is a kind of **Person Record**
 - A **Spouse Record** may be linked to exactly one **Soldier**
 - A **Wife** and a **Widow** are subtypes of **Spouse Record**
-- A **Event Record** is a kind of **Person Record**
+- An **Event Record** is a kind of **Person Record**
 - An **Event Record** may link to one or more **Person Records**
 - A **Person Record** may be linked to one or more **Event Records**
 - A **Person Record** may have zero or more **Tags**

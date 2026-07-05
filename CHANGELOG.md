@@ -11,6 +11,14 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- **CONTEXT.md typo fix** (issue #364). Line 158 read
+  `A **Event Record** is a kind of **Person Record**`; now
+  reads `An **Event Record** is a kind of **Person Record**`
+  to match the L159 sibling bullet and standard English
+  vowel-sound indefinite article usage.
+
 ### Added
 
 - **Event Records v1 (Person Record subtype)** (issue #320
