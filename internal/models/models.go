@@ -25,6 +25,18 @@ type Soldier struct {
 	// Records / Claims / Findings inherit tags via their
 	// parent Person Record and are not directly tagged in v1.
 	Tags                  []string `json:"tags,omitempty"`
+	// LinkedDisplayIDs is set on the shared archive export path
+	// (issue #320 child #334, slot 15/16). When the share
+	// pipeline bundles a Person Record, the export service
+	// joins event_person_links + event rows to populate this
+	// array with the Display IDs of every Event Record that
+	// links to the Person via the junction. The import side
+	// uses this array to drive auto-attach so the recipient's
+	// archive re-creates the junction without a second fetch.
+	// The omitempty fires for non-shared export paths so the
+	// static archive (which has its own `linkedDisplayIds`
+	// fields rendered per-event) stays unchanged.
+	LinkedDisplayIDs      []string `json:"linked_display_ids,omitempty"`
 	ID                    int64    `json:"id"`
 	DisplayID             string   `json:"display_id"`
 	SyncID                string   `json:"sync_id"`

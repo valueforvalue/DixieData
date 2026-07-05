@@ -15,6 +15,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
@@ -140,7 +141,7 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 		names = append(names, file.Name)
 	}
 	joined := strings.Join(names, "\n")
-	for _, expected := range []string{"manifest.json", "data/soldiers.json"} {
+	for _, expected := range []string{"manifest.json", "data/soldiers.json", "data/events.json"} {
 		if !strings.Contains(joined, expected) {
 			t.Fatalf("shared archive missing %s", expected)
 		}
@@ -820,6 +821,227 @@ func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
 	}
 }
 
+// TestBackupService_ExportSharedWithEvents (issue #320 child #334)
+// verifies that ExportSharedWithTags bundles Event Records into
+// data/events.json (the per-RPCI-decision-#9 "always include,
+// no toggle" contract) and denormalizes the linked Person
+// Records' linkedDisplayIds with the source-side Event Display
+// IDs. The data file exists even when there are zero events in
+// the source archive so the import path can treat missing-file
+// vs empty-array the same way.
+func TestBackupService_ExportSharedWithEvents(t *testing.T) {
+	d := newTestDB(t)
+	defer d.Close()
+	soldierSvc := NewSoldierService(d)
+	eventSvc := records.NewEventService(soldierSvc)
+	backupSvc := NewBackupService(d, soldierSvc)
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	if err := d.SetSystemConfig("node_id", "shared-events-source"); err != nil {
+		t.Fatalf("SetSystemConfig node_id: %v", err)
+	}
+
+	// Person + 2 Events + 1 link.
+	person, err := soldierSvc.Create(models.Soldier{
+		FirstName: "Robert",
+		LastName:  "Tester",
+		Unit:      "Stress Regiment",
+	})
+	if err != nil {
+		t.Fatalf("Create person: %v", err)
+	}
+	bat, err := eventSvc.CreateEvent(models.Soldier{
+		Kind:        "Battle of Springfield",
+		BeginDate:   "10/25/1864",
+		EndDate:     "10/26/1864",
+		Description: "Engagement at Springfield Landing.",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent bat: %v", err)
+	}
+	if _, err := eventSvc.CreateEvent(models.Soldier{
+		Kind:        "Skirmish at Jones Creek",
+		BeginDate:   "11/02/1864",
+		Description: "Brief encounter on the creek road.",
+	}); err != nil {
+		t.Fatalf("CreateEvent skirmish: %v", err)
+	}
+	if _, err := eventSvc.AttachEventToPerson(bat.ID, person.ID); err != nil {
+		t.Fatalf("AttachEventToPerson: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	manifest, err := backupSvc.ExportShared(outPath, t.TempDir())
+	if err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+	if manifest.Events != 2 {
+		t.Fatalf("manifest.Events = %d, want 2", manifest.Events)
+	}
+	if manifest.DataEventsFile != "data/events.json" {
+		t.Fatalf("manifest.DataEventsFile = %q, want data/events.json", manifest.DataEventsFile)
+	}
+
+	// Read the zip back.
+	reader, err := zip.OpenReader(outPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader: %v", err)
+	}
+	defer reader.Close()
+	var soldiersJSON, eventsJSON []byte
+	for _, file := range reader.File {
+		switch file.Name {
+		case "data/soldiers.json":
+			rc, err := file.Open()
+			if err != nil {
+				t.Fatalf("open soldiers.json: %v", err)
+			}
+			soldiersJSON, err = io.ReadAll(rc)
+			rc.Close()
+		case "data/events.json":
+			rc, err := file.Open()
+			if err != nil {
+				t.Fatalf("open events.json: %v", err)
+			}
+			eventsJSON, err = io.ReadAll(rc)
+			rc.Close()
+		}
+	}
+	if len(eventsJSON) == 0 {
+		t.Fatal("data/events.json missing from archive")
+	}
+	var events []models.Soldier
+	if err := json.Unmarshal(eventsJSON, &events); err != nil {
+		t.Fatalf("parse events.json: %v\nraw=%s", err, string(eventsJSON))
+	}
+	if len(events) != 2 {
+		t.Fatalf("events.json has %d rows, want 2", len(events))
+	}
+
+	var soldiers []models.Soldier
+	if err := json.Unmarshal(soldiersJSON, &soldiers); err != nil {
+		t.Fatalf("parse soldiers.json: %v", err)
+	}
+	// The Person row carries the linked Event Display IDs.
+	var personRow *models.Soldier
+	for i := range soldiers {
+		if soldiers[i].ID == person.ID {
+			personRow = &soldiers[i]
+			break
+		}
+	}
+	if personRow == nil {
+		t.Fatalf("person %d missing from soldiers.json", person.ID)
+	}
+	if len(personRow.LinkedDisplayIDs) != 1 || personRow.LinkedDisplayIDs[0] != bat.DisplayID {
+		t.Fatalf("person.LinkedDisplayIDs = %v, want [%s]", personRow.LinkedDisplayIDs, bat.DisplayID)
+	}
+}
+
+// TestBackupService_ImportSharedBackupWithEvents (issue #320 child #334)
+// verifies the import side: a fresh DB imports a shared archive that
+// contains 1 Person + 2 Events (one linked to the person), and the
+// recipient's DB ends up with the Event rows recreated + the
+// event_person_links junction re-established via the
+// linkedDisplayIds denormalization. Without #334 the soldier merge
+// would succeed but the link row would be silently dropped.
+func TestBackupService_ImportSharedBackupWithEvents(t *testing.T) {
+	sourceDB := newTestDB(t)
+	defer sourceDB.Close()
+	sourceSvc := NewSoldierService(sourceDB)
+	sourceEvents := records.NewEventService(sourceSvc)
+	sourceBackup := NewBackupService(sourceDB, sourceSvc)
+	if _, err := sourceDB.ConfigureUserIdentity("Event", "Source", "User", 1900); err != nil {
+		t.Fatalf("ConfigureUserIdentity source: %v", err)
+	}
+	if err := sourceDB.SetSystemConfig("node_id", "events-source-node"); err != nil {
+		t.Fatalf("SetSystemConfig node_id: %v", err)
+	}
+
+	person, err := sourceSvc.Create(models.Soldier{
+		FirstName: "Imported",
+		LastName:  "PersonRecord",
+	})
+	if err != nil {
+		t.Fatalf("Create person: %v", err)
+	}
+	bat, err := sourceEvents.CreateEvent(models.Soldier{
+		Kind: "Battle of Test Run", BeginDate: "01/01/1865",
+		Description: "Battle for the smoke probe.",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent bat: %v", err)
+	}
+	if _, err := sourceEvents.CreateEvent(models.Soldier{
+		Kind: "Skirmish at Smoke Hollow", BeginDate: "01/02/1865",
+		Description: "Brief exchange.",
+	}); err != nil {
+		t.Fatalf("CreateEvent skirmish: %v", err)
+	}
+	if _, err := sourceEvents.AttachEventToPerson(bat.ID, person.ID); err != nil {
+		t.Fatalf("AttachEventToPerson: %v", err)
+	}
+
+	zipPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	if _, err := sourceBackup.ExportShared(zipPath, t.TempDir()); err != nil {
+		t.Fatalf("ExportShared: %v", err)
+	}
+
+	// Import into a fresh DB.
+	targetDB := newTestDB(t)
+	defer targetDB.Close()
+	targetSvc := NewSoldierService(targetDB)
+	targetBackup := NewBackupService(targetDB, targetSvc)
+	if _, err := targetDB.ConfigureUserIdentity("Imported", "Recipient", "User", 1901); err != nil {
+		t.Fatalf("ConfigureUserIdentity target: %v", err)
+	}
+
+	summary, err := targetBackup.ImportSharedBackup(zipPath, t.TempDir())
+	if err != nil {
+		t.Fatalf("ImportSharedBackup: %v", err)
+	}
+	if summary.SoldiersInserted != 1 {
+		t.Errorf("SoldiersInserted = %d, want 1 (the Person Record)", summary.SoldiersInserted)
+	}
+	if summary.EventsInserted != 2 {
+		t.Errorf("EventsInserted = %d, want 2", summary.EventsInserted)
+	}
+	if summary.EventsLinked != 1 {
+		t.Errorf("EventsLinked = %d, want 1 (battle linked to person)", summary.EventsLinked)
+	}
+
+	// Confirm the junction was recreated on the recipient side: the
+	// imported Person Record's id must have a linked event whose
+	// DisplayID matches the battle ID we exported. Use the
+	// EventService.ListForPerson helper which is what the smoke
+	// probe also exercises. Match by sync_id (preserved across
+	// merges) because the recipient renames display_id to its own
+	// node prefix (issue #183 user-identity binding).
+	targetEvents := records.NewEventService(targetSvc)
+	var targetPersonID int64
+	if err := targetDB.Conn().QueryRow(
+		`SELECT id FROM soldiers WHERE sync_id = ?`, strings.TrimSpace(person.SyncID),
+	).Scan(&targetPersonID); err != nil {
+		t.Fatalf("locate target person by sync_id: %v", err)
+	}
+	linked, err := targetEvents.ListForPerson(targetPersonID)
+	if err != nil {
+		t.Fatalf("ListForPerson: %v", err)
+	}
+	if len(linked) != 1 || strings.TrimSpace(linked[0].DisplayID) != strings.TrimSpace(bat.DisplayID) {
+		got := make([]string, 0, len(linked))
+		for _, ev := range linked {
+			got = append(got, ev.DisplayID)
+		}
+		t.Fatalf("recipient person linked events = %v, want only [%s]", got, bat.DisplayID)
+	}
+}
+
+// TestBackupService_ImportSharedBackupMergesContents (issue #320 child #334) verifies
+// that a fresh recipient DB receives the merged soldier rows from
+// the shared archive without spurious conflicts when the source
+// snapshot matches the target row.
 func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 	targetDir := t.TempDir()
 	targetDB, err := db.Open(targetDir)
