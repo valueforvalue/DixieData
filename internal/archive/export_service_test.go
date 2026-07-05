@@ -21,6 +21,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/xuri/excelize/v2"
 )
@@ -325,7 +326,10 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 	if _, ok := entries["images/PENSION-0042/portrait.png"]; !ok {
 		t.Fatalf("archive missing copied image: %v", entries)
 	}
-	if !strings.Contains(entries["archive_data.js"], "window.DIXIE_DATA = [") || !strings.Contains(entries["archive_data.js"], "./images/PENSION-0042/portrait.png") {
+	if !strings.Contains(entries["archive_data.js"], `"records": [`) || !strings.Contains(entries["archive_data.js"], `"events": [`) {
+		t.Fatalf("archive_data.js missing object bundle shape with records + events arrays: %s", entries["archive_data.js"])
+	}
+	if !strings.Contains(entries["archive_data.js"], "PENSION-0042") || !strings.Contains(entries["archive_data.js"], "./images/PENSION-0042/portrait.png") {
 		t.Fatalf("archive_data.js missing expected archive payload: %s", entries["archive_data.js"])
 	}
 	if !strings.Contains(entries["archive_data.js"], `"spouseDisplayId": "PENSION-0042"`) {
@@ -358,6 +362,240 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 		!strings.Contains(entries["index.html"], "['Unit', blankDetailValue(record.unit)]") {
 		t.Fatalf("index.html should keep blank name/service fields blank: %s", entries["index.html"])
 	}
+}
+
+// TestExportStaticArchive_EventBundle (issue #320 child #335)
+// seeds 1 Person Record + 2 Event Records then asserts the
+// static archive bundle is the new object shape
+// { records: [...], events: [...] } with both arrays populated.
+// Events carry Kind, Description, linkedDisplayIds per the
+// RPCI spec for slot #320.10. The index.html JS shape (object
+// instead of bare array) is also asserted so a future slot
+// can render an Events tab without a second template pass.
+func TestExportStaticArchive_EventBundle(t *testing.T) {
+	dataDir := t.TempDir()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	soldierSvc := NewSoldierService(database)
+	eventSvc := records.NewEventService(soldierSvc)
+	exportSvc := newTestExportServiceWithRegistry(t, database, soldierSvc)
+	configureExportIdentity(t, database)
+
+	// Seed a Person Record + 2 Events + 1 attached link.
+	person, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "DXD-PERSON-EVT",
+		FirstName: "Joseph",
+		LastName:  "Tester",
+		Unit:      "Stress Regiment",
+	})
+	if err != nil {
+		t.Fatalf("Create person: %v", err)
+	}
+	bat, err := eventSvc.CreateEvent(models.Soldier{
+		Kind:        "Battle of Springfield",
+		BeginDate:   "10/25/1864",
+		EndDate:     "10/26/1864",
+		Description: "Engagement at Springfield Landing.",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if _, err := eventSvc.CreateEvent(models.Soldier{
+		Kind:        "Skirmish at Jones Creek",
+		BeginDate:   "11/02/1864",
+		Description: "Brief encounter on the creek road.",
+	}); err != nil {
+		t.Fatalf("CreateEvent skirmish: %v", err)
+	}
+	if _, err := eventSvc.AttachEventToPerson(bat.ID, person.ID); err != nil {
+		t.Fatalf("AttachEventToPerson: %v", err)
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "static-events.zip")
+	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
+		t.Fatalf("ExportStaticArchive: %v", err)
+	}
+
+	reader, err := zip.OpenReader(outputPath)
+	if err != nil {
+		t.Fatalf("zip.OpenReader: %v", err)
+	}
+	defer reader.Close()
+
+	var jsPayload []byte
+	var htmlPayload []byte
+	for _, file := range reader.File {
+		switch file.Name {
+		case "archive_data.js":
+			rc, err := file.Open()
+			if err != nil {
+				t.Fatalf("open archive_data.js: %v", err)
+			}
+			jsPayload, err = io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				t.Fatalf("read archive_data.js: %v", err)
+			}
+		case "index.html":
+			rc, err := file.Open()
+			if err != nil {
+				t.Fatalf("open index.html: %v", err)
+			}
+			htmlPayload, err = io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				t.Fatalf("read index.html: %v", err)
+			}
+		}
+	}
+	if len(jsPayload) == 0 {
+		t.Fatal("archive_data.js missing from zip")
+	}
+	if len(htmlPayload) == 0 {
+		t.Fatal("index.html missing from zip")
+	}
+
+	js := string(jsPayload)
+	if !strings.Contains(js, `"records": [`) || !strings.Contains(js, `"events": [`) {
+		t.Fatalf("archive_data.js missing object bundle: %s", js)
+	}
+	// Pull the JSON object out of the JS assignment so we can
+	// parse it with the standard json decoder; string-slice
+	// parsing breaks on nested arrays (the naive `Index`]`` finds
+	// the wrong bracket when records[] has events[] nested).
+	jsonStart := strings.Index(js, "{")
+	jsonEnd := strings.LastIndex(js, "};")
+	if jsonStart < 0 || jsonEnd < 0 || jsonEnd <= jsonStart {
+		t.Fatalf("could not locate JSON object literal in: %s", js)
+	}
+	var bundle struct {
+		Records []map[string]any `json:"records"`
+		Events  []map[string]any `json:"events"`
+	}
+	if err := json.Unmarshal([]byte(js[jsonStart:jsonEnd+1]), &bundle); err != nil {
+		t.Fatalf("parse archive bundle: %v\nraw=%s", err, js)
+	}
+
+	// events[] must contain both Event Records.
+	gotKinds := make([]string, 0, len(bundle.Events))
+	for _, ev := range bundle.Events {
+		kind, _ := ev["kind"].(string)
+		gotKinds = append(gotKinds, kind)
+	}
+	if !contains(gotKinds, "Battle of Springfield") {
+		t.Fatalf("events[] missing battle kind, got: %v", gotKinds)
+	}
+	if !contains(gotKinds, "Skirmish at Jones Creek") {
+		t.Fatalf("events[] missing skirmish kind, got: %v", gotKinds)
+	}
+	if !containsEventDescription(bundle.Events, "Engagement at Springfield Landing.") {
+		t.Fatalf("events[] missing description, got: %v", bundle.Events)
+	}
+
+	// linkedDisplayIds: every event has the field. Only the
+	// battle is linked to a person; the skirmish must show [].
+	battle := pickEventByKind(bundle.Events, "Battle of Springfield")
+	if battle == nil {
+		t.Fatalf("could not find battle event in %v", gotKinds)
+	}
+	linkedRaw, ok := battle["linkedDisplayIds"].([]any)
+	if !ok {
+		t.Fatalf("battle.linkedDisplayIds has wrong type: %T", battle["linkedDisplayIds"])
+	}
+	linked := make([]string, 0, len(linkedRaw))
+	for _, v := range linkedRaw {
+		if s, ok := v.(string); ok {
+			linked = append(linked, s)
+		}
+	}
+	if !contains(linked, "DXD-PERSON-EVT") {
+		t.Fatalf("battle.linkedDisplayIds = %v, want DXD-PERSON-EVT", linked)
+	}
+	skirmishRow := pickEventByKind(bundle.Events, "Skirmish at Jones Creek")
+	if skirmishRow == nil {
+		t.Fatalf("could not find skirmish event")
+	}
+	unlinkedRaw, ok := skirmishRow["linkedDisplayIds"].([]any)
+	if !ok {
+		t.Fatalf("skirmish.linkedDisplayIds has wrong type: %T", skirmishRow["linkedDisplayIds"])
+	}
+	unlinked := make([]string, 0, len(unlinkedRaw))
+	for _, v := range unlinkedRaw {
+		if s, ok := v.(string); ok {
+			unlinked = append(unlinked, s)
+		}
+	}
+	if len(unlinked) != 0 {
+		t.Fatalf("unlinked skirmish.linkedDisplayIds = %v, want []", unlinked)
+	}
+
+	// records[] must NOT include events.
+	for _, rec := range bundle.Records {
+		if et, _ := rec["entryType"].(string); et == "event" {
+			t.Fatalf("records[] leaked an Event entry: %v", rec)
+		}
+	}
+	// events[] must NOT include the Person Record.
+	for _, ev := range bundle.Events {
+		if et, _ := ev["entryType"].(string); et != "event" {
+			t.Fatalf("events[] leaked a non-event entry: %v", ev)
+		}
+		if displayID, _ := ev["displayId"].(string); displayID == "DXD-PERSON-EVT" {
+			t.Fatalf("Person Record leaked into events[]: %v", ev)
+		}
+	}
+
+	// HTML: JS reader should now consume .records, not the bare
+	// array. Old shape `window.DIXIE_DATA = [...]` would be a
+	// regression — assert the new shape is wired.
+	html := string(htmlPayload)
+	if strings.Contains(html, "Array.isArray(window.DIXIE_DATA)") {
+		// The old read path is replaced; the new code reads
+		// `(window.DIXIE_DATA && typeof window.DIXIE_DATA === 'object')`
+		// then `bundle.records`.
+		t.Fatalf("index.html still treats DIXIE_DATA as a bare array: %s", html)
+	}
+	if !strings.Contains(html, "bundle.records") {
+		t.Fatalf("index.html does not read the object bundle shape: %s", html)
+	}
+}
+
+// contains is a tiny generic helper for the bundle-parse checks.
+func contains(list []string, needle string) bool {
+	for _, v := range list {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}
+
+// containsEventDescription scans a slice of arbitrary-typed event
+// maps for a matching `description` field value. Returns true the
+// moment the first match is found.
+func containsEventDescription(events []map[string]any, needle string) bool {
+	for _, ev := range events {
+		desc, _ := ev["description"].(string)
+		if desc == needle {
+			return true
+		}
+	}
+	return false
+}
+
+// pickEventByKind returns the first event record whose kind matches,
+// or nil if none do. Used by the linkedDisplayIds assertions above.
+func pickEventByKind(events []map[string]any, kind string) map[string]any {
+	for _, ev := range events {
+		if k, _ := ev["kind"].(string); k == kind {
+			return ev
+		}
+	}
+	return nil
 }
 
 func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
