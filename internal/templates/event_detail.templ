@@ -116,25 +116,19 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 				<section class="relative mt-6">
 					<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
-						<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.EventSources)) }</span>
+						<div class="flex items-center gap-3">
+							<span class="text-xs text-slate-500">{ fmt.Sprintf("%d attached", len(event.EventSources)) }</span>
+							<button
+								type="button"
+								data-action={ templ.SafeURL(fmt.Sprintf("/events/%d/edit", event.ID)) }
+								data-dixie-submit="true"
+								class="ghost-link"
+							>Edit Event</button>
+						</div>
 					</div>
 					<div id="data-event-sources-list">
 						@EventSourcesListFragment(event.ID, event.EventSources)
 					</div>
-					<form
-						action={ templ.SafeURL(fmt.Sprintf("/events/%d/sources/attach", event.ID)) }
-						method="post"
-						data-dixie-submit="true"
-						data-results-target="#data-event-sources-list"
-						class="mt-4 grid gap-3 sm:grid-cols-3"
-					>
-						<input type="text" name="record_type" placeholder="Source type (Pension, Roster, ...)" class="field-input sm:col-span-1" required/>
-						<input type="text" name="app_id" placeholder="App / source number" class="field-input sm:col-span-1" required/>
-						<input type="text" name="details" placeholder="Short details" class="field-input sm:col-span-1"/>
-						<div class="sm:col-span-3 flex justify-end">
-							<button type="submit" class="pill-link">Attach Source</button>
-						</div>
-					</form>
 				</section>
 				<section class="relative mt-6">
 					<p class="mb-3 text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Tags</p>

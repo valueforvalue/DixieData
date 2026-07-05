@@ -175,6 +175,67 @@ func TestHandleEventByIDGetDetail(t *testing.T) {
 	}
 }
 
+// TestHandleEventByIDGetDetail_SourcesPanelEditCTA (issue #360)
+// pins the post-#357 Sources panel shape: /events/{id} no
+// longer carries a standalone attach form (record_type /
+// app_id / details inputs) because the same attach surface
+// lives inline on /events/{id}/edit (slot #357). Instead the
+// Sources panel exposes an 'Edit Event' CTA next to the
+// attached counter for both empty and non-empty cases. The
+// test renders an event with zero attached sources + asserts
+// the legacy form is absent + asserts the Edit Event link
+// with data-action="/events/{id}/edit" is present + asserts
+// the empty-state copy no longer mentions the obsolete
+// "/sources authoring flow" redirect.
+//
+// RED today (pre-#360): the body contains 'name="record_type"',
+// the body is missing 'data-action="/events/{id}/edit"'.
+// (The body for event.ID is substituted into the URL at
+// runtime.)
+func TestHandleEventByIDGetDetail_SourcesPanelEditCTA(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	created := createEvent(t, app, "Empty Sources Event", "", "", "")
+	resp, err := http.Get(server.URL + "/events/" + intStr(created.ID))
+	if err != nil {
+		t.Fatalf("GET /events/%d: %v", created.ID, err)
+	}
+	defer resp.Body.Close()
+	body := readAll(t, resp)
+
+	// Legacy form must be gone.
+	for _, needle := range []string{
+		`name="record_type"`,
+		`name="app_id"`,
+		`name="details"`,
+		"Source type (Pension, Roster, ...)",
+	} {
+		if strings.Contains(body, needle) {
+			t.Errorf("GET /events/%d body still contains legacy %q", created.ID, needle)
+		}
+	}
+
+	// Empty-state must no longer mention the obsolete /sources
+	// authoring flow redirect.
+	if strings.Contains(body, "Attach source documents from the /sources authoring flow") {
+		t.Errorf("GET /events/%d empty-state copy still references obsolete /sources authoring flow", created.ID)
+	}
+
+	// Edit Event CTA must be present with the right href and
+	// label. Multiple 'data-action' attributes exist on the
+	// detail page (Images panel button, etc.); checking for the
+	// exact edit URL keeps the test targeted.
+	editHref := fmt.Sprintf("/events/%d/edit", created.ID)
+	if !strings.Contains(body, fmt.Sprintf(`data-action="%s"`, editHref)) {
+		t.Errorf("GET /events/%d body missing %q CTA", created.ID, editHref)
+	}
+	if !strings.Contains(body, "Edit Event") {
+		t.Errorf("GET /events/%d body missing 'Edit Event' label", created.ID)
+	}
+}
+
 // TestHandleEventByIDDelete removes an event and verifies
 // the redirect back to /events.
 func TestHandleEventByIDDelete(t *testing.T) {
@@ -553,6 +614,27 @@ func readAll(t *testing.T, resp *http.Response) string {
 	}
 	return b.String()
 }
+
+// bodyExtract returns a substring of body centered on the first
+// occurrence of marker (preferring the right edge for less context
+// noise) so a failing test can dump enough surrounding HTML to
+// explain a missing-CTA failure without a wall of text.
+func bodyExtract(body, marker string, radius int) string {
+	idx := strings.Index(body, marker)
+	if idx < 0 {
+		return body
+	}
+	start := idx - radius
+	if start < 0 {
+		start = 0
+	}
+	end := idx + radius
+	if end > len(body) {
+		end = len(body)
+	}
+	return body[start:end]
+}
+
 // intStr formats an int64 as a string.
 func intStr(n int64) string {
 	if n == 0 {
@@ -958,15 +1040,18 @@ func TestHandleEventSourcesAndScratchpad(t *testing.T) {
 	if !strings.Contains(detailBody, fmt.Sprintf(`value="%s"`, event.DisplayID)) {
 		t.Errorf("event detail missing scratchpad display_id input; got %q", detailBody)
 	}
-	// Issue #341: the event detail page must wrap the sources
-	// list in #data-event-sources-list and the attach form must
-	// carry data-results-target so the JS dispatcher can swap the
-	// POST response into the list in place.
+	// Issue #360: the event detail Sources panel no longer carries
+	// a standalone attach form (the inline attach surface lives on
+	// /events/{id}/edit per #357). The panel still wraps the list
+	// in #data-event-sources-list for the post-detach fragment
+	// swap (issue #341) and exposes an Edit Event CTA pointing at
+	// /events/{id}/edit.
 	if !strings.Contains(detailBody, "id=\"data-event-sources-list\"") {
 		t.Errorf("event detail missing sources list wrapper id; got %q", detailBody)
 	}
-	if !strings.Contains(detailBody, "data-results-target=\"#data-event-sources-list\"") {
-		t.Errorf("event detail missing sources attach data-results-target; got %q", detailBody)
+	editHref := fmt.Sprintf("/events/%d/edit", event.ID)
+	if !strings.Contains(detailBody, fmt.Sprintf(`data-action="%s"`, editHref)) {
+		t.Errorf("event detail missing Sources panel Edit Event CTA; want data-action=%q", editHref)
 	}
 	if !strings.Contains(detailBody, "id=\"data-event-tags-list\"") {
 		t.Errorf("event detail missing tags list wrapper id; got %q", detailBody)

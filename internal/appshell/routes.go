@@ -113,6 +113,16 @@ func (a *App) setupRoutes() {
 	// person_record_id (Events are soldiers rows so the FK applies
 	// unchanged). The handler dispatches on r.URL.Path suffix.
 	r.Get("/events/{id:[0-9]+}/sources", a.handleEventSourcesRoute)
+	// Issue #360: the /events/{id}/sources/attach route has no UI
+	// caller as of this commit (the Sources panel on the detail
+	// page now points users to /events/{id}/edit, where #357's
+	// inline RecordInputRow covers attach). The route stays
+	// reachable because the attach/detach round-trip
+	// TestHandleEventSourcesAndScratchpad pins the backend wiring
+	// for any future programmatic attach path (e.g. .ddshare
+	// replay, bulk-import). Hand-coded as 'orphan' in the probe
+	// output by design — verify the route + handler still resolve
+	// before deleting in a future cleanup issue.
 	r.Post("/events/{id:[0-9]+}/sources/attach", a.handleEventSourcesRoute)
 	r.Post("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/detach", a.handleEventSourcesRoute)
 	// Issue #320 slice #333: per-Event Tags chips. The

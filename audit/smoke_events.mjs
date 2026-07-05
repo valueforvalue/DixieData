@@ -305,6 +305,39 @@ async function main() {
       }
     });
 
+    await step(page, 'step-04b sources-panel-edit-cta', async () => {
+      // Issue #360: the Sources panel on /events/{id} no longer
+      // renders the legacy standalone attach form (record_type /
+      // app_id / details). Instead it exposes an Edit Event CTA
+      // pointing at /events/{id}/edit, where #357's inline
+      // RecordInputRow covers the attach surface. Assert the
+      // CTA is present and the legacy form is gone.
+      const sourcesPanel = await page.evaluate((id) => {
+        const root = document.querySelector('#data-event-sources-list');
+        if (!root) return { hasList: false };
+        const section = root.closest('section');
+        const sectionHtml = section ? section.outerHTML : '';
+        const editHref = `/events/${id}/edit`;
+        return {
+          hasList: true,
+          hasLegacyRecordType: sectionHtml.includes('name="record_type"'),
+          hasLegacyAppID: sectionHtml.includes('name="app_id"'),
+          hasLegacyDetails: sectionHtml.includes('name="details"'),
+          hasEditCTA: sectionHtml.includes(`data-action="${editHref}"`),
+          editHref,
+        };
+      }, createdEventID);
+      if (!sourcesPanel.hasList) {
+        throw new Error('sources panel wrapper missing on detail page');
+      }
+      if (sourcesPanel.hasLegacyRecordType || sourcesPanel.hasLegacyAppID || sourcesPanel.hasLegacyDetails) {
+        throw new Error(`legacy attach form still present (record_type=${sourcesPanel.hasLegacyRecordType}, app_id=${sourcesPanel.hasLegacyAppID}, details=${sourcesPanel.hasLegacyDetails})`);
+      }
+      if (!sourcesPanel.hasEditCTA) {
+        throw new Error(`Sources panel missing Edit Event CTA pointing at ${sourcesPanel.editHref}`);
+      }
+    });
+
     await step(page, 'step-05 edit-round-trip', async () => {
       await page.click('a:has-text("Edit Event")');
       await page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 5000 });
