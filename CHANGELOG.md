@@ -13,6 +13,65 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Event Records v1 (Person Record subtype)** (issue #320
+  sequence closure per the locked 2026-07-04 close criteria;
+  tracked via close-gate issue #359). Event Records are now a
+  first-class Person Record subtype alongside Soldier, Wife,
+  and Widow. A Battle, a Campaign, a Hospital stay, or any
+  other dated Civil War event can be its own archive entry
+  with a free-text `kind`, `MM/DD/YYYY` begin/end dates, a
+  long-form `Description` (with the same `pdf_excerpt_override`
+  short-form behavior Person Records use for biography), and
+  the full paper trail (Sources, Claims, Findings, Scratch
+  Pad, Research Log, Tags, Review Queue). Events link to one
+  or more Person Records via a many-to-many
+  `event_person_links` junction; the reverse direction lights
+  up a new "Events" tab on every Person Record detail page.
+  Display IDs are minted in their own `EVT-NNNNN` namespace,
+  instantly distinguishable from soldier records on lists and
+  Service Timelines. All four export surfaces carry Events:
+  Shared (`.ddshare`) with `linked_display_ids` denormalized
+  per RPCI D9 so recipients auto-attach without a separate
+  fetch, Backup (`.ddbak`) schema-only, Static
+  (`window.DIXIE_DATA = { records, events }`), and a new
+  per-Event PDF via `templates/event_landscape.typ`.
+
+  Slot-by-slot commit map (the 16-slot sequence landed on
+  `dev` between 2026-07-04 and 2026-07-05; full per-slot
+  narration already lives in the slot-16 closure narrative
+  in the `### Maintenance` block below):
+    foundation slots (pre-numbered #320.X, cite slice 1..3):
+      schema v60 + FK rename          `d1832af`
+      glossary + migration doc + tests `6064fde`
+      EventService backend            `a363b6d`
+      Event Record UI surface         `d09e852`
+    #320 children, in completion order:
+      #322 per-Event PDF export       `e67bc73`
+      #324 Events tab htmx fragment   `966f102`
+      #325 attach/detach UI           `5f7dc76`
+      #326 slice-3 decomposition      `b6393ec`
+      #323 audit/smoke_events.mjs     `97ba644`
+      #327 Browse Event branch        `a183114`
+      #328 research log               `77d2907`
+      #329+#330 sources+scratch panel `0d48fb7`
+      #333 tags chips                 `996c17f`
+      #337 Timeline sourcing          `512d944`
+      #331 re-introduce Event entry   `57e5172`
+      #335 Static events[] bundle     `d902217`
+      #338 stress tests + benchmarks  `0524113`
+      #334 Shared linkedDisplayIds    `11f4b75`
+        + #349 variable-shadow follow-up fix
+      #332 images gallery + facade    `4abe1a4`
+        + `de19e5d` (this branch)
+
+  Out-of-scope v1.1 candidates deferred for future RPCI
+  cycles: Set-as-Primary per-Event image, image annotation,
+  AI-assisted image tagging, bulk image upload. Browser-
+  level smoke coverage of the Event images gallery's native
+  file-picker is tracked separately as issue #348.
+
+  Closes #320, #359.
+
 - **Event Records images gallery** (issue #320 child #332,
   slot 16 of 16). The Event Record detail page now carries an
   Images section mirroring the Person Record gallery surface.
