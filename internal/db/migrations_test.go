@@ -19,22 +19,8 @@ func TestMigrationsCatalogueIsOrdered(t *testing.T) {
 
 	want := []string{
 		"block-1-schema-baseline",
-		"block-2-add-column-loop",
-		"block-3-is-generated-flip",
-		"block-4-phase1-distributed-merge",
-		"block-5-phase2-canonical-dates",
-		"block-6-soldiers-normalization",
-		"block-7-last-edited-at-backfill",
-		"block-8-images-is-primary",
-		"block-9-idx-soldiers-spouse",
-		"block-10-idx-soldiers-import-batch",
-		"block-11-node-prefix-configuration",
-		"block-12-sanitized-display-ids",
-		"block-13-canonical-date-data",
-		"block-14-ensure-soldier-fts",
-		"block-15-archive-meta-seed",
-		"block-16-entry-type-discipline",
-		"block-17-research-log-evidence-rename",
+		"block-60-v54-to-v60-jump",
+		"block-2-event-sources",
 	}
 	for i, wantID := range want {
 		if migs[i].ID != wantID {
@@ -108,25 +94,9 @@ func TestMigrationsIrreversibleDownRefuses(t *testing.T) {
 // mapping mirrors docs/migrations/reversibility.md exactly.
 func TestMigrationsReversibilityMapping(t *testing.T) {
 	want := map[string]Reversibility{
-		"block-1-schema-baseline":              Reversible,
-		"block-2-add-column-loop":              Reversible,
-		"block-3-is-generated-flip":            PartiallyReversible,
-		"block-4-phase1-distributed-merge":     Irreversible,
-		"block-5-phase2-canonical-dates":       Irreversible,
-		"block-6-soldiers-normalization":       PartiallyReversible,
-		"block-7-last-edited-at-backfill":      PartiallyReversible,
-		"block-8-images-is-primary":            PartiallyReversible,
-		"block-9-idx-soldiers-spouse":          Reversible,
-		"block-10-idx-soldiers-import-batch":   Reversible,
-		"block-11-node-prefix-configuration":   PartiallyReversible,
-		"block-12-sanitized-display-ids":       Irreversible,
-		"block-13-canonical-date-data":         Irreversible,
-		"block-14-ensure-soldier-fts":          PartiallyReversible,
-		"block-15-archive-meta-seed":           Reversible,
-		"block-16-entry-type-discipline":       Reversible,
-		"block-17-research-log-evidence-rename": Irreversible,
-		"block-60-event-records-event-person-links-fk-rename": PartiallyReversible,
-		"block-61-event-sources":                 Reversible,
+		"block-1-schema-baseline": Reversible,
+		"block-60-v54-to-v60-jump": Irreversible,
+		"block-2-event-sources":   Reversible,
 	}
 
 	for _, m := range Migrations() {
@@ -171,9 +141,13 @@ func TestReversibilityString(t *testing.T) {
 }
 
 // TestReversibilityIrreducibleCount locks the count of Irreversible
-// blocks at 5. The audit (docs/migrations/reversibility.md) classifies
-// Blocks 4, 5, 12, 13, 17 as Irreversible. A change here means the
-// DOWN runner's gate semantics changed too.
+// blocks. The consolidated v54→v60 jump block is the only
+// Irreversible block in the current 3-block slice; the
+// pre-#320 v1-v53 chain that previously contributed 5
+// Irreversible blocks (4, 5, 12, 13, 17) was collapsed into
+// the inline block-1 schema for fresh installs + the
+// consolidated jump for v54 upgrades. A change here means
+// the DOWN runner's gate semantics changed too.
 func TestReversibilityIrreducibleCount(t *testing.T) {
 	irr := 0
 	for _, m := range Migrations() {
@@ -181,7 +155,7 @@ func TestReversibilityIrreducibleCount(t *testing.T) {
 			irr++
 		}
 	}
-	if irr != 5 {
-		t.Errorf("Irreversible migration count = %d, want 5 (Blocks 4, 5, 12, 13, 17 per docs/migrations/reversibility.md)", irr)
+	if irr != 1 {
+		t.Errorf("Irreversible migration count = %d, want 1 (block-60-v54-to-v60-jump)", irr)
 	}
 }

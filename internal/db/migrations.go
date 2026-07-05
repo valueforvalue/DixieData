@@ -110,50 +110,31 @@ var ErrDowngradeRefused = errors.New("schema downgrade refused")
 // mirrors this slice's per-block reasoning.
 //
 // Block numbering follows docs/migrations/reversibility.md:
-//   Block 1  - Inline `tx.Exec(schema)` constant (CREATE TABLE +
-//              CREATE INDEX + archive_meta seed)
-//   Block 2  - ALTER TABLE ADD COLUMN loop (29 + 2 + 3 entries)
-//   Block 3  - is_generated flip for DXD-NNNNN rows
-//   Block 4  - phase1DistributedMergeMigration (system_config +
-//              sync_id generation + FK backfills)
-//   Block 5  - phase2CanonicalDatesMigration (entry_type default,
-//              death_date printf, birth_date sentinel collapse)
-//   Block 6  - confederate_home_status / pension_state / needs_review
-//              / review_reason / show_prefix_before_name /
-//              confederate_home_name normalization chain
-//   Block 7  - last_edited_at backfill
-//   Block 8  - images.is_primary NULL-coalesce + MIN(id) primary
-//              election
-//   Block 9  - idx_soldiers_spouse index
-//   Block 10 - idx_soldiers_import_batch index
-//   Block 11 - migrateNodePrefixConfiguration
-//   Block 12 - migrateSanitizedDisplayIDs (HIGH RISK Irreversible)
-//   Block 13 - migrateCanonicalDateData (HIGH RISK Irreversible)
-//   Block 14 - ensureSoldierFTS (idempotent FTS5 rebuild + orphan
-//              DELETE; FTS rebuild itself is Reversible, the orphan
-//              DELETE is PartiallyReversible — we classify the block
-//              as PartiallyReversible per the conservative rule)
-//   Block 15 - ensureArchiveMetaSeed (v58, issue #183)
-//   Block 16 - migrateEntryTypeDiscipline (v55, issue #106; log
-//              table only — the CHECK constraint the v55.md doc
-//              claims was added was never actually added at the SQL
-//              level, see the catalogue for the doc-vs-code mismatch)
-//   Block 17 - research_log.evidence_type rename (v55, issue #106)
-//   Block 18 (block-60) - v60 Event Records + FK rename to
-//              person_record_id (issue #320). 4 sub-blocks: create
-//              event_person_links table, 8 RENAME COLUMN statements,
-//              FTS5 trigger DROP+RECREATE, sync_id backfill. Partially
-//              reversible. The FTS5 layer is no-op DOWN because the
-//              cycle is idempotent and re-running with old column
-//              names would require temporarily reverting the renames.
-//   Block 19 (block-61) - v61 per-Event Source Records
-//              (issue #340). Pure additive: CREATE TABLE
-//              event_sources + 2 indexes. Reversible. Fixes the
-//              slot #329 data-loss bug where the shared records
-//              table was REPLACE-wiped on every Event Update.
 //
-// Block 19 (the terminal `PRAGMA user_version` write) is NOT in the
-// slice — it's bookkeeping applied by applySchema after the slice
+// Pre-#320 v1-v53 blocks (1-17) have been collapsed into the
+// block-1 inline schema for fresh installs + a consolidated
+// v54→v60 jump block (block-1.5). The catalogue below reflects
+// the new shape. The v1-v53 chain is no longer a separate slice
+// entry; the inline `schema` constant in block-1 covers every
+// table the old chain would have built incrementally.
+//
+//   Block 1   - Inline `tx.Exec(schema)` constant (CREATE TABLE +
+//               CREATE INDEX + archive_meta seed) for the full
+//               v60+ surface. Covers v1-v53 + v54-v59 + v60
+//               (everything fresh installs need).
+//   Block 1.5 - Consolidated v54→v60 jump (issue #320, replaces
+//               the v60 work + all the v1-v53 block chain).
+//               Adds scratchpad_cache table + 4 soldiers columns
+//               + 12 RENAME COLUMN (soldier_id/soldier_sync_id →
+//               person_record_id/person_sync_id) + creates
+//               event_person_links junction. Idempotent on
+//               fresh installs (every sub-block is guarded).
+//   Block 2   - event_sources table (v61, issue #340). The
+//               per-Event Source Records table that fixes the
+//               v60 slot #329 data-loss bug.
+//
+// The terminal `PRAGMA user_version` write is NOT in the slice —
+// it's bookkeeping applied by applySchema after the slice
 // iteration completes, mirroring the UP path's terminal write.
 var migrations = []Migration{
 	// Block 1 - Inline CREATE TABLE / CREATE INDEX / archive_meta seed.
@@ -171,326 +152,135 @@ var migrations = []Migration{
 			return reverseSchemaBaseline(tx)
 		},
 	},
-	// Block 2 - ALTER TABLE ADD COLUMN loop. Each entry is Reversible
-	// individually (DROP COLUMN). The loop as a whole is Reversible.
-	// SQLite >=3.35 supports DROP COLUMN for unindexed, non-FK columns;
-	// the FK-constrained columns (entry_type, spouse_soldier_id,
-	// import_batch_id) require the table-rebuild dance on DOWN, which
-	// is the future DOWN runner's problem to solve.
+	// Block 1.5 (block-60) — Consolidated v54→v60 jump (issue #320).
+	// Replaces the incremental v1-v17 block chain (block-2 ADD
+	// COLUMN loop, block-3 is_generated flip, block-4 phase1
+	// distributed-merge, block-5 canonical dates, block-6
+	// soldiers normalization, block-7 last_edited_at backfill,
+	// block-8 images is_primary, block-9/10 indexes,
+	// block-11 node prefix, block-12 sanitized display ids,
+	// block-13 canonical date data, block-14 ensureSoldierFTS,
+	// block-15 archive_meta seed, block-16 entry_type
+	// discipline, block-17 research_log evidence_type rename) +
+	// the v60-specific work (column renames, scratchpad_cache
+	// table, event_person_links junction, soldiers Event Record
+	// columns). Every sub-block is guarded by columnExists /
+	// CREATE TABLE IF NOT EXISTS so the block is idempotent on
+	// fresh installs (where the v60 column names + new tables
+	// are already inline in the block-1 schema constant) AND on
+	// the legacy v54 production archives.
+	//
+	// v54 archives carry the old column names (soldier_id,
+	// soldier_sync_id, local_soldier_id, etc.) + lack the
+	// scratchpad_cache table + the v60 soldiers columns. The
+	// v54→v60 path is the only upgrade path the migration has
+	// to support in practice; v1-v53 archives pre-date the
+	// v52 doc discipline and are not expected in the wild.
+	// The DOWN runner can still reflow column names + drop the
+	// v60 tables for a v60→v54 reverse, but the v1-v53 chain is
+	// not reversible from this position.
+	//
+	// Sub-blocks (run in this order within one tx):
+	//   A0.  CREATE TABLE scratchpad_cache + index. New in v60.
+	//   A0.5. 4 ADD COLUMN on soldiers (kind, begin_date, end_date,
+	//        description) for the Event Record subtype. Guarded
+	//        by columnExists so fresh installs (where block-1
+	//        inline-created them) are no-ops.
+	//   A1. CREATE TABLE event_person_links + 3 indexes.
+	//   B.  12 RENAME COLUMN statements (soldier_id→person_record_id
+	//        + soldier_sync_id→person_sync_id across 5 FK tables;
+	//        local_soldier_id→local_record_id, left/right_soldier_id
+	//        → left/right_record_id in the 2 conflict tables).
+	//        Each guarded by columnExists.
+	//   D.  UPDATE records SET person_sync_id backfill (skipped if
+	//        soldiers.sync_id doesn't exist — pre-v52 archives
+	//        handled that via block-4 in the old chain; the
+	//        block-4 phase1 migration's records UPDATE handles
+	//        it for fresh v54 installs that somehow lack the
+	//        sync_id column).
+	//
+	// The FTS5 trigger DROP+RECREATE that was in the v60 sub-block
+	// C of the original v60 migration is now handled by the
+	// standalone ensureSoldierFTS call site that runs after this
+	// block — the trigger text references columns block-2 added
+	// to the inline schema on fresh installs (biography,
+	// maiden_name, etc.), so the rebuild has to happen AFTER
+	// every column is in place.
 	{
-		ID:            "block-2-add-column-loop",
-		Reversibility: Reversible,
-		Reason: "29 ADD COLUMN on soldiers + 2 on records + 3 on images, all guarded by columnExists. Inverse: ALTER TABLE DROP COLUMN per entry.",
-		Up: func(tx *sql.Tx) error {
-			return applyAddColumnLoop(tx)
-		},
-		Down: func(tx *sql.Tx) error {
-			return reverseAddColumnLoop(tx)
-		},
-	},
-	// Block 3 - is_generated flip for legacy DXD-NNNNN rows. The inverse
-	// is mechanical but over-corrects (demotes user-created DXD-NNNNN
-	// rows). Classified PartiallyReversible per the catalogue.
-	{
-		ID:            "block-3-is-generated-flip",
-		Reversibility: PartiallyReversible,
-		Reason: "UPDATE flips is_generated=1 for DXD-NNNNN rows; no 'system-issued' marker. Inverse over-corrects user-created rows.",
-		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`UPDATE soldiers SET is_generated = 1 WHERE is_generated = 0 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`)
-			return err
-		},
-		Down: func(tx *sql.Tx) error {
-			// Best-effort inverse: set is_generated=0 for every
-			// DXD-NNNNN row currently flagged is_generated=1.
-			// Over-corrects user-created rows that legitimately
-			// had is_generated=1, but the alternative (leaving
-			// is_generated=1 on rows that the migration flipped)
-			// is the wrong default — the operator can re-flip
-			// any user-created rows post-down via SQL.
-			_, err := tx.Exec(`UPDATE soldiers SET is_generated = 0 WHERE is_generated = 1 AND display_id GLOB 'DXD-[0-9][0-9][0-9][0-9][0-9]'`)
-			return err
-		},
-	},
-	// Block 4 - phase1DistributedMergeMigration. Generates random
-	// sync_ids via syncIDSQL (non-deterministic randomblob). Reversible
-	// only for never-shared single-node archives; Irreversible for any
-	// archive that has produced a .ddsa export (the receiving side's
-	// shared_merge_aliases would orphan). Per issue #273 decision Q1,
-	// the DOWN runner refuses past Block 4 unconditionally.
-	{
-		ID:            "block-4-phase1-distributed-merge",
+		ID:            "block-60-v54-to-v60-jump",
 		Reversibility: Irreversible,
-		Reason: "Generates non-deterministic sync_ids via randomblob; .ddsa exports carry those IDs as cross-node conflict-resolution keys. DOWN past this block is refused unconditionally.",
+		Reason: "Consolidated v54→v60 migration: 4 soldiers columns (kind, begin_date, end_date, description) + scratchpad_cache table + 12 RENAME COLUMN (soldier_id→person_record_id + soldier_sync_id→person_sync_id across 5 FK tables) + event_person_links table + 3 indexes + sync_id backfill. RENAME COLUMN is technically reversible, but the v60 Event Records (the user-added rows in event_person_links keyed by the new FK column names) would be lost on a v60→v54 reverse, and the soldiers-kind/begin_date/end_date columns would be re-dropped even if the user has data in them. Classified Irreversible per the conservative rule: any user-added data the path would discard is reason enough.",
 		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(phase1DistributedMergeMigration)
-			return err
-		},
-		Down: refuseDown,
-	},
-	// Block 5 - phase2CanonicalDatesMigration. Sentinel collapse +
-	// printf stringification of partial dates. Pre-state is discarded.
-	{
-		ID:            "block-5-phase2-canonical-dates",
-		Reversibility: Irreversible,
-		Reason: "Collapses '00/00/0000'/NULL/empty into indistinguishable post-states; death_date printf is lossy for partial dates.",
-		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(phase2CanonicalDatesMigration)
-			return err
-		},
-		Down: refuseDown,
-	},
-	// Block 6 - Inline UPDATE normalization chain on soldiers. Mixed:
-	// the NULL-coalesce cases (needs_review, review_reason,
-	// show_prefix_before_name, confederate_home_name) are Reversible in
-	// isolation; the placeholder-string rewrites (confederate_home_status
-	// 'none' -> 'N/A', pension_state 'none' -> 'N/A') and the
-	// confederate_home_name='' WHERE status='N/A' overwrite are
-	// Irreversible. The catalogue classifies the block as
-	// PartiallyReversible (conservative — the reversibility class is
-	// not uniform across the seven UPDATEs).
-	{
-		ID:            "block-6-soldiers-normalization",
-		Reversibility: PartiallyReversible,
-		Reason: "Seven UPDATEs: NULL-coalesce is reversible; placeholder rewrites ('none' -> 'N/A') and line 457-459 overwrite are irreversible.",
-		Up: func(tx *sql.Tx) error {
-			return applySoldiersNormalization(tx)
-		},
-		Down: func(tx *sql.Tx) error {
-			return reverseSoldiersNormalization(tx)
-		},
-	},
-	// Block 7 - last_edited_at backfill. Mechanical inverse but no
-	// per-row NULL marker; over-corrects.
-	{
-		ID:            "block-7-last-edited-at-backfill",
-		Reversibility: PartiallyReversible,
-		Reason: "COALESCE backfill from updated_at/created_at/CURRENT_TIMESTAMP; no per-row NULL marker; inverse over-corrects.",
-		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`UPDATE soldiers SET last_edited_at = COALESCE(NULLIF(updated_at, ''), NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE last_edited_at IS NULL OR TRIM(last_edited_at) = ''`)
-			return err
-		},
-		Down: func(tx *sql.Tx) error {
-			// Best-effort: set last_edited_at to '' for every
-			// row where the forward path set it via COALESCE.
-			// Cannot distinguish which fallback fired
-			// (updated_at / created_at / CURRENT_TIMESTAMP)
-			// per-row, so we use '' as the most-conservative
-			// inverse (the original was NULL/empty).
-			_, err := tx.Exec(`UPDATE soldiers SET last_edited_at = '' WHERE last_edited_at IS NOT NULL AND TRIM(last_edited_at) <> ''`)
-			return err
-		},
-	},
-	// Block 8 - images.is_primary NULL-coalesce + MIN(id) primary
-	// election. The NULL-coalesce is reversible; the MIN(id) election
-	// is irreversible (pre-state 'no image was primary for this
-	// soldier' is lost). Catalogue: PartiallyReversible.
-	{
-		ID:            "block-8-images-is-primary",
-		Reversibility: PartiallyReversible,
-		Reason: "NULL-coalesce is reversible; MIN(id) primary election is irreversible (no marker for 'no image was primary pre-migration').",
-		Up: func(tx *sql.Tx) error {
-			return applyImagesIsPrimary(tx)
-		},
-		Down: func(tx *sql.Tx) error {
-			// Inverse of the NULL-coalesce only. The MIN(id)
-			// election is irreversible — those images stay
-			// is_primary=1 unless the operator manually resets
-			// them post-down.
-			_, err := tx.Exec(`UPDATE images SET is_primary = NULL WHERE is_primary = 0`)
-			return err
-		},
-	},
-	// Block 9 - idx_soldiers_spouse index. Pure additive.
-	{
-		ID:            "block-9-idx-soldiers-spouse",
-		Reversibility: Reversible,
-		Reason: "CREATE INDEX IF NOT EXISTS; inverse is DROP INDEX IF EXISTS.",
-		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_spouse ON soldiers(spouse_soldier_id)`)
-			return err
-		},
-		Down: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`DROP INDEX IF EXISTS idx_soldiers_spouse`)
-			return err
-		},
-	},
-	// Block 10 - idx_soldiers_import_batch index. Pure additive.
-	{
-		ID:            "block-10-idx-soldiers-import-batch",
-		Reversibility: Reversible,
-		Reason: "CREATE INDEX IF NOT EXISTS; inverse is DROP INDEX IF EXISTS.",
-		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_soldiers_import_batch ON soldiers(import_batch_id, created_at DESC)`)
-			return err
-		},
-		Down: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`DROP INDEX IF EXISTS idx_soldiers_import_batch`)
-			return err
-		},
-	},
-	// Block 11 - migrateNodePrefixConfiguration. Fires only when
-	// user_identity_complete='1'; overwrites any pre-existing
-	// node_prefix via ON CONFLICT DO UPDATE. Cannot distinguish
-	// pre-existing default 'DXD' from a user-derived value.
-	{
-		ID:            "block-11-node-prefix-configuration",
-		Reversibility: PartiallyReversible,
-		Reason: "ON CONFLICT DO UPDATE overwrites any pre-existing node_prefix; cannot distinguish default 'DXD' from a user-derived value post-fact.",
-		Up: func(tx *sql.Tx) error {
-			return migrateNodePrefixConfiguration(tx)
-		},
-		// No Down: the forward path's overwrite is the data-loss
-		// event; reversing would either re-overwrite (no-op) or
-		// require a side table the schema doesn't carry. The
-		// runner's "what was lost" manifest calls this out.
-		Down: func(tx *sql.Tx) error {
-			// Best-effort no-op: do not touch system_config.
-			// The operator can manually reset node_prefix
-			// post-down if they have a snapshot to copy from.
-			return nil
-		},
-	},
-	// Block 12 - migrateSanitizedDisplayIDs. HIGH RISK Irreversible.
-	// No display_id_history, no audit log, in-memory slice only.
-	// SanitizeID is non-bijective for zero-padded 5-digit sequences;
-	// collision resolution mints a fresh sequence with no relationship
-	// to the original.
-	{
-		ID:            "block-12-sanitized-display-ids",
-		Reversibility: Irreversible,
-		Reason: "Lossy display_id overwrite with no side-table backup. Collision resolution mints fresh sequences with no original relationship. DOWN requires --force-irreversible + restore-point acknowledgement.",
-		Up: func(tx *sql.Tx) error {
-			return migrateSanitizedDisplayIDs(tx)
-		},
-		Down: refuseDown,
-	},
-	// Block 13 - migrateCanonicalDateData. HIGH RISK Irreversible.
-	// Consumes birth_info narrative without re-writing; NormalizeCanonical
-	// is non-bijective (zero-padded MM/DD/YYYY, two-digit years rejected).
-	{
-		ID:            "block-13-canonical-date-data",
-		Reversibility: Irreversible,
-		Reason: "Lossy normalization of birth/death dates with no side-table backup. birth_info narrative text consumed but not re-written. NormalizeCanonical is non-bijective. DOWN requires --force-irreversible + restore-point acknowledgement.",
-		Up: func(tx *sql.Tx) error {
-			return migrateCanonicalDateData(tx)
-		},
-		Down: refuseDown,
-	},
-	// Block 14 - ensureSoldierFTS. The FTS rebuild itself is
-	// Reversible (DROP + CREATE VIRTUAL TABLE + INSERT...SELECT is an
-	// idempotent cycle whose net effect is zero data loss as long as
-	// soldiers and scratchpad_cache are intact). The orphan DELETE on
-	// schema.go:588 is PartiallyReversible. Catalogue classifies the
-	// block as PartiallyReversible (conservative).
-	{
-		ID:            "block-14-ensure-soldier-fts",
-		Reversibility: PartiallyReversible,
-		Reason: "FTS rebuild is idempotent (Reversible); orphan DELETE FROM scratchpad_cache (line 588) is PartiallyReversible — orphan scratch_pad text is lost.",
-		Up: func(tx *sql.Tx) error {
-			return ensureSoldierFTS(tx)
-		},
-		Down: func(tx *sql.Tx) error {
-			// Inverse is the same idempotent cycle: DROP +
-			// CREATE + INSERT...SELECT. No data is lost because
-			// FTS5 is a derived index — the source-of-truth
-			// (soldiers + scratchpad_cache) is unchanged.
-			// The orphan scratch_pad rows the forward path
-			// deleted (line 588) cannot be recovered — they're
-			// permanently lost. Documented in the manifest.
-			return ensureSoldierFTS(tx)
-		},
-	},
-	// Block 15 - ensureArchiveMetaSeed. Three INSERT OR IGNORE seed
-	// rows. Pure additive.
-	{
-		ID:            "block-15-archive-meta-seed",
-		Reversibility: Reversible,
-		Reason: "Three INSERT OR IGNORE INTO archive_meta seed rows (v58, issue #183). Inverse: DELETE FROM archive_meta WHERE archive_kind IN (...).",
-		Up: func(tx *sql.Tx) error {
-			return ensureArchiveMetaSeed(tx)
-		},
-		Down: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`DELETE FROM archive_meta WHERE archive_kind IN ('shared_archive', 'backup_archive', 'static_archive')`)
-			return err
-		},
-	},
-	// Block 16 - migrateEntryTypeDiscipline. v55 (issue #106).
-	// Creates a log table + sentinel row. IMPORTANT: docs/migrations/v55.md
-	// claims a CHECK constraint was added at v55, but the inline
-	// CREATE TABLE soldiers at schema.go:25-65 declares entry_type TEXT
-	// NOT NULL DEFAULT 'soldier' WITHOUT a CHECK constraint. The comment
-	// at schema.go:824-836 explicitly acknowledges the doc-vs-code
-	// mismatch ("Pragmatic approach for v55: rely on application-level
-	// validation"). Block 16 is Reversible at the SQL level — only the
-	// log table is created; nothing in soldiers.entry_type is actually
-	// constrained.
-	{
-		ID:            "block-16-entry-type-discipline",
-		Reversibility: Reversible,
-		Reason: "Creates soldiers_entry_type_check_log table + sentinel row. The CHECK constraint v55.md claims was added was never actually added at the SQL level (doc-vs-code mismatch); block is Reversible.",
-		Up: func(tx *sql.Tx) error {
-			return migrateEntryTypeDiscipline(tx)
-		},
-		Down: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`DROP TABLE IF EXISTS soldiers_entry_type_check_log`)
-			return err
-		},
-	},
-	// Block 17 - research_log.evidence_type rename ('archive' ->
-	// 'local_archive'). v55 (issue #106). Pre-rename value cannot
-	// be distinguished from a row that always had 'local_archive'.
-	// Tolerates missing table via isNoSuchTableError fallback.
-	{
-		ID:            "block-17-research-log-evidence-rename",
-		Reversibility: Irreversible,
-		Reason: "One-way value rename; pre-rename 'archive' cannot be distinguished from a row that always had 'local_archive'. Tolerates missing research_log table.",
-		Up: func(tx *sql.Tx) error {
-			_, err := tx.Exec(`UPDATE research_log SET evidence_type = 'local_archive' WHERE evidence_type = 'archive'`)
-			if err != nil && isNoSuchTableError(err) {
-				return nil
+			// Pre-#320 v1-v53 archives pre-date the inline schema's
+			// column coverage. Run the ADD COLUMN loop first so
+			// every column the rest of this block + the inline
+			// schema assumes is present on the v54-or-earlier row.
+			// The loop is columnExists-guarded so fresh installs
+			// (where block-1 inline-created every column) are
+			// no-ops.
+			if err := applyAddColumnLoop(tx); err != nil {
+				return err
 			}
-			return err
-		},
-		Down: refuseDown,
-	},
-	// Block 18 (block-60) — v60 Event Records + FK rename to
-	// person_record_id (issue #320). Four sub-blocks run in a
-	// single transaction:
-	//
-	//   A. CREATE TABLE event_person_links (M-to-M Event↔Person
-	//      junction) + 3 indexes. Pure additive; Reversible.
-	//   B. 8 RENAME COLUMN statements (soldier_id → person_record_id
-	//      in records/images/scratchpad_cache/research_tasks;
-	//      local_soldier_id/left_soldier_id/right_soldier_id →
-	//      local_record_id/left_record_id/right_record_id in
-	//      merge_review_conflicts + duplicate_audit_findings).
-	//      Idempotent: each statement is guarded by columnExists
-	//      (renames only fire on pre-v60 DBs that still have the
-	//      old column name). SQLite >=3.35 supports ALTER TABLE
-	//      RENAME COLUMN. Reversible via inverse RENAME COLUMN.
-	//   C. FTS5 trigger DROP+RECREATE for the 3 scratchpad_cache
-	//      triggers + the 6 soldiers_fts triggers. SQLite does
-	//      NOT auto-update trigger text on RENAME COLUMN, so the
-	//      triggers must be dropped and recreated with the new
-	//      column name; otherwise the next INSERT/UPDATE/DELETE
-	//      on the parent table throws 'no such column: new.<old>'.
-	//      Also renames the FTS5 internal column
-	//      soldiers_fts.soldier_id → person_record_id.
-	//   D. UPDATE records SET person_sync_id (backfill in case
-	//      Block 2 didn't add it; idempotent via the WHERE
-	//      clause).
-	//
-	// Reversibility: PartiallyReversible. RENAME COLUMN is
-	// reversible; CREATE TABLE/DROP TABLE is reversible; the FTS5
-	// trigger DROP+RECREATE cycle is reversible (FTS5 is a derived
-	// index, no data loss). The inverse path may be lossy if
-	// user-added columns are non-empty in a v60-only DB.
-	{
-		ID:            "block-60-event-records-event-person-links-fk-rename",
-		Reversibility: PartiallyReversible,
-		Reason: "8 RENAME COLUMN + CREATE TABLE event_person_links + FTS5 trigger DROP+RECREATE. RENAME COLUMN is reversible; FTS5 cycle is reversible (FTS5 is derived). DOWN reflows column names; user-added Event data is preserved.",
-		Up: func(tx *sql.Tx) error {
-			// Sub-block A: CREATE TABLE event_person_links + indexes.
+
+			// v1-v54 archives carry pre-normalization values
+			// (pension_state='None', confederate_home_status='None',
+			// needs_review NULL, etc.). The 7-UPDATE chain in
+			// applySoldiersNormalization brings legacy rows into
+			// compliance. Runs against the OLD column name set
+			// (soldiers.* haven't been renamed yet at this point)
+			// so no columnExists guard needed.
+			if err := applySoldiersNormalization(tx); err != nil {
+				return err
+			}
+
+			// v54-or-earlier images may have is_primary=NULL or no
+			// primary image elected. applyImagesIsPrimary
+			// NULL-coalesces and elects MIN(id) as primary for each
+			// (person_record_id | soldier_id) — the helper picks
+			// the column that exists. Runs against the OLD name set
+			// so the GROUP BY hits soldier_id.
+			if err := applyImagesIsPrimary(tx); err != nil {
+				return err
+			}
+
+			// Sub-block A0: scratchpad_cache table (new in v60). The
+			// inline CREATE TABLE in block-1 only creates it on fresh
+			// installs; v54→v60 upgrades need this explicit create
+			// before the column-rename sub-block can touch it.
+			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS scratchpad_cache (
+				person_record_id INTEGER PRIMARY KEY REFERENCES soldiers(id) ON DELETE CASCADE,
+				scratch_pad TEXT NOT NULL DEFAULT '',
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_scratchpad_cache_updated_at ON scratchpad_cache(updated_at)`); err != nil {
+				return err
+			}
+
+			// Sub-block A0.5: v60-specific soldiers columns (kind /
+			// begin_date / end_date / description) for the Event
+			// Record subtype. Inline CREATE has them on fresh
+			// installs; v54→v60 upgrades need the ADD COLUMN.
+			for _, col := range []struct{ name, def string }{
+				{"kind", "TEXT"},
+				{"begin_date", "TEXT"},
+				{"end_date", "TEXT"},
+				{"description", "TEXT"},
+			} {
+				exists, err := columnExists(tx, "soldiers", col.name)
+				if err != nil {
+					return err
+				}
+				if exists {
+					continue
+				}
+				if _, err := tx.Exec(fmt.Sprintf(`ALTER TABLE soldiers ADD COLUMN %s %s`, col.name, col.def)); err != nil {
+					return err
+				}
+			}
+
+			// Sub-block A1: CREATE TABLE event_person_links + indexes.
 			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS event_person_links (
 				id             INTEGER PRIMARY KEY AUTOINCREMENT,
 				event_id       INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
@@ -513,14 +303,18 @@ var migrations = []Migration{
 				return err
 			}
 
-			// Sub-block B: 8 RENAME COLUMN statements. Each guarded by
+			// Sub-block B: 12 RENAME COLUMN statements. Each guarded by
 			// columnExists so the block is idempotent on a v60 fresh
 			// install (where the new column name is already inline).
 			renames := []struct{ table, from, to string }{
 				{"records", "soldier_id", "person_record_id"},
+				{"records", "soldier_sync_id", "person_sync_id"},
 				{"images", "soldier_id", "person_record_id"},
+				{"images", "soldier_sync_id", "person_sync_id"},
 				{"scratchpad_cache", "soldier_id", "person_record_id"},
+				{"scratchpad_cache", "soldier_sync_id", "person_sync_id"},
 				{"research_tasks", "soldier_id", "person_record_id"},
+				{"research_tasks", "soldier_sync_id", "person_sync_id"},
 				{"merge_review_conflicts", "local_soldier_id", "local_record_id"},
 				{"merge_review_conflicts", "left_soldier_id", "left_record_id"},
 				{"merge_review_conflicts", "right_soldier_id", "right_record_id"},
@@ -541,104 +335,74 @@ var migrations = []Migration{
 				}
 			}
 
-			// Sub-block C: FTS5 trigger DROP+RECREATE. The 3
-			// scratchpad_cache triggers reference the parent
-			// column; the 6 soldiers_fts triggers reference both
-			// the FTS5 internal column and (for the scratchpad
-			// triggers) the parent column. After the renames
-			// above, all of these must be dropped and recreated
-			// with the new column name.
+			// Sub-block C (FTS5 trigger DROP+RECREATE) was here
+			// before block-60 was moved to slot 1.5. It called
+			// ensureSoldierFTS — but that helper references
+			// columns like biography + maiden_name + relationship_label
+			// that block-2 (the ADD COLUMN loop) hasn't added yet
+			// when block-60 runs at slot 1.5. Block-14 already
+			// calls ensureSoldierFTS AFTER block-2 completes, so
+			// the FTS5 trigger rebuild is deferred there. Removed
+			// from this block.
+
+			// Sub-block D: backfill person_sync_id on records/images.
+			// Runs AFTER sub-block B so the column names are
+			// post-rename. The UPDATE references soldiers.sync_id
+			// which block-2 (ADD COLUMN loop) adds to pre-v52
+			// archives; the soldiersSyncIDExists guard makes this
+			// sub-block a no-op for archives that pre-date the
+			// sync_id column.
+			if exists, err := columnExists(tx, "soldiers", "sync_id"); err != nil {
+				return err
+			} else if exists {
+				if _, err := tx.Exec(`UPDATE records
+					SET person_sync_id = (
+						SELECT soldiers.sync_id
+						FROM soldiers
+						WHERE soldiers.id = records.person_record_id
+					)
+					WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(`UPDATE images
+					SET person_sync_id = (
+						SELECT soldiers.sync_id
+						FROM soldiers
+						WHERE soldiers.id = images.person_record_id
+					)
+					WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`); err != nil {
+					return err
+					}
+			}
+
+			// The Phase 1 distributed-merge backfill: populate
+			// sync_id + person_sync_id + node_prefix + node_id
+			// on v1-v53 archives that pre-date the sync_id
+			// discipline. Runs AFTER the renames so the UPDATEs
+			// hit the post-rename column names. Idempotent on
+			// fresh installs (every UPDATE is a no-op and the
+			// system_config seed already ran inline).
+			if err := applyPhase1DistributedMerge(tx); err != nil {
+				return err
+			}
+
+			// FTS5 setup. The old block-14 handled this; with the
+			// v1-v53 chain collapsed, the soldiers_fts table +
+			// its 6 triggers need to be created here for v54
+			// archives. The CREATE VIRTUAL TABLE / CREATE TRIGGER
+			// statements are idempotent (the helper DROPs them
+			// first then re-creates) so fresh installs (where
+			// block-1's inline schema will eventually grow to
+			// include them) are also safe.
 			if err := ensureSoldierFTS(tx); err != nil {
 				return err
 			}
 
-			// Sub-block D: backfill person_sync_id on records/images
-			// in case the v59→v60 upgrade skipped the standard
-			// phase1 migration. Idempotent: the WHERE clause skips
-			// rows that already have a non-empty sync_id.
-			if _, err := tx.Exec(`UPDATE records
-				SET person_sync_id = (
-					SELECT soldiers.sync_id
-					FROM soldiers
-					WHERE soldiers.id = records.person_record_id
-				)
-				WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(`UPDATE images
-				SET person_sync_id = (
-					SELECT soldiers.sync_id
-					FROM soldiers
-					WHERE soldiers.id = images.person_record_id
-				)
-				WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`); err != nil {
-				return err
-			}
-
 			return nil
 		},
-		Down: func(tx *sql.Tx) error {
-			// Sub-block D inverse: not strictly needed (the WHERE
-			// clause is idempotent on re-run). Skipped for the
-			// DOWN path because person_sync_id already exists on
-			// legacy v60 DBs.
-			//
-			// Sub-block C inverse: ensureSoldierFTS is itself
-			// idempotent (DROP+CREATE+INSERT...SELECT cycle whose
-			// net effect is zero data loss). Running it again with
-			// the original column names would require temporarily
-			// reverting the renames, which is not safe. The DOWN
-			// path for the FTS5 layer is therefore a no-op — the
-			// triggers reference person_record_id regardless of
-			// the soldiers_fts internal column name.
-			//
-			// Sub-block B inverse: 8 RENAME COLUMN statements to
-			// revert. Idempotent.
-			renames := []struct{ table, from, to string }{
-				{"records", "person_record_id", "soldier_id"},
-				{"images", "person_record_id", "soldier_id"},
-				{"scratchpad_cache", "person_record_id", "soldier_id"},
-				{"research_tasks", "person_record_id", "soldier_id"},
-				{"merge_review_conflicts", "local_record_id", "local_soldier_id"},
-				{"merge_review_conflicts", "left_record_id", "left_soldier_id"},
-				{"merge_review_conflicts", "right_record_id", "right_soldier_id"},
-				{"duplicate_audit_findings", "left_record_id", "left_soldier_id"},
-				{"duplicate_audit_findings", "right_record_id", "right_soldier_id"},
-			}
-			for _, r := range renames {
-				exists, err := columnExists(tx, r.table, r.from)
-				if err != nil {
-					return err
-				}
-				if !exists {
-					continue
-				}
-				stmt := fmt.Sprintf(`ALTER TABLE %s RENAME COLUMN %s TO %s`, r.table, r.from, r.to)
-				if _, err := tx.Exec(stmt); err != nil {
-					return err
-				}
-			}
-
-			// Sub-block A inverse: DROP TABLE event_person_links +
-			// the 3 indexes. CASCADE on the FK ensures the table
-			// is droppable even if linked rows exist.
-			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_person_links_sync_id`); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_person_links_person`); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_event_person_links_event`); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(`DROP TABLE IF EXISTS event_person_links`); err != nil {
-				return err
-			}
-
-			return nil
-		},
+		Down: refuseDown,
 	},
-	// Block 19 (block-61) — v61 per-Event Source Records table
+	// Block 2 (block-61) — v61 per-Event Source Records table
 	// (issue #340). Replaces the v60 slot #329 hack of writing
 	// Event sources into the shared `records` table, which
 	// collided with the replaceRecords REPLACE-only semantics
@@ -656,7 +420,7 @@ var migrations = []Migration{
 	// because the orphan rows from v60's records-table reuse
 	// are inert after the v61 EventService rewrite (slice 2).
 	{
-		ID:            "block-61-event-sources",
+		ID:            "block-2-event-sources",
 		Reversibility: Reversible,
 		Reason: "Pure additive: CREATE TABLE IF NOT EXISTS event_sources + 2 CREATE INDEX IF NOT EXISTS. Inverse: DROP INDEX + DROP TABLE. No data migration; the v60 records-table orphans become inert after slice 2's service rewrite.",
 		Up: func(tx *sql.Tx) error {
@@ -769,9 +533,10 @@ func reverseAddColumnLoop(tx *sql.Tx) error {
 // at most once per archive lifetime.
 func applyAddColumnLoop(tx *sql.Tx) error {
 	for _, migration := range []struct {
-		table  string
-		column string
-		sql    string
+		table     string
+		column    string
+		sql       string
+		alsoCheck string
 	}{
 		{table: "soldiers", column: "buried_in", sql: `ALTER TABLE soldiers ADD COLUMN buried_in TEXT`},
 		{table: "soldiers", column: "pension_id", sql: `ALTER TABLE soldiers ADD COLUMN pension_id TEXT`},
@@ -803,9 +568,16 @@ func applyAddColumnLoop(tx *sql.Tx) error {
 		{table: "soldiers", column: "updated_at", sql: `ALTER TABLE soldiers ADD COLUMN updated_at DATETIME`},
 		{table: "soldiers", column: "import_batch_id", sql: `ALTER TABLE soldiers ADD COLUMN import_batch_id TEXT REFERENCES import_batches(id) ON DELETE SET NULL`},
 		{table: "records", column: "sync_id", sql: `ALTER TABLE records ADD COLUMN sync_id TEXT`},
-		{table: "records", column: "soldier_sync_id", sql: `ALTER TABLE records ADD COLUMN soldier_sync_id TEXT`},
+		// Fresh installs get person_sync_id inline (block-1). Block-60
+		// renames soldier_sync_id → person_sync_id on v59→v60 upgrades
+		// BEFORE block-2 runs. On legacy v1-v58 upgrades neither column
+		// exists yet, so block-2 adds soldier_sync_id and block-60
+		// renames it later. The dual-check below skips the ADD on
+		// fresh installs (where the new column already exists) AND
+		// on v59→v60 upgrades (where block-60 has already renamed).
+		{table: "records", column: "soldier_sync_id", sql: `ALTER TABLE records ADD COLUMN soldier_sync_id TEXT`, alsoCheck: "person_sync_id"},
 		{table: "images", column: "sync_id", sql: `ALTER TABLE images ADD COLUMN sync_id TEXT`},
-		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`},
+		{table: "images", column: "soldier_sync_id", sql: `ALTER TABLE images ADD COLUMN soldier_sync_id TEXT`, alsoCheck: "person_sync_id"},
 		{table: "images", column: "is_primary", sql: `ALTER TABLE images ADD COLUMN is_primary BOOLEAN DEFAULT 0`},
 		// v60 (issue #320): Event Record subtype columns. Added via
 		// the applyAddColumnLoop so the v1 → v60 upgrade path picks
@@ -821,6 +593,15 @@ func applyAddColumnLoop(tx *sql.Tx) error {
 		}
 		if exists {
 			continue
+		}
+		if migration.alsoCheck != "" {
+			newNameExists, err := columnExists(tx, migration.table, migration.alsoCheck)
+			if err != nil {
+				return err
+			}
+			if newNameExists {
+				continue
+			}
 		}
 		if _, err := tx.Exec(migration.sql); err != nil {
 			return err
@@ -891,17 +672,26 @@ func reverseSoldiersNormalization(tx *sql.Tx) error {
 }
 
 // applyImagesIsPrimary runs Block 8 — the two UPDATE statements on
-// images: NULL-coalesce + MIN(id) primary election.
+// images: NULL-coalesce + MIN(id) primary election. Groups by the
+// FK column the table currently has (soldier_id on v54-or-earlier,
+// person_record_id on v60+). Idempotent on fresh installs.
 func applyImagesIsPrimary(tx *sql.Tx) error {
 	if _, err := tx.Exec(`UPDATE images SET is_primary = 0 WHERE is_primary IS NULL`); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`UPDATE images SET is_primary = 1 WHERE id IN (
+	groupCol := "person_record_id"
+	if exists, err := columnExists(tx, "images", "soldier_id"); err != nil {
+		return err
+	} else if exists {
+		groupCol = "soldier_id"
+	}
+	stmt := fmt.Sprintf(`UPDATE images SET is_primary = 1 WHERE id IN (
 		SELECT MIN(id)
 		FROM images
-		GROUP BY person_record_id
+		GROUP BY %s
 		HAVING MAX(CASE WHEN is_primary = 1 THEN 1 ELSE 0 END) = 0
-	)`); err != nil {
+	)`, groupCol)
+	if _, err := tx.Exec(stmt); err != nil {
 		return err
 	}
 	return nil
