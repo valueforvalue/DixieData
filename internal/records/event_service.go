@@ -516,3 +516,27 @@ func (e *EventService) linksForEvent(eventID int64) ([]EventLink, error) {
 // ErrDuplicateLink is returned by AttachEventToPerson when the
 // (event_id, person_id) pair already exists in event_person_links.
 var ErrDuplicateLink = errors.New("event-person link already exists")
+
+// AddImage attaches an image row to an Event Record.
+// (issue #320 child #332 close-out)
+//
+// Thin pass-through to SoldierService.AddImage. The handler-side
+// facade guard at internal/appshell/app_facades.go:167 routes
+// event image CRUD through EventService to satisfy the
+// 'handlers MUST NOT call a.soldiers methods' law. The native
+// dialog import gateway (App.importImagePaths at
+// internal/appshell/app.go:2480) still writes through
+// soldiers.AddImage internally because it serves both Person
+// Records and Events from one shared path.
+func (e *EventService) AddImage(eventID int64, fileName, relativePath, caption string) error {
+	return e.soldiers.AddImage(eventID, fileName, relativePath, caption)
+}
+
+// RemoveImages deletes the image rows + tag-join rows for the
+// given image IDs on an Event Record. (issue #320 child #332
+// close-out.) Pass-through to SoldierService.DeleteImages;
+// signatures match because both entry types share the images
+// table keyed on person_record_id.
+func (e *EventService) RemoveImages(eventID int64, imageIDs []int64) error {
+	return e.soldiers.DeleteImages(eventID, imageIDs)
+}

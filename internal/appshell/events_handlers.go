@@ -1127,7 +1127,7 @@ func (a *App) handleEventImagesDelete(w http.ResponseWriter, r *http.Request, ev
 	for _, image := range selected {
 		imageIDs = append(imageIDs, image.ID)
 	}
-	if err := a.soldiers.DeleteImages(eventID, imageIDs); err != nil {
+	if err := a.events.RemoveImages(eventID, imageIDs); err != nil {
 		respondInternal(w, r, "Could not remove the image records from the database.", err)
 		return
 	}

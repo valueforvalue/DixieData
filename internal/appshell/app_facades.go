@@ -167,6 +167,19 @@ type updaterFacade interface {
 // EventService. Handlers MUST route event operations through
 // this facade — never call a.soldiers methods that would bleed
 // Person Record semantics onto Event rows.
+//
+// Image CRUD on Events also routes through here
+// (AddImage + RemoveImages, issue #320 child #332 close-out).
+// The native-dialog import path on the App side calls
+// App.importImagePaths (internal/appshell/app.go:2480) which
+// writes via soldiers.AddImage internally because it serves
+// both Person Records and Events from one shared gateway; that
+// single shared import path is the documented exception to the
+// 'no direct a.soldiers calls' rule below. Per-image add +
+// remove (the per-event gallery surface) goes through this
+// facade so the handler stays EntryType-agnostic. Image-row
+// reads travel via GetEventByID (Event.Images is populated for
+// free by imageSelectColumns), so no ListImages is needed.
 type eventsFacade interface {
 	ListEvents(page, pageSize int) ([]models.Soldier, error)
 	GetEventByID(id int64) (*records.EventWithLinks, error)
@@ -185,4 +198,6 @@ type eventsFacade interface {
 	ListTagsForEvent(eventID int64) ([]records.Tag, error)
 	AddTagToEvent(eventID, tagID int64) error
 	DetachTagFromEvent(eventID, tagID int64) error
+	AddImage(eventID int64, fileName, relativePath, caption string) error
+	RemoveImages(eventID int64, imageIDs []int64) error
 }
