@@ -65,6 +65,17 @@ func runSnapshotCase(t *testing.T, fixtureDir, typstPath, templatesDir string, c
 			t.Fatalf("RenderArticleSingle: %v", err)
 		}
 		return buf.Bytes()
+	case "event":
+		opts := render.PDFOptions{
+			Orientation:     c.orientation,
+			PrinterFriendly: true,
+			IncludeImages:   false,
+		}
+		var buf bytes.Buffer
+		if err := r.RenderEventSingle(ctx, c.recordID, opts, nopWriteCloser{&buf}); err != nil {
+			t.Fatalf("RenderEventSingle: %v", err)
+		}
+		return buf.Bytes()
 	case "bulk":
 		var buf bytes.Buffer
 		settings := c.settings()
@@ -216,6 +227,25 @@ func snapshotCases(t *testing.T) []snapshotCase {
 			orientation: "L",
 			mode:        "article",
 			recordID:    1,
+		},
+		{
+			// Issue #374: portrait Event Record card. Mirrors
+			// the article snapshot pair above; the fixture
+			// grows one Event row (FIX-00006) that exercises
+			// both the event_portrait.typ and
+			// event_landscape.typ templates.
+			name:        "event-portrait",
+			template:    "event_portrait",
+			orientation: "P",
+			mode:        "event",
+			recordID:    6,
+		},
+		{
+			name:        "event-landscape",
+			template:    "event_landscape",
+			orientation: "L",
+			mode:        "event",
+			recordID:    6,
 		},
 	}
 }

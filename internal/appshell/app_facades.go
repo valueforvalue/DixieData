@@ -106,10 +106,13 @@ type exportFacade interface {
 	ExportSoldierPDF(outputPath string, soldier models.Soldier, options archive.PDFOptions) error
 	ExportSoldierJPG(outputPath string, soldier models.Soldier, options archive.PDFOptions) ([]string, error)
 	ExportSoldierPDFWithoutImages(outputPath string, soldier models.Soldier) error
-	// ExportEventPDF renders a per-Event PDF (issue #320 v1).
-	// The linked slice is the slim per-Person projection for
-	// the "Linked Person Records" table on the event card.
-	ExportEventPDF(outputPath string, event models.Soldier, linked []models.Soldier) error
+	// ExportEventPDF renders a per-Event PDF (issue #320 v1,
+	// issue #374 portrait). The linked slice is the slim
+	// per-Person projection for the "Linked Person Records"
+	// table on the event card; options.Orientation (P|L,
+	// default L) selects the matching event_<orientation>.typ
+	// template via templateForRecordType.
+	ExportEventPDF(outputPath string, event models.Soldier, linked []models.Soldier, options archive.PDFOptions) error
 	ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options archive.PDFOptions) error
 	ExportImages(outputPath string, images []models.Image) error
 	SetRegistry(reg *render.Registry)
@@ -201,4 +204,14 @@ type eventsFacade interface {
 	DetachTagFromEvent(eventID, tagID int64) error
 	AddImage(eventID int64, fileName, relativePath, caption string) error
 	RemoveImages(eventID int64, imageIDs []int64) error
+	// Issue #374: PDF pre-render seam for the per-export
+	// orientation picker on the Event detail page. Mirrors the
+	// ArticleService.RenderPDF shape; returns bytes + a
+	// slugified filename so the handler can open a guarded
+	// SaveFileDialog and write synchronously.
+	RenderPDF(eventID int64, orientation string) (*records.PDFResult, error)
+	// SetEventRegistry wires the typst-backed Registry at
+	// startup so RenderPDF has a render path; nil clears the
+	// wiring.
+	SetEventRegistry(reg records.EventRegistry)
 }

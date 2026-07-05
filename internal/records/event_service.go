@@ -1,9 +1,12 @@
 package records
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -48,6 +51,7 @@ type EventWithLinks struct {
 // through the same tx pool as Person Record writes.
 type EventService struct {
 	soldiers *SoldierService
+	registry EventRegistry
 }
 
 // NewEventService constructs an EventService that borrows the
@@ -560,4 +564,128 @@ func (e *EventService) AddImage(eventID int64, fileName, relativePath, caption s
 // table keyed on person_record_id.
 func (e *EventService) RemoveImages(eventID int64, imageIDs []int64) error {
 	return e.soldiers.DeleteImages(eventID, imageIDs)
+}
+
+// EventRegistry is the issue #374 surface the EventService
+// uses to pre-render an Event Record's PDF. Mirrors the
+// ArticleRegistry shape (article_service.go:65-68) so the
+// appshell wiring stays symmetric: a thin adapter bridges
+// *render.Registry to this interface.
+//
+// The interface lives in internal/records (not pkg/render) to
+// avoid an import cycle: pkg/render depends on internal/records,
+// so internal/records cannot import pkg/render. Same reasoning
+// is documented at ArticleRegistry above.
+type EventRegistry interface {
+	RenderEvent(ctx context.Context, recordType string, orientation string, data map[string]any, w io.Writer) error
+}
+
+// SetEventRegistry wires the typst-backed Registry into the
+// EventService. Called once at startup by the appshell wiring
+// (mirrors ArticleService.SetArticleRegistry); nil clears the
+// wiring so RenderPDF returns an error instead of panicking.
+func (e *EventService) SetEventRegistry(reg EventRegistry) {
+	e.registry = reg
+}
+
+// RenderPDF pre-renders the Event Record's PDF body to bytes
+// and returns them alongside a slugified filename. Mirrors
+// ArticleService.RenderPDF so the handler can pre-render +
+// open a SaveFileDialog + write synchronously, matching the
+// article path (no job-enqueue overhead for the per-export
+// click).
+//
+// orientation is "portrait" or "landscape"; both resolve to
+// templates/event_<orientation>.typ via the Registry's
+// templateForRecordType mapping. The linked slice is the
+// slim per-Person projection for the "Linked Person Records"
+// table; the pre-projection keeps the typst template DB-free.
+//
+// Errors:
+//   - registry not configured: explicit error so the caller
+//     can surface a misconfiguration rather than crash
+//   - GetEventByID failure:    propagates as-is (the handler
+//     already maps ErrEventNotFound to a 404)
+//   - registry render failure: wraps the underlying error so
+//     the handler can log it with context
+func (e *EventService) RenderPDF(eventID int64, orientation string) (*PDFResult, error) {
+	if e.registry == nil {
+		return nil, fmt.Errorf("RenderPDF: registry not configured")
+	}
+	withLinks, err := e.GetEventByID(eventID)
+	if err != nil {
+		return nil, err
+	}
+	event := withLinks.Event
+	linkedRows, err := e.ListForEvent(eventID)
+	if err != nil {
+		return nil, fmt.Errorf("RenderPDF list linked for %d: %w", eventID, err)
+	}
+	linkedDicts := make([]map[string]any, 0, len(linkedRows))
+	for _, p := range linkedRows {
+		name := strings.TrimSpace(p.FirstName + " " + p.MiddleName + " " + p.LastName)
+		if name == "" {
+			name = strings.TrimSpace(p.DisplayID)
+		}
+		range_ := ""
+		if year := strings.TrimSpace(strings.SplitN(p.BirthDate, "/", 3)[2]); year != "" {
+			range_ = year + " —"
+		}
+		if year := strings.TrimSpace(strings.SplitN(p.DeathDate, "/", 3)[2]); year != "" {
+			if range_ != "" {
+				range_ = strings.TrimSuffix(range_, " —") + " — " + year
+			} else {
+				range_ = "— " + year
+			}
+		}
+		linkedDicts = append(linkedDicts, map[string]any{
+			"display_id": strings.TrimSpace(p.DisplayID),
+			"name":       name,
+			"range":      range_,
+		})
+	}
+	opts := eventRenderPDFOptions{
+		Orientation:     normalizeOrientation(orientation),
+		PrinterFriendly: true,
+		IncludeImages:   false,
+	}
+	data := map[string]any{
+		"soldier":  event,
+		"linked":   linkedDicts,
+		"options":  opts,
+		"branding": map[string]string{},
+	}
+	var buf bytes.Buffer
+	if err := e.registry.RenderEvent(context.Background(), "event", normalizeOrientation(orientation), data, &buf); err != nil {
+		return nil, fmt.Errorf("RenderPDF %d: %w", eventID, err)
+	}
+	return &PDFResult{
+		Bytes:    buf.Bytes(),
+		Filename: slugifyEventFilename(event, orientation),
+	}, nil
+}
+
+// eventRenderPDFOptions is the small subset of PDFOptions the
+// event template's data.json needs. Local type to avoid
+// importing pkg/render (cycle: pkg/render -> internal/records).
+type eventRenderPDFOptions struct {
+	Orientation     string `json:"orientation"`
+	PrinterFriendly bool   `json:"printerFriendly"`
+	IncludeImages   bool   `json:"includeImages"`
+}
+
+// slugifyEventFilename builds the suggested filename:
+// "Event-EVT-NNNNN-<kind-slug>-<orientation>.pdf". Mirrors
+// slugifyArticleFilename so the dialog default reads naturally
+// for both Event and Article exports.
+func slugifyEventFilename(event models.Soldier, orientation string) string {
+	short := "landscape"
+	if normalizeOrientation(orientation) == "P" {
+		short = "portrait"
+	}
+	slug := slugify(strings.TrimSpace(event.Kind))
+	if slug == "" {
+		return fmt.Sprintf("Event-%s-%s.pdf", event.DisplayID, short)
+	}
+	return fmt.Sprintf("Event-%s-%s-%s.pdf", event.DisplayID, slug, short)
 }

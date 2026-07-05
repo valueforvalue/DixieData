@@ -28,6 +28,8 @@ const (
 type SoldierService = records.SoldierService
 // ArticleService is a re-export of records.ArticleService (issue #321 slice 4). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type ArticleService = records.ArticleService
+// EventService is a re-export of records.EventService (issue #374). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
+type EventService = records.EventService
 // AnniversaryService is a re-export of records.AnniversaryService (or pkg/render.AnniversaryService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type AnniversaryService = records.AnniversaryService
 // AnalyticsService is a re-export of records.AnalyticsService (or pkg/render.AnalyticsService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
@@ -55,6 +57,11 @@ func NewSoldierService(database *db.DB) *SoldierService { return records.NewSold
 func NewArticleService(database *db.DB) *ArticleService {
 	soldier := records.NewSoldierService(database)
 	return records.NewArticleService(soldier, records.NewMarkdownRenderer())
+}
+// NewEventService is a re-export of records.NewEventService (issue #374). Wires the EventService against the shared SoldierService so the Event row + linked-person lookups share the connection pool.
+func NewEventService(database *db.DB) *EventService {
+	soldier := records.NewSoldierService(database)
+	return records.NewEventService(soldier)
 }
 // NewAnniversaryService is a re-export of records.NewAnniversaryService (or pkg/render.NewAnniversaryService). See the source package for the canonical implementation.
 func NewAnniversaryService(database *db.DB) *AnniversaryService { return records.NewAnniversaryService(database) }

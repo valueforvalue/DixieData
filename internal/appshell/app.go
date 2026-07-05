@@ -2020,6 +2020,13 @@ func (a *App) reloadServices() error {
 		if a.articles != nil {
 			a.articles.SetArticleRegistry(&articleRegistryAdapter{reg: reg})
 		}
+		// Event PDF pre-render (issue #374) shares the same
+		// registry through a parallel adapter. Mirrors the
+		// article wiring above; the events facade then handles
+		// /events/{id}/pdf with pre-render + guarded dialog.
+		if a.events != nil {
+			a.events.SetEventRegistry(&eventRegistryAdapter{reg: reg})
+		}
 	}
 	// Bulk export reads each soldier's images by absolute path.
 	// Soldier.Images[i].FilePath is stored relative to the data
@@ -2696,6 +2703,32 @@ type articleRegistryAdapter struct {
 func (a *articleRegistryAdapter) RenderArticle(ctx context.Context, recordType, orientation string, data map[string]any, w io.Writer) error {
 	if a == nil || a.reg == nil {
 		return errors.New("articleRegistryAdapter: nil registry")
+	}
+	settings := render.PrintSettings{
+		Orientation:          orientation,
+		SingleRecordTemplate: recordType + "_" + func() string {
+			if orientation == "P" {
+				return "portrait"
+			}
+			return "landscape"
+		}(),
+	}.Normalize()
+	return a.reg.Render(ctx, settings, recordType, data, w)
+}
+
+// eventRegistryAdapter adapts the *render.Registry to the
+// EventRegistry interface declared in internal/records
+// (event_service.go). Mirrors articleRegistryAdapter above so
+// the issue #374 Event orientation picker has the same
+// pre-render seam the article picker (issue #321 slice-4.5)
+// already uses.
+type eventRegistryAdapter struct {
+	reg *render.Registry
+}
+
+func (a *eventRegistryAdapter) RenderEvent(ctx context.Context, recordType, orientation string, data map[string]any, w io.Writer) error {
+	if a == nil || a.reg == nil {
+		return errors.New("eventRegistryAdapter: nil registry")
 	}
 	settings := render.PrintSettings{
 		Orientation:          orientation,
