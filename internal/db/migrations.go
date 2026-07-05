@@ -543,7 +543,7 @@ var migrations = []Migration{
 			)`); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_article_refs_article ON article_refs(article_id)`); err != nil {
+			if _, err := tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_article_refs_article_person ON article_refs(article_id, person_record_id)`); err != nil {
 				return err
 			}
 			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_article_refs_person ON article_refs(person_record_id)`); err != nil {
@@ -555,7 +555,7 @@ var migrations = []Migration{
 			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_article_refs_person`); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_article_refs_article`); err != nil {
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_article_refs_article_person`); err != nil {
 				return err
 			}
 			if _, err := tx.Exec(`DROP TABLE IF EXISTS article_refs`); err != nil {

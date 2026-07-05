@@ -361,13 +361,14 @@ func ShareSyncView(status models.GoogleStatus) templ.Component {
 }
 
 
-// ArticlesListShell (issue #321 slice 1) wraps
-// templates.ArticlesListShell. The slice-1 surface is the
-// landing page with an empty-state placeholder; slice 2 fills
-// in the per-row card list and the search/filter controls.
-// No domain mapping today: the list is empty by definition.
-func ArticlesListShell() templ.Component {
-	return templates.ArticlesListShell()
+// ArticlesListShell (issue #321 slice 2) wraps
+// templates.ArticlesListShell with the slice-2 per-row card
+// list. The slice-1 surface was an empty-state placeholder
+// because ArticleService had no List yet; slice 2 wires in
+// viewmodel.ArticlesFromModels so the rendered HTML includes
+// every non-snapshot article.
+func ArticlesListShell(articles []viewmodel.Article) templ.Component {
+	return templates.ArticlesListShell(articles)
 }
 
 // ArticleNewShell (issue #321 slice 1) wraps

@@ -1,24 +1,20 @@
-// articles.templ — v62 (issue #321 slice 1) Articles list page.
+// articles.templ — v62 (issue #321) Articles list page.
 //
-// slice 1 ships the landing page as an empty-state placeholder
-// because ArticleService has no List yet (slice 2 fills it in).
-// The slice-1 RED test (TestHandleArticleCRUD_RoundTrip) does NOT
-// hit this surface (it posts to /articles/new and GETs the
-// detail page), so the empty state is acceptable for slice 1.
-//
-// slice 2 will:
-//   * Replace the empty-state with a per-row card grid backed
-//     by ArticleService.List.
-//   * Add a search/filter control mirroring the Browse list.
-//   * Surface the "Create Article" button as a primary CTA.
+// slice 1 shipped an empty-state placeholder because the
+// /articles list surface had no ArticleService.List method.
+// slice 2 fills in the per-row card grid: each Article
+// renders as a card with title + subtitle + a pill to the
+// detail page. The empty state stays so a fresh archive
+// renders the existing CTA.
 package templates
 
 import (
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ArticlesListShell() {
+templ ArticlesListShell(articles []viewmodel.Article) {
 	@Layout("Articles") {
 		<div class="relative mx-auto max-w-4xl">
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -28,11 +24,32 @@ templ ArticlesListShell() {
 					class="primary-button"
 				>Create Article</a>
 			</div>
-			@components.EmptyState(
-				"No articles yet",
-				"Articles are long-form essays with inline Person Record references. The list is empty because no articles have been authored in this archive yet — click Create Article above to start one.",
-				routebuilder.ArticleNew(),
-			)
+			if len(articles) == 0 {
+				@components.EmptyState(
+					"No articles yet",
+					"Articles are long-form essays with inline Person Record references. The list is empty because no articles have been authored in this archive yet — click Create Article above to start one.",
+					routebuilder.ArticleNew(),
+				)
+			} else {
+				<div class="space-y-3" data-articles-list>
+					for _, article := range articles {
+						<a
+							href={ templ.SafeURL(routebuilder.ArticleByID(article.ID)) }
+							class="card block rounded-2xl p-4 transition hover:border-research-border hover:bg-research-bg"
+							data-article-row
+							data-article-id={ templ.SafeURL(routebuilder.ArticleByID(article.ID)) }
+						>
+							<div class="flex flex-wrap items-baseline justify-between gap-2">
+								<h2 class="text-lg font-semibold text-[color:var(--ink)]" data-article-row-title>{ article.Title }</h2>
+								<span class="font-mono text-xs text-slate-500" data-article-row-display-id>{ article.DisplayID }</span>
+							</div>
+							if article.Subtitle != "" {
+								<p class="mt-1 text-sm text-slate-600" data-article-row-subtitle>{ article.Subtitle }</p>
+							}
+						</a>
+					}
+				</div>
+			}
 		</div>
 	}
 }

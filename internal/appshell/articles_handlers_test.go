@@ -26,6 +26,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/models"
 )
 
 // TestHandleArticleCRUD_RoundTrip pins the slice-1 headline
@@ -119,4 +121,149 @@ func TestHandleArticleCRUD_RoundTrip(t *testing.T) {
 			t.Fatalf("POST /articles/new with blank title status = %d, want 4xx", resp.StatusCode)
 		}
 	})
+}
+
+
+// createArticleHandlerTestPerson seeds a Soldier via the
+// full *App fixture so handler-level ref tests have a real
+// Person row to attach. The Display ID is explicit so the
+// handler can resolve it via GetByDisplayID.
+func createArticleHandlerTestPerson(t *testing.T, app *App, displayID string) {
+	t.Helper()
+	_, err := app.soldiers.Create(models.Soldier{
+		DisplayID: displayID,
+		FirstName: "Test",
+		LastName:  "Person",
+		Rank:      "Private",
+		Unit:      "Test Unit",
+	})
+	if err != nil {
+		t.Fatalf("Create test person %q: %v", displayID, err)
+	}
+}
+
+// TestHandleArticlesListRendersArticles pins the slice-2 GET
+// /articles list surface: after creating 2 articles, GET
+// /articles returns 200 and the rendered HTML contains
+// both titles.
+func TestHandleArticlesListRendersArticles(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	for _, title := range []string{"List Test One", "List Test Two"} {
+		if _, err := app.articles.Create(models.Article{Title: title}); err != nil {
+			t.Fatalf("Create %q: %v", title, err)
+		}
+	}
+
+	resp, err := http.Get(server.URL + "/articles")
+	if err != nil {
+		t.Fatalf("GET /articles: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /articles status = %d, want 200", resp.StatusCode)
+	}
+	body := readAll(t, resp)
+	for _, title := range []string{"List Test One", "List Test Two"} {
+		if !strings.Contains(body, title) {
+			t.Errorf("GET /articles missing title %q", title)
+		}
+	}
+}
+
+// TestHandleArticleByIDNotFound pins the slice-2 404 contract
+// for GET /articles/{id}. The slice-1 path could not exercise
+// this because the slice-1 surface was the valid-id happy path
+// pinned by TestHandleArticleCRUD_RoundTrip.
+func TestHandleArticleByIDNotFound(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/articles/999999")
+	if err != nil {
+		t.Fatalf("GET /articles/999999: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("GET /articles/999999 status = %d, want 404", resp.StatusCode)
+	}
+}
+
+// TestHandleArticleRefsAttachDetach pins the slice-2 ref
+// round-trip. POST /articles/{id}/refs with the Display ID
+// form value attaches; a follow-up DELETE on the same ref
+// pair removes; a second DELETE is a no-op (idempotent).
+func TestHandleArticleRefsAttachDetach(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	// Seed a Person Record with an explicit Display ID so
+	// the handler can resolve via GetByDisplayID.
+	createArticleHandlerTestPerson(t, app, "DXD-00099")
+
+	// Create an Article.
+	article, err := app.articles.Create(models.Article{Title: "Refs target"})
+	if err != nil {
+		t.Fatalf("Create article: %v", err)
+	}
+
+	// Locate the seeded person row id.
+	person, err := app.soldiers.GetByDisplayID("DXD-00099")
+	if err != nil {
+		t.Fatalf("lookup person: %v", err)
+	}
+
+	// Attach via the handler.
+	form := url.Values{}
+	form.Set("display_id", "DXD-00099")
+	resp, err := http.PostForm(server.URL+"/articles/"+intStr(article.ID)+"/refs", form)
+	if err != nil {
+		t.Fatalf("POST /articles/%d/refs: %v", article.ID, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /articles/%d/refs status = %d, want 200", article.ID, resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-DixieData-Redirect"); !strings.HasPrefix(got, "/articles/") {
+		t.Errorf("X-DixieData-Redirect = %q, want /articles/{id} prefix", got)
+	}
+
+	refs, _ := app.articles.ScanRefs(article.ID)
+	if len(refs) != 1 {
+		t.Fatalf("ScanRefs after attach len = %d, want 1", len(refs))
+	}
+
+	// Detach via the handler.
+	req, err := http.NewRequest(http.MethodDelete,
+		server.URL+"/articles/"+intStr(article.ID)+"/refs/"+intStr(person.ID), nil)
+	if err != nil {
+		t.Fatalf("build DELETE: %v", err)
+	}
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE ref: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("DELETE ref status = %d, want 200", resp.StatusCode)
+	}
+
+	refs, _ = app.articles.ScanRefs(article.ID)
+	if len(refs) != 0 {
+		t.Errorf("ScanRefs after detach len = %d, want 0", len(refs))
+	}
+
+	// Idempotent detach.
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE ref (idempotent): %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("idempotent DELETE ref status = %d, want 200", resp.StatusCode)
+	}
 }
