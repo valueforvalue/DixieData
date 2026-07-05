@@ -111,6 +111,14 @@ func (a *App) setupRoutes() {
 	// tab UI lives on the article_detail.templ shell so
 	// the fragment is a drop-in for the tab's data panel.
 	r.Get("/articles/{id:[0-9]+}/revisions", a.handleArticleRevisions)
+	// v62 slice 3.5 (issue #321): /articles/{id}/edit route
+	// shell. GET renders the minimal form (slice 3.7 swaps
+	// in the full markdown editor); POST calls Update via
+	// the existing slice-2 path with 404 + 400 + 409
+	// error mappings. Slice 3.5 deliberately ships the
+	// minimal round-trip surface before the editor UX lands.
+	r.Get("/articles/{id:[0-9]+}/edit", a.handleEditArticle)
+	r.Post("/articles/{id:[0-9]+}/edit", a.handleEditArticle)
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)

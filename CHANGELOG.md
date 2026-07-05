@@ -208,6 +208,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `audit/smoke_articles.mjs` step 4 (snapshot via API +
   revisions tab + row + buttons render).
 
+- **Article edit-route shell** (issue #321 slice 3.5).
+  Lands the `GET /articles/{id}/edit` + `POST` route +
+  handler + `routebuilder.ArticleEdit` helper +
+  `presentation.ArticleEditShell` + the minimal
+  `templates/article_edit.templ` shell. Slice 3.5 ships
+  the round-trip + 404 (unknown id) + 400 (blank title)
+  + 409 (snapshot target) error mappings so the route is
+  exercisable before the editor UX lands in slice 3.7.
+  Pinned by `TestHandleEditArticle_RoundTripAndErrors`
+  (6 sub-cases: GET renders pre-filled form + POST
+  round-trips title/subtitle/body + POST blank title
+  returns 400 + GET unknown returns 404 + POST unknown
+  returns 404 + POST snapshot returns 409).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

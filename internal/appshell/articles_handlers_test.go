@@ -737,3 +737,114 @@ func TestHandleArticleRevisionsRendersSnapshots(t *testing.T) {
 		t.Errorf("Revisions tab missing from detail page")
 	}
 }
+
+// TestHandleEditArticle_RoundTripAndErrors pins the slice-3.5
+// route + handler contracts:
+//   - GET /articles/{id}/edit renders the form pre-filled
+//   - POST with valid title + body returns 200 +
+//     X-DixieData-Redirect -> /articles/{id}
+//   - POST with blank title returns 400
+//   - GET on an unknown id returns 404
+//   - POST on an unknown id returns 404
+//   - POST on a snapshot row returns 409
+func TestHandleEditArticle_RoundTripAndErrors(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, err := app.articles.Create(models.Article{Title: "Edit me", Subtitle: "Sub", BodyMD: "Original body"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// GET renders the form pre-filled.
+	resp, err := http.Get(server.URL + "/articles/" + intStr(src.ID) + "/edit")
+	if err != nil {
+		t.Fatalf("GET edit: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET edit status = %d, want 200", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), "Edit me") {
+		t.Errorf("Pre-filled title missing from edit form")
+	}
+	if !strings.Contains(string(body), "Original body") {
+		t.Errorf("Pre-filled body missing from edit form")
+	}
+
+	// POST with valid fields round-trips.
+	form := url.Values{}
+	form.Set("title", "Edited title")
+	form.Set("subtitle", "Edited sub")
+	form.Set("body", "Edited body")
+	respPost, err := http.PostForm(server.URL+"/articles/"+intStr(src.ID)+"/edit", form)
+	if err != nil {
+		t.Fatalf("POST edit: %v", err)
+	}
+	respPost.Body.Close()
+	if respPost.StatusCode != http.StatusOK {
+		t.Errorf("POST edit status = %d, want 200", respPost.StatusCode)
+	}
+	if got := respPost.Header.Get("X-DixieData-Redirect"); got != "/articles/"+intStr(src.ID) {
+		t.Errorf("POST edit redirect = %q, want /articles/%d", got, src.ID)
+	}
+
+	// Verify the edit landed.
+	updated, err := app.articles.GetByID(src.ID)
+	if err != nil {
+		t.Fatalf("GetByID after edit: %v", err)
+	}
+	if updated.Title != "Edited title" {
+		t.Errorf("Edited title = %q, want %q", updated.Title, "Edited title")
+	}
+
+	// POST with blank title -> 400.
+	bad := url.Values{}
+	bad.Set("title", "   ")
+	bad.Set("subtitle", "")
+	bad.Set("body", "x")
+	respBad, err := http.PostForm(server.URL+"/articles/"+intStr(src.ID)+"/edit", bad)
+	if err != nil {
+		t.Fatalf("POST blank title: %v", err)
+	}
+	respBad.Body.Close()
+	if respBad.StatusCode != http.StatusBadRequest {
+		t.Errorf("POST blank title status = %d, want 400", respBad.StatusCode)
+	}
+
+	// GET on unknown id -> 404.
+	resp404, err := http.Get(server.URL + "/articles/999999/edit")
+	if err != nil {
+		t.Fatalf("GET unknown: %v", err)
+	}
+	resp404.Body.Close()
+	if resp404.StatusCode != http.StatusNotFound {
+		t.Errorf("GET unknown status = %d, want 404", resp404.StatusCode)
+	}
+
+	// POST on unknown id -> 404.
+	respPost404, err := http.PostForm(server.URL+"/articles/999999/edit", form)
+	if err != nil {
+		t.Fatalf("POST unknown: %v", err)
+	}
+	respPost404.Body.Close()
+	if respPost404.StatusCode != http.StatusNotFound {
+		t.Errorf("POST unknown status = %d, want 404", respPost404.StatusCode)
+	}
+
+	// POST on a snapshot row -> 409.
+	snap, err := app.articles.Snapshot(src.ID)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	respSnap, err := http.PostForm(server.URL+"/articles/"+intStr(snap.ID)+"/edit", form)
+	if err != nil {
+		t.Fatalf("POST snapshot: %v", err)
+	}
+	respSnap.Body.Close()
+	if respSnap.StatusCode != http.StatusConflict {
+		t.Errorf("POST snapshot status = %d, want 409", respSnap.StatusCode)
+	}
+}

@@ -388,3 +388,15 @@ func ArticleNewShell() templ.Component {
 func ArticleDetailShell(view viewmodel.Article) templ.Component {
 	return templates.ArticleDetailShell(view)
 }
+
+// ArticleEditShell (issue #321 slice 3.5) wraps
+// templates.ArticleEditShell with the per-Article viewmodel.
+// Slice 3.5 ships a minimal form; slice 3.7 swaps in the
+// full markdown editor + sanitized preview + local-draft
+// persistence block.
+func ArticleEditShell(view *viewmodel.Article) templ.Component {
+	if view == nil {
+		return templates.ArticleEditShell(viewmodel.Article{})
+	}
+	return templates.ArticleEditShell(*view)
+}
