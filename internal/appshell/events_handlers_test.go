@@ -202,6 +202,52 @@ func TestHandleEventByIDDelete(t *testing.T) {
 	}
 }
 
+// TestHandleEventByIDPostUpdate mirrors TestHandleEventByIDGetDetail
+// for the POST → /events/{id} alias. The smoke probe for issue #320
+// child #323 caught that the edit form in event_form.templ posts
+// to /events/{id} (not /events/{id}/edit) so the JS dispatcher can
+// re-use the same Option C handler for new + edit. Routes.go
+// registers POST + PUT on /events/{id}; handleEventByID originally
+// only switched on PUT and 405'd the POST. This test pins the POST
+// path so the regression net stays green.
+func TestHandleEventByIDPostUpdate(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	created := createEvent(t, app, "ToPostUpdate", "01/01/1864", "01/02/1864", "Original description")
+
+	form := url.Values{}
+	form.Set("entry_type", "event")
+	form.Set("kind", "ToPostUpdateEdited")
+	form.Set("begin_date", "01/05/1864")
+	form.Set("end_date", "01/06/1864")
+	form.Set("description", "Posted edit description")
+
+	req, _ := http.NewRequest(http.MethodPost, server.URL+"/events/"+intStr(created.ID), strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /events/%d: %v", created.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /events/%d status = %d, want 200", created.ID, resp.StatusCode)
+	}
+	redirect := resp.Header.Get("X-DixieData-Redirect")
+	wantRedirect := "/events/" + intStr(created.ID)
+	if redirect != wantRedirect {
+		t.Errorf("X-DixieData-Redirect = %q, want %q", redirect, wantRedirect)
+	}
+	updated, err := app.events.GetEventByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetEventByID after POST: %v", err)
+	}
+	if updated.Event.Kind != "ToPostUpdateEdited" {
+		t.Errorf("kind = %q, want ToPostUpdateEdited", updated.Event.Kind)
+	}
+}
+
 // TestHandleAttachEventAndDetachEvent verifies the link
 // CRUD round-trips through the route handlers and the
 // junction table.

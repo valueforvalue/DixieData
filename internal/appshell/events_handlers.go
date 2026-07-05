@@ -163,7 +163,14 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		presentation.EventDetail(tags, event).Render(r.Context(), w)
-	case http.MethodPut:
+	case http.MethodPut, http.MethodPost:
+		// Issue #320 child #323: the smoke probe caught that the
+		// edit form in event_form.templ posts to /events/{id} (not
+		// /events/{id}/edit) so the JS dispatcher can re-use the
+		// same Option C handler for new + edit. Routes.go registers
+		// both POST + PUT on /events/{id}; this handler originally
+		// only handled PUT and 405'd on POST. The two verbs share
+		// the update-by-form path so they live in the same case.
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the event form.", err)
 			return
