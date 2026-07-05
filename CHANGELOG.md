@@ -460,6 +460,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (manifest fields populated after the test seeds
   1 article + 1 ref).
 
+- **Static archive emits `window.DIXIE_DATA.articles[]`**
+  (issue #321 slice 5.3). The static archive index's
+  embedded JS bundle now carries an `articles` array
+  alongside the existing `records` + `events` arrays,
+  so the JS index can render an Articles tab. Each
+  article carries the slice-3.6 sanitized `body_html`
+  + the `resolvedRefs` per-token projection
+  (display_id + name + resolved bool). Adds
+  `staticArchiveArticles` + `newStaticArchiveArticle`
+  + the new `StaticArchiveArticleRef` struct +
+  the `Title` / `Subtitle` / `BodyHTML` /
+  `ResolvedRefs` / `CreatedAt` / `UpdatedAt` fields
+  on `StaticArchiveRecord` (omitempty so the
+  Person + Event projections stay unchanged).
+  Pinned by `TestExportStaticArchive_IncludesArticles`
+  (asserts the static archive zip's
+  `archive_data.js` carries the `articles` key + the
+  article title + the attached person display id).
+  Also updates `docs/migrations/reversibility.md`:
+  Block 20 (v62 `articles` + `article_refs`) added to
+  the per-block catalogue (Reversible) + a v62 row
+  added to the per-version summary table.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

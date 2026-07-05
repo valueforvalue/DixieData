@@ -24,6 +24,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/peopleinfo"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 
@@ -74,6 +75,28 @@ type StaticArchiveRecord struct {
 	ImagePath          string                     `json:"imagePath,omitempty"`
 	Images             []StaticArchiveImage       `json:"images,omitempty"`
 	Records            []StaticArchiveRecordEntry `json:"records,omitempty"`
+	// Article-only fields (issue #321 slice 5.3). Title +
+	// Subtitle + BodyHTML are the headline Article shape; the
+	// JS index renders an Articles tab using these fields.
+	// The other fields are omitempty because Person + Event
+	// records don't carry them.
+	Title         string                    `json:"title,omitempty"`
+	Subtitle      string                    `json:"subtitle,omitempty"`
+	BodyHTML      string                    `json:"bodyHtml,omitempty"`
+	ResolvedRefs  []StaticArchiveArticleRef `json:"resolvedRefs,omitempty"`
+	CreatedAt     string                    `json:"createdAt,omitempty"`
+	UpdatedAt     string                    `json:"updatedAt,omitempty"`
+}
+
+// StaticArchiveArticleRef is the per-token projection for the
+// in-body markdown link parser (issue #321 slice 5.3). Mirrors
+// the LinkedDisplayIDs string slice for events; carries the
+// resolved flag so the JS index can render the fail-loud
+// "Unknown" marker per locked decision #6.
+type StaticArchiveArticleRef struct {
+	DisplayID string `json:"displayId"`
+	Name      string `json:"name"`
+	Resolved  bool   `json:"resolved"`
 }
 
 // StaticArchiveImage is an archive-layer type.
@@ -1705,3 +1728,78 @@ func zipDirectory(outputPath, root string) error {
 	})
 }
 
+
+// staticArchiveArticles returns every live-branch Article row
+// (issue #321 slice 5.3) projected into the StaticArchiveRecord
+// shape. Snapshot rows are excluded (slice-2.5 design). Each
+// article carries the body_html (the slice-3.6 sanitized HTML
+// render -- already safe to embed) so the JS index can render
+// the article without a second pass through the markdown
+// renderer. The ResolvedRefs projection mirrors the per-Event
+// LinkedDisplayIDs: a list of {display_id, name, resolved}
+// dicts the JS index can render inline.
+func (e *ExportService) staticArchiveArticles() ([]StaticArchiveRecord, error) {
+	soldierSvc := NewSoldierService(e.db)
+	articleSvc := records.NewArticleService(soldierSvc)
+	batch, err := listAllArticles(e.db)
+	if err != nil {
+		return nil, err
+	}
+	records := make([]StaticArchiveRecord, 0, len(batch))
+	for _, art := range batch {
+		tokens, terr := articleSvc.ResolveRefs(art.ID)
+		if terr != nil {
+			return nil, fmt.Errorf("ResolveRefs %d: %w", art.ID, terr)
+		}
+		refList := make([]StaticArchiveArticleRef, 0, len(tokens))
+		for _, tok := range tokens {
+			displayID := tok.PersonDisplayID
+			if displayID == "" {
+				displayID = tok.Token
+			}
+			name := displayID
+			if tok.Resolved {
+				if s, lookupErr := soldierSvc.GetByID(tok.PersonRecordID); lookupErr == nil && s != nil {
+					fullName := strings.TrimSpace(strings.Join([]string{strings.TrimSpace(s.FirstName), strings.TrimSpace(s.LastName)}, " "))
+					if fullName != "" {
+						name = fullName
+					}
+				}
+			}
+			refList = append(refList, StaticArchiveArticleRef{
+				DisplayID: displayID,
+				Name:      name,
+				Resolved:  tok.Resolved,
+			})
+		}
+		records = append(records, newStaticArchiveArticle(art, refList))
+	}
+	sort.Slice(records, func(i, j int) bool {
+		return strings.ToLower(records[i].Title) < strings.ToLower(records[j].Title)
+	})
+	return records, nil
+}
+
+// newStaticArchiveArticle projects a models.Article into the
+// StaticArchiveRecord shape (reusing the existing per-Person +
+// per-Event struct so the JS index can render an Articles tab
+// without a new struct). Title + Subtitle are the headline
+// fields; BodyHTML carries the sanitized HTML; ResolvedRefs
+// is the per-token projection.
+func newStaticArchiveArticle(article models.Article, refs []StaticArchiveArticleRef) StaticArchiveRecord {
+	return StaticArchiveRecord{
+		DisplayID:  strings.TrimSpace(article.DisplayID),
+		EntryType:  "article",
+		DisplayType: "Article Record",
+		Name:       strings.TrimSpace(article.Title),
+		Title:      strings.TrimSpace(article.Title),
+		Subtitle:   strings.TrimSpace(article.Subtitle),
+		BodyHTML:   article.BodyHTML,
+		// Mirror the LinkedDisplayIDs pattern: always non-nil
+		// so the JSON bundle emits resolvedRefs:[] for unref'd
+		// articles. Consumers don't need a null-check.
+		ResolvedRefs:  append([]StaticArchiveArticleRef{}, refs...),
+		UpdatedAt:    strings.TrimSpace(article.UpdatedAt),
+		CreatedAt:    strings.TrimSpace(article.CreatedAt),
+	}
+}
