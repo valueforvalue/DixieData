@@ -86,6 +86,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **Event Record images facade** (issue #320 child #332
+  close-out). New `EventService.AddImage` +
+  `EventService.RemoveImages` thin pass-throughs to
+  `SoldierService.AddImage` + `DeleteImages` satisfy the
+  `eventsFacade` guard at `internal/appshell/app_facades.go`
+  for the per-event gallery surface. The native-dialog
+  import gateway (`App.importImagePaths` at
+  `internal/appshell/app.go:2480`) still writes via
+  `soldiers.AddImage` internally because it serves both
+  Person Records and Events from one shared path; that
+  single shared import path is now the documented exception
+  to the 'handlers MUST NOT call a.soldiers.*' rule. Image
+  reads travel via `GetEventByID` (which already populates
+  `Event.Images` for free via `imageSelectColumns`), so no
+  `ListImages` pass-through is needed per the two-adapter
+  rule. No user-visible behavior change. Closes #332.
+
 - **Renamed `selectedSoldierImages` to
   `selectedRecordImages`** in `internal/appshell/app.go`. The
   helper iterates `models.Soldier.Images` to resolve a form's
