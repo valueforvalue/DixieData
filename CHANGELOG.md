@@ -59,6 +59,39 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   and `step-05c` + `step-05d` in `audit/smoke_events.mjs`
   (browser smoke). Full Go test suite (28 packages) and full
   smoke (17 steps) green.
+- **Event editor inline Tags section** (issue #361 slice 3,
+  closes #361). The `/events/{id}/edit` page now exposes an
+  inline Tags section (below Linked Persons, outside the main
+  edit form): wraps the existing `EventTagsListFragment` in
+  a `<div id="data-event-tags-list">` in-place swap target,
+  plus a free-text Add form (mirrors the `/soldiers/{id}/
+  tags` picker UX). The `handleEventTagAdd` handler now
+  accepts either `tag_id` (numeric, existing behavior) OR
+  `tag_name` (free-text, calls `TagService.UpsertByName` then
+  attaches — case-insensitive dedup). The response shape is
+  unchanged (fragment, no `X-DixieData-Redirect` per #341)
+  so the JS dispatcher swaps the result into the
+  `#data-event-tags-list` div in place — preserves the
+  user's unsaved form state (kind, description, etc.)
+  across attach/detach. The slice-2 locked decision was
+  "full-page nav" for symmetry with the Linked Persons
+  attach pattern; slice 3 deliberately diverges (in-place
+  swap) because the edit-page UX argument wins (full-page
+  nav would lose the user's typed-but-not-yet-saved form
+  state on every tag click). The Add form carries
+  `data-results-target="#data-event-tags-list"` so the JS
+  dispatcher reads the swap target from the form, not the
+  inner buttons. `presentation.EventFormWithLinksAndTags` +
+  `EventFormWithErrorAndLinksAndTags` wrappers added. The
+  edit form now loads `Tags` via `ListTagsForEvent` in all
+  5 handler call sites (GET + 4 error paths). Backed by
+  `TestHandleEventTagAddByName` (handler, 5 sub-cases:
+  happy path + idempotency + backward-compat + 2 validation
+  paths), `TestEventFormFragmentRendersTagsSection` (form,
+  2 sub-cases: edit shows section + new skips section), and
+  `step-05e` + `step-05f` in `audit/smoke_events.mjs`
+  (browser smoke). Full Go test suite (28 packages) and
+  full smoke (19 steps) green.
 
 ### Maintenance
 

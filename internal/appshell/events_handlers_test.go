@@ -1371,3 +1371,108 @@ func TestHandleEventLinksAttachDetachByDisplayID(t *testing.T) {
 		t.Errorf("empty attach status = %d, want 400", emptyResp.StatusCode)
 	}
 }
+
+// TestHandleEventTagAddByName pins issue #361 slice 3: the
+// Event editor's Tags section posts a free-text `tag_name`
+// field (mirroring the /soldiers/{id}/tags picker UX) and
+// the handler upserts the tag via the existing
+// TagService.UpsertByName path before calling
+// EventService.AddTagToEvent. The response shape is
+// unchanged (fragment, no X-DixieData-Redirect — #341
+// contract preserved) so the JS dispatcher can swap in
+// place on the edit page.
+//
+// RED today: handleEventTagAdd does not accept `tag_name`;
+// only `tag_id` works. After slice 3 lands: posting
+// `tag_name=vc-shiloh` creates the tag if absent and
+// attaches it; posting `tag_id=N` still works (backward-
+// compatible for existing callers).
+func TestHandleEventTagAddByName(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "")
+
+	// Happy path: POST with tag_name. The handler must
+	// upsert + attach in one round-trip.
+	addResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags", url.Values{
+		"tag_name": {"vc-shiloh"},
+	})
+	if err != nil {
+		t.Fatalf("POST tags by name: %v", err)
+	}
+	addBody := readAll(t, addResp)
+	addResp.Body.Close()
+	if addResp.StatusCode != http.StatusOK {
+		t.Errorf("add-by-name status = %d, want 200", addResp.StatusCode)
+	}
+	// #341: must NOT set X-DixieData-Redirect.
+	if got := addResp.Header.Get("X-DixieData-Redirect"); got != "" {
+		t.Errorf("POST tags-by-name set X-DixieData-Redirect=%q; want empty (issue #341)", got)
+	}
+	// Response body: chip with the tag name + in-place swap target.
+	if !strings.Contains(addBody, "vc-shiloh") {
+		t.Errorf("POST tags-by-name response missing chip; got %q", addBody)
+	}
+	if !strings.Contains(addBody, "data-results-target=\"#data-event-tags-list\"") {
+		t.Errorf("POST tags-by-name chip missing data-results-target; got %q", addBody)
+	}
+	// Post-condition: tag exists + is attached.
+	attached, err := app.events.ListTagsForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListTagsForEvent: %v", err)
+	}
+	if len(attached) != 1 || attached[0].Name != "vc-shiloh" {
+		t.Errorf("want 1 tag named vc-shiloh, got %+v", attached)
+	}
+
+	// Idempotency: posting the same tag_name again must NOT
+	// create a duplicate (UpsertByName dedupes case-
+	// insensitively; AddTagToEvent is INSERT OR IGNORE).
+	addResp2, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags", url.Values{
+		"tag_name": {"VC-Shiloh"},
+	})
+	addResp2.Body.Close()
+	attached2, _ := app.events.ListTagsForEvent(event.ID)
+	if len(attached2) != 1 {
+		t.Errorf("duplicate tag_name should leave count at 1, got %d", len(attached2))
+	}
+
+	// Backward compatibility: posting tag_id (existing
+	// behavior) still works.
+	preExistingTag, err := app.tags.UpsertByName(context.Background(), "pre-existing")
+	if err != nil {
+		t.Fatalf("tags.UpsertByName pre-existing: %v", err)
+	}
+	addResp3, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags", url.Values{
+		"tag_id": {intStr(preExistingTag.ID)},
+	})
+	addResp3.Body.Close()
+	if addResp3.StatusCode != http.StatusOK {
+		t.Errorf("tag_id backward-compat status = %d, want 200", addResp3.StatusCode)
+	}
+	attached3, _ := app.events.ListTagsForEvent(event.ID)
+	if len(attached3) != 2 {
+		t.Errorf("after adding by id, want 2 tags attached, got %d", len(attached3))
+	}
+
+	// Validation: empty tag_name returns 400 (no way to
+	// resolve a tag id).
+	emptyResp, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags", url.Values{
+		"tag_name": {""},
+	})
+	emptyResp.Body.Close()
+	if emptyResp.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty tag_name status = %d, want 400", emptyResp.StatusCode)
+	}
+
+	// Validation: whitespace-only tag_name also returns 400.
+	wsResp, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/tags", url.Values{
+		"tag_name": {"   "},
+	})
+	wsResp.Body.Close()
+	if wsResp.StatusCode != http.StatusBadRequest {
+		t.Errorf("whitespace tag_name status = %d, want 400", wsResp.StatusCode)
+	}
+}

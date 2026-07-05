@@ -254,6 +254,21 @@ func EventFormWithLinks(event models.Soldier, linked []models.Soldier, isEdit bo
 	return templates.EventForm(vm, isEdit)
 }
 
+// EventFormWithLinksAndTags (issue #361 slice 3) renders the
+// Event edit form with BOTH the inline Linked Persons section
+// (slice 2) AND the inline Tags section (slice 3) populated.
+// The handler fetches both via the eventsFacade; the
+// presentation layer maps them to viewmodel fields. The
+// detail page has its own event-detail rendering pipeline
+// (handlers load tags separately there); this is the
+// edit-form-only population.
+func EventFormWithLinksAndTags(event models.Soldier, linked []models.Soldier, tags []records.Tag, isEdit bool) templ.Component {
+	vm := viewmodel.PersonRecordFromModel(event)
+	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	vm.Tags = viewmodel.TagsFromModels(tags)
+	return templates.EventForm(vm, isEdit)
+}
+
 // EventFormWithError mirrors EntryFormWithError: same body,
 // toast header for the form-level validation message.
 func EventFormWithError(event models.Soldier, isEdit bool, errorMessage string) templ.Component {
@@ -267,6 +282,18 @@ func EventFormWithError(event models.Soldier, isEdit bool, errorMessage string) 
 func EventFormWithErrorAndLinks(event models.Soldier, linked []models.Soldier, isEdit bool, errorMessage string) templ.Component {
 	vm := viewmodel.PersonRecordFromModel(event)
 	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	return templates.EventFormWithError(vm, isEdit, errorMessage)
+}
+
+// EventFormWithErrorAndLinksAndTags (issue #361 slice 3)
+// mirrors EventFormWithErrorAndLinks but ALSO populates the
+// inline Tags section. The POST error-rendering path needs
+// both so the user sees their existing links + tags alongside
+// the validation error.
+func EventFormWithErrorAndLinksAndTags(event models.Soldier, linked []models.Soldier, tags []records.Tag, isEdit bool, errorMessage string) templ.Component {
+	vm := viewmodel.PersonRecordFromModel(event)
+	vm.LinkedPersons = viewmodel.PersonRecordsFromModels(linked)
+	vm.Tags = viewmodel.TagsFromModels(tags)
 	return templates.EventFormWithError(vm, isEdit, errorMessage)
 }
 
