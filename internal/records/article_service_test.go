@@ -9,6 +9,7 @@ package records
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -921,5 +922,66 @@ func TestArticleService_CitedInArticles(t *testing.T) {
 	}
 	if _, err := service.CitedInArticles(-1); err == nil {
 		t.Errorf("CitedInArticles(-1) err = nil, want error")
+	}
+}
+
+// TestSlugifyArticleFilename pins the slice-4.2 filename shape
+// for the SaveFileDialog default. The slug helper lower-cases,
+// strips non-alphanumerics, collapses whitespace, truncates.
+func TestSlugifyArticleFilename(t *testing.T) {
+	cases := []struct {
+		name     string
+		article  models.Article
+		orient   string
+		expected string
+	}{
+		{
+			name:     "simple title with portrait",
+			article:  models.Article{DisplayID: "ART-00001", Title: "Gettysburg"},
+			orient:   "portrait",
+			expected: "Article-ART-00001-gettysburg-portrait.pdf",
+		},
+		{
+			name:     "title with punctuation",
+			article:  models.Article{DisplayID: "ART-00002", Title: "21st Mississippi at Gettysburg!"},
+			orient:   "landscape",
+			expected: "Article-ART-00002-21st-mississippi-at-gettysburg-landscape.pdf",
+		},
+		{
+			name:     "blank title falls back to display id alone",
+			article:  models.Article{DisplayID: "ART-00003", Title: "   "},
+			orient:   "portrait",
+			expected: "Article-ART-00003-portrait.pdf",
+		},
+		{
+			name:     "title is truncated to 60 chars",
+			article:  models.Article{DisplayID: "ART-00004", Title: strings.Repeat("a", 80)},
+			orient:   "portrait",
+			expected: fmt.Sprintf("Article-ART-00004-%s-portrait.pdf", strings.Repeat("a", 60)),
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := slugifyArticleFilename(c.article, c.orient)
+			if got != c.expected {
+				t.Errorf("slugifyArticleFilename = %q, want %q", got, c.expected)
+			}
+		})
+	}
+}
+
+// TestRenderPDFRequiresRegistry pins the slice-4.2 contract:
+// RenderPDF returns an error when the article service has no
+// registry wired. Production wires the registry at app startup;
+// service tests + fixture-only paths leave it nil.
+func TestRenderPDFRequiresRegistry(t *testing.T) {
+	svc := newArticleServiceForTest(t)
+	src, err := svc.Create(models.Article{Title: "Render target"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	_, err = svc.RenderPDF(src.ID, "portrait")
+	if err == nil {
+		t.Errorf("RenderPDF with nil registry err = nil, want error")
 	}
 }

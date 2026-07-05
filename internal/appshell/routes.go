@@ -127,6 +127,14 @@ func (a *App) setupRoutes() {
 	// Registered at /articles/preview (no id; the
 	// endpoint is editor-scoped, not article-scoped).
 	r.Post("/articles/preview", a.handleArticlePreview)
+	// v62 slice 4.2 (issue #321): PDF download + raw-md
+	// download. POST /articles/{id}/pdf opens a guarded
+	// SaveFileDialog and writes the pre-rendered PDF body
+	// to the user's chosen path. GET /articles/{id}/raw
+	// returns the body_md verbatim with text/markdown
+	// + Content-Disposition: attachment.
+	r.Post("/articles/{id:[0-9]+}/pdf", a.handleArticlePDF)
+	r.Get("/articles/{id:[0-9]+}/raw", a.handleArticleRaw)
 	r.Post("/articles/{id:[0-9]+}/snapshot", a.handleArticleSnapshot)
 	r.Post("/articles/{id:[0-9]+}/restore", a.handleArticleRestore)
 	r.Delete("/articles/{id:[0-9]+}/snapshot/{snapshotID:[0-9]+}", a.handleArticleSnapshotDelete)
