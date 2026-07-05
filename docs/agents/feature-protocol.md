@@ -386,6 +386,48 @@ Internal refactors that don't change user-visible behavior live
 under `### Maintenance`. The bullet references the issue number
 and the regression net filename.
 
+## Ticket close-out law
+
+**Close the ticket in the same commit (or session) that lands
+the work.** When the commit message references the issue
+number, run `gh issue close <n>` as the last step of the
+shipping gesture — before moving on to the next task. The
+commit hash, the CHANGELOG bullet, and the `gh issue close`
+comment should all land together so a future agent (human or
+LLM) reading the ticket can trace it to its shipping commit
+without grepping the CHANGELOG.
+
+The recurring failure this rule prevents: work lands, the
+ticket is left OPEN across multiple sessions, and a future
+agent finds the CHANGELOG bullet + shipped code but no signal
+that the ticket is actually closed. The next agent has to
+re-verify every acceptance criterion from scratch to decide
+whether to close the ticket itself (the #332, #334, #357, #359
+sweep on 2026-07-05 closed four tickets this way — each took
+~5 minutes of re-verification that could have been a one-line
+`gh issue close` at shipping time).
+
+Sub-tickets of a sequence (#320 children #322-#338, slot-N
+follow-ups of a feature roadmap) follow the same rule:
+close in the commit that lands the slot, not when the parent
+sequence closes. The parent-close commit should only close
+the parent itself + any explicitly-tracked bookkeeping
+follow-ups (e.g. #359), never re-close its already-closed
+children.
+
+For bookkeeping-style tickets where the work has already
+shipped in an earlier commit and you're closing from CHANGELOG
++ `git log` archaeology, the close-comment must include:
+
+- The shipping commit hash (`git log --oneline --grep="#N"`)
+- The acceptance-criteria checklist (paste it, tick the boxes)
+- The verification command output (or at minimum the
+  `go test -short -count=1 ./...` + orphan-handler probe
+  status)
+
+Without that triad, the next agent re-investigates from
+scratch because there is no signal the close was grounded.
+
 ## Branch policy
 
 - **One slice = one commit = one PR (or push to dev).** Per
