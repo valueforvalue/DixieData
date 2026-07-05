@@ -422,6 +422,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   body non-empty). Side-issue #374 tracks the
   symmetric orientation picker for Event Records.
 
+- **Shared archive (.ddshare) includes articles + refs**
+  (issue #321 slice 5.1). `BackupService.ExportShared` +
+  `ExportSharedWithTags` now write `data/articles.json` +
+  `data/article_refs.json` to the shared archive zip
+  alongside `data/soldiers.json` + `data/events.json`.
+  The `BackupManifest` grows `Articles` +
+  `DataArticlesFile="data/articles.json"` +
+  `DataArticleRefsFile="data/article_refs.json"`
+  fields. Per the spec, Articles ship unconditionally
+  (no toggle) so a recipient always gets the full
+  long-form-content surface. Snapshot rows are excluded
+  (per slice-2.5 design; snapshots are historical
+  artifacts, not load-bearing articles). The
+  `backupContents` struct grows `Articles +
+  ArticleRefs` slices so the import path can read
+  them. Adds `listAllArticles` + `listAllArticleRefs`
+  helpers (single-shot SQL queries; mirror the
+  `listAllSoldiers` + `listAllEvents` pattern). Pinned
+  by `TestBackupService_ExportShared_IncludesArticles`
+  (asserts manifest fields + the two JSON files
+  are present in the zip).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

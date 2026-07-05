@@ -81,6 +81,22 @@ type BackupManifest struct {
 	// all, so the import path treats the absent file as "no
 	// events to merge").
 	DataEventsFile string `json:"data_events_file,omitempty"`
+	// Articles (issue #321 slice 5.1) is the per-archive Article
+	// Record count. Emitted on the shared-archive export path
+	// when at least one Article row exists. Same shape as
+	// Events: backwards-compatible (older archives omit the
+	// field + the data/articles.json file, so the import path
+	// silently drops the articles array when the file is
+	// absent). The spec calls out "always include Articles
+	// (no toggle)" so the export is unconditional.
+	Articles int `json:"articles,omitempty"`
+	// DataArticlesFile is the zip-internal path to the Article
+	// Records JSON. Defaults to "data/articles.json" when omitted.
+	DataArticlesFile string `json:"data_articles_file,omitempty"`
+	// DataArticleRefsFile is the zip-internal path to the
+	// article_refs junction rows. Defaults to
+	// "data/article_refs.json" when omitted.
+	DataArticleRefsFile string `json:"data_article_refs_file,omitempty"`
 }
 
 func loadSharedAliasTargetSnapshot(tx *sql.Tx, sourceNodeID, sourcePersonSyncID string) (*mergeReviewSnapshot, error) {
@@ -130,6 +146,14 @@ type backupContents struct {
 	// the shared archive's data/events.json file. Empty when
 	// the file is absent (older archives).
 	Events []models.Soldier
+	// Articles (issue #321 slice 5.1): Article Records read from
+	// the shared archive's data/articles.json file. Empty when
+	// the file is absent (older archives).
+	Articles []models.Article
+	// ArticleRefs: the per-article person ref junction rows
+	// (slice 5.1) read from data/article_refs.json. Empty when
+	// the file is absent.
+	ArticleRefs []records.ArticleRef
 }
 
 // SharedImportSummary is the per-import result the share-queue
@@ -437,6 +461,22 @@ func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, include
 	manifest.Events = len(events)
 	manifest.DatabaseFile = ""
 
+	// Issue #321 slice 5.1: Articles + article_refs ship
+	// unconditionally (no toggle, per the spec's "always include
+	// Article Records" rule). Read from the local archive
+	// here so the zip contains the latest rows + refs.
+	articles, err := listAllArticles(b.db)
+	if err != nil {
+		return BackupManifest{}, fmt.Errorf("listAllArticles: %w", err)
+	}
+	articleRefs, err := listAllArticleRefs(b.db)
+	if err != nil {
+		return BackupManifest{}, fmt.Errorf("listAllArticleRefs: %w", err)
+	}
+	manifest.Articles = len(articles)
+	manifest.DataArticlesFile = filepath.ToSlash(filepath.Join("data", "articles.json"))
+	manifest.DataArticleRefsFile = filepath.ToSlash(filepath.Join("data", "article_refs.json"))
+
 	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
 		if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
 			return err
@@ -445,6 +485,12 @@ func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, include
 			return err
 		}
 		if err := writeBackupJSON(zipWriter, manifest.DataEventsFile, events); err != nil {
+			return err
+		}
+		if err := writeBackupJSON(zipWriter, manifest.DataArticlesFile, articles); err != nil {
+			return err
+		}
+		if err := writeBackupJSON(zipWriter, manifest.DataArticleRefsFile, articleRefs); err != nil {
 			return err
 		}
 		return addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers))
@@ -2909,4 +2955,79 @@ func (m *mergeLogger) Close() error {
 		return err
 	}
 	return nil
+}
+
+// listAllArticles returns every live-branch Article row in
+// the Local Archive (issue #321 slice 5.1). Excludes snapshot
+// rows (is_snapshot = 0 filter) per the slice-2.5 design --
+// snapshots are historical artifacts, not load-bearing
+// articles, and shipping them in shared archives would
+// duplicate every article's body.
+//
+// Implementation mirrors listAllEvents: query ids, then
+// hydrate each via the article service's GetByID so the
+// full row is available for the JSON export.
+func listAllArticles(database *db.DB) ([]models.Article, error) {
+	conn := database.Conn()
+	rows, err := conn.Query(`SELECT id FROM articles WHERE is_snapshot = 0 ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := make([]int64, 0, 8)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	soldierSvc := NewSoldierService(database)
+	articleSvc := records.NewArticleService(soldierSvc)
+	out := make([]models.Article, 0, len(ids))
+	for _, id := range ids {
+		full, ferr := articleSvc.GetByID(id)
+		if ferr != nil {
+			return nil, ferr
+		}
+		out = append(out, *full)
+	}
+	return out, nil
+}
+
+// listAllArticleRefs returns every row in article_refs (the
+// per-article person ref junction, issue #321 slice 2).
+// Single-shot SQL keeps the export pipeline linear at volume.
+// The ArticleRef row carries the denormalized person_display_id
+// + person_record_sync_id so the recipient's import path can
+// resolve refs without a second fetch against the soldiers
+// table.
+func listAllArticleRefs(database *db.DB) ([]records.ArticleRef, error) {
+	conn := database.Conn()
+	rows, err := conn.Query(
+		`SELECT id, article_id, article_sync_id, person_record_id,
+		        person_record_sync_id, person_display_id, position
+		 FROM article_refs ORDER BY article_id, position, id`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]records.ArticleRef, 0, 8)
+	for rows.Next() {
+		var r records.ArticleRef
+		if err := rows.Scan(&r.ID, &r.ArticleID, &r.ArticleSyncID,
+			&r.PersonRecordID, &r.PersonRecordSyncID,
+			&r.PersonDisplayID, &r.Position); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
