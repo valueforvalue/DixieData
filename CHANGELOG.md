@@ -177,6 +177,37 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `audit/smoke_articles.mjs` step 3 (picker opens + search
   input renders + typing "DXD" returns rows).
 
+- **Article detail Revisions tab** (issue #321 slice 3.4).
+  `/articles/{id}` now renders a Revisions tab listing
+  every snapshot of the live article (one row per
+  `articles` row with `is_snapshot = 1` +
+  `snapshot_of_id = {id}`), each row carrying Restore +
+  Delete buttons that hit the slice-2.5 routes. The tab
+  UI reuses the existing `data-tab-group` pattern
+  (`components/soldier_card.templ:81-92`) so the JS
+  `initializeTabs()` helper auto-wires the switch. The
+  "Save copy" button hits the existing
+  `routebuilder.ArticleSnapshot` route to create a fresh
+  snapshot; the JS dispatcher follows the redirect back
+  to the detail page so the tab re-renders with the new
+  row. Adds `ArticleService.ListSnapshots(articleID int64)
+  ([]models.Article, error)` (sister to slice-2.5's
+  `GetSnapshotByID`, returns the per-live-article
+  snapshot list sorted `created_at DESC`),
+  `components/article_revisions.templ`
+  (`ArticleRevisionsList` function), the new
+  `handleArticleRevisions` handler, and the
+  `GET /articles/{id}/revisions` route +
+  `routebuilder.ArticleRevisions` helper. Pinned by
+  `TestArticleService_ListSnapshots` (4 sub-cases: empty +
+  two-snapshot sort + negative id rejected + unknown id
+  + no cross-article leakage) +
+  `TestHandleArticleRevisionsRendersSnapshots` (empty
+  state + populated rows + Save / Restore / Delete
+  buttons + Revisions tab renders on detail page) +
+  `audit/smoke_articles.mjs` step 4 (snapshot via API +
+  revisions tab + row + buttons render).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

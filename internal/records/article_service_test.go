@@ -681,3 +681,93 @@ func TestArticleService_DeleteSnapshot(t *testing.T) {
 		t.Errorf("DeleteSnapshot(999999) err = %v, want ErrArticleNotFound", err)
 	}
 }
+
+// TestArticleService_ListSnapshots pins the slice-3.4 Revisions
+// tab contract: ListSnapshots(articleID) returns every snapshot
+// pointing at the article, sorted created_at DESC, with an
+// empty slice (not nil) when no snapshots exist. Negative
+// article id is rejected.
+func TestArticleService_ListSnapshots(t *testing.T) {
+	service := newArticleServiceForTest(t)
+
+	src, err := service.Create(models.Article{Title: "List source"})
+	if err != nil {
+		t.Fatalf("Create source: %v", err)
+	}
+
+	// No snapshots yet -> empty slice, not nil, no error.
+	got, err := service.ListSnapshots(src.ID)
+	if err != nil {
+		t.Fatalf("ListSnapshots (empty): %v", err)
+	}
+	if got == nil {
+		t.Errorf("ListSnapshots (empty) returned nil; want empty slice")
+	}
+	if len(got) != 0 {
+		t.Errorf("ListSnapshots (empty) len = %d, want 0", len(got))
+	}
+
+	// Snapshot the live article twice.
+	snap1, err := service.Snapshot(src.ID)
+	if err != nil {
+		t.Fatalf("Snapshot #1: %v", err)
+	}
+	snap2, err := service.Snapshot(src.ID)
+	if err != nil {
+		t.Fatalf("Snapshot #2: %v", err)
+	}
+
+	got, err = service.ListSnapshots(src.ID)
+	if err != nil {
+		t.Fatalf("ListSnapshots (two): %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("ListSnapshots (two) len = %d, want 2", len(got))
+	}
+	// Most recent first: snap2's id > snap1's id (snapshot
+	// inserts happen in monotonic order).
+	if got[0].ID != snap2.ID {
+		t.Errorf("ListSnapshots[0].ID = %d, want %d (most recent)", got[0].ID, snap2.ID)
+	}
+	if got[1].ID != snap1.ID {
+		t.Errorf("ListSnapshots[1].ID = %d, want %d (older)", got[1].ID, snap1.ID)
+	}
+	for _, s := range got {
+		if !s.IsSnapshot {
+			t.Errorf("ListSnapshots row id=%d IsSnapshot = false, want true", s.ID)
+		}
+	}
+
+	// Negative article id rejected.
+	if _, err := service.ListSnapshots(0); err == nil {
+		t.Errorf("ListSnapshots(0) err = nil, want error")
+	}
+	if _, err := service.ListSnapshots(-1); err == nil {
+		t.Errorf("ListSnapshots(-1) err = nil, want error")
+	}
+
+	// Unknown id returns empty slice, no error.
+	got, err = service.ListSnapshots(999999)
+	if err != nil {
+		t.Errorf("ListSnapshots (unknown id) err = %v, want nil", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("ListSnapshots (unknown id) len = %d, want 0", len(got))
+	}
+
+	// Snapshots of OTHER articles are not included.
+	other, err := service.Create(models.Article{Title: "Other"})
+	if err != nil {
+		t.Fatalf("Create other: %v", err)
+	}
+	if _, err := service.Snapshot(other.ID); err != nil {
+		t.Fatalf("Snapshot other: %v", err)
+	}
+	got, err = service.ListSnapshots(src.ID)
+	if err != nil {
+		t.Fatalf("ListSnapshots (after other): %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("ListSnapshots (after other) len = %d, want 2 (other's snapshot leaked?)", len(got))
+	}
+}

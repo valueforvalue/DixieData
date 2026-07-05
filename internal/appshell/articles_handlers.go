@@ -170,6 +170,7 @@ func (a *App) showArticle(w http.ResponseWriter, r *http.Request, id int64) {
 	view := viewmodel.ArticleFromModel(*article)
 	view.Refs = a.loadArticleRefsForView(id)
 	view.ResolvedRefs = a.loadArticleResolvedRefsForView(id)
+	view.Snapshots = a.loadArticleSnapshotsForView(id)
 	if err := presentation.ArticleDetailShell(view).Render(r.Context(), w); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not render article %d.", id), err)
 	}
@@ -223,6 +224,18 @@ func (a *App) loadArticleResolvedRefsForView(articleID int64) []viewmodel.Articl
 	return out
 }
 
+// loadArticleSnapshotsForView reads the snapshot rows for an
+// article and projects them into viewmodel.Article rows for
+// the Revisions tab (slice 3.4). Returns an empty slice on
+// error so the tab renders the empty state rather than 500ing.
+func (a *App) loadArticleSnapshotsForView(articleID int64) []viewmodel.Article {
+	snapshots, err := a.articles.ListSnapshots(articleID)
+	if err != nil {
+		return []viewmodel.Article{}
+	}
+	return viewmodel.ArticlesFromModels(snapshots)
+}
+
 // handleArticlePicker serves GET /articles/{id}/picker.
 // Renders the inline Person Record picker shell: a search
 // input + a result list. The handler re-runs the search on
@@ -254,6 +267,36 @@ func (a *App) handleArticlePicker(w http.ResponseWriter, r *http.Request) {
 	viewRows := viewmodel.PersonRecordsFromModels(rows)
 	if err := components.PersonRecordPicker(articleID, q, viewRows).Render(r.Context(), w); err != nil {
 		respondInternal(w, r, "Could not render picker.", err)
+	}
+}
+
+// handleArticleRevisions serves GET /articles/{id}/revisions.
+// Renders the Revisions tab fragment: a list of every snapshot
+// pointing at the live article, with per-snapshot Restore +
+// Delete affordances. Empty list renders the empty-state copy.
+//
+// Implementation: reuses the slice-3.4 ArticleService.ListSnapshots
+// method. The fragment is a pure <ul> + actions -- the tab UI
+// lives on the article_detail.templ shell so this fragment is a
+// drop-in for the tab's data panel.
+func (a *App) handleArticleRevisions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	articleID, err := parseIntFromPath(r.URL.Path, "/articles/", "/revisions")
+	if err != nil || articleID < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	snapshots, err := a.articles.ListSnapshots(articleID)
+	if err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not list snapshots for article %d.", articleID), err)
+		return
+	}
+	view := viewmodel.ArticlesFromModels(snapshots)
+	if err := components.ArticleRevisionsList(articleID, view).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, "Could not render revisions.", err)
 	}
 }
 

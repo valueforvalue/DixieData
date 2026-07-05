@@ -1,0 +1,88 @@
+// article_revisions.templ — Revisions tab fragment for
+// /articles/{id} (issue #321 slice 3.4). Renders one row
+// per snapshot of the article with Restore + Delete
+// affordances. Empty list renders the empty-state copy.
+//
+// The fragment is swapped into the tab panel via hx-get on
+// the tab trigger; it does not render the tab UI itself
+// (the tab UI lives on the article_detail.templ shell).
+package components
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+// ArticleRevisionsList renders the per-snapshot rows + the
+// empty state. Used both for the initial page render (when
+// the detail page is loaded) and the hx-get fragment that
+// swaps into the tab panel after a Save copy / Restore /
+// Delete action.
+templ ArticleRevisionsList(articleID int64, snapshots []viewmodel.Article) {
+	<div data-article-revisions-list data-article-id={ fmt.Sprintf("%d", articleID) }>
+		<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+			if len(snapshots) == 0 {
+				<p class="text-sm text-slate-600" data-article-revisions-summary>No revisions yet. Click "Save copy" to snapshot the current title + body.</p>
+			} else {
+				<p class="text-sm text-slate-600" data-article-revisions-summary>{ revisionsSummary(snapshots) }</p>
+			}
+			@Button("Save copy", ButtonPrimary, "", templ.Attributes{
+				"data-action":                  templ.SafeURL(routebuilder.ArticleSnapshot(articleID)),
+				"data-method":                  "POST",
+				"data-dixie-submit":            "true",
+				"data-article-revisions-save":  "",
+				"data-article-id":              fmt.Sprintf("%d", articleID),
+			})
+		</div>
+		if len(snapshots) == 0 {
+			<p class="text-sm text-slate-500" data-article-revisions-empty>No revisions yet.</p>
+		} else {
+			<ul class="space-y-2" data-article-revisions-rows>
+				for _, snap := range snapshots {
+					<li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" data-article-revisions-row data-snapshot-id={ fmt.Sprintf("%d", snap.ID) }>
+						<div class="flex flex-wrap items-baseline gap-3">
+							<span class="font-mono text-sm font-semibold text-[color:var(--ink)]" data-snapshot-display-id>{ snap.DisplayID }</span>
+							<span class="font-mono text-xs text-slate-400" data-snapshot-created-at>{ snap.CreatedAt }</span>
+							<span class="text-xs text-slate-600 truncate max-w-md" data-snapshot-title>{ snap.Title }</span>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							@Button("Restore", ButtonSecondary, "", templ.Attributes{
+								"data-action":                       templ.SafeURL(routebuilder.ArticleRestore(snap.ID)),
+								"data-method":                       "POST",
+								"data-dixie-submit":                 "true",
+								"data-confirm":                      "Restore this snapshot over the live article? The snapshot itself stays in place.",
+								"data-article-revisions-restore":    "",
+								"data-snapshot-id":                  fmt.Sprintf("%d", snap.ID),
+								"data-article-id":                   fmt.Sprintf("%d", articleID),
+							})
+							@Button("Delete", ButtonDanger, "", templ.Attributes{
+								"data-action":                       templ.SafeURL(routebuilder.ArticleSnapshotDelete(articleID, snap.ID)),
+								"data-method":                       "DELETE",
+								"data-dixie-submit":                 "true",
+								"data-confirm":                      "Delete this snapshot? The live article will not be touched.",
+								"data-article-revisions-delete":     "",
+								"data-snapshot-id":                  fmt.Sprintf("%d", snap.ID),
+								"data-article-id":                   fmt.Sprintf("%d", articleID),
+							})
+						</div>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// revisionsSummary returns the human-readable summary text
+// for the revisions tab. "1 revision saved" vs "N revisions
+// saved" + a hint about the most-recent-first sort.
+func revisionsSummary(snapshots []viewmodel.Article) string {
+	if len(snapshots) == 0 {
+		return ""
+	}
+	if len(snapshots) == 1 {
+		return "1 revision saved. The most recent is at the top."
+	}
+	return fmt.Sprintf("%d revisions saved. The most recent is at the top.", len(snapshots))
+}

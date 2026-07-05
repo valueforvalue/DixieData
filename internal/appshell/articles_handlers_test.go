@@ -674,3 +674,66 @@ func TestHandleArticlePickerRendersSearchResults(t *testing.T) {
 		t.Errorf("No-results message missing on miss")
 	}
 }
+
+// TestHandleArticleRevisionsRendersSnapshots pins the slice-3.4
+// Revisions tab contract: GET /articles/{id}/revisions returns
+// the revisions fragment with one row per snapshot, plus the
+// Save copy button. Empty state on a fresh article.
+func TestHandleArticleRevisionsRendersSnapshots(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, err := app.articles.Create(models.Article{Title: "Revisions target"})
+	if err != nil {
+		t.Fatalf("Create source: %v", err)
+	}
+
+	// Empty state on a fresh article.
+	respEmpty, err := http.Get(server.URL + "/articles/" + intStr(src.ID) + "/revisions")
+	if err != nil {
+		t.Fatalf("GET revisions empty: %v", err)
+	}
+	defer respEmpty.Body.Close()
+	bodyEmpty, _ := io.ReadAll(respEmpty.Body)
+	if respEmpty.StatusCode != http.StatusOK {
+		t.Fatalf("GET revisions empty status = %d, want 200", respEmpty.StatusCode)
+	}
+	if !strings.Contains(string(bodyEmpty), `data-article-revisions-empty`) {
+		t.Errorf("Empty-state copy missing on a fresh article")
+	}
+	if !strings.Contains(string(bodyEmpty), `data-article-revisions-save`) {
+		t.Errorf("Save copy button missing on a fresh article")
+	}
+
+	// Create a snapshot, then assert the fragment lists it.
+	if _, err := app.articles.Snapshot(src.ID); err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	respPop, err := http.Get(server.URL + "/articles/" + intStr(src.ID) + "/revisions")
+	if err != nil {
+		t.Fatalf("GET revisions populated: %v", err)
+	}
+	defer respPop.Body.Close()
+	bodyPop, _ := io.ReadAll(respPop.Body)
+	if !strings.Contains(string(bodyPop), `data-article-revisions-row`) {
+		t.Errorf("Revisions row missing on populated article")
+	}
+	if !strings.Contains(string(bodyPop), `data-article-revisions-restore`) {
+		t.Errorf("Restore button missing on populated article")
+	}
+	if !strings.Contains(string(bodyPop), `data-article-revisions-delete`) {
+		t.Errorf("Delete button missing on populated article")
+	}
+
+	// Detail page also renders the Revisions tab.
+	respDetail, err := http.Get(server.URL + "/articles/" + intStr(src.ID))
+	if err != nil {
+		t.Fatalf("GET detail: %v", err)
+	}
+	defer respDetail.Body.Close()
+	bodyDetail, _ := io.ReadAll(respDetail.Body)
+	if !strings.Contains(string(bodyDetail), `data-article-revisions-tab`) {
+		t.Errorf("Revisions tab missing from detail page")
+	}
+}
