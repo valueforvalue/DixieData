@@ -34,6 +34,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `RECURSIVE_MAKE` variable is removed; the `web`/`seed`/
   `gold`/`tune-bin` sub-targets are preserved because
   `freshness` still depends on them.
+- **probe-clean.ps1: kill + verify stragglers before build**
+  (user-reported flakiness). The previous inline `taskkill`
+  recipe in the Makefile used bare `taskkill /F` with output
+  redirected to nul and make's `-@` ignore-errors prefix, so
+  two failure modes went silent: (a) antivirus / protected
+  process hold kept the binary locked even after `taskkill`
+  reported success, and (b) mixed-case image names
+  (`DixieData.exe` vs `dixiedata.exe`) could miss matches.
+  The build then failed downstream at
+  `unlinkat ... dixiedata-web.exe: Access is denied` with no
+  upstream clue. New `scripts/probe-clean.ps1` kills, waits,
+  re-queries via `tasklist` (filtered by MainModule filename
+  so `dixiedata` prefix doesn't collide with `dixiedata-web`),
+  and retries once before declaring failure. Exits 1 with a
+  yellow-banner diagnosis ("AV hold, debugger attached, or
+  re-spawning watcher") if anything survives, so `make debug`
+  halts with context instead of failing later at unlinkat.
+  Wired into the standalone `make probe-clean` target AND the
+  first line of the `build`/`debug` recipes (so it runs
+  before Wails's `-clean` flag tries to wipe `build/bin/`).
+  Idempotent: exit 0 with "nothing to clean" when no target
+  processes are alive.
 
 ### Added
 
