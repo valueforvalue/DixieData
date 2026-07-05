@@ -13,6 +13,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Event Records in the static archive bundle** (issue #320
+  child #335, slot 14 of 16). The static archive JSON bundle
+  emitted by `ExportStaticArchive` (and read by the embedded
+  `index.html` via `window.DIXIE_DATA`) now carries both
+  Person Records and Event Records, split into two named
+  arrays: `window.DIXIE_DATA = { records: [...], events: [...] }`.
+  Previously the bundle was a bare array that conflated both
+  row shapes. Per RPCI decision #8, events carry the per-subtype
+  fields the rest of the archive surface already used: `Kind`,
+  `Description`, `linkedDisplayIds` (the Display IDs of every
+  Person Record linked via the `event_person_links` junction,
+  resolved via a single-shot SQL in
+  `staticArchiveEvents`). The `index.html` JS dispatcher was
+  updated to read `.records` instead of the bare array; bare
+  archives remain readable until the user re-exports.
+  `TestExportStaticArchive_EventBundle` covers the new shape:
+  bundle object-shape, `linkedDisplayIds[]` populated for the
+  linked event, `[]` for the unlinked event, Person Records do
+  not leak into `events[]`.
+
 - **Event CRUD micro-benchmarks** (issue #320 child #338,
   slot 16 of 16). New `internal/records/event_service_bench_test.go`
   pins the hot-path cost for `ListEvents`,

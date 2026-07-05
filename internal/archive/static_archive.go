@@ -29,44 +29,51 @@ import (
 
 // --- StaticArchiveRecord/Image/Entry types ---
 type StaticArchiveRecord struct {
-	DisplayID         string                     `json:"displayId"`
-	EntryType         string                     `json:"entryType"`
-	DisplayType       string                     `json:"displayType"`
-	Name              string                     `json:"name"`
-	Dates             string                     `json:"dates"`
-	Prefix            string                     `json:"prefix,omitempty"`
-	FirstName         string                     `json:"firstName,omitempty"`
-	MiddleName        string                     `json:"middleName,omitempty"`
-	LastName          string                     `json:"lastName,omitempty"`
-	Suffix            string                     `json:"suffix,omitempty"`
-	Rank              string                     `json:"rank,omitempty"`
-	RankIn            string                     `json:"rankIn,omitempty"`
-	RankOut           string                     `json:"rankOut,omitempty"`
-	Unit              string                     `json:"unit,omitempty"`
-	Location          string                     `json:"location,omitempty"`
-	BirthDate         string                     `json:"birthDate,omitempty"`
-	DeathDate         string                     `json:"deathDate,omitempty"`
-	BirthInfo         string                     `json:"birthInfo,omitempty"`
-	Biography         string                     `json:"biography,omitempty"`
-	Notes             string                     `json:"notes,omitempty"`
-	MaidenName        string                     `json:"maidenName,omitempty"`
-	RelationshipLabel string                     `json:"relationshipLabel,omitempty"`
-	SpouseName        string                     `json:"spouseName,omitempty"`
-	SpouseDisplayID   string                     `json:"spouseDisplayId,omitempty"`
-	PensionID         string                     `json:"pensionId,omitempty"`
-	AppID             string                     `json:"appId,omitempty"`
-	PensionState      string                     `json:"pensionState,omitempty"`
-	HomeStatus        string                     `json:"homeStatus,omitempty"`
-	HomeName          string                     `json:"homeName,omitempty"`
-	NeedsReview       bool                       `json:"needsReview,omitempty"`
-	ReviewReason      string                     `json:"reviewReason,omitempty"`
-	AddedBy           string                     `json:"addedBy,omitempty"`
-	LastEditedBy      string                     `json:"lastEditedBy,omitempty"`
-	LastEditedAt      string                     `json:"lastEditedAt,omitempty"`
-	LastEditedFields  string                     `json:"lastEditedFields,omitempty"`
-	ImagePath         string                     `json:"imagePath,omitempty"`
-	Images            []StaticArchiveImage       `json:"images,omitempty"`
-	Records           []StaticArchiveRecordEntry `json:"records,omitempty"`
+	DisplayID          string                     `json:"displayId"`
+	EntryType          string                     `json:"entryType"`
+	DisplayType        string                     `json:"displayType"`
+	Name               string                     `json:"name"`
+	Dates              string                     `json:"dates"`
+	Kind               string                     `json:"kind,omitempty"`
+	Description        string                     `json:"description,omitempty"`
+	// linkedDisplayIds always serializes (no omitempty) so the
+	// JSON bundle emits a uniform shape across linked and
+	// unlinked events. newStaticArchiveEventRecord guarantees
+	// the slice is non-nil so an empty array renders as `[]`.
+	LinkedDisplayIDs   []string                   `json:"linkedDisplayIds"`
+	Prefix             string                     `json:"prefix,omitempty"`
+	FirstName          string                     `json:"firstName,omitempty"`
+	MiddleName         string                     `json:"middleName,omitempty"`
+	LastName           string                     `json:"lastName,omitempty"`
+	Suffix             string                     `json:"suffix,omitempty"`
+	Rank               string                     `json:"rank,omitempty"`
+	RankIn             string                     `json:"rankIn,omitempty"`
+	RankOut            string                     `json:"rankOut,omitempty"`
+	Unit               string                     `json:"unit,omitempty"`
+	Location           string                     `json:"location,omitempty"`
+	BirthDate          string                     `json:"birthDate,omitempty"`
+	DeathDate          string                     `json:"deathDate,omitempty"`
+	BirthInfo          string                     `json:"birthInfo,omitempty"`
+	Biography          string                     `json:"biography,omitempty"`
+	Notes              string                     `json:"notes,omitempty"`
+	MaidenName         string                     `json:"maidenName,omitempty"`
+	RelationshipLabel  string                     `json:"relationshipLabel,omitempty"`
+	SpouseName         string                     `json:"spouseName,omitempty"`
+	SpouseDisplayID    string                     `json:"spouseDisplayId,omitempty"`
+	PensionID          string                     `json:"pensionId,omitempty"`
+	AppID              string                     `json:"appId,omitempty"`
+	PensionState       string                     `json:"pensionState,omitempty"`
+	HomeStatus         string                     `json:"homeStatus,omitempty"`
+	HomeName           string                     `json:"homeName,omitempty"`
+	NeedsReview        bool                       `json:"needsReview,omitempty"`
+	ReviewReason       string                     `json:"reviewReason,omitempty"`
+	AddedBy            string                     `json:"addedBy,omitempty"`
+	LastEditedBy       string                     `json:"lastEditedBy,omitempty"`
+	LastEditedAt       string                     `json:"lastEditedAt,omitempty"`
+	LastEditedFields   string                     `json:"lastEditedFields,omitempty"`
+	ImagePath          string                     `json:"imagePath,omitempty"`
+	Images             []StaticArchiveImage       `json:"images,omitempty"`
+	Records            []StaticArchiveRecordEntry `json:"records,omitempty"`
 }
 
 // StaticArchiveImage is an archive-layer type.
@@ -1114,7 +1121,16 @@ const staticArchiveIndexHTML = `<!DOCTYPE html>
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-      const records = Array.isArray(window.DIXIE_DATA) ? window.DIXIE_DATA : [];
+      // Issue #320 child #335: the bundle is now an object
+      // with records + events arrays rather than a bare
+      // array. Read .records so the per-Person list still
+      // renders identically; events are exposed via
+      // window.DIXIE_DATA.events for a future slot to
+      // render an Events tab.
+      const bundle = (window.DIXIE_DATA && typeof window.DIXIE_DATA === 'object') ? window.DIXIE_DATA : {};
+      const records = Array.isArray(bundle.records) ? bundle.records : [];
+      const events = Array.isArray(bundle.events) ? bundle.events : [];
+      window.__DIXIE_EVENTS__ = events;
       const searchInput = document.getElementById('archive-search');
       const previewStage = document.getElementById('image-preview-stage');
       let filteredRecords = updateResults(records, '');
@@ -1266,6 +1282,10 @@ func (e *ExportService) staticArchiveOwner() (staticArchiveOwner, error) {
 
 
 // --- (e *ExportService) staticArchiveRecords ---
+// staticArchiveRecords returns the Person Records (soldiers,
+// wives, widows, linked_persons) for the static archive JSON
+// bundle. Event Record rows are filtered out and returned via
+// staticArchiveEvents instead per issue #320 child #335.
 func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 	batch, err := exportSoldiers(e.soldier)
 	if err != nil {
@@ -1279,12 +1299,92 @@ func (e *ExportService) staticArchiveRecords() ([]StaticArchiveRecord, error) {
 			return nil, err
 		}
 		fullSoldier := *soldier
+		if fullSoldier.EntryType == models.EntryTypeEvent {
+			continue
+		}
 		fullSoldiers = append(fullSoldiers, fullSoldier)
 		idIndex[fullSoldier.ID] = fullSoldier
 	}
 	records := make([]StaticArchiveRecord, 0, len(fullSoldiers))
 	for _, soldier := range fullSoldiers {
 		records = append(records, newStaticArchiveRecord(soldier, idIndex))
+	}
+	sort.Slice(records, func(i, j int) bool {
+		left := strings.ToLower(records[i].Name + " " + records[i].DisplayID)
+		right := strings.ToLower(records[j].Name + " " + records[j].DisplayID)
+		return left < right
+	})
+	return records, nil
+}
+
+// --- (e *ExportService) staticArchiveEvents ---
+// staticArchiveEvents returns the Event Records (entry_type = "event")
+// for the static archive JSON bundle. Mirrors staticArchiveRecords
+// in shape — same per-row payload minus Person-specific columns
+// (rank / unit / pensionState / etc.), plus Kind / Date range /
+// Description / linkedDisplayIds.
+func (e *ExportService) staticArchiveEvents() ([]StaticArchiveRecord, error) {
+	batch, err := exportSoldiers(e.soldier)
+	if err != nil {
+		return nil, err
+	}
+	fullEvents := make([]models.Soldier, 0)
+	idIndex := make(map[int64]models.Soldier)
+	for _, item := range batch {
+		if item.EntryType != models.EntryTypeEvent {
+			continue
+		}
+		soldier, err := e.soldier.GetByID(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		fullSoldier := *soldier
+		fullEvents = append(fullEvents, fullSoldier)
+		idIndex[fullSoldier.ID] = fullSoldier
+	}
+	// Build a person-link index once so per-event linkedDisplayIds
+	// resolution is single-shot. Direct SQL keeps this helper
+	// free of an EventService dependency in ExportService (the
+	// existing ExportService struct holds *db.DB but no
+	// EventService field; adding one is out of scope for the
+	// #335 slice).
+	linkedIndex := make(map[int64][]string, len(idIndex))
+	if len(fullEvents) > 0 {
+		eventIDs := make([]int64, len(fullEvents))
+		for i, ev := range fullEvents {
+			eventIDs[i] = ev.ID
+		}
+		placeholders := make([]string, len(eventIDs))
+		args := make([]any, len(eventIDs))
+		for i, id := range eventIDs {
+			placeholders[i] = "?"
+			args[i] = id
+		}
+		query := `SELECT epl.event_id, COALESCE(s.display_id, '')
+			FROM event_person_links epl
+			JOIN soldiers s ON s.id = epl.person_id
+			WHERE epl.event_id IN (` + strings.Join(placeholders, ",") + `)
+			ORDER BY epl.event_id, s.display_id`
+		rows, err := e.db.Conn().Query(query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("query event_person_links: %w", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var eventID int64
+			var displayID string
+			if err := rows.Scan(&eventID, &displayID); err != nil {
+				return nil, fmt.Errorf("scan linked person: %w", err)
+			}
+			linkedIndex[eventID] = append(linkedIndex[eventID], displayID)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("event_person_links rows: %w", err)
+		}
+	}
+	records := make([]StaticArchiveRecord, 0, len(fullEvents))
+	for _, soldier := range fullEvents {
+		records = append(records, newStaticArchiveEventRecord(soldier, linkedIndex[soldier.ID]))
 	}
 	sort.Slice(records, func(i, j int) bool {
 		left := strings.ToLower(records[i].Name + " " + records[i].DisplayID)
@@ -1391,6 +1491,82 @@ func staticArchiveDateSummary(soldier models.Soldier) string {
 	default:
 		return "Dates not recorded"
 	}
+}
+
+
+// --- newStaticArchiveEventRecord ---
+// newStaticArchiveEventRecord builds the StaticArchiveRecord
+// payload for an Event Record row (entry_type = event). Mirrors
+// newStaticArchiveRecord but omits Person-specific fields
+// (rank / unit / pensionState / etc.) since the Event Record
+// subtype clears them defensively in EventService.CreateEvent.
+// Population: DisplayID, EntryType=event, DisplayType="Event",
+// Name "<kind> . <date range>", Dates "<begin> - <end>",
+// Kind, Description, LinkedDisplayIDs. Spouse / linked-person
+// / image / record fields all stay empty.
+func newStaticArchiveEventRecord(event models.Soldier, linkedDisplayIDs []string) StaticArchiveRecord {
+	record := StaticArchiveRecord{
+		DisplayID:        strings.TrimSpace(event.DisplayID),
+		EntryType:        strings.TrimSpace(event.EntryType),
+		DisplayType:      peopleinfo.DisplayEntryType(event),
+		Name:             staticArchiveEventName(event),
+		Dates:            staticArchiveEventDateSummary(event),
+		Kind:             strings.TrimSpace(event.Kind),
+		Description:      strings.TrimSpace(event.Description),
+		// Always non-nil so the JSON bundle emits linkedDisplayIds:[]
+		// for unlinked events; consumers don't need a null-check.
+		// The omitempty flag is dropped intentionally (see struct
+		// definition) for this reason.
+		LinkedDisplayIDs: append([]string{}, linkedDisplayIDs...),
+		AddedBy:          strings.TrimSpace(event.AddedBy),
+		LastEditedBy:     strings.TrimSpace(event.LastEditedBy),
+		LastEditedAt:     strings.TrimSpace(event.LastEditedAt),
+		LastEditedFields: strings.TrimSpace(event.LastEditedFields),
+	}
+	if record.EntryType == "" {
+		record.EntryType = models.EntryTypeEvent
+	}
+	return record
+}
+
+
+// --- staticArchiveEventName ---
+// staticArchiveEventName returns the user-facing name for an
+// Event Record row. Mirrors the on-page render in
+// event_detail.templ / events.typ: "<kind> . <date range>" if
+// both populated, "<kind>" if kind only, "<date range>" if
+// dates only, "Unnamed Event" otherwise.
+func staticArchiveEventName(event models.Soldier) string {
+	kind := strings.TrimSpace(event.Kind)
+	range_ := strings.TrimSpace(event.BeginDate)
+	switch {
+	case kind != "" && range_ != "":
+		return kind + " . " + range_
+	case kind != "":
+		return kind
+	case range_ != "":
+		return range_
+	}
+	return "Unnamed Event"
+}
+
+
+// --- staticArchiveEventDateSummary ---
+// staticArchiveEventDateSummary renders a one-line "Begin - End"
+// summary. Empty strings on both sides produce "Dates not
+// recorded" so the JSON bundle matches the per-Person fallback.
+func staticArchiveEventDateSummary(event models.Soldier) string {
+	begin := strings.TrimSpace(event.BeginDate)
+	end := strings.TrimSpace(event.EndDate)
+	switch {
+	case begin != "" && end != "":
+		return begin + " - " + end
+	case begin != "":
+		return begin
+	case end != "":
+		return end
+	}
+	return "Dates not recorded"
 }
 
 
