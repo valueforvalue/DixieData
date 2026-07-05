@@ -264,6 +264,15 @@ async function main() {
     await step(page, 'step-03 create-and-redirect', async () => {
       const stamp = Date.now();
       const kind = `SmokeBattle-${stamp}`;
+      // Issue #357: /events/new must expose the Source Records
+      // section so the user can attach sources inline.
+      const newHasSources = await page.evaluate(() =>
+        /Source Records/i.test(document.body.innerText) &&
+        document.querySelector('input[name="record_type"]') !== null
+      );
+      if (!newHasSources) {
+        throw new Error('new-event form missing Source Records section (issue #357)');
+      }
       await page.fill('input[name="kind"]', kind);
       await page.fill('input[name="begin_date"]', '07/01/1863');
       await page.fill('input[name="end_date"]', '07/03/1863');
@@ -300,6 +309,16 @@ async function main() {
       await page.click('a:has-text("Edit Event")');
       await page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 5000 });
       await wait(200);
+      // Issue #357: edit form must expose the Source Records
+      // section so the user can attach sources inline.
+      const editHasSources = await page.evaluate(() =>
+        /Source Records/i.test(document.body.innerText) &&
+        document.querySelector('input[name="record_type"]') !== null &&
+        document.querySelector('input[name="record_app_id"]') !== null
+      );
+      if (!editHasSources) {
+        throw new Error('edit form missing Source Records section (issue #357)');
+      }
       const newKind = `SmokeBattle-Edited-${Date.now()}`;
       await page.fill('input[name="kind"]', newKind);
       await Promise.all([
@@ -310,6 +329,28 @@ async function main() {
       const text = await page.evaluate(() => document.body.innerText);
       if (!newKind.includes('Edited')) {
         throw new Error(`edited kind not visible; body starts: ${text.slice(0, 200)}`);
+      }
+    });
+
+    await step(page, 'step-05b attach-source-via-edit-form', async () => {
+      // Issue #357: the inline Source Records section on the
+      // edit form must persist a Source Record when the user
+      // fills + submits the main form.
+      await page.click('a:has-text("Edit Event")');
+      await page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 5000 });
+      await wait(200);
+      const uniqueAppID = `SMOKE-APP-${Date.now()}`;
+      await page.fill('input[name="record_type"]', 'Pension Application');
+      await page.fill('input[name="record_app_id"]', uniqueAppID);
+      await page.fill('textarea[name="record_details"]', 'Attached via edit-form smoke probe.');
+      await Promise.all([
+        page.waitForURL(new RegExp(`/events/${createdEventID}$`), { timeout: 10000 }),
+        page.click('button[type="submit"]:has-text("Save Changes")'),
+      ]);
+      await wait(300);
+      const detailText = await page.evaluate(() => document.body.innerText);
+      if (!detailText.includes(uniqueAppID)) {
+        throw new Error(`source not visible on detail after edit-form submit; body: ${detailText.slice(0, 400)}`);
       }
     });
 

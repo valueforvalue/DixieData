@@ -52,6 +52,38 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   underlying `images` table row AND does not set
   `X-DixieData-Redirect`.
 
+### Fixed
+
+- **Event Record create + edit forms now expose an inline
+  Source Records section** (issue #357). The Event form
+  previously rendered only the Event-specific fields (kind,
+  dates, description, notes); the Source Records attach UI
+  lived only on the detail page. The new section reuses the
+  soldier entry form's `RecordInputRow` + `data-record-add`
+  + `data-record-list` pattern so a user can attach pension
+  / roster / source-transcript rows inline and save them
+  with the Event in one submit. Backend: new
+  `EventService.AttachSourcesToEvent` batch-inserts into the
+  `event_sources` table (issue #340 / v61 — outside
+  `replaceRecords`' DELETE scope, so Update does not wipe
+  sources); `parseEventForm` returns the parsed
+  `[]models.Record` alongside the `models.Soldier` payload
+  via the existing `parseRecordInputs` helper; all four
+  `parseEventForm` call sites (`handleNewEvent`,
+  `handleEventByID` PUT/POST, quick-add from person
+  detail) route the parsed sources through the new service
+  method after the main write. Empty rows are skipped on
+  save. Regression net: new render test in
+  `internal/templates/event_form_test.go` asserts the
+  form contains the `record_type` / `record_app_id` /
+  `record_details` inputs and the `data-record-template`
+  hook (edit case); new service test in
+  `internal/records/event_service_test.go` pins the batch-
+  attach contract; new `step-05b` in
+  `audit/smoke_events.mjs` drives the live binary end-to-end
+  (fill row → submit edit → assert source visible on
+  detail).
+
 ### Maintenance
 
 - **Renamed `selectedSoldierImages` to

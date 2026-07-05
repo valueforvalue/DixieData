@@ -493,3 +493,51 @@ func TestEventService_GetEventByIDReturnsEventSourcesField(t *testing.T) {
 		t.Errorf("Event.Records len = %d, want 0 (Event sources moved off records table)", len(got.Event.Records))
 	}
 }
+
+// TestEventService_AttachSourcesToEvent pins the batch attach path
+// the Event create + edit forms use to save inline Source Record
+// rows in one transaction. Issue #357: the form must be able to
+// save sources on the same write as the Event itself (mirrors the
+// soldier entry form's Records[] pattern).
+//
+// RED today: AttachSourcesToEvent does not exist on EventService,
+// so this test fails to compile. The compile failure IS the RED
+// signal — once the method lands with the contract below, the
+// test turns GREEN and pins the slice's acceptance criterion.
+func TestEventService_AttachSourcesToEvent(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	eventSvc := NewEventService(soldierSvc)
+
+	ev, err := eventSvc.CreateEvent(models.Soldier{Kind: "Battle"})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	sources := []models.Record{
+		{RecordType: "Pension Application", AppID: "APP-1880-7701", Details: "Filed 1880, Co. B"},
+		{RecordType: "Roster", AppID: "CO-B-4TH-VA", Details: "4th VA Infantry roster"},
+		{RecordType: "", AppID: "", Details: ""}, // empty row — should be skipped
+	}
+	ids, err := eventSvc.AttachSourcesToEvent(ev.ID, sources)
+	if err != nil {
+		t.Fatalf("AttachSourcesToEvent: %v", err)
+	}
+	if len(ids) != 2 {
+		t.Fatalf("AttachSourcesToEvent returned %d ids, want 2 (empty row skipped)", len(ids))
+	}
+
+	got, err := eventSvc.ListSourcesForEvent(ev.ID)
+	if err != nil {
+		t.Fatalf("ListSourcesForEvent: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("post-attach sources = %d, want 2", len(got))
+	}
+	if got[0].AppID != "APP-1880-7701" {
+		t.Errorf("got[0].AppID = %q, want APP-1880-7701", got[0].AppID)
+	}
+	if got[1].RecordType != "Roster" {
+		t.Errorf("got[1].RecordType = %q, want Roster", got[1].RecordType)
+	}
+}

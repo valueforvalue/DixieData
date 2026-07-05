@@ -110,7 +110,7 @@ func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
 			respondValidation(w, r, "Could not read the event form.", err)
 			return
 		}
-		event, err := parseEventForm(r)
+		event, sources, err := parseEventForm(r)
 		if err != nil {
 			defaults, defaultsErr := a.newEventDefaults()
 			if defaultsErr != nil {
@@ -128,6 +128,12 @@ func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
+			return
+		}
+		// Issue #357: attach inline Source Record rows submitted
+		// with the form. Empty rows are skipped by the service.
+		if _, attachErr := a.events.AttachSourcesToEvent(created.ID, sources); attachErr != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not attach sources to event record %d.", created.ID), attachErr)
 			return
 		}
 		// Option C: dispatchDixieDataForm reads
@@ -183,7 +189,7 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", id), err)
 			return
 		}
-		updated, err := parseEventForm(r)
+		updated, sources, err := parseEventForm(r)
 		if err != nil {
 			presentation.EventFormWithError(event.Event, true, err.Error()).Render(r.Context(), w)
 			return
@@ -191,6 +197,12 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 		updated.ID = id
 		if err := a.events.UpdateEvent(updated); err != nil {
 			presentation.EventFormWithError(event.Event, true, err.Error()).Render(r.Context(), w)
+			return
+		}
+		// Issue #357: attach inline Source Record rows submitted
+		// with the edit form. Empty rows are skipped.
+		if _, attachErr := a.events.AttachSourcesToEvent(id, sources); attachErr != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not attach sources to event record %d.", id), attachErr)
 			return
 		}
 		writeExportRedirect(w, fmt.Sprintf("/events/%d", id))
@@ -222,7 +234,7 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 			respondValidation(w, r, "Could not read the event form.", err)
 			return
 		}
-		event, err := parseEventForm(r)
+		event, sources, err := parseEventForm(r)
 		if err != nil {
 			existing, fetchErr := a.events.GetEventByID(id)
 			if fetchErr != nil {
@@ -240,6 +252,12 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				return
 			}
 			presentation.EventFormWithError(existing.Event, true, err.Error()).Render(r.Context(), w)
+			return
+		}
+		// Issue #357: attach inline Source Record rows submitted
+		// with the edit form. Empty rows are skipped.
+		if _, attachErr := a.events.AttachSourcesToEvent(id, sources); attachErr != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not attach sources to event record %d.", id), attachErr)
 			return
 		}
 		writeExportRedirect(w, fmt.Sprintf("/events/%d", id))
@@ -381,7 +399,7 @@ func (a *App) handleQuickAddEvent(w http.ResponseWriter, r *http.Request, person
 		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", personID), err)
 		return
 	}
-	event, err := parseEventForm(r)
+	event, sources, err := parseEventForm(r)
 	if err != nil {
 		respondValidation(w, r, err.Error(), err)
 		return
@@ -389,6 +407,12 @@ func (a *App) handleQuickAddEvent(w http.ResponseWriter, r *http.Request, person
 	created, err := a.events.CreateEvent(event)
 	if err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not create the event for person record %d.", personID), err)
+		return
+	}
+	// Issue #357: attach inline Source Record rows submitted with
+	// the quick-add form.
+	if _, attachErr := a.events.AttachSourcesToEvent(created.ID, sources); attachErr != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not attach sources to event record %d.", created.ID), attachErr)
 		return
 	}
 	if _, err := a.events.AttachEventToPerson(created.ID, personID); err != nil {
@@ -406,22 +430,31 @@ func (a *App) handleQuickAddEvent(w http.ResponseWriter, r *http.Request, person
 
 // parseEventForm reads the form fields for an Event Record
 // from r and returns the domain models.Soldier payload the
-// EventService.CreateEvent / UpdateEvent calls expect. It
-// mirrors parseSoldierForm's shape for the Event Record
-// subtype: parses begin_date / end_date through the same
-// canonical-date helper, hard-codes EntryType to "event",
-// and clears the person-specific fields the service-layer
-// normalizeSoldierEntry event branch will clear anyway.
-func parseEventForm(r *http.Request) (models.Soldier, error) {
+// EventService.CreateEvent / UpdateEvent calls expect, plus
+// any inline Source Record rows the form submitted. It mirrors
+// parseSoldierForm's shape for the Event Record subtype: parses
+// begin_date / end_date through the same canonical-date helper,
+// hard-codes EntryType to "event", and clears the
+// person-specific fields the service-layer normalizeSoldierEntry
+// event branch will clear anyway.
+//
+// Issue #357: the Event form exposes a Source Records section
+// mirroring the soldier entry form's Records[] rows. The
+// record_type / record_app_id / record_details field triples
+// arrive as parallel arrays (one entry per submitted row);
+// parseRecordInputs (the soldier helper) flattens them into
+// []models.Record so the handler can attach them in one call
+// after CreateEvent / UpdateEvent succeeds.
+func parseEventForm(r *http.Request) (models.Soldier, []models.Record, error) {
 	beginDate, err := parseOptionalCanonicalDate(r.FormValue("begin_date"), "begin_date")
 	if err != nil {
-		return models.Soldier{}, err
+		return models.Soldier{}, nil, err
 	}
 	endDate, err := parseOptionalCanonicalDate(r.FormValue("end_date"), "end_date")
 	if err != nil {
-		return models.Soldier{}, err
+		return models.Soldier{}, nil, err
 	}
-	return models.Soldier{
+	event := models.Soldier{
 		DisplayID:          strings.TrimSpace(r.FormValue("display_id")),
 		EntryType:          models.EntryTypeEvent,
 		Kind:               strings.TrimSpace(r.FormValue("kind")),
@@ -430,7 +463,9 @@ func parseEventForm(r *http.Request) (models.Soldier, error) {
 		Description:        r.FormValue("description"),
 		PDFExcerptOverride: r.FormValue("pdf_excerpt_override"),
 		Notes:              r.FormValue("notes"),
-	}, nil
+	}
+	sources := parseRecordInputs(r)
+	return event, sources, nil
 }
 
 
