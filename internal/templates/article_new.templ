@@ -1,0 +1,71 @@
+// article_new.templ — v62 (issue #321 slice 1) new-Article form
+// shell. slice 1 ships the minimum form (title + subtitle + body)
+// so the slice-1 RED test (TestHandleArticleCRUD_RoundTrip) can
+// POST and assert the X-DixieData-Redirect + detail-page round
+// trip.
+//
+// slice 3 will replace the body textarea with the full markdown
+// editor + sanitized preview + local-draft-persistence block
+// (mirroring entry_form.templ:40-105). slice 1 deliberately
+// stays minimal so the test contract is the title + body round
+// trip; the editor UX work belongs with slice 3.
+package templates
+
+import "github.com/valueforvalue/DixieData/internal/routebuilder"
+
+templ ArticleNewShell() {
+	@Layout("New Article") {
+		<div class="relative mx-auto max-w-4xl">
+			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">New Article</h1>
+				<a
+					href={ templ.SafeURL(routebuilder.ArticleList()) }
+					class="secondary-button"
+				>← Back to Articles</a>
+			</div>
+			<form
+				action={ templ.SafeURL(routebuilder.ArticleNew()) }
+				method="post"
+				class="card rounded-3xl p-5 sm:p-8 space-y-5"
+			>
+				<div>
+					<label for="article-title" class="block text-sm font-semibold text-[color:var(--ink)]">Title</label>
+					<input
+						type="text"
+						id="article-title"
+						name="title"
+						required
+						class="field-input mt-1 w-full"
+						placeholder="e.g. 21st Mississippi at Gettysburg"
+					/>
+				</div>
+				<div>
+					<label for="article-subtitle" class="block text-sm font-semibold text-[color:var(--ink)]">Subtitle</label>
+					<input
+						type="text"
+						id="article-subtitle"
+						name="subtitle"
+						class="field-input mt-1 w-full"
+						placeholder="optional"
+					/>
+				</div>
+				<div>
+					<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body</label>
+					<textarea
+						id="article-body"
+						name="body"
+						rows="12"
+						class="field-input mt-1 w-full font-mono text-sm"
+						placeholder="Write your article in Markdown. Inline Person Record references use [Name](#person/D-00123) -- the picker is coming in a later slice."
+					></textarea>
+				</div>
+				<div class="flex flex-wrap justify-end gap-3">
+					<button
+						type="submit"
+						class="primary-button"
+					>Save Article</button>
+				</div>
+			</form>
+		</div>
+	}
+}

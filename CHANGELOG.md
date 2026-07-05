@@ -13,6 +13,37 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Article Records schema + CRUD shell** (issue #321 slice 1).
+  Adds the `articles` + `article_refs` tables in a v62 schema
+  bump (`CurrentSchemaVersion` 61 → 62, additive `block-3-articles`
+  migration; reversible — the `Down` path drops the tables +
+  indexes). Adds an `ArticleService` (Create + GetByID on the
+  live branch, mints `ART-NNNNN` Display IDs via the new
+  `db.NextArticleID` helper that mirrors `NextEventID`), a
+  `viewmodel.Article` + mapper triplet (`ArticleFromModel` +
+  `ArticlePtrFromModel` + `ArticlesFromModels`), and five new
+  routes registered in `routes.go`: `GET /articles`,
+  `GET /articles/new`, `POST /articles/new`, `GET /articles/{id}`,
+  `POST /articles/{id}`. Slice 1 ships the minimum surface needed
+  for the headline round-trip: the `/articles/new` form creates
+  the article and writes the `X-DixieData-Redirect` header (per
+  the #341 / Option C convention) so the JS dispatcher navigates
+  to `/articles/{row-id}`, and the detail page renders the
+  title + subtitle + body verbatim from the `body_html` column.
+  Slice 1 deliberately omits: the editor (slice 3 swaps the
+  minimal form for the markdown editor + sanitized preview +
+  local-draft-persistence block mirroring the entry_form.templ
+  pattern), the picker modal (slice 3), the Snapshot/Restore
+  lifecycle (slice 2.5), the PDF / Static-HTML / raw-md exports
+  (slice 4), the archive integration (slice 5), and the
+  "Cited in" reverse-lookup panel on Person Record detail
+  (slice 3). Glossary entries (Article + Article Reference +
+  Article Snapshot) added to CONTEXT.md. Pinned by
+  `TestHandleArticleCRUD_RoundTrip` + `TestCreateArticleMintsARTDisplayID` +
+  `TestCreateArticleBlankTitleRejected` +
+  `TestGetArticleByIDRoundTrip` + `TestGetArticleByID_NotFound`.
+  27-package test suite green; orphan-handler probe exit 0.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

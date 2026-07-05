@@ -456,6 +456,123 @@ var migrations = []Migration{
 			return nil
 		},
 	},
+	// Block 3 (block-62) — Article Records schema (issue #321
+	// slice 1). Adds the articles + article_refs tables that
+	// Article CRUD lives in; Article rows are siblings of
+	// soldiers rows, not subtypes, so they get their own table
+	// per locked decision #2 (same-DB parallel tables) +
+	// locked decision #3 (two-table split lets ref columns
+	// grow position / kind later without rewriting articles).
+	//
+	// articles columns:
+	//   id                  -- primary key (SQLite row id; the URL
+	//                          segment for /articles/{id})
+	//   sync_id             -- per-row distributed-merge UUID; mirrors
+	//                          the soldiers.sync_id pattern
+	//   display_id          -- ART-NNNNN; minted by db.NextArticleID
+	//   title               -- required, trimmed
+	//   subtitle            -- optional, trimmed
+	//   body_md             -- the markdown source (raw)
+	//   body_html           -- the sanitized rendered HTML; the
+	//                          slice-1 create path stores the raw md
+	//                          verbatim in body_html so the first read
+	//                          shows the body without a renderer.
+	//                          Slice 2 will replace this column-write
+	//                          with a goldmark + bluemonday pass.
+	//   created_at / updated_at -- timestamps
+	//   snapshot_of_id      -- nullable; non-null on rows that are
+	//                          a "Save copy" snapshot of another row.
+	//                          Slice 2.5 fills this in.
+	//   is_snapshot         -- 0/1 mirror of (snapshot_of_id IS NOT
+	//                          NULL); exists so the read path can
+	//                          filter snapshots without a join.
+	//
+	// article_refs columns:
+	//   id                  -- primary key
+	//   article_id          -- FK to articles(id) ON DELETE CASCADE
+	//   article_sync_id     -- mirror for distributed merge
+	//   person_record_id    -- FK to soldiers(id) ON DELETE CASCADE
+	//   person_record_sync_id -- mirror
+	//   person_display_id   -- denormalized cache of the DXD/EVT id
+	//                          so the Cite-in reverse-lookup + the
+	//                          PDF resolver can render without a join.
+	//   position            -- reserved for future "reorder refs"; defaults
+	//                          to 0 today; Slice 3+ may surface a reorder
+	//                          UI mirroring #368's source-record reorder.
+	//
+	// Reversibility: Reversible. The Up path is pure additive
+	// (CREATE TABLE IF NOT EXISTS + 4 CREATE INDEX IF NOT
+	// EXISTS). The Down path drops the 4 indexes + the 2 tables.
+	// No data migration; the v61 → v62 path leaves existing
+	// soldiers / records / event_sources / event_person_links
+	// rows alone.
+	{
+		ID:            "block-3-articles",
+		Reversibility: Reversible,
+		Reason: "Pure additive: CREATE TABLE IF NOT EXISTS articles + article_refs + 4 CREATE INDEX IF NOT EXISTS. Inverse: DROP INDEX + DROP TABLE for each. No data migration; Articles are a greenfield entity (issue #321 locked decision #2).",
+		Up: func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS articles (
+				id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+				sync_id              TEXT,
+				display_id           TEXT NOT NULL UNIQUE,
+				title                TEXT NOT NULL,
+				subtitle             TEXT NOT NULL DEFAULT '',
+				body_md              TEXT NOT NULL DEFAULT '',
+				body_html            TEXT NOT NULL DEFAULT '',
+				created_at           TEXT NOT NULL,
+				updated_at           TEXT NOT NULL,
+				snapshot_of_id       INTEGER,
+				is_snapshot          INTEGER NOT NULL DEFAULT 0
+			)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_articles_sync_id ON articles(sync_id)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_articles_snapshot_of ON articles(snapshot_of_id)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS article_refs (
+				id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+				article_id               INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+				article_sync_id          TEXT,
+				person_record_id         INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+				person_record_sync_id    TEXT,
+				person_display_id        TEXT NOT NULL,
+				position                 INTEGER NOT NULL DEFAULT 0
+			)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_article_refs_article ON article_refs(article_id)`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`CREATE INDEX IF NOT EXISTS idx_article_refs_person ON article_refs(person_record_id)`); err != nil {
+				return err
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_article_refs_person`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_article_refs_article`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP TABLE IF EXISTS article_refs`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_articles_snapshot_of`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP INDEX IF EXISTS idx_articles_sync_id`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DROP TABLE IF EXISTS articles`); err != nil {
+				return err
+			}
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every

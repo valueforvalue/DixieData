@@ -1,0 +1,38 @@
+// articles.templ — v62 (issue #321 slice 1) Articles list page.
+//
+// slice 1 ships the landing page as an empty-state placeholder
+// because ArticleService has no List yet (slice 2 fills it in).
+// The slice-1 RED test (TestHandleArticleCRUD_RoundTrip) does NOT
+// hit this surface (it posts to /articles/new and GETs the
+// detail page), so the empty state is acceptable for slice 1.
+//
+// slice 2 will:
+//   * Replace the empty-state with a per-row card grid backed
+//     by ArticleService.List.
+//   * Add a search/filter control mirroring the Browse list.
+//   * Surface the "Create Article" button as a primary CTA.
+package templates
+
+import (
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
+)
+
+templ ArticlesListShell() {
+	@Layout("Articles") {
+		<div class="relative mx-auto max-w-4xl">
+			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Articles</h1>
+				<a
+					href={ templ.SafeURL(routebuilder.ArticleNew()) }
+					class="primary-button"
+				>Create Article</a>
+			</div>
+			@components.EmptyState(
+				"No articles yet",
+				"Articles are long-form essays with inline Person Record references. The list is empty because no articles have been authored in this archive yet — click Create Article above to start one.",
+				routebuilder.ArticleNew(),
+			)
+		</div>
+	}
+}
