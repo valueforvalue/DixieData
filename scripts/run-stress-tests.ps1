@@ -121,6 +121,18 @@ Invoke-GoTestCompile -Title "Generate garbage DB and corrupt import coverage" `
     -Package ".\tests\stress" `
     -GoTestArgs @("-count=1")
 
+# Heavy seed sweep (issue #320 child #338, slot 16/16).
+# Default ON for `make stress` so the closure-gate for #320
+# has the heavy tests as part of the run. Operators can opt
+# OUT via `DIXIEDATA_STRESS_FULL=0 make stress` when they want
+# the fast loop. The tests themselves also short-skip when
+# the env var is unset; setting it explicitly here keeps the
+# `make stress` command self-contained.
+$env:DIXIEDATA_STRESS_FULL = if (-not $env:DIXIEDATA_STRESS_FULL) { '1' } else { $env:DIXIEDATA_STRESS_FULL }
+Invoke-GoTestCompile -Title "Stress Event CRUD heavy seeds (issue #338) " `
+    -Package ".\tests\stress" `
+    -GoTestArgs @("-count=1", "-run", "TestStressEventListPaginationSeeded10k|TestStressEventSeed5000PersonsAndAttach")
+
 Invoke-GoTestCompile -Title "Hammer bridge with race detector" `
     -Package ".\tests\stress" `
     -GoTestArgs @(
