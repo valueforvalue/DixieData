@@ -93,6 +93,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (browser smoke). Full Go test suite (28 packages) and
   full smoke (19 steps) green.
 
+### Changed
+
+- **Drop Event option from `/soldiers/new` entry-type dropdown** (issue
+  #362). `/soldiers/new` no longer exposes Event Records as an
+  `entry_type` choice; Event Records are authored exclusively via
+  `/events/new`. The JS dispatcher no longer carries the
+  `data-event-only-field` gate, the form-action swap to `/events/new`,
+  or the `&& !eventEntry` guards in `syncEntryTypeFields`, and
+  `isSoldierEntryType` no longer excludes `"event"` (Events cannot
+  reach the helper anyway). The v60 transitional slot #330 story is
+  retired in `entryTypes()`'s slot comment. The server-side defensive
+  dispatch at `handleNewSoldier` → `handleNewEvent` for
+  `entry_type=event` POSTs stays — hand-crafted curls and debug tools
+  must not be able to create a Soldier row with `entry_type=event`,
+  pinned by `TestHandleCreateSoldierDispatchesToNewEvent`. UI surface
+  coverage added by `TestEntryFormHelpersEntryTypesOmitsEvent`
+  (table-pins `entryTypes()` + render-pins the rendered HTML for any
+  hardcoded `<option value="event">`). 28-package test suite + full
+  smoke (19 steps) green; no backend behavior change.
+
 ### Maintenance
 
 - **CONTEXT.md typo fix** (issue #364). Line 158 read

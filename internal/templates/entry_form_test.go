@@ -815,3 +815,33 @@ func TestShareViewIncludesKeepBothForDisplayIDCollision(t *testing.T) {
 		t.Fatalf("display-id collision should show keep-shared action")
 	}
 }
+
+// TestEntryFormHelpersEntryTypesOmitsEvent pins issue #362's decision:
+// /soldiers/new no longer exposes Event Records in the entry-type dropdown
+// because /events/new owns the dedicated create surface. The defensive
+// server-side dispatch for entry_type=event POSTs stays (see
+// TestHandleCreateSoldierDispatchesToNewEvent) so hand-crafted curls and
+// debug tools can't accidentally create a Soldier row with entry_type=event.
+func TestEntryFormHelpersEntryTypesOmitsEvent(t *testing.T) {
+	for _, option := range entryTypes() {
+		if option.Value == "event" {
+			t.Fatalf("/soldiers/new entry-type dropdown must not expose Event (issue #362); entryTypes() returned %+v", option)
+		}
+		if strings.EqualFold(option.Label, "Event") {
+			t.Fatalf("/soldiers/new entry-type dropdown must not show an Event label (issue #362); entryTypes() returned %+v", option)
+		}
+	}
+
+	// Negative belt-and-suspenders: also render the form and confirm the
+	// <option value="event"> tag never appears in the HTML. This catches
+	// any future regression where entryTypes() loses the Event entry but a
+	// hardcoded <option> creeps back into entry_form.templ.
+	var buf bytes.Buffer
+	err := EntryForm(viewmodel.Soldier{DisplayID: "DXD-00001"}, nil, viewmodel.SoldierFormSuggestions{}, false).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("EntryForm render: %v", err)
+	}
+	if strings.Contains(buf.String(), `value="event"`) {
+		t.Fatalf("/soldiers/new HTML must not contain an option with value=\"event\" (issue #362)")
+	}
+}
