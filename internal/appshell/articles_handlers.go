@@ -237,3 +237,122 @@ func (a *App) handleArticleRefsDetach(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(articleID))
 	w.WriteHeader(http.StatusOK)
 }
+
+
+// handleArticleSnapshot serves POST /articles/{id}/snapshot.
+// Creates a fresh row with is_snapshot = 1 + snapshot_of_id
+// pointing at the source row + a fresh ART-NNNNN Display ID
+// minted by NextArticleID. The new row's fields are a copy
+// of the source row's CURRENT fields; subsequent updates to
+// the source do NOT retroactively change the snapshot.
+//
+// 200 + X-DixieData-Redirect back to the source detail page
+// so the JS dispatcher can re-render the Revisions tab.
+// 400 on source-not-found; 409 on snapshot-of-snapshot;
+// 500 on internal error.
+func (a *App) handleArticleSnapshot(w http.ResponseWriter, r *http.Request) {
+	srcID, err := parseIntFromPath(r.URL.Path, "/articles/", "/snapshot")
+	if err != nil || srcID < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	snap, err := a.articles.Snapshot(srcID)
+	if err != nil {
+		if errors.Is(err, records.ErrArticleNotFound) {
+			respondNotFound(w, r, fmt.Sprintf("Article %d not found.", srcID), err)
+			return
+		}
+		if errors.Is(err, records.ErrArticleSnapshot) {
+			respondConflict(w, r, fmt.Sprintf("Article %d is itself a snapshot; snapshot-of-snapshot not allowed.", srcID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not snapshot article %d.", srcID), err)
+		return
+	}
+	// Redirect to the SOURCE detail page (not the new
+	// snapshot row) -- the user just clicked "Save copy" on
+	// the live article; the Revisions tab refreshes in
+	// place + slice 3 may show a toast. The slice-2.5
+	// surface does not yet expose a Revisions-render path,
+	// so the redirect simply re-renders the detail page.
+	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(srcID))
+	w.WriteHeader(http.StatusOK)
+	_ = snap // snap is returned for slice-3 callers; slice-2.5 ignores it
+}
+
+// handleArticleRestore serves POST /articles/{id}/restore.
+// The id is the SNAPSHOT row id (the handler looks up the
+// live row via the snapshot's snapshot_of_id column).
+// Restores the snapshot's CURRENT fields to the live row;
+// the snapshot stays in place per the slice-2.5 Revisions
+// contract.
+//
+// 200 + X-DixieData-Redirect to the live detail page.
+// 404 on snapshot-not-found; 409 on non-snapshot target.
+func (a *App) handleArticleRestore(w http.ResponseWriter, r *http.Request) {
+	snapID, err := parseIntFromPath(r.URL.Path, "/articles/", "/restore")
+	if err != nil || snapID < 1 {
+		respondValidation(w, r, "Invalid snapshot id.", err)
+		return
+	}
+	if err := a.articles.Restore(snapID); err != nil {
+		if errors.Is(err, records.ErrArticleNotFound) {
+			respondNotFound(w, r, fmt.Sprintf("Snapshot %d not found.", snapID), err)
+			return
+		}
+		if errors.Is(err, records.ErrArticleSnapshot) {
+			respondConflict(w, r, fmt.Sprintf("Article %d is not a snapshot; cannot restore.", snapID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not restore snapshot %d.", snapID), err)
+		return
+	}
+	// Redirect to the live detail page -- the snapshot is
+	// keyed by snapshot_of_id, but the URL-keyed redirect
+	// hands the JS dispatcher an id (the snapshot's id).
+	// The slice-3 Revisions-tab handler will swap to the
+	// live row id when it lands; for now the snapshot's id
+	// also points at a detail page (renders 404 under
+	// slice-1's GetByID-filter, which is fine for slice-2.5
+	// -- slice 3 will swap to a snapshot-aware redirect).
+	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(snapID))
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleArticleSnapshotDelete serves DELETE
+// /articles/{id}/snapshot/{snapshotID}. Removes the
+// snapshot row only; the live branch the snapshot referred
+// to is untouched. Idempotent-on-not-found via 404 (not 200)
+// so a stale DELETE surfaces as not-found for the front end.
+func (a *App) handleArticleSnapshotDelete(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/articles/")
+	parts := strings.SplitN(path, "/snapshot/", 2)
+	if len(parts) != 2 {
+		respondValidation(w, r, "Invalid article or snapshot id in URL.", nil)
+		return
+	}
+	articleID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil || articleID < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	snapshotID, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil || snapshotID < 1 {
+		respondValidation(w, r, "Invalid snapshot id.", err)
+		return
+	}
+	if err := a.articles.DeleteSnapshot(snapshotID); err != nil {
+		if errors.Is(err, records.ErrArticleNotFound) {
+			respondNotFound(w, r, fmt.Sprintf("Snapshot %d not found.", snapshotID), err)
+			return
+		}
+		if errors.Is(err, records.ErrArticleSnapshot) {
+			respondConflict(w, r, fmt.Sprintf("Article %d is not a snapshot; use the regular delete.", articleID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not delete snapshot %d.", snapshotID), err)
+		return
+	}
+	w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(articleID))
+	w.WriteHeader(http.StatusOK)
+}

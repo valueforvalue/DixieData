@@ -389,6 +389,44 @@ func (a *ArticleService) Delete(id int64) error {
 	return nil
 }
 
+// GetSnapshotByID returns the snapshot row with the given
+// SQLite row id (is_snapshot = 1). Used by the slice-2.5
+// Revisions-tab list + the DeleteSnapshot handler. The
+// regular GetByID filters snapshots out; this method
+// inverts the filter so callers that own snapshot-row
+// surface area can find them. Returns ErrArticleNotFound
+// when the row does not exist OR is a live-branch row.
+func (a *ArticleService) GetSnapshotByID(id int64) (*models.Article, error) {
+	if id < 1 {
+		return nil, ErrArticleNotFound
+	}
+	row := a.soldiers.db.Conn().QueryRow(
+		`SELECT id, sync_id, display_id, title, subtitle, body_md, body_html,
+		        created_at, updated_at, snapshot_of_id, is_snapshot
+		 FROM articles WHERE id = ? AND is_snapshot = 1`, id)
+	var (
+		art          models.Article
+		snapshotOfID sql.NullInt64
+		isSnapshot   int
+	)
+	if err := row.Scan(
+		&art.ID, &art.SyncID, &art.DisplayID, &art.Title, &art.Subtitle,
+		&art.BodyMD, &art.BodyHTML, &art.CreatedAt, &art.UpdatedAt,
+		&snapshotOfID, &isSnapshot,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrArticleNotFound
+		}
+		return nil, fmt.Errorf("scan snapshot %d: %w", id, err)
+	}
+	if snapshotOfID.Valid {
+		v := snapshotOfID.Int64
+		art.SnapshotOfID = &v
+	}
+	art.IsSnapshot = isSnapshot != 0
+	return &art, nil
+}
+
 // ScanRefs returns every article_refs row attached to the
 // given article, ordered by id (the live insertion order).
 // Used by slice 3's Refs panel on the detail page and by
@@ -650,3 +688,209 @@ var ErrArticleSnapshot = errors.New("article is a snapshot")
 // ErrArticleNotFound so the front end can show the right
 // error message ("Person not found" vs "Article not found").
 var ErrRefPersonNotFound = errors.New("person record not found for article ref")
+
+
+// Snapshot duplicates the live-branch article referenced by
+// srcID into a new row with is_snapshot = 1 and
+// snapshot_of_id = srcID. The duplicated row gets a fresh
+// ART-NNNNN Display ID minted by NextArticleID (per slice
+// 2.5 the snapshot is its own archive entry, not a
+// status-flip of the live row -- the snapshot row carries
+// the same SyncID lineage but a different display id so the
+// user can browse snapshot history without colliding with
+// the live ART- namespace).
+//
+// Returns ErrArticleSnapshot when srcID is itself a snapshot
+// (snapshot-of-snapshot rejected per slice-2.5 spec); returns
+// ErrArticleNotFound when srcID does not exist.
+//
+// The snapshot row's title + subtitle + body_md + body_html
+// are copied verbatim from the live row at create time.
+// Subsequent Restore calls copy the snapshot's CURRENT
+// fields back to the live branch; Restore is the only path
+// that mutates the live row's content from outside Update.
+//
+// The snapshot inherits refs via the FK only on attach
+// calls (slice 3 may extend this); the slice-2.5 surface
+// does NOT copy article_refs into the snapshot -- a
+// snapshot is a content snapshot, not a refs-snapshot. The
+// slice-5 archive integration is the path that captures
+// refs in the bundle, not the snapshot.
+//
+// sync_id is RE-minted for the snapshot (a snapshot is its
+// own archive entity). A future slice may copy sync_id + add
+// a per-snapshot lineage if distributed-merge needs to
+// reconcile them; slice 2.5 starts simple.
+func (a *ArticleService) Snapshot(srcID int64) (*models.Article, error) {
+	if srcID < 1 {
+		return nil, ErrArticleNotFound
+	}
+	// Read the source row directly (live OR snapshot) -- a
+	// GetByID call would filter snapshots out and produce
+	// the wrong ErrArticleNotFound sentinel, masking the
+	// snapshot-of-snapshot rejection case the slice-2.5
+	// spec explicitly calls out.
+	row := a.soldiers.db.Conn().QueryRow(
+		`SELECT id, sync_id, display_id, title, subtitle, body_md, body_html,
+		        created_at, updated_at, snapshot_of_id, is_snapshot
+		 FROM articles WHERE id = ?`, srcID)
+	var (
+		art          models.Article
+		snapshotOfID sql.NullInt64
+		isSnapshot   int
+	)
+	if err := row.Scan(
+		&art.ID, &art.SyncID, &art.DisplayID, &art.Title, &art.Subtitle,
+		&art.BodyMD, &art.BodyHTML, &art.CreatedAt, &art.UpdatedAt,
+		&snapshotOfID, &isSnapshot,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrArticleNotFound
+		}
+		return nil, fmt.Errorf("Snapshot scan src %d: %w", srcID, err)
+	}
+	if isSnapshot != 0 {
+		return nil, ErrArticleSnapshot
+	}
+	src := art
+	now := time.Now().UTC().Format(time.RFC3339)
+	dispID, err := a.soldiers.db.NextArticleID()
+	if err != nil {
+		return nil, fmt.Errorf("Snapshot NextArticleID: %w", err)
+	}
+	res, err := a.soldiers.db.Conn().Exec(
+		`INSERT INTO articles
+		  (sync_id, display_id, title, subtitle, body_md, body_html,
+		   created_at, updated_at, snapshot_of_id, is_snapshot)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+		uuid.NewString(), dispID,
+		src.Title, src.Subtitle, src.BodyMD, src.BodyHTML,
+		now, now, src.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Snapshot insert: %w", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, fmt.Errorf("Snapshot LastInsertId: %w", err)
+	}
+	// Read back for the caller (gives back the same DisplayID
+	// + snapshot_of_id we'd otherwise need to re-derive).
+	return &models.Article{
+		ID:           id,
+		SyncID:       "",
+		DisplayID:    dispID,
+		Title:        src.Title,
+		Subtitle:     src.Subtitle,
+		BodyMD:       src.BodyMD,
+		BodyHTML:     src.BodyHTML,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		SnapshotOfID: &srcID,
+		IsSnapshot:   true,
+	}, nil
+}
+
+// Restore overwrites the live-branch row that the snapshot
+// refers to with the snapshot's current fields. The snapshot
+// row stays in place (per slice 2.5's "user-managed" Revisions
+// contract: snapshot stays after restore so the user can
+// restore again later or browse the saved history).
+//
+// Returns ErrArticleSnapshot when snapshotID is a live-branch
+// row (the inverse case: not-a-snapshot cannot restore);
+// returns ErrArticleNotFound when snapshotID does not exist.
+//
+// Calls Update under the hood to centralize the stamped-
+// updated_at path (which Update does for the slice-2 live
+// branch). After Restore the live row's body_md + body_html
+// match the snapshot's; the live row's DisplayID stays put.
+func (a *ArticleService) Restore(snapshotID int64) error {
+	if snapshotID < 1 {
+		return ErrArticleNotFound
+	}
+	row := a.soldiers.db.Conn().QueryRow(
+		`SELECT id, snapshot_of_id, is_snapshot FROM articles WHERE id = ?`, snapshotID)
+	var (
+		id          int64
+		snapshotOf  sql.NullInt64
+		isSnapshot  int
+	)
+	if err := row.Scan(&id, &snapshotOf, &isSnapshot); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrArticleNotFound
+		}
+		return fmt.Errorf("Restore scan: %w", err)
+	}
+	if isSnapshot == 0 {
+		return ErrArticleSnapshot
+	}
+	if !snapshotOf.Valid {
+		return fmt.Errorf("snapshot %d has no snapshot_of_id (data corruption)", snapshotID)
+	}
+	// Read snapshot fields + Update the live row.
+	snap := a.soldiers.db.Conn().QueryRow(
+		`SELECT title, subtitle, body_md, body_html FROM articles WHERE id = ?`, snapshotID)
+	var (
+		title, subtitle, bodyMD, bodyHTML string
+	)
+	if err := snap.Scan(&title, &subtitle, &bodyMD, &bodyHTML); err != nil {
+		return fmt.Errorf("Restore scan fields: %w", err)
+	}
+	liveID := snapshotOf.Int64
+	if err := a.Update(models.Article{
+		ID:       liveID,
+		Title:    title,
+		Subtitle: subtitle,
+		BodyMD:   bodyMD,
+		BodyHTML: bodyHTML,
+	}); err != nil {
+		return fmt.Errorf("Restore -> Update live %d: %w", liveID, err)
+	}
+	return nil
+}
+
+// DeleteSnapshot removes the snapshot row at snapshotID.
+// The live branch the snapshot refers to is unaffected --
+// Restore is the only path that mutates the live row from
+// outside Update, DeleteSnapshot is delete-of-snapshot-only
+// per slice 2.5's "Revisions tab: list + Delete + Restore"
+// surface.
+//
+// Returns ErrArticleSnapshot when snapshotID is a live-branch
+// row (live rows use the regular Delete path; DeleteSnapshot
+// is snapshots-only); returns ErrArticleNotFound when the
+// row does not exist. The cascade behavior matches Delete:
+// any future per-snapshot refs table would cascade here.
+//
+// Idempotent: deleting a non-existent snapshot row returns
+// ErrArticleNotFound (so the handler maps a stale DELETE to
+// 404, not 200 -- distinct from DetachRef's idempotency).
+func (a *ArticleService) DeleteSnapshot(snapshotID int64) error {
+	if snapshotID < 1 {
+		return ErrArticleNotFound
+	}
+	res, err := a.soldiers.db.Conn().Exec(`DELETE FROM articles WHERE id = ? AND is_snapshot = 1`, snapshotID)
+	if err != nil {
+		return fmt.Errorf("DeleteSnapshot %d: %w", snapshotID, err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("DeleteSnapshot %d rows: %w", snapshotID, err)
+	}
+	if n == 1 {
+		return nil
+	}
+	// Disambiguate: not-found vs not-a-snapshot.
+	var isSnapshot int
+	if err := a.soldiers.db.Conn().QueryRow(`SELECT is_snapshot FROM articles WHERE id = ?`, snapshotID).Scan(&isSnapshot); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrArticleNotFound
+		}
+		return fmt.Errorf("DeleteSnapshot disambiguate scan: %w", err)
+	}
+	if isSnapshot == 0 {
+		return ErrArticleSnapshot
+	}
+	return ErrArticleNotFound
+}

@@ -465,6 +465,33 @@ func ArticleRefsDetach(id, personId int64) string {
 	return fmt.Sprintf("/articles/%d/refs/%d", id, personId)
 }
 
+// ArticleSnapshot (issue #321 slice 2.5) returns the URL for
+// the per-Article "Save copy" snapshot form. Registered as
+// POST /articles/{id}/snapshot in routes.go. Caller appends
+// the {id} segment.
+func ArticleSnapshot(id int64) string {
+	return fmt.Sprintf("/articles/%d/snapshot", id)
+}
+
+// ArticleRestore (issue #321 slice 2.5) returns the URL for
+// the per-snapshot restore form (overwrites the live row the
+// snapshot refers to with the snapshot's CURRENT fields).
+// Registered as POST /articles/{id}/restore in routes.go.
+// Caller appends the {id} segment -- the id here is the
+// snapshot row id (the handler looks up the live row via
+// snapshot_of_id).
+func ArticleRestore(snapshotID int64) string {
+	return fmt.Sprintf("/articles/%d/restore", snapshotID)
+}
+
+// ArticleSnapshotDelete (issue #321 slice 2.5) returns the URL
+// for the per-snapshot delete form. Registered as DELETE
+// /articles/{id}/snapshot/{snapshotID} in routes.go. Mirrors
+// ArticleRefsDetach's argument list shape.
+func ArticleSnapshotDelete(articleID, snapshotID int64) string {
+	return fmt.Sprintf("/articles/%d/snapshot/%d", articleID, snapshotID)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {

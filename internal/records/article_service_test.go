@@ -501,3 +501,183 @@ func TestArticleService_ResolveRefs(t *testing.T) {
 		}
 	})
 }
+
+
+// TestArticleService_Snapshot pins the slice-2.5 Snapshot
+// contract: Snapshot(srcID) creates a new row with
+// is_snapshot=1, snapshot_of_id=srcID, fresh DisplayID
+// (ART-NNNNN), copy of title/subtitle/body; rejects
+// snapshot-of-snapshot; rejects source not found.
+func TestArticleService_Snapshot(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	src, err := service.Create(models.Article{
+		Title:    "Source",
+		Subtitle: "src sub",
+		BodyMD:   "src body",
+	})
+	if err != nil {
+		t.Fatalf("Create source: %v", err)
+	}
+
+	snap, err := service.Snapshot(src.ID)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	if snap.ID == src.ID {
+		t.Errorf("Snapshot ID == source.ID (%d), want fresh row id", snap.ID)
+	}
+	if !snap.IsSnapshot {
+		t.Errorf("Snapshot IsSnapshot = false, want true")
+	}
+	if snap.SnapshotOfID == nil || *snap.SnapshotOfID != src.ID {
+		t.Errorf("Snapshot.SnapshotOfID = %v, want pointer to %d", snap.SnapshotOfID, src.ID)
+	}
+	if snap.Title != src.Title || snap.Subtitle != src.Subtitle {
+		t.Errorf("Snapshot did not copy title/subtitle: %q / %q vs src %q / %q",
+			snap.Title, snap.Subtitle, src.Title, src.Subtitle)
+	}
+	if snap.BodyMD != src.BodyMD || snap.BodyHTML != src.BodyHTML {
+		t.Errorf("Snapshot did not copy body_md/body_html")
+	}
+
+	// Reject snapshot-of-snapshot.
+	_, err = service.Snapshot(snap.ID)
+	if !errors.Is(err, ErrArticleSnapshot) {
+		t.Errorf("Snapshot(snapshot-row) err = %v, want ErrArticleSnapshot", err)
+	}
+
+	// Reject source not found.
+	_, err = service.Snapshot(999999)
+	if !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("Snapshot(999999) err = %v, want ErrArticleNotFound", err)
+	}
+
+	// Snapshot does not appear in the live list (GetByID +
+	// List both filter on is_snapshot = 0).
+	if _, err := service.GetByID(snap.ID); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("GetByID(snapshot.ID) err = %v, want ErrArticleNotFound", err)
+	}
+	liveRows, _, err := service.List(1, 10)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	foundSnap := false
+	for _, row := range liveRows {
+		if row.ID == snap.ID {
+			foundSnap = true
+		}
+	}
+	if foundSnap {
+		t.Errorf("List returned snapshot row %d (should be live-only)", snap.ID)
+	}
+}
+
+// TestArticleService_Restore pins the slice-2.5 Restore
+// contract: Restore(snapshotID) overwrites the live row's
+// title + subtitle + body with the snapshot's CURRENT
+// fields; the snapshot stays in place; rejects non-snapshot
+// targets; rejects source not found.
+func TestArticleService_Restore(t *testing.T) {
+	service := newArticleServiceForTest(t)
+
+	src, _ := service.Create(models.Article{
+		Title:  "Original",
+		BodyMD: "original body",
+	})
+	snap, _ := service.Snapshot(src.ID)
+
+	// Mutate the snapshot to simulate "the user edits the
+	// snapshot's body in an editor" -- Restore is the only
+	// path that copies the snapshot's CURRENT state back to
+	// the live row, so the live row picks up the edited body.
+	//
+	// The Update path rejects snapshot rows via the
+	// is_snapshot = 0 filter (Update only affects live), so
+	// we exercise a direct SQL UPDATE here. Slice 3 may add
+	// an Edit-snapshot surface; for now, simulating via SQL
+	// is the simplest fidelity to the contract.
+	_, err := service.soldiers.db.Conn().Exec(
+		`UPDATE articles SET body_md = ?, body_html = ?, title = ? WHERE id = ? AND is_snapshot = 1`,
+		"edited snapshot body", "edited snapshot body", "Edited Snapshot Title", snap.ID)
+	if err != nil {
+		t.Fatalf("direct SQL update of snapshot: %v", err)
+	}
+
+	if err := service.Restore(snap.ID); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+
+	live, err := service.GetByID(src.ID)
+	if err != nil {
+		t.Fatalf("GetByID(source): %v", err)
+	}
+	if live.Title != "Edited Snapshot Title" {
+		t.Errorf("after Restore: title = %q, want %q", live.Title, "Edited Snapshot Title")
+	}
+	if live.BodyMD != "edited snapshot body" {
+		t.Errorf("after Restore: body = %q, want %q", live.BodyMD, "edited snapshot body")
+	}
+
+	// Snapshot stays in place (slice-2.5 contract).
+	snapAfter, err := service.GetSnapshotByID(snap.ID)
+	if err != nil {
+		t.Errorf("snapshot disappeared after Restore: GetSnapshotByID = %v", err)
+	}
+	if snapAfter != nil && snapAfter.ID != snap.ID {
+		t.Errorf("snapshot ID changed: was %d, now %d", snap.ID, snapAfter.ID)
+	}
+
+	// Reject non-snapshot target.
+	if err := service.Restore(src.ID); !errors.Is(err, ErrArticleSnapshot) {
+		t.Errorf("Restore(live-id) err = %v, want ErrArticleSnapshot", err)
+	}
+
+	// Reject source not found.
+	if err := service.Restore(999999); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("Restore(999999) err = %v, want ErrArticleNotFound", err)
+	}
+}
+
+// TestArticleService_DeleteSnapshot pins the slice-2.5
+// DeleteSnapshot contract: DeleteSnapshot(snapshotID) removes
+// only the snapshot row; the live branch is untouched;
+// idempotent-on-not-found via ErrArticleNotFound; rejects
+// non-snapshot targets (live rows must use the regular
+// Delete path).
+func TestArticleService_DeleteSnapshot(t *testing.T) {
+	service := newArticleServiceForTest(t)
+	src, _ := service.Create(models.Article{Title: "Delete target"})
+	snap, _ := service.Snapshot(src.ID)
+
+	if err := service.DeleteSnapshot(snap.ID); err != nil {
+		t.Fatalf("DeleteSnapshot first: %v", err)
+	}
+
+	// Snapshot gone.
+	if _, err := service.GetByID(snap.ID); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("snapshot not gone: GetByID = %v, want ErrArticleNotFound", err)
+	}
+	// Live row untouched.
+	live, err := service.GetByID(src.ID)
+	if err != nil {
+		t.Errorf("live row went missing after DeleteSnapshot: %v", err)
+	}
+	if live != nil && live.ID != src.ID {
+		t.Errorf("live ID changed: was %d, now %d", src.ID, live.ID)
+	}
+
+	// Already-deleted snapshot row is not-found.
+	if err := service.DeleteSnapshot(snap.ID); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("DeleteSnapshot (already gone) err = %v, want ErrArticleNotFound", err)
+	}
+
+	// Reject live target (use Update + Delete for those).
+	if err := service.DeleteSnapshot(src.ID); !errors.Is(err, ErrArticleSnapshot) {
+		t.Errorf("DeleteSnapshot(live) err = %v, want ErrArticleSnapshot", err)
+	}
+
+	// Unknown id.
+	if err := service.DeleteSnapshot(999999); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("DeleteSnapshot(999999) err = %v, want ErrArticleNotFound", err)
+	}
+}
