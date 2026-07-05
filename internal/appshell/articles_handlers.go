@@ -144,10 +144,18 @@ func (a *App) handleArticleByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // showArticle renders GET /articles/{id}. The slice-1
-// surface is the title + body verbatim; the slice-3 Refs
-// panel + the Reverse-lookup "Cited in" link land later.
-// ErrArticleNotFound -> 404 with a short message; other
-// read errors -> 500.
+// surface is the title + body verbatim; the slice-3.2 Refs
+// panel + slice-3.4 Revisions tab land here. The slice-3.2
+// commit adds the Refs query (ScanRefs + ResolveRefs) so the
+// Refs panel renders inline; the slice-3.4 commit will add
+// the snapshots query + the tab UI. ErrArticleNotFound -> 404
+// with a short message; other read errors -> 500.
+//
+// Refs query failure is logged but does not 500 the page --
+// the Refs panel renders empty and the user sees a "could
+// not load refs" notice. The body of the article is the
+// load-bearing surface; a transient ref-query failure must
+// not lock the user out of the article.
 func (a *App) showArticle(w http.ResponseWriter, r *http.Request, id int64) {
 	article, err := a.articles.GetByID(id)
 	if err != nil {
@@ -159,9 +167,59 @@ func (a *App) showArticle(w http.ResponseWriter, r *http.Request, id int64) {
 		return
 	}
 	view := viewmodel.ArticleFromModel(*article)
+	view.Refs = a.loadArticleRefsForView(id)
+	view.ResolvedRefs = a.loadArticleResolvedRefsForView(id)
 	if err := presentation.ArticleDetailShell(view).Render(r.Context(), w); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not render article %d.", id), err)
 	}
+}
+
+// loadArticleRefsForView reads the article_refs junction rows
+// for an article and projects them into viewmodel.ArticleRef
+// rows. Returns an empty slice (not nil) when no refs are
+// attached or when the query fails -- the Refs panel renders
+// the empty state rather than a 500. Per locked decision #6,
+// an unknown in-body token is fail-loud at render time, not at
+// query time, so this query never errors on "unknown token".
+func (a *App) loadArticleRefsForView(articleID int64) []viewmodel.ArticleRef {
+	refs, err := a.articles.ScanRefs(articleID)
+	if err != nil {
+		return []viewmodel.ArticleRef{}
+	}
+	out := make([]viewmodel.ArticleRef, 0, len(refs))
+	for _, ref := range refs {
+		out = append(out, viewmodel.ArticleRef{
+			ID:               ref.ID,
+			ArticleID:        ref.ArticleID,
+			PersonRecordID:   ref.PersonRecordID,
+			PersonDisplayID:  ref.PersonDisplayID,
+			PersonSyncID:     ref.PersonRecordSyncID,
+			Position:         ref.Position,
+		})
+	}
+	return out
+}
+
+// loadArticleResolvedRefsForView reads the in-body markdown
+// tokens for an article and projects them into viewmodel rows
+// with the Resolved flag. Returns an empty slice on error so
+// the resolver panel renders without a 500.
+func (a *App) loadArticleResolvedRefsForView(articleID int64) []viewmodel.ArticleRef {
+	tokens, err := a.articles.ResolveRefs(articleID)
+	if err != nil {
+		return []viewmodel.ArticleRef{}
+	}
+	out := make([]viewmodel.ArticleRef, 0, len(tokens))
+	for _, tok := range tokens {
+		out = append(out, viewmodel.ArticleRef{
+			ArticleID:       tok.ArticleID,
+			Token:           tok.Token,
+			PersonRecordID:  tok.PersonRecordID,
+			PersonDisplayID: tok.PersonDisplayID,
+			Resolved:        tok.Resolved,
+		})
+	}
+	return out
 }
 
 

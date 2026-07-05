@@ -1,29 +1,26 @@
-// article_detail.templ — v62 (issue #321 slice 1) Article
-// detail page. slice 1 renders the title + subtitle + body
-// verbatim from the viewmodel. Body carries the markdown source
-// (slice 1: body_md verbatim, slice 2: sanitized HTML via
-// goldmark + bluemonday).
+// article_detail.templ — v62 (issue #321 slice 1 + slice 3)
+// Article detail page. Slice 1 renders the title + subtitle
+// + body verbatim from the viewmodel. Slice 3.2 adds the Refs
+// panel (Person Records this article cites, with Unlink
+// buttons + an "Add Ref" CTA that opens the picker modal
+// landed in slice 3.3). Slice 3.4 adds the Revisions tab +
+// the Save copy / Restore / Delete affordances. Slice 3.6
+// swaps the verbatim Body for the sanitized HTML render.
 //
-// slice 3 will add:
-//   * the Refs panel (Person Records this article cites)
-//   * the "Cited in" reverse-lookup section (the inverse view
-//     of the Refs panel: which Person Records link to this one)
-//   * the Revisions tab (snapshot list + Restore + Delete +
-//     "Save copy" button)
-//   * the picker modal for inserting Person Record tokens
-//
-// The slice-1 surface deliberately matches the acceptance
-// criterion on issue #321: "Researcher can /articles/new to
-// create a new Article with title + subtitle + markdown body;
-// lands on /articles/{id} with the rendered detail page."
+// The picker modal lives in components/person_record_picker.templ;
+// the slice-3.2 commit deliberately ships the "Add Ref" CTA
+// as a placeholder button + a "coming in slice 3.3" hint, so
+// the Refs panel is exercisable without the picker modal
+// blocking the slice-3.2 smoke probe.
 package templates
 
 import (
+	"fmt"
+
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 )
-
-import "strings"
 
 templ ArticleDetailShell(view viewmodel.Article) {
 	@Layout(view.Title) {
@@ -40,8 +37,92 @@ templ ArticleDetailShell(view viewmodel.Article) {
 				if view.Subtitle != "" {
 					<p class="text-lg text-slate-600" data-article-subtitle>{ view.Subtitle }</p>
 				}
-				<div class="whitespace-pre-line text-sm leading-relaxed text-[color:var(--ink)]" data-article-body>{ strings.TrimSpace(view.Body) }</div>
+				<div class="whitespace-pre-line text-sm leading-relaxed text-[color:var(--ink)]" data-article-body>{ view.Body }</div>
+				if len(view.ResolvedRefs) > 0 {
+					<div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600" data-article-resolved-refs>
+						<p class="mb-2 font-semibold uppercase tracking-[0.18em] text-slate-500">Cited Person Records</p>
+						<ul class="flex flex-wrap gap-2">
+							for _, ref := range view.ResolvedRefs {
+								if ref.Resolved {
+									<li>
+										<a
+											href={ templ.SafeURL(routebuilder.SoldierDetail(ref.PersonRecordID)) }
+											class="pill-link"
+											data-article-resolved-ref
+											data-article-resolved-ref-token={ ref.Token }
+										>{ ref.PersonDisplayID }</a>
+									</li>
+								} else {
+									<li>
+										<span
+											class="pill-link border-amber-700/40 bg-amber-50 text-amber-900"
+											data-article-resolved-ref
+											data-article-resolved-ref-unknown="true"
+											title="Display ID not found in the archive. Resolve the token or remove it from the body."
+										>⚠ Unknown: { ref.Token }</span>
+									</li>
+								}
+							}
+						</ul>
+					</div>
+				}
 			</article>
+			@ArticleRefsPanel(view)
+			// Slice 3.4 commits land the Revisions tab + Save
+			// copy button here. Slice 3.6 swaps the verbatim
+			// Body for the sanitized HTML render. Slice 3.7
+			// adds the /articles/{id}/edit CTA on this surface.
 		</div>
 	}
+}
+
+// ArticleRefsPanel renders the inline Refs panel on the
+// /articles/{id} detail page. One row per attached Person
+// Record, each with an Unlink button (data-action + DELETE
+// to the existing ArticleRefsDetach route per the
+// post-Option-C convention). The "Add Ref" CTA is a
+// placeholder button for slice 3.2; slice 3.3 swaps it for
+// the picker modal trigger.
+//
+// The panel renders the empty state ("No Person Records
+// attached") when refs is empty -- a researcher can attach
+// without first seeing the empty state on every visit.
+templ ArticleRefsPanel(view viewmodel.Article) {
+	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-article-refs-panel>
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">Person Records</h2>
+			@components.Button("Add Person Record", components.ButtonSecondary, "", templ.Attributes{
+				"data-article-refs-add": "",
+				"data-article-id":       fmt.Sprintf("%d", view.ID),
+				"title":                 "Add a Person Record reference (picker lands in slice 3.3)",
+			})
+		</div>
+		if len(view.Refs) == 0 {
+			<p class="text-sm text-slate-600" data-article-refs-empty>No Person Records attached. Click "Add Person Record" above to attach one.</p>
+		} else {
+			<ul class="space-y-2" data-article-refs-list>
+				for _, ref := range view.Refs {
+					<li class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm" data-article-refs-row data-article-refs-person-id={ fmt.Sprintf("%d", ref.PersonRecordID) }>
+						<div class="flex flex-wrap items-baseline gap-3">
+							<a
+								href={ templ.SafeURL(routebuilder.SoldierDetail(ref.PersonRecordID)) }
+								class="font-mono text-sm font-semibold text-[color:var(--ink)]"
+								data-article-refs-row-display-id
+							>{ ref.PersonDisplayID }</a>
+							<span class="font-mono text-xs text-slate-400">{ ref.PersonSyncID }</span>
+						</div>
+						@components.Button("Unlink", components.ButtonSecondary, "", templ.Attributes{
+							"data-action":                    templ.SafeURL(routebuilder.ArticleRefsDetach(view.ID, ref.PersonRecordID)),
+							"data-method":                    "DELETE",
+							"data-dixie-submit":              "true",
+							"data-confirm":                   "Unlink this Person Record from the article?",
+							"data-article-refs-unlink":        "",
+							"data-article-refs-person-id":    fmt.Sprintf("%d", ref.PersonRecordID),
+							"data-article-refs-article-id":   fmt.Sprintf("%d", view.ID),
+						})
+					</li>
+				}
+			</ul>
+		}
+	</section>
 }

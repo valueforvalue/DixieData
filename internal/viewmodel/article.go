@@ -16,8 +16,10 @@ import (
 // carries only the fields the slice-1 /articles list + the
 // /articles/{id} detail page need; the markdown source lives
 // on Body (verbatim in slice 1; slice 2 swaps to a sanitized
-// HTML render). Slice 3 will add fields for the picker modal
-// refs panel + the Revisions tab.
+// HTML render). Slice 3 adds fields for the picker modal refs
+// panel + the Revisions tab (slices 3.2 / 3.4); slice 3.8
+// adds the CitedIn inverse projection on the Person Record
+// detail page (see cited_in_articles.templ).
 type Article struct {
 	ID             int64
 	DisplayID      string
@@ -28,6 +30,42 @@ type Article struct {
 	UpdatedAt      string
 	BackLinkURL    string
 	BackLinkLabel  string
+
+	// Refs lists the Person Records attached to this article
+	// via the article_refs junction (slice 2). The detail-page
+	// Refs panel renders one row per ref with an Unlink button
+	// (slice 3.2). Token / Position live on ArticleRef if the
+	// slice-3.x reorder surface ever lands (per the Position
+	// comment in records.ArticleRef).
+	Refs []ArticleRef
+
+	// ResolvedRefs lists the in-body markdown tokens parsed
+	// out of Body via ArticleService.ResolveRefs. The detail
+	// page renders each token as either a link to the
+	// resolved Person Record or a fail-loud "⚠ Unknown: <id>"
+	// marker per locked decision #6.
+	ResolvedRefs []ArticleRef
+
+	// Snapshots lists the snapshot rows for this article's
+	// Revisions tab (slice 3.4). Empty for live branches;
+	// service returns empty slice (not nil) so the templ
+	// loop renders cleanly.
+	Snapshots []Article
+}
+
+// ArticleRef is the UI-shaped projection of records.ArticleRef
+// (the article_refs junction row). The viewmodel decouples the
+// template layer from the service row shape so a future service
+// field rename doesn't break the templ.
+type ArticleRef struct {
+	ID                int64
+	ArticleID         int64
+	PersonRecordID    int64
+	PersonDisplayID   string
+	PersonSyncID      string
+	Position          int
+	Resolved          bool
+	Token             string
 }
 
 // ArticleFromModel maps a models.Article row to the UI-shaped

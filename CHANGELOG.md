@@ -130,6 +130,29 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   the slice-2.5 commit shipped the migration but missed the
   test catalogue row.
 
+- **Article detail Refs panel + resolved-ref pills** (issue #321
+  slice 3.2). `/articles/{id}` now renders the inline Refs
+  panel listing every attached Person Record (one row per
+  `article_refs` junction row) with an Unlink button that
+  posts via `data-action` + `data-method="DELETE"` to the
+  existing slice-2 `ArticleRefsDetach` route. The detail
+  page also renders the resolved-ref pills: every in-body
+  `#person/D-NNNNN` token parsed by the slice-2
+  `ResolveRefs` shows up as a clickable pill linking to the
+  resolved Person Record, or as a fail-loud "⚠ Unknown:
+  D-NNNNN" pill per locked decision #6 when the display id
+  is not in the archive. Adds `viewmodel.Article.Refs +
+  ResolvedRefs + ArticleRef` projection type; the
+  `showArticle` handler now calls `ScanRefs` + `ResolveRefs`
+  in addition to `GetByID`. Pinned by
+  `TestHandleArticleDetailRendersRefsPanel` (asserts the
+  panel renders attached rows + Unlink buttons + the empty
+  state on a fresh article) + the new
+  `audit/smoke_articles.mjs` step 2 (asserts the panel
+  renders after attaching a Person Record via the API).
+  The Add-Ref CTA is a placeholder button for slice 3.2;
+  the picker modal lands in slice 3.3.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to
