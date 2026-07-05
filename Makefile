@@ -79,6 +79,7 @@ debug: ## Debug build via scripts/build-debug.ps1 (chains web+seed+gold+tune-bin
 web: ## Build cmd/dixiedata-web (web-mode server, audit harness target)
 	@mkdir -p build/bin
 	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
+	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
 
 # Seed tool (bootstraps .scratch/webmode for audit harness).
 seed: ## Build cmd/seed-data (audit harness fixture seeder)

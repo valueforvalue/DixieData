@@ -13,6 +13,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Event PDF export silently produced a 0-byte file in web-mode**
+  (issue #347, found by the Events audit smoke probe #323). The
+  Wails debug build path (`scripts/build-debug.ps1` →
+  `Restore-DixieDataTypstAssets`) bundled `templates/*.typ` into
+  `build/bin/templates/` next to `DixieData.exe`, but the plain
+  `make web` (which builds `cmd/dixiedata-web`) skipped that step.
+  The web binary booted, but the typst walker accepted
+  `build/bin/templates/` via the `soldier_landscape.typ`
+  sentinel, then failed to compile `event_landscape.typ` (missing
+  from the bundle). Fix: new `scripts/bundle-web-assets.ps1`
+  helper that copies the typst binary + source templates into
+  `build/bin/` and verifies all source `*.typ` files made it
+  across (idempotent; guard surfaces any future template drop).
+  `make web` chains the helper after the go build. Smoke step 11
+  now exits 0 against the web-mode binary.
+
 - **Person Events tab forms redirected away from the Events tab**
   (issue #345, found by the Events audit smoke probe #323). The
   attach / unlink / quick-add handlers under
