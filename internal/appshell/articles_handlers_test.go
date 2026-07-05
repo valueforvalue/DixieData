@@ -945,3 +945,46 @@ func TestHandleArticleNewForm_HasDraftKeyAttr(t *testing.T) {
 		t.Errorf("new-article form missing preview pane data-attr")
 	}
 }
+
+// TestHandleEditArticle_FormCarriesDraftAttrs pins the
+// slice-3.7 surface: GET /articles/{id}/edit renders the
+// markdown editor with the slice-3.6 local-draft attrs
+// + the pre-filled source textarea + the preview pane.
+func TestHandleEditArticle_FormCarriesDraftAttrs(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	src, err := app.articles.Create(models.Article{Title: "Edit form target", BodyMD: "Existing body"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	resp, err := http.Get(server.URL + "/articles/" + intStr(src.ID) + "/edit")
+	if err != nil {
+		t.Fatalf("GET edit: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET edit status = %d, want 200", resp.StatusCode)
+	}
+	// Slice-3.7 draft attrs.
+	expectedKey := `data-draft-key="edit-article-` + intStr(src.ID) + `"`
+	if !strings.Contains(string(body), expectedKey) {
+		t.Errorf("Edit form missing %q", expectedKey)
+	}
+	if !strings.Contains(string(body), `data-record-persistence-kind="edit"`) {
+		t.Errorf("Edit form missing data-record-persistence-kind=edit")
+	}
+	// Pre-filled source + preview pane.
+	if !strings.Contains(string(body), "Existing body") {
+		t.Errorf("Edit form not pre-filled with existing body")
+	}
+	if !strings.Contains(string(body), `data-article-editor-source`) {
+		t.Errorf("Edit form missing source textarea data-attr")
+	}
+	if !strings.Contains(string(body), `data-article-editor-preview`) {
+		t.Errorf("Edit form missing preview pane data-attr")
+	}
+}

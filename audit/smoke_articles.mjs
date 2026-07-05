@@ -366,7 +366,36 @@ try {
     { status: previewResp.status, containsScript: previewText.includes('<script>') },
   );
 
-  // ── Slice-3.6 step complete. Slice-3.7+ steps land in follow-up commits.
+  // ────────────────────────────────────────────────────────────
+  // Step 6: /articles/{id}/edit form (slice 3.7). Carries
+  // data-draft-key=edit-article-{id} +
+  // data-record-persistence-kind=edit + pre-filled source.
+  // ────────────────────────────────────────────────────────────
+  if (articleId) {
+    console.log('\nStep 6: /articles/{id}/edit form');
+    await page.goto(BASE + '/articles/' + articleId + '/edit');
+    await wait(800);
+    const editState = await page.evaluate(() => {
+      const form = document.querySelector(`form[data-draft-key^="edit-article-"]`);
+      const source = document.querySelector('[data-article-editor-source]');
+      const preview = document.querySelector('[data-article-editor-preview]');
+      return {
+        formExists: form !== null,
+        draftKey: form?.getAttribute('data-draft-key'),
+        kind: form?.getAttribute('data-record-persistence-kind'),
+        sourceExists: source !== null,
+        sourcePrefilled: source?.value && source.value.length > 0,
+        previewExists: preview !== null,
+      };
+    });
+    record('edit-form-renders', editState.formExists, editState);
+    record('edit-form-draft-key-is-edit', editState.draftKey && editState.draftKey.startsWith('edit-article-'), editState);
+    record('edit-form-kind-is-edit', editState.kind === 'edit', editState);
+    record('edit-form-source-prefilled', editState.sourcePrefilled, editState);
+    record('edit-form-preview-renders', editState.previewExists, editState);
+  }
+
+  // ── Slice-3.7 step complete. Slice-3.8+ steps land in follow-up commits.
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);
