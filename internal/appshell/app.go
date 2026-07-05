@@ -1051,7 +1051,7 @@ func (a *App) handleDownloadSoldierImages(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	selected, err := selectedSoldierImages(*soldier, r.Form["image_ids"], a.dataDir)
+	selected, err := selectedRecordImages(*soldier, r.Form["image_ids"], a.dataDir)
 	if err != nil {
 		respondValidation(w, r, "Could not parse selected image ids.", err)
 		return
@@ -1176,7 +1176,7 @@ func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, 
 		respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 		return
 	}
-	selected, err := selectedSoldierImages(*soldier, r.Form["image_ids"], a.dataDir)
+	selected, err := selectedRecordImages(*soldier, r.Form["image_ids"], a.dataDir)
 	if err != nil {
 		respondValidation(w, r, "Could not parse selected image ids.", err)
 		return
@@ -1569,7 +1569,7 @@ func parseBoundedInt(value, field string, min, max int) (int, error) {
 	return parsed, nil
 }
 
-func selectedSoldierImages(soldier models.Soldier, selectedIDs []string, dataDir string) ([]models.Image, error) {
+func selectedRecordImages(soldier models.Soldier, selectedIDs []string, dataDir string) ([]models.Image, error) {
 	selectedSet := make(map[int64]struct{}, len(selectedIDs))
 	for _, value := range selectedIDs {
 		id, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)

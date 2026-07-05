@@ -879,7 +879,7 @@ func TestParseBoundedIntRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-func TestSelectedSoldierImagesUsesSelectedIDs(t *testing.T) {
+func TestSelectedRecordImagesUsesSelectedIDs(t *testing.T) {
 	soldier := models.Soldier{
 		Images: []models.Image{
 			{ID: 4, FileName: "front.png", FilePath: `images\record-1\front.png`},
@@ -887,9 +887,9 @@ func TestSelectedSoldierImagesUsesSelectedIDs(t *testing.T) {
 		},
 	}
 
-	images, err := selectedSoldierImages(soldier, []string{"7"}, `C:\Development\DixieData\.dixiedata`)
+	images, err := selectedRecordImages(soldier, []string{"7"}, `C:\Development\DixieData\.dixiedata`)
 	if err != nil {
-		t.Fatalf("selectedSoldierImages: %v", err)
+		t.Fatalf("selectedRecordImages: %v", err)
 	}
 	if len(images) != 1 {
 		t.Fatalf("selected %d images, want 1", len(images))
