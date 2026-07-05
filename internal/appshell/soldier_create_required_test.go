@@ -98,3 +98,35 @@ func counter(t *testing.T) int64 {
 }
 
 var createCounter = new(int64)
+
+// TestHandleNewSoldierPostDelegatesToCreate (issue #346) pins the
+// contract that POST /soldiers/new is a valid alias for POST
+// /soldiers. The audit smoke probe for Events (issue #320 child
+// #323) surfaced that /soldiers/new POSTs 405'd — the route was
+// registered for GET + POST but handleNewSoldier only handled GET.
+// The fix delegates POST to handleCreateSoldier so the JS Option C
+// dispatcher can post to either URL without a 405.
+func TestHandleNewSoldierPostDelegatesToCreate(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	form := url.Values{}
+	form.Set("display_id", fmt.Sprintf("DXD-DELEGATE-%d", counter(t)))
+	form.Set("entry_type", "soldier")
+	form.Set("first_name", "Delegate")
+	form.Set("last_name", "Probe")
+
+	resp, err := http.PostForm(server.URL+"/soldiers/new", form)
+	if err != nil {
+		t.Fatalf("POST /soldiers/new: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /soldiers/new status %d, want 200", resp.StatusCode)
+	}
+	redirect := resp.Header.Get("X-DixieData-Redirect")
+	if !strings.HasPrefix(redirect, "/soldiers/") {
+		t.Errorf("X-DixieData-Redirect = %q, want /soldiers/{id} prefix", redirect)
+	}
+}
