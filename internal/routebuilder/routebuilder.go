@@ -409,6 +409,24 @@ func SoldierTagDetach(id, tagId int64) string {
 	return fmt.Sprintf("/soldiers/%d/tags/%d", id, tagId)
 }
 
+// EventTagAttach (issue #372) returns the URL for the per-Event
+// attach form. Registered as POST /events/{id}/tags in routes.go.
+// Mirrors the SoldierTagAttach shape so future Event-side tag
+// surfaces can reach for the typed builder instead of re-rolling
+// an inline fmt.Sprintf.
+func EventTagAttach(id int64) string {
+	return fmt.Sprintf("/events/%d/tags", id)
+}
+
+// EventTagDetach (issue #372) returns the URL for the per-Event
+// per-tag detach form. Registered as POST
+// /events/{id}/tags/{tagId}/detach in routes.go. Mirrors
+// SoldierTagDetach's signature so callers can swap helpers by
+// type without touching their argument list.
+func EventTagDetach(id, tagId int64) string {
+	return fmt.Sprintf("/events/%d/tags/%d/detach", id, tagId)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {
