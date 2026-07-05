@@ -2632,3 +2632,53 @@ func TestBackupService_ExportShared_IncludesArticles(t *testing.T) {
 		t.Errorf("data/article_refs.json not in zip")
 	}
 }
+
+// TestBackupService_ExportBackup_IncludesArticlesCount pins the
+// slice-5.2 contract: .ddbak BackupManifest carries the Articles
+// count + the DataArticlesFile + DataArticleRefsFile fields so
+// the recipient's restore path can confirm the long-form-content
+// surface shipped in the SQLite snapshot. The actual rows ship
+// inside the SQLite snapshot; the manifest is metadata only.
+func TestBackupService_ExportBackup_IncludesArticlesCount(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	if _, err := d.ConfigureUserIdentity("Samuel", "Thomas", "Carter", 1838); err != nil {
+		t.Fatalf("ConfigureUserIdentity: %v", err)
+	}
+	backupSvc := NewBackupService(d, soldierSvc)
+	articleSvc := records.NewArticleService(soldierSvc)
+
+	// Seed an article with 1 ref.
+	person, err := soldierSvc.Create(models.Soldier{
+		DisplayID: "DXD-00098",
+		FirstName: "Test",
+		LastName:  "Person",
+		Rank:      "Private",
+		Unit:      "Test Unit",
+	})
+	if err != nil {
+		t.Fatalf("Create person: %v", err)
+	}
+	article, err := articleSvc.Create(models.Article{Title: "Backup target", BodyMD: "Body"})
+	if err != nil {
+		t.Fatalf("Create article: %v", err)
+	}
+	if _, err := articleSvc.AttachRef(article.ID, person.ID); err != nil {
+		t.Fatalf("AttachRef: %v", err)
+	}
+
+	outPath := filepath.Join(t.TempDir(), "backup-articles.ddbak")
+	manifest, err := backupSvc.Export(outPath, t.TempDir())
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	if manifest.Articles != 1 {
+		t.Errorf("manifest.Articles = %d, want 1", manifest.Articles)
+	}
+	if manifest.DataArticlesFile != "data/articles.json" {
+		t.Errorf("manifest.DataArticlesFile = %q, want data/articles.json", manifest.DataArticlesFile)
+	}
+	if manifest.DataArticleRefsFile != "data/article_refs.json" {
+		t.Errorf("manifest.DataArticleRefsFile = %q, want data/article_refs.json", manifest.DataArticleRefsFile)
+	}
+}

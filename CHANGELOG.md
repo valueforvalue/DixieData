@@ -444,6 +444,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (asserts manifest fields + the two JSON files
   are present in the zip).
 
+- **Backup archive (.ddbak) includes articles metadata**
+  (issue #321 slice 5.2). The .ddbak SQLite snapshot
+  already carries the articles + article_refs tables
+  (slice 1 schema migration), so the data ships
+  automatically. The slice-5.2 work is metadata: the
+  `BackupManifest` now carries the `Articles` count +
+  the `DataArticlesFile` + `DataArticleRefsFile`
+  fields (same shape the .ddshare manifest grew in
+  slice 5.1) so the recipient's restore path can
+  confirm the long-form-content surface shipped.
+  `loadBackupData` runs the two COUNT queries after
+  the soldier pagination loop. Pinned by
+  `TestBackupService_ExportBackup_IncludesArticlesCount`
+  (manifest fields populated after the test seeds
+  1 article + 1 ref).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

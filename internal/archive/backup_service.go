@@ -960,6 +960,26 @@ func (b *BackupService) loadBackupData(archiveKind string) (BackupManifest, erro
 		page++
 	}
 
+	// Issue #321 slice 5.2: count Articles + Article Refs so
+	// the .ddbak BackupManifest carries the same Articles +
+	// DataArticlesFile + DataArticleRefsFile fields the
+	// .ddshare manifest does. The actual rows ship inside
+	// the SQLite snapshot, so the count is metadata for
+	// visibility only.
+	if err := b.db.Conn().QueryRow(`SELECT COUNT(*) FROM articles WHERE is_snapshot = 0`).Scan(&manifest.Articles); err != nil {
+		return BackupManifest{}, err
+	}
+	var refCount int
+	if err := b.db.Conn().QueryRow(`SELECT COUNT(*) FROM article_refs`).Scan(&refCount); err != nil {
+		return BackupManifest{}, err
+	}
+	if refCount > 0 {
+		manifest.DataArticleRefsFile = filepath.ToSlash(filepath.Join("data", "article_refs.json"))
+	}
+	// DataArticlesFile always points at the JSON; the .ddbak
+	//'s source of truth is the SQLite snapshot, not the JSON.
+	manifest.DataArticlesFile = filepath.ToSlash(filepath.Join("data", "articles.json"))
+
 	return manifest, nil
 }
 
