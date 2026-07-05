@@ -35,7 +35,7 @@ import (
 // event_sources table).
 templ EventSourcesListFragment(eventID int64, sources []viewmodel.SourceRecord) {
 	if len(sources) == 0 {
-		@components.EmptyState("No Source Records attached", "Attach source documents from the /sources authoring flow then link them to this Event.", "")
+		@components.EmptyState("No Source Records attached", "Add sources from the event editor — open Edit Event, paste your source rows, save.", "")
 	} else {
 		<ul class="space-y-2">
 			for _, src := range sources {

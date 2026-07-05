@@ -143,6 +143,38 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (fill row → submit edit → assert source visible on
   detail).
 
+### Changed
+
+- **Event detail Source Records panel: legacy attach form
+  replaced with Edit Event CTA** (issue #360). The
+  `/events/{id}` Sources panel previously rendered a
+  standalone `record_type` / `app_id` / `details` form + an
+  "Attach Source" button posting to
+  `/events/{id}/sources/attach`, plus an empty-state hint
+  redirecting users to the `/sources` authoring flow. That
+  surface is now redundant with #357's inline
+  `RecordInputRow` pattern on `/events/{id}/edit`. The panel
+  now exposes a small "Edit Event" link next to the
+  `{N} attached` counter (visible for both empty and
+  non-empty source lists); the empty-state copy explains the
+  new flow ("Add sources from the event editor — open Edit
+  Event, paste your source rows, save."). Regression net:
+  new
+  `TestHandleEventByIDGetDetail_SourcesPanelEditCTA`
+  asserts the legacy form fields are absent and the
+  `data-action="/events/{id}/edit"` CTA is present;
+  `TestHandleEventSourcesAndScratchpad`'s `data-results-target`
+  assertion (which pinned the now-removed attach wiring) is
+  replaced with the same Edit Event CTA check; new
+  `step-04b` in `audit/smoke_events.mjs` drives the live
+  binary end-to-end. The `/events/{id}/sources/attach` POST
+  route + handler + its attach/detach round-trip test
+  (`TestHandleEventSourcesAndScratchpad`) stay reachable
+  because the test pins the backend wiring for any future
+  programmatic attach path (e.g. .ddshare replay,
+  bulk-import) — a follow-up cleanup issue can delete them
+  once user-facing attach-only-via-edit sticks.
+
 ### Maintenance
 
 - **Event Record images facade** (issue #320 child #332
