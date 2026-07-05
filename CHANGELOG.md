@@ -93,6 +93,28 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (browser smoke). Full Go test suite (28 packages) and
   full smoke (19 steps) green.
 
+### Fixed
+
+- **components.Button silently dropped `data-action` from
+  `templ.Attributes` when value was `templ.SafeURL`** (issue
+  #365). `templ.RenderAttributes` in `templ v0.3.1001` has no
+  case for `templ.SafeURL` in its type switch — values silently
+  fall through and are dropped, so a caller
+  `components.Button(..., templ.Attributes{"data-action":
+  templ.SafeURL(...)})` rendered a button with no `data-action`.
+  One live call site was affected: the Add Images From Computer
+  button on `/events/{id}` (the parent `<form>` action and
+  fallback kept the import reachable, but the JS `data-action`
+  dispatch was dead). The primitive now unwraps `templ.SafeURL`
+  → plain string inside `buttonAttrsExcludingType` so URL-shaped
+  attrs (data-action, hx-get, hx-post, etc.) survive the spread
+  identically to plain strings. Pinned by
+  `TestButton_AttrsPassThroughSafeURL` (renders
+  `data-action="..."` + the other data-* attrs + `class`).
+  28-package test suite green; no snapshot regressions in
+  `TestButton_*Snapshot` or
+  `TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts`.
+
 ### Changed
 
 - **Drop Event option from `/soldiers/new` entry-type dropdown** (issue

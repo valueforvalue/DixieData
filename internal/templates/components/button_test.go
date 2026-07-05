@@ -139,3 +139,37 @@ func TestButton_TypeNotDuplicatedFromAttrs(t *testing.T) {
 		t.Fatalf("missing type=\"submit\":\n%s", got)
 	}
 }
+
+// TestButton_AttrsPassThroughSafeURL (issue #365) pins the regression:
+// caller-supplied attrs whose value is templ.SafeURL (the wrapper that
+// marks a URL as already-sanitized) must render the same as a plain
+// string value. The bug surfaces only for templ.SafeURL because the
+// templ SDK attribute-spread filters values it does not recognize as
+// primitives -- templ.SafeURL (a typed string named value) should be
+// equivalent to a plain string for render, but the spread currently
+// drops it. Until the primitive handles the wrapper, callers must
+// convert to a plain string OR drop the wrapper (unsafe -- templ.SafeURL
+// exists to mark URLs as already-sanitized, side-stepping the templ
+// sanitizer).
+func TestButton_AttrsPassThroughSafeURL(t *testing.T) {
+	var buf bytes.Buffer
+	err := Button("Add Images From Computer", ButtonPrimary, "", templ.Attributes{
+		"data-action":         templ.SafeURL("/events/123/images/import"),
+		"data-dixie-submit":   "true",
+		"data-progress-label": "Importing images\u2026",
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+	for _, needle := range []string{
+		`data-action="/events/123/images/import"`,
+		`data-dixie-submit="true"`,
+		"data-progress-label=\"Importing images\u2026\"",
+		`class="primary-button"`,
+	} {
+		if !strings.Contains(got, needle) {
+			t.Fatalf("SafeURL-attrs button missing %q\nfull: %s", needle, got)
+		}
+	}
+}
