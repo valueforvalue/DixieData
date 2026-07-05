@@ -11,6 +11,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **Event detail Linked Persons + Tags panel Edit CTAs** (issue
+  #361 slice 1). Both panels on `/events/{id}` now surface an
+  "Edit Event" CTA in the header that navigates to
+  `/events/{id}/edit`, mirroring the post-#360 Sources panel
+  pattern. The Tags panel header also gains a count span
+  (`'{N} attached'`) to match the Linked Persons and Sources
+  panels, which previously had counts and the Tags panel did
+  not. The Linked Persons panel empty-state copy now reads
+  "Manage linked Person Records from the event editor."
+  instead of pointing the user at the Person Record detail
+  page's Events tab (the editor is now reachable directly from
+  the panel). Backed by `TestEventDetailLinkedPersonsPanelEditCTAPins`,
+  `TestEventDetailTagsPanelEditCTAPins`,
+  `TestEventDetailEditEventCTACountPinsAcrossPopulatedAndEmpty`
+  (Go render tests) and `step-04c` + `step-04d` in
+  `audit/smoke_events.mjs` (browser smoke). No backend
+  changes; no new routes.
+
 ### Maintenance
 
 - **CONTEXT.md typo fix** (issue #364). Line 158 read
