@@ -113,6 +113,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   27-package test suite green; orphan-handler probe
   exit 0 (10 article routes registered, 0 orphans).
 
+- **Article Records top-level nav item** (issue #321 slice 3.1).
+  Adds an "Articles" pill to the top navigation, sitting between
+  Events and Review Queue so the long-form content surfaces stay
+  grouped on the left. Routes through the existing
+  `routebuilder.ArticleList()` helper (no new route, no new
+  handler); the `/articles` list page was already shipping from
+  slice 2. Pinned by the new `audit/smoke_articles.mjs` probe
+  step 1 (asserts the pill renders + click navigates to
+  `/articles` + the list page renders the headline surface).
+  Also fixes a slice-2.5 leftover in
+  `internal/db/migrations_test.go`: registers the
+  `block-3-articles` entry in the
+  `TestMigrationsReversibilityMapping` want-map (Reversible, per
+  the additive `block-3-articles` migration's `Reason` field);
+  the slice-2.5 commit shipped the migration but missed the
+  test catalogue row.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to
