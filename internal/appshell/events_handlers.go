@@ -296,7 +296,12 @@ func (a *App) handleAttachEvent(w http.ResponseWriter, r *http.Request, personID
 		respondInternal(w, r, fmt.Sprintf("Could not link event %d to person record %d.", eventID, personID), err)
 		return
 	}
-	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d", personID))
+	// Issue #345: redirect back to the Events tab (where the
+	// user just clicked the form) instead of the Person detail.
+	// The handler is invoked from the inline attach form on
+	// /soldiers/{id}/events; without the /events suffix the user
+	// loses the events context on every link action.
+	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d/events", personID))
 }
 
 // handleDetachEvent removes the event_person_links row that
@@ -312,7 +317,9 @@ func (a *App) handleDetachEvent(w http.ResponseWriter, r *http.Request, personID
 		respondInternal(w, r, fmt.Sprintf("Could not unlink event %d from person record %d.", eventID, personID), err)
 		return
 	}
-	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d", personID))
+	// Issue #345: redirect back to the Events tab (where the
+	// unlink form lives) instead of the Person detail.
+	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d/events", personID))
 }
 
 // handleAttachEventByDisplayID wires the inline "Add existing
@@ -383,13 +390,15 @@ func (a *App) handleQuickAddEvent(w http.ResponseWriter, r *http.Request, person
 	}
 	if _, err := a.events.AttachEventToPerson(created.ID, personID); err != nil {
 		if errors.Is(err, records.ErrDuplicateLink) {
-			writeExportRedirect(w, fmt.Sprintf("/events/%d", created.ID))
+			writeExportRedirect(w, fmt.Sprintf("/soldiers/%d/events", personID))
 			return
 		}
 		respondInternal(w, r, fmt.Sprintf("Event %d was created but the link to person record %d could not be saved.", created.ID, personID), err)
 		return
 	}
-	writeExportRedirect(w, fmt.Sprintf("/events/%d", created.ID))
+	// Issue #345: redirect back to the Person Events tab so the
+	// researcher sees the freshly linked event in place.
+	writeExportRedirect(w, fmt.Sprintf("/soldiers/%d/events", personID))
 }
 
 // parseEventForm reads the form fields for an Event Record
