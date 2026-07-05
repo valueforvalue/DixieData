@@ -273,6 +273,26 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   bold renders strong + preview endpoint sanitizes
   script).
 
+- **Article edit-form integration** (issue #321 slice 3.7).
+  `/articles/{id}/edit` now renders the same markdown
+  editor landed in slice 3.6, pre-filled with the
+  current title + subtitle + body. The form carries the
+  edit-side local-draft-persistence attrs:
+  `data-draft-key="edit-article-{id}"` +
+  `data-record-persistence-kind="edit"` +
+  `data-draft-record-version="{UpdatedAt|ID}"` (so a
+  stale draft is invalidated when the row is updated)
+  + `data-draft-reset-path="/articles/{id}/edit"`. The
+  live-preview pane + the source textarea are wired
+  identically to the create-side form (slice 3.6). Adds
+  `templates/article_edit.templ` (thin wrapper around
+  `ArticleArticleForm(article, isEdit=true)`). Pinned by
+  `TestHandleEditArticle_FormCarriesDraftAttrs` (asserts
+  the form renders + draft-key starts with "edit-article-"
+  + persistence-kind is "edit" + source textarea is
+  pre-filled + preview pane renders) +
+  `audit/smoke_articles.mjs` step 6.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

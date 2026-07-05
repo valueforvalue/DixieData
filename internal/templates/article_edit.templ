@@ -1,72 +1,39 @@
-// article_edit.templ — v62 (issue #321 slice 3.5) edit-Article
-// form shell. Slice 3.5 ships the minimum form (title +
-// subtitle + body) so the slice-3.5 route + handler test
-// can assert the round-trip + the 404/400 contracts.
+// article_edit.templ — v62 (issue #321 slice 3.5 + 3.7)
+// edit-Article form. Slice 3.5 shipped the minimum form
+// (title + subtitle + body) so the route + handler tests
+// could pin the round-trip + 404 + 400 + 409 contracts.
+// Slice 3.7 swaps the body textarea for the same markdown
+// editor + sanitized live preview + local-draft-persistence
+// block landed in slice 3.6 (ArticleArticleForm).
 //
-// Slice 3.7 swaps this for the full markdown editor +
-// sanitized preview + local-draft-persistence block
-// (mirroring entry_form.templ:40-105). Slice 3.5 deliberately
-// stays minimal so the test contract is the round-trip +
-// the 404/400 paths; the editor UX work belongs with slice 3.7.
+// The slice-3.7 surface uses the same data-draft-key +
+// data-record-persistence attrs as entry_form.templ so the
+// JS initializeDraftForms() helper auto-wires the
+// localStorage persistence for the edit-side draft.
 package templates
 
 import (
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ ArticleEditShell(view viewmodel.Article) {
-	@Layout("Edit Article") {
-		<div class="relative mx-auto max-w-4xl">
-			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Edit Article</h1>
-				<a
-					href={ templ.SafeURL(routebuilder.ArticleByID(view.ID)) }
-					class="secondary-button"
-				>← Back to Article</a>
-			</div>
-			<form
-				action={ templ.SafeURL(routebuilder.ArticleEdit(view.ID)) }
-				method="post"
-				class="card rounded-3xl p-5 sm:p-8 space-y-5"
-			>
-				<div>
-					<label for="article-title" class="block text-sm font-semibold text-[color:var(--ink)]">Title</label>
-					<input
-						type="text"
-						id="article-title"
-						name="title"
-						required
-						class="field-input mt-1 w-full"
-						value={ view.Title }
-					/>
-				</div>
-				<div>
-					<label for="article-subtitle" class="block text-sm font-semibold text-[color:var(--ink)]">Subtitle</label>
-					<input
-						type="text"
-						id="article-subtitle"
-						name="subtitle"
-						class="field-input mt-1 w-full"
-						value={ view.Subtitle }
-					/>
-				</div>
-				<div>
-					<label for="article-body" class="block text-sm font-semibold text-[color:var(--ink)]">Body</label>
-					<textarea
-						id="article-body"
-						name="body"
-						rows="12"
-						class="field-input mt-1 w-full font-mono text-sm"
-					>{ view.Body }</textarea>
-				</div>
-				<div class="flex flex-wrap justify-end gap-3">
-					<button
-						type="submit"
-						class="primary-button"
-					>Save Article</button>
-				</div>
-			</form>
-		</div>
-	}
+	@ArticleArticleForm(view, true)
 }
+
+// articleEditBackURL is the URL the "← Back" button on
+// the edit form navigates to. It is a helper so the form
+// does not couple directly to routebuilder beyond the
+// shared action + list helpers in ArticleArticleForm.
+func articleEditBackURL(article viewmodel.Article) templ.SafeURL {
+	return templ.SafeURL(routebuilder.ArticleByID(article.ID))
+}
+
+// ensureBackButtonComponent pulls components.Button into
+// the import set without binding a real reference here
+// -- the back-link is rendered inside ArticleArticleForm
+// already; this helper exists so future slice-3.x edits
+// to article_edit.templ have a place to drop component
+// references without re-deriving the import list.
+var _ = components.Button
