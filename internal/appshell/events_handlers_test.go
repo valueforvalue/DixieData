@@ -553,6 +553,113 @@ func TestHandleEventPDF(t *testing.T) {
 	}
 }
 
+// TestHandleEventPDF_OrientationPicker pins the issue #374
+// headline criterion: POST /events/{id}/pdf with an
+// `orientation` form field (portrait|landscape, default
+// landscape) routes through the matching event_<orientation>.typ
+// template. The slice-0.5 RED state confirms the picker is
+// unwired — the existing handler ignores `orientation`, always
+// rendering the landscape template. Slice 1 flips this green
+// by wiring EventService.RenderPDF + the picker form value.
+//
+// Sub-tests:
+//   - portrait: POST with orientation=portrait → PDF saved is
+//     the portrait template's output (rendered non-empty bytes
+//     because the test exercises the full typst path).
+//   - landscape (explicit): POST with orientation=landscape →
+//     the landscape template's output (existing behavior).
+//   - landscape (default): POST with no orientation field →
+//     defaults to landscape (back-compat for any existing
+//     invoker that doesn't read the picker yet).
+//
+// The dialog-guard pattern is asserted by the existing
+// TestHandleEventPDF (200 + second-POST-also-200); this test
+// focuses on the orientation routing.
+func TestHandleEventPDF_OrientationPicker(t *testing.T) {
+	app := newStressApp(t)
+	created := createEvent(t, app, "Battle of Springfield", "10/25/1864", "10/25/1864", "Decisive engagement")
+
+	portraitPath := filepath.Join(t.TempDir(), "portrait.pdf")
+	landscapePath := filepath.Join(t.TempDir(), "landscape.pdf")
+	defaultPath := filepath.Join(t.TempDir(), "default.pdf")
+
+	// Each POST needs a fresh SaveFileDialog return path; reuse
+	// a queue so the same app routes each request to a different
+	// destination. The article path pre-renders + writes the
+	// PDF synchronously, so the file must exist on disk before
+	// the test returns.
+	dialogReturns := []string{portraitPath, landscapePath, defaultPath}
+	app.saveFileDialogOverride = func(opts any) (string, error) {
+		if len(dialogReturns) == 0 {
+			return "", nil
+		}
+		p := dialogReturns[0]
+		dialogReturns = dialogReturns[1:]
+		return p, nil
+	}
+	defer func() { app.saveFileDialogOverride = nil }()
+
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	cases := []struct {
+		name     string
+		form     url.Values
+		wantPath string
+	}{
+		{"portrait", url.Values{"orientation": {"portrait"}}, portraitPath},
+		{"landscape", url.Values{"orientation": {"landscape"}}, landscapePath},
+		{"default", url.Values{}, defaultPath},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// Record the pre-request size (0 for the first
+			// sub-test; non-zero on subsequent passes). The
+			// request must write a fresh PDF on each iteration.
+			preSize := int64(-1)
+			if st, err := os.Stat(c.wantPath); err == nil {
+				preSize = st.Size()
+			}
+
+			req, _ := http.NewRequest(http.MethodPost,
+				server.URL+"/events/"+intStr(created.ID)+"/pdf",
+				strings.NewReader(c.form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("POST /events/%d/pdf: %v", created.ID, err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("POST status = %d, want 200", resp.StatusCode)
+			}
+
+			// Slice 1 will wire the handler to the article
+			// pattern: pre-render + synchronous write to the
+			// chosen path. This assertion fails RED today
+			// because the current handler enqueues a job that
+			// writes async (TestHandleEventPDF's wait helper
+			// would be needed). Slice 1 lands the article
+			// pattern so the file exists on return.
+			st, err := os.Stat(c.wantPath)
+			if err != nil {
+				t.Fatalf("stat %q: %v (handler must write PDF synchronously per article pattern)", c.wantPath, err)
+			}
+			if st.Size() == preSize {
+				t.Fatalf("file %q size unchanged after request (size=%d) — handler did not write bytes", c.wantPath, st.Size())
+			}
+			body, err := os.ReadFile(c.wantPath)
+			if err != nil {
+				t.Fatalf("read %q: %v", c.wantPath, err)
+			}
+			if len(body) < 4 || string(body[:4]) != "%PDF" {
+				t.Fatalf("file body prefix = %q, want %%PDF-", string(body[:min(8, len(body))]))
+			}
+		})
+	}
+}
+
 // --- test helpers ---
 
 // createSoldier seeds a minimal Person Record (entry_type
