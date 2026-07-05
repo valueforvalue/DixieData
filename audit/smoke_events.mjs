@@ -551,6 +551,87 @@ async function main() {
       }
     });
 
+    await step(page, 'step-05e tags-edit-section-present', async () => {
+      // Issue #361 slice 3: the Event edit form exposes an
+      // inline Tags section (below Linked Persons) with a
+      // free-text Add form (name="tag_name" — mirrors the
+      // /soldiers/{id}/tags picker UX). The section wraps a
+      // <div id="data-event-tags-list"> in-place swap target
+      // so attaching a tag preserves the user's unsaved form
+      // state.
+      // We're already on the edit page from step-05d; no
+      // need to navigate.
+      const section = await page.evaluate((id) => {
+        // Locate the Tags section by its header <p> (slice 1
+        // also added Tags to the detail page, but the edit
+        // page is a distinct context).
+        const headers = Array.from(document.querySelectorAll('p'));
+        const tagsHeader = headers.find((el) => el.textContent.trim() === 'Tags');
+        if (!tagsHeader) return { hasHeader: false };
+        const sectionEl = tagsHeader.closest('section');
+        const html = sectionEl ? sectionEl.outerHTML : '';
+        return {
+          hasHeader: true,
+          hasAddForm: html.includes(`action="/events/${id}/tags"`),
+          hasTagNameInput: html.includes('name="tag_name"'),
+          hasSwapTarget: html.includes('id="data-event-tags-list"'),
+          hasDixieSubmit: html.includes('data-dixie-submit="true"'),
+        };
+      }, createdEventID);
+      if (!section.hasHeader) {
+        throw new Error('edit form missing Tags section header');
+      }
+      if (!section.hasAddForm) {
+        throw new Error('edit form Tags section Add form missing action="/events/{id}/tags"');
+      }
+      if (!section.hasTagNameInput) {
+        throw new Error('edit form Tags section Add form missing name="tag_name" input');
+      }
+      if (!section.hasSwapTarget) {
+        throw new Error('edit form Tags section missing in-place swap target div id="data-event-tags-list"');
+      }
+      if (!section.hasDixieSubmit) {
+        throw new Error('edit form Tags section Add form missing data-dixie-submit="true"');
+      }
+    });
+
+    await step(page, 'step-05f attach-tag-by-name-via-edit-form', async () => {
+      // Issue #361 slice 3: posting the Tags Add form with a
+      // free-text name must (a) create the tag via
+      // UpsertByName, (b) attach it to the Event, and (c)
+      // return a fragment for in-place swap (not a full-page
+      // nav). The post-add DOM must show the new chip.
+      // We're already on the edit page from step-05e.
+      const uniqueTagName = `smoke-tag-${Date.now()}`;
+      await page.fill('input[type="text"][name="tag_name"]', uniqueTagName);
+      // Click and wait for the in-place swap. The handler
+      // returns a fragment (no X-DixieData-Redirect) so the
+      // page URL stays the same.
+      await page.click('button[type="submit"]:has-text("Add Tag")');
+      // Wait for the chip to appear (in-place swap via the
+      // JS dispatcher). 5s is generous.
+      const start = Date.now();
+      let chipVisible = false;
+      while (Date.now() - start < 5000) {
+        const visible = await page.evaluate((name) =>
+          document.body.innerText.includes(name),
+          uniqueTagName
+        );
+        if (visible) {
+          chipVisible = true;
+          break;
+        }
+        await wait(150);
+      }
+      if (!chipVisible) {
+        throw new Error(`tag chip ${uniqueTagName} not visible after Add Tag (in-place swap may have failed)`);
+      }
+      // Confirm we did NOT navigate away from the edit page.
+      if (!page.url().endsWith(`/events/${createdEventID}/edit`)) {
+        throw new Error(`unexpected navigation after Add Tag; URL: ${page.url()}`);
+      }
+    });
+
     seededPersonID = await seedPersonRecord(page);
 
     await step(page, 'step-06 person-events-tab-fragment', async () => {

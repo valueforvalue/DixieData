@@ -200,7 +200,15 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", event.Event.ID), lerr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinks(event.Event, linked, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 3: also load tags for the same
+			// reason (so the user sees their existing chips
+			// alongside the validation error).
+			tags, tagErr := a.events.ListTagsForEvent(event.Event.ID)
+			if tagErr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", event.Event.ID), tagErr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		updated.ID = id
@@ -213,7 +221,14 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", event.Event.ID), lerr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinks(event.Event, linked, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 3: also load tags for the same
+			// reason.
+			tags, tagErr := a.events.ListTagsForEvent(event.Event.ID)
+			if tagErr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", event.Event.ID), tagErr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -254,7 +269,15 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 			respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", event.Event.ID), err)
 			return
 		}
-		presentation.EventFormWithLinks(event.Event, linked, true).Render(r.Context(), w)
+		// Issue #361 slice 3: also load tags so the inline
+		// Tags section on the edit form can render the
+		// current chips + a free-text add form.
+		tags, tagErr := a.events.ListTagsForEvent(event.Event.ID)
+		if tagErr != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", event.Event.ID), tagErr)
+			return
+		}
+		presentation.EventFormWithLinksAndTags(event.Event, linked, tags, true).Render(r.Context(), w)
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the event form.", err)
@@ -275,7 +298,13 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", existing.Event.ID), lerr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinks(existing.Event, linked, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 3: also load tags.
+			tags, tagErr := a.events.ListTagsForEvent(existing.Event.ID)
+			if tagErr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", existing.Event.ID), tagErr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinksAndTags(existing.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		event.ID = id
@@ -293,7 +322,13 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				respondInternal(w, r, fmt.Sprintf("Could not load linked Person Records for Event %d.", existing.Event.ID), lerr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinks(existing.Event, linked, true, err.Error()).Render(r.Context(), w)
+			// Issue #361 slice 3: also load tags.
+			tags, tagErr := a.events.ListTagsForEvent(existing.Event.ID)
+			if tagErr != nil {
+				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", existing.Event.ID), tagErr)
+				return
+			}
+			presentation.EventFormWithErrorAndLinksAndTags(existing.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -1037,22 +1072,52 @@ func (a *App) handleEventTagsGet(w http.ResponseWriter, r *http.Request, eventID
 	a.renderEventTagsListFragment(w, r, eventID)
 }
 
-// handleEventTagAdd attaches a tag id to the Event. The form posts
-// the tag id as a hidden field; the handler trusts the id after
-// validating it's positive. After the write, the handler
-// re-renders the Tags list fragment so the JS dispatcher can
-// swap the result into #data-event-tags-list in place. Issue
-// #341 — previously this handler set X-DixieData-Redirect,
-// which sent the browser to the fragment-returning GET endpoint
-// and displayed raw HTML as a page.
+// handleEventTagAdd attaches a tag to the Event. The form may
+// post either `tag_id` (numeric; existing behavior, used by
+// the picker page that picks from a known tag list) OR
+// `tag_name` (free-text; used by the inline edit-form picker
+// added in issue #361 slice 3). When `tag_name` is supplied,
+// the handler upserts via TagService.UpsertByName (case-
+// insensitive dedup matches the soldier-side /soldiers/{id}/
+// tags picker UX) and then attaches the resulting tag. After
+// the write, the handler re-renders the Tags list fragment
+// so the JS dispatcher can swap the result into
+// #data-event-tags-list in place. Issue #341 — previously
+// this handler set X-DixieData-Redirect, which sent the
+// browser to the fragment-returning GET endpoint and
+// displayed raw HTML as a page.
+//
+// The fragment-returning response shape (no
+// X-DixieData-Redirect) is what enables in-place swap on the
+// edit page: the user can attach/detach tags mid-edit
+// without losing their unsaved changes to the kind /
+// description / other form fields.
 func (a *App) handleEventTagAdd(w http.ResponseWriter, r *http.Request, eventID int64) {
 	if err := r.ParseForm(); err != nil {
 		respondValidation(w, r, "Could not read the tag form.", err)
 		return
 	}
-	tagID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("tag_id")), 10, 64)
-	if err != nil || tagID < 1 {
-		respondValidation(w, r, "Invalid tag id.", err)
+	var tagID int64
+	if rawID := strings.TrimSpace(r.FormValue("tag_id")); rawID != "" {
+		parsed, err := strconv.ParseInt(rawID, 10, 64)
+		if err != nil || parsed < 1 {
+			respondValidation(w, r, "Invalid tag id.", err)
+			return
+		}
+		tagID = parsed
+	} else if rawName := strings.TrimSpace(r.FormValue("tag_name")); rawName != "" {
+		// Free-text path (slice 3): upsert + attach in one
+		// round-trip. UpsertByName dedupes case-insensitively
+		// (see TagService.UpsertByName at
+		// internal/records/tag_service.go:75).
+		tag, err := a.tags.UpsertByName(r.Context(), rawName)
+		if err != nil {
+			respondValidation(w, r, fmt.Sprintf("Could not create tag %q.", rawName), err)
+			return
+		}
+		tagID = tag.ID
+	} else {
+		respondValidation(w, r, "Provide a tag id (numeric) or a tag name (free-text).", nil)
 		return
 	}
 	if err := a.events.AddTagToEvent(eventID, tagID); err != nil {

@@ -165,6 +165,45 @@ templ EventFormFragment(s viewmodel.PersonRecord, isEdit bool, errorMessage stri
 				</details>
 			</section>
 		}
+		if isEdit {
+			// Tags section (issue #361 slice 3) renders outside
+			// the main edit form to avoid nested <form>. Wraps
+			// the existing EventTagsListFragment (same shape as
+			// the detail page panel post-#320-slice-#333) plus
+			// a free-text Add form (mirrors the /soldiers/{id}/
+			// tags picker UX; handler accepts tag_name and
+			// upserts via TagService.UpsertByName). The fragment
+			// carries data-results-target="#data-event-tags-list"
+			// and the wrap div provides the swap target, so
+			// JS swaps in place — preserves the user's
+			// unsaved form state (kind, description, etc.)
+			// across attach/detach.
+			<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5 mt-5">
+				<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+					<div>
+						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Tags</p>
+						<p class="mt-2 text-sm text-slate-600">Free-text labels grouping this Event with related Person Records. Type a name below to add; use the × on a chip to remove.</p>
+					</div>
+				</div>
+				<div id="data-event-tags-list">
+					@EventTagsListFragment(s.ID, s.Tags)
+				</div>
+				<details open class="mt-4">
+					<summary class="mb-3 cursor-pointer list-none text-sm font-semibold text-[#8d7440]">Add a tag</summary>
+					<form
+						action={ templ.SafeURL(fmt.Sprintf("/events/%d/tags", s.ID)) }
+						method="post"
+						data-dixie-submit="true"
+						data-results-target="#data-event-tags-list"
+						class="flex flex-wrap items-center gap-2"
+					>
+						<input type="text" name="tag_name" required placeholder="vc-shiloh" class="field-input flex-1 min-w-48" autocomplete="off"/>
+						<button type="submit" class="ghost-link px-4 py-2">Add Tag</button>
+					</form>
+					<p class="mt-2 text-xs text-slate-500">Case-insensitive. New names dedup automatically (matches the soldier-side tag picker).</p>
+				</details>
+			</section>
+		}
 	</div>
 }
 

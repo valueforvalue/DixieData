@@ -157,3 +157,78 @@ func TestEventFormFragmentRendersLinkedPersonsSection(t *testing.T) {
 		})
 	}
 }
+
+func TestEventFormFragmentRendersTagsSection(t *testing.T) {
+	// Issue #361 slice 3: the Event editor exposes an inline
+	// Tags section (below Linked Persons) so the user can
+	// attach/detach tags without bouncing through a separate
+	// page. Section renders only for edit mode (same shape as
+	// the Linked Persons section from slice 2).
+	cases := []struct {
+		name        string
+		isEdit      bool
+		eventID     int64
+		wantSection bool
+	}{
+		{"new-skips-section", false, 0, false},
+		{"edit-shows-section", true, 519, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := EventFormFragment(viewmodel.PersonRecord{
+				ID:        tc.eventID,
+				DisplayID: "EVT-00519",
+				Kind:      "Battle",
+			}, tc.isEdit, "").Render(context.Background(), &buf)
+			if err != nil {
+				t.Fatalf("Render: %v", err)
+			}
+
+			content := buf.String()
+			// Section must wrap a div with the in-place swap
+			// target id (matches the detail-page fragment's
+			// data-results-target="#data-event-tags-list"). If
+			// the section renders, the swap target div must
+			// also render so JS swap has somewhere to land.
+			hasSection := strings.Contains(content, "Tags") &&
+				strings.Contains(content, `action="/events/519/tags"`)
+			if hasSection != tc.wantSection {
+				t.Errorf("Tags section presence: got %v, want %v (isEdit=%v)",
+					hasSection, tc.wantSection, tc.isEdit)
+			}
+
+			if !tc.wantSection {
+				return
+			}
+			// Edit-only assertions: the Add form posts to the
+			// existing /events/{id}/tags route. The handler
+			// now accepts tag_name (slice 3) and returns a
+			// fragment (no X-DixieData-Redirect) so the JS
+			// dispatcher can swap in place.
+			if !strings.Contains(content, `data-dixie-submit="true"`) {
+				t.Errorf("event form Tags section Add form missing data-dixie-submit=\"true\"")
+			}
+			// The free-text input carries name="tag_name"
+			// (matches the soldier-side /soldiers/{id}/tags
+			// picker UX).
+			if !strings.Contains(content, `name="tag_name"`) {
+				t.Errorf("event form Tags section Add form missing name=\"tag_name\" input")
+			}
+			// In-place swap target div must render on the
+			// edit page so the post-add fragment has a place
+			// to land.
+			if !strings.Contains(content, `id="data-event-tags-list"`) {
+				t.Errorf("event form Tags section missing in-place swap target div id=\"data-event-tags-list\"")
+			}
+			// Empty state: the form renders with no tags in
+			// the fixture (PersonRecord.Tags is nil). The
+			// empty-state copy must match what the existing
+			// fragment uses.
+			if !strings.Contains(content, "No tags attached") {
+				t.Errorf("event form Tags section missing empty-state copy")
+			}
+		})
+	}
+}
