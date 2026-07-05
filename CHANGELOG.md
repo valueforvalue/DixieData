@@ -78,6 +78,36 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Fixed
 
+- **Shared-archive import silently dropped every Event Record +
+  its `event_person_links` junction** (issue #320 child #334,
+  slot 15 of 16). Two compounding bugs in the new
+  `mergeSharedEvents` helper:
+    1. **Variable shadow** — `if err := row.Scan(&targetID); ...`
+       declared a fresh `err` inside the if-init scope, then the
+       `if err == sql.ErrNoRows` branch below consulted the OUTER
+       `err` from `tx, err := b.db.Conn().Begin()` (always nil),
+       so every event took the "skip-existing" branch and was
+       never inserted.
+    2. **Wrong lookup key for the junction** — the link loop
+       resolved the imported Person Record by `display_id`, but
+       `mergeSharedSoldiers` rewrites `display_id` to the
+       recipient's own node prefix (issue #183's user-identity
+       binding; `ESU00-00001` becomes `IRU01-00001` on the
+       recipient). `sync_id` is the immutable cross-archive
+       identifier; switched to `WHERE sync_id = ?`.
+  Together these produced the symptom the handoff captured:
+  `EventsInserted=0, EventsSkipped=2, EventsLinked=0` despite a
+  clean tx commit. The new test
+  `TestBackupService_ImportSharedBackupWithEvents` pins the
+  round-trip end-to-end: source seeds 1 Person + 2 Events + 1
+  `event_person_links` row, exports the shared archive, imports
+  into a fresh recipient DB, and asserts `SoldiersInserted=1`,
+  `EventsInserted=2`, `EventsLinked=1`, plus the recipient-side
+  `EventService.ListForPerson` returns the battle linked to the
+  Person Record. The lookup test probe that initially looked up
+  the recipient Person by source-side `display_id` (which is
+  rewritten on import) was also corrected to match by `sync_id`.
+
 - **Event PDF export silently produced a 0-byte file in web-mode**
   (issue #347, found by the Events audit smoke probe #323). The
   Wails debug build path (`scripts/build-debug.ps1` →

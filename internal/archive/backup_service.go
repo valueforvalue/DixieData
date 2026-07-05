@@ -65,6 +65,22 @@ type BackupManifest struct {
 	Soldiers      int    `json:"soldiers"`
 	Records       int    `json:"records"`
 	Images        int    `json:"images"`
+	// Events (issue #320 child #334) is the per-archive Event
+	// Record count. Emitted on the shared-archive export path
+	// when at least one Event row exists. Backwards-compatible:
+	// archives produced before this field landed read 0 for both
+	// Events count and missing data_events.json, so the import
+	// path silently drops the events array when the file is
+	// absent. The spec calls out "always include Event Records
+	// (no toggle)" so the export is unconditional even when
+	// Events == 0 (the file is written as an empty array).
+	Events        int    `json:"events,omitempty"`
+	// DataEventsFile is the zip-internal path to the Event
+	// Records JSON. Defaults to "data/events.json" when omitted
+	// (which is most older archives: they don't carry events at
+	// all, so the import path treats the absent file as "no
+	// events to merge").
+	DataEventsFile string `json:"data_events_file,omitempty"`
 }
 
 func loadSharedAliasTargetSnapshot(tx *sql.Tx, sourceNodeID, sourcePersonSyncID string) (*mergeReviewSnapshot, error) {
@@ -110,6 +126,10 @@ type backupContents struct {
 	Manifest BackupManifest
 	FileMap  map[string]*zip.File
 	Soldiers []models.Soldier
+	// Events (issue #320 child #334): Event Records read from
+	// the shared archive's data/events.json file. Empty when
+	// the file is absent (older archives).
+	Events []models.Soldier
 }
 
 // SharedImportSummary is the per-import result the share-queue
@@ -124,6 +144,14 @@ type SharedImportSummary struct {
 	RecordsUpdated   int
 	ImagesInserted   int
 	ImagesUpdated    int
+	// Issue #320 child #334: Event Records share the soldiers
+	// table so SoldiersInserted / Skipped counts both Person +
+	// Event rows. The dedicated Events* fields let the share-queue
+	// summary card surface the Event count separately so the user
+	// sees "3 events linked" alongside "12 soldiers merged".
+	EventsInserted int
+	EventsSkipped  int
+	EventsLinked   int
 	PendingConflicts int
 	LogPath          string
 }
@@ -312,6 +340,14 @@ func (b *BackupService) archiveMetaIncludeTags() (bool, error) {
 // The shared archive zip only adds the tags array — never Source
 // Record / Claim / Finding tags in v1 — and the import side uses
 // TagService.AttachAdditive so existing local tags stay additive.
+//
+// Issue #320 child #334: shared archives also bundle Event Records
+// (entry_type=event) into data/events.json. Per RPCI decision #9 there
+// is no toggle — events ship unconditionally. Linked Person Records
+// grow a `linked_display_ids` array (the Event Display IDs they link
+// to) so the recipient's import path can recreate the junction
+// without a second fetch. The import side resolves those Display IDs
+// against the imported Events and calls AttachEventToPerson.
 func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, includeTags bool) (BackupManifest, error) {
 	manifest, err := b.loadBackupData(archiveKindShared)
 	if err != nil {
@@ -321,6 +357,20 @@ func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, include
 	if err != nil {
 		return BackupManifest{}, err
 	}
+	// Issue #320 child #334: keep events out of data/soldiers.json
+	// so the merge path distinguishes soldier rows (with linked
+	// Display IDs) from event rows (with kind / dates / description).
+	// Without this filter, mergeSharedSoldiers would insert events
+	// as soldiers and mergeSharedEvents would see a sparse
+	// contents.Events (zero records → no junction re-attach).
+	filteredSoldiers := make([]models.Soldier, 0, len(soldiers))
+	for _, s := range soldiers {
+		if s.EntryType == models.EntryTypeEvent {
+			continue
+		}
+		filteredSoldiers = append(filteredSoldiers, s)
+	}
+	soldiers = filteredSoldiers
 	if includeTags {
 		tagSvc := records.NewTagService(b.db.Conn())
 		ids := make([]int64, 0, len(soldiers))
@@ -343,8 +393,48 @@ func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, include
 			soldiers[i].Tags = names
 		}
 	}
+
+	// Issue #320 child #334: bundle Event Records (always) and
+	// denormalize linkedDisplayIds onto each soldier row so the
+	// import path can re-attach without a separate fetch.
+	events, err := listAllEvents(b.db)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	linkedIDs, err := loadAllEventPersonLinks(b.db)
+	if err != nil {
+		return BackupManifest{}, err
+	}
+	// Build a DisplayID-keyed lookup over the events so a row's
+	// linkedDisplayIds string can be filled in.
+	eventDisplayIDByRowID := make(map[int64]string, len(events))
+	for _, ev := range events {
+		eventDisplayIDByRowID[ev.ID] = strings.TrimSpace(ev.DisplayID)
+	}
+	for i := range soldiers {
+		row := &soldiers[i]
+		if row.EntryType == models.EntryTypeEvent {
+			continue // events live in their own data file
+		}
+		links := linkedIDs[row.ID]
+		if len(links) == 0 {
+			continue
+		}
+		ids := make([]string, 0, len(links))
+		for _, eid := range links {
+			if did, ok := eventDisplayIDByRowID[eid]; ok {
+				ids = append(ids, did)
+			}
+		}
+		if len(ids) > 0 {
+			row.LinkedDisplayIDs = ids
+		}
+	}
+
 	manifest.DataFormat = "json"
 	manifest.DataFile = filepath.ToSlash(filepath.Join("data", "soldiers.json"))
+	manifest.DataEventsFile = filepath.ToSlash(filepath.Join("data", "events.json"))
+	manifest.Events = len(events)
 	manifest.DatabaseFile = ""
 
 	if err := writeZipArchive(outputPath, func(zipWriter *zip.Writer) error {
@@ -354,12 +444,78 @@ func (b *BackupService) ExportSharedWithTags(outputPath, dataDir string, include
 		if err := writeBackupJSON(zipWriter, manifest.DataFile, soldiers); err != nil {
 			return err
 		}
+		if err := writeBackupJSON(zipWriter, manifest.DataEventsFile, events); err != nil {
+			return err
+		}
 		return addSelectedBackupImages(zipWriter, filepath.Join(dataDir, "images"), collectImagePaths(soldiers))
 	}); err != nil {
 		return BackupManifest{}, err
 	}
 
 	return manifest, nil
+}
+
+// listAllEvents returns every Event Record row in the Local
+// Archive. Implementation mirrors listAllSoldiers (uses the
+// records.SoldierService.GetByID helper for the per-row scan so
+// nullable columns like spouse_soldier_id already populate via
+// the records package's NullInt64 conversion). The query has
+// to filter on entry_type = 'event' because the shared archive
+// export needs Events-only and the SoldierService.List API
+// returns all subtypes mixed.
+func listAllEvents(database *db.DB) ([]models.Soldier, error) {
+	conn := database.Conn()
+	rows, err := conn.Query(`SELECT id FROM soldiers WHERE entry_type = ? ORDER BY id`, models.EntryTypeEvent)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := make([]int64, 0, 8)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	svc := NewSoldierService(database) // circular-ish but cheap; builds no event listeners
+	out := make([]models.Soldier, 0, len(ids))
+	for _, id := range ids {
+		full, ferr := svc.GetByID(id)
+		if ferr != nil {
+			return nil, ferr
+		}
+		out = append(out, *full)
+	}
+	return out, nil
+}
+
+// loadAllEventPersonLinks returns event_id -> []person_id pairs
+// for every row in event_person_links. Single-shot SQL keeps
+// the export pipeline linear at volume (the spec calls out
+// 5000 Person Records + 0-10 events each). The receiver uses
+// the per-person map to drive the soldiers[i].LinkedDisplayIDs
+// denormalization per issue #320 child #334.
+func loadAllEventPersonLinks(database *db.DB) (map[int64][]int64, error) {
+	rows, err := database.Conn().Query(
+		`SELECT person_id, event_id FROM event_person_links ORDER BY person_id, event_id`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query event_person_links: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[int64][]int64)
+	for rows.Next() {
+		var personID, eventID int64
+		if err := rows.Scan(&personID, &eventID); err != nil {
+			return nil, err
+		}
+		out[personID] = append(out[personID], eventID)
+	}
+	return out, rows.Err()
 }
 
 func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (BackupManifest, error) {
@@ -612,6 +768,19 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 	switch contents.Manifest.DataFormat {
 	case "", "json":
 		summary, err = b.mergeSharedSoldiers(sessionID, backupPath, contents.Soldiers, sessionRoot, dataDir, sourceNodeID, sourceNodeLabel, logger)
+		if err == nil {
+			// Issue #320 child #334: merge Event Records AFTER
+			// soldiers so target-side event IDs are known before
+			// we walk LinkedDisplayIDs to recreate the junction.
+			// mergeSharedEvents merges its event counters into
+			// the receiver rather than returning the whole
+			// summary, so a sparse shared archive (0 events)
+			// does not zero out the soldier counts the prior
+			// call populated.
+			if err := b.mergeSharedEvents(sessionID, backupPath, contents.Events, contents.Soldiers, &summary, logger); err != nil {
+				return SharedImportSummary{}, err
+			}
+		}
 	case "sqlite":
 		sourceDir, err := os.MkdirTemp("", "dixiedata-shared-backup-db-*")
 		if err != nil {
@@ -638,6 +807,12 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 			return SharedImportSummary{}, fmt.Errorf("read shared backup database: %w", err)
 		}
 		summary, err = b.mergeSharedSoldiers(sessionID, backupPath, soldiers, sessionRoot, dataDir, sourceNodeID, sourceNodeLabel, logger)
+		if err == nil {
+			// SQLite-path cannot carry events in v1 (the shared
+			// bundle's DataFormat=sqlite path predates #334); the
+			// events file is JSON only. Summary's Events counts
+			// stay at zero.
+		}
 	default:
 		return SharedImportSummary{}, fmt.Errorf("unsupported backup data format %q", contents.Manifest.DataFormat)
 	}
@@ -928,6 +1103,21 @@ func readBackupContents(reader *zip.Reader) (backupContents, error) {
 	}
 	if err := readBackupJSON(dataFile, &contents.Soldiers); err != nil {
 		return backupContents{}, err
+	}
+
+	// Issue #320 child #334: shared archives (kShared) carry
+	// Event Records in a separate data/events.json file. The
+	// file is optional so legacy archives keep importing.
+	if contents.Manifest.ArchiveKind == archiveKindShared {
+		eventsFile := contents.Manifest.DataEventsFile
+		if eventsFile == "" {
+			eventsFile = "data/events.json"
+		}
+		if ef, ok := fileMap[eventsFile]; ok {
+			if err := readBackupJSON(ef, &contents.Events); err != nil {
+				return backupContents{}, fmt.Errorf("decode %s: %w", eventsFile, err)
+			}
+		}
 	}
 
 	imageEntries := make(map[string]struct{})
@@ -1480,6 +1670,160 @@ func collectImagePaths(soldiers []models.Soldier) []string {
 	return paths
 }
 
+// mergeSharedEvents (issue #320 child #334) parses the event
+// rows from the shared archive, upserts each by display_id, and
+// re-creates the event_person_links junction using the
+// recipient-side resolved Display IDs. Mutates the supplied
+// SharedImportSummary in place so the soldiers-only merge
+// doesn't get zeroed out when the source archive has zero
+// events. Side effect on the target DB: link rows inserted.
+//
+// sourceSoldiers is needed because that carries the per-soldier
+// LinkedDisplayIDs the export service populated with the
+// source-side Event Display IDs. Without that array, the
+// recipient would have nothing to map back to.
+func (b *BackupService) mergeSharedEvents(
+	sessionID, archivePath string,
+	sourceEvents []models.Soldier,
+	sourceSoldiers []models.Soldier,
+	summary *SharedImportSummary,
+	logger *mergeLogger,
+) error {
+	if len(sourceEvents) == 0 {
+		return nil
+	}
+
+	tx, err := b.db.Conn().Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Build a lookup of source-side event-sync-id -> target event id.
+	targetIDsByDisplayID := make(map[string]int64, len(sourceEvents))
+	for _, event := range sourceEvents {
+		displayID := strings.TrimSpace(event.DisplayID)
+		if displayID == "" {
+			continue
+		}
+		// Per RPCI #9: dedup-by-display-id. Upsert by display_id
+		// (no shared archive uses sync_id to dedupe events in v1).
+		var targetID int64
+		row := tx.QueryRow(
+			`SELECT id FROM soldiers WHERE display_id = ? AND entry_type = ? LIMIT 1`,
+			displayID, models.EntryTypeEvent,
+		)
+		scanErr := row.Scan(&targetID)
+		if scanErr != nil && scanErr != sql.ErrNoRows {
+			return scanErr
+		}
+		if scanErr == sql.ErrNoRows {
+			inserted, ierr := upsertSharedSoldierFromEvent(tx, event, sessionID)
+			if ierr != nil {
+				return ierr
+			}
+			targetID = inserted
+			if logger != nil {
+				logger.Printf("event action=insert display_id=%s target_id=%d", displayID, targetID)
+			}
+			summary.EventsInserted++
+		} else {
+			summary.EventsSkipped++
+			if logger != nil {
+				logger.Printf("event action=skip-existing display_id=%s target_id=%d", displayID, targetID)
+			}
+		}
+		targetIDsByDisplayID[displayID] = targetID
+	}
+
+	// Walk each soldier's LinkedDisplayIDs and recreate the
+	// junction. The schema has UNIQUE (event_id, person_id) so we
+	// INSERT OR IGNORE to keep the import idempotent if the same
+	// shared archive is re-imported (issue #183's idempotency
+	// contract). Matches the source DB's
+	// records.EventService.AttachEventToPerson duplicate-error
+	// surface on the live link-creation RPC.
+	for _, soldier := range sourceSoldiers {
+		if len(soldier.LinkedDisplayIDs) == 0 {
+			continue
+		}
+		soldierSyncID := strings.TrimSpace(soldier.SyncID)
+		if soldierSyncID == "" {
+			continue
+		}
+		var soldierID int64
+		// Match by sync_id, NOT display_id: mergeSharedSoldiers
+		// renames the recipient-side display_id to the recipient's
+		// own prefix (issue #183's user-identity binding), but
+		// sync_id is the immutable cross-archive identifier.
+		if scanErr := tx.QueryRow(
+			`SELECT id FROM soldiers WHERE sync_id = ? LIMIT 1`,
+			soldierSyncID,
+		).Scan(&soldierID); scanErr != nil {
+			if scanErr == sql.ErrNoRows {
+				continue
+			}
+			return scanErr
+		}
+		for _, evDisplayID := range soldier.LinkedDisplayIDs {
+			eventID, ok := targetIDsByDisplayID[evDisplayID]
+			if !ok {
+				continue
+			}
+			res, lerr := tx.Exec(
+				`INSERT OR IGNORE INTO event_person_links (event_id, person_id) VALUES (?, ?)`,
+				eventID, soldierID,
+			)
+			if lerr != nil {
+				return lerr
+			}
+			if n, raErr := res.RowsAffected(); raErr == nil && n > 0 {
+				summary.EventsLinked++
+			}
+		}
+	}
+
+	commitErr := tx.Commit()
+	return commitErr
+}
+
+// upsertSharedSoldierFromEvent inserts (or no-ops-if-existing) an
+// Event Record row using the exact payload the source archive
+// shipped. We re-use the model.Soldier column set so the event
+// keeps its Kind / BeginDate / EndDate / Description fields
+// intact (the EventService.CreateEvent helpers would re-generate
+// a Display ID, but the shared archive export pinned the display id
+// at source-time so we deliberately bypass the helper here and
+// keep the source string).
+func upsertSharedSoldierFromEvent(tx *sql.Tx, event models.Soldier, sessionID string) (int64, error) {
+	res, err := tx.Exec(
+		`INSERT INTO soldiers (
+			display_id, sync_id, entry_type, kind, begin_date, end_date, description,
+			added_by, last_edited_by, last_edited_at, last_edited_fields, import_batch_id
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+		strings.TrimSpace(event.DisplayID),
+		strings.TrimSpace(event.SyncID),
+		models.EntryTypeEvent,
+		strings.TrimSpace(event.Kind),
+		strings.TrimSpace(event.BeginDate),
+		strings.TrimSpace(event.EndDate),
+		event.Description,
+		event.AddedBy,
+		event.LastEditedBy,
+		event.LastEditedAt,
+		event.LastEditedFields,
+		sessionID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("insert event %s: %w", event.DisplayID, err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
 func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourceSoldiers []models.Soldier, sourceDataDir, targetDataDir, sourceNodeID, sourceNodeLabel string, logger *mergeLogger) (SharedImportSummary, error) {
 	tx, err := b.db.Conn().Begin()
 	if err != nil {
@@ -1671,8 +2015,8 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 		return SharedImportSummary{}, err
 	}
 	if logger != nil {
-		logger.Printf("summary soldiers_inserted=%d soldiers_updated=%d records_inserted=%d records_updated=%d images_inserted=%d images_updated=%d conflicts_pending=%d",
-			summary.SoldiersInserted, summary.SoldiersUpdated, summary.RecordsInserted, summary.RecordsUpdated, summary.ImagesInserted, summary.ImagesUpdated, summary.PendingConflicts)
+		logger.Printf("summary soldiers_inserted=%d soldiers_updated=%d records_inserted=%d records_updated=%d images_inserted=%d images_updated=%d events_inserted=%d events_skipped=%d events_linked=%d conflicts_pending=%d",
+			summary.SoldiersInserted, summary.SoldiersUpdated, summary.RecordsInserted, summary.RecordsUpdated, summary.ImagesInserted, summary.ImagesUpdated, summary.EventsInserted, summary.EventsSkipped, summary.EventsLinked, summary.PendingConflicts)
 	}
 	return summary, nil
 }
