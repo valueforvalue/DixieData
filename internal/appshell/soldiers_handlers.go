@@ -303,6 +303,18 @@ func hasAdvancedSearchInput(search models.SoldierSearch) bool {
 }
 
 func (a *App) handleNewSoldier(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		// Issue #346: chi registers POST + GET on /soldiers/new
+		// (routes.go line 63-64) for the JS dispatcher Option C
+		// flow. POST used to 405 here, forcing the JS fallback to
+		// re-target to /soldiers (where handleCreateSoldier lives).
+		// Delegating here keeps /soldiers/new as the single route
+		// the entry form posts to and matches the canonical
+		// /events/new + POST pattern that handlers/events_handlers.go
+		// uses for Event Records (issue #320 v1).
+		a.handleCreateSoldier(w, r)
+		return
+	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

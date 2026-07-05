@@ -11,6 +11,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- **POST /soldiers/new returned 405** (issue #346, found by
+  the Events audit smoke probe #323). \`handleNewSoldier\` in
+  \`internal/appshell/soldiers_handlers.go\` only honored GET
+  even though routes.go registers both verbs \u2014 the chi route
+  was happy but the handler gate 405'd every POST. Fix: POST
+  delegates to \`handleCreateSoldier\` so \`/soldiers/new\` is a
+  valid alias for \`/soldiers\` (matches the canonical
+  \`/events/new\` + POST pattern from issue #320). Test added:
+  \`TestHandleNewSoldierPostDelegatesToCreate\`.
+
 ### Added
 
 - **Event Records browser smoke probe** (issue #320 child
