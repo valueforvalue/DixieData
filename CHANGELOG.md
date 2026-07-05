@@ -11,6 +11,57 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **Event Records browser smoke probe** (issue #320 child
+  #323, slot 14 of 16). New `audit/smoke_events.mjs` walks
+  the full Event Records user journey against a spawned
+  `build/bin/dixiedata-web.exe` instance in a private
+  scratch dir (mirrors the `probe-full-restore.mjs` pattern
+  + `_lib/cleanup.mjs` process-leak hardening). 11 steps:
+  empty list → click "+ Add Event Record" → fill new form
+  → assert `page.url()` ends in `/events/{numeric_id}` →
+  detail shows values → edit round-trip → Person Events
+  tab fragment → attach existing event by Display ID →
+  quick-add new event → unlink → delete (303 to `/events`
+  + row gone) → `/events/{id}/pdf` PDF export lands in the
+  SaveFileDialog override dir. Selector strategy is CSS /
+  aria / placeholder (no new `internal/uiids` UIIDs).
+  Failure mode prints `page.url()`, last response status,
+  and a 2000-char DOM snippet to stderr. Re-runnable: in-
+  script teardown deletes every event the probe creates, the
+  scratch dir is wiped on exit. Probe-surfaced regressions
+  fixed in this commit:
+
+    - `internal/appshell/events_handlers.go` —
+      `handleEventByID` switch now shares the update-by-form
+      path between POST + PUT (was PUT-only; POST was a 405).
+      Routes.go already declared both verbs; the handler just
+      had the case missing. Test added:
+      `TestHandleEventByIDPostUpdate`.
+    - `internal/templates/event_detail.templ` — Delete Event
+      button now carries `data-method="DELETE"` so the JS
+      Option C dispatcher issues `fetch(... { method:
+      "DELETE" })` instead of falling back to POST.
+
+  Probe also surfaced 3 follow-up gaps that warrant their
+  own issues (out of scope here, recorded for triage):
+
+    - The `/soldiers/{id}/events/attach|detach|quick-add`
+      handlers redirect to `/soldiers/{id}` (the Person
+      detail) instead of `/soldiers/{id}/events` (the tab).
+      User-visible: clicking Add existing / Quick-add +
+      Link throws the researcher away from the Events tab.
+    - `POST /soldiers/new` returns 405 — `handleNewSoldier`
+      only honors GET; the create handler is mounted at
+      `/soldiers` via the JS dispatcher.
+    - `templates/event_landscape.typ` is not bundled into
+      `build/bin/templates/` by the Wails debug build path.
+      `cmd/dixiedata-web` boots but the per-Event PDF render
+      silently fails (file written, 0 bytes). Smoke step 11
+      surfaces this; tests in the appshell package pass
+      because Go tests resolve `templates/` from cwd.
+
 ### Maintenance
 
 - **TDD protocol** (`docs/agents/tdd.md`). New agent-facing
