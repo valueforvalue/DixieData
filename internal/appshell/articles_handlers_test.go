@@ -599,3 +599,78 @@ func TestHandleArticleDetailRendersRefsPanel(t *testing.T) {
 		t.Errorf("Empty-state copy missing on a fresh article")
 	}
 }
+
+// TestHandleArticlePickerRendersSearchResults pins the slice-3.3
+// picker contract: GET /articles/{id}/picker?q={q} returns the
+// picker shell with the search input + any matching Person
+// Records rendered as click-to-attach rows. Empty q renders the
+// guidance message; an unknown q renders the no-results message.
+func TestHandleArticlePickerRendersSearchResults(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	// Seed two Person Records with distinguishable names.
+	createArticleHandlerTestPerson(t, app, "DXD-00093")
+	createArticleHandlerTestPerson(t, app, "DXD-00094")
+	article, err := app.articles.Create(models.Article{Title: "Picker target"})
+	if err != nil {
+		t.Fatalf("Create article: %v", err)
+	}
+
+	// Empty query: the picker shell renders with the input.
+	// SearchPage(empty) returns the soldier list, so results
+	// render rather than the empty-state guidance. Either is
+	// valid; we assert the shell is intact.
+	respEmpty, err := http.Get(server.URL + "/articles/" + intStr(article.ID) + "/picker")
+	if err != nil {
+		t.Fatalf("GET picker empty: %v", err)
+	}
+	defer respEmpty.Body.Close()
+	bodyEmpty, _ := io.ReadAll(respEmpty.Body)
+	if respEmpty.StatusCode != http.StatusOK {
+		t.Fatalf("GET picker empty status = %d, want 200", respEmpty.StatusCode)
+	}
+	if !strings.Contains(string(bodyEmpty), `data-person-record-picker-input`) {
+		t.Errorf("Picker input missing on empty query")
+	}
+	if !strings.Contains(string(bodyEmpty), `data-person-record-picker`) {
+		t.Errorf("Picker shell missing on empty query")
+	}
+
+	// Query that matches one of the seeded people: at least
+	// one row renders.
+	respHit, err := http.Get(server.URL + "/articles/" + intStr(article.ID) + "/picker?q=DXD-00093")
+	if err != nil {
+		t.Fatalf("GET picker hit: %v", err)
+	}
+	defer respHit.Body.Close()
+	bodyHit, _ := io.ReadAll(respHit.Body)
+	if !strings.Contains(string(bodyHit), `data-person-record-picker-row`) {
+		t.Errorf("Picker row missing on hit")
+	}
+	if !strings.Contains(string(bodyHit), "DXD-00093") {
+		t.Errorf("Picked display id DXD-00093 missing from picker row")
+	}
+
+	// Each row carries a hidden display_id input + a
+	// data-dixie-submit form so the JS dispatcher can post.
+	if !strings.Contains(string(bodyHit), `name="display_id"`) {
+		t.Errorf("Picker row missing display_id input")
+	}
+	if !strings.Contains(string(bodyHit), `data-dixie-submit="true"`) {
+		t.Errorf("Picker row missing data-dixie-submit attr")
+	}
+
+	// Query that matches nothing: empty-state message renders
+	// with the typed q.
+	respMiss, err := http.Get(server.URL + "/articles/" + intStr(article.ID) + "/picker?q=nonexistent")
+	if err != nil {
+		t.Fatalf("GET picker miss: %v", err)
+	}
+	defer respMiss.Body.Close()
+	bodyMiss, _ := io.ReadAll(respMiss.Body)
+	if !strings.Contains(string(bodyMiss), `No Person Records match`) {
+		t.Errorf("No-results message missing on miss")
+	}
+}

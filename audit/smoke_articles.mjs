@@ -231,7 +231,42 @@ try {
     }
   }
 
-  // ── Slice-3.2 step complete. Slice-3.3+ steps land in follow-up commits.
+  // ────────────────────────────────────────────────────────────
+  // Step 3: picker modal opens + searches + attaches (slice 3.3).
+  // ────────────────────────────────────────────────────────────
+  if (articleId) {
+    console.log('\nStep 3: picker modal opens + searches');
+    await page.goto(BASE + '/articles/' + articleId);
+    await wait(500);
+    // Click the picker trigger button.
+    await page.locator('[data-person-record-picker-open]').first().click();
+    await wait(800);
+    const pickerOpen = await page.evaluate(() => {
+      const target = document.querySelector('[data-person-record-picker-target]');
+      const input = document.querySelector('[data-person-record-picker-input]');
+      return {
+        targetFilled: target !== null && target.innerHTML.trim().length > 0,
+        inputExists: input !== null,
+      };
+    });
+    record('picker-modal-opens', pickerOpen.targetFilled, pickerOpen);
+    record('picker-input-renders', pickerOpen.inputExists, pickerOpen);
+
+    // Type a query into the search input. The hx-get on
+    // the input fires the same endpoint with q= and
+    // re-renders the picker shell with the matching rows.
+    if (pickerOpen.inputExists) {
+      await page.fill('[data-person-record-picker-input]', 'DXD');
+      await wait(800);
+      const searchResults = await page.evaluate(() => {
+        const rows = document.querySelectorAll('[data-person-record-picker-row]');
+        return { rowCount: rows.length, firstDisplayID: rows[0]?.getAttribute('data-person-record-picker-display-id') };
+      });
+      record('picker-search-returns-rows', searchResults.rowCount > 0, searchResults);
+    }
+  }
+
+  // ── Slice-3.3 step complete. Slice-3.4+ steps land in follow-up commits.
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -91,12 +91,9 @@ templ ArticleRefsPanel(view viewmodel.Article) {
 	<section class="card mt-6 rounded-3xl p-5 sm:p-8 space-y-4" data-article-refs-panel>
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h2 class="font-display text-xl font-semibold text-[color:var(--ink)]">Person Records</h2>
-			@components.Button("Add Person Record", components.ButtonSecondary, "", templ.Attributes{
-				"data-article-refs-add": "",
-				"data-article-id":       fmt.Sprintf("%d", view.ID),
-				"title":                 "Add a Person Record reference (picker lands in slice 3.3)",
-			})
+			@components.PersonRecordPickerTrigger(view.ID)
 		</div>
+		<div data-person-record-picker-target></div>
 		if len(view.Refs) == 0 {
 			<p class="text-sm text-slate-600" data-article-refs-empty>No Person Records attached. Click "Add Person Record" above to attach one.</p>
 		} else {
