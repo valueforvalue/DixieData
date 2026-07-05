@@ -21,6 +21,7 @@
 package appshell
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -525,4 +526,76 @@ func listAllArticleIDs(t *testing.T, app *App) []int64 {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// TestHandleArticleDetailRendersRefsPanel pins the slice-3.2
+// contract: GET /articles/{id} renders the inline Refs panel
+// with one row per attached Person Record. The body panel
+// (the slice-1 surface) still renders above the Refs panel;
+// the empty-state copy renders when no refs are attached.
+func TestHandleArticleDetailRendersRefsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	// Seed two Person Records + attach one to the article.
+	createArticleHandlerTestPerson(t, app, "DXD-00091")
+	createArticleHandlerTestPerson(t, app, "DXD-00092")
+	personA, err := app.soldiers.GetByDisplayID("DXD-00091")
+	if err != nil {
+		t.Fatalf("lookup DXD-00091: %v", err)
+	}
+	article, err := app.articles.Create(models.Article{Title: "Refs panel target"})
+	if err != nil {
+		t.Fatalf("Create article: %v", err)
+	}
+	if _, err := app.articles.AttachRef(article.ID, personA.ID); err != nil {
+		t.Fatalf("AttachRef: %v", err)
+	}
+
+	// Fetch the detail page.
+	resp, err := http.Get(server.URL + "/articles/" + intStr(article.ID))
+	if err != nil {
+		t.Fatalf("GET detail: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET detail status = %d, want 200", resp.StatusCode)
+	}
+
+	// Assert the Refs panel renders the attached row.
+	if !strings.Contains(string(body), `data-article-refs-panel`) {
+		t.Errorf("Refs panel missing in detail page")
+	}
+	if !strings.Contains(string(body), `data-article-refs-row`) {
+		t.Errorf("Refs row missing in detail page")
+	}
+	if !strings.Contains(string(body), "DXD-00091") {
+		t.Errorf("Attached display id DXD-00091 missing from Refs panel")
+	}
+	if strings.Contains(string(body), "DXD-00092") {
+		t.Errorf("Unattached display id DXD-00092 unexpectedly appears in Refs panel")
+	}
+	if !strings.Contains(string(body), `data-article-refs-row-display-id`) {
+		t.Errorf("Refs row display-id anchor missing")
+	}
+	if !strings.Contains(string(body), `data-article-refs-unlink`) {
+		t.Errorf("Unlink button missing from Refs row")
+	}
+
+	// Empty state on a fresh article.
+	bare, err := app.articles.Create(models.Article{Title: "Bare article"})
+	if err != nil {
+		t.Fatalf("Create bare: %v", err)
+	}
+	resp2, err := http.Get(server.URL + "/articles/" + intStr(bare.ID))
+	if err != nil {
+		t.Fatalf("GET detail bare: %v", err)
+	}
+	defer resp2.Body.Close()
+	body2, _ := io.ReadAll(resp2.Body)
+	if !strings.Contains(string(body2), `data-article-refs-empty`) {
+		t.Errorf("Empty-state copy missing on a fresh article")
+	}
 }
