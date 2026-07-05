@@ -395,7 +395,41 @@ try {
     record('edit-form-preview-renders', editState.previewExists, editState);
   }
 
-  // ── Slice-3.7 step complete. Slice-3.8+ steps land in follow-up commits.
+  // ────────────────────────────────────────────────────────────
+  // Step 7: "Cited in" panel on Person Record detail (slice 3.8).
+  // ────────────────────────────────────────────────────────────
+  if (articleId) {
+    console.log('\nStep 7: Cited-in panel on Person Record detail');
+    // Resolve the Person Record we attached earlier (DXD-00091).
+    const soldierList = await fetch(BASE + '/soldiers/search?search_term=DXD-00091');
+    // Simpler: hit the article refs panel + parse the display id.
+    const articleRefsResp = await fetch(BASE + '/articles/' + articleId + '/refs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: 'display_id=DXD-00091',
+    });
+    record('attach-person-for-cited-in', articleRefsResp.ok, { status: articleRefsResp.status });
+    // Locate the person row id via the API.
+    const soldierSearch = await fetch(BASE + '/soldiers?search_term=DXD-00091');
+    // Use a stable lookup: hit the soldier list page + parse links.
+    const listResp = await fetch(BASE + '/soldiers');
+    const listBody = await listResp.text();
+    const personIDMatch = listBody.match(/\/soldiers\/(\d+)/);
+    const personID = personIDMatch ? personIDMatch[1] : null;
+    record('locate-person-id', personID !== null, { personID });
+
+    if (personID) {
+      const soldierDetail = await fetch(BASE + '/soldiers/' + personID);
+      const detailBody = await soldierDetail.text();
+      record(
+        'cited-in-panel-renders',
+        detailBody.includes('data-cited-in-articles-panel'),
+        { personID, containsPanel: detailBody.includes('data-cited-in-articles-panel') },
+      );
+    }
+  }
+
+  // ── Slice-3.8 step complete. All slice-3 apply-sites shipped.
 
   await browser.close();
   console.log(`\n${pass} passed, ${fail} failed`);

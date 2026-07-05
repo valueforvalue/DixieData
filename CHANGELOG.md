@@ -293,6 +293,38 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   pre-filled + preview pane renders) +
   `audit/smoke_articles.mjs` step 6.
 
+- **Person Record detail "Cited in" panel** (issue #321
+  slice 3.8). The Person Record detail page now renders a
+  reverse-lookup panel listing every live-branch Article
+  that cites this person via the `article_refs` junction
+  table. The panel renders one row per cited article
+  (title + DisplayID + subtitle + updated_at) with a
+  click-through to the article detail page. Snapshot
+  rows are excluded (the inverse of the slice-2.5
+  design: snapshot rows are read-only by design). The
+  panel is hidden when no articles cite the person --
+  the slice-1 surface stays clean. Adds
+  `ArticleService.CitedInArticles(personID int64)
+  ([]models.Article, error)` (sorted updated_at DESC),
+  `components/cited_in_articles.templ`
+  (`CitedInArticles(personID int64, citedIn
+  []viewmodel.Article)` function), the
+  `presentation.SoldierDetailWithCitedIn` wrapper that
+  threads the cited-in slice through to
+  `templates.SoldierDetail` (signature updated to
+  accept a third arg), and the soldier handler hook in
+  `handleSoldierByID` (the GET branch calls
+  `CitedInArticles`; a transient query failure renders
+  the detail page WITHOUT the panel rather than 500,
+  since the panel is load-bearing-but-non-critical).
+  Pinned by `TestArticleService_CitedInArticles` (5
+  sub-cases: empty + cross-person non-leakage + snapshot
+  exclusion + negative id rejected + sort order) +
+  `TestHandleSoldierByIDRendersCitedInPanel` (panel
+  renders with article title + display id; bare person
+  renders without the panel) +
+  `audit/smoke_articles.mjs` step 7.
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

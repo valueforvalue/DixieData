@@ -994,3 +994,66 @@ func (a *ArticleService) DeleteSnapshot(snapshotID int64) error {
 	}
 	return ErrArticleNotFound
 }
+
+// CitedInArticles returns the live-branch articles (is_snapshot
+// = 0) that cite the given Person Record via the article_refs
+// junction table, sorted updated_at DESC (most-recently-edited
+// first; matches the slice-2 List ordering). The slice-3.8
+// Person Record detail "Cited in" panel consumes this list.
+//
+// The filter excludes snapshot rows because snapshots are
+// historical artifacts, not load-bearing articles -- a
+// researcher who clicks through from the Person Record detail
+// expects to land on the current article body, not a snapshot.
+// Per the slice-2.5 design, snapshot rows are read-only by
+// design; the "Cited in" panel honors that.
+//
+// Returns an empty slice (not nil) when no articles cite the
+// person so the panel renders the empty state without a nil
+// guard. Negative personID is rejected so a confused caller
+// (e.g. a future slice that lost the personID context) fails
+// fast rather than returning every article in the archive.
+func (a *ArticleService) CitedInArticles(personID int64) ([]models.Article, error) {
+	if personID < 1 {
+		return nil, fmt.Errorf("CitedInArticles: person id must be positive")
+	}
+	rows, err := a.soldiers.db.Conn().Query(
+		`SELECT a.id, a.sync_id, a.display_id, a.title, a.subtitle,
+		        a.body_md, a.body_html, a.created_at, a.updated_at,
+		        a.snapshot_of_id, a.is_snapshot
+		 FROM articles a
+		 JOIN article_refs ar ON ar.article_id = a.id
+		 WHERE ar.person_record_id = ? AND a.is_snapshot = 0
+		 ORDER BY a.updated_at DESC, a.id DESC`,
+		personID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("CitedInArticles %d: %w", personID, err)
+	}
+	defer rows.Close()
+	out := make([]models.Article, 0)
+	for rows.Next() {
+		var (
+			art          models.Article
+			snapshotOfID sql.NullInt64
+			isSnapshot   int
+		)
+		if err := rows.Scan(
+			&art.ID, &art.SyncID, &art.DisplayID, &art.Title, &art.Subtitle,
+			&art.BodyMD, &art.BodyHTML, &art.CreatedAt, &art.UpdatedAt,
+			&snapshotOfID, &isSnapshot,
+		); err != nil {
+			return nil, fmt.Errorf("CitedInArticles scan: %w", err)
+		}
+		if snapshotOfID.Valid {
+			v := snapshotOfID.Int64
+			art.SnapshotOfID = &v
+		}
+		art.IsSnapshot = isSnapshot != 0
+		out = append(out, art)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("CitedInArticles rows: %w", err)
+	}
+	return out, nil
+}
