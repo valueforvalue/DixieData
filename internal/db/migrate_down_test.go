@@ -233,13 +233,32 @@ func TestRetainedBackupDirectionDiscriminator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(backups) != 1 {
-		t.Fatalf("len(backups) = %d, want 1 (the pre-upgrade snapshot)", len(backups))
+	// The first Open() of a fresh dataDir creates a v0→v61
+	// pre-upgrade snapshot; the test then manually rewrites
+	// user_version to 1 + closes the raw conn, and the second
+	// Open() creates a v1→v61 snapshot. Two snapshots, both
+	// pre-upgrade (source schema < current). The test cares
+	// that the second open created AT LEAST one pre-upgrade
+	// snapshot with the v1 source; the first snapshot is
+	// incidental.
+	if len(backups) < 1 {
+		t.Fatalf("len(backups) = %d, want >= 1 (at least the v1->v61 pre-upgrade snapshot)", len(backups))
 	}
-	backup := backups[0]
-	if backup.SourceSchemaVersion != 1 {
-		t.Errorf("SourceSchemaVersion = %d, want 1", backup.SourceSchemaVersion)
+	// Find the v1->v61 pre-upgrade snapshot (the second Open
+	// rewrites user_version to 1 + then runs the consolidated
+	// jump). The first Open's v0->v61 snapshot may be in the
+	// list too.
+	var v1Backup *update.RetainedBackupRecord
+	for i := range backups {
+		if backups[i].SourceSchemaVersion == 1 {
+			v1Backup = &backups[i]
+			break
+		}
 	}
+	if v1Backup == nil {
+		t.Fatalf("no v1->%d pre-upgrade snapshot among %d backups", CurrentSchemaVersion, len(backups))
+	}
+	backup := *v1Backup
 	if backup.TargetSchemaVersion != CurrentSchemaVersion {
 		t.Errorf("TargetSchemaVersion = %d, want %d", backup.TargetSchemaVersion, CurrentSchemaVersion)
 	}

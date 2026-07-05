@@ -332,73 +332,53 @@ CREATE TABLE IF NOT EXISTS event_sources (
 );
 CREATE INDEX IF NOT EXISTS idx_event_sources_event ON event_sources(event_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_sources_sync_id ON event_sources(sync_id);
-`
 
-const phase1DistributedMergeMigration = `
 CREATE TABLE IF NOT EXISTS system_config (
     key        TEXT PRIMARY KEY,
     value      TEXT NOT NULL,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-UPDATE soldiers
-SET birth_date = '00/00/0000'
-WHERE birth_date IS NULL OR TRIM(birth_date) = '';
-
-UPDATE soldiers
-SET death_date = printf('%02d/%02d/%04d', COALESCE(death_month, 0), COALESCE(death_day, 0), COALESCE(death_year, 0))
-WHERE death_date IS NULL OR TRIM(death_date) = '';
-
-UPDATE soldiers
-SET updated_at = COALESCE(NULLIF(created_at, ''), CURRENT_TIMESTAMP)
-WHERE updated_at IS NULL OR TRIM(updated_at) = '';
-
-UPDATE soldiers
-SET sync_id = ` + syncIDSQL + `
-WHERE sync_id IS NULL OR TRIM(sync_id) = '';
-
-INSERT INTO system_config(key, value)
-SELECT 'node_prefix', 'DXD'
-WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_prefix');
-
-INSERT INTO system_config(key, value)
-SELECT
-    'node_id',
-    ` + syncIDSQL + `
-WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_id');
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_soldiers_sync_id ON soldiers(sync_id);
-
-UPDATE records
-SET person_sync_id = (
-    SELECT soldiers.sync_id
-    FROM soldiers
-    WHERE soldiers.id = records.person_record_id
-)
-WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = '';
-
-UPDATE records
-SET sync_id = ` + syncIDSQL + `
-WHERE sync_id IS NULL OR TRIM(sync_id) = '';
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_records_sync_id ON records(sync_id);
-CREATE INDEX IF NOT EXISTS idx_records_soldier_sync_id ON records(person_sync_id);
-
-UPDATE images
-SET person_sync_id = (
-    SELECT soldiers.sync_id
-    FROM soldiers
-    WHERE soldiers.id = images.person_record_id
-)
-WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = '';
-
-UPDATE images
-SET sync_id = ` + syncIDSQL + `
-WHERE sync_id IS NULL OR TRIM(sync_id) = '';
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sync_id ON images(sync_id);
-CREATE INDEX IF NOT EXISTS idx_images_soldier_sync_id ON images(person_sync_id);
+-- Seed system_config with the default node_prefix + a fresh
+-- node_id so the new-DB path doesn't need a separate migration
+-- step. node_prefix='DXD' is the historical default; users
+-- override it via ConfigureUserIdentity which writes back to
+-- the same row. INSERT OR IGNORE makes the seed idempotent.
+INSERT OR IGNORE INTO system_config(key, value)
+VALUES ('node_prefix', 'DXD');
 `
+
+// applyPhase1DistributedMerge is the body of the old Block 4
+// (issue #194, v52 doc discipline). It runs on v1-v53 archives
+// to backfill sync_id + person_sync_id + node_prefix + node_id
+// after the ADD COLUMN loop has populated the columns. On
+// fresh installs every UPDATE is a no-op (columns already have
+// values) and the INSERT OR IGNORE on system_config is a no-op
+// (the inline schema's node_prefix seed already ran).
+func applyPhase1DistributedMerge(tx *sql.Tx) error {
+	statements := []string{
+		`UPDATE soldiers SET birth_date = '00/00/0000' WHERE birth_date IS NULL OR TRIM(birth_date) = ''`,
+		`UPDATE soldiers SET death_date = printf('%02d/%02d/%04d', COALESCE(death_month, 0), COALESCE(death_day, 0), COALESCE(death_year, 0)) WHERE death_date IS NULL OR TRIM(death_date) = ''`,
+		`UPDATE soldiers SET updated_at = COALESCE(NULLIF(created_at, ''), CURRENT_TIMESTAMP) WHERE updated_at IS NULL OR TRIM(updated_at) = ''`,
+		`UPDATE soldiers SET sync_id = ` + syncIDSQL + ` WHERE sync_id IS NULL OR TRIM(sync_id) = ''`,
+		`INSERT OR IGNORE INTO system_config(key, value) SELECT 'node_id', ` + syncIDSQL + ` WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'node_id')`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_soldiers_sync_id ON soldiers(sync_id)`,
+		`UPDATE records SET person_sync_id = (SELECT soldiers.sync_id FROM soldiers WHERE soldiers.id = records.person_record_id) WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`,
+		`UPDATE records SET sync_id = ` + syncIDSQL + ` WHERE sync_id IS NULL OR TRIM(sync_id) = ''`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_records_sync_id ON records(sync_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_records_soldier_sync_id ON records(person_sync_id)`,
+		`UPDATE images SET person_sync_id = (SELECT soldiers.sync_id FROM soldiers WHERE soldiers.id = images.person_record_id) WHERE person_sync_id IS NULL OR TRIM(person_sync_id) = ''`,
+		`UPDATE images SET sync_id = ` + syncIDSQL + ` WHERE sync_id IS NULL OR TRIM(sync_id) = ''`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_images_sync_id ON images(sync_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_images_soldier_sync_id ON images(person_sync_id)`,
+	}
+	for _, stmt := range statements {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 const phase2CanonicalDatesMigration = `
 UPDATE soldiers

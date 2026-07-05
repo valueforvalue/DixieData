@@ -445,9 +445,9 @@ func TestRunAdminMigrateDown_ManifestPrinted(t *testing.T) {
 		App:                app,
 	}
 	_, err := RunAdmin(t.Context(), opts)
-	// The path crosses Block 17 (Irreversible) so the runner
-	// refuses. We don't care about the error here; we only
-	// care that the manifest + the pre-downgrade snapshot
+	// The path crosses block-60-v54-to-v60-jump (Irreversible) so
+	// the runner refuses. We don't care about the error here; we
+	// only care that the manifest + the pre-downgrade snapshot
 	// appeared in the output.
 	out := buf.String()
 	if !strings.Contains(out, "schema down manifest") {
@@ -456,11 +456,11 @@ func TestRunAdminMigrateDown_ManifestPrinted(t *testing.T) {
 	if !strings.Contains(out, "[I] block-") {
 		t.Errorf("manifest should mark at least one Irreversible block; got: %q", out)
 	}
-	if !strings.Contains(out, "block-17-research-log-evidence-rename") {
-		t.Errorf("manifest should enumerate Block 17; got: %q", out)
+	if !strings.Contains(out, "block-60-v54-to-v60-jump") {
+		t.Errorf("manifest should enumerate block-60-v54-to-v60-jump; got: %q", out)
 	}
 	// Pre-downgrade snapshot is taken BEFORE the runner fires
-	// (per issue #273 PR 3); the runner refuses on Block 17 but
+	// (per issue #273 PR 3); the runner refuses on the jump but
 	// the snapshot is still on disk. The output must report the
 	// snapshot ID and direct the operator to use it for rollback.
 	if !strings.Contains(out, "pre-downgrade snapshot:") {
@@ -470,7 +470,7 @@ func TestRunAdminMigrateDown_ManifestPrinted(t *testing.T) {
 		t.Errorf("rollback hint missing; got: %q", out)
 	}
 	if err == nil {
-		t.Errorf("expected refusal error (path crosses Block 17 Irreversible)")
+		t.Errorf("expected refusal error (path crosses block-60-v54-to-v60-jump Irreversible)")
 	}
 }
 

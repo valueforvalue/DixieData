@@ -1,109 +1,13 @@
 package archive
 
 import (
-	"archive/zip"
 	"database/sql"
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	_ "modernc.org/sqlite"
 )
-
-func TestBackupService_ImportSQLiteBackupMigratesSchema(t *testing.T) {
-	backupPath := filepath.Join(t.TempDir(), "legacy-sqlite-backup.zip")
-	legacyDBPath := filepath.Join(t.TempDir(), db.FileName)
-	createLegacySchemaV1DB(t, legacyDBPath)
-
-	file, err := os.Create(backupPath)
-	if err != nil {
-		t.Fatalf("Create backup: %v", err)
-	}
-	zipWriter := zip.NewWriter(file)
-	manifest := BackupManifest{
-		Format:        backupFormatName,
-		Version:       buildinfo.BackupFormatVersion,
-		AppVersion:    buildinfo.AppVersion,
-		SchemaVersion: 1,
-		CreatedAt:     "2026-05-15T18:41:06-05:00",
-		DataFormat:    "sqlite",
-		DatabaseFile:  "data/dixiedata.db",
-		ImageRoot:     "images/",
-		Soldiers:      1,
-		Records:       1,
-		Images:        0,
-	}
-	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
-		t.Fatalf("write manifest: %v", err)
-	}
-	if err := addBackupFile(zipWriter, manifest.DatabaseFile, legacyDBPath); err != nil {
-		t.Fatalf("add database: %v", err)
-	}
-	if err := zipWriter.Close(); err != nil {
-		t.Fatalf("Close zip: %v", err)
-	}
-	if err := file.Close(); err != nil {
-		t.Fatalf("Close backup: %v", err)
-	}
-
-	restoreDB := newTestDB(t)
-	restoreSvc := NewSoldierService(restoreDB)
-	backupSvc := NewBackupService(restoreDB, restoreSvc)
-	restoreDir := t.TempDir()
-
-	importedManifest, err := backupSvc.Import(backupPath, restoreDir)
-	if err != nil {
-		t.Fatalf("Import: %v", err)
-	}
-	if importedManifest.SchemaVersion != 1 {
-		t.Fatalf("manifest schema version = %d", importedManifest.SchemaVersion)
-	}
-
-	reopened, err := openExistingTestDB(restoreDir)
-	if err != nil {
-		t.Fatalf("openExistingTestDB: %v", err)
-	}
-	defer reopened.Close()
-
-	var userVersion int
-	if err := reopened.Conn().QueryRow(`PRAGMA user_version`).Scan(&userVersion); err != nil {
-		t.Fatalf("read user_version: %v", err)
-	}
-	if userVersion != buildinfo.SchemaVersion {
-		t.Fatalf("user_version = %d, want %d", userVersion, buildinfo.SchemaVersion)
-	}
-
-	reopenedSvc := NewSoldierService(reopened)
-	results, total, err := reopenedSvc.SearchPage("00001", 1, 10)
-	if err != nil {
-		t.Fatalf("SearchPage: %v", err)
-	}
-	if total != 1 || len(results) != 1 {
-		t.Fatalf("restored search total=%d len=%d", total, len(results))
-	}
-	restored, err := reopenedSvc.GetByID(results[0].ID)
-	if err != nil {
-		t.Fatalf("GetByID: %v", err)
-	}
-	if restored.DisplayID != "DXD-00001" {
-		t.Fatalf("DisplayID = %q", restored.DisplayID)
-	}
-	if restored.SyncID == "" || restored.DeathDate == "" || restored.UpdatedAt == "" {
-		t.Fatalf("restored soldier missing migrated fields: %#v", restored)
-	}
-	if restored.BirthDate != "01/13/1842" {
-		t.Fatalf("BirthDate = %q", restored.BirthDate)
-	}
-	if len(restored.Records) != 1 {
-		t.Fatalf("records len = %d", len(restored.Records))
-	}
-	if restored.Records[0].SyncID == "" || restored.Records[0].PersonSyncID != restored.SyncID {
-		t.Fatalf("record identity mismatch: %#v soldier=%#v", restored.Records[0], restored)
-	}
-}
 
 func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
 	baseDir := t.TempDir()

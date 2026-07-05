@@ -156,6 +156,98 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   guard that absorbs any future drift without re-navigating on
   the happy path.
 
+- **Schema migration slice collapsed from 19 blocks to 3** (issue
+  #320 closure, post-`origin/stable` reconciliation). The
+  `migrations` slice in `internal/db/migrations.go` previously
+  carried the full v1-v60 chain as separate blocks (1-17 for
+  v1-v53 incremental adds, block-60 for the v60 column
+  renames + scratchpad_cache + event_person_links, block-61
+  for v61). The chain was broken: block-60 was placed at the
+  END of the slice, but several pre-existing blocks (4, 5, 6, 7,
+  8, 14) referenced the new column names (`person_record_id`,
+  `person_sync_id`) that block-60's renames would have
+  introduced — so every v54→v60 upgrade failed at the first
+  block that referenced the new names with `no such column:
+  person_record_id`. Collapsed to:
+
+  - `block-1-schema-baseline` — the full v61 inline schema
+    (every column the deleted blocks would have added
+    incrementally, the `system_config` table + the
+    `node_prefix='DXD'` seed). Idempotent on fresh installs
+    (CREATE TABLE IF NOT EXISTS) and on upgrades (no-op for
+    pre-existing tables).
+  - `block-60-v54-to-v60-jump` — the only real upgrade path
+    (v54 production archives → v60). Runs in one transaction:
+    31 ADD COLUMN entries via `applyAddColumnLoop` (covers
+    every column a v54-or-earlier archive might lack),
+    `applySoldiersNormalization` (7-UPDATE chain normalizing
+    pre-v54 values like `pension_state='None'` → `'N/A'`),
+    `applyImagesIsPrimary` (with a `columnExists` guard that
+    picks `soldier_id` on pre-rename v54 archives +
+    `person_record_id` on fresh installs), `scratchpad_cache`
+    table create, 4 v60 Event Record columns
+    (`kind`/`begin_date`/`end_date`/`description` on soldiers),
+    `event_person_links` table + 3 indexes, **12** RENAME
+    COLUMN statements (the 8 originally intended + the 4
+    missing `soldier_sync_id` → `person_sync_id` ones the v60
+    author forgot), `applyPhase1DistributedMerge` backfill
+    (sync_ids + node_id — runs AFTER the renames so the UPDATEs
+    hit the new names), and `ensureSoldierFTS` (soldiers_fts
+    virtual table + 6 triggers). `Irreversible` per the
+    conservative rule (user-added Event data would be lost on a
+    v60→v54 reverse).
+  - `block-2-event-sources` — the v61 table (issue #340).
+
+  Per the user's observation that v54 is the production-stable
+  schema on `origin/stable` (`CurrentSchemaVersion = 54`), the
+  v1-v53 chain was a code path no real production archive has
+  data on — it was deleted. `origin/stable` users upgrading to
+  `dev` were the user-visible failure case: the v54
+  `dixiedata-backup-2026-05-30.ddbak` in the repo root (501
+  soldiers + 1683 records) now imports cleanly via
+  `TestBackupService_ImportSeededArchiveRoundTrip`.
+
+  Per the user's "don't rig dead-weight tests to pass"
+  feedback, removed 2 tests that pinned a deleted
+  `birth_info` → `birth_date` extraction path (the
+  `migrateCanonicalDateData` block-13 work, gone with the
+  collapse). Those tests created a synthetic v1-shape
+  fixture (already using the v60 column names) and asserted
+  a v1→v60 birth_info parse. No real production archive has
+  that shape; the meaningful regression net is the v54
+  production archive test (which exercises the real path).
+
+  - `internal/db/schema.go` — full v61 inline schema +
+    `applyPhase1DistributedMerge` extracted to a function
+    + `applyImagesIsPrimary` gains a `columnExists` guard +
+    `node_prefix` seed lives in the inline const.
+  - `internal/db/migrations.go` — 19-block slice → 3 blocks.
+    Helper functions for the deleted blocks (applySoldiersNormalization
+    forward direction, etc.) are now invoked from
+    block-60; reverse-direction helpers (reverseSoldiersNormalization,
+    reverseAddColumnLoop) are kept for the future DOWN runner
+    but not currently called.
+  - `internal/db/migrations_test.go` — `TestMigrationsCatalogueIsOrdered`
+    + `TestMigrationsReversibilityMapping` +
+    `TestReversibilityIrreducibleCount` updated for the 3-block
+    shape (count=1, mapping = `Reversible/Irreversible/Reversible`).
+  - `internal/db/migrate_down_test.go` — `TestRetainedBackupDirectionDiscriminator`
+    updated for the new 2-snapshot reality (was 1-snapshot
+    under the v1-v60 chain because the second open saw a
+    v1 schema that was post-rename relative to the slice; now
+    the second open creates a v1→v61 snapshot in addition
+    to the v0→v61 snapshot the first open created).
+  - `internal/appshell/cli_admin_test.go` — `TestRunAdminMigrateDown_ManifestPrinted`
+    updated to expect `block-60-v54-to-v60-jump` (the new
+    Irreversible block) instead of `block-17-research-log-evidence-rename`.
+  - `internal/archive/backup_service_test.go` — removed
+    `TestBackupService_ImportSharedBackupMigratesLegacySQLite`
+    (pinned the deleted `birth_info` extraction).
+  - `internal/archive/distributed_merge_test.go` — removed
+    `TestBackupService_ImportSQLiteBackupMigratesSchema`
+    (pinned the deleted `birth_info` extraction) + cleaned
+    up unused imports.
+
 ### Fixed
 
 - **Shared-archive import silently dropped every Event Record +

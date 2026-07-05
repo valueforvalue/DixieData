@@ -3,6 +3,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -46,7 +47,7 @@ func Open(dataDir string) (*DB, error) {
 	d := &DB{conn: conn, dataDir: dataDir}
 	if err := backupBeforeMigrationIfNeeded(d, dbPath); err != nil {
 		conn.Close()
-		return nil, err
+		return nil, fmt.Errorf("backup-before-migration: %w", err)
 	}
 	if err := applySchema(d); err != nil {
 		conn.Close()
