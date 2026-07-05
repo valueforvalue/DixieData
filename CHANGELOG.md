@@ -18,6 +18,22 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   reads `An **Event Record** is a kind of **Person Record**`
   to match the L159 sibling bullet and standard English
   vowel-sound indefinite article usage.
+- **Makefile `make debug` chain refactor** (issue #366). The
+  `build` and `debug` targets used to chain `probe-clean web
+  seed gold tune-bin` via `$(call RECURSIVE_MAKE,...)`, which
+  recurses through `$(MAKE)` inside a PowerShell wrapper.
+  GNUWin32 make (the legacy install under `C:\Program Files
+  (x86)\GnuWin32\bin\make.exe`) misparses the recursive call
+  when `$(MAKE)` itself lives under "Program Files (x86)" —
+  the parens break sh's tokenization and the inner make exits
+  with `e=87`, silently dropping the chain. The recipes now
+  inline the chain as direct `go build` invocations (matching
+  the pattern `web`/`seed`/`gold`/`tune-bin` already use when
+  invoked standalone), sidestepping the bug for the affected
+  env and removing a layer of indirection for everyone. The
+  `RECURSIVE_MAKE` variable is removed; the `web`/`seed`/
+  `gold`/`tune-bin` sub-targets are preserved because
+  `freshness` still depends on them.
 
 ### Added
 
