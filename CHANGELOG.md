@@ -13,6 +13,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Event Records portrait template + per-export orientation
+  picker** (issue #374). Adds `templates/event_portrait.typ`
+  (mirror of `event_landscape.typ` with portrait page setup +
+  narrower linked-Person-Records table). Adds
+  `EventService.RenderPDF(eventID, orientation)` (parallel to
+  `ArticleService.RenderPDF`) so the handler can pre-render +
+  open a guarded `SaveFileDialog` + write synchronously.
+  Replaces the landscape-only "Export PDF" button on
+  `/events/{id}` with a `components.EventPDFExport` picker
+  (Portrait / Landscape select + Save PDF button) that mirrors
+  the article picker on `/articles/{id}`. Wires the picker
+  through a parallel `eventRegistryAdapter` (mirrors the
+  article adapter) so the issue #320 v1 landscape-only surface
+  stays the default for any invoker that doesn't read the
+  picker. Adds `ExportEventPDF(..., PDFOptions)` signature
+  + `templateForRecordType` `case "event"` entry +
+  `pkg/exportbridge.RenderEventSingle` + `BulkRenderer.event`
+  field + two new export-contract snapshot cases
+  (`event-landscape.pdf` + `event-portrait.pdf`) that pin the
+  byte-identical PDF output of both orientations. Regression
+  net: `TestHandleEventPDF_OrientationPicker` (3 sub-tests:
+  portrait, landscape, default-back-compat) +
+  `TestArchiveContractSnapshots` event cases +
+  `TestExportService_ExportEventPDF` (signature update).
 - **Article Records schema + CRUD shell** (issue #321 slice 1).
   Adds the `articles` + `article_refs` tables in a v62 schema
   bump (`CurrentSchemaVersion` 61 → 62, additive `block-3-articles`

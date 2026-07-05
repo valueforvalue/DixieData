@@ -761,11 +761,14 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 }
 
 // TestExportService_ExportEventPDF verifies the per-Event PDF
-// export (issue #320 v1). The test exercises the full
-// typst-backed Registry path: the new event_landscape.typ
-// template is resolved, the per-Event payload (Kind, BeginDate,
-// EndDate, Description) is rendered, and the Linked Person
-// Records table appears.
+// export (issue #320 v1, issue #374 portrait). The test exercises
+// the full typst-backed Registry path: the new event_landscape.typ
+// template is resolved (landscape is the existing default), the
+// per-Event payload (Kind, BeginDate, EndDate, Description) is
+// rendered, and the Linked Person Records table appears. The
+// portrait template (event_portrait.typ) is exercised by the
+// exportcontract snapshot tests; this unit test pins the
+// landscape code path that was the v1 surface.
 func TestExportService_ExportEventPDF(t *testing.T) {
 	d := newTestDB(t)
 	soldierSvc := NewSoldierService(d)
@@ -786,7 +789,7 @@ func TestExportService_ExportEventPDF(t *testing.T) {
 		{DisplayID: "DXD-00042", FirstName: "John", LastName: "Smith", BirthDate: "01/00/1835", DeathDate: "07/01/1863"},
 		{DisplayID: "DXD-00043", FirstName: "William", LastName: "Jones", BirthDate: "01/00/1840", DeathDate: "07/03/1863"},
 	}
-	if err := exportSvc.ExportEventPDF(outPath, event, linked); err != nil {
+	if err := exportSvc.ExportEventPDF(outPath, event, linked, PDFOptions{Orientation: "L"}); err != nil {
 		t.Fatalf("ExportEventPDF: %v", err)
 	}
 

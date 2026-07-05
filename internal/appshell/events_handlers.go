@@ -35,6 +35,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -829,15 +830,20 @@ func (a *App) handleEventPDFRoute(w http.ResponseWriter, r *http.Request) {
 	a.handleEventPDF(w, r, id)
 }
 
-// handleEventPDF renders an Event Record (issue #320 v1) to a
-// single PDF via the typst-backed export pipeline. Mirrors the
-// soldier PDF handler pattern: SaveFileDialog (Wails runtime +
-// test seam override) -> enterInFlight dedup -> enqueueExport.
+// handleEventPDF renders an Event Record (issue #320 v1, issue
+// #374 portrait) to a single PDF. Mirrors the article PDF
+// handler (handleArticlePDF): pre-render via
+// EventService.RenderPDF + guarded SaveFileDialog
+// (docs/agents/dialog-guard.md) + synchronous write. The
+// orientation form field (portrait|landscape, default
+// landscape) selects the matching event_<orientation>.typ
+// template via the Registry's templateForRecordType mapping.
 //
-// The Event's linked Person Records are pre-projected here so
-// the typst template can render the "Linked Person Records"
-// table without a DB lookup. The slim per-Person projection
-// matches the shape exported.ExportEventPDF expects.
+// The pre-render runs synchronously on the request goroutine
+// because Event Record PDFs are small (single card, no images
+// in v1); no job-enqueue overhead. The orientation picker
+// lives on the Event detail page (components/event_pdf_export.templ)
+// and posts the same shape as the article picker.
 func (a *App) handleEventPDF(w http.ResponseWriter, r *http.Request, eventID int64) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -847,42 +853,44 @@ func (a *App) handleEventPDF(w http.ResponseWriter, r *http.Request, eventID int
 		respondValidation(w, r, "Could not read the Event PDF export form.", err)
 		return
 	}
+	orientation := strings.TrimSpace(r.PostFormValue("orientation"))
+	if orientation == "" {
+		orientation = "landscape"
+	}
 
-	eventWithLinks, err := a.events.GetEventByID(eventID)
+	result, err := a.events.RenderPDF(eventID, orientation)
 	if err != nil {
-		respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", eventID), err)
-		return
-	}
-	event := eventWithLinks.Event
-	linked, err := a.events.ListForEvent(eventID)
-	if err != nil {
-		respondInternal(w, r, fmt.Sprintf("Could not load linked records for Event %d.", eventID), err)
+		if strings.Contains(err.Error(), "not found") {
+			respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", eventID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not render Event %d PDF.", eventID), err)
 		return
 	}
 
-	dupKey := fmt.Sprintf("event-pdf|%d|%s", eventID, eventPDFName(event))
-	admitted, entry := a.enterInFlight(dupKey)
-	if !admitted {
-		a.respondDuplicateInFlight(w, r, dupKey)
-		return
-	}
-	defer a.leaveInFlight(dupKey, entry)
-
-	path, err := a.SaveFileDialog(runtime.SaveDialogOptions{
-		DefaultFilename: eventPDFName(event),
+	opts := runtime.SaveDialogOptions{
+		DefaultFilename: result.Filename,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "PDF document", Pattern: "*.pdf"},
 		},
-	})
-	if err != nil || path == "" {
+	}
+	dupKey := fmt.Sprintf("event-pdf|%d|%s|%s", eventID, orientation, result.Filename)
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
 		respondError(w, r, KindValidation, "Event PDF export cancelled.", nil)
 		return
 	}
-
-	a.enqueueExport(dupKey, "event_pdf", func(ctx context.Context, p *jobs.Progress) error {
-		p.Set(20, "Rendering Event Record PDF")
-		return a.export.ExportEventPDF(path, event, linked)
-	}, path, w)
+	if err := os.WriteFile(path, result.Bytes, 0o644); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not write PDF to %q.", path), err)
+		return
+	}
+	w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Event PDF saved to %s.", filepath.Base(path)))
+	w.Header().Set("X-DixieData-Toast-Type", "success")
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleEventSourcesRoute is the chi route shim for

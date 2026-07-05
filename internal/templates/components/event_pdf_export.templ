@@ -1,0 +1,59 @@
+// event_pdf_export.templ -- per-export orientation picker for
+// Event Records (issue #374 side-issue to #320). Mirrors
+// article_pdf_export.templ so the Event detail page exposes
+// the same Portrait / Landscape picker + Save PDF button the
+// Article detail page already ships.
+//
+// The form posts to /events/{id}/pdf with the chosen
+// orientation. The handler opens a guarded SaveFileDialog
+// (per docs/agents/dialog-guard.md) + writes the pre-rendered
+// PDF bytes to the user's chosen path.
+//
+// Until slice 1 ships the picker, the Event detail page carried
+// a single landscape-only "Export PDF" button (see
+// event_detail.templ). This component replaces that button;
+// the picker defaults to landscape so researchers who click
+// Save PDF without touching the picker still get the existing
+// behavior.
+package components
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+)
+
+// EventPDFExport renders the orientation picker + Save PDF
+// button for an Event Record. The select carries a default of
+// "landscape" so a researcher who clicks Save PDF without
+// touching the picker still gets the existing landscape-only
+// behavior (issue #320 v1 surface). The "portrait" option
+// lands with the new event_portrait.typ template (issue #374).
+templ EventPDFExport(eventID int64) {
+	<form
+		action={ templ.SafeURL(routebuilder.EventPDF(eventID)) }
+		method="post"
+		data-dixie-submit="true"
+		class="contents"
+		data-event-pdf-export
+		data-event-id={ fmt.Sprintf("%d", eventID) }
+	>
+		<div class="flex flex-wrap items-center gap-2">
+			<label for="event-pdf-orientation" class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">PDF orientation</label>
+			<select
+				id="event-pdf-orientation"
+				name="orientation"
+				class="field-input w-auto text-sm"
+				data-event-pdf-orientation
+			>
+				<option value="landscape" selected>Landscape</option>
+				<option value="portrait">Portrait</option>
+			</select>
+			@Button("Save PDF", ButtonPrimary, "whitespace-nowrap", templ.Attributes{
+				"type":                  "submit",
+				"data-event-pdf-submit": "",
+				"data-event-id":         fmt.Sprintf("%d", eventID),
+			})
+		</div>
+	</form>
+}

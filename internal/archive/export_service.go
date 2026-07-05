@@ -177,23 +177,31 @@ func (e *ExportService) ExportSoldierPDFWithoutImages(outputPath string, soldier
 	return e.exportSingleRecordViaRegistry(outputPath, soldier, PDFOptions{}, "soldier")
 }
 
-// ExportEventPDF renders an Event Record (issue #320 v1) to a
-// single-record PDF. The per-Event payload uses models.Soldier
-// with EntryType="event" and the v60 columns (Kind, BeginDate,
-// EndDate, Description, PDFExcerptOverride). The linked array
-// is the per-Event projection from EventService.ListForEvent;
-// each element is a slim models.Soldier used to render the
-// "Linked Person Records" table.
+// ExportEventPDF renders an Event Record (issue #320 v1, issue
+// #374 portrait) to a single-record PDF. The per-Event payload
+// uses models.Soldier with EntryType="event" and the v60 columns
+// (Kind, BeginDate, EndDate, Description, PDFExcerptOverride).
+// The linked array is the per-Event projection from
+// EventService.ListForEvent; each element is a slim models.Soldier
+// used to render the "Linked Person Records" table.
 //
 // Routes through the same typst-backed Registry as the
 // per-soldier exports. The Registry's Resolve method picks
-// templates/event_landscape.typ via the defaultTemplateName
-// mapping for recordType="event" + orientation "L".
-func (e *ExportService) ExportEventPDF(outputPath string, event models.Soldier, linked []models.Soldier) error {
+// templates/event_<orientation>.typ (event_landscape.typ or
+// event_portrait.typ, the latter added in issue #374) via the
+// defaultTemplateName mapping for recordType="event" + the
+// orientation in options.
+//
+// Issue #374: the per-export orientation picker on the Event
+// detail page reads the `orientation` form field (portrait |
+// landscape, default landscape) and threads it through this
+// signature as options.Orientation. The portrait template
+// mirrors event_landscape.typ with a narrower page setup.
+func (e *ExportService) ExportEventPDF(outputPath string, event models.Soldier, linked []models.Soldier, options PDFOptions) error {
 	if e.registry == nil {
 		return errPDFRegistryMissing
 	}
-	return e.exportEventViaRegistry(outputPath, event, linked)
+	return e.exportEventViaRegistry(outputPath, event, linked, options)
 }
 
 // ExportArticlePDF renders an Article Record (issue #321 slice 4)
@@ -395,6 +403,8 @@ func templateForRecordType(recordType, orientation string) string {
 		return "spouse_" + short
 	case "article":
 		return "article_" + short
+	case "event":
+		return "event_" + short
 	default:
 		return "soldier_" + short
 	}
@@ -473,18 +483,25 @@ func (e *ExportService) archiveBranding(printerFriendly bool) map[string]string 
 }
 
 // exportEventViaRegistry renders a single Event Record (issue
-// #320 v1) via the typst-backed Registry. The per-Event payload
-// uses models.Soldier (EntryType=event); the linked array is
-// the slim per-Person projection used to render the "Linked
-// Person Records" table on the per-Event PDF card.
+// #320 v1, issue #374 portrait) via the typst-backed Registry.
+// The per-Event payload uses models.Soldier (EntryType=event);
+// the linked array is the slim per-Person projection used to
+// render the "Linked Person Records" table on the per-Event PDF
+// card.
 //
-// The template (templates/event_landscape.typ) reads
+// The template (templates/event_landscape.typ or
+// templates/event_portrait.typ, picked via
+// templateForRecordType based on options.Orientation) reads
 // data["linked"] as a list of {display_id, name, range} dicts;
 // the pre-projection here keeps the typst template DB-free.
-func (e *ExportService) exportEventViaRegistry(outputPath string, event models.Soldier, linked []models.Soldier) error {
+func (e *ExportService) exportEventViaRegistry(outputPath string, event models.Soldier, linked []models.Soldier, options PDFOptions) error {
+	orientation := options.Orientation
+	if orientation == "" {
+		orientation = "L"
+	}
 	settings := PrintSettings{
-		Orientation:          "L",
-		SingleRecordTemplate: "event_landscape",
+		Orientation:          orientation,
+		SingleRecordTemplate: templateForRecordType("event", orientation),
 	}.Normalize()
 	f, err := os.Create(outputPath)
 	if err != nil {
@@ -508,7 +525,7 @@ func (e *ExportService) exportEventViaRegistry(outputPath string, event models.S
 	data := map[string]any{
 		"soldier":  event,
 		"linked":   linkedDicts,
-		"options":  PDFOptions{Orientation: "L", IncludeImages: false}.Normalize("L", true),
+		"options":  options.Normalize(orientation, true),
 		"settings": settings,
 		"branding": e.archiveBranding(false),
 	}

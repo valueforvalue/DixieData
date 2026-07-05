@@ -174,6 +174,29 @@ A **bold** closer.`
 		return fmt.Errorf("attach article ref: %w", err)
 	}
 
+	// 7. Event Record (issue #374). One Event row with the
+	// standard v60 Event payload (Kind, BeginDate, EndDate,
+	// Description, PDFExcerptOverride) and a link to s1 so the
+	// "Linked Person Records" table renders in the PDF. The
+	// snapshot tests exercise both event_landscape.typ and
+	// event_portrait.typ against this row.
+	eventSvc := records.NewEventService(svc)
+	event, err := eventSvc.CreateEvent(models.Soldier{
+		DisplayID:          "FIX-00006",
+		EntryType:          models.EntryTypeEvent,
+		Kind:               "Battle",
+		BeginDate:          "07/01/1863",
+		EndDate:            "07/03/1863",
+		Description:        "Decisive engagement in Adams County, Pennsylvania.",
+		PDFExcerptOverride: "Printable override — short.",
+	})
+	if err != nil {
+		return fmt.Errorf("create event: %w", err)
+	}
+	if _, err := eventSvc.AttachEventToPerson(event.ID, s1.ID); err != nil {
+		return fmt.Errorf("attach event to person: %w", err)
+	}
+
 	return pinFixtureTimestamps(database)
 }
 

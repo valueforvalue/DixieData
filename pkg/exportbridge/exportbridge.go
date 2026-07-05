@@ -33,6 +33,7 @@ type BulkRenderer struct {
 	export      *archive.ExportService
 	soldier     *archive.SoldierService
 	article     *archive.ArticleService
+	event       *archive.EventService
 	anniversary *archive.AnniversaryService
 	analytics   *archive.AnalyticsService
 	dataDir     string
@@ -54,6 +55,7 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 	}
 	soldierSvc := archive.NewSoldierService(database)
 	articleSvc := archive.NewArticleService(database)
+	eventSvc := archive.NewEventService(database)
 	anniversarySvc := archive.NewAnniversaryService(database)
 	analyticsSvc := archive.NewAnalyticsService(database)
 	exportSvc := archive.NewExportService(database, soldierSvc)
@@ -72,6 +74,7 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 		export:      exportSvc,
 		soldier:     soldierSvc,
 		article:     articleSvc,
+		event:       eventSvc,
 		anniversary: anniversarySvc,
 		analytics:   analyticsSvc,
 		dataDir:     absDataDir,
@@ -326,6 +329,51 @@ func (b *BulkRenderer) RenderArticleSingle(ctx context.Context, articleID int64,
 	}
 	defer os.Remove(tmp.Name())
 	if err := b.export.ExportArticlePDF(tmp.Name(), *article, resolvedRefs, opts); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(data)
+	return err
+}
+
+// RenderEventSingle renders one Event Record's PDF to out
+// (issue #374). Mirrors RenderArticleSingle's shape: the event
+// id is resolved via GetEventByID; the linked Person Records
+// are pre-projected via EventService.ListForEvent so the
+// event_<orientation>.typ template receives a slim array of
+// dicts (the template does no DB lookups -- same shape as
+// ExportEventPDF's linked pre-projection).
+//
+// Output format follows opts (PDF / SVG / PNG), defaulting to
+// PDF. The Registry resolves event_portrait.typ or
+// event_landscape.typ based on opts.Orientation.
+func (b *BulkRenderer) RenderEventSingle(ctx context.Context, eventID int64, opts render.PDFOptions, out io.Writer) error {
+	opts = opts.Normalize("L", true)
+	withLinks, err := b.event.GetEventByID(eventID)
+	if err != nil {
+		return fmt.Errorf("GetEventByID(%d): %w", eventID, err)
+	}
+	event := withLinks.Event
+	linkedRows, err := b.event.ListForEvent(eventID)
+	if err != nil {
+		return fmt.Errorf("ListForEvent(%d): %w", eventID, err)
+	}
+	if path := filePathFromWriter(out); path != "" {
+		return b.export.ExportEventPDF(path, event, linkedRows, opts)
+	}
+	tmp, err := os.CreateTemp("", "dixiedata-exportbridge-event-*.pdf")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if err := b.export.ExportEventPDF(tmp.Name(), event, linkedRows, opts); err != nil {
 		tmp.Close()
 		return err
 	}
