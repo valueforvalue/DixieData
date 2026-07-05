@@ -196,6 +196,25 @@ func (e *ExportService) ExportEventPDF(outputPath string, event models.Soldier, 
 	return e.exportEventViaRegistry(outputPath, event, linked)
 }
 
+// ExportArticlePDF renders an Article Record (issue #321 slice 4)
+// to a single-record PDF. Routes through the typst-backed Registry
+// the same way ExportEventPDF does; the Registry's Resolve picks
+// templates/article_portrait.typ or article_landscape.typ based on
+// the PrintSettings orientation.
+//
+// The resolvedRefs slice is the article's in-body markdown-token
+// parser output (ArticleService.ResolveRefs) pre-projected into
+// {display_id, name, resolved} dicts so the template does no DB
+// lookups. The bridge / handler pre-fetches the slice before
+// calling ExportArticlePDF -- mirroring ExportEventPDF's
+// `linked []models.Soldier` pattern.
+func (e *ExportService) ExportArticlePDF(outputPath string, article models.Article, resolvedRefs []map[string]any, options PDFOptions) error {
+	if e.registry == nil {
+		return errPDFRegistryMissing
+	}
+	return e.exportArticleViaRegistry(outputPath, article, resolvedRefs, options)
+}
+
 // ExportMonthlyAnniversaryPDF renders the monthly anniversary
 // report. The Registry path uses the 'anniversary' template.
 func (e *ExportService) ExportMonthlyAnniversaryPDF(outputPath string, month int, calendar map[int][]models.Soldier, options PDFOptions) error {
@@ -374,6 +393,8 @@ func templateForRecordType(recordType, orientation string) string {
 		return "widow_" + short
 	case "wife", "linked_person":
 		return "spouse_" + short
+	case "article":
+		return "article_" + short
 	default:
 		return "soldier_" + short
 	}
@@ -523,6 +544,42 @@ func soldierDateRangeLabel(s models.Soldier) string {
 		return "— " + toY
 	}
 	return ""
+}
+
+// exportArticleViaRegistry renders a single Article Record
+// (issue #321 slice 4) via the typst-backed Registry. Mirrors
+// exportEventViaRegistry's shape: the article payload carries
+// the full record; the resolvedRefs slice is the pre-projected
+// {display_id, name, resolved} dict array the template reads.
+//
+// The template (templates/article_portrait.typ or
+// article_landscape.typ, picked via defaultTemplateName based
+// on options.Orientation) reads data["article"] + data["resolved_refs"].
+// Failure-loud Unknown markers per locked decision #6 are
+// surfaced via resolved=false rows in the resolved_refs slice.
+func (e *ExportService) exportArticleViaRegistry(outputPath string, article models.Article, resolvedRefs []map[string]any, options PDFOptions) error {
+	orientation := options.Orientation
+	if orientation == "" {
+		orientation = "L"
+	}
+	settings := PrintSettings{
+		Orientation:          orientation,
+		SingleRecordTemplate: templateForRecordType("article", orientation),
+	}.Normalize()
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	data := map[string]any{
+		"article":       article,
+		"resolved_refs": resolvedRefs,
+		"options":       options.Normalize(orientation, true),
+		"settings":      settings,
+		"branding":      e.archiveBranding(false),
+	}
+	return e.registry.Render(context.Background(), settings, "article", data, f)
 }
 
 // exportAnniversaryViaRegistry renders the anniversary report

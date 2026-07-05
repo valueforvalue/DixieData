@@ -325,6 +325,33 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   renders without the panel) +
   `audit/smoke_articles.mjs` step 7.
 
+- **Article Record Typst templates + snapshot coverage**
+  (issue #321 slice 4.1). Adds `templates/article_portrait.typ`
+  + `templates/article_landscape.typ` mirroring the
+  `event_landscape.typ` shape. Each template carries the
+  metadata header (`record_types:[article]` + the orientation)
+  + the `data.json` reader + the body block + the "Cited
+  Person Records" block (fail-loud `⚠ Unknown: <id>` per
+  locked decision #6). The Registry's `defaultTemplateName`
+  picks `article_portrait.typ` or `article_landscape.typ`
+  based on the caller's PrintSettings orientation. Adds
+  `internal/archive.compat.ArticleService` +
+  `NewArticleService(database)` re-exports (mirrors the
+  SoldierService re-export pattern); `archive.ExportService.ExportArticlePDF`
+  + `exportArticleViaRegistry` (mirrors ExportEventPDF);
+  `pkg/exportbridge.BulkRenderer.GetArticleByID` +
+  `RenderArticleSingle` (the bridge entry point); the
+  `article` mode in `runSnapshotCase` (asserts
+  byte-identical PDF output against golden files). The
+  fixture builder seeds an article with one resolved +
+  one unresolved Person Record token so the template's
+  fail-loud path is exercised. Pinned by
+  `TestArchiveContractSnapshots/article-portrait` +
+  `TestArchiveContractSnapshots/article-landscape`
+  (byte-identical compare against
+  `internal/exportcontract/testdata/snapshots/article-{portrait,landscape}.pdf`;
+  regenerate with `UPDATE_SNAPSHOTS=1`).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

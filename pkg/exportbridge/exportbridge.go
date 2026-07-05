@@ -32,6 +32,7 @@ import (
 type BulkRenderer struct {
 	export      *archive.ExportService
 	soldier     *archive.SoldierService
+	article     *archive.ArticleService
 	anniversary *archive.AnniversaryService
 	analytics   *archive.AnalyticsService
 	dataDir     string
@@ -52,6 +53,7 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	soldierSvc := archive.NewSoldierService(database)
+	articleSvc := archive.NewArticleService(database)
 	anniversarySvc := archive.NewAnniversaryService(database)
 	analyticsSvc := archive.NewAnalyticsService(database)
 	exportSvc := archive.NewExportService(database, soldierSvc)
@@ -69,6 +71,7 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 	return &BulkRenderer{
 		export:      exportSvc,
 		soldier:     soldierSvc,
+		article:     articleSvc,
 		anniversary: anniversarySvc,
 		analytics:   analyticsSvc,
 		dataDir:     absDataDir,
@@ -82,6 +85,12 @@ func NewBulkRenderer(dbPath, dataDir string) (*BulkRenderer, error) {
 // fully-populated models.Soldier.
 func (b *BulkRenderer) GetByID(id int64) (*models.Soldier, error) {
 	return b.soldier.GetByID(id)
+}
+
+// GetArticleByID returns a single article by ID (issue #321 slice 4).
+// Mirrors internal/records.ArticleService.GetByID.
+func (b *BulkRenderer) GetArticleByID(id int64) (*models.Article, error) {
+	return b.article.GetByID(id)
 }
 
 // List returns a page of soldiers. Mirrors
@@ -289,6 +298,48 @@ func (b *BulkRenderer) Close() error {
 	return b.export.Close()
 }
 
+// RenderArticleSingle renders one article's PDF to out (issue #321
+// slice 4). Mirrors archive.ExportService.ExportArticlePDF.
+//
+// The article ID is resolved via GetArticleByID; the resolved
+// refs are pre-projected via the article service so the
+// article_*.typ template receives a dict array (the template does
+// no DB lookups -- same shape as ExportEventPDF's linked
+// pre-projection).
+//
+// Output format follows opts (PDF / SVG / PNG), defaulting to
+// PDF. The Registry resolves article_portrait.typ or
+// article_landscape.typ based on opts.Orientation.
+func (b *BulkRenderer) RenderArticleSingle(ctx context.Context, articleID int64, opts render.PDFOptions, out io.Writer) error {
+	opts = opts.Normalize("L", true)
+	article, err := b.article.GetByID(articleID)
+	if err != nil {
+		return fmt.Errorf("GetArticleByID(%d): %w", articleID, err)
+	}
+	resolvedRefs := buildArticleResolvedRefsDictList(b.soldier, b.article, articleID)
+	if path := filePathFromWriter(out); path != "" {
+		return b.export.ExportArticlePDF(path, *article, resolvedRefs, opts)
+	}
+	tmp, err := os.CreateTemp("", "dixiedata-exportbridge-article-*.pdf")
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if err := b.export.ExportArticlePDF(tmp.Name(), *article, resolvedRefs, opts); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(data)
+	return err
+}
+
 // RecordError describes a per-record failure encountered during a
 // bulk render. Today the bulk render halts on first error, so
 // RecordError is reserved for future partial-render support.
@@ -389,4 +440,44 @@ func filePathFromWriter(w io.Writer) string {
 		return f.Name()
 	}
 	return ""
+}
+// buildArticleResolvedRefsDictList is the slice-4 pre-projection
+// helper for ExportArticlePDF. Reads the article's ResolveRefs
+// output (the slice-2 markdown-token parser) and projects each
+// row into the {display_id, name, resolved} dict the
+// article_*.typ template expects. Unknown tokens keep
+// resolved=false so the template can render the fail-loud
+// "⚠ Unknown: <id>" marker per locked decision #6.
+//
+// The soldier lookup is the only DB call per token. Articles
+// rarely cite more than a handful of Person Records so the
+// N+1 cost is acceptable for v1; a future slice can batch
+// the lookup if it ever surfaces in a profile.
+func buildArticleResolvedRefsDictList(soldiers *archive.SoldierService, articles *archive.ArticleService, articleID int64) []map[string]any {
+	tokens, err := articles.ResolveRefs(articleID)
+	if err != nil {
+		return []map[string]any{}
+	}
+	out := make([]map[string]any, 0, len(tokens))
+	for _, tok := range tokens {
+		displayID := tok.PersonDisplayID
+		if displayID == "" {
+			displayID = tok.Token
+		}
+		name := displayID
+		if tok.Resolved && soldiers != nil {
+			if s, lookupErr := soldiers.GetByID(tok.PersonRecordID); lookupErr == nil && s != nil {
+				fullName := strings.TrimSpace(strings.Join([]string{strings.TrimSpace(s.FirstName), strings.TrimSpace(s.LastName)}, " "))
+				if fullName != "" {
+					name = fullName
+				}
+			}
+		}
+		out = append(out, map[string]any{
+			"display_id": displayID,
+			"name":       name,
+			"resolved":   tok.Resolved,
+		})
+	}
+	return out
 }

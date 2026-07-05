@@ -54,6 +54,17 @@ func runSnapshotCase(t *testing.T, fixtureDir, typstPath, templatesDir string, c
 			t.Fatalf("RenderSingle: %v", err)
 		}
 		return buf.Bytes()
+	case "article":
+		opts := render.PDFOptions{
+			Orientation:     c.orientation,
+			PrinterFriendly: true,
+			IncludeImages:   false,
+		}
+		var buf bytes.Buffer
+		if err := r.RenderArticleSingle(ctx, c.recordID, opts, nopWriteCloser{&buf}); err != nil {
+			t.Fatalf("RenderArticleSingle: %v", err)
+		}
+		return buf.Bytes()
 	case "bulk":
 		var buf bytes.Buffer
 		settings := c.settings()
@@ -191,6 +202,20 @@ func snapshotCases(t *testing.T) []snapshotCase {
 					GroupByPensionState: true,
 				}.Normalize()
 			},
+		},
+		{
+			name:        "article-portrait",
+			template:    "article_portrait",
+			orientation: "P",
+			mode:        "article",
+			recordID:    1,
+		},
+		{
+			name:        "article-landscape",
+			template:    "article_landscape",
+			orientation: "L",
+			mode:        "article",
+			recordID:    1,
 		},
 	}
 }

@@ -26,6 +26,8 @@ const (
 
 // SoldierService is a re-export of records.SoldierService (or pkg/render.SoldierService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type SoldierService = records.SoldierService
+// ArticleService is a re-export of records.ArticleService (issue #321 slice 4). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
+type ArticleService = records.ArticleService
 // AnniversaryService is a re-export of records.AnniversaryService (or pkg/render.AnniversaryService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
 type AnniversaryService = records.AnniversaryService
 // AnalyticsService is a re-export of records.AnalyticsService (or pkg/render.AnalyticsService for the render types). See the canonical definition in the source package for the contract; the alias exists for import-path convenience.
@@ -49,6 +51,11 @@ const (
 
 // NewSoldierService is a re-export of records.NewSoldierService (or pkg/render.NewSoldierService). See the source package for the canonical implementation.
 func NewSoldierService(database *db.DB) *SoldierService { return records.NewSoldierService(database) }
+// NewArticleService is a re-export of records.NewArticleService (issue #321 slice 4). Wires the article service against the same SoldierService that owns the shared DB connection so the article row + person ref lookups share the connection pool.
+func NewArticleService(database *db.DB) *ArticleService {
+	soldier := records.NewSoldierService(database)
+	return records.NewArticleService(soldier, records.NewMarkdownRenderer())
+}
 // NewAnniversaryService is a re-export of records.NewAnniversaryService (or pkg/render.NewAnniversaryService). See the source package for the canonical implementation.
 func NewAnniversaryService(database *db.DB) *AnniversaryService { return records.NewAnniversaryService(database) }
 // NewAnalyticsService is a re-export of records.NewAnalyticsService (or pkg/render.NewAnalyticsService). See the source package for the canonical implementation.
