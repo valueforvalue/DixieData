@@ -521,6 +521,22 @@ func ArticleEdit(articleID int64) string {
 	return fmt.Sprintf("/articles/%d/edit", articleID)
 }
 
+// ArticlePDF (issue #321 slice 4.2) returns the URL for
+// POST /articles/{id}/pdf. The handler pre-renders the
+// article's PDF body to bytes + opens a guarded
+// SaveFileDialog per docs/agents/dialog-guard.md.
+func ArticlePDF(articleID int64) string {
+	return fmt.Sprintf("/articles/%d/pdf", articleID)
+}
+
+// ArticleRaw (issue #321 slice 4.4) returns the URL for
+// GET /articles/{id}/raw. Returns the body_md verbatim
+// as text/markdown with a Content-Disposition: attachment
+// header so the browser saves the file.
+func ArticleRaw(articleID int64) string {
+	return fmt.Sprintf("/articles/%d/raw", articleID)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {

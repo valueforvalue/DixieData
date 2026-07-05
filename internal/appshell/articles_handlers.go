@@ -27,9 +27,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -620,4 +623,129 @@ func (a *App) handleArticlePreview(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(rendered))
+}
+
+// handleArticlePDF serves POST /articles/{id}/pdf. Pre-renders
+// the article's PDF body via ArticleService.RenderPDF, opens
+// a guarded SaveFileDialog (per docs/agents/dialog-guard.md),
+// then writes the bytes to the user's chosen path. The
+// orientation form field (portrait|landscape, defaults to
+// landscape) selects the per-export template.
+//
+// The handler runs the pre-render synchronously on the request
+// goroutine because ArticleRecord PDFs are small (< 100 KB
+// typically) -- no job-enqueue overhead. Snapshot targets are
+// rejected with 409 (matching the slice-2.5 contract); unknown
+// id returns 404; render failures return 500.
+func (a *App) handleArticlePDF(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := parseIntFromPath(r.URL.Path, "/articles/", "/pdf")
+	if err != nil || id < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	orientation := strings.TrimSpace(r.PostFormValue("orientation"))
+	if orientation == "" {
+		orientation = "portrait"
+	}
+
+	result, err := a.articles.RenderPDF(id, orientation)
+	if err != nil {
+		if errors.Is(err, records.ErrArticleNotFound) {
+			respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not render article %d PDF.", id), err)
+		return
+	}
+
+	opts := runtime.SaveDialogOptions{
+		DefaultFilename: result.Filename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDF document", Pattern: "*.pdf"},
+		},
+	}
+	dupKey := fmt.Sprintf("article-pdf|%d|%s|%s", id, orientation, result.Filename)
+	path, outcome := a.guardedSaveFileDialog(dupKey, opts)
+	switch outcome {
+	case SaveOutcomeDuplicated:
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	case SaveOutcomeDialogAborted:
+		respondError(w, r, KindValidation, "Article PDF export cancelled.", nil)
+		return
+	}
+	if err := os.WriteFile(path, result.Bytes, 0o644); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not write PDF to %q.", path), err)
+		return
+	}
+	w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Article PDF saved to %s.", filepath.Base(path)))
+	w.Header().Set("X-DixieData-Toast-Type", "success")
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleArticleRaw serves GET /articles/{id}/raw. Returns the
+// body_md verbatim as text/markdown with a Content-Disposition:
+// attachment header so the browser saves the file. The
+// suggested filename is the article's slugified title + the
+// DisplayID (mirrors the PDF download's slugify pattern).
+//
+// Used by the per-export "Save as Markdown" affordance + the
+// slice-4.5 picker.
+func (a *App) handleArticleRaw(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id, err := parseIntFromPath(r.URL.Path, "/articles/", "/raw")
+	if err != nil || id < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	article, err := a.articles.GetByID(id)
+	if err != nil {
+		if errors.Is(err, records.ErrArticleNotFound) {
+			respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not read article %d.", id), err)
+		return
+	}
+	filename := fmt.Sprintf("Article-%s.md", article.DisplayID)
+	if slug := slugifyTitle(article.Title); slug != "" {
+		filename = fmt.Sprintf("Article-%s-%s.md", article.DisplayID, slug)
+	}
+	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	_, _ = w.Write([]byte(article.BodyMD))
+}
+
+// slugifyTitle is a thin wrapper for the filename slug helper
+// (mirrors ArticleService.slugify but for the raw-md filename).
+func slugifyTitle(title string) string {
+	s := strings.TrimSpace(strings.ToLower(title))
+	if s == "" {
+		return ""
+	}
+	var b strings.Builder
+	prevHyphen := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevHyphen = false
+		case r == ' ' || r == '-' || r == '_':
+			if !prevHyphen && b.Len() > 0 {
+				b.WriteByte('-')
+				prevHyphen = true
+			}
+		}
+		if b.Len() >= 60 {
+			break
+		}
+	}
+	return strings.TrimRight(b.String(), "-")
 }

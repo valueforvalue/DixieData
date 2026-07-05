@@ -1048,3 +1048,62 @@ func TestHandleSoldierByIDRendersCitedInPanel(t *testing.T) {
 		t.Errorf("Cited-in panel unexpectedly renders on a bare person")
 	}
 }
+
+// TestHandleArticleRawReturnsMarkdown pins the slice-4.4
+// raw-md download contract: GET /articles/{id}/raw returns
+// 200 + Content-Type: text/markdown + Content-Disposition:
+// attachment + body matches the stored body_md. 404 on
+// unknown id; 405 on non-GET.
+func TestHandleArticleRawReturnsMarkdown(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	const body = "# Markdown body\n\nwith **bold**."
+	src, err := app.articles.Create(models.Article{
+		Title:  "Raw target",
+		BodyMD: body,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	resp, err := http.Get(server.URL + "/articles/" + intStr(src.ID) + "/raw")
+	if err != nil {
+		t.Fatalf("GET raw: %v", err)
+	}
+	defer resp.Body.Close()
+	got, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET raw status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); !strings.Contains(got, "text/markdown") {
+		t.Errorf("Content-Type = %q, want text/markdown", got)
+	}
+	if got := resp.Header.Get("Content-Disposition"); !strings.Contains(got, "attachment") {
+		t.Errorf("Content-Disposition = %q, want attachment", got)
+	}
+	if string(got) != body {
+		t.Errorf("body = %q, want %q", string(got), body)
+	}
+
+	// Unknown id -> 404.
+	resp404, err := http.Get(server.URL + "/articles/999999/raw")
+	if err != nil {
+		t.Fatalf("GET 404: %v", err)
+	}
+	resp404.Body.Close()
+	if resp404.StatusCode != http.StatusNotFound {
+		t.Errorf("GET unknown status = %d, want 404", resp404.StatusCode)
+	}
+
+	// POST -> 405.
+	resp405, err := http.PostForm(server.URL+"/articles/"+intStr(src.ID)+"/raw", url.Values{})
+	if err != nil {
+		t.Fatalf("POST raw: %v", err)
+	}
+	resp405.Body.Close()
+	if resp405.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("POST status = %d, want 405", resp405.StatusCode)
+	}
+}

@@ -352,6 +352,40 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `internal/exportcontract/testdata/snapshots/article-{portrait,landscape}.pdf`;
   regenerate with `UPDATE_SNAPSHOTS=1`).
 
+- **Article PDF pre-render + dialog-guard download** (issue
+  #321 slice 4.2). Adds `records.PDFResult{Bytes, Filename}`
+  + `ArticleService.RenderPDF(articleID, orientation)
+  (*PDFResult, error)` (synchronous pre-render to bytes --
+  Article PDFs are small enough to skip the job-enqueue
+  path that EventPDF + SoldierPDF use). The handler opens
+  a `guardedSaveFileDialog` (per docs/agents/dialog-guard.md)
+  + writes the bytes to the user's chosen path. The
+  `ArticleRegistry` interface (lives in `internal/records`
+  to avoid a pkg/render import cycle) is wired via
+  `appshell.articleRegistryAdapter` at app startup. The
+  orientation form field (portrait|landscape, defaults
+  to landscape) selects the per-export template. Adds
+  `POST /articles/{id}/pdf` route +
+  `handleArticlePDF` handler + `routebuilder.ArticlePDF`
+  + `slugifyArticleFilename` helper. Pinned by
+  `TestSlugifyArticleFilename` (4 sub-cases: simple title
+  + punctuation + blank title fallback + 60-char
+  truncation) + `TestRenderPDFRequiresRegistry` (returns
+  error when registry not configured).
+
+- **Article raw-md download endpoint** (issue #321 slice 4.4).
+  `GET /articles/{id}/raw` returns the body_md verbatim
+  as `text/markdown; charset=utf-8` with a
+  `Content-Disposition: attachment` header so the
+  browser saves the file. The suggested filename is
+  `Article-<DisplayID>-<slug>.md` (mirrors the PDF
+  download's slugify pattern). Adds `handleArticleRaw`
+  handler + `routebuilder.ArticleRaw` + a `slugifyTitle`
+  helper (local to the appshell package). Pinned by
+  `TestHandleArticleRawReturnsMarkdown` (3 sub-cases:
+  200 + correct headers + body matches stored md;
+  404 on unknown id; 405 on POST).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

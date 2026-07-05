@@ -19,9 +19,12 @@
 package records
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 	"time"
@@ -47,6 +50,28 @@ var ErrArticleNotFound = errors.New("article not found")
 type ArticleService struct {
 	soldiers  *SoldierService
 	renderer  *MarkdownRenderer
+	registry  ArticleRegistry
+}
+
+// ArticleRegistry is the slice-4 surface the ArticleService
+// uses to pre-render the article's PDF. The contract is a
+// subset of *render.Registry; the Render method takes a
+// record-type string + data map + writer and the impl
+// resolves the template + PrintSettings internally.
+//
+// The interface lives in internal/records (not pkg/render)
+// to avoid an import cycle: pkg/render depends on
+// internal/records, so internal/records cannot import
+// pkg/render.
+type ArticleRegistry interface {
+	RenderArticle(ctx context.Context, recordType string, orientation string, data map[string]any, w io.Writer) error
+}
+
+// SetArticleRegistry wires the typst-backed Registry into
+// the ArticleService. Called once at startup; nil clears
+// the wiring.
+func (a *ArticleService) SetArticleRegistry(reg ArticleRegistry) {
+	a.registry = reg
 }
 
 // NewArticleService constructs the slice-1 ArticleService.
@@ -1057,3 +1082,170 @@ func (a *ArticleService) CitedInArticles(personID int64) ([]models.Article, erro
 	}
 	return out, nil
 }
+
+// PDFResult is the bytes + filename return value for the
+// article RenderPDF helper (issue #321 slice 4.2). The
+// ArticleService.RenderPDF method pre-renders the PDF body
+// before the caller's file dialog opens, so the result
+// needs to travel as in-memory bytes + a suggested filename
+// (the dialog uses the filename as DefaultFilename).
+//
+// Today only ArticleService uses this shape; EventPDF +
+// SoldierPDF keep writing directly to a path inside their
+// export jobs (so a long render doesn't block the request
+// goroutine). ArticlePDF is small enough to pre-render
+// without the job-enqueue overhead.
+type PDFResult struct {
+	Bytes    []byte
+	Filename string
+}
+
+// RenderPDF pre-renders the article's PDF body to bytes
+// and returns them alongside a slugified filename. The
+// handler hands the bytes to a SaveFileDialog-driven write
+// (no job-enqueue needed because the render is short).
+// orientation is "portrait" or "landscape"; both resolve
+// to templates/article_<orientation>.typ via the Registry's
+// defaultTemplateName.
+//
+// Errors:
+//   - ErrArticleNotFound    when the article id does not exist or is a snapshot
+//   - other render errors  propagate from the registry
+//
+// The resolvedRefs slice is pre-projected from ResolveRefs
+// so the typst template does no DB lookups -- same shape
+// as ExportEventPDF's `linked []models.Soldier` parameter.
+func (a *ArticleService) RenderPDF(articleID int64, orientation string) (*PDFResult, error) {
+	if a.registry == nil {
+		return nil, fmt.Errorf("RenderPDF: registry not configured")
+	}
+	article, err := a.GetByID(articleID)
+	if err != nil {
+		return nil, err
+	}
+	tokens, err := a.ResolveRefs(articleID)
+	if err != nil {
+		return nil, fmt.Errorf("ResolveRefs %d: %w", articleID, err)
+	}
+	resolvedRefs := make([]map[string]any, 0, len(tokens))
+	for _, tok := range tokens {
+		displayID := tok.PersonDisplayID
+		if displayID == "" {
+			displayID = tok.Token
+		}
+		name := displayID
+		if tok.Resolved {
+			if s, lookupErr := a.soldiers.GetByID(tok.PersonRecordID); lookupErr == nil && s != nil {
+				fullName := strings.TrimSpace(strings.Join([]string{strings.TrimSpace(s.FirstName), strings.TrimSpace(s.LastName)}, " "))
+				if fullName != "" {
+					name = fullName
+				}
+			}
+		}
+		resolvedRefs = append(resolvedRefs, map[string]any{
+			"display_id": displayID,
+			"name":       name,
+			"resolved":   tok.Resolved,
+		})
+	}
+	opts := renderDefaultPDFOptions(orientation)
+	data := map[string]any{
+		"article":       *article,
+		"resolved_refs": resolvedRefs,
+		"options":       opts,
+		"branding":      map[string]string{},
+	}
+	var buf bytes.Buffer
+	if err := a.registry.RenderArticle(contextBackground(), "article", normalizeOrientation(orientation), data, &buf); err != nil {
+		return nil, fmt.Errorf("RenderPDF %d: %w", articleID, err)
+	}
+	return &PDFResult{
+		Bytes:    buf.Bytes(),
+		Filename: slugifyArticleFilename(*article, orientation),
+	}, nil
+}
+
+// articlePDFOptions is the small subset of PDFOptions the
+// article template's data.json needs. Local type to avoid
+// importing pkg/render (cycle: pkg/render -> internal/records).
+type articlePDFOptions struct {
+	Orientation     string `json:"orientation"`
+	PrinterFriendly bool   `json:"printerFriendly"`
+	IncludeImages   bool   `json:"includeImages"`
+}
+
+// renderDefaultPDFOptions builds the article PDFOptions payload
+// the typst template reads. Mirrors the appshell's
+// PDFOptionsFromForm helper but stays inside the service so
+// the RenderPDF path is self-contained.
+func renderDefaultPDFOptions(orientation string) articlePDFOptions {
+	return articlePDFOptions{
+		Orientation:     normalizeOrientation(orientation),
+		PrinterFriendly: true,
+		IncludeImages:   false,
+	}
+}
+
+// slugifyArticleFilename builds the suggested filename:
+// "Article-ART-NNNNN-<title-slug>-<orientation>.pdf". The
+// title slug is lowercased, stripped of non-alphanumerics,
+// and truncated to 60 characters so the filename stays
+// readable in a Windows file dialog. Falls back to the
+// DisplayID alone when the title is blank.
+func slugifyArticleFilename(article models.Article, orientation string) string {
+	short := "landscape"
+	if normalizeOrientation(orientation) == "P" {
+		short = "portrait"
+	}
+	slug := slugify(article.Title)
+	if slug == "" {
+		return fmt.Sprintf("Article-%s-%s.pdf", article.DisplayID, short)
+	}
+	return fmt.Sprintf("Article-%s-%s-%s.pdf", article.DisplayID, slug, short)
+}
+
+// slugify lower-cases + strips non-alphanumeric + collapses
+// runs of whitespace to single hyphens. Truncates to 60 chars.
+func slugify(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return ""
+	}
+	var b strings.Builder
+	prevHyphen := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevHyphen = false
+		case r == ' ' || r == '-' || r == '_':
+			if !prevHyphen && b.Len() > 0 {
+				b.WriteByte('-')
+				prevHyphen = true
+			}
+		}
+		if b.Len() >= 60 {
+			break
+		}
+	}
+	out := strings.TrimRight(b.String(), "-")
+	return out
+}
+
+// normalizeOrientation maps "portrait" / "landscape" / "" /
+// anything else to the canonical "P" / "L" the typst template
+// reads via opts.at("orientation").
+func normalizeOrientation(o string) string {
+	switch strings.ToLower(strings.TrimSpace(o)) {
+	case "p", "portrait":
+		return "P"
+	default:
+		return "L"
+	}
+}
+
+// contextBackground returns a context.Background(). The slice-4
+// pre-render path runs synchronously on the request goroutine
+// so a cancelled context would defeat the purpose of the
+// pre-render -- it must run to completion.
+func contextBackground() context.Context { return context.Background() }

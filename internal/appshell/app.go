@@ -2013,6 +2013,13 @@ func (a *App) reloadServices() error {
 	// to its fpdf Service (which is preserved as a test scaffold).
 	if reg, _, err := a.buildRenderRegistry(); err == nil && reg != nil {
 		a.export.SetRegistry(reg)
+		// Article PDF pre-render (slice 4.2) shares the same
+		// registry through a small adapter (the interface
+		// lives in internal/records to avoid a pkg/render
+		// import cycle).
+		if a.articles != nil {
+			a.articles.SetArticleRegistry(&articleRegistryAdapter{reg: reg})
+		}
 	}
 	// Bulk export reads each soldier's images by absolute path.
 	// Soldier.Images[i].FilePath is stored relative to the data
@@ -2675,4 +2682,29 @@ func jobsConcurrencyFromEnv() int {
 		n = upperBound
 	}
 	return n
+}
+
+// articleRegistryAdapter adapts the *render.Registry to the
+// internal/records.ArticleRegistry interface so the article
+// service can call into the typst-backed render path without
+// depending on pkg/render (which would create a cycle:
+// pkg/render -> internal/records).
+type articleRegistryAdapter struct {
+	reg *render.Registry
+}
+
+func (a *articleRegistryAdapter) RenderArticle(ctx context.Context, recordType, orientation string, data map[string]any, w io.Writer) error {
+	if a == nil || a.reg == nil {
+		return errors.New("articleRegistryAdapter: nil registry")
+	}
+	settings := render.PrintSettings{
+		Orientation:          orientation,
+		SingleRecordTemplate: recordType + "_" + func() string {
+			if orientation == "P" {
+				return "portrait"
+			}
+			return "landscape"
+		}(),
+	}.Normalize()
+	return a.reg.Render(ctx, settings, recordType, data, w)
 }
