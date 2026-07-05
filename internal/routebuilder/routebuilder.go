@@ -511,6 +511,16 @@ func ArticleRevisions(articleID int64) string {
 	return fmt.Sprintf("/articles/%d/revisions", articleID)
 }
 
+// ArticleEdit (issue #321 slice 3.5 + 3.7) returns the URL
+// for the /articles/{id}/edit page. Registered as GET +
+// POST in routes.go. Slice 3.5 lands the route + handler
+// shell; slice 3.6 lands the create-side editor; slice 3.7
+// lands the edit-side editor with data-draft-key + draft
+// version attrs.
+func ArticleEdit(articleID int64) string {
+	return fmt.Sprintf("/articles/%d/edit", articleID)
+}
+
 // BrowseBulkTag returns the URL for the bulk-tag form target.
 // Registered as POST /browse/bulk-tag in routes.go.
 func BrowseBulkTag() string {

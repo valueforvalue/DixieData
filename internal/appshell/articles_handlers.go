@@ -300,6 +300,101 @@ func (a *App) handleArticleRevisions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleEditArticle serves both GET and POST on
+// /articles/{id}/edit. The slice-3.5 commit lands the route +
+// the 404 + 400 contracts; the slice-3.7 commit swaps the
+// "GET form" branch for the full markdown editor + sanitized
+// preview + local-draft-persistence block.
+//
+// POST contract (slice 3.5): the form posts title + subtitle +
+// body; the handler trims the title, calls
+// ArticleService.Update, then writes the X-DixieData-Redirect
+// header and returns 200. Errors map to:
+//   - ErrArticleNotFound   -> 404 (unknown id)
+//   - ErrArticleTitleRequired -> 400 (blank title)
+//   - ErrArticleSnapshot   -> 409 (snapshot target rejected)
+//   - other update errors  -> 500
+//
+// The slice-3.5 POST branch uses a deliberately-small surface
+// (3 form fields, 3 error mappings) so the route can be wired
+// before the editor UX lands.
+func (a *App) handleEditArticle(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIntFromPath(r.URL.Path, "/articles/", "/edit")
+	if err != nil || id < 1 {
+		respondValidation(w, r, "Invalid article id.", err)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		// Slice 3.5: 404 + 400 contracts only. Slice 3.7
+		// swaps this for the full markdown editor.
+		article, err := a.articles.GetByID(id)
+		if err != nil {
+			if errors.Is(err, records.ErrArticleNotFound) {
+				respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+				return
+			}
+			respondInternal(w, r, fmt.Sprintf("Could not read article %d.", id), err)
+			return
+		}
+		view := viewmodel.ArticlePtrFromModel(article)
+		if err := presentation.ArticleEditShell(view).Render(r.Context(), w); err != nil {
+			respondInternal(w, r, fmt.Sprintf("Could not render article %d.", id), err)
+		}
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "bad form: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		title := strings.TrimSpace(r.PostFormValue("title"))
+		if title == "" {
+			http.Error(w, "title is required", http.StatusBadRequest)
+			return
+		}
+		// Look up the existing row, then mutate + Update.
+		// We need the existing row's snapshot_of_id + is_snapshot
+		// fields so Update can keep them unchanged. GetByID
+		// filters snapshots out -- so a POST against a snapshot
+		// row returns ErrArticleNotFound here, which we map to
+		// 409 (snapshot rows are not editable from this surface).
+		existing, err := a.articles.GetByID(id)
+		if err != nil {
+			if errors.Is(err, records.ErrArticleNotFound) {
+				// Could be unknown id OR a snapshot target. Check
+				// the snapshot path so the right status surfaces.
+				if _, sErr := a.articles.GetSnapshotByID(id); sErr == nil {
+					respondConflict(w, r, fmt.Sprintf("Article %d is a snapshot and cannot be edited.", id), nil)
+					return
+				}
+				respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+				return
+			}
+			respondInternal(w, r, fmt.Sprintf("Could not read article %d.", id), err)
+			return
+		}
+		existing.Title = title
+		existing.Subtitle = strings.TrimSpace(r.PostFormValue("subtitle"))
+		existing.BodyMD = r.PostFormValue("body")
+		if err := a.articles.Update(*existing); err != nil {
+			switch {
+			case errors.Is(err, records.ErrArticleNotFound):
+				respondNotFound(w, r, fmt.Sprintf("Article %d not found.", id), err)
+			case errors.Is(err, records.ErrArticleTitleRequired):
+				http.Error(w, "title is required", http.StatusBadRequest)
+			case errors.Is(err, records.ErrArticleSnapshot):
+				respondConflict(w, r, fmt.Sprintf("Article %d is a snapshot and cannot be edited.", id), err)
+			default:
+				respondInternal(w, r, fmt.Sprintf("Could not update article %d.", id), err)
+			}
+			return
+		}
+		w.Header().Set("X-DixieData-Redirect", routebuilder.ArticleByID(id))
+		w.WriteHeader(http.StatusOK)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 
 // handleArticleRefsAttach serves POST /articles/{id}/refs.
 // The form posts a Person Record by Display ID (the picker
