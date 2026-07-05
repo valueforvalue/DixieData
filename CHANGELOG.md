@@ -11,6 +11,40 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Added
+
+- **Event CRUD micro-benchmarks** (issue #320 child #338,
+  slot 16 of 16). New `internal/records/event_service_bench_test.go`
+  pins the hot-path cost for `ListEvents`,
+  `AttachEventToPerson`, `DetachEventFromPerson`, and
+  `ListForPerson`. Baselines captured in
+  `docs/benchmarks/events.md` (commit `69c03d0`, 2026-07-04):
+  `ListEventsPagination` = 16.5ms/op over 5000 events,
+  `AttachDetachRoundTrip` = 286µs/op, `ListForPerson` =
+  2.16ms/op with 100 links. The `PageSize=200 / PageSize=25`
+  ratio is 1.22x — well under the 4x threshold the issue
+  spec asks for — confirming the OFFSET/LIMIT pagination
+  path stays constant-factor on per-row cost.
+
+- **Event CRUD stress tests at volume** (issue #320 child #338).
+  New `tests/stress/events_stress_test.go` covers the volume
+  scenarios from issue #338 body items 1-4: 10k-event seed +
+  pagination sweep @ {25, 50, 100, 200}; 5k-person + 0-10
+  events per person attach pass; attach/detach round-trip
+  N+1 detection on a 200-iteration loop with a 5ms/iter
+  budget; 100-link junction round-trip via `ListForPerson`
+  + `LinkCount`. The 10k-event and 5k-person seeds are gated
+  on `DIXIEDATA_STRESS_FULL=1` so `make test` (short) stays
+  under 5s; `make stress` (scripts/run-stress-tests.ps1)
+  sets the env var by default so the heavy seeds are part of
+  the closure gate for #320. Two items from issue #338 are
+  intentionally out of scope: per-Event PDF p95 < 500ms (item
+  5, dominated by Typst cold-start; the audit smoke probe
+  #323 covers the end-to-end render path on a single event)
+  and Static-Archive 10k-event bundle (item 6, covered by the
+  existing `internal/archive` tests + typst-bulk-export
+  baseline).
+
 ### Maintenance
 
 - **smoke_events.mjs cleanup** (issue #320 child #323 follow-up).
