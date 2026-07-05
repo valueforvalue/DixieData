@@ -86,7 +86,17 @@ func SearchResults(soldiers []models.Soldier, search models.SoldierSearch, page,
 }
 
 func SoldierDetail(soldier models.Soldier, tags []records.Tag) templ.Component {
-	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier), tags)
+	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier), tags, nil)
+}
+
+// SoldierDetailWithCitedIn is the slice-3.8 wrapper over
+// SoldierDetail -- it carries the CitedIn articles
+// (reverse-lookup from article_refs.article_id where the
+// row cites this person) so the detail page can render
+// the "Cited in" panel. nil hides the panel (the slice-1
+// detail surface; the slice-3.8 caller passes the slice).
+func SoldierDetailWithCitedIn(soldier models.Soldier, tags []records.Tag, citedIn []models.Article) templ.Component {
+	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier), tags, viewmodel.ArticlesFromModels(citedIn))
 }
 
 func UnitCamaraderieView(graph records.UnitCamaraderieGraph) templ.Component {

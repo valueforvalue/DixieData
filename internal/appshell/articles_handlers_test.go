@@ -988,3 +988,63 @@ func TestHandleEditArticle_FormCarriesDraftAttrs(t *testing.T) {
 		t.Errorf("Edit form missing preview pane data-attr")
 	}
 }
+
+// TestHandleSoldierByIDRendersCitedInPanel pins the slice-3.8
+// reverse-lookup contract: GET /soldiers/{id} renders the
+// "Cited in" panel when at least one article cites the person.
+// Empty cited-in (no articles cite) renders the slice-1 surface
+// without the panel.
+func TestHandleSoldierByIDRendersCitedInPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	// Seed a person + an article citing them.
+	createArticleHandlerTestPerson(t, app, "DXD-00095")
+	person, err := app.soldiers.GetByDisplayID("DXD-00095")
+	if err != nil {
+		t.Fatalf("lookup: %v", err)
+	}
+	article, err := app.articles.Create(models.Article{Title: "Cites DXD-00095"})
+	if err != nil {
+		t.Fatalf("Create article: %v", err)
+	}
+	if _, err := app.articles.AttachRef(article.ID, person.ID); err != nil {
+		t.Fatalf("AttachRef: %v", err)
+	}
+
+	// Detail page renders the cited-in panel.
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(person.ID))
+	if err != nil {
+		t.Fatalf("GET soldier: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET soldier status = %d, want 200", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), `data-cited-in-articles-panel`) {
+		t.Errorf("Cited-in panel missing from soldier detail")
+	}
+	if !strings.Contains(string(body), "Cites DXD-00095") {
+		t.Errorf("Cited-in article title missing from panel")
+	}
+	if !strings.Contains(string(body), article.DisplayID) {
+		t.Errorf("Cited-in article display id missing from panel")
+	}
+
+	// On a person with no cites, panel is hidden.
+	bare, err := app.soldiers.Create(models.Soldier{FirstName: "Bare", LastName: "Ref", DisplayID: "DXD-00096", Rank: "Private", Unit: "Test"})
+	if err != nil {
+		t.Fatalf("Create bare: %v", err)
+	}
+	respBare, err := http.Get(server.URL + "/soldiers/" + intStr(bare.ID))
+	if err != nil {
+		t.Fatalf("GET bare: %v", err)
+	}
+	defer respBare.Body.Close()
+	bodyBare, _ := io.ReadAll(respBare.Body)
+	if strings.Contains(string(bodyBare), `data-cited-in-articles-panel`) {
+		t.Errorf("Cited-in panel unexpectedly renders on a bare person")
+	}
+}

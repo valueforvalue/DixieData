@@ -821,3 +821,105 @@ func TestArticleService_CreateRendersHTML(t *testing.T) {
 		t.Errorf("Rendered service should render markdown: %q", created2.BodyHTML)
 	}
 }
+
+// TestArticleService_CitedInArticles pins the slice-3.8
+// reverse-lookup contract: CitedInArticles(personID) returns
+// every live-branch article citing the person, sorted
+// updated_at DESC, with an empty slice when no refs exist
+// + no cross-person leakage + snapshot rows excluded +
+// negative id rejected.
+func TestArticleService_CitedInArticles(t *testing.T) {
+	service := newArticleServiceForTest(t)
+
+	// Seed two Person Records.
+	personA, err := service.soldiers.Create(models.Soldier{
+		FirstName: "A", LastName: "Ref", DisplayID: "DXD-A0001",
+	})
+	if err != nil {
+		t.Fatalf("Create person A: %v", err)
+	}
+	personB, err := service.soldiers.Create(models.Soldier{
+		FirstName: "B", LastName: "Ref", DisplayID: "DXD-B0001",
+	})
+	if err != nil {
+		t.Fatalf("Create person B: %v", err)
+	}
+
+	// Empty case.
+	got, err := service.CitedInArticles(personA.ID)
+	if err != nil {
+		t.Fatalf("CitedInArticles (empty): %v", err)
+	}
+	if got == nil {
+		t.Errorf("CitedInArticles (empty) returned nil; want empty slice")
+	}
+	if len(got) != 0 {
+		t.Errorf("CitedInArticles (empty) len = %d, want 0", len(got))
+	}
+
+	// Create 2 articles + attach person A to both + attach
+	// person B to one. Cite person A twice.
+	art1, err := service.Create(models.Article{Title: "Article 1"})
+	if err != nil {
+		t.Fatalf("Create article 1: %v", err)
+	}
+	art2, err := service.Create(models.Article{Title: "Article 2"})
+	if err != nil {
+		t.Fatalf("Create article 2: %v", err)
+	}
+	if _, err := service.AttachRef(art1.ID, personA.ID); err != nil {
+		t.Fatalf("AttachRef 1: %v", err)
+	}
+	if _, err := service.AttachRef(art2.ID, personA.ID); err != nil {
+		t.Fatalf("AttachRef 2: %v", err)
+	}
+	if _, err := service.AttachRef(art1.ID, personB.ID); err != nil {
+		t.Fatalf("AttachRef B: %v", err)
+	}
+
+	// Person A: 2 citations.
+	gotA, err := service.CitedInArticles(personA.ID)
+	if err != nil {
+		t.Fatalf("CitedInArticles A: %v", err)
+	}
+	if len(gotA) != 2 {
+		t.Errorf("CitedInArticles A len = %d, want 2", len(gotA))
+	}
+
+	// Person B: 1 citation (no leakage from A).
+	gotB, err := service.CitedInArticles(personB.ID)
+	if err != nil {
+		t.Fatalf("CitedInArticles B: %v", err)
+	}
+	if len(gotB) != 1 {
+		t.Errorf("CitedInArticles B len = %d, want 1", len(gotB))
+	}
+	if gotB[0].ID != art1.ID {
+		t.Errorf("CitedInArticles B[0].ID = %d, want %d", gotB[0].ID, art1.ID)
+	}
+
+	// Snapshot rows are excluded.
+	if _, err := service.Snapshot(art1.ID); err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	gotAAfter, err := service.CitedInArticles(personA.ID)
+	if err != nil {
+		t.Fatalf("CitedInArticles A after snapshot: %v", err)
+	}
+	if len(gotAAfter) != 2 {
+		t.Errorf("CitedInArticles A after snapshot len = %d, want 2 (snapshot must be excluded)", len(gotAAfter))
+	}
+	for _, art := range gotAAfter {
+		if art.IsSnapshot {
+			t.Errorf("CitedInArticles A includes snapshot id=%d; want only live-branch rows", art.ID)
+		}
+	}
+
+	// Negative id rejected.
+	if _, err := service.CitedInArticles(0); err == nil {
+		t.Errorf("CitedInArticles(0) err = nil, want error")
+	}
+	if _, err := service.CitedInArticles(-1); err == nil {
+		t.Errorf("CitedInArticles(-1) err = nil, want error")
+	}
+}

@@ -104,7 +104,7 @@ func TestSoldierDetailImageAltUsesFallbackForBlankCaption(t *testing.T) {
 		Images: []viewmodel.Image{
 			{ID: 1, FilePath: "images/a.png"},
 		},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestSoldierDetailImageAltStripsHTMLFromCaption(t *testing.T) {
 		Images: []viewmodel.Image{
 			{ID: 2, FilePath: "images/b.png", Caption: `Found at <a href="x">Smithville</a>`},
 		},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestSoldierDetailShowsMetadataHistoryPanel(t *testing.T) {
 		LastEditedBy:     "MDC42",
 		LastEditedAt:     "2026-05-16T18:05:00Z",
 		LastEditedFields: "Unit changed from \"4th OK Inf.\" to \"1st OK Cav.\".\nRecords updated.",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestSoldierDetailSeparatesBiographyFromInternalNotes(t *testing.T) {
 		LastName:  "Taylor",
 		Biography: "Public-facing life sketch with [[STC38-00002]] link.",
 		Notes:     "Private research note.",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestSoldierDetailShowsPDFAndJPGExportActions(t *testing.T) {
 		DisplayID: "STC38-00001",
 		FirstName: "John",
 		LastName:  "Taylor",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestSoldierDetailShowsNameOnlyHeadingAndServiceLine(t *testing.T) {
 		LastName:             "Taylor",
 		RankOut:              "Captain",
 		Unit:                 "Co. A, 1st Texas Infantry",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -272,7 +272,7 @@ func TestSoldierDetailShowsPrefixWhenEnabled(t *testing.T) {
 		FirstName:            "John",
 		LastName:             "Taylor",
 		RankOut:              "Captain",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestSoldierDetailServiceLineFallsBackToSingleValue(t *testing.T) {
 		FirstName: "John",
 		LastName:  "Taylor",
 		Unit:      "Co. A, 1st Texas Infantry",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestSoldierDetailUsesFieldSpecificEmptyStates(t *testing.T) {
 		LastName:              "Taylor",
 		PensionState:          "N/A",
 		ConfederateHomeStatus: "N/A",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestSoldierDetailShowsPrimaryImageControls(t *testing.T) {
 			{ID: 7, FileName: "front.png", FilePath: `images\front.png`, Caption: "Front", IsPrimary: true},
 			{ID: 8, FileName: "side.png", FilePath: `images\side.png`, Caption: "Side"},
 		},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -381,7 +381,7 @@ func TestSoldierDetailUsesMobileSafeSummaryActions(t *testing.T) {
 		FirstName:       "John",
 		LastName:        "Taylor",
 		LinkedSoldierID: 7,
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -479,7 +479,7 @@ func TestSoldierDetailItalicizesMaidenNameAndLinksInternalReferences(t *testing.
 			SourceRecordType: "Pension",
 			Details:          "Linked to [[JCM87-00011]].",
 		}},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -505,7 +505,7 @@ func TestSoldierDetailShowsResolveReviewAction(t *testing.T) {
 		LastName:     "Needed",
 		NeedsReview:  true,
 		ReviewReason: "Potential duplicate from import",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -530,7 +530,7 @@ func TestSoldierDetailShowsManualReviewFlagAction(t *testing.T) {
 		DisplayID: "JCM87-00041",
 		FirstName: "Manual",
 		LastName:  "Review",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -558,7 +558,7 @@ func TestSoldierDetailConsolidatesRelationshipDisplay(t *testing.T) {
 		SpouseName:      "Thomas Cole",
 		SpouseDisplayID: "JCM87-00011",
 		LinkedSoldierID: 11,
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -587,7 +587,7 @@ func TestSoldierDetailSecondaryBackActionUsesSmartBack(t *testing.T) {
 		LastName:      "Cole",
 		BackLinkURL:   "/review-queue",
 		BackLinkLabel: "Back to Review Queue",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -612,7 +612,7 @@ func TestSoldierDetailShowsUnitCamaraderieAction(t *testing.T) {
 		FirstName: "Andrew",
 		LastName:  "Cole",
 		Unit:      "Co. A, 1st Texas Infantry",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -642,7 +642,7 @@ func TestSoldierDetailShowsServiceTimelineAction(t *testing.T) {
 			AppID:            "APP-19",
 			Details:          "Enlisted on 03/11/1862 at Austin.",
 		}},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -666,7 +666,7 @@ func TestSoldierDetailShowsResearchLogAction(t *testing.T) {
 		DisplayID: "JCM87-00020",
 		FirstName: "Andrew",
 		LastName:  "Cole",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -690,7 +690,7 @@ func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
 		DisplayID: "JCM87-00021",
 		FirstName: "Andrew",
 		LastName:  "Cole",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -716,7 +716,7 @@ func TestSoldierDetailShowsResearchPackActions(t *testing.T) {
 		LastName:     "Cole",
 		PensionState: "Texas",
 		BirthInfo:    "Born 1838 in Orange County, Texas.",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -742,7 +742,7 @@ func TestSoldierDetailShowsResearchCollectionsAction(t *testing.T) {
 		DisplayID: "JCM87-00023",
 		FirstName: "Andrew",
 		LastName:  "Cole",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -773,7 +773,7 @@ func TestSoldierDetailGroupsAdvancedToolsUnderAccordion(t *testing.T) {
 			AppID:            "APP-24",
 			Details:          "Enlisted on 03/11/1862 at Austin.",
 		}},
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -803,7 +803,7 @@ func TestSoldierDetailHasShareQueueButton(t *testing.T) {
 		DisplayID: "JCM87-00087",
 		FirstName: "James",
 		LastName:  "Carter",
-	}, nil).Render(context.Background(), &buf)
+	}, nil, nil).Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

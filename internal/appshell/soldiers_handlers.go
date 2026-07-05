@@ -497,7 +497,13 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 			respondInternal(w, r, fmt.Sprintf("Could not load tags for person record %d.", id), err)
 			return
 		}
-		presentation.SoldierDetail(*soldier, soldierTags).Render(r.Context(), w)
+		// Slice 3.8 (issue #321): load the reverse-lookup
+		// "Cited in" articles for this person. A transient
+		// query failure renders the detail page WITHOUT
+		// the panel rather than 500 -- the panel is a
+		// load-bearing-but-non-critical surface.
+		citedIn, _ := a.articles.CitedInArticles(id)
+		presentation.SoldierDetailWithCitedIn(*soldier, soldierTags, citedIn).Render(r.Context(), w)
 	case http.MethodPut:
 		a.handleUpdateSoldier(w, r, id)
 	case http.MethodDelete:
