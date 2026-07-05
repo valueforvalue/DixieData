@@ -1249,3 +1249,88 @@ func normalizeOrientation(o string) string {
 // so a cancelled context would defeat the purpose of the
 // pre-render -- it must run to completion.
 func contextBackground() context.Context { return context.Background() }
+
+// RenderStaticHTML returns a self-contained HTML rendering of
+// the article (issue #321 slice 4.3). One file, no external
+// assets: the body_html column already carries the sanitized
+// HTML from Create/Update (goldmark + bluemonday), and the
+// inline ResolveRefs output renders the in-body Person Record
+// tokens as <a href> links (no JS, no separate CSS).
+//
+// The returned HTML is suitable for a static archive index
+// card (slice 5.3 ships this into window.DIXIE_DATA) or a
+// download-the-static-archive-as-single-file surface.
+//
+// Errors:
+//   - ErrArticleNotFound    when the article id does not exist or is a snapshot
+//   - other errors          propagate from the service
+func (a *ArticleService) RenderStaticHTML(articleID int64) (string, error) {
+	article, err := a.GetByID(articleID)
+	if err != nil {
+		return "", err
+	}
+	tokens, err := a.ResolveRefs(articleID)
+	if err != nil {
+		return "", fmt.Errorf("ResolveRefs %d: %w", articleID, err)
+	}
+	var refsBuf strings.Builder
+	if len(tokens) > 0 {
+		refsBuf.WriteString(`<section class="article-refs"><h3>Cited Person Records</h3><ul>`)
+		for _, tok := range tokens {
+			displayID := tok.PersonDisplayID
+			if displayID == "" {
+				displayID = tok.Token
+			}
+			if tok.Resolved {
+				refsBuf.WriteString(fmt.Sprintf(
+					`<li><a href="/soldiers/%d" data-person-display-id="%s">%s</a></li>`,
+					tok.PersonRecordID, displayID, displayID,
+				))
+			} else {
+				refsBuf.WriteString(fmt.Sprintf(
+					`<li><span class="article-ref-unknown" title="Display ID not found in the archive.">⚠ Unknown: %s</span></li>`,
+					displayID,
+				))
+			}
+		}
+		refsBuf.WriteString("</ul></section>")
+	}
+	articleBody := article.BodyHTML
+	if articleBody == "" {
+		articleBody = article.BodyMD
+	}
+	return fmt.Sprintf(
+		`<article class="article-static" data-article-id="%d" data-article-display-id="%s">`+
+			`<header><h2>%s</h2>%s</header>`+
+			`<div class="article-body">%s</div>%s`+
+			`</article>`,
+		article.ID, article.DisplayID,
+		escapeHTML(article.Title),
+		subtitleHTML(article.Subtitle),
+		articleBody,
+		refsBuf.String(),
+	), nil
+}
+
+// escapeHTML escapes the few characters that could break the
+// surrounding HTML wrapper. The body_html column is already
+// sanitized (goldmark + bluemonday Strict) so it's emitted
+// verbatim; only the title + subtitle need escaping.
+func escapeHTML(s string) string {
+	r := strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		`"`, "&quot;",
+		"'", "&#39;",
+	)
+	return r.Replace(s)
+}
+
+// subtitleHTML wraps the subtitle in a <p> when non-empty.
+func subtitleHTML(subtitle string) string {
+	if strings.TrimSpace(subtitle) == "" {
+		return ""
+	}
+	return `<p class="article-subtitle">` + escapeHTML(subtitle) + `</p>`
+}

@@ -386,6 +386,20 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   200 + correct headers + body matches stored md;
   404 on unknown id; 405 on POST).
 
+- **Article Static HTML renderer** (issue #321 slice 4.3).
+  Adds `ArticleService.RenderStaticHTML(articleID) (string, error)`
+  -- returns a self-contained HTML rendering of the
+  article (one file, no external assets). The
+  `body_html` column already carries the sanitized HTML
+  from the slice-3.6 Create/Update path; the inline
+  ResolveRefs output renders the in-body Person Record
+  tokens as `<a href>` links + the fail-loud "⚠ Unknown"
+  marker for unresolved tokens per locked decision #6.
+  Pinned by `TestRenderStaticHTML` (asserts the rendered
+  HTML carries the article display id + title + the
+  rendered heading + the rendered body; ErrArticleNotFound
+  for unknown ids).
+
 - **Event detail Linked Persons + Tags panel Edit CTAs** (issue
   #361 slice 1). Both panels on `/events/{id}` now surface an
   "Edit Event" CTA in the header that navigates to

@@ -985,3 +985,41 @@ func TestRenderPDFRequiresRegistry(t *testing.T) {
 		t.Errorf("RenderPDF with nil registry err = nil, want error")
 	}
 }
+
+// TestRenderStaticHTML pins the slice-4.3 contract: a stored
+// article renders to self-contained HTML (one file, no
+// external assets) with the body + the inline Person Record
+// ref list. Unknown tokens get the fail-loud marker.
+func TestRenderStaticHTML(t *testing.T) {
+	svc := newArticleServiceForTestWithRenderer(t)
+	src, err := svc.Create(models.Article{
+		Title:    "Static target",
+		Subtitle: "Sub",
+		BodyMD:   "# Hello\n\nWorld.",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	html, err := svc.RenderStaticHTML(src.ID)
+	if err != nil {
+		t.Fatalf("RenderStaticHTML: %v", err)
+	}
+	if !strings.Contains(html, `data-article-display-id="ART-00001"`) {
+		t.Errorf("html missing article display id: %s", html)
+	}
+	if !strings.Contains(html, "Static target") {
+		t.Errorf("html missing title: %s", html)
+	}
+	if !strings.Contains(html, "<h1>") {
+		t.Errorf("html missing rendered heading: %s", html)
+	}
+	if !strings.Contains(html, "<p>World.</p>") {
+		t.Errorf("html missing rendered body: %s", html)
+	}
+
+	// Unknown id -> ErrArticleNotFound.
+	if _, err := svc.RenderStaticHTML(999999); !errors.Is(err, ErrArticleNotFound) {
+		t.Errorf("RenderStaticHTML(999999) err = %v, want ErrArticleNotFound", err)
+	}
+}
