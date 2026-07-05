@@ -9,12 +9,7 @@
 PWSH  := pwsh -NoLogo -NoProfile
 LOGDIR := build/log
 
-# GNUWin32 make (shipped under "C:/Program Files (x86)/GnuWin32") spawns a
-# shell that misparses a recursive $(MAKE) call when $(MAKE) itself lives
-# under "Program Files (x86)" — the parens break sh's tokenization and the
-# inner make exits with `e=87`. Dispatching the recursive call via PowerShell
-# sidesteps sh entirely: pwsh handles the quoted path fine.
-RECURSIVE_MAKE = $(PWSH) -NoLogo -NoProfile -Command "Set-Content -Path env:MAKE -Value '$(MAKE)'; & '$(MAKE)' --no-print-directory $(1)"
+
 
 .DEFAULT_GOAL := help
 
@@ -42,11 +37,16 @@ LOG_RECIPE = @mkdir -p $(LOGDIR) && \
 # debug workflow expects to be present (audit smoke harness
 # needs dixiedata-web + seed-data; the render/tune workflow
 # needs dixiedata-tune; the gold-master suite needs the
-# gold-master binary). Without these dependencies the user
-# runs `make debug`, opens the app, hits a button, and the
-# harness smoke test fails because the web server binary isn't
-# in build/bin/. The dependencies guarantee a one-shot `make
-# debug` produces everything a debug session needs.
+# gold-master binary). Without these the user runs `make
+# debug`, opens the app, hits a button, and the harness smoke
+# test fails because the web server binary isn't in build/bin/.
+# The recipes below inline the chain (issue #366) rather than
+# recursing through `$(MAKE)`, which GNUWin32 make misparses
+# when `$(MAKE)` itself lives under "Program Files (x86)" —
+# the parens break sh's tokenization and the inner make exits
+# with `e=87`. Inlining the chain as direct `go build` calls
+# sidesteps the bug entirely and removes a layer of indirection
+# for everyone, regardless of make variant.
 WEB_BIN := build/bin/dixiedata-web.exe
 SEED_BIN := build/bin/seed-data.exe
 GOLD_BIN := build/bin/gold-master.exe
@@ -55,16 +55,36 @@ TUNE_BIN := tools/tune/bin/dixiedata-tune.exe
 build: SCRIPT := scripts/build-debug.ps1
 build: TARGET := build
 build: ARGS :=
-build: ## Build via scripts/build-debug.ps1
+build: ## Build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
 	$(LOG_RECIPE)
-	@$(call RECURSIVE_MAKE,probe-clean web seed gold tune-bin)
+	-@cmd //c "taskkill /F /IM dixiedata-web.exe /T 2>nul & taskkill /F /IM DixieData.exe /T 2>nul & taskkill /F /IM seed-data.exe /T 2>nul & taskkill /F /IM gold-master.exe /T 2>nul & exit /b 0"
+	@echo probe-clean: ok
+	@mkdir -p build/bin
+	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
+	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
+	@mkdir -p build/bin
+	go build -tags debug -o $(SEED_BIN) ./cmd/seed-data
+	@mkdir -p build/bin
+	go build -tags debug -o $(GOLD_BIN) ./cmd/gold-master
+	@mkdir -p tools/tune/bin
+	cd tools/tune && go build -tags debug -o bin/dixiedata-tune.exe .
 
 debug: SCRIPT := scripts/build-debug.ps1
 debug: TARGET := debug
 debug: ARGS :=
-debug: ## Debug build via scripts/build-debug.ps1 (chains web+seed+gold+tune-bin)
+debug: ## Debug build via scripts/build-debug.ps1; chains web+seed+gold+tune-bin
 	$(LOG_RECIPE)
-	@$(call RECURSIVE_MAKE,probe-clean web seed gold tune-bin)
+	-@cmd //c "taskkill /F /IM dixiedata-web.exe /T 2>nul & taskkill /F /IM DixieData.exe /T 2>nul & taskkill /F /IM seed-data.exe /T 2>nul & taskkill /F /IM gold-master.exe /T 2>nul & exit /b 0"
+	@echo probe-clean: ok
+	@mkdir -p build/bin
+	go build -tags debug -o $(WEB_BIN) ./cmd/dixiedata-web
+	@powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-web-assets.ps1 $(PWD)
+	@mkdir -p build/bin
+	go build -tags debug -o $(SEED_BIN) ./cmd/seed-data
+	@mkdir -p build/bin
+	go build -tags debug -o $(GOLD_BIN) ./cmd/gold-master
+	@mkdir -p tools/tune/bin
+	cd tools/tune && go build -tags debug -o bin/dixiedata-tune.exe .
 
 # Debug-only binaries (audit harness, render-round, smoke) carry
 # the -tags debug build flag so internal/debug/trace.Log() calls
