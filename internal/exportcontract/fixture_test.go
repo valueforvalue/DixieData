@@ -144,6 +144,36 @@ func buildFixture(dataDir string) error {
 	// via the "Made with DixieData | Build: ..." footer) differs
 	// run-to-run. With these pins, the same fixture renders to the
 	// same bytes indefinitely.
+
+	// 6. Article record (issue #321 slice 4). body_md carries
+	// one resolved Person Record ref (#person/FIX-00001) +
+	// one unresolved token (#person/FIX-99999) so the
+	// template's fail-loud Unknown marker path is exercised.
+	// The article service renders body_md via the
+	// MarkdownRenderer (goldmark + bluemonday) so body_html
+	// carries the sanitized HTML the template reads.
+	articleSvc := records.NewArticleService(svc, records.NewMarkdownRenderer())
+	const articleBody = `# Test Article
+
+This is a paragraph with a [Person Record](#person/FIX-00001) reference
+and an [Unknown](#person/FIX-99999) marker.
+
+- bullet one
+- bullet two
+
+A **bold** closer.`
+	art, err := articleSvc.Create(models.Article{
+		Title:    "Test Article",
+		Subtitle: "Fixture subtitle",
+		BodyMD:   articleBody,
+	})
+	if err != nil {
+		return fmt.Errorf("create article: %w", err)
+	}
+	if _, err := articleSvc.AttachRef(art.ID, s1.ID); err != nil {
+		return fmt.Errorf("attach article ref: %w", err)
+	}
+
 	return pinFixtureTimestamps(database)
 }
 
@@ -156,12 +186,14 @@ func pinFixtureTimestamps(database *db.DB) error {
 		`UPDATE soldiers SET created_at = ?, updated_at = ?, last_edited_at = ?`,
 		`UPDATE research_tasks SET created_at = ?, updated_at = ?, resolved_at = ?`,
 		`UPDATE research_collections SET created_at = ?, updated_at = ?`,
+		`UPDATE articles SET created_at = ?, updated_at = ?`,
 	}
 	for _, stmt := range stmts {
 		if _, err := database.Conn().Exec(stmt, fixed, fixed, fixed); err != nil {
 			return fmt.Errorf("pin timestamps (%s): %w", stmt[:30], err)
 		}
 	}
+
 	return nil
 }
 
