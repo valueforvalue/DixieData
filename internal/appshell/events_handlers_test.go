@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 func TestHandleEventsEmptyList(t *testing.T) {
@@ -1082,6 +1083,119 @@ func TestHandleEventTags(t *testing.T) {
 	}
 	if len(final) != 0 {
 		t.Errorf("want 0 tags after detach, got %d", len(final))
+	}
+}
+
+// TestHandleEventImages (issue #320 child #332, slot 16 of 16)
+// pins the Event images gallery surface: a fresh event with
+// two seeded images renders both thumbnails via the
+// /events/{id}/images fragment, and POSTing
+// /events/{id}/images/delete with one image_id drops that one
+// from the rendered grid AND removes the DB row AND does NOT
+// set X-DixieData-Redirect (per issue #341, fragment-as-page
+// nav). Mirrors TestHandleEventTags shape; seeds images via
+// the same gold_master_test.go shape (real PNG file +
+// app.soldiers.AddImage) so the on-disk path lands under the
+// sharded images/<A>/<B>/EVT-NNNNN/ layout per the v60 widening.
+func TestHandleEventImages(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Battle of Test Run", "01/01/1865", "01/02/1865", "Gallery smoke.")
+
+	imageDir, relativeDir := appdata.RecordImageDir(app.dataDir, event.DisplayID)
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll imageDir: %v", err)
+	}
+	firstPath := filepath.Join(imageDir, "first.png")
+	secondPath := filepath.Join(imageDir, "second.png")
+	if err := os.WriteFile(firstPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile first: %v", err)
+	}
+	if err := os.WriteFile(secondPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile second: %v", err)
+	}
+	if err := app.soldiers.AddImage(event.ID, "first.png", filepath.Join(relativeDir, "first.png"), "First portrait"); err != nil {
+		t.Fatalf("AddImage first: %v", err)
+	}
+	if err := app.soldiers.AddImage(event.ID, "second.png", filepath.Join(relativeDir, "second.png"), "Second portrait"); err != nil {
+		t.Fatalf("AddImage second: %v", err)
+	}
+
+	getResp, err := http.Get(server.URL + "/events/" + intStr(event.ID) + "/images")
+	if err != nil {
+		t.Fatalf("GET images: %v", err)
+	}
+	getBody := readAll(t, getResp)
+	getResp.Body.Close()
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("GET images status = %d, want 200", getResp.StatusCode)
+	}
+	if !strings.Contains(getBody, "First portrait") {
+		t.Errorf("GET images missing first image caption; got %q", getBody)
+	}
+	if !strings.Contains(getBody, "Second portrait") {
+		t.Errorf("GET images missing second image caption; got %q", getBody)
+	}
+	if !strings.Contains(getBody, "data-results-target=\"#data-event-images-list\"") {
+		t.Errorf("GET images fragment missing data-results-target; got %q", getBody)
+	}
+	if strings.Contains(getBody, "No images are attached") {
+		t.Errorf("GET images rendered empty state despite 2 seeded images; got %q", getBody)
+	}
+
+	// Event detail page must render the Images section on first
+	// load (mirrors the Tags + Sources lazy-load pattern).
+	detailResp, err := http.Get(server.URL + "/events/" + intStr(event.ID))
+	if err != nil {
+		t.Fatalf("GET detail: %v", err)
+	}
+	detailBody := readAll(t, detailResp)
+	detailResp.Body.Close()
+	if !strings.Contains(detailBody, "data-event-images-list") {
+		t.Errorf("detail page missing #data-event-images-list anchor; got %q", detailBody)
+	}
+	if !strings.Contains(detailBody, "First portrait") {
+		t.Errorf("detail page missing first image caption; got %q", detailBody)
+	}
+
+	// Delete one image. Pull the image_id off the row by
+	// re-querying the service; the test cares about the side
+	// effect, not the markup shape.
+	refreshed, err := app.events.GetEventByID(event.ID)
+	if err != nil {
+		t.Fatalf("GetEventByID pre-delete: %v", err)
+	}
+	if len(refreshed.Event.Images) != 2 {
+		t.Fatalf("seeded 2 images, event has %d", len(refreshed.Event.Images))
+	}
+	dropID := refreshed.Event.Images[0].ID
+
+	delResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/images/delete", url.Values{
+		"image_ids": {intStr(dropID)},
+	})
+	if err != nil {
+		t.Fatalf("POST images/delete: %v", err)
+	}
+	delBody := readAll(t, delResp)
+	delResp.Body.Close()
+	if delResp.StatusCode != http.StatusOK {
+		t.Errorf("POST delete status = %d, want 200", delResp.StatusCode)
+	}
+	if got := delResp.Header.Get("X-DixieData-Redirect"); got != "" {
+		t.Errorf("POST delete set X-DixieData-Redirect=%q; want empty (issue #341)", got)
+	}
+	if !strings.Contains(delBody, "data-event-images-list") {
+		t.Errorf("POST delete response missing fragment anchor; got %q", delBody)
+	}
+
+	afterDelete, err := app.events.GetEventByID(event.ID)
+	if err != nil {
+		t.Fatalf("GetEventByID post-delete: %v", err)
+	}
+	if len(afterDelete.Event.Images) != 1 {
+		t.Errorf("after delete want 1 image, got %d", len(afterDelete.Event.Images))
 	}
 }
 

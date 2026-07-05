@@ -32,9 +32,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -932,4 +935,168 @@ func (a *App) handleEventTagDetach(w http.ResponseWriter, r *http.Request, event
 	}
 	setToastHeader(w, "Success: tag detached.")
 	a.renderEventTagsListFragment(w, r, eventID)
+}
+
+// handleEventImagesRoute (issue #320 child #332, slot 16 of 16)
+// is the chi route shim for /events/{id}/images and its
+// sub-paths. Mirrors handleEventSourcesRoute shape:
+//   GET                            -> handleEventImagesGet (fragment)
+//   POST /images/import            -> handleEventImageImport (native dialog + job)
+//   POST /images/delete            -> handleEventImagesDelete (bulk delete + fragment)
+func (a *App) handleEventImagesRoute(w http.ResponseWriter, r *http.Request) {
+	prefix := "/events/"
+	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
+	parts := strings.SplitN(trimmed, "/", 2)
+	if len(parts) < 2 || parts[1] == "" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	eventID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	suffix := parts[1]
+	switch r.Method {
+	case http.MethodGet:
+		a.handleEventImagesGet(w, r, eventID)
+	case http.MethodPost:
+		switch suffix {
+		case "images/import":
+			a.handleEventImageImport(w, r, eventID)
+		case "images/delete":
+			a.handleEventImagesDelete(w, r, eventID)
+		default:
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// renderEventImagesListFragment loads the Event's images and
+// writes the per-Event Images panel HTML into w. Shared by GET
+// /events/{id}/images (lazy-load probe) and the POST delete
+// handler (in-place swap target). The fragment matches the
+// on-page event_detail.templ render via the templ helper
+// EventImagesListFragment so the data-results-target swap is
+// visually identical to the initial page render.
+func (a *App) renderEventImagesListFragment(w http.ResponseWriter, r *http.Request, eventID int64) {
+	withLinks, err := a.events.GetEventByID(eventID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Images for event record %d not found.", eventID), err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := templates.EventImagesListFragment(eventID, viewmodel.ImagesFromModels(withLinks.Event.Images)).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not render images for event record %d.", eventID), err)
+	}
+}
+
+// handleEventImagesGet renders the Images panel fragment for
+// the Event. Reachable as a lazy-load probe + post-action
+// swap target.
+func (a *App) handleEventImagesGet(w http.ResponseWriter, r *http.Request, eventID int64) {
+	a.renderEventImagesListFragment(w, r, eventID)
+}
+
+// handleEventImageImport opens the native file picker for image
+// selection and enqueues an image_import background job, then
+// redirects to the /jobs/{id} page so the user sees real
+// progress during the file copy. Mirrors the Person Record
+// /soldiers/{id}/images/import path; the only Event-specific
+// change is the redirect target (the Event detail page, since
+// events don't have an "edit" landing).
+func (a *App) handleEventImageImport(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	withLinks, err := a.events.GetEventByID(eventID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", eventID), err)
+		return
+	}
+	event := withLinks.Event
+
+	pathsOpts := runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
+		},
+	}
+	dupKey := guardedOpenMultipleFilesDialogKey("import_images", pathsOpts)
+	paths, admitted, ok := a.guardedOpenMultipleFilesDialog(dupKey, pathsOpts)
+	if !admitted {
+		a.respondDuplicateInFlight(w, r, dupKey)
+		return
+	}
+	if !ok {
+		respondError(w, r, KindValidation, "Image import cancelled.", nil)
+		return
+	}
+
+	_ = event
+	jobID := a.jobs.Start("image_import", func(ctx context.Context, p *jobs.Progress) error {
+		p.Set(5, fmt.Sprintf("Importing %d image(s)", len(paths)))
+		p.Shimmer(ctx, 5, 95, 60*time.Second, "Encoding images…")
+		imported, importErr := a.importImagePaths(event, paths)
+		if importErr != nil {
+			slog.Error("appshell: event image import", "audit", "respond-error", "event_id", eventID, "imported", imported, "err", importErr.Error())
+			return importErr
+		}
+		p.Set(100, fmt.Sprintf("Imported %d image(s).", imported))
+		return nil
+	})
+	setInfoToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
+	writeExportRedirect(w, "/jobs/"+jobID)
+}
+
+// handleEventImagesDelete removes the image rows + files for
+// the given image_ids. After the write, re-renders the
+// images fragment in place (no X-DixieData-Redirect, per
+// issue #341). Mirrors handleDeleteSoldierImages with the
+// Event-specific adjustment.
+func (a *App) handleEventImagesDelete(w http.ResponseWriter, r *http.Request, eventID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the image delete form.", err)
+		return
+	}
+	withLinks, err := a.events.GetEventByID(eventID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Event record %d not found.", eventID), err)
+		return
+	}
+	event := withLinks.Event
+	selected, err := selectedRecordImages(event, r.Form["image_ids"], a.dataDir)
+	if err != nil {
+		respondValidation(w, r, "Could not parse selected image ids.", err)
+		return
+	}
+	if len(selected) == 0 {
+		respondError(w, r, KindValidation, "Select at least one image to delete.", nil)
+		return
+	}
+
+	for _, image := range selected {
+		if err := os.Remove(image.FilePath); err != nil && !os.IsNotExist(err) {
+			respondInternal(w, r, fmt.Sprintf("Could not delete image file %s.", image.FilePath), err)
+			return
+		}
+	}
+
+	imageIDs := make([]int64, 0, len(selected))
+	for _, image := range selected {
+		imageIDs = append(imageIDs, image.ID)
+	}
+	if err := a.soldiers.DeleteImages(eventID, imageIDs); err != nil {
+		respondInternal(w, r, "Could not remove the image records from the database.", err)
+		return
+	}
+
+	setToastHeader(w, fmt.Sprintf("Deleted %d image(s).", len(selected)))
+	a.renderEventImagesListFragment(w, r, eventID)
 }

@@ -13,6 +13,61 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Event Records images gallery** (issue #320 child #332,
+  slot 16 of 16). The Event Record detail page now carries an
+  Images section mirroring the Person Record gallery surface.
+  Routes: `GET /events/{id}/images` returns the fragment
+  (lazy-load + post-action swap target), `POST
+  /events/{id}/images/import` opens the native file picker
+  and enqueues an `image_import` background job, and `POST
+  /events/{id}/images/delete` re-renders the fragment in place
+  after a bulk delete (no `X-DixieData-Redirect`, per issue
+  #341). Storage path is the same sharded
+  `images/<A>/<B>/EVT-NNNNN/` layout the v60 widening enabled
+  for every Person Record subtype — no schema or storage
+  changes needed. The 4 routes from the issue spec's apply-
+  sites list collapse to 3: the multipart-POST upload route is
+  YAGNI (the Person Record `entry_form.templ` uses the native
+  dialog import path, not a multipart form) and the
+  serve-bytes route is YAGNI (`/media/*` already serves the
+  per-image bytes via the `imageURL()` helper). The
+  `EventService.AddImage / RemoveImage / ListImages` facade
+  methods from the issue spec were also dropped per the
+  two-adapter rule (no second caller) — the event handlers
+  call `a.soldiers.AddImage / DeleteImages / GetImageByID`
+  directly, and `event.Event.Images` is already populated
+  for free because `EventService.GetEventByID` delegates to
+  `SoldierService.GetByID` which loads images via the
+  `imageSelectColumns` query (verified at
+  `internal/records/soldier_service.go:264`). Browser-level
+  smoke coverage of the import path is deferred to a follow-
+  up issue (`#332-children-smoke-images`) because the
+  `audit/_lib` Playwright harness does not yet wire a native
+  file-picker handler. `TestHandleEventImages` pins the
+  end-to-end surface: 2 seeded images render both captions
+  + thumbnails + `data-results-target` anchors on the
+  fragment, the detail page renders the new section on
+  first load, and a POST `/images/delete` with one
+  image_id drops that one from the rendered grid AND the
+  underlying `images` table row AND does not set
+  `X-DixieData-Redirect`.
+
+### Maintenance
+
+- **Renamed `selectedSoldierImages` to
+  `selectedRecordImages`** in `internal/appshell/app.go`. The
+  helper iterates `models.Soldier.Images` to resolve a form's
+  `image_ids[]` to absolute paths; post-#320 the soldier name
+  is misleading because Person Record is one of three
+  subtypes (Soldier / Spouse / Event) and the `images` table
+  FK already widened to `person_record_id`. Pure rename, no
+  behavior change; `TestSelectedRecordImagesUsesSelectedIDs`
+  pins the contract. Required as a prefactor for the Event
+  images gallery slice (slot 16) so the new event handler
+  can call the same helper without inheriting a stale name.
+
+### Added
+
 - **Event Records in the static archive bundle** (issue #320
   child #335, slot 14 of 16). The static archive JSON bundle
   emitted by `ExportStaticArchive` (and read by the embedded
