@@ -366,10 +366,16 @@ async function main() {
       // the user.
       await page.click('form:has(input[name="display_id"]) button[type="submit"]');
       await wait(500);
-      await page.goto(`${BASE}/soldiers/${seededPersonID}/events`, {
-        waitUntil: 'domcontentloaded',
-      });
-      await wait(400);
+      // Server now redirects the attach form to /soldiers/{id}/events
+      // (issue #345), so we land directly back on the events tab.
+      // A defensive re-navigation is kept to absorb future schema
+      // drift without the probe collapsing.
+      if (!page.url().endsWith(`/soldiers/${seededPersonID}/events`)) {
+        await page.goto(`${BASE}/soldiers/${seededPersonID}/events`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await wait(300);
+      }
       const bodyText = await page.evaluate(() => document.body.innerText);
       if (!/unlink/i.test(bodyText)) {
         throw new Error(
@@ -401,15 +407,17 @@ async function main() {
         'form:has(textarea[name="description"]) input[name="begin_date"]',
         '07/01/1863',
       );
-      // Same pattern as step 7: server redirects away to
-      // /soldiers/{id}; we re-navigate to the events tab to
-      // assert the new event shows in the linked list.
+      // Server now redirects the quick-add form to /soldiers/{id}/events
+      // (issue #345), so we land directly back on the events tab. The
+      // defensive re-navigation handles any future drift.
       await page.click('button:has-text("Create + Link Event")');
       await wait(500);
-      await page.goto(`${BASE}/soldiers/${seededPersonID}/events`, {
-        waitUntil: 'domcontentloaded',
-      });
-      await wait(400);
+      if (!page.url().endsWith(`/soldiers/${seededPersonID}/events`)) {
+        await page.goto(`${BASE}/soldiers/${seededPersonID}/events`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await wait(300);
+      }
       const text = await page.evaluate(() => document.body.innerText);
       if (!text.includes(kind)) {
         throw new Error(`quick-added kind not visible; body: ${text.slice(0, 400)}`);
@@ -446,10 +454,14 @@ async function main() {
       // events tab.
       await page.locator('button:has-text("Unlink")').first().click();
       await wait(500);
-      await page.goto(`${BASE}/soldiers/${seededPersonID}/events`, {
-        waitUntil: 'domcontentloaded',
-      });
-      await wait(400);
+      // Server now redirects the unlink form to /soldiers/{id}/events
+      // (issue #345). Defensive re-navigation absorbs future drift.
+      if (!page.url().endsWith(`/soldiers/${seededPersonID}/events`)) {
+        await page.goto(`${BASE}/soldiers/${seededPersonID}/events`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await wait(300);
+      }
       const after = await page.locator('button:has-text("Unlink")').count();
       if (after >= before) {
         throw new Error(`unlink did not remove a row: before=${before} after=${after}`);
