@@ -1,0 +1,529 @@
+/**
+ * audit/smoke_soldier_images.mjs — browser-driven end-to-end probe
+ * for the soldier-side Images panel UIIDs (issue #392).
+ *
+ * Issue #392 closed the gap where
+ *   - internal/uiids.PanelSoldierDetailImages
+ *   - internal/uiids.PanelSoldierFormImages
+ * were declared as constants but never rendered as `id=` attributes
+ * in any templ. The detail-page gallery and the edit-form Upload
+ * Images section both relied on inline id literals (or no anchor
+ * at all), so goquery invariant tests could not pin against the
+ * canonical UIIDs. This probe mirrors the post-#390 event-side
+ * probe shape (audit/smoke_events.mjs step-13 + step-14) and
+ * verifies both wrappers render in their expected pages.
+ *
+ * Coverage (from issue #392 body):
+ *   1.  Seed a Person Record + GET /soldiers/{id} → assert
+ *       #panel.soldier.detail.images exists in the DOM with the
+ *       empty-state copy "No images are attached yet" (the
+ *       fresh-soldier path).
+ *   2.  GET /soldiers/{id}/edit → assert #panel.soldier.form.images
+ *       exists in the DOM with the Upload Images label + the
+ *       Add Images From Computer button visible (the
+ *       import-after-create surface).
+ *   3.  Upload a 1×1 PNG via setFileChooserFixture (#385 helper)
+ *       → assert the populated gallery read surface: thumbnail
+ *       count ≥ 1, per-card alt text non-empty, filename visible,
+ *       per-card Delete button form present (mirrors event-side
+ *       step-14 read surface). Scopes all per-card queries to
+ *       `#panel.soldier.detail.images [data-image-card]` to avoid
+ *       the documented `data-image-id` selector collision (see
+ *       soldier_card.templ lines 580 + 589 — both per-card wrapper
+ *       div and Preview `<button>` carry the attribute).
+ *
+ * Lifecycle:
+ *   - Spawns its own `build/bin/dixiedata-web.exe` against a
+ *     private scratch dir, seeds it via `cmd/seed-data`, tears
+ *     the scratch dir down at the end.
+ *   - `_lib/cleanup.mjs` ensures the spawned binary is killed on
+ *     Ctrl-C / fatal / successful exit (Windows task leak is
+ *     real and was specifically a recurring audit-harness bug).
+ *   - The seeded soldier is DELETEd in `finally`, so the scratch
+ *     dir is empty post-run.
+ *
+ * Selector strategy:
+ *   Scope every per-card selector under
+ *   `#panel.soldier.detail.images [data-image-card]` so the
+ *   `data-image-id` collision between the per-card wrapper div
+ *   and the Preview `<button>` cannot surface as a flaky probe.
+ *
+ * Failure mode:
+ *   - Records pass / fail per step.
+ *   - On failure prints: the failed step name, current url,
+ *     last server response status + url, and a 2000-char DOM
+ *     snippet to stderr.
+ *   - Exits 0 on all-pass, 1 on any-fail, 2 on fatal.
+ */
+
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import fs from 'node:fs';
+import { registerCleanup } from './_lib/cleanup.mjs';
+import { setFileChooserFixture } from './_lib/filechooser.mjs';
+
+const PORT = process.env.PROBE_PORT || '8774';
+const BASE = `http://127.0.0.1:${PORT}`;
+
+let pass = 0;
+let fail = 0;
+const results = [];
+const lastResponses = [];
+
+function record(name, ok, details = {}) {
+  results.push({ name, ok, ...details });
+  if (ok) {
+    pass++;
+    console.log(`  PASS ${name}`);
+  } else {
+    fail++;
+    console.log(`  FAIL ${name}`);
+    console.log(
+      '    ',
+      JSON.stringify(details, null, 2)
+        .replace(/\n/g, '\n     ')
+        .slice(0, 4000),
+    );
+  }
+}
+
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function dumpFailureContext(page, stepName) {
+  const url = page.url();
+  const lastResp = lastResponses[lastResponses.length - 1] || null;
+  const filtered = lastResponses
+    .filter((r) => /\/soldiers\//.test(r.url))
+    .slice(-15);
+  let body = '';
+  try {
+    body = await page.content();
+  } catch (e) {
+    body = `(page.content() threw: ${e.message})`;
+  }
+  return {
+    step: stepName,
+    url,
+    lastResponse: lastResp,
+    recentSoldierResponses: filtered,
+    bodySnippet: body.slice(0, 2000),
+  };
+}
+
+async function step(page, name, fn) {
+  try {
+    await fn();
+    record(name, true);
+  } catch (e) {
+    const ctx = await dumpFailureContext(page, name);
+    record(name, false, {
+      error: e.message,
+      ...ctx,
+    });
+    throw e;
+  }
+}
+
+async function waitForServer(url, maxMs = 30000) {
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(url);
+      if (res.status < 500) return;
+    } catch (_) {
+      // server not yet up
+    }
+    await sleep(200);
+  }
+  throw new Error(`server at ${url} never came up`);
+}
+
+/**
+ * Create a fresh Person Record via the soldiers facade POST path
+ * (mirrors smoke_events.mjs's event creation pattern) and parse
+ * the resulting soldier id from the X-DixieData-Redirect header.
+ */
+async function createSoldier(page, label) {
+  const resp = await page.request.post(`${BASE}/soldiers/new`, {
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'x-dixiedata-submit': 'true',
+    },
+    data: new URLSearchParams({
+      entry_type: 'soldier',
+      first_name: 'SmokeImages',
+      last_name: label,
+      pension_state: 'NA',
+      confederate_home_status: 'None',
+    }).toString(),
+    maxRedirects: 0,
+  });
+  const loc =
+    resp.headers()['x-dixiedata-redirect'] ||
+    resp.headers()['X-DixieData-Redirect'] ||
+    resp.headers()['location'] ||
+    '';
+  const m = loc.match(/\/soldiers\/(\d+)/);
+  if (!m) {
+    throw new Error(`createSoldier: cannot parse id from Location="${loc}"`);
+  }
+  return parseInt(m[1], 10);
+}
+
+async function teardown(page, soldierIDs) {
+  for (const id of soldierIDs) {
+    try {
+      await page.request.delete(`${BASE}/soldiers/${id}`);
+    } catch (_) {
+      // best effort
+    }
+  }
+}
+
+async function main() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = here.endsWith('audit') ? path.dirname(here) : here;
+  const scratchDir = path.join(repoRoot, '.scratch', 'smoke-soldier-images');
+  const webBin = path.join(repoRoot, 'build', 'bin', 'dixiedata-web.exe');
+  const fixtureSrc = path.join(here, '_lib', 'fixtures', 'soldier-image.png');
+
+  try {
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+  } catch (_) {
+    // ignore
+  }
+
+  if (!fs.existsSync(webBin)) {
+    throw new Error(
+      `dixiedata-web binary missing at ${webBin}; run \`make build\` first`,
+    );
+  }
+  if (!fs.existsSync(fixtureSrc)) {
+    throw new Error(
+      `soldier image fixture missing at ${fixtureSrc}; issue #392 ships this fixture alongside the smoke probe`,
+    );
+  }
+
+  const seedProc = spawn(
+    'go',
+    ['run', './cmd/seed-data', '-data-dir', scratchDir, '-soldiers', '3', '-reset'],
+    { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  let seedOut = '';
+  seedProc.stdout.on('data', (d) => { seedOut += d; });
+  seedProc.stderr.on('data', (d) => { seedOut += d; });
+  const seedExit = await new Promise((resolve) => seedProc.on('exit', resolve));
+  if (seedExit !== 0) {
+    throw new Error(`seed-data failed (exit ${seedExit}):\n${seedOut}`);
+  }
+
+  const proc = spawn(
+    webBin,
+    ['-addr', `127.0.0.1:${PORT}`, '-scratch-dir', scratchDir],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, DIXIEDATA_DATA_DIR: scratchDir },
+    },
+  );
+  registerCleanup({ proc, processNames: ['dixiedata-web.exe'] });
+  proc.stderr.on('data', (d) => process.stderr.write(`[srv] ${d}`));
+  proc.stdout.on('data', (d) => process.stdout.write(`[srv] ${d}`));
+
+  await waitForServer(BASE);
+  console.log(`server up at ${BASE}`);
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ acceptDownloads: true });
+  const page = await context.newPage();
+
+  const trackedSoldierIDs = [];
+
+  page.on('response', (r) => {
+    if (r.url().startsWith(BASE)) {
+      lastResponses.push({
+        status: r.status(),
+        method: r.request().method(),
+        url: r.url(),
+      });
+    }
+  });
+
+  console.log('\nSoldier Images smoke probe (issue #392)');
+  console.log('----------------------------------------');
+
+  try {
+    // Step 1: create a fresh soldier, navigate to detail, assert
+    // #panel.soldier.detail.images exists in the empty state.
+    let createdSoldierID;
+    await step(page, 'step-01 detail-empty-images-panel-anchor', async () => {
+      createdSoldierID = await createSoldier(page, `SmokeImages-${Date.now()}`);
+      trackedSoldierIDs.push(createdSoldierID);
+      await page.goto(`${BASE}/soldiers/${createdSoldierID}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await wait(300);
+      if (!page.url().endsWith(`/soldiers/${createdSoldierID}`)) {
+        throw new Error(
+          `expected /soldiers/${createdSoldierID}, got ${page.url()}`,
+        );
+      }
+      await page.waitForSelector('#panel.soldier.detail.images', {
+        timeout: 30_000,
+      });
+      const root = await page.evaluate(() => {
+        const el = document.querySelector('#panel.soldier.detail.images');
+        if (!el) return { found: false };
+        const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        return {
+          found: true,
+          hasEmptyMarker: /No images are attached yet/i.test(text),
+          hasImportHint: /Add Images From Computer/i.test(text),
+          snippet: text.slice(0, 200),
+        };
+      });
+      if (!root.found) {
+        throw new Error('#panel.soldier.detail.images not found on detail page');
+      }
+      if (!root.hasEmptyMarker) {
+        throw new Error(
+          `expected empty-state copy inside #panel.soldier.detail.images; got: ${root.snippet}`,
+        );
+      }
+      if (!root.hasImportHint) {
+        throw new Error(
+          `expected "Add Images From Computer" reference inside #panel.soldier.detail.images; got: ${root.snippet}`,
+        );
+      }
+    });
+
+    // Step 2: navigate to the edit form, assert
+    // #panel.soldier.form.images exists with the Upload Images
+    // label + the Add Images From Computer button.
+    await step(page, 'step-02 edit-form-images-panel-anchor', async () => {
+      await page.goto(`${BASE}/soldiers/${createdSoldierID}/edit`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await wait(300);
+      if (!page.url().endsWith(`/soldiers/${createdSoldierID}/edit`)) {
+        throw new Error(
+          `expected /soldiers/${createdSoldierID}/edit, got ${page.url()}`,
+        );
+      }
+      await page.waitForSelector('#panel.soldier.form.images', {
+        timeout: 30_000,
+      });
+      const surface = await page.evaluate((id) => {
+        const root = document.querySelector('#panel.soldier.form.images');
+        if (!root) return { found: false };
+        const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
+        const btns = Array.from(root.querySelectorAll('button'));
+        const importBtn = btns.find(
+          (b) => (b.textContent || '').trim() === 'Add Images From Computer',
+        );
+        const action = importBtn ? importBtn.getAttribute('data-action') || '' : '';
+        const rect = importBtn ? importBtn.getBoundingClientRect() : null;
+        return {
+          found: true,
+          hasUploadLabel: /Upload Images/i.test(text),
+          snippet: text.slice(0, 200),
+          hasImportBtn: !!importBtn,
+          importAction: action,
+          importActionMatches: action === `/soldiers/${id}/images/import?return=edit`,
+          importBtnVisible:
+            !!rect && rect.width > 0 && rect.height > 0,
+        };
+      }, createdSoldierID);
+      if (!surface.found) {
+        throw new Error('#panel.soldier.form.images not found on edit form');
+      }
+      if (!surface.hasUploadLabel) {
+        throw new Error(
+          `expected "Upload Images" label inside #panel.soldier.form.images; got: ${surface.snippet}`,
+        );
+      }
+      if (!surface.hasImportBtn) {
+        throw new Error(
+          'Add Images From Computer button missing inside #panel.soldier.form.images',
+        );
+      }
+      if (!surface.importActionMatches) {
+        throw new Error(
+          `Add Images From Computer data-action="${surface.importAction}", want "/soldiers/${createdSoldierID}/images/import?return=edit"`,
+        );
+      }
+      if (!surface.importBtnVisible) {
+        throw new Error(
+          'Add Images From Computer button not visible (zero-sized box) inside #panel.soldier.form.images',
+        );
+      }
+    });
+
+    // Step 3: populate the gallery via setFileChooserFixture
+    // (#385 helper), assert the read surface mirrors event-side
+    // step-14: thumbnail count, per-card alt text, filename,
+    // Delete form. Scopes every per-card query to
+    // `#panel.soldier.detail.images [data-image-card]` to avoid
+    // the documented data-image-id selector collision.
+    await step(
+      page,
+      'step-03 detail-populated-gallery-read-surface',
+      async () => {
+        await page.goto(`${BASE}/soldiers/${createdSoldierID}`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await wait(300);
+        if (!page.url().endsWith(`/soldiers/${createdSoldierID}`)) {
+          throw new Error(
+            `expected /soldiers/${createdSoldierID}, got ${page.url()}`,
+          );
+        }
+        const before = await page
+          .locator('#panel.soldier.detail.images [data-image-card]')
+          .count();
+        if (before !== 0) {
+          throw new Error(
+            `step-03 setup: expected 0 image cards on a fresh soldier, got ${before}`,
+          );
+        }
+
+        const fixturePath = path.join(
+          scratchDir,
+          'fixtures',
+          `smoke-soldier-${createdSoldierID}.png`,
+        );
+        fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
+        fs.copyFileSync(fixtureSrc, fixturePath);
+
+        const off = setFileChooserFixture(page, [fixturePath]);
+        try {
+          await page.click(
+            '#panel.soldier.detail.images button:has-text("Add Images From Computer")',
+          );
+
+          await page.waitForFunction(
+            () =>
+              document.querySelectorAll(
+                '#panel.soldier.detail.images [data-image-card]',
+              ).length >= 1,
+            null,
+            { timeout: 30_000 },
+          );
+
+          const surface = await page.evaluate((expectedFileName) => {
+            const cards = Array.from(
+              document.querySelectorAll(
+                '#panel.soldier.detail.images [data-image-card]',
+              ),
+            );
+            const cardReports = cards.map((card) => {
+              const id = card.getAttribute('data-image-id') || '';
+              const img = card.querySelector('img[data-image-thumb-id]');
+              const alt = img ? img.getAttribute('alt') || '' : '';
+              const imgVisible =
+                img instanceof HTMLImageElement
+                  ? img.getBoundingClientRect().width > 0 &&
+                    img.getBoundingClientRect().height > 0
+                  : false;
+              const filenameEls = card.querySelectorAll(
+                'div.text-xs.text-slate-500.break-all',
+              );
+              const filenameNodes = Array.from(filenameEls).map((el) =>
+                (el.textContent || '').trim(),
+              );
+              const deleteForms = card.querySelectorAll(
+                'form[action*="/images/delete"]',
+              );
+              return {
+                id,
+                alt,
+                altNonEmpty: alt.trim().length > 0,
+                imgVisible,
+                filenameNodes,
+                deleteFormCount: deleteForms.length,
+              };
+            });
+            return {
+              cardCount: cards.length,
+              filenameMatch: cardReports.some((c) =>
+                c.filenameNodes.includes(expectedFileName),
+              ),
+              cardReports,
+            };
+          }, path.basename(fixturePath));
+
+          if (surface.cardCount < 1) {
+            throw new Error(
+              `step-03: expected >=1 image card after upload, got ${surface.cardCount}`,
+            );
+          }
+          for (const card of surface.cardReports) {
+            if (!card.altNonEmpty) {
+              throw new Error(
+                `step-03: card id=${card.id} has empty alt text`,
+              );
+            }
+            if (!card.imgVisible) {
+              throw new Error(
+                `step-03: card id=${card.id} thumbnail <img> not visible (zero-sized box)`,
+              );
+            }
+          }
+          if (!surface.filenameMatch) {
+            const seen = surface.cardReports
+              .flatMap((c) => c.filenameNodes)
+              .filter(Boolean);
+            throw new Error(
+              `step-03: filename "${path.basename(fixturePath)}" missing from gallery cards; saw=${JSON.stringify(seen)}`,
+            );
+          }
+          // The bulk-delete form lives in the parent <form>, NOT
+          // per-card. Slice B (#391) promotes it to per-card. For
+          // now assert the bulk form still exists exactly once
+          // outside the cards so we don't silently regress.
+          const bulkFormCount = await page.evaluate(() => {
+            const root = document.querySelector('#panel.soldier.detail.images');
+            if (!root) return -1;
+            const bulkForms = root.querySelectorAll(
+              ':not([data-image-card]) > form[action*="/images/download"]',
+            );
+            return bulkForms.length;
+          });
+          if (bulkFormCount < 1) {
+            throw new Error(
+              `step-03: bulk-download form missing from #panel.soldier.detail.images parent (count=${bulkFormCount})`,
+            );
+          }
+        } finally {
+          off();
+        }
+      },
+    );
+  } catch (_) {
+    // step() already recorded the failure with context; preserve
+    // the running tally without double-counting.
+    if (fail === 0) {
+      fail = 1;
+    }
+  } finally {
+    await teardown(page, trackedSoldierIDs);
+    await browser.close();
+
+    try {
+      fs.rmSync(scratchDir, { recursive: true, force: true });
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  console.log(`\n${pass} passed, ${fail} failed`);
+  console.log(`soldiers touched (created, then cleaned up): ${trackedSoldierIDs.length}`);
+  process.exit(fail === 0 ? 0 : 1);
+}
+
+import('./_lib/cleanup.mjs').then(async ({ runWithCleanup }) => {
+  const code = await runWithCleanup(main);
+  process.exit(code === 0 ? 0 : code);
+});

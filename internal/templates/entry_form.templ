@@ -9,6 +9,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -364,34 +365,36 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Images</p>
 						<p class="mt-2 text-sm text-slate-600">Import photographs after the core facts are in place so the person record can be saved quickly and enriched later.</p>
 					</div>
-					<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
-					<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
-						if isEdit {
-							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<div>
-									<p>Desktop image uploads use the native file picker.</p>
-									<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
+					<div id={ uiids.PanelSoldierFormImages }>
+						<label class="block text-sm text-slate-500 mb-1">Upload Images</label>
+						<div class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+							if isEdit {
+								<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+									<div>
+										<p>Desktop image uploads use the native file picker.</p>
+										<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
+									</div>
+									@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
+									"data-action": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
+									"data-dixie-submit": "true",
+									"data-progress-label": "Importing images…",
+								})
 								</div>
-								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
-								"data-action": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
-								"data-dixie-submit": "true",
-								"data-progress-label": "Importing images…",
-							})
-							</div>
-						} else {
-							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<div>
-									<p>Create the person record first, then use <strong>Add Images From Computer</strong> on the detail page to import one or more images.</p>
+							} else {
+								<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+									<div>
+										<p>Create the person record first, then use <strong>Add Images From Computer</strong> on the detail page to import one or more images.</p>
+									</div>
+									@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full cursor-not-allowed opacity-60 sm:w-auto", templ.Attributes{
+									"disabled": "",
+								})
 								</div>
-								@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full cursor-not-allowed opacity-60 sm:w-auto", templ.Attributes{
-								"disabled": "",
-							})
-							</div>
+							}
+						</div>
+						if isEdit && len(s.Images) > 0 {
+							<p class="text-xs text-slate-500 mt-2">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
 						}
 					</div>
-					if isEdit && len(s.Images) > 0 {
-						<p class="text-xs text-slate-500 mt-2">Existing images: { fmt.Sprintf("%d", len(s.Images)) }</p>
-					}
 				</section>
 			</div>
 			<div class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
