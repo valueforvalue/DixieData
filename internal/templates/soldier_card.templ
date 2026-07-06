@@ -560,13 +560,8 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 								Select all images
 							</label>
 							<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-								<form
-									action={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import", s.ID)) }
-									method="post"
-									enctype="multipart/form-data"
+								<div
 									data-soldier-image-import-form={ fmt.Sprintf("%d", s.ID) }
-									data-results-target={ "#" + uiids.PanelSoldierDetailImages }
-									data-dixie-submit="true"
 									data-progress-label="Importing images…"
 									class="inline"
 								>
@@ -579,10 +574,15 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 											accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/svg+xml"
 											class="hidden"
 											data-soldier-image-input={ fmt.Sprintf("%d", s.ID) }
-											onchange="this.form.requestSubmit()"
+											hx-post={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import", s.ID)) }
+											hx-trigger="change"
+											hx-target={ "[id=\"" + uiids.PanelSoldierDetailImages + "\"]" }
+											hx-swap="innerHTML"
+											hx-encoding="multipart/form-data"
+											data-import-url={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import", s.ID)) }
 										/>
 									</label>
-								</form>
+								</div>
 								if len(s.Images) > 0 {
 									@components.Button("Download Selected Images", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{"type": "submit"})
 									@components.Button("Delete Selected Images", components.ButtonDanger, "w-full sm:w-auto", templ.Attributes{

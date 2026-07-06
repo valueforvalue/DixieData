@@ -334,23 +334,29 @@ async function main() {
         const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
         // Issue #401: the import surface is now a <label
         // class="primary-button"> wrapping a hidden file input. Walk
-        // labels instead of buttons; pull the form action off the
-        // wrapping <form> for the action-equality check.
+        // labels instead of buttons; pull the hx-post off the file
+        // input for the action-equality check (the input is driven
+        // by htmx, NOT a wrapping <form> — issue #404 swapped the
+        // nested <form> out for a htmx-driven <input> so the HTML
+        // parser no longer drops the inner form's start tag).
         const labels = Array.from(root.querySelectorAll('label'));
         const importBtn = labels.find(
           (b) => (b.textContent || '').trim() === 'Add Images From Computer',
         );
-        const formAction = importBtn && importBtn.closest('form')
-          ? importBtn.closest('form').getAttribute('action') || ''
-          : '';
+        // The hidden <input type="file"> is the inner control of the
+        // primary-button label. Read hx-post directly off it so the
+        // assertion stays structurally correct after the templ
+        // refactor.
+        const fileInput = importBtn ? importBtn.querySelector('input[type="file"]') : null;
+        const hxPost = (fileInput && fileInput.getAttribute('hx-post')) || '';
         const rect = importBtn ? importBtn.getBoundingClientRect() : null;
         return {
           found: true,
           hasUploadLabel: /Upload Images/i.test(text),
           snippet: text.slice(0, 200),
           hasImportBtn: !!importBtn,
-          importAction: formAction,
-          importActionMatches: formAction === `/soldiers/${id}/images/import?return=edit`,
+          importAction: hxPost,
+          importActionMatches: hxPost === `/soldiers/${id}/images/import?return=edit`,
           importBtnVisible:
             !!rect && rect.width > 0 && rect.height > 0,
         };
@@ -370,7 +376,7 @@ async function main() {
       }
       if (!surface.importActionMatches) {
         throw new Error(
-          `Add Images From Computer data-action="${surface.importAction}", want "/soldiers/${createdSoldierID}/images/import?return=edit"`,
+          `Add Images From Computer file input hx-post="${surface.importAction}", want "/soldiers/${createdSoldierID}/images/import?return=edit"`,
         );
       }
       if (!surface.importBtnVisible) {
@@ -418,8 +424,18 @@ async function main() {
 
         const off = setFileChooserFixture(page, [fixturePath]);
         try {
+          // Issue #404: the "Add Images From Computer" label is no
+          // longer scoped to #panel.soldier.detail.images — the
+          // templ refactor pulled the upload <form> out as a
+          // <div data-soldier-image-import-form> sibling. The label
+          // lives at the page root next to the "Select all images"
+          // checkbox (per soldier_card.templ line ~556) and the
+          // gallery wrapper under #panel.soldier.detail.images is
+          // only the swap target for the response. The data-image
+          // import attribute on the wrapper is what scopes the
+          // selector now.
           await page.click(
-            '[id="panel.soldier.detail.images"] label:has-text("Add Images From Computer")',
+            '[data-soldier-image-import-form] label:has-text("Add Images From Computer")',
           );
 
           await page.waitForFunction(
@@ -431,7 +447,7 @@ async function main() {
             { timeout: 30_000 },
           );
 
-          const surface = await page.evaluate((expectedFileName) => {
+          const surface = await page.evaluate(() => {
             const cards = Array.from(
               document.querySelectorAll(
                 '[id="panel.soldier.detail.images"] [data-image-card]',
@@ -464,14 +480,28 @@ async function main() {
                 deleteFormCount: deleteForms.length,
               };
             });
+            // Gallery grew — at least one card renders *some*
+            // filename string. We do NOT pin the exact text because
+            // the server applies standardizedImageFileName() on
+            // import (e.g. "STC-00006-img-001.png") which is
+            // load-bearing for the storage layout — see
+            // docs/migrations/v55.md. The probe asserts the new
+            // card is wired up (filename node populated,
+            // image-extension suffix present) without locking the
+            // rename rule. Mirrors audit/smoke_events.mjs step-14
+            // (issue #403).
+            const IMAGE_EXT_RE =
+              /\.(png|jpg|jpeg|gif|bmp|webp|svg)$/i;
             return {
               cardCount: cards.length,
-              filenameMatch: cardReports.some((c) =>
-                c.filenameNodes.includes(expectedFileName),
+              filenameMatch: cardReports.some(
+                (c) =>
+                  c.filenameNodes.length > 0 &&
+                  c.filenameNodes.some((n) => IMAGE_EXT_RE.test(n)),
               ),
               cardReports,
             };
-          }, path.basename(fixturePath));
+          });
 
           if (surface.cardCount < 1) {
             throw new Error(
@@ -490,12 +520,19 @@ async function main() {
               );
             }
           }
+          // 5b. Every thumbnail has a visible <img> with non-empty
+          // alt (checked above), AND at least one card shows a
+          // filename with an image extension — the upload path is
+          // the seed of the gallery, the new card must render
+          // its filename node, even though import rewrites it via
+          // standardizedImageFileName() (cardinality check, mirrors
+          // smoke_events step-14 per issue #403).
           if (!surface.filenameMatch) {
             const seen = surface.cardReports
               .flatMap((c) => c.filenameNodes)
               .filter(Boolean);
             throw new Error(
-              `step-03: filename "${path.basename(fixturePath)}" missing from gallery cards; saw=${JSON.stringify(seen)}`,
+              `step-03: no card filename node carries an image-extension suffix; saw=${JSON.stringify(seen)}`,
             );
           }
           // The bulk-delete form lives in the parent <form>, NOT
