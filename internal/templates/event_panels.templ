@@ -134,7 +134,7 @@ templ EventLinksListFragment(eventID int64, linked []viewmodel.PersonRecord) {
 	if len(linked) == 0 {
 		@components.EmptyState("No linked Person Records", "Add a Person Record by Display ID below — type DXD-NNNNN and submit.", "")
 	} else {
-		<ul class="space-y-2">
+		<ul class="space-y-2" data-event-links-list>
 			for _, person := range linked {
 				<li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
 					<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", person.ID)) } class="pill-link">{ person.DisplayID }</a>
