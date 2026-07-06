@@ -535,23 +535,17 @@ async function main() {
               `step-03: no card filename node carries an image-extension suffix; saw=${JSON.stringify(seen)}`,
             );
           }
-          // The bulk-delete form lives in the parent <form>, NOT
-          // per-card. Slice B (#391) promotes it to per-card. For
-          // now assert the bulk form still exists exactly once
-          // outside the cards so we don't silently regress.
-          const bulkFormCount = await page.evaluate(() => {
-            const root = document.querySelector('[id="panel.soldier.detail.images"]');
-            if (!root) return -1;
-            const bulkForms = root.querySelectorAll(
-              ':not([data-image-card]) > form[action*="/images/download"]',
-            );
-            return bulkForms.length;
-          });
-          if (bulkFormCount < 1) {
-            throw new Error(
-              `step-03: bulk-download form missing from #panel.soldier.detail.images parent (count=${bulkFormCount})`,
-            );
-          }
+          // Bulk-download form coverage is exercised by step-04
+          // (per-card Delete + bulk delete coexist; bulk would
+          // visibly break the page if missing). The original
+          // bulkFormCount selector scoped `querySelectorAll` to the
+          // panel root, but per soldier_card.templ line 556 the
+          // bulk-download form is the OUTER `<form>` that wraps
+          // the panel — a parent, not a descendant — so the scoped
+          // selector always returned 0 (latent probe bug, masked
+          // by step-02 before #404). Dropped per issue #405; per-card
+          // Delete coverage in step-04 + cardCount/alt/visibility
+          // assertions above already pin the same regression.
         } finally {
           off();
         }
