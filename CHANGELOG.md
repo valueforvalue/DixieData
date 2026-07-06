@@ -15,6 +15,24 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 - **tools/tune go.mod + go.sum refreshed for slice 3.6 markdown deps** (bookkeeping close-out). Slice 3.6 (`ccd9262`) added `bluemonday` + `goldmark` to the root `go.mod`, but the `tools/tune` sub-module's `go.sum` was never updated. `make debug` failed at the `dixiedata-tune` build with "missing go.sum entry" for the markdown packages. \`go get\` in `tools/tune/` populated the four transitive indirect deps (`bluemonday`, `goldmark`, `douceur`, `gorilla/css`). No behavior change.
 
+### Fixed
+
+- **audit/smoke_events.mjs step-11 PDF selector flake** (issue
+  #389). The probe clicked
+  `form[action*="/pdf"] button[type="submit"]:has-text("Export PDF")`,
+  but the rendered DOM (from
+  `internal/templates/components/event_pdf_export.templ`) is a
+  `<form data-event-pdf-export>` wrapper containing a
+  `<button data-event-pdf-submit>Save PDF</button>` — the
+  selector matched neither the wrapper attribute nor the
+  button text. Replaced with the canonical
+  `[data-event-pdf-submit]` selector that already matches the
+  sibling articles probe's pattern
+  (`audit/smoke_articles.mjs` line 444). No templ change; the
+  `data-event-pdf-submit` attribute was already in place since
+  the orientation picker shipped (#374). Same flake class as
+  #388 (step-05g).
+
 ### Added
 
 - **audit/_lib: `setFileChooserFixture` helper for driving Wails
