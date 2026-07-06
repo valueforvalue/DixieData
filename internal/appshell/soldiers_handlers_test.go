@@ -362,3 +362,122 @@ func TestHandleSoldierImagesSetPrimaryFragmentSwap(t *testing.T) {
 		t.Errorf("after set-primary want IsPrimary=true, got false")
 	}
 }
+
+// TestHandleSoldiersListRendersPageWrapper pins the
+// PageSoldiersList UIID (issue #397 wide.1). The /soldiers
+// browse page must render the canonical `id="page.soldiers.list"`
+// wrapper around the main content area so smoke selectors and
+// goquery invariant tests can pin against the same registry
+// that internal/uiids/uiids.go declares. Mirrors the Slice A
+// pattern of canonicalizing only the content wrapper, not the
+// full body (per #397 locked decision 1).
+func TestHandleSoldiersListRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageSoldiersList)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s wrapper anchor; got %q",
+			uiids.PageSoldiersList,
+			bodyExtract(body, "Person Records", 200),
+		)
+	}
+}
+
+// TestHandleSoldiersListRendersSearchBasicPanel pins
+// PanelSoldiersSearchBasic — the Quick Search tab panel on
+// /soldiers.
+func TestHandleSoldiersListRendersSearchBasicPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldiersSearchBasic)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s quick-search panel; got %q",
+			uiids.PanelSoldiersSearchBasic,
+			bodyExtract(body, "Quick search", 200),
+		)
+	}
+}
+
+// TestHandleSoldiersListRendersSearchAdvancedPanel pins
+// PanelSoldiersSearchAdvanced — the Advanced Search form on
+// /soldiers.
+func TestHandleSoldiersListRendersSearchAdvancedPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldiersSearchAdvanced)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s advanced-search panel; got %q",
+			uiids.PanelSoldiersSearchAdvanced,
+			bodyExtract(body, "Advanced Search", 200),
+		)
+	}
+}
+
+// TestHandleSoldiersListRendersResultsPanel pins
+// PanelSoldiersResults — the results wrapper around the
+// SearchResults partial on /soldiers. Coexists with the
+// existing `id="soldier-list"` (the htmx swap target) —
+// adding the UIID wrapper is non-disruptive.
+func TestHandleSoldiersListRendersResultsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldiersResults)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s results panel; got %q",
+			uiids.PanelSoldiersResults,
+			bodyExtract(body, "soldier-list", 200),
+		)
+	}
+}
