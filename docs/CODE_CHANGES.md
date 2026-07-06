@@ -184,6 +184,78 @@ Checklist:
 4. **Run `go test ./internal/templates -v`.** All page-snapshot
    tests must pass.
 
+## When you add (or migrate) a fragment-swap action
+
+You touch: `internal/templates/*.templ` (add a templ helper that
+emits the wrapper's innerHTML only) AND
+`internal/appshell/*.go` (handler returns the helper render, not
+a redirect + plain text) AND `internal/appshell/routes.go` (a
+dedicated chi route BEFORE the catch-all wildcard when
+extracting from `handleSoldierByID` / `handleEventByID`).
+
+This is the architecture event-side #332 / #341 and
+soldier-side #391 (Slice B) migrated to. Pre-migration the
+soldier detail page used `X-Dixiedata-Redirect: /soldiers/{id}`
+on Delete + Set-Primary, forcing a full-page reload every
+action. Post-migration those handlers write the
+`SoldierImagesListFragment` / `EventImagesListFragment`
+directly, htmx swaps the wrapper's innerHTML via
+`data-results-target="#panel.{entity}.detail.images"`, the
+user never loses scroll position.
+
+Checklist:
+
+1. **Fragment helper is wrapper-inner-only.** The fragment
+   helper (`SoldierImagesListFragment`,
+   `EventImagesListFragment`) renders the inner content
+   only — the `<div id={ uiids.Panel... }>` wrapper lives
+   in the page-level template (e.g. `soldier_card.templ`
+   for the soldier detail, `event_detail.templ` for the
+   event detail). htmx's `data-results-target` swaps the
+   wrapper's innerHTML on response, so the fragment must
+   contain everything inside the wrapper but exclude the
+   wrapper element itself. Mirrors
+   `internal/templates/event_panels.templ:93`
+   `EventImagesListFragment`.
+2. **Per-card Delete + Set-Primary forms carry
+   `data-results-target`.** Mirrors
+   `internal/templates/event_panels.templ:107` per-card
+   Delete — the action button's synthetic form
+   (constructed by `frontend/app.js` for bare button
+   submitters) inherits `data-results-target` from the
+   button so the swap target matches the wrapper's ID.
+   For the bulk form, the outer `<form>` (or its
+   `<button data-dixie-submit="true">`) gets
+   `data-results-target` too so multi-select deletes also
+   swap in place instead of stranding the gallery at a
+   stale state.
+3. **Handler returns the fragment render, not a
+   redirect.** Replace `X-Dixiedata-Redirect` + plain text
+   body with `renderSoldierImagesListFragment(w, r, id)`
+   (or event-side equivalent). Toast header via
+   `setToastHeader(w, ...)` carries the user-visible
+   confirmation; `savePendingToast()` surfaces it on the
+   next page-load tick.
+4. **Add a dedicated chi route BEFORE any catch-all.**
+   `routes.go` registers the explicit `/soldiers/{id:[0-9]+}/images`
+   route before `r.Get("/soldiers/*", a.handleSoldierByID)`.
+   chi walks the route table in registration order; the
+   explicit regex matches first when both patterns cover
+   the same path. Pre-B.1 the path was dispatched from
+   the catch-all's `parts[1] == "..."` switch.
+5. **Pin the swap in tests + smoke.** Add a Go handler
+   test that POSTs the action and asserts:
+   - `X-Dixiedata-Redirect` is empty,
+   - response body contains the per-card `data-image-card` markers + the wrapper ID,
+   - DB row was updated.
+   Add smoke probe steps that click the per-card button
+   and assert `page.url()` is unchanged after the click
+   (the in-place swap guarantee). See
+   `audit/smoke_soldier_images.mjs` step-04 + step-05
+   (soldier, #391 Slice B.2) and the parity assertion in
+   `audit/smoke_events.mjs` step-12 + step-14 (event,
+   #391 Slice B.3).
+
 ## When you add a new top-level page
 
 You touch: `internal/templates/<page>.templ` AND the page-snapshot

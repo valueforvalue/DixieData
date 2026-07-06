@@ -1087,6 +1087,7 @@ async function main() {
       await page.goto(`${BASE}/events/${id}`, { waitUntil: 'domcontentloaded' });
       await wait(300);
       const before = await page.locator('[data-image-card]').count();
+      const urlBefore = page.url();
 
       // Install the chooser fixture BEFORE clicking — Playwright
       // queues listeners attached before the click that triggers
@@ -1106,6 +1107,19 @@ async function main() {
         if (after !== before + 1) {
           throw new Error(
             `expected gallery to grow by exactly one (before=${before} after=${after})`,
+          );
+        }
+        // Issue #391 Slice B.3 parity assertion: the
+        // event-side fragment-swap path (in place since
+        // post-#332 / post-#341) MUST NOT trigger a full
+        // page reload on the upload flow. Mirrors the
+        // soldier-side step-04 / step-05 probes in
+        // audit/smoke_soldier_images.mjs so a future
+        // regression that reverts to X-Dixiedata-Redirect
+        // here breaks both probes in lockstep.
+        if (page.url() !== urlBefore) {
+          throw new Error(
+            `expected in-place fragment swap on import (no nav); before="${urlBefore}" after="${page.url()}"`,
           );
         }
       } finally {
@@ -1327,6 +1341,16 @@ async function main() {
         // button – Playwright queues listeners attached before the
         // chooser event, which is the contract #385 documented.
         const off = setFileChooserFixture(page, [fixturePath]);
+        // Issue #391 Slice B.3 parity assertion: the
+        // event-side fragment-swap path (in place since
+        // post-#332 / post-#341) MUST NOT trigger a full
+        // page reload on this populated-gallery upload
+        // flow. Mirrors the soldier-side step-04 /
+        // step-05 probes in audit/smoke_soldier_images.mjs
+        // so a future regression that reverts to
+        // X-Dixiedata-Redirect here breaks both probes in
+        // lockstep.
+        const urlBefore = page.url();
         try {
           await page.click('button:has-text("Add Images From Computer")');
 
@@ -1339,6 +1363,11 @@ async function main() {
             null,
             { timeout: 30_000 },
           );
+          if (page.url() !== urlBefore) {
+            throw new Error(
+              `expected in-place fragment swap on populated-gallery import (no nav); before="${urlBefore}" after="${page.url()}"`,
+            );
+          }
 
           // Read-surface assertions – every check below is the new
           // territory #386 owns. Cards are scoped to the canonical
