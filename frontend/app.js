@@ -1151,7 +1151,7 @@
         thumb.src = refreshedUrl;
       }
     });
-    document.querySelectorAll(`[data-image-id="${imageId}"]`).forEach((button) => {
+    document.querySelectorAll(`[data-image-preview-id="${imageId}"]`).forEach((button) => {
       if (button instanceof HTMLElement) {
         button.setAttribute("data-image-preview", refreshedUrl);
       }
@@ -5162,7 +5162,7 @@
         imageTrigger.getAttribute("data-image-preview"),
         imageTrigger.getAttribute("data-image-caption"),
         imageTrigger.getAttribute("data-image-file"),
-        imageTrigger.getAttribute("data-image-id"),
+        imageTrigger.getAttribute("data-image-preview-id"),
       );
       return;
     }
