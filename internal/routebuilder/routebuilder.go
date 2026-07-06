@@ -160,6 +160,15 @@ func SoldierImagesPrimary(soldierID, imageID int64) string {
 	return fmt.Sprintf("/soldiers/%d/images/primary/%d", soldierID, imageID)
 }
 
+// SoldierImagesDelete returns the URL for deleting soldier images
+// (one or more image_ids via the image_ids[] repeat form field).
+// Registered as POST /soldiers/{id}/images/delete in routes.go.
+// Used by both the outer bulk-delete form (multi-select checkboxes)
+// and the per-card Delete form added in Slice B.2 (#391).
+func SoldierImagesDelete(soldierID int64) string {
+	return fmt.Sprintf("/soldiers/%d/images/delete", soldierID)
+}
+
 // ResearchLogTasksCreate returns the URL for creating a research-log
 // task. Registered as POST /soldiers/{id}/research-log/tasks in
 // routes.go.

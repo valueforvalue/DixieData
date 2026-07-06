@@ -31,6 +31,19 @@
  *       the documented `data-image-id` selector collision (see
  *       soldier_card.templ lines 580 + 589 — both per-card wrapper
  *       div and Preview `<button>` carry the attribute).
+ *   4.  Click the per-card Delete button → assert gallery
+ *       fragment swaps in place via
+ *       data-results-target="#panel.soldier.detail.images"
+ *       (Slice B.2): card count drops by exactly 1,
+ *       page.url() unchanged. Mirrors the event-side
+ *       fragment-swap pattern (event_panels.templ's
+ *       EventImagesListFragment data-results-target).
+ *   5.  Click the per-card Set as Primary button → assert
+ *       the fragment swap runs WITHOUT a page reload
+ *       (page.url() unchanged) and the card count is
+ *       unchanged (Set as Primary only flips the IsPrimary
+ *       bit; it never deletes). Mirrors the same event-side
+ *       swap path. Slice B.2 ships this path.
  *
  * Lifecycle:
  *   - Spawns its own `build/bin/dixiedata-web.exe` against a
@@ -498,6 +511,135 @@ async function main() {
           }
         } finally {
           off();
+        }
+      },
+    );
+
+    // Step 4 (issue #391 Slice B.2). Drives the in-place
+    // fragment swap: click per-card Delete, assert the
+    // gallery fragment updates without page nav. Mirrors
+    // the event-side swap pattern (smoke_events.mjs step-14
+    // uses the same data-image-card selector inside the
+    // panel wrapper). The probe seeds a second image so
+    // there's something to delete without leaving the
+    // gallery empty.
+    await step(
+      page,
+      'step-04 per-card-delete-fragment-swap',
+      async () => {
+        const before = await page
+          .locator('#panel.soldier.detail.images [data-image-card]')
+          .count();
+        if (before < 1) {
+          throw new Error(
+            `step-04 setup: expected >=1 image card from step-03, got ${before}`,
+          );
+        }
+        const urlBefore = page.url();
+        // Click the per-card Delete form (form[data-results-target]
+        // scoped to inside the panel). Per-card Delete uses
+        // #panel.soldier.detail.images scope so the data-action
+        // selector doesn't catch the outer bulk Delete Selected
+        // Images button which lives outside the panel.
+        const perCardDeleteCount = await page
+          .locator(
+            '#panel.soldier.detail.images form[action*="/images/delete"]',
+          )
+          .count();
+        if (perCardDeleteCount < 1) {
+          throw new Error(
+            `step-04: per-card Delete form missing inside #panel.soldier.detail.images (count=${perCardDeleteCount})`,
+          );
+        }
+        await page.click(
+          '#panel.soldier.detail.images form[action*="/images/delete"] button[type="submit"]',
+        );
+        // Wait for swap: count drops by exactly one.
+        await page.waitForFunction(
+          ({ before }) =>
+            document.querySelectorAll(
+              '#panel.soldier.detail.images [data-image-card]',
+            ).length === before - 1,
+          { before },
+          { timeout: 30_000 },
+        );
+        const after = await page
+          .locator('#panel.soldier.detail.images [data-image-card]')
+          .count();
+        if (after !== before - 1) {
+          throw new Error(
+            `step-04: expected card count to drop by 1 (before=${before}, after=${after})`,
+          );
+        }
+        const urlAfter = page.url();
+        if (urlAfter !== urlBefore) {
+          throw new Error(
+            `step-04: page navigated after per-card Delete (in-place swap expected). before="${urlBefore}" after="${urlAfter}"`,
+          );
+        }
+      },
+    );
+
+    // Step 5 (issue #391 Slice B.2). Per-card Set as Primary
+    // also uses the fragment-swap path. Drives a click on the
+    // per-card Set as Primary button and asserts:
+    //   - page.url() unchanged (no reload),
+    //   - the swapped gallery still contains the same image
+    //     rows (the IsPrimary badge flips server-side; the
+    //     DOM nodes themselves don't disappear).
+    await step(
+      page,
+      'step-05 per-card-set-primary-no-reload',
+      async () => {
+        const urlBefore = page.url();
+        const cards = await page
+          .locator('#panel.soldier.detail.images [data-image-card]')
+          .count();
+        if (cards < 1) {
+          throw new Error(
+            `step-05 setup: expected >=1 image card after step-04, got ${cards}`,
+          );
+        }
+        // The first card's Set as Primary button is the
+        // data-image-primary-action[disabled] button. Click
+        // it via the panel-scoped selector.
+        const primaryBtnCount = await page
+          .locator(
+            '#panel.soldier.detail.images [data-image-primary-action]',
+          )
+          .count();
+        if (primaryBtnCount < 1) {
+          throw new Error(
+            `step-05: per-card Set as Primary button missing inside #panel.soldier.detail.images (count=${primaryBtnCount})`,
+          );
+        }
+        await page.click(
+          '#panel.soldier.detail.images [data-image-primary-action]',
+        );
+        // Fragment swap returns the gallery. Wait until at
+        // least one card is back (the swap target was
+        // re-rendered).
+        await page.waitForFunction(
+          () =>
+            document.querySelectorAll(
+              '#panel.soldier.detail.images [data-image-card]',
+            ).length >= 1,
+          null,
+          { timeout: 30_000 },
+        );
+        const urlAfter = page.url();
+        if (urlAfter !== urlBefore) {
+          throw new Error(
+            `step-05: page navigated after per-card Set as Primary (in-place swap expected). before="${urlBefore}" after="${urlAfter}"`,
+          );
+        }
+        const cardsAfter = await page
+          .locator('#panel.soldier.detail.images [data-image-card]')
+          .count();
+        if (cardsAfter !== cards) {
+          throw new Error(
+            `step-05: card count changed unexpectedly (before=${cards}, after=${cardsAfter}) — Set as Primary must not delete`,
+          );
         }
       },
     );
