@@ -27,7 +27,7 @@
  *       count ≥ 1, per-card alt text non-empty, filename visible,
  *       per-card Delete button form present (mirrors event-side
  *       step-14 read surface). Scopes all per-card queries to
- *       `#panel.soldier.detail.images [data-image-card]` to avoid
+ *       `[id="panel.soldier.detail.images"] [data-image-card]` to avoid
  *       the documented `data-image-id` selector collision (see
  *       soldier_card.templ lines 580 + 589 — both per-card wrapper
  *       div and Preview `<button>` carry the attribute).
@@ -57,7 +57,7 @@
  *
  * Selector strategy:
  *   Scope every per-card selector under
- *   `#panel.soldier.detail.images [data-image-card]` so the
+ *   `[id="panel.soldier.detail.images"] [data-image-card]` so the
  *   `data-image-id` collision between the per-card wrapper div
  *   and the Preview `<button>` cannot surface as a flaky probe.
  *
@@ -283,11 +283,11 @@ async function main() {
           `expected /soldiers/${createdSoldierID}, got ${page.url()}`,
         );
       }
-      await page.waitForSelector('#panel.soldier.detail.images', {
+      await page.waitForSelector('[id="panel.soldier.detail.images"]', {
         timeout: 30_000,
       });
       const root = await page.evaluate(() => {
-        const el = document.querySelector('#panel.soldier.detail.images');
+        const el = document.querySelector('[id="panel.soldier.detail.images"]');
         if (!el) return { found: false };
         const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
         return {
@@ -325,11 +325,11 @@ async function main() {
           `expected /soldiers/${createdSoldierID}/edit, got ${page.url()}`,
         );
       }
-      await page.waitForSelector('#panel.soldier.form.images', {
+      await page.waitForSelector('[id="panel.soldier.form.images"]', {
         timeout: 30_000,
       });
       const surface = await page.evaluate((id) => {
-        const root = document.querySelector('#panel.soldier.form.images');
+        const root = document.querySelector('[id="panel.soldier.form.images"]');
         if (!root) return { found: false };
         const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
         const btns = Array.from(root.querySelectorAll('button'));
@@ -378,7 +378,7 @@ async function main() {
     // (#385 helper), assert the read surface mirrors event-side
     // step-14: thumbnail count, per-card alt text, filename,
     // Delete form. Scopes every per-card query to
-    // `#panel.soldier.detail.images [data-image-card]` to avoid
+    // `[id="panel.soldier.detail.images"] [data-image-card]` to avoid
     // the documented data-image-id selector collision.
     await step(
       page,
@@ -394,7 +394,7 @@ async function main() {
           );
         }
         const before = await page
-          .locator('#panel.soldier.detail.images [data-image-card]')
+          .locator('[id="panel.soldier.detail.images"] [data-image-card]')
           .count();
         if (before !== 0) {
           throw new Error(
@@ -419,7 +419,7 @@ async function main() {
           await page.waitForFunction(
             () =>
               document.querySelectorAll(
-                '#panel.soldier.detail.images [data-image-card]',
+                '[id="panel.soldier.detail.images"] [data-image-card]',
               ).length >= 1,
             null,
             { timeout: 30_000 },
@@ -428,7 +428,7 @@ async function main() {
           const surface = await page.evaluate((expectedFileName) => {
             const cards = Array.from(
               document.querySelectorAll(
-                '#panel.soldier.detail.images [data-image-card]',
+                '[id="panel.soldier.detail.images"] [data-image-card]',
               ),
             );
             const cardReports = cards.map((card) => {
@@ -497,7 +497,7 @@ async function main() {
           // now assert the bulk form still exists exactly once
           // outside the cards so we don't silently regress.
           const bulkFormCount = await page.evaluate(() => {
-            const root = document.querySelector('#panel.soldier.detail.images');
+            const root = document.querySelector('[id="panel.soldier.detail.images"]');
             if (!root) return -1;
             const bulkForms = root.querySelectorAll(
               ':not([data-image-card]) > form[action*="/images/download"]',
@@ -528,7 +528,7 @@ async function main() {
       'step-04 per-card-delete-fragment-swap',
       async () => {
         const before = await page
-          .locator('#panel.soldier.detail.images [data-image-card]')
+          .locator('[id="panel.soldier.detail.images"] [data-image-card]')
           .count();
         if (before < 1) {
           throw new Error(
@@ -558,13 +558,13 @@ async function main() {
         await page.waitForFunction(
           ({ before }) =>
             document.querySelectorAll(
-              '#panel.soldier.detail.images [data-image-card]',
+              '[id="panel.soldier.detail.images"] [data-image-card]',
             ).length === before - 1,
           { before },
           { timeout: 30_000 },
         );
         const after = await page
-          .locator('#panel.soldier.detail.images [data-image-card]')
+          .locator('[id="panel.soldier.detail.images"] [data-image-card]')
           .count();
         if (after !== before - 1) {
           throw new Error(
@@ -593,7 +593,7 @@ async function main() {
       async () => {
         const urlBefore = page.url();
         const cards = await page
-          .locator('#panel.soldier.detail.images [data-image-card]')
+          .locator('[id="panel.soldier.detail.images"] [data-image-card]')
           .count();
         if (cards < 1) {
           throw new Error(
@@ -622,7 +622,7 @@ async function main() {
         await page.waitForFunction(
           () =>
             document.querySelectorAll(
-              '#panel.soldier.detail.images [data-image-card]',
+              '[id="panel.soldier.detail.images"] [data-image-card]',
             ).length >= 1,
           null,
           { timeout: 30_000 },
@@ -634,7 +634,7 @@ async function main() {
           );
         }
         const cardsAfter = await page
-          .locator('#panel.soldier.detail.images [data-image-card]')
+          .locator('[id="panel.soldier.detail.images"] [data-image-card]')
           .count();
         if (cardsAfter !== cards) {
           throw new Error(

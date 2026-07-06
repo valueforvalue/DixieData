@@ -1183,7 +1183,7 @@ async function main() {
       //    selectors inside the container are unchanged – those
       //    are per-card markers, not canonical UIIDs.
       const containerPresent = await page.evaluate(
-        () => document.querySelector('#panel.event.detail.images') !== null,
+        () => document.querySelector('[id="panel.event.detail.images"]') !== null,
       );
       if (!containerPresent) {
         throw new Error(
@@ -1196,7 +1196,7 @@ async function main() {
       //    emits data-empty-state="true" (components/empty_state.templ:16)
       //    – both that marker AND the title text must be present.
       const emptyCopy = await page.evaluate(() => {
-        const root = document.querySelector('#panel.event.detail.images');
+        const root = document.querySelector('[id="panel.event.detail.images"]');
         if (!root) return { found: false };
         const text = root.textContent || '';
         const hasEmptyMarker =
@@ -1329,7 +1329,7 @@ async function main() {
         // consistency wins here. Promoting those per-card attributes
         // to canonical UIIDs is a separate slice.
         const before = await page
-          .locator('#panel.event.detail.images [data-image-card]')
+          .locator('[id="panel.event.detail.images"] [data-image-card]')
           .count();
         if (before !== 0) {
           throw new Error(
