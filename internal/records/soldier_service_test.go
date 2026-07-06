@@ -198,6 +198,99 @@ func TestSoldierService_GetByIDHandlesNullNewFields(t *testing.T) {
 	}
 }
 
+// TestSoldierService_UpdatePreservesDisplayIDWhenIncomingIsEmpty is the
+// RED-first regression for issue #376. The Update path was running
+// normalizeDisplayID on the incoming DisplayID and writing the empty
+// result back to the row, silently blanking an existing display_id.
+// The guard must keep before.DisplayID when the normalized incoming
+// value is empty.
+func TestSoldierService_UpdatePreservesDisplayIDWhenIncomingIsEmpty(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName: "James",
+		LastName:  "Gillespie",
+		DisplayID: "CSA-00411",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	created.DisplayID = ""
+	if err := svc.Update(*created); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.DisplayID != "CSA-00411" {
+		t.Errorf("DisplayID = %q, want CSA-00411 (preserved from prior row)", got.DisplayID)
+	}
+}
+
+// TestSoldierService_UpdatePreservesDisplayIDWhenIncomingIsWhitespace covers
+// the same guard for whitespace-only incoming DisplayIDs, which SanitizeID
+// would also normalize to empty.
+func TestSoldierService_UpdatePreservesDisplayIDWhenIncomingIsWhitespace(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName: "John",
+		LastName:  "Mosby",
+		DisplayID: "DXD-00042",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	created.DisplayID = "   "
+	if err := svc.Update(*created); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.DisplayID != "DXD-00042" {
+		t.Errorf("DisplayID = %q, want DXD-00042 (preserved from prior row)", got.DisplayID)
+	}
+}
+
+// TestSoldierService_UpdateStillNormalizesLegitimateChange is the smoke
+// test that the guard doesn't break the happy path: changing
+// DisplayID to a different non-empty value still works.
+func TestSoldierService_UpdateStillNormalizesLegitimateChange(t *testing.T) {
+	d := newTestDB(t)
+	svc := NewSoldierService(d)
+
+	created, err := svc.Create(models.Soldier{
+		FirstName: "Jeb",
+		LastName:  "Stuart",
+		DisplayID: "DXD-00099",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	created.DisplayID = "PENSION-7777"
+	if err := svc.Update(*created); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, err := svc.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.DisplayID != "PENSION-7777" {
+		t.Errorf("DisplayID = %q, want PENSION-7777 (legitimate change applied)", got.DisplayID)
+	}
+}
+
 func TestSoldierService_NormalizesConfederateHomeFields(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)

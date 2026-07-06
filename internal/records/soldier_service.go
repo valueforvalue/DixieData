@@ -347,6 +347,13 @@ func (s *SoldierService) Update(soldier models.Soldier) error {
 
 	soldier.Rank = canonicalRank(soldier)
 	soldier.DisplayID = normalizeDisplayID(soldier.DisplayID, nodePrefix)
+	if soldier.DisplayID == "" {
+		if before != nil && strings.TrimSpace(before.DisplayID) != "" {
+			soldier.DisplayID = before.DisplayID
+		} else {
+			return fmt.Errorf("soldier service: refusing to blank display_id for soldier %d", soldier.ID)
+		}
+	}
 	if err := hydrateSoldierIdentity(tx, &soldier); err != nil {
 		return err
 	}
