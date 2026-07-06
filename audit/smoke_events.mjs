@@ -1398,7 +1398,7 @@ async function main() {
                 (el.textContent || '').trim(),
               );
               const deleteForms = card.querySelectorAll(
-                'form[action*="/images/delete"]',
+                'form[data-image-delete-form]',
               );
               const deleteButtons = Array.from(
                 card.querySelectorAll('button.pill-link'),
