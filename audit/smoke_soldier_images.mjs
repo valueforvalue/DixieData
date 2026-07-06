@@ -252,6 +252,16 @@ async function main() {
   const context = await browser.newContext({ acceptDownloads: true });
   const page = await context.newPage();
 
+  // Auto-accept native confirm() dialogs (e.g. per-card Delete
+  // "Delete this image?" prompt from data-confirm). Without this,
+  // Playwright auto-dismisses the dialog, the JS dispatcher
+  // bails out, and the form's default submission navigates to
+  // /images/delete instead of triggering the in-place fragment
+  // swap that step-04 + step-05 assert.
+  page.on('dialog', async (dialog) => {
+    await dialog.accept();
+  });
+
   const trackedSoldierIDs = [];
 
   page.on('response', (r) => {
@@ -580,16 +590,16 @@ async function main() {
         // Images button which lives outside the panel.
         const perCardDeleteCount = await page
           .locator(
-            '#panel.soldier.detail.images form[action*="/images/delete"]',
+            '[id="panel.soldier.detail.images"] form[action*="/images/delete"]',
           )
           .count();
         if (perCardDeleteCount < 1) {
           throw new Error(
-            `step-04: per-card Delete form missing inside #panel.soldier.detail.images (count=${perCardDeleteCount})`,
+            `step-04: per-card Delete form missing inside [id="panel.soldier.detail.images"] (count=${perCardDeleteCount})`,
           );
         }
         await page.click(
-          '#panel.soldier.detail.images form[action*="/images/delete"] button[type="submit"]',
+          '[id="panel.soldier.detail.images"] form[action*="/images/delete"] button[type="submit"]',
         );
         // Wait for swap: count drops by exactly one.
         await page.waitForFunction(
@@ -642,16 +652,16 @@ async function main() {
         // it via the panel-scoped selector.
         const primaryBtnCount = await page
           .locator(
-            '#panel.soldier.detail.images [data-image-primary-action]',
+            '[id="panel.soldier.detail.images"] [data-image-primary-action]',
           )
           .count();
         if (primaryBtnCount < 1) {
           throw new Error(
-            `step-05: per-card Set as Primary button missing inside #panel.soldier.detail.images (count=${primaryBtnCount})`,
+            `step-05: per-card Set as Primary button missing inside [id="panel.soldier.detail.images"] (count=${primaryBtnCount})`,
           );
         }
         await page.click(
-          '#panel.soldier.detail.images [data-image-primary-action]',
+          '[id="panel.soldier.detail.images"] [data-image-primary-action]',
         );
         // Fragment swap returns the gallery. Wait until at
         // least one card is back (the swap target was
