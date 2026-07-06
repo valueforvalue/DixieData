@@ -663,6 +663,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   (browser smoke). Full Go test suite (28 packages) and
   full smoke (19 steps) green.
 
+- **audit smoke: pin populated-gallery read surface of /events/{id}/images (#386)**.
+  Adds `step-14 event-images-populated-gallery-read-surface` to
+  `audit/smoke_events.mjs`. Mirrors step-12's upload-via-UI shape
+  (fresh event + scratch-dir fixture + `setFileChooserFixture`
+  from #385 + click "Add Images From Computer"), then pins the
+  read surface the gallery renders: ≥1 `[data-image-card]`
+  renders with the seeded image, every card's `<img alt>` is
+  non-empty and the thumbnail is visible, the uploaded
+  filename appears in at least one card's `text-xs break-all`
+  filename node, and every card carries a `<form
+  action="…/images/delete">` + `class="pill-link"` Delete
+  button (`type=submit`, visible). Selectors parallel
+  step-12's `data-image-card` / `data-image-thumb-id` pair;
+  parallel UIID gap as #387 (no canonical per-card DOM ID in
+  `internal/uiids/` — only the section-level
+  `#data-event-images-list` anchor).
+
 ### Fixed
 
 - **components.Button silently dropped `data-action` from
