@@ -13,6 +13,7 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Maintenance
 
+- **uiids(event): add `PanelEventDetailImages` + migrate smoke selectors** (issue #390). The Event gallery's section-level `id="data-event-images-list"` literal (event_detail.templ) + the matching `data-results-target` reference (event_panels.templ) are now wired to the canonical `uiids.PanelEventDetailImages` constant (`"panel.event.detail.images"`), mirroring the soldier-side `PanelSoldierDetailImages` pattern. The smoke probe's step-13 + step-14 selectors are scoped to `#panel.event.detail.images` so the goquery invariant tests can pin against the canonical UIID. Handler test fixtures (events_handlers_test.go) updated to assert against `uiids.PanelEventDetailImages` rather than the inline literal. Per-card `data-image-card` / `data-image-thumb-id` / `data-image-id` selectors remain unchanged — the soldier-side gallery uses the same per-card pattern; promoting those is a separate slice.
 - **tools/tune go.mod + go.sum refreshed for slice 3.6 markdown deps** (bookkeeping close-out). Slice 3.6 (`ccd9262`) added `bluemonday` + `goldmark` to the root `go.mod`, but the `tools/tune` sub-module's `go.sum` was never updated. `make debug` failed at the `dixiedata-tune` build with "missing go.sum entry" for the markdown packages. \`go get\` in `tools/tune/` populated the four transitive indirect deps (`bluemonday`, `goldmark`, `douceur`, `gorilla/css`). No behavior change.
 
 ### Fixed
