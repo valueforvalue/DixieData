@@ -17,6 +17,30 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **Event edit: Add Linked Person now accepts name search; linked
+  row shows full name next to Display ID pill** (issue #373). The
+  `display_id` form input on the Event edit page's Linked Persons
+  section now falls back to a case-insensitive substring search
+  across `first + middle + last + suffix` (first match by
+  `display_id` wins) when the input does not match a Display ID
+  exactly. Each linked-Person row now renders the full name
+  (via `persondisplay.FullName`) as a separate text node next
+  to the Display ID pill — not just the pill alone. Adds
+  `EventService.LookupPersonIDByName` (mirrors the
+  `LookupPersonIDByDisplayID` sentinel / nil-receiver pattern),
+  the `LookupPersonIDByName` entry on `eventsFacade`, and the
+  Display-ID-then-name fallback in `handleEventLinksAttach`.
+  Regression net: `TestEventService_LookupPersonIDByName` (8
+  sub-tests: single, multi-first-wins, lower/upper substring,
+  middle+last, empty/whitespace/no-match) +
+  `TestEventService_LookupPersonIDByName_NilService` +
+  `TestHandleEventLinksAttachByName` (HTTP-level:
+  attach-by-name, empty→400, no-match→404 with echoed query)
+  + `TestEventLinksListFragmentRendersFullNameNextToDisplayIDPill`
+  (templ render with prefix/middle/suffix + plain) +
+  `step-05g attach-by-name-and-full-name-in-row` in
+  `audit/smoke_events.mjs`.
+
 - **Event Records portrait template + per-export orientation
   picker** (issue #374). Adds `templates/event_portrait.typ`
   (mirror of `event_landscape.typ` with portrait page setup +

@@ -626,3 +626,90 @@ func TestEventService_LookupPersonIDByDisplayID_NilService(t *testing.T) {
 		t.Errorf("nil receiver should return an error, got nil")
 	}
 }
+
+// TestEventService_LookupPersonIDByName (issue #373) pins the
+// name-search fallback the Event editor's Add Linked Person
+// form uses when the user's input is not a Display ID. The
+// helper does a case-insensitive substring match against the
+// concatenated first/middle/last/suffix name fields, sorts
+// matches by display_id, and returns the FIRST row. Empty
+// input returns os.ErrNotExist (same sentinel as
+// LookupPersonIDByDisplayID) — the helper must NOT match
+// every row when the user submits a blank field.
+func TestEventService_LookupPersonIDByName(t *testing.T) {
+	d := newTestDB(t)
+	soldierSvc := NewSoldierService(d)
+	eventSvc := NewEventService(soldierSvc)
+
+	// Seed three Person Records. Display IDs are DXD-00001,
+	// DXD-00002, DXD-00003 in insertion order, so alphabetical
+	// order on display_id matches insertion order here.
+	p1, err := soldierSvc.Create(models.Soldier{FirstName: "Robert", MiddleName: "E.", LastName: "Lee", Suffix: "Jr."})
+	if err != nil {
+		t.Fatalf("Create p1: %v", err)
+	}
+	p2, err := soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson"})
+	if err != nil {
+		t.Fatalf("Create p2: %v", err)
+	}
+	p3, err := soldierSvc.Create(models.Soldier{FirstName: "James", MiddleName: "Robert", LastName: "Lee"})
+	if err != nil {
+		t.Fatalf("Create p3: %v", err)
+	}
+
+	cases := []struct {
+		name    string
+		input   string
+		wantID  int64
+		wantErr error
+	}{
+		// Single match (unique last name).
+		{"single-last-name", "Jackson", p2.ID, nil},
+		// Multiple matches on "Lee" — sorted by display_id, first wins.
+		{"multi-last-name-first-wins", "Lee", p1.ID, nil},
+		// Substring on first name (case-insensitive).
+		{"first-name-lower", "stonewall", p2.ID, nil},
+		{"first-name-upper", "STONEWALL", p2.ID, nil},
+		// Substring spanning middle + last ("Robert Lee" matches p3;
+		// "Lee" alone also matched p1 first).
+		{"middle-last-substring", "Robert Lee", p3.ID, nil},
+		// Empty string is rejected — must NOT match every row.
+		{"empty", "", 0, os.ErrNotExist},
+		{"whitespace-only", "   ", 0, os.ErrNotExist},
+		// No match.
+		{"no-match", "Nonexistent", 0, os.ErrNotExist},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotID, err := eventSvc.LookupPersonIDByName(tc.input)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("err = %v, want errors.Is(%v)", err, tc.wantErr)
+				}
+				if gotID != 0 {
+					t.Errorf("gotID = %d on error, want 0", gotID)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if gotID != tc.wantID {
+				t.Errorf("gotID = %d, want %d", gotID, tc.wantID)
+			}
+		})
+	}
+}
+
+// TestEventService_LookupPersonIDByName_NilService confirms the
+// nil-receiver guard from LookupPersonIDByDisplayID carries
+// over to the name path (same defensive pattern; would panic
+// on a nil SoldierService.db handle otherwise).
+func TestEventService_LookupPersonIDByName_NilService(t *testing.T) {
+	var svc *EventService
+	_, err := svc.LookupPersonIDByName("Lee")
+	if err == nil {
+		t.Errorf("nil receiver should return an error, got nil")
+	}
+}
