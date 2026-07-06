@@ -577,31 +577,11 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						</div>
 						if len(s.Images) > 0 {
 							<div id={ uiids.PanelSoldierDetailImages }>
-								<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-									for _, img := range s.Images {
-										<div data-image-card data-image-id={ fmt.Sprintf("%d", img.ID) } class="card rounded-2xl p-3">
-											<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-												<label class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
-													<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
-													Select
-												</label>
-												<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-													<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
-													<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } data-action={ templ.SafeURL(routebuilder.SoldierImagesPrimary(s.ID, img.ID)) } data-dixie-submit="true" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
-													<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
-												</div>
-											</div>
-											<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ imageAltText(img.Caption, s.DisplayID) }
-												class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
-											<div class="text-sm gold font-medium">{ img.Caption }</div>
-											<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
-										</div>
-									}
-								</div>
+								@SoldierImagesListFragment(s.ID, s.Images)
 							</div>
 						} else {
 							<div id={ uiids.PanelSoldierDetailImages }>
-								<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">No images are attached yet. Use <strong>Add Images From Computer</strong> to import one or more files with the desktop file picker.</p>
+								@SoldierImagesListFragment(s.ID, s.Images)
 							</div>
 						}
 						<div id="image-download-status" class="mt-3 text-sm text-slate-600"></div>
@@ -639,6 +619,47 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 		if len(citedIn) > 0 {
 			@components.CitedInArticles(s.ID, citedIn)
 		}
+	}
+}
+
+// SoldierImagesListFragment (issue #391 Slice B.1) renders
+// the per-soldier Images panel as a fragment-only payload
+// (no <html>/<body>/Layout() shell) so htmx can swap it in
+// place via data-results-target="#panel.soldier.detail.images".
+// Mirrors EventImagesListFragment shape (event_panels.templ:93)
+// — empty-state + grid of cards with the same per-card
+// data-image-card / data-image-thumb-id / data-image-id
+// selectors Slice A preserved. B.2 expands each card with
+// per-card Delete + Set-Primary forms; this slice ships the
+// fragment spine so the route + handler can swap without
+// per-card forms yet. The card markup here matches the
+// pre-Slice-B inline loop byte-for-byte so Slice A's
+// selector pins keep passing unchanged.
+templ SoldierImagesListFragment(soldierID int64, images []viewmodel.Image) {
+	if len(images) == 0 {
+		<p class="rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-600">No images are attached yet. Use <strong>Add Images From Computer</strong> to import one or more files with the desktop file picker.</p>
+	} else {
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			for _, img := range images {
+				<div data-image-card data-image-id={ fmt.Sprintf("%d", img.ID) } class="card rounded-2xl p-3">
+					<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<label class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
+							<input type="checkbox" name="image_ids" value={ fmt.Sprintf("%d", img.ID) } data-checkbox-group="soldier-images" class="h-4 w-4 rounded border-slate-300 text-[#7b1e2b] focus:ring-[#7b1e2b]"/>
+							Select
+						</label>
+						<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+							<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
+							<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } data-action={ templ.SafeURL(routebuilder.SoldierImagesPrimary(soldierID, img.ID)) } data-dixie-submit="true" class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
+							<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
+						</div>
+					</div>
+					<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ imageAltText(img.Caption, fmt.Sprintf("%d", soldierID)) }
+						class="mb-3 h-40 w-full rounded-xl bg-slate-50 object-contain"/>
+					<div class="text-sm gold font-medium">{ img.Caption }</div>
+					<div class="text-xs text-slate-500 break-all">{ img.FileName }</div>
+				</div>
+			}
+		</div>
 	}
 }
 
