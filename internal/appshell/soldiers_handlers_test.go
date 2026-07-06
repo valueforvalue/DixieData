@@ -481,3 +481,111 @@ func TestHandleSoldiersListRendersResultsPanel(t *testing.T) {
 		)
 	}
 }
+
+// TestHandleSoldierDetailRendersPageWrapper pins the
+// PageSoldierDetail UIID (issue #397 wide.2). The /soldiers/{id}
+// detail page must render the canonical `id="page.soldier.detail"`
+// wrapper around the main content area so smoke selectors and
+// goquery invariant tests can pin against the same registry
+// that internal/uiids/uiids.go declares. Per #397 locked
+// decision 1, the page wrapper scopes the main content area
+// only — not the full body.
+func TestHandleSoldierDetailRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "DetailPageWrapper")
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageSoldierDetail)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"soldier detail page missing #%s wrapper anchor; got %q",
+			uiids.PageSoldierDetail,
+			bodyExtract(body, "Edit Person Record", 200),
+		)
+	}
+}
+
+// TestHandleSoldierDetailRendersSummaryPanel pins
+// PanelSoldierDetailSummary — the summary card on
+// /soldiers/{id} (the main card with title + field dl +
+// biography block). Wraps the inner card div, not the
+// outer page wrapper; class=contents on the wrapper so
+// the card's relative+grid layout is preserved.
+func TestHandleSoldierDetailRendersSummaryPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "DetailSummaryPanel")
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierDetailSummary)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"soldier detail page missing #%s summary panel; got %q",
+			uiids.PanelSoldierDetailSummary,
+			bodyExtract(body, "Display ID", 200),
+		)
+	}
+}
+
+// TestHandleSoldierDetailRendersRecordsPanel pins
+// PanelSoldierDetailRecords — the Source Records section
+// on /soldiers/{id}. The section is conditionally rendered
+// (only when s.SourceRecords > 0), so the test seeds a
+// record via the soldiers facade to ensure the wrapper
+// anchors on a populated row.
+func TestHandleSoldierDetailRendersRecordsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s, err := app.soldiers.Create(models.Soldier{
+		FirstName: "Robert",
+		LastName:  "E Lee",
+		Records: []models.Record{
+			{RecordType: "TestSource", AppID: "APP-1", Details: "Sample source for panel anchor."},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create seeded soldier with record: %v", err)
+	}
+
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierDetailRecords)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"soldier detail page missing #%s records panel; got %q",
+			uiids.PanelSoldierDetailRecords,
+			bodyExtract(body, "Source Records", 200),
+		)
+	}
+}

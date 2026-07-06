@@ -248,7 +248,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 
 templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []viewmodel.Article) {
 	@Layout(detailHeading(s)) {
-			<div data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
+			<div id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				<div class="mb-4 flex flex-wrap gap-3">
 					<button
 						type="button"
@@ -351,6 +351,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						</div>
 					</div>
 				}
+				<div id={ uiids.PanelSoldierDetailSummary } class="contents">
 				<dl class="responsive-two-col grid gap-2 text-sm">
 					<dt class="text-slate-500">Person Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Display ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
@@ -389,6 +390,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						@LinkedText(s.Biography, "mt-3 text-sm text-slate-700 leading-6")
 					</div>
 				}
+				</div>
 				<details class="mt-5 overflow-hidden rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
@@ -544,7 +546,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 					</div>
 				</div>
 				if len(s.SourceRecords) > 0 {
-					<section class="relative">
+					<section id={ uiids.PanelSoldierDetailRecords } class="relative">
 						<h3 class="mt-8 text-lg gold font-semibold">Source Records</h3>
 						for _, r := range s.SourceRecords {
 							<div class="card rounded-2xl p-4 mt-3 text-sm">
