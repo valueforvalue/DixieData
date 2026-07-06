@@ -46,6 +46,7 @@ all of them; load only the ones that match your task.
 | [`docs/agents/tune-iteration.md`](tune-iteration.md) | Iterating on a Typst PDF surface. |
 | [`docs/agents/typst-layout-tips.md`](typst-layout-tips.md) | Typst layout work (alongside tune-iteration.md). |
 | [`docs/agents/domain.md`](domain.md) | Skills reading domain docs. |
+| [`docs/agents/repl.md`](repl.md) | Python REPL scratch discipline — when to use `.agents/skills/repl/` for deterministic investigation, boundary rule (Python NEVER in Go build). |
 
 ### UI hunt / redesign
 

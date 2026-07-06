@@ -262,6 +262,15 @@ until every checkbox is checked.
 
 ## Agent skills
 
+### REPL-driven reasoning (Python scratch)
+
+[`docs/agents/repl.md`](docs/agents/repl.md) covers the boundary rule
+for the vendored `repl` skill (`.agents/skills/repl/`, sourced from
+`valueforvalue/my-skill-framework`). Python is a scratch tool for
+deterministic investigation — parsing, numeric sweeps, format
+validation. NEVER imported by Go code, NEVER in CI. If a Python script
+proves useful enough to keep, port it to Go.
+
 ### Working guides (read before touching the layer)
 
 These two files are the high-leverage pre-commit reads. They document
