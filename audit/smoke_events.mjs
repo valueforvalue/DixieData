@@ -1094,7 +1094,14 @@ async function main() {
       // the event.
       const off = setFileChooserFixture(page, [fixturePath]);
       try {
-        await page.click('button:has-text("Add Images From Computer")');
+        // Issue #401: the import button is now a <label class="primary-button">
+        // wrapping a hidden <input type="file" name="images" multiple>.
+        // Clicking the label opens the native file picker (Playwright
+        // routes the chooser through setFileChooserFixture); the
+        // label's onchange handler then auto-submits the wrapping
+        // multipart form. Probe selector changed from
+        // `button:has-text(...)` to `label:has-text(...)` to match.
+        await page.click('label:has-text("Add Images From Computer")');
         // Wait for the import to land and the gallery to re-render.
         // The htmx-driven fragment swap adds the new card.
         await page.waitForFunction(
@@ -1218,7 +1225,10 @@ async function main() {
       //    emits it as a <button data-action="/events/{id}/images/import"
       //    data-dixie-submit="true" data-progress-label="Importing images…">.
       const importBtn = await page.evaluate((id) => {
-        const btns = Array.from(document.querySelectorAll('button'));
+        // Issue #401: the import button is now a <label
+        // class="primary-button"> wrapping a hidden file input.
+        // Scan labels instead of buttons.
+        const btns = Array.from(document.querySelectorAll('label'));
         const match = btns.find(
           (b) => (b.textContent || '').trim() === 'Add Images From Computer',
         );
@@ -1227,24 +1237,30 @@ async function main() {
         const rect = match.getBoundingClientRect();
         return {
           found: true,
-          action,
+          // Issue #401: the action lives on the wrapping <form>,
+          // not the <label>. Walk up to read it.
+          action:
+            match.closest("form") &&
+            match.closest("form").getAttribute("action") === `/events/${id}/images/import`
+              ? `/events/${id}/images/import`
+              : action,
           expectedAction: `/events/${id}/images/import`,
           visible: rect.width > 0 && rect.height > 0,
         };
       }, freshEventID);
       if (!importBtn.found) {
         throw new Error(
-          '"Add Images From Computer" button missing from event detail DOM',
+          '"Add Images From Computer" label missing from event detail DOM',
         );
       }
       if (importBtn.action !== importBtn.expectedAction) {
         throw new Error(
-          `Add Images button data-action="${importBtn.action}", want "${importBtn.expectedAction}"`,
+          `Add Images form action="${importBtn.action}", want "${importBtn.expectedAction}"`,
         );
       }
       if (!importBtn.visible) {
         throw new Error(
-          '"Add Images From Computer" button not visible (zero-sized box)',
+          '"Add Images From Computer" label not visible (zero-sized box)',
         );
       }
     });
@@ -1352,13 +1368,13 @@ async function main() {
         // lockstep.
         const urlBefore = page.url();
         try {
-          await page.click('button:has-text("Add Images From Computer")');
+          await page.click('label:has-text("Add Images From Computer")');
 
           // Wait for the gallery to populate with the seeded image.
           await page.waitForFunction(
             () =>
               document.querySelectorAll(
-                '#panel.event.detail.images [data-image-card]',
+                '[id="panel.event.detail.images"] [data-image-card]',
               ).length >= 1,
             null,
             { timeout: 30_000 },
@@ -1376,7 +1392,7 @@ async function main() {
           const surface = await page.evaluate((expectedFileName) => {
             const cards = Array.from(
               document.querySelectorAll(
-                '#panel.event.detail.images [data-image-card]',
+                '[id="panel.event.detail.images"] [data-image-card]',
               ),
             );
             const cardReports = cards.map((card) => {

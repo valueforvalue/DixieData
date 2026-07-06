@@ -169,8 +169,11 @@ func TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts(t *testing.T) {
 	for _, needle := range []string{
 		`data-record-add class="ghost-link w-full px-4 py-2 sm:w-auto"`,
 		`data-record-remove class="pill-link w-full justify-center sm:w-auto"`,
-		`Add Images From Computer</button>`,
-		`class="primary-button w-full sm:w-auto">Add Images From Computer`,
+		// Issue #401: the import button is now a <label> wrapping
+		// a hidden <input type="file"> inside a multipart <form>.
+		// Assert against the label's class + literal text rather than
+		// the legacy </button> closing tag.
+		`class="primary-button w-full sm:w-auto cursor-pointer">Add Images From Computer`,
 		`class="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap"`,
 		`class="ghost-link w-full px-4 py-2 sm:w-auto"`,
 	} {

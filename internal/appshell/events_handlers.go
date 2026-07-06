@@ -1251,6 +1251,27 @@ func (a *App) handleEventImageImport(w http.ResponseWriter, r *http.Request, eve
 	}
 	event := withLinks.Event
 
+	// Issue #401: web-mode posts multipart/form-data (the import
+	// form has a <input type="file" name="images" multiple>); the
+	// native OpenMultipleFilesDialog path only runs when no upload
+	// is present. See readUploadedImagePaths in app.go for the
+	// upload parser. Web branch is synchronous: the JS dispatcher
+	// reads the response body into the gallery wrapper via the
+	// form's data-results-target, so the user stays on the event
+	// detail page instead of bouncing through /jobs/{id}.
+	uploadedPaths := readUploadedImagePaths(w, r)
+	if uploadedPaths != nil {
+		imported, importErr := a.importImagePaths(event, uploadedPaths)
+		if importErr != nil {
+			slog.Error("appshell: event image import (web)", "audit", "respond-error", "event_id", eventID, "imported", imported, "err", importErr.Error())
+			respondInternal(w, r, "Could not import the uploaded images.", importErr)
+			return
+		}
+		setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))
+		a.renderEventImagesListFragment(w, r, eventID)
+		return
+	}
+
 	pathsOpts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
@@ -1267,7 +1288,15 @@ func (a *App) handleEventImageImport(w http.ResponseWriter, r *http.Request, eve
 		return
 	}
 
-	_ = event
+	a.runEventImageImportJob(w, event, eventID, paths)
+}
+
+// runEventImageImportJob enqueues the image_import background job
+// for an event with the given already-resolved source paths and
+// writes the redirect response. Extracted from handleEventImageImport
+// in issue #401 so the multipart upload branch and the native-dialog
+// branch can share the same job-enqueue + response sequence.
+func (a *App) runEventImageImportJob(w http.ResponseWriter, event models.Soldier, eventID int64, paths []string) {
 	jobID := a.jobs.Start("image_import", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, fmt.Sprintf("Importing %d image(s)", len(paths)))
 		p.Shimmer(ctx, 5, 95, 60*time.Second, "Encoding images…")
