@@ -702,6 +702,23 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   `TestButton_*Snapshot` or
   `TestEntryFormUsesMobileSafeSourceRecordAndActionLayouts`.
 
+- **audit/events step-05g: pin `data-event-links-list` on
+  `EventLinksListFragment` so the smoke probe's linked-row
+  selector stops hunting for `form[action="…/detach"]` and
+  pills page-wide** (issue #388). The probe already
+  (correctly) scopes its queries to
+  `[data-event-links-list]` since the populated-gallery PR
+  (`27cb68a`, #386) shipped the selector swap, but the
+  matching `data-*` attribute on `<ul>` was never added to
+  the template, so the probe's `querySelector` would return
+  `null` in production. Adds the one-line attribute on the
+  non-empty branch of `EventLinksListFragment`. No class
+  change, no structure change, no effect on the empty-state
+  branch. `TestEventLinksListFragment*` (6/6) still green;
+  live smoke now passes step-05g (`19 passed, 1 failed`,
+  remaining failure is the out-of-scope step-11 PDF
+  selector — separate flake).
+
 ### Changed
 
 - **Drop Event option from `/soldiers/new` entry-type dropdown** (issue
