@@ -65,6 +65,18 @@ the Added / Changed / Fixed / Removed lists stay scannable.
   portrait, landscape, default-back-compat) +
   `TestArchiveContractSnapshots` event cases +
   `TestExportService_ExportEventPDF` (signature update).
+- **Audit smoke: pin empty-state read surface of
+  `/events/{id}/images`** (issue #387). Sibling to #348
+  (closed `not planned`). `step-13
+  event-images-empty-state-read-surface` in
+  `audit/smoke_events.mjs` mints a fresh event with zero
+  images via the existing form-POST path, navigates to its
+  detail page, and asserts the `#data-event-images-list`
+  container + `[data-empty-state="true"]` block with the
+  title "No images are attached" + the "Add Images From
+  Computer" button (wired to
+  `/events/{id}/images/import`) all render. Read-surface
+  only — the upload path itself stays gated by #385.
 - **Article Records schema + CRUD shell** (issue #321 slice 1).
   Adds the `articles` + `article_refs` tables in a v62 schema
   bump (`CurrentSchemaVersion` 61 → 62, additive `block-3-articles`
