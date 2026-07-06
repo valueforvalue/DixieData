@@ -675,6 +675,7 @@ templ SoldierImagesListFragment(soldierID int64, displayID string, images []view
 							<form
 								action={ templ.SafeURL(routebuilder.SoldierImagesDelete(soldierID)) }
 								method="post"
+								data-image-delete-form="true"
 								data-dixie-submit="true"
 								data-confirm="Delete this image?"
 								data-results-target={ "#" + uiids.PanelSoldierDetailImages }

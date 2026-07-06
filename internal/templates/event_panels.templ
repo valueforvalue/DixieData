@@ -102,6 +102,7 @@ templ EventImagesListFragment(eventID int64, images []viewmodel.Image) {
 						<form
 							action={ templ.SafeURL(fmt.Sprintf("/events/%d/images/delete", eventID)) }
 							method="post"
+							data-image-delete-form="true"
 							data-dixie-submit="true"
 							data-confirm="Delete this image?"
 							data-results-target={ "#" + uiids.PanelEventDetailImages }
