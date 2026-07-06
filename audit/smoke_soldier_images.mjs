@@ -432,7 +432,12 @@ async function main() {
         fs.mkdirSync(path.dirname(fixturePath), { recursive: true });
         fs.copyFileSync(fixtureSrc, fixturePath);
 
-        const off = setFileChooserFixture(page, [fixturePath]);
+        // Upload 3 images so step-04 can delete the primary (auto-promoted
+// on first insert) and step-05 still has a non-primary card to test
+// Set-Primary against. With 2 uploads, deleting the primary would
+// auto-promote the remaining one to primary (ensurePrimaryImage),
+// leaving 0 visible Set-Primary buttons for step-05.
+const off = setFileChooserFixture(page, [fixturePath, fixturePath, fixturePath]);
         try {
           // Issue #404: the "Add Images From Computer" label is no
           // longer scoped to #panel.soldier.detail.images — the
@@ -590,16 +595,41 @@ async function main() {
         // Images button which lives outside the panel.
         const perCardDeleteCount = await page
           .locator(
-            '[id="panel.soldier.detail.images"] form[action*="/images/delete"]',
+            '[id="panel.soldier.detail.images"] [data-image-delete-button]',
           )
           .count();
         if (perCardDeleteCount < 1) {
           throw new Error(
-            `step-04: per-card Delete form missing inside [id="panel.soldier.detail.images"] (count=${perCardDeleteCount})`,
+            `step-04: per-card Delete button missing inside [id="panel.soldier.detail.images"] (count=${perCardDeleteCount})`,
+          );
+        }
+        // issue #407 regression net: verify the Delete button is
+        // NOT a descendant of the outer bulk-download form via a
+        // real <form> submit path. The previous per-card Delete was
+        // a <form action="/images/delete"> nested inside the outer
+        // download form, which broke JS submit propagation (the
+        // browser did native form submission before the document-
+        // level handler could fire, fragment-swap never ran). The
+        // htmx-driven button bypasses form submission entirely, so
+        // nesting is safe for THIS control — but a future templ
+        // change that re-introduces a JS-dispatcher-driven form for
+        // another per-card action would hit the same bug. The check
+        // below verifies the per-card control surface is htmx-driven
+        // (hx-post attribute present), which is the actual guarantee
+        // we care about.
+        const isHtmxDriven = await page.evaluate(() => {
+          const btn = document.querySelector(
+            '[id="panel.soldier.detail.images"] [data-image-delete-button]',
+          );
+          return btn ? btn.hasAttribute('hx-post') : false;
+        });
+        if (!isHtmxDriven) {
+          throw new Error(
+            `step-04: per-card Delete button is missing hx-post (issue #407 fix requires htmx-driven button, not a nested form)`,
           );
         }
         await page.click(
-          '[id="panel.soldier.detail.images"] form[action*="/images/delete"] button[type="submit"]',
+          '[id="panel.soldier.detail.images"] [data-image-delete-button]',
         );
         // Wait for swap: count drops by exactly one.
         await page.waitForFunction(
@@ -650,18 +680,23 @@ async function main() {
         // The first card's Set as Primary button is the
         // data-image-primary-action[disabled] button. Click
         // it via the panel-scoped selector.
+        // issue #407: Set-Primary is now an htmx-driven button (was a
+        // data-action button with the JS dispatcher path). The
+        // primaryImageButtonClass helper hides the button on the
+        // card that's already the primary image, so we filter to
+        // visible buttons only.
         const primaryBtnCount = await page
           .locator(
-            '[id="panel.soldier.detail.images"] [data-image-primary-action]',
+            '[id="panel.soldier.detail.images"] [data-image-primary-action]:not(.hidden)',
           )
           .count();
         if (primaryBtnCount < 1) {
           throw new Error(
-            `step-05: per-card Set as Primary button missing inside [id="panel.soldier.detail.images"] (count=${primaryBtnCount})`,
+            `step-05: per-card Set as Primary button (visible) missing inside [id="panel.soldier.detail.images"] (count=${primaryBtnCount})`,
           );
         }
         await page.click(
-          '[id="panel.soldier.detail.images"] [data-image-primary-action]',
+          '[id="panel.soldier.detail.images"] [data-image-primary-action]:not(.hidden)',
         );
         // Fragment swap returns the gallery. Wait until at
         // least one card is back (the swap target was
