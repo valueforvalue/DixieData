@@ -1209,8 +1209,8 @@ func (a *App) handleDeleteSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", id))
-	fmt.Fprintf(w, "Deleted %d image(s).", len(selected))
+	setToastHeader(w, fmt.Sprintf("Deleted %d image(s).", len(selected)))
+	a.renderSoldierImagesListFragment(w, r, id)
 }
 
 func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Request, id, imageID int64) {
@@ -1231,7 +1231,7 @@ func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	setToastHeader(w, "Primary image updated.")
-	fmt.Fprint(w, "Primary image updated.")
+	a.renderSoldierImagesListFragment(w, r, id)
 }
 
 // handleSoldierImagesRoute (issue #391 Slice B.1) is the chi
@@ -1281,7 +1281,8 @@ func (a *App) renderSoldierImagesListFragment(w http.ResponseWriter, r *http.Req
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := templates.SoldierImagesListFragment(soldierID, viewmodel.PersonRecordFromModel(*soldier).Images).Render(r.Context(), w); err != nil {
+	vm := viewmodel.PersonRecordFromModel(*soldier)
+	if err := templates.SoldierImagesListFragment(soldierID, vm.DisplayID, vm.Images).Render(r.Context(), w); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not render images for person record %d.", soldierID), err)
 	}
 }

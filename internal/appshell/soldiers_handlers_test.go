@@ -19,12 +19,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
@@ -183,5 +185,180 @@ func TestHandleSoldierImagesFragmentGET(t *testing.T) {
 	// response size jumps to detail-page scale.
 	if strings.Contains(body, "<body") || strings.Contains(body, "<nav") {
 		t.Errorf("fragment response leaked full-page layout; got %q", body[:min(2000, len(body))])
+	}
+}
+
+// TestHandleSoldierImagesDeleteFragmentSwap (issue #391
+// Slice B.2) pins the in-place fragment swap replacing the
+// pre-B.2 X-Dixiedata-Redirect pattern. POST
+// /soldiers/{id}/images/delete with one image_id must:
+//   - drop that image from the DB,
+//   - render the SoldierImagesListFragment (NOT set
+//     X-Dixiedata-Redirect, NOT return the full page),
+//   - leave the surviving card visible via the per-card
+//     data-image-card / data-image-thumb-id markers.
+//
+// Mirrors the post-#341 TestHandleEventImages shape
+// (events_handlers_test.go) but for the soldier facade.
+// The outer bulk-delete form is preserved by the templ
+// refactor (B.2 still uses the outer form for multi-select);
+// this test exercises the per-card path that's new in B.2.
+func TestHandleSoldierImagesDeleteFragmentSwap(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "ImagesDeleteSwap")
+	imageDir, relativeDir := appdata.RecordImageDir(app.dataDir, s.DisplayID)
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll imageDir: %v", err)
+	}
+	firstPath := filepath.Join(imageDir, "first.png")
+	secondPath := filepath.Join(imageDir, "second.png")
+	if err := os.WriteFile(firstPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile first: %v", err)
+	}
+	if err := os.WriteFile(secondPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile second: %v", err)
+	}
+	if err := app.soldiers.AddImage(s.ID, "first.png", filepath.Join(relativeDir, "first.png"), "First portrait"); err != nil {
+		t.Fatalf("AddImage first: %v", err)
+	}
+	if err := app.soldiers.AddImage(s.ID, "second.png", filepath.Join(relativeDir, "second.png"), "Second portrait"); err != nil {
+		t.Fatalf("AddImage second: %v", err)
+	}
+
+	refreshed, err := app.soldiers.GetByID(s.ID)
+	if err != nil {
+		t.Fatalf("GetByID pre-delete: %v", err)
+	}
+	if len(refreshed.Images) != 2 {
+		t.Fatalf("seeded 2 images, soldier has %d", len(refreshed.Images))
+	}
+	dropID := refreshed.Images[0].ID
+
+	resp, err := http.PostForm(server.URL+"/soldiers/"+intStr(s.ID)+"/images/delete", url.Values{
+		"image_ids": {intStr(dropID)},
+	})
+	if err != nil {
+		t.Fatalf("POST images/delete: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("POST delete status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-Dixiedata-Redirect"); got != "" {
+		t.Errorf("POST delete set X-Dixiedata-Redirect=%q; want empty (issue #391 fragment-swap)", got)
+	}
+	if !strings.Contains(body, "data-image-card") {
+		t.Errorf("POST delete response missing per-card data-image-card marker; got %q", body)
+	}
+	if !strings.Contains(body, fmt.Sprintf(`data-image-thumb-id="%d"`, refreshed.Images[1].ID)) {
+		t.Errorf("POST delete response missing surviving card data-image-thumb-id; got %q", body)
+	}
+	if strings.Contains(body, fmt.Sprintf(`data-image-thumb-id="%d"`, dropID)) {
+		t.Errorf("POST delete response still renders dropped card; got %q", body)
+	}
+	// Belt-and-braces: response must be the fragment, NOT
+	// the full detail page (which would re-emit Layout() +
+	// top-nav).
+	if strings.Contains(body, "<body") || strings.Contains(body, "<nav") {
+		t.Errorf("delete response leaked full-page layout; got %q", body[:min(2000, len(body))])
+	}
+
+	afterDelete, err := app.soldiers.GetByID(s.ID)
+	if err != nil {
+		t.Fatalf("GetByID post-delete: %v", err)
+	}
+	if len(afterDelete.Images) != 1 {
+		t.Errorf("after delete want 1 image, got %d", len(afterDelete.Images))
+	}
+}
+
+// TestHandleSoldierImagesSetPrimaryFragmentSwap (issue #391
+// Slice B.2) pins the per-card Set-Primary fragment swap
+// (NOT a full-page redirect). POST
+// /soldiers/{id}/images/primary/{imageID} must:
+//   - flip IsPrimary on the targeted image,
+//   - render the SoldierImagesListFragment (NOT set
+//     X-Dixiedata-Redirect).
+//
+// No template-only change exists for this path -- the
+// existing data-image-primary-action button on each card
+// already POSTs to it via the JS-handler-driven
+// data-dixie-submit path. B.2 changes the handler so the
+// response is the fragment that the data-results-target
+// selector (set in B.1) swaps into place. Mirrors the
+// post-#341 /events fragment-swap test pattern.
+func TestHandleSoldierImagesSetPrimaryFragmentSwap(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "ImagesSetPrimarySwap")
+	imageDir, relativeDir := appdata.RecordImageDir(app.dataDir, s.DisplayID)
+	if err := os.MkdirAll(imageDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll imageDir: %v", err)
+	}
+	firstPath := filepath.Join(imageDir, "first.png")
+	secondPath := filepath.Join(imageDir, "second.png")
+	if err := os.WriteFile(firstPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile first: %v", err)
+	}
+	if err := os.WriteFile(secondPath, pngFixture(), 0o644); err != nil {
+		t.Fatalf("WriteFile second: %v", err)
+	}
+	if err := app.soldiers.AddImage(s.ID, "first.png", filepath.Join(relativeDir, "first.png"), "First portrait"); err != nil {
+		t.Fatalf("AddImage first: %v", err)
+	}
+	if err := app.soldiers.AddImage(s.ID, "second.png", filepath.Join(relativeDir, "second.png"), "Second portrait"); err != nil {
+		t.Fatalf("AddImage second: %v", err)
+	}
+
+	refreshed, err := app.soldiers.GetByID(s.ID)
+	if err != nil {
+		t.Fatalf("GetByID pre-set: %v", err)
+	}
+	if len(refreshed.Images) != 2 {
+		t.Fatalf("seeded 2 images, soldier has %d", len(refreshed.Images))
+	}
+	promoteID := refreshed.Images[1].ID
+
+	resp, err := http.PostForm(server.URL+"/soldiers/"+intStr(s.ID)+"/images/primary/"+intStr(promoteID), url.Values{})
+	if err != nil {
+		t.Fatalf("POST images/primary: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("POST primary status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-Dixiedata-Redirect"); got != "" {
+		t.Errorf("POST primary set X-Dixiedata-Redirect=%q; want empty (issue #391 fragment-swap)", got)
+	}
+	if !strings.Contains(body, "data-image-card") {
+		t.Errorf("POST primary response missing per-card data-image-card marker; got %q", body)
+	}
+	if strings.Contains(body, "<body") || strings.Contains(body, "<nav") {
+		t.Errorf("set-primary response leaked full-page layout; got %q", body[:min(2000, len(body))])
+	}
+
+	after, err := app.soldiers.GetByID(s.ID)
+	if err != nil {
+		t.Fatalf("GetByID post-set: %v", err)
+	}
+	var promoted *models.Image
+	for i := range after.Images {
+		if after.Images[i].ID == promoteID {
+			promoted = &after.Images[i]
+			break
+		}
+	}
+	if promoted == nil {
+		t.Fatalf("promoted image %d not found after set-primary", promoteID)
+	}
+	if !promoted.IsPrimary {
+		t.Errorf("after set-primary want IsPrimary=true, got false")
 	}
 }
