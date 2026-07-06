@@ -11,6 +11,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Maintenance
+
+- **tools/tune go.mod + go.sum refreshed for slice 3.6 markdown deps** (bookkeeping close-out). Slice 3.6 (`ccd9262`) added `bluemonday` + `goldmark` to the root `go.mod`, but the `tools/tune` sub-module's `go.sum` was never updated. `make debug` failed at the `dixiedata-tune` build with "missing go.sum entry" for the markdown packages. \`go get\` in `tools/tune/` populated the four transitive indirect deps (`bluemonday`, `goldmark`, `douceur`, `gorilla/css`). No behavior change.
+
 ### Added
 
 - **Event Records portrait template + per-export orientation
