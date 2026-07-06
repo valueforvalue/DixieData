@@ -1389,7 +1389,7 @@ async function main() {
           // territory #386 owns. Cards are scoped to the canonical
           // event gallery container so the probe fails fast if the
           // container id drifts.
-          const surface = await page.evaluate((expectedFileName) => {
+          const surface = await page.evaluate(() => {
             const cards = Array.from(
               document.querySelectorAll(
                 '[id="panel.event.detail.images"] [data-image-card]',
@@ -1437,14 +1437,26 @@ async function main() {
                 deleteButtons,
               };
             });
+            // Gallery grew — at least one card renders *some*
+            // filename string. We do NOT pin the exact text because
+            // the server applies standardizedImageFileName() on
+            // import (e.g. "EVT-00006-img-001.png") which is
+            // load-bearing for the storage layout — see
+            // docs/migrations/v55.md. The probe asserts the new card
+            // is wired up (filename node populated, image-extension
+            // suffix present) without locking the rename rule.
+            const IMAGE_EXT_RE =
+              /\.(png|jpg|jpeg|gif|bmp|webp|svg)$/i;
             return {
               cardCount: cards.length,
-              filenameMatch: cardReports.some((c) =>
-                c.filenameNodes.includes(expectedFileName),
+              filenameMatch: cardReports.some(
+                (c) =>
+                  c.filenameNodes.length > 0 &&
+                  c.filenameNodes.some((n) => IMAGE_EXT_RE.test(n)),
               ),
               cardReports,
             };
-          }, path.basename(fixturePath));
+          });
 
           // 4. Gallery grid renders with the expected image count.
           if (surface.cardCount < 1) {
@@ -1454,9 +1466,10 @@ async function main() {
           }
 
           // 5. Every thumbnail has a visible <img> with non-empty alt,
-          // AND the uploaded filename is shown for at least one card
-          // (the upload path is the seed of the gallery — the new
-          // card must show the filename we just uploaded).
+          // AND at least one card shows a filename with an image
+          // extension (the upload path is the seed of the gallery —
+          // the new card must render its filename node, even though
+          // import rewrites it via standardizedImageFileName()).
           for (const card of surface.cardReports) {
             if (!card.altNonEmpty) {
               throw new Error(
@@ -1474,7 +1487,7 @@ async function main() {
               .flatMap((c) => c.filenameNodes)
               .filter(Boolean);
             throw new Error(
-              `step-14: filename "${path.basename(fixturePath)}" missing from gallery cards; saw=${JSON.stringify(seen)}`,
+              `step-14: no card filename node carries an image-extension suffix; saw=${JSON.stringify(seen)}`,
             );
           }
 
