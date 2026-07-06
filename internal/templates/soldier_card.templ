@@ -668,40 +668,45 @@ templ SoldierImagesListFragment(soldierID int64, displayID string, images []view
 						</label>
 						<div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
 							<span data-image-primary-badge class={ primaryImageBadgeClass(img.IsPrimary) }>Primary Image</span>
-							// B.2: data-results-target added to drive
-							// fragment-swap on per-card Set as Primary
-							// (mirrors EventImagesListFragment
-							// per-card Delete). The data-dixie-submit
-							// button is not inside a real <form>; the
-							// JS submit dispatcher in frontend/app.js
-							// builds a synthetic form that copies
-							// data-results-target onto the form so
-							// the response fragment swaps into the
-							// #panel.soldier.detail.images wrapper.
-							<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } data-action={ templ.SafeURL(routebuilder.SoldierImagesPrimary(soldierID, img.ID)) } data-dixie-submit="true" data-results-target={ "#" + uiids.PanelSoldierDetailImages } class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
+							// issue #407: convert per-card actions
+							// (Set as Primary, Delete) from JS-dispatcher
+							// form/button pattern to htmx-driven buttons.
+							// The previous <form>-based Delete was nested
+							// inside the outer bulk-download <form> at
+							// soldier_card.templ:559, so the document-level
+							// submit listener at frontend/app.js:5344 never
+							// received the inner submit event before the
+							// browser did native form submission. htmx
+							// intercepts the click directly (no form), builds
+							// the FormData from hx-vals, posts, and swaps the
+							// fragment. No form nesting, no JS dispatcher
+							// dependency. hx-confirm preserves the
+							// confirmation-dialog UX. Mirrors the upload
+							// form pattern that #404 introduced.
+							<button
+								type="button"
+								data-image-primary-action
+								data-primary-image-id={ fmt.Sprintf("%d", img.ID) }
+								{ htmxattr.Mux{
+									Post: routebuilder.SoldierImagesPrimary(soldierID, img.ID),
+									Target: "[id=\"" + uiids.PanelSoldierDetailImages + "\"]",
+									Swap: "innerHTML",
+								}.Attrs()... }
+								class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }
+							>Set as Primary</button>
 							<button type="button" data-image-preview-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
-							// B.2: per-card Delete form so single-card
-							// deletes are one click instead of a
-							// checkbox+bulk-submit round trip. The
-							// outer bulk-delete form is preserved
-							// (it lives outside the Slice A wrapper,
-							// so the fragment-swap is invisible to it).
-							// Mirrors event_panels.templ per-card
-							// delete shape (data-results-target +
-							// data-confirm + data-dixie-submit +
-							// hidden image_ids).
-							<form
-								action={ templ.SafeURL(routebuilder.SoldierImagesDelete(soldierID)) }
-								method="post"
-								data-image-delete-form="true"
-								data-dixie-submit="true"
-								data-confirm="Delete this image?"
-								data-results-target={ "#" + uiids.PanelSoldierDetailImages }
-								class="inline w-full sm:w-auto"
-							>
-								<input type="hidden" name="image_ids" value={ fmt.Sprintf("%d", img.ID) }/>
-								<button type="submit" class="pill-link w-full justify-center sm:w-auto">Delete</button>
-							</form>
+							<button
+								type="button"
+								data-image-delete-button={ fmt.Sprintf("%d", img.ID) }
+								hx-vals={ fmt.Sprintf(`{"image_ids":"%d"}`, img.ID) }
+								{ htmxattr.Mux{
+									Post: routebuilder.SoldierImagesDelete(soldierID),
+									Target: "[id=\"" + uiids.PanelSoldierDetailImages + "\"]",
+									Swap: "innerHTML",
+									Confirm: "Delete this image?",
+								}.Attrs()... }
+								class="pill-link w-full justify-center sm:w-auto"
+							>Delete</button>
 						</div>
 					</div>
 					<img src={ imageURL(img.FilePath) } data-image-thumb-id={ fmt.Sprintf("%d", img.ID) } alt={ imageAltText(img.Caption, displayID) }
