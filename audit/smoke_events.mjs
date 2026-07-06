@@ -980,9 +980,7 @@ async function main() {
         try { return fs.readdirSync(exportsDir); } catch { return []; }
       })();
       const beforeSet = new Set(before);
-      await page.click(
-        'form[action*="/pdf"] button[type="submit"]:has-text("Export PDF")',
-      );
+      await page.click('[data-event-pdf-submit]');
       // Poll up to 90s for a NEW non-empty .pdf. The SaveFileDialog
       // override may create the file at 0 bytes when handing the
       // path back to the job; the actual content arrives after
