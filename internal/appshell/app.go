@@ -1101,6 +1101,31 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
+	// Web-mode (issue #401): the import form posts
+	// multipart/form-data with the file input's "images" field.
+	// Save each uploaded file to a temp path so the existing
+	// importImagePaths walker can copy it into the record's image
+	// directory. Wails mode does not hit this branch (the form is
+	// urlencoded); it falls through to OpenMultipleFilesDialog
+	// below. The web branch is synchronous: the JS dispatcher
+	// reads the response body into the gallery wrapper via the
+	// form's data-results-target, so a fragment-swap on success
+	// keeps the user on the soldier detail page instead of
+	// bouncing through /jobs/{id} (which the async Wails path
+	// uses to surface background-job progress).
+	uploadedPaths := readUploadedImagePaths(w, r)
+	if uploadedPaths != nil {
+		imported, importErr := a.importImagePaths(*soldier, uploadedPaths)
+		if importErr != nil {
+			slog.Error("appshell: soldier image import (web)", "audit", "respond-error", "person_record_id", id, "imported", imported, "err", importErr.Error())
+			respondInternal(w, r, "Could not import the uploaded images.", importErr)
+			return
+		}
+		setToastHeader(w, fmt.Sprintf("Imported %d image(s).", imported))
+		a.renderSoldierImagesListFragment(w, r, id)
+		return
+	}
+
 	pathsOpts := runtime.OpenDialogOptions{
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Image files", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.svg"},
@@ -1117,17 +1142,19 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Capture the redirect target now (the worker can't read r.URL
-	// after the request goroutine returns) and enqueue the import as
-	// a background job so the user sees real progress during the
-	// file copy.
-	redirectPath := imageImportRedirectPath(id, r.URL.Query().Get("return"))
+	a.runSoldierImageImportJob(w, soldier, id, paths, r.URL.Query().Get("return"))
+}
+
+// runSoldierImageImportJob enqueues the image_import background job
+// for a soldier with the given already-resolved source paths and
+// writes the redirect response. Extracted from handleImportSoldierImages
+// in issue #401 so the multipart upload branch and the native-dialog
+// branch can share the same job-enqueue + response sequence.
+func (a *App) runSoldierImageImportJob(w http.ResponseWriter, soldier *models.Soldier, id int64, paths []string, returnTarget string) {
+	redirectPath := imageImportRedirectPath(id, returnTarget)
 	var jobID string
 	jobID = a.jobs.Start("image_import", func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, fmt.Sprintf("Importing %d image(s)", len(paths)))
-		// Image import iterates file by file; without sub-step
-		// granularity the bar would sit at 5 across many-image
-		// batches. Shimmer keeps the bar moving.
 		p.Shimmer(ctx, 5, 95, 60*time.Second, "Encoding images…")
 		imported, importErr := a.importImagePaths(*soldier, paths)
 		if importErr != nil {
@@ -1138,24 +1165,12 @@ func (a *App) handleImportSoldierImages(w http.ResponseWriter, r *http.Request, 
 			slog.Error("appshell: image import", "audit", "respond-error", "person_record_id", id, "err", importErr.Error())
 			return importErr
 		}
-		// Embed a redirect header so the browser ends up on the
-		// soldier detail page once the job page is dismissed. The
-		// /jobs/{id} page itself only renders the job status; the
-		// worker writes the redirect header so the in-page
-		// follow-on navigation in app.js still works.
 		_ = redirectPath
 		_ = jobID
 		p.Set(100, fmt.Sprintf("Imported %d image(s).", imported))
 		return nil
 	})
-	// We can't easily carry a toast through the 303 redirect and
-	// also stash a per-job warning for partial-imports. Use the
-	// first toast (success-count) at enqueue time so the user sees
-	// feedback even if the page doesn't navigate. The worker writes
-	// a follow-up warning/error toast via /jobs/{id}/fragment if the
-	// actual import reports a partial failure.
 	setInfoToastHeader(w, fmt.Sprintf("Importing %d image(s)…", len(paths)))
-	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
 	writeExportRedirect(w, "/jobs/"+jobID)
 }
 
@@ -2794,4 +2809,69 @@ func (a *eventRegistryAdapter) RenderEvent(ctx context.Context, recordType, orie
 		}(),
 	}.Normalize()
 	return a.reg.Render(ctx, settings, recordType, data, w)
+}
+
+// readUploadedImagePaths inspects r for a multipart/form-data body
+// with one or more file parts under the "images" field name and
+// streams each one to a temporary file on disk. It returns:
+//
+//   - non-nil slice when at least one uploaded file was written; the
+//     slice contains the on-disk temp paths that the caller can feed
+//     to importImagePaths.
+//   - nil when the request is not multipart (i.e. the Wails
+//     native-dialog path will be used instead). Caller should fall
+//     through to its dialog branch.
+//
+// Respond-write side effects on the error paths: the helper calls
+// respondValidation / respondInternal so the HTTP response is fully
+// formed even when the caller bails out after a nil return.
+//
+// Issue #401: web-mode has no native OpenMultipleFilesDialog override,
+// so the import form posts multipart instead. This helper bridges the
+// browser upload to the existing filesystem-path-based import walker.
+// Temp files are intentionally not cleaned up here; the import job
+// copies the bytes into the record's image directory and the OS
+// reclaims the temp on next reboot.
+func readUploadedImagePaths(w http.ResponseWriter, r *http.Request) []string {
+	contentType := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "multipart/form-data") {
+		return nil
+	}
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		respondValidation(w, r, "Could not parse uploaded images.", err)
+		return nil
+	}
+	files := r.MultipartForm.File["images"]
+	if len(files) == 0 {
+		return nil
+	}
+	paths := make([]string, 0, len(files))
+	for _, fh := range files {
+		if fh == nil {
+			continue
+		}
+		src, err := fh.Open()
+		if err != nil {
+			respondValidation(w, r, "Could not open uploaded file.", err)
+			return nil
+		}
+		ext := filepath.Ext(fh.Filename)
+		tmp, err := os.CreateTemp("", "dixiedata-upload-*"+ext)
+		if err != nil {
+			src.Close()
+			respondInternal(w, r, "Could not save uploaded file.", err)
+			return nil
+		}
+		if _, err := io.Copy(tmp, src); err != nil {
+			src.Close()
+			tmp.Close()
+			os.Remove(tmp.Name())
+			respondInternal(w, r, "Could not read uploaded file.", err)
+			return nil
+		}
+		src.Close()
+		tmp.Close()
+		paths = append(paths, tmp.Name())
+	}
+	return paths
 }

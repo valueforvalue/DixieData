@@ -155,11 +155,29 @@ templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord)
 						@EventImagesListFragment(event.ID, event.Images)
 					</div>
 					<div class="mt-4 flex flex-wrap gap-2">
-						@components.Button("Add Images From Computer", components.ButtonPrimary, "", templ.Attributes{
-							"data-action": templ.SafeURL(fmt.Sprintf("/events/%d/images/import", event.ID)),
-							"data-dixie-submit": "true",
-							"data-progress-label": "Importing images\u2026",
-						})
+						<form
+							action={ templ.SafeURL(fmt.Sprintf("/events/%d/images/import", event.ID)) }
+							method="post"
+							enctype="multipart/form-data"
+							data-event-image-import-form={ fmt.Sprintf("%d", event.ID) }
+							data-results-target={ "#" + uiids.PanelEventDetailImages }
+							data-dixie-submit="true"
+							data-progress-label="Importing images\u2026"
+							class="inline"
+						>
+							<label class="primary-button w-full sm:w-auto cursor-pointer">
+								Add Images From Computer
+								<input
+									type="file"
+									name="images"
+									multiple
+									accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/svg+xml"
+									class="hidden"
+									data-event-image-input={ fmt.Sprintf("%d", event.ID) }
+									onchange="this.form.requestSubmit()"
+								/>
+							</label>
+						</form>
 					</div>
 				</section>
 			</div>

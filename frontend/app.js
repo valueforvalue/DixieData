@@ -3428,7 +3428,16 @@
         return true;
       }
       if (resultsTargetSelector && !redirectTo && responseOk) {
-        const target = document.querySelector(resultsTargetSelector);
+        // Issue #402 follow-up: uiid ids contain dots (e.g.
+        // "panel.event.detail.images"). querySelector("#panel.event.detail.images")
+        // parses the dots as class selectors and returns null. When
+        // the selector is an id reference, fall back to the
+        // attribute-selector form so the swap targets the right node.
+        const target = document.querySelector(
+          resultsTargetSelector.startsWith("#") && resultsTargetSelector.includes(".")
+            ? `[id="${resultsTargetSelector.slice(1)}"]`
+            : resultsTargetSelector,
+        );
         if (target instanceof HTMLElement) {
           const html = await response.text();
           target.innerHTML = html;

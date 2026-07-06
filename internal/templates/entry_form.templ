@@ -374,12 +374,30 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 										<p>Desktop image uploads use the native file picker.</p>
 										<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
 									</div>
-									@components.Button("Add Images From Computer", components.ButtonPrimary, "w-full sm:w-auto", templ.Attributes{
-									"data-action": fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID),
-									"data-dixie-submit": "true",
-									"data-progress-label": "Importing images…",
-								})
-								</div>
+									<form
+										action={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
+										method="post"
+										enctype="multipart/form-data"
+										data-soldier-image-import-form={ fmt.Sprintf("%d", s.ID) }
+										data-results-target={ "#" + uiids.PanelSoldierDetailImages }
+										data-dixie-submit="true"
+										data-progress-label="Importing images…"
+										class="inline"
+										>
+											<label class="primary-button w-full sm:w-auto cursor-pointer">
+												Add Images From Computer
+												<input
+													type="file"
+													name="images"
+													multiple
+													accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/svg+xml"
+													class="hidden"
+													data-soldier-image-input={ fmt.Sprintf("%d", s.ID) }
+													onchange="this.form.requestSubmit()"
+													/>
+											</label>
+										</form>
+									</div>
 							} else {
 								<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 									<div>

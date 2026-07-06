@@ -332,19 +332,25 @@ async function main() {
         const root = document.querySelector('[id="panel.soldier.form.images"]');
         if (!root) return { found: false };
         const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
-        const btns = Array.from(root.querySelectorAll('button'));
-        const importBtn = btns.find(
+        // Issue #401: the import surface is now a <label
+        // class="primary-button"> wrapping a hidden file input. Walk
+        // labels instead of buttons; pull the form action off the
+        // wrapping <form> for the action-equality check.
+        const labels = Array.from(root.querySelectorAll('label'));
+        const importBtn = labels.find(
           (b) => (b.textContent || '').trim() === 'Add Images From Computer',
         );
-        const action = importBtn ? importBtn.getAttribute('data-action') || '' : '';
+        const formAction = importBtn && importBtn.closest('form')
+          ? importBtn.closest('form').getAttribute('action') || ''
+          : '';
         const rect = importBtn ? importBtn.getBoundingClientRect() : null;
         return {
           found: true,
           hasUploadLabel: /Upload Images/i.test(text),
           snippet: text.slice(0, 200),
           hasImportBtn: !!importBtn,
-          importAction: action,
-          importActionMatches: action === `/soldiers/${id}/images/import?return=edit`,
+          importAction: formAction,
+          importActionMatches: formAction === `/soldiers/${id}/images/import?return=edit`,
           importBtnVisible:
             !!rect && rect.width > 0 && rect.height > 0,
         };
@@ -413,7 +419,7 @@ async function main() {
         const off = setFileChooserFixture(page, [fixturePath]);
         try {
           await page.click(
-            '#panel.soldier.detail.images button:has-text("Add Images From Computer")',
+            '[id="panel.soldier.detail.images"] label:has-text("Add Images From Computer")',
           );
 
           await page.waitForFunction(
