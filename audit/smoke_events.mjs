@@ -27,6 +27,10 @@
  *      "No images are attached" empty-state copy + the
  *      "Add Images From Computer" button render (issue #387;
  *      read-surface only — upload path is gated by #385)
+ *  14.  Event detail → Add Images From Computer via
+ *      setFileChooserFixture (#385) → assert the populated
+ *      gallery read surface: thumbnail count, per-card alt
+ *      text, filename, and Delete button render (issue #386).
  *
  * Lifecycle:
  *   - The probe spawns its own `build/bin/dixiedata-web.exe`
@@ -652,23 +656,18 @@ async function main() {
       // Scrape the currently-linked Person's id + name from
       // the row rendered by step-05d.
       const linkedRow = await page.evaluate(() => {
-        const anchors = Array.from(document.querySelectorAll('a.pill-link'));
-        // Filter to the linked-persons anchors: /soldiers/{id}
-        // with a non-empty href that doesn't match the hidden
-        // Display ID input inside the main event form.
-        const personLinks = anchors.filter((a) =>
-          /\/soldiers\/\d+$/.test(a.getAttribute('href') || '')
-        );
-        if (personLinks.length === 0) return null;
-        // The row <li> wraps both the pill-link and the Unlink
-        // button; the full-name span is its sibling text node.
-        const li = personLinks[0].closest('li');
-        const displayID = personLinks[0].textContent.trim();
-        const idMatch = personLinks[0].getAttribute('href').match(/\/soldiers\/(\d+)/);
+        const list = document.querySelector('[data-event-links-list]');
+        if (!list) return null;
+        const li = list.querySelector('li');
+        if (!li) return null;
+        const anchor = li.querySelector('a.pill-link[href^="/soldiers/"]');
+        if (!anchor) return null;
+        const displayID = anchor.textContent.trim();
+        const idMatch = anchor.getAttribute('href').match(/\/soldiers\/(\d+)/);
         return {
           id: idMatch ? parseInt(idMatch[1], 10) : null,
           displayID,
-          rowText: li ? li.innerText.replace(/\s+/g, ' ').trim() : '',
+          rowText: li.innerText.replace(/\s+/g, ' ').trim(),
         };
       });
       if (!linkedRow || !linkedRow.id) {
@@ -694,10 +693,13 @@ async function main() {
       }
 
       // Detach the existing link so the name-based attach
-      // doesn't hit the duplicate-link conflict path.
+      // doesn't hit the duplicate-link conflict path. The
+      // Unlink button is rendered as a <button data-action=...>
+      // (not a <form>), so we click the bare button via its
+      // data-action attribute rather than chasing a form.
       await Promise.all([
         page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 10000 }),
-        page.click(`form[action="/events/${createdEventID}/links/${linkedRow.id}/detach"] button[type="submit"]`),
+        page.click(`[data-event-links-list] button[data-action="/events/${createdEventID}/links/${linkedRow.id}/detach"]`),
       ]);
       await wait(300);
 
@@ -716,13 +718,11 @@ async function main() {
       // contains the Display ID AND at least one uppercase-
       // led token from the name.
       const verify = await page.evaluate((displayID) => {
-        const anchors = Array.from(document.querySelectorAll('a.pill-link'));
-        const personLinks = anchors.filter((a) =>
-          /\/soldiers\/\d+$/.test(a.getAttribute('href') || '')
-        );
-        if (personLinks.length === 0) return { ok: false, reason: 'no linked row' };
-        const li = personLinks[0].closest('li');
-        const rowText = li ? li.innerText.replace(/\s+/g, ' ').trim() : '';
+        const list = document.querySelector('[data-event-links-list]');
+        if (!list) return { ok: false, reason: 'no [data-event-links-list] container' };
+        const li = list.querySelector('li');
+        if (!li) return { ok: false, reason: 'no linked row' };
+        const rowText = li.innerText.replace(/\s+/g, ' ').trim();
         return {
           ok: rowText.includes(displayID) && rowText.length > displayID.length + 1,
           rowText,
@@ -1233,6 +1233,219 @@ async function main() {
         );
       }
     });
+
+    // step-14 — issue #386. Pin the populated-gallery read surface of
+    // /events/{id}/images driven by the upload-via-UI path (#385's
+    // setFileChooserFixture). Mirrors step-12's setup shape (fresh
+    // event + scratch-dir fixture) so it is independent of any
+    // earlier step; the assertion set is the new territory —
+    // thumbnail grid count + per-card alt text + per-card filename
+    // + per-card Delete button. The selectors stay parallel to the
+    // existing 'data-image-card' / 'data-image-thumb-id' / form-based
+    // delete pair the templ emits from EventImagesListFragment
+    // (internal/templates/event_panels.templ). No canonical DOM ID
+    // exists for the per-card surface in internal/uiids/ — same gap
+    // #387 surfaced for the empty-state anchor.
+    await step(
+      page,
+      'step-14 event-images-populated-gallery-read-surface',
+      async () => {
+        const setupResp = await page.request.post(`${BASE}/events/new`, {
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
+            'x-dixiedata-submit': 'true',
+          },
+          data: new URLSearchParams({
+            entry_type: 'event',
+            kind: 'SmokeImagesGallery',
+            begin_date: '07/04/1863',
+            end_date: '07/05/1863',
+            description:
+              'Event-images populated-gallery read-surface smoke probe (#386).',
+          }).toString(),
+          maxRedirects: 0,
+        });
+        const loc =
+          setupResp.headers()['x-dixiedata-redirect'] ||
+          setupResp.headers()['X-DixieData-Redirect'] ||
+          setupResp.headers()['location'] ||
+          '';
+        const m = loc.match(/\/events\/(\d+)/);
+        if (!m) {
+          throw new Error(`step-14 setup: cannot parse id from Location="${loc}"`);
+        }
+        const id = parseInt(m[1], 10);
+        trackedEventIDs.push(id);
+
+        // Same scratch-dir fixture scheme as step-12 — keeps the
+        // fixture out of the working tree and gives each step a
+        // unique filename (keyed by event id) so concurrent runs
+        // do not collide on the gallery.
+        const fixturesDir = path.join(scratchDir, 'fixtures');
+        fs.mkdirSync(fixturesDir, { recursive: true });
+        const fixturePath = path.join(fixturesDir, `smoke-gallery-${id}.png`);
+        const onePxPng = Buffer.from(
+          '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489' +
+          '0000000d49444154789c63f8cf00000003000100' +
+          'ad3ddf730000000049454e44ae426082',
+          'hex',
+        );
+        fs.writeFileSync(fixturePath, onePxPng);
+
+        await page.goto(`${BASE}/events/${id}`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await wait(300);
+        if (!page.url().endsWith(`/events/${id}`)) {
+          throw new Error(
+            `step-14 nav: expected /events/${id}, got ${page.url()}`,
+          );
+        }
+
+        // Belt-and-braces: the freshly-created event must start in
+        // the empty-state so the upload we drive next is the seed
+        // for the populated gallery (not a second card).
+        const before = await page.locator('[data-image-card]').count();
+        if (before !== 0) {
+          throw new Error(
+            `step-14 setup: expected 0 image cards on a fresh event, got ${before}`,
+          );
+        }
+
+        // Install the filechooser fixture BEFORE clicking the import
+        // button — Playwright queues listeners attached before the
+        // chooser event, which is the contract #385 documented.
+        const off = setFileChooserFixture(page, [fixturePath]);
+        try {
+          await page.click('button:has-text("Add Images From Computer")');
+
+          // Wait for the gallery to populate with the seeded image.
+          await page.waitForFunction(
+            () => document.querySelectorAll('[data-image-card]').length >= 1,
+            null,
+            { timeout: 30_000 },
+          );
+
+          // Read-surface assertions — every check below is the new
+          // territory #386 owns.
+          const surface = await page.evaluate((expectedFileName) => {
+            const cards = Array.from(
+              document.querySelectorAll('[data-image-card]'),
+            );
+            const cardReports = cards.map((card) => {
+              const id = card.getAttribute('data-image-id') || '';
+              const img = card.querySelector('img[data-image-thumb-id]');
+              const alt = img ? img.getAttribute('alt') || '' : '';
+              const imgVisible =
+                img instanceof HTMLImageElement
+                  ? img.getBoundingClientRect().width > 0 &&
+                    img.getBoundingClientRect().height > 0
+                  : false;
+              // The filename is the only 'text-xs ... break-all' node
+              // in the templ — scope to that class to avoid catching
+              // the caption div.
+              const filenameEls = card.querySelectorAll(
+                'div.text-xs.text-slate-500.break-all',
+              );
+              const filenameNodes = Array.from(filenameEls).map((el) =>
+                (el.textContent || '').trim(),
+              );
+              const deleteForms = card.querySelectorAll(
+                'form[action*="/images/delete"]',
+              );
+              const deleteButtons = Array.from(
+                card.querySelectorAll('button.pill-link'),
+              )
+                .filter((b) => (b.textContent || '').trim() === 'Delete')
+                .map((b) => ({
+                  type: b.getAttribute('type') || '',
+                  rect: (() => {
+                    const r = b.getBoundingClientRect();
+                    return { w: r.width, h: r.height };
+                  })(),
+                }));
+              return {
+                id,
+                alt,
+                altNonEmpty: alt.trim().length > 0,
+                imgVisible,
+                filenameNodes,
+                deleteFormCount: deleteForms.length,
+                deleteButtons,
+              };
+            });
+            return {
+              cardCount: cards.length,
+              filenameMatch: cardReports.some((c) =>
+                c.filenameNodes.includes(expectedFileName),
+              ),
+              cardReports,
+            };
+          }, path.basename(fixturePath));
+
+          // 4. Gallery grid renders with the expected image count.
+          if (surface.cardCount < 1) {
+            throw new Error(
+              `step-14: expected ≥1 image card after upload, got ${surface.cardCount}`,
+            );
+          }
+
+          // 5. Every thumbnail has a visible <img> with non-empty alt,
+          // AND the uploaded filename is shown for at least one card
+          // (the upload path is the seed of the gallery — the new
+          // card must show the filename we just uploaded).
+          for (const card of surface.cardReports) {
+            if (!card.altNonEmpty) {
+              throw new Error(
+                `step-14: card id=${card.id} has empty alt text`,
+              );
+            }
+            if (!card.imgVisible) {
+              throw new Error(
+                `step-14: card id=${card.id} thumbnail <img> not visible (zero-sized box)`,
+              );
+            }
+          }
+          if (!surface.filenameMatch) {
+            const seen = surface.cardReports
+              .flatMap((c) => c.filenameNodes)
+              .filter(Boolean);
+            throw new Error(
+              `step-14: filename "${path.basename(fixturePath)}" missing from gallery cards; saw=${JSON.stringify(seen)}`,
+            );
+          }
+
+          // 6. Every card has a Delete button — the templ emits a
+          // <form action="/events/{id}/images/delete"> with a
+          // <button class="pill-link">Delete</button> inside.
+          for (const card of surface.cardReports) {
+            if (card.deleteFormCount < 1) {
+              throw new Error(
+                `step-14: card id=${card.id} missing /images/delete form`,
+              );
+            }
+            const btn = card.deleteButtons[0];
+            if (!btn) {
+              throw new Error(
+                `step-14: card id=${card.id} missing Delete button (text="Delete")`,
+              );
+            }
+            if (btn.type !== 'submit') {
+              throw new Error(
+                `step-14: card id=${card.id} Delete button has type="${btn.type}", want "submit"`,
+              );
+            }
+            if (btn.rect.w <= 0 || btn.rect.h <= 0) {
+              throw new Error(
+                `step-14: card id=${card.id} Delete button not visible (zero-sized box)`,
+              );
+            }
+          }
+        } finally {
+          off();
+        }
+      },
+    );
   } catch (e) {
     // step() already recorded the failure for any throw inside a
     // step(); the unhandled branch below means an error escaped
