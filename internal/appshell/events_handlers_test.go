@@ -1583,3 +1583,90 @@ func TestHandleEventTagAddByName(t *testing.T) {
 		t.Errorf("whitespace tag_name status = %d, want 400", wsResp.StatusCode)
 	}
 }
+
+// TestHandleEventLinksAttachByName (issue #373) pins the
+// name-search fallback added to the Event editor's Add
+// Linked Person form. When the form input does not match a
+// Display ID exactly (case-insensitive), the handler must
+// fall back to LookupPersonIDByName and attach the first
+// substring match sorted by display_id. The 404 envelope on
+// no match must echo whatever the user typed (so they can
+// tell "no such Person" from "wrong format").
+func TestHandleEventLinksAttachByName(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	event := createEvent(t, app, "Attach By Name", "07/01/1863", "07/03/1863", "")
+
+	// Seed three Person Records whose Display IDs follow the
+	// DXD-00001, DXD-00002, DXD-00003 sequence — same shape as
+	// the service test, so the assertion "first by display_id
+	// wins" matches across both layers.
+	_, err := app.soldiers.Create(models.Soldier{FirstName: "Robert", MiddleName: "E.", LastName: "Lee", Suffix: "Jr."})
+	if err != nil {
+		t.Fatalf("Create p1: %v", err)
+	}
+	p2, err := app.soldiers.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson"})
+	if err != nil {
+		t.Fatalf("Create p2: %v", err)
+	}
+	_, err = app.soldiers.Create(models.Soldier{FirstName: "James", MiddleName: "Robert", LastName: "Lee"})
+	if err != nil {
+		t.Fatalf("Create p3: %v", err)
+	}
+
+	// Substring match on a unique last name attaches the right row.
+	attachResp, err := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links", url.Values{
+		"display_id": {"Jackson"},
+	})
+	if err != nil {
+		t.Fatalf("POST attach by name: %v", err)
+	}
+	attachResp.Body.Close()
+	if attachResp.StatusCode != http.StatusOK {
+		t.Errorf("attach-by-name status = %d, want 200", attachResp.StatusCode)
+	}
+	if got := attachResp.Header.Get("X-DixieData-Redirect"); got != "/events/"+intStr(event.ID)+"/edit" {
+		t.Errorf("attach-by-name X-DixieData-Redirect = %q, want /events/%d/edit", got, event.ID)
+	}
+	linked, err := app.events.ListForEvent(event.ID)
+	if err != nil {
+		t.Fatalf("ListForEvent: %v", err)
+	}
+	if len(linked) != 1 || linked[0].ID != p2.ID {
+		t.Errorf("ListForEvent after name-attach = %v, want 1 Person with ID %d (Stonewall Jackson)", linked, p2.ID)
+	}
+
+	// Display ID lookup still wins when the input matches a
+	// Display ID exactly. Detach first so the next attach is
+	// fresh.
+	if err := app.events.DetachEventFromPerson(event.ID, p2.ID); err != nil {
+		t.Fatalf("Detach: %v", err)
+	}
+
+	// Empty input → 400 (validation), not 404 (the empty-input
+	// guard happens BEFORE the lookup so we don't run an empty
+	// substring query that would match every row).
+	emptyResp, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links", url.Values{
+		"display_id": {""},
+	})
+	emptyResp.Body.Close()
+	if emptyResp.StatusCode != http.StatusBadRequest {
+		t.Errorf("empty attach status = %d, want 400", emptyResp.StatusCode)
+	}
+
+	// No-match → 404, and the response body should echo what the
+	// user typed so they can fix their query.
+	missResp, _ := http.PostForm(server.URL+"/events/"+intStr(event.ID)+"/links", url.Values{
+		"display_id": {"NonexistentName"},
+	})
+	body := readAll(t, missResp)
+	missResp.Body.Close()
+	if missResp.StatusCode != http.StatusNotFound {
+		t.Errorf("not-found attach status = %d, want 404", missResp.StatusCode)
+	}
+	if !strings.Contains(body, "NonexistentName") {
+		t.Errorf("not-found body should echo user input %q, got: %q", "NonexistentName", body)
+	}
+}

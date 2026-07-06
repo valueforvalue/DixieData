@@ -21,6 +21,7 @@ package templates
 
 import (
 	"fmt"
+	"github.com/valueforvalue/DixieData/internal/persondisplay"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
@@ -137,6 +138,14 @@ templ EventLinksListFragment(eventID int64, linked []viewmodel.PersonRecord) {
 			for _, person := range linked {
 				<li class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
 					<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d", person.ID)) } class="pill-link">{ person.DisplayID }</a>
+					<span class="text-sm text-slate-700">{ persondisplay.FullName(persondisplay.NameParts{
+						Prefix:               person.Prefix,
+						ShowPrefixBeforeName: person.ShowPrefixBeforeName,
+						FirstName:            person.FirstName,
+						MiddleName:           person.MiddleName,
+						LastName:             person.LastName,
+						Suffix:               person.Suffix,
+					}) }</span>
 					<button
 						type="button"
 						data-action={ templ.SafeURL(routebuilder.EventLinksDetach(eventID, person.ID)) }

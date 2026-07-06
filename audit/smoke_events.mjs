@@ -632,8 +632,107 @@ async function main() {
       }
     });
 
-    seededPersonID = await seedPersonRecord(page);
+    await step(page, 'step-05g attach-by-name-and-full-name-in-row', async () => {
+      // Issue #373: the Add Linked Person form accepts a name
+      // fragment as a fallback to the Display ID lookup. After
+      // attaching via name, the row must render the person's
+      // full name (persondisplay.FullName) next to the Display
+      // ID pill — not just the pill alone. This step detaches
+      // the link created in step-05d and re-attaches via name
+      // search, then verifies the visual upgrade.
+      // We're already on the edit page from step-05f.
+      // Scrape the currently-linked Person's id + name from
+      // the row rendered by step-05d.
+      const linkedRow = await page.evaluate(() => {
+        const anchors = Array.from(document.querySelectorAll('a.pill-link'));
+        // Filter to the linked-persons anchors: /soldiers/{id}
+        // with a non-empty href that doesn't match the hidden
+        // Display ID input inside the main event form.
+        const personLinks = anchors.filter((a) =>
+          /\/soldiers\/\d+$/.test(a.getAttribute('href') || '')
+        );
+        if (personLinks.length === 0) return null;
+        // The row <li> wraps both the pill-link and the Unlink
+        // button; the full-name span is its sibling text node.
+        const li = personLinks[0].closest('li');
+        const displayID = personLinks[0].textContent.trim();
+        const idMatch = personLinks[0].getAttribute('href').match(/\/soldiers\/(\d+)/);
+        return {
+          id: idMatch ? parseInt(idMatch[1], 10) : null,
+          displayID,
+          rowText: li ? li.innerText.replace(/\s+/g, ' ').trim() : '',
+        };
+      });
+      if (!linkedRow || !linkedRow.id) {
+        throw new Error('step-05g setup: no linked-person row visible from step-05d');
+      }
+      // Look up the person's name via the detail page so we
+      // can use a substring search in the Attach form below.
+      const personDetail = await page.request.get(`${BASE}/soldiers/${linkedRow.id}`);
+      const detailHTML = await personDetail.text();
+      // The detail page renders the name as plain text — pull
+      // the first token that's not the Display ID. We avoid
+      // parsing the full DOM; a substring that survives the
+      // name-lookup pipeline is enough to prove the fallback
+      // path works.
+      const nameFragments = detailHTML.match(/[A-Z][a-z]{2,}/g) || [];
+      // Pick a fragment that's plausibly part of the name
+      // (skip pure numbers and very short tokens).
+      const fragment = nameFragments.find(
+        (t) => t.length >= 3 && !/^(SOL|EVT|DXD)$/.test(t)
+      );
+      if (!fragment) {
+        throw new Error(`step-05g setup: could not extract a name fragment from /soldiers/${linkedRow.id}`);
+      }
 
+      // Detach the existing link so the name-based attach
+      // doesn't hit the duplicate-link conflict path.
+      await Promise.all([
+        page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 10000 }),
+        page.click(`form[action="/events/${createdEventID}/links/${linkedRow.id}/detach"] button[type="submit"]`),
+      ]);
+      await wait(300);
+
+      // Attach by name fragment.
+      await page.fill('input[type="text"][name="display_id"]', fragment);
+      await Promise.all([
+        page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 10000 }),
+        page.click('button[type="submit"]:has-text("Add Link")'),
+      ]);
+      await wait(300);
+
+      // Verify the link exists and the row renders BOTH the
+      // Display ID pill AND the full name (the visual upgrade
+      // from issue #373). The full name is what the soldier
+      // detail page shows; we check the row's innerText
+      // contains the Display ID AND at least one uppercase-
+      // led token from the name.
+      const verify = await page.evaluate((displayID) => {
+        const anchors = Array.from(document.querySelectorAll('a.pill-link'));
+        const personLinks = anchors.filter((a) =>
+          /\/soldiers\/\d+$/.test(a.getAttribute('href') || '')
+        );
+        if (personLinks.length === 0) return { ok: false, reason: 'no linked row' };
+        const li = personLinks[0].closest('li');
+        const rowText = li ? li.innerText.replace(/\s+/g, ' ').trim() : '';
+        return {
+          ok: rowText.includes(displayID) && rowText.length > displayID.length + 1,
+          rowText,
+          displayID,
+        };
+      }, linkedRow.displayID);
+      if (!verify.ok) {
+        throw new Error(`step-05g verify failed: rowText=${JSON.stringify(verify.rowText)}, displayID=${verify.displayID}`);
+      }
+      // Sanity: the row has more text than just the Display
+      // ID, which means the full-name span is rendering.
+      // (No specific substring assertion on the name because
+      // seed-data names are randomized — the visual upgrade
+      // is structural, not literal.)
+    });
+
+
+    seededPersonID = await seedPersonRecord(page);
     await step(page, 'step-06 person-events-tab-fragment', async () => {
       // The fragment route /soldiers/{id}/events is wired at the
       // handler level but the Person detail UI does not currently

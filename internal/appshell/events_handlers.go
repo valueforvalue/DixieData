@@ -481,13 +481,33 @@ func (a *App) handleEventLinksAttach(w http.ResponseWriter, r *http.Request, eve
 	}
 	displayID := strings.TrimSpace(r.FormValue("display_id"))
 	if displayID == "" {
-		respondValidation(w, r, "Provide a Person Record Display ID like DXD-00001.", nil)
+		respondValidation(w, r, "Provide a Person Record Display ID (DXD-00001) or a name fragment.", nil)
 		return
 	}
-	personID, err := a.events.LookupPersonIDByDisplayID(displayID)
-	if err != nil {
-		respondNotFound(w, r, fmt.Sprintf("Person Record %q not found.", displayID), err)
-		return
+	// Issue #373: the Add Linked Person form accepts a Display
+	// ID OR a name fragment. Display ID wins when the input
+	// matches one exactly (case-insensitive, whitespace-trimmed
+	// via SoldierService.GetByDisplayID); if it does not match
+	// we fall back to a substring search on the concatenated
+	// name fields (LookupPersonIDByName). First match wins on
+	// ties (sorted by display_id). Either path returns the same
+	// os.ErrNotExist sentinel on miss, which the existing
+	// errors.Is branch maps to HTTP 404.
+	personID, lookupErr := a.events.LookupPersonIDByDisplayID(displayID)
+	if lookupErr != nil {
+		if !errors.Is(lookupErr, os.ErrNotExist) {
+			respondError(w, r, KindInternal, "Could not look up the Person Record.", lookupErr)
+			return
+		}
+		personID, lookupErr = a.events.LookupPersonIDByName(displayID)
+		if lookupErr != nil {
+			if errors.Is(lookupErr, os.ErrNotExist) {
+				respondNotFound(w, r, fmt.Sprintf("No Person Record matched %q. Try a Display ID like DXD-00001 or a name fragment.", displayID), lookupErr)
+				return
+			}
+			respondError(w, r, KindInternal, "Could not look up the Person Record.", lookupErr)
+			return
+		}
 	}
 	if _, err := a.events.AttachEventToPerson(eventID, personID); err != nil {
 		// Duplicate-link is the only AttachEventToPerson error

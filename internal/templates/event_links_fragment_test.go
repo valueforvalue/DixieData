@@ -121,3 +121,73 @@ func intToStr(i int64) string {
 	}
 	return string(buf[pos:])
 }
+// TestEventLinksListFragmentRendersFullNameNextToDisplayIDPill
+// (issue #373) pins the slice 2 visual upgrade: each linked
+// Person Record row must render the full name (via
+// persondisplay.FullName) as a separate text node next to
+// the Display ID pill, not just the pill alone. Without the
+// full name, the user can't tell two linked Persons apart
+// when scanning the list — the Display ID is opaque.
+//
+// The regression net asserts both shapes:
+//   - middle / suffix / prefix flows through FullName
+//   - the fragment still ships the Display ID pill and the
+//     per-row Unlink button (no regressions in the slice 2
+//     surface).
+func TestEventLinksListFragmentRendersFullNameNextToDisplayIDPill(t *testing.T) {
+	var buf bytes.Buffer
+	err := EventLinksListFragment(519, []viewmodel.PersonRecord{
+		{
+			ID:                1,
+			DisplayID:         "SOL-00001",
+			Prefix:            "Capt.",
+			ShowPrefixBeforeName: true,
+			FirstName:         "Robert",
+			MiddleName:        "E.",
+			LastName:          "Lee",
+			Suffix:            "Jr.",
+		},
+		{
+			ID:        2,
+			DisplayID: "SOL-00002",
+			FirstName: "Stonewall",
+			LastName:  "Jackson",
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	body := buf.String()
+
+	// Display ID pill stays present (no regression).
+	for _, displayID := range []string{"SOL-00001", "SOL-00002"} {
+		if !strings.Contains(body, displayID) {
+			t.Errorf("fragment missing Display ID pill %q", displayID)
+		}
+	}
+
+	// Full name renders next to the pill. persondisplay.FullName
+	// joins name parts with a single space, appends the suffix
+	// as ", <suffix>" — so "Capt. Robert E. Lee, Jr." for p1 and
+	// "Stonewall Jackson" for p2.
+	expectedNames := []string{
+		"Capt. Robert E. Lee, Jr.",
+		"Stonewall Jackson",
+	}
+	for _, name := range expectedNames {
+		if !strings.Contains(body, name) {
+			t.Errorf("fragment missing full name %q next to Display ID pill", name)
+		}
+	}
+
+	// The full name must be a sibling element to the pill, not
+	// a replacement for it — guard against a refactor that
+	// drops the pill-link by mistake. Both the pill-link anchor
+	// and the Unlink button are still required.
+	if !strings.Contains(body, "data-action=\"/events/519/links/1/detach\"") {
+		t.Errorf("fragment missing Unlink button for row 1")
+	}
+	if !strings.Contains(body, "data-action=\"/events/519/links/2/detach\"") {
+		t.Errorf("fragment missing Unlink button for row 2")
+	}
+}

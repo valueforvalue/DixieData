@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/db"
@@ -365,7 +366,59 @@ func (e *EventService) LookupPersonIDByDisplayID(displayID string) (int64, error
 		return 0, err
 	}
 	return row.ID, nil
+
 }
+// LookupPersonIDByName resolves a Person Record by free-text
+// name fragment (issue #373). Used by the Event editor's
+// Add Linked Person form as the FALLBACK path when the
+// user's input does not match an existing Display ID. The
+// search is a case-insensitive substring match against the
+// concatenated first + middle + last + suffix name fields
+// (whitespace-normalized: trimmed, internal whitespace
+// collapsed to single spaces so "Robert  E." and "Robert E."
+// behave the same). Results are sorted by display_id and the
+// FIRST row wins — that is the locked decision from issue
+// #373, so the helper is deterministic and the handler can
+// surface "no match" cleanly when the result set is empty.
+//
+// Empty input returns os.ErrNotExist without running a
+// query — %""% would match every row and silently attach a
+// random Person Record, which is exactly the bug slice 2 of
+// #361 was supposed to prevent. The 400-vs-404 split happens
+// in the handler (empty input is validation, no-match is
+// not-found); the service just returns the sentinel.
+//
+// Returns os.ErrNotExist on missing/uninit receiver (same
+// pattern as LookupPersonIDByDisplayID) — the handler's
+// errors.Is(err, os.ErrNotExist) branch maps it to HTTP 404.
+func (e *EventService) LookupPersonIDByName(nameFragment string) (int64, error) {
+	if e == nil || e.soldiers == nil {
+		return 0, fmt.Errorf("event service not initialized")
+	}
+	normalized := strings.Join(strings.Fields(nameFragment), " ")
+	if normalized == "" {
+		return 0, os.ErrNotExist
+	}
+	pattern := "%" + normalized + "%"
+	conn := e.soldiers.db.Conn()
+	row := conn.QueryRow(
+		`SELECT id FROM soldiers
+		 WHERE upper(coalesce(first_name,'') || ' ' || coalesce(middle_name,'') || ' ' || coalesce(last_name,'') || ' ' || coalesce(suffix,''))
+		       LIKE upper(?)
+		 ORDER BY display_id ASC
+		 LIMIT 1`,
+		pattern,
+	)
+	var id int64
+	if err := row.Scan(&id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, os.ErrNotExist
+		}
+		return 0, err
+	}
+	return id, nil
+}
+
 
 // ListEvents returns a page of Event Records sorted by updated_at
 // DESC. Excludes the linked-Person-Records subquery for
