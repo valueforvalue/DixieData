@@ -1162,24 +1162,27 @@ async function main() {
       }
 
       // 1. Gallery container present. event_detail.templ:153 emits
-      //    <div id="data-event-images-list"> — same canonical
-      //    pattern used by the sources / tags panels exercised
-      //    in steps 04b / 04d.
+      //    <div id={ uiids.PanelEventDetailImages }> – canonical
+      //    UIID ("panel.event.detail.images"), see issue #390.
+      //    Mirrors the soldier-side PanelSoldierDetailImages
+      //    pattern. Per-card data-image-card / data-image-thumb-id
+      //    selectors inside the container are unchanged – those
+      //    are per-card markers, not canonical UIIDs.
       const containerPresent = await page.evaluate(
-        () => document.querySelector('#data-event-images-list') !== null,
+        () => document.querySelector('#panel.event.detail.images') !== null,
       );
       if (!containerPresent) {
         throw new Error(
-          '#data-event-images-list container missing from event detail DOM',
+          '#panel.event.detail.images container missing from event detail DOM',
         );
       }
 
       // 2. Empty-state copy "No images are attached" must render
       //    inside the gallery container. EmptyState primitive
       //    emits data-empty-state="true" (components/empty_state.templ:16)
-      //    — both that marker AND the title text must be present.
+      //    – both that marker AND the title text must be present.
       const emptyCopy = await page.evaluate(() => {
-        const root = document.querySelector('#data-event-images-list');
+        const root = document.querySelector('#panel.event.detail.images');
         if (!root) return { found: false };
         const text = root.textContent || '';
         const hasEmptyMarker =
@@ -1192,7 +1195,7 @@ async function main() {
       });
       if (!emptyCopy.found) {
         throw new Error(
-          `expected empty-state copy inside #data-event-images-list; got: ${emptyCopy.snippet}`,
+          `expected empty-state copy inside #panel.event.detail.images; got: ${emptyCopy.snippet}`,
         );
       }
 
@@ -1302,8 +1305,18 @@ async function main() {
 
         // Belt-and-braces: the freshly-created event must start in
         // the empty-state so the upload we drive next is the seed
-        // for the populated gallery (not a second card).
-        const before = await page.locator('[data-image-card]').count();
+        // for the populated gallery (not a second card). Scoped to
+        // the canonical event gallery container
+        // (#panel.event.detail.images — see uiids.PanelEventDetailImages,
+        // issue #390) so a regression that swaps the container id
+        // breaks the probe immediately. Per-card data-image-card
+        // attributes remain unchanged — the soldier-side gallery
+        // uses the same per-card pattern (soldier_card.templ) so
+        // consistency wins here. Promoting those per-card attributes
+        // to canonical UIIDs is a separate slice.
+        const before = await page
+          .locator('#panel.event.detail.images [data-image-card]')
+          .count();
         if (before !== 0) {
           throw new Error(
             `step-14 setup: expected 0 image cards on a fresh event, got ${before}`,
@@ -1311,7 +1324,7 @@ async function main() {
         }
 
         // Install the filechooser fixture BEFORE clicking the import
-        // button — Playwright queues listeners attached before the
+        // button – Playwright queues listeners attached before the
         // chooser event, which is the contract #385 documented.
         const off = setFileChooserFixture(page, [fixturePath]);
         try {
@@ -1319,16 +1332,23 @@ async function main() {
 
           // Wait for the gallery to populate with the seeded image.
           await page.waitForFunction(
-            () => document.querySelectorAll('[data-image-card]').length >= 1,
+            () =>
+              document.querySelectorAll(
+                '#panel.event.detail.images [data-image-card]',
+              ).length >= 1,
             null,
             { timeout: 30_000 },
           );
 
-          // Read-surface assertions — every check below is the new
-          // territory #386 owns.
+          // Read-surface assertions – every check below is the new
+          // territory #386 owns. Cards are scoped to the canonical
+          // event gallery container so the probe fails fast if the
+          // container id drifts.
           const surface = await page.evaluate((expectedFileName) => {
             const cards = Array.from(
-              document.querySelectorAll('[data-image-card]'),
+              document.querySelectorAll(
+                '#panel.event.detail.images [data-image-card]',
+              ),
             );
             const cardReports = cards.map((card) => {
               const id = card.getAttribute('data-image-id') || '';

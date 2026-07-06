@@ -24,6 +24,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -103,7 +104,7 @@ templ EventImagesListFragment(eventID int64, images []viewmodel.Image) {
 							method="post"
 							data-dixie-submit="true"
 							data-confirm="Delete this image?"
-							data-results-target="#data-event-images-list"
+							data-results-target={ "#" + uiids.PanelEventDetailImages }
 							class="inline"
 						>
 							<input type="hidden" name="image_ids" value={ fmt.Sprintf("%d", img.ID) }/>

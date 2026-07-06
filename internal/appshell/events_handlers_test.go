@@ -22,6 +22,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 func TestHandleEventsEmptyList(t *testing.T) {
 	app := newStressApp(t)
@@ -1330,7 +1331,7 @@ func TestHandleEventImages(t *testing.T) {
 	if !strings.Contains(getBody, "Second portrait") {
 		t.Errorf("GET images missing second image caption; got %q", getBody)
 	}
-	if !strings.Contains(getBody, "data-results-target=\"#data-event-images-list\"") {
+	if !strings.Contains(getBody, fmt.Sprintf("data-results-target=\"#%s\"", uiids.PanelEventDetailImages)) {
 		t.Errorf("GET images fragment missing data-results-target; got %q", getBody)
 	}
 	if strings.Contains(getBody, "No images are attached") {
@@ -1345,8 +1346,8 @@ func TestHandleEventImages(t *testing.T) {
 	}
 	detailBody := readAll(t, detailResp)
 	detailResp.Body.Close()
-	if !strings.Contains(detailBody, "data-event-images-list") {
-		t.Errorf("detail page missing #data-event-images-list anchor; got %q", detailBody)
+	if !strings.Contains(detailBody, fmt.Sprintf("id=\"%s\"", uiids.PanelEventDetailImages)) {
+		t.Errorf("detail page missing #%s anchor; got %q", uiids.PanelEventDetailImages, detailBody)
 	}
 	if !strings.Contains(detailBody, "First portrait") {
 		t.Errorf("detail page missing first image caption; got %q", detailBody)
@@ -1378,7 +1379,7 @@ func TestHandleEventImages(t *testing.T) {
 	if got := delResp.Header.Get("X-DixieData-Redirect"); got != "" {
 		t.Errorf("POST delete set X-DixieData-Redirect=%q; want empty (issue #341)", got)
 	}
-	if !strings.Contains(delBody, "data-event-images-list") {
+	if !strings.Contains(delBody, fmt.Sprintf("data-results-target=\"#%s\"", uiids.PanelEventDetailImages)) {
 		t.Errorf("POST delete response missing fragment anchor; got %q", delBody)
 	}
 

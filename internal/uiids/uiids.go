@@ -206,6 +206,15 @@ const (
 	PanelShareExports = "panel.share.exports"
 // PanelShareImports is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelShareImports = "panel.share.imports"
+	// PanelEventDetailImages is the canonical UI surface identifier
+	// for the images gallery container on the Event detail page
+	// (/events/{id}). Issue #390: smoke steps #387 + #386 used to
+	// target an inline `id="data-event-images-list"` literal in
+	// event_detail.templ plus per-card `data-image-*` selectors.
+	// Promoting this to a canonical UIID lets the goquery invariant
+	// tests pin against it the same way the soldier-side
+	// PanelSoldierDetailImages does.
+	PanelEventDetailImages = "panel.event.detail.images"
 )
 
 type Surface struct {
@@ -300,6 +309,7 @@ var Registry = []Surface{
 	{ID: PanelShareAllImports, Kind: "panel", Description: "All Imports card on /share (issue #265). Below the fold. Renamed from 'Import & Restore'."},
 	{ID: PanelShareSync, Kind: "panel", Description: "Sync card on /share (issue #265). Google Integration card wrapped in a section header. Below the fold."},
 	{ID: PanelShareSupport, Kind: "panel", Description: "Support & Diagnostics card on /share (issue #265). Below the fold. Moved from 'Export & Backup' to its own section."},
+	{ID: PanelEventDetailImages, Kind: "panel", Description: "Images gallery section on the event detail page (/events/{id}); wraps the per-card grid plus empty state and is targeted by the post-delete fragment swap (issue #390)."},
 }
 
 
