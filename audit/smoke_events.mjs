@@ -20,6 +20,13 @@
  *   9.  Unlink event from inside the fragment
  *  10.  Delete event → 303 redirect to /events + row gone from list
  *  11.  /events/{id}/pdf → assert download event fires
+ *  12.  Event detail → Add Images From Computer → image lands in
+ *      the gallery (exercises the setFileChooserFixture helper
+ *      in audit/_lib/filechooser.mjs — issue #385 + #348b)
+ *  13.  Event detail with zero images → assert the
+ *      "No images are attached" empty-state copy + the
+ *      "Add Images From Computer" button render (issue #387;
+ *      read-surface only — upload path is gated by #385)
  *
  * Lifecycle:
  *   - The probe spawns its own `build/bin/dixiedata-web.exe`
@@ -57,6 +64,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { registerCleanup } from './_lib/cleanup.mjs';
+import { setFileChooserFixture } from './_lib/filechooser.mjs';
 
 const PORT = process.env.PROBE_PORT || '8773';
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -1017,6 +1025,193 @@ async function main() {
       if (sizeAtPick <= 0) {
         throw new Error(
           `PDF ${newFile} is empty (size=${sizeAtPick}) at ${path.join(exportsDir, newFile)}`,
+        );
+      }
+    });
+
+    // step-12 — image import via the Wails native file picker.
+    // Exercises the setFileChooserFixture helper (#385) by
+    // driving the "Add Images From Computer" button on an event
+    // detail page. The picker is a runtime.OpenMultipleFilesDialog
+    // call (internal/appshell/events_handlers.go:1259); the
+    // helper wires page.on('filechooser') so the import lands
+    // without a real human at the keyboard.
+    //
+    // First consumer of the helper (issue #348b — populated-gallery
+    // smoke for /events/{id}/images). The step uses an event the
+    // PDF step already created so the gallery exists; image is
+    // deleted via the same /images/delete endpoint in teardown
+    // by virtue of the parent event being deleted.
+    await step(page, 'step-12 event-images-import-via-native-picker', async () => {
+      const id = trackedEventIDs[trackedEventIDs.length - 1];
+      if (!id) {
+        throw new Error('step-12 setup: no event id available from step-11');
+      }
+
+      // Build a small fixture PNG on disk. The native picker
+      // needs a real file path; we don't need a real image for
+      // the gallery to count it (the encode step accepts any
+      // bytes the filter lets through).
+      const fixturesDir = path.join(scratchDir, 'fixtures');
+      fs.mkdirSync(fixturesDir, { recursive: true });
+      const fixturePath = path.join(fixturesDir, `smoke-event-${id}.png`);
+      // Minimal valid 1x1 PNG header + IDAT so the importer's
+      // image decoder doesn't reject it outright.
+      const onePxPng = Buffer.from(
+        '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489' +
+        '0000000d49444154789c63f8cf00000003000100' +
+        'ad3ddf730000000049454e44ae426082',
+        'hex',
+      );
+      fs.writeFileSync(fixturePath, onePxPng);
+
+      // Count current image cards before clicking so we can
+      // assert the gallery grew by exactly one.
+      await page.goto(`${BASE}/events/${id}`, { waitUntil: 'domcontentloaded' });
+      await wait(300);
+      const before = await page.locator('[data-image-card]').count();
+
+      // Install the chooser fixture BEFORE clicking — Playwright
+      // queues listeners attached before the click that triggers
+      // the event.
+      const off = setFileChooserFixture(page, [fixturePath]);
+      try {
+        await page.click('button:has-text("Add Images From Computer")');
+        // Wait for the import to land and the gallery to re-render.
+        // The job progress overlay disappears once the import
+        // completes; the gallery fragment swaps in via htmx.
+        await page.waitForFunction(
+          ({ before }) =>
+            document.querySelectorAll('[data-image-card]').length > before,
+          { before },
+          { timeout: 30_000 },
+        );
+        const after = await page.locator('[data-image-card]').count();
+        if (after !== before + 1) {
+          throw new Error(
+            `expected gallery to grow by exactly one (before=${before} after=${after})`,
+          );
+        }
+      } finally {
+        off();
+      }
+    });
+
+    // step-13 — issue #387. Sibling to #348 (closed not planned):
+    // pin the read surface of /events/{id}/images for a
+    // freshly-created event with zero images. The empty-state copy
+    // ("No images are attached") plus the "Add Images From
+    // Computer" button must render. The upload path itself is gated
+    // by a separate file-chooser handler (#385) — out of scope
+    // here. We mint a fresh event via form-POST (mirror of
+    // step-11's setup shape) rather than depending on
+    // `createdEventID` (deleted by step-10) or step-11/12's events,
+    // so this step is order-independent and a fresh no-images
+    // event is guaranteed.
+    await step(page, 'step-13 event-images-empty-state-read-surface', async () => {
+      const setupResp = await page.request.post(`${BASE}/events/new`, {
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'x-dixiedata-submit': 'true',
+        },
+        data: new URLSearchParams({
+          entry_type: 'event',
+          kind: 'SmokeImagesEmpty',
+          begin_date: '07/01/1863',
+          end_date: '07/03/1863',
+          description: 'Event-images empty-state smoke probe (#387).',
+        }).toString(),
+        maxRedirects: 0,
+      });
+      const loc =
+        setupResp.headers()['x-dixiedata-redirect'] ||
+        setupResp.headers()['X-DixieData-Redirect'] ||
+        setupResp.headers()['location'] ||
+        '';
+      const m = loc.match(/\/events\/(\d+)/);
+      if (!m) {
+        throw new Error(`step-13 setup: cannot parse id from Location="${loc}"`);
+      }
+      const freshEventID = parseInt(m[1], 10);
+      trackedEventIDs.push(freshEventID);
+
+      await page.goto(`${BASE}/events/${freshEventID}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await wait(300);
+      if (!page.url().endsWith(`/events/${freshEventID}`)) {
+        throw new Error(
+          `step-13 nav: expected /events/${freshEventID}, got ${page.url()}`,
+        );
+      }
+
+      // 1. Gallery container present. event_detail.templ:153 emits
+      //    <div id="data-event-images-list"> — same canonical
+      //    pattern used by the sources / tags panels exercised
+      //    in steps 04b / 04d.
+      const containerPresent = await page.evaluate(
+        () => document.querySelector('#data-event-images-list') !== null,
+      );
+      if (!containerPresent) {
+        throw new Error(
+          '#data-event-images-list container missing from event detail DOM',
+        );
+      }
+
+      // 2. Empty-state copy "No images are attached" must render
+      //    inside the gallery container. EmptyState primitive
+      //    emits data-empty-state="true" (components/empty_state.templ:16)
+      //    — both that marker AND the title text must be present.
+      const emptyCopy = await page.evaluate(() => {
+        const root = document.querySelector('#data-event-images-list');
+        if (!root) return { found: false };
+        const text = root.textContent || '';
+        const hasEmptyMarker =
+          root.querySelector('[data-empty-state="true"]') !== null;
+        return {
+          found: hasEmptyMarker && /No images are attached/.test(text),
+          hasEmptyMarker,
+          snippet: text.replace(/\s+/g, ' ').trim().slice(0, 200),
+        };
+      });
+      if (!emptyCopy.found) {
+        throw new Error(
+          `expected empty-state copy inside #data-event-images-list; got: ${emptyCopy.snippet}`,
+        );
+      }
+
+      // 3. "Add Images From Computer" button present + visible +
+      //    wired to /events/{id}/images/import. event_detail.templ:157
+      //    emits it as a <button data-action="/events/{id}/images/import"
+      //    data-dixie-submit="true" data-progress-label="Importing images…">.
+      const importBtn = await page.evaluate((id) => {
+        const btns = Array.from(document.querySelectorAll('button'));
+        const match = btns.find(
+          (b) => (b.textContent || '').trim() === 'Add Images From Computer',
+        );
+        if (!match) return { found: false };
+        const action = match.getAttribute('data-action') || '';
+        const rect = match.getBoundingClientRect();
+        return {
+          found: true,
+          action,
+          expectedAction: `/events/${id}/images/import`,
+          visible: rect.width > 0 && rect.height > 0,
+        };
+      }, freshEventID);
+      if (!importBtn.found) {
+        throw new Error(
+          '"Add Images From Computer" button missing from event detail DOM',
+        );
+      }
+      if (importBtn.action !== importBtn.expectedAction) {
+        throw new Error(
+          `Add Images button data-action="${importBtn.action}", want "${importBtn.expectedAction}"`,
+        );
+      }
+      if (!importBtn.visible) {
+        throw new Error(
+          '"Add Images From Computer" button not visible (zero-sized box)',
         );
       }
     });
