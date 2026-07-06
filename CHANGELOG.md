@@ -17,6 +17,42 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ### Added
 
+- **audit/_lib: `setFileChooserFixture` helper for driving Wails
+  native file dialogs in smoke probes** (issue #385). The
+  helper attaches a `page.on('filechooser', ...)` handler that
+  calls `fileChooser.setFiles(paths)` for every chooser the
+  page emits while installed, so smoke probes can drive
+  `runtime.OpenFileDialog` / `runtime.OpenMultipleFilesDialog`
+  without a real human at the keyboard. Accepts
+  `string | string[]` (single path for OpenFileDialog, list
+  for OpenMultipleFilesDialog), is idempotent (second call
+  replaces the previous handler), per-page-scoped via a
+  `WeakMap` so multi-page probes don't collide, and returns
+  an `unsubscribe` for explicit teardown. New files:
+  `audit/_lib/filechooser.mjs` (helper),
+  `audit/_lib/index.mjs` (barrel re-export of `cleanup` +
+  `filechooser` helpers), `audit/_lib/README.md` (helper docs
+  with usage example + limits), `audit/_lib/filechooser.test.mjs`
+  (7 unit tests covering attach, single/array paths,
+  idempotency, unsubscribe, two-page isolation, return shape,
+  barrel re-export). `audit/smoke_events.mjs` step-12 now uses
+  the helper to upload a fixture 1x1 PNG into the event
+  gallery via the "Add Images From Computer" button. Unblocks
+  #348b (populated-gallery smoke for `/events/{id}/images`)
+  and any future smoke coverage of upload-via-UI surfaces
+  (image import, file attachment, CSV upload, etc.). Regression
+  net: `node audit/_lib/filechooser.test.mjs` (7/7 pass) +
+  `node --check` on every touched file. Step-12 is
+  syntax-check-only in this commit because the smoke_events
+  probe hits a pre-existing step-05g flake
+  (`form[action="/events/{id}/links/1/detach"]` selector
+  misses for non-id-1 seeded persons) before reaching
+  step-12; the helper itself is fully verified by the unit
+  suite and the step-12 wiring is structurally correct
+  (self-contained event creation, no dependency on prior
+  steps). Follow-up: file the step-05g flake as its own issue
+  or fold the fix into #348b.
+
 - **Event edit: Add Linked Person now accepts name search; linked
   row shows full name next to Display ID pill** (issue #373). The
   `display_id` form input on the Event edit page's Linked Persons

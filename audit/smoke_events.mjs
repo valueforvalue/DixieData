@@ -1038,25 +1038,44 @@ async function main() {
     // without a real human at the keyboard.
     //
     // First consumer of the helper (issue #348b — populated-gallery
-    // smoke for /events/{id}/images). The step uses an event the
-    // PDF step already created so the gallery exists; image is
-    // deleted via the same /images/delete endpoint in teardown
-    // by virtue of the parent event being deleted.
+    // smoke for /events/{id}/images). Self-contained: creates its
+    // own event so a failure in step-05..11 does not block this
+    // step from running (mirrors the step-13 shape below).
+    // Image is removed by teardown via the parent event delete.
     await step(page, 'step-12 event-images-import-via-native-picker', async () => {
-      const id = trackedEventIDs[trackedEventIDs.length - 1];
-      if (!id) {
-        throw new Error('step-12 setup: no event id available from step-11');
+      const setupResp = await page.request.post(`${BASE}/events/new`, {
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'x-dixiedata-submit': 'true',
+        },
+        data: new URLSearchParams({
+          entry_type: 'event',
+          kind: 'SmokeImagesImport',
+          begin_date: '07/01/1863',
+          end_date: '07/03/1863',
+          description: 'Event-images native-picker smoke probe (#385 #348b).',
+        }).toString(),
+        maxRedirects: 0,
+      });
+      const loc =
+        setupResp.headers()['x-dixiedata-redirect'] ||
+        setupResp.headers()['X-DixieData-Redirect'] ||
+        setupResp.headers()['location'] ||
+        '';
+      const m = loc.match(/\/events\/(\d+)/);
+      if (!m) {
+        throw new Error(`step-12 setup: cannot parse id from Location="${loc}"`);
       }
+      const id = parseInt(m[1], 10);
+      trackedEventIDs.push(id);
 
       // Build a small fixture PNG on disk. The native picker
-      // needs a real file path; we don't need a real image for
-      // the gallery to count it (the encode step accepts any
-      // bytes the filter lets through).
+      // needs a real file path; the minimal valid PNG header
+      // + IDAT lets the importer's image decoder accept it
+      // without us shipping binary fixtures in the repo.
       const fixturesDir = path.join(scratchDir, 'fixtures');
       fs.mkdirSync(fixturesDir, { recursive: true });
       const fixturePath = path.join(fixturesDir, `smoke-event-${id}.png`);
-      // Minimal valid 1x1 PNG header + IDAT so the importer's
-      // image decoder doesn't reject it outright.
       const onePxPng = Buffer.from(
         '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489' +
         '0000000d49444154789c63f8cf00000003000100' +
@@ -1065,8 +1084,8 @@ async function main() {
       );
       fs.writeFileSync(fixturePath, onePxPng);
 
-      // Count current image cards before clicking so we can
-      // assert the gallery grew by exactly one.
+      // Navigate to the freshly created event detail page and
+      // count image cards before clicking.
       await page.goto(`${BASE}/events/${id}`, { waitUntil: 'domcontentloaded' });
       await wait(300);
       const before = await page.locator('[data-image-card]').count();
@@ -1078,8 +1097,7 @@ async function main() {
       try {
         await page.click('button:has-text("Add Images From Computer")');
         // Wait for the import to land and the gallery to re-render.
-        // The job progress overlay disappears once the import
-        // completes; the gallery fragment swaps in via htmx.
+        // The htmx-driven fragment swap adds the new card.
         await page.waitForFunction(
           ({ before }) =>
             document.querySelectorAll('[data-image-card]').length > before,
