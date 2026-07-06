@@ -661,7 +661,7 @@ templ SoldierImagesListFragment(soldierID int64, displayID string, images []view
 							// the response fragment swaps into the
 							// #panel.soldier.detail.images wrapper.
 							<button type="button" data-image-primary-action data-primary-image-id={ fmt.Sprintf("%d", img.ID) } data-action={ templ.SafeURL(routebuilder.SoldierImagesPrimary(soldierID, img.ID)) } data-dixie-submit="true" data-results-target={ "#" + uiids.PanelSoldierDetailImages } class={ primaryImageButtonClass(img.IsPrimary) + " w-full justify-center sm:w-auto" }>Set as Primary</button>
-							<button type="button" data-image-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
+							<button type="button" data-image-preview-id={ fmt.Sprintf("%d", img.ID) } data-image-preview={ string(imageURL(img.FilePath)) } data-image-caption={ img.Caption } data-image-file={ img.FileName } class="pill-link w-full justify-center sm:w-auto">Preview</button>
 							// B.2: per-card Delete form so single-card
 							// deletes are one click instead of a
 							// checkbox+bulk-submit round trip. The
