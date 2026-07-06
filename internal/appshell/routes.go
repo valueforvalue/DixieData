@@ -65,6 +65,14 @@ func (a *App) setupRoutes() {
 	r.Get("/soldiers/{id:[0-9]+}/tags", a.handleTagAutocomplete)
 	r.Post("/soldiers/{id:[0-9]+}/tags", a.handleAttachTag)
 	r.Post("/soldiers/{id:[0-9]+}/tags/{tagId:[0-9]+}", a.handleDetachTag)
+	// Issue #391 Slice B.1: dedicated chi route for
+	// /soldiers/{id}/images (soldier-side fragment-swap
+	// spine, mirroring event-side #332). MUST register
+	// before the /soldiers/* wildcard below — the
+	// regex route is more specific, so chi matches it
+	// first when both patterns cover the same path.
+	// Per-card Delete + Set-Primary forms land in B.2.
+	r.Get("/soldiers/{id:[0-9]+}/images", a.handleSoldierImagesRoute)
 	r.Post("/browse/bulk-tag", a.handleBulkTagFromBrowse)
 	r.Get("/soldiers/*", a.handleSoldierByID)
 	r.Post("/soldiers/*", a.handleSoldierByID)

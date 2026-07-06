@@ -42,6 +42,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/scratchpad"
+	"github.com/valueforvalue/DixieData/internal/templates"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/update"
@@ -1231,6 +1232,58 @@ func (a *App) handleSetPrimarySoldierImage(w http.ResponseWriter, r *http.Reques
 	}
 	setToastHeader(w, "Primary image updated.")
 	fmt.Fprint(w, "Primary image updated.")
+}
+
+// handleSoldierImagesRoute (issue #391 Slice B.1) is the chi
+// route shim for /soldiers/{id}/images. Mirrors the event-side
+// handleEventImagesRoute shape (internal/appshell/events_handlers.go:1176):
+//
+//	GET                             -> renderSoldierImagesListFragment (fragment)
+//
+// B.2 promotes the per-card Delete + Set-Primary forms to swap
+// targets via this fragment. Pre-B.1 the path was dispatched from
+// the catch-all handleSoldierByID; B.1 extracts it to a dedicated
+// chi route registered in routes.go BEFORE the /soldiers/*
+// wildcard so the explicit path wins.
+func (a *App) handleSoldierImagesRoute(w http.ResponseWriter, r *http.Request) {
+	prefix := "/soldiers/"
+	trimmed := strings.TrimPrefix(r.URL.Path, prefix)
+	parts := strings.SplitN(trimmed, "/", 2)
+	if len(parts) < 2 || parts[1] == "" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	soldierID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	a.renderSoldierImagesListFragment(w, r, soldierID)
+}
+
+// renderSoldierImagesListFragment loads the soldier's images
+// and writes the per-soldier Images panel HTML into w (the
+// SoldierImagesListFragment templ helper, no Layout()).
+// Shared by GET /soldiers/{id}/images (lazy-load probe +
+// post-action swap target) and (post-B.2) the per-card
+// Delete + Set-Primary handlers. The fragment matches the
+// on-page soldier_card.templ render via the templ helper
+// so the data-results-target swap is visually identical
+// to the initial page render.
+func (a *App) renderSoldierImagesListFragment(w http.ResponseWriter, r *http.Request, soldierID int64) {
+	soldier, err := a.soldiers.GetByID(soldierID)
+	if err != nil {
+		respondNotFound(w, r, fmt.Sprintf("Images for person record %d not found.", soldierID), err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := templates.SoldierImagesListFragment(soldierID, viewmodel.PersonRecordFromModel(*soldier).Images).Render(r.Context(), w); err != nil {
+		respondInternal(w, r, fmt.Sprintf("Could not render images for person record %d.", soldierID), err)
+	}
 }
 
 func parseCalendarEventPreferencesForm(r *http.Request) (models.CalendarEventPreferences, error) {
