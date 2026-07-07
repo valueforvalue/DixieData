@@ -625,6 +625,9 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 	if opts.DryRun {
 		preview, err := a.soldiers.PreviewMemorialArchive(from)
 		if err != nil {
+			if errors.Is(err, records.ErrMemorialFormatMismatch) {
+				return 1, fmt.Errorf("preview %s: %w", from, err)
+			}
 			return 1, fmt.Errorf("preview %s: %w", from, err)
 		}
 		if opts.JSON {
@@ -632,6 +635,8 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 				"dry_run":     true,
 				"kind":        "memorial-json",
 				"from":        from,
+				"format":      preview.Format,
+				"warnings":    preview.Warnings,
 				"total_rows":  preview.TotalRows,
 				"would_create": preview.WouldCreate,
 				"would_skip":  preview.WouldSkip,
@@ -652,6 +657,14 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 
 	summary, err := a.soldiers.ImportMemorialArchive(from)
 	if err != nil {
+		// Major-bump refusal: surface the typed error verbatim
+		// so the operator sees "your scraper produced a newer
+		// format than this build understands" + the actual
+		// format_version strings. The --json path (below) emits
+		// the same error in machine-readable form.
+		if errors.Is(err, records.ErrMemorialFormatMismatch) {
+			return 2, fmt.Errorf("memorial-json import refused: %w", err)
+		}
 		return 1, fmt.Errorf("memorial-json import failed: %w", err)
 	}
 
@@ -661,20 +674,32 @@ func runImportMemorialJSON(ctx context.Context, a *App, opts ImportOptions) (int
 	// the log payload.
 	if opts.JSON {
 		_ = json.NewEncoder(opts.Writer).Encode(map[string]any{
-			"kind":       "memorial-json",
-			"from":       from,
-			"total_rows": summary.TotalRows,
-			"created":    summary.Created,
-			"skipped":    summary.Skipped,
-			"failed":     summary.Failed,
-			"batch_id":   summary.BatchID,
-			"issues":     summary.Issues,
+			"kind":                     "memorial-json",
+			"from":                     from,
+			"format":                   summary.Format,
+			"imported_by_app_version":  summary.ImportedByAppVersion,
+			"warnings":                 summary.Warnings,
+			"total_rows":               summary.TotalRows,
+			"created":                  summary.Created,
+			"skipped":                  summary.Skipped,
+			"failed":                   summary.Failed,
+			"batch_id":                 summary.BatchID,
+			"issues":                   summary.Issues,
 		})
 		return 0, nil
 	}
 	fmt.Fprintf(opts.Writer, "imported %s\n", from)
 	fmt.Fprintf(opts.Writer, "  total=%d created=%d skipped=%d failed=%d\n",
 		summary.TotalRows, summary.Created, summary.Skipped, summary.Failed)
+	if summary.Format.FormatVersion != "" {
+		fmt.Fprintf(opts.Writer, "  format=%s scraper=%s script_version=%s importer=%s\n",
+			summary.Format.FormatVersion, summary.Format.ScriptName, summary.Format.ScriptVersion, summary.ImportedByAppVersion)
+	} else {
+		fmt.Fprintf(opts.Writer, "  format=memorial_v0 (no envelope; re-export from an updated scraper to enable format-drift detection)\n")
+	}
+	for _, w := range summary.Warnings {
+		fmt.Fprintf(opts.Writer, "  ⚠ %s\n", w)
+	}
 	if summary.Failed > 0 {
 		fmt.Fprintf(opts.Writer, "  see issues in the import log (batch_id=%s)\n", summary.BatchID)
 	}

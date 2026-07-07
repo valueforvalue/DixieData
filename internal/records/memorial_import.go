@@ -3,17 +3,32 @@ package records
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
 const memorialRecordType = "Find a Grave"
+
+// ErrMemorialFormatMismatch is returned when a Memorial Archive's
+// format_version field reflects a major bump from the importer's
+// expected version (e.g. archive says "memorial_v2" but this
+// DixieData build only understands "memorial_v1"). Per Decision 2
+// of issue #383, the import refuses on major bumps; the user must
+// re-export from an updated scraper that matches their DixieData
+// build, or upgrade DixieData. Callers (handler + CLI) surface
+// this differently from parse errors so the user sees a clear
+// "your scraper produced a newer format than this build understands"
+// message instead of a JSON-parse-failure trace.
+var ErrMemorialFormatMismatch = errors.New("memorial archive format mismatch")
 
 // MemorialImportIssue is a records-layer type used by the matching service.
 type MemorialImportIssue struct {
@@ -23,9 +38,25 @@ type MemorialImportIssue struct {
 	Error      string
 }
 
+// MemorialImportFormat captures the version metadata the FindAGrave
+// scraper script stamps into every export (issue #383 Slice 1).
+// FormatVersion is the per-surface namespace string (e.g.
+// "memorial_v1"); ScriptVersion is the Tampermonkey @version the
+// scraper was at when the file was exported; ScriptName is the
+// @name metadata so the import summary UI can name the source
+// tool. Empty strings mean the field was missing from the envelope
+// (pre-v1 archives carry none of these).
+type MemorialImportFormat struct {
+	FormatVersion string
+	ScriptVersion string
+	ScriptName    string
+}
+
 // MemorialImportPreview is a records-layer type used by the matching service.
 type MemorialImportPreview struct {
 	FilePath    string
+	Format      MemorialImportFormat
+	Warnings    []string
 	TotalRows   int
 	WouldCreate int
 	WouldSkip   int
@@ -35,13 +66,16 @@ type MemorialImportPreview struct {
 
 // MemorialImportSummary is a records-layer type used by the matching service.
 type MemorialImportSummary struct {
-	FilePath  string
-	BatchID   string
-	TotalRows int
-	Created   int
-	Skipped   int
-	Failed    int
-	Issues    []MemorialImportIssue
+	FilePath             string
+	Format               MemorialImportFormat
+	ImportedByAppVersion string
+	Warnings             []string
+	BatchID              string
+	TotalRows            int
+	Created              int
+	Skipped              int
+	Failed               int
+	Issues               []MemorialImportIssue
 }
 
 type memorialArchiveEntry struct {
@@ -64,12 +98,14 @@ type memorialArchiveEntry struct {
 
 // PreviewMemorialArchive parses a memorial-archive upload and returns the rows the user must confirm before import.
 func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPreview, error) {
-	entries, err := loadMemorialArchive(path)
+	entries, format, err := loadMemorialArchive(path)
 	if err != nil {
 		return MemorialImportPreview{}, err
 	}
 	preview := MemorialImportPreview{
 		FilePath:  strings.TrimSpace(path),
+		Format:    format,
+		Warnings:  memorialFormatWarnings(format),
 		TotalRows: len(entries),
 		Issues:    make([]MemorialImportIssue, 0),
 	}
@@ -106,14 +142,17 @@ func (s *SoldierService) PreviewMemorialArchive(path string) (MemorialImportPrev
 
 // ImportMemorialArchive imports the confirmed memorial-archive rows into the Local Archive.
 func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSummary, error) {
-	entries, err := loadMemorialArchive(path)
+	entries, format, err := loadMemorialArchive(path)
 	if err != nil {
 		return MemorialImportSummary{}, err
 	}
 	summary := MemorialImportSummary{
-		FilePath:  strings.TrimSpace(path),
-		TotalRows: len(entries),
-		Issues:    make([]MemorialImportIssue, 0),
+		FilePath:             strings.TrimSpace(path),
+		Format:               format,
+		ImportedByAppVersion: buildinfo.AppVersion,
+		Warnings:             memorialFormatWarnings(format),
+		TotalRows:            len(entries),
+		Issues:               make([]MemorialImportIssue, 0),
 	}
 	batchID, err := db.NewSyncID()
 	if err != nil {
@@ -166,20 +205,103 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 	return summary, nil
 }
 
-func loadMemorialArchive(path string) ([]memorialArchiveEntry, error) {
+// loadMemorialArchive reads + parses a Memorial Archive file,
+// returning the entries + the format metadata the scraper
+// stamped (if any). Pre-v1 archives (bare JSON arrays with no
+// envelope) parse cleanly: the entries decode, the format
+// metadata is zero-valued, and the caller can detect the
+// pre-v1 case via FormatVersion == "". Caller treats
+// FormatVersion == "" as "missing / pre-v1" and warns in the
+// summary (per Decision 2 of #383: warn + import).
+func loadMemorialArchive(path string) ([]memorialArchiveEntry, MemorialImportFormat, error) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
-		return nil, fmt.Errorf("memorial archive path is required")
+		return nil, MemorialImportFormat{}, fmt.Errorf("memorial archive path is required")
 	}
 	data, err := os.ReadFile(trimmed)
 	if err != nil {
-		return nil, err
+		return nil, MemorialImportFormat{}, err
 	}
+
+	// Try the envelope shape first: {"format_version": "...", "entries": [...]}.
+	// Detect by attempting to decode into a struct that has a
+	// known envelope field; on failure, fall back to bare-array
+	// decoding for pre-v1 backward compat.
+	var envelope struct {
+		FormatVersion string             `json:"format_version"`
+		ScriptVersion string             `json:"script_version"`
+		ScriptName    string             `json:"script_name"`
+		Entries       []memorialArchiveEntry `json:"entries"`
+	}
+	if err := json.Unmarshal(data, &envelope); err == nil && envelope.FormatVersion != "" {
+		format := MemorialImportFormat{
+			FormatVersion: envelope.FormatVersion,
+			ScriptVersion: envelope.ScriptVersion,
+			ScriptName:    envelope.ScriptName,
+		}
+		if err := checkMemorialFormatVersion(format); err != nil {
+			return nil, format, err
+		}
+		return envelope.Entries, format, nil
+	}
+
+	// Fall back to the pre-v1 bare-array shape: [{...}, {...}].
 	var entries []memorialArchiveEntry
 	if err := json.Unmarshal(data, &entries); err != nil {
-		return nil, fmt.Errorf("parse memorial archive: %w", err)
+		return nil, MemorialImportFormat{}, fmt.Errorf("parse memorial archive: %w", err)
 	}
-	return entries, nil
+	return entries, MemorialImportFormat{}, nil
+}
+
+// checkMemorialFormatVersion implements Decision 2 of #383:
+//   - same major + minor → no error
+//   - missing / empty format_version (handled by caller, not here) → caller warns
+//   - major bump → ErrMemorialFormatMismatch (caller surfaces refusal)
+//   - minor bump → no error here; caller warns via the Warnings slice
+func checkMemorialFormatVersion(format MemorialImportFormat) error {
+	archiveMajor, archiveMinor, archiveOK := parseMemorialVersion(format.FormatVersion)
+	expectedMajor, expectedMinor, expectedOK := parseMemorialVersion(buildinfo.MemorialArchiveFormatVersion)
+	if !archiveOK || !expectedOK {
+		// Either side unparseable; treat as mismatch so the user
+		// notices. ErrMemorialFormatMismatch wraps the raw strings
+		// so the UI can show what version was expected vs found.
+		return fmt.Errorf("%w: archive format_version %q does not match the expected %q (unparseable)", ErrMemorialFormatMismatch, format.FormatVersion, buildinfo.MemorialArchiveFormatVersion)
+	}
+	if archiveMajor != expectedMajor {
+		return fmt.Errorf("%w: archive format_version %q is a major bump from the expected %q — re-export from a scraper version that matches this DixieData build, or upgrade DixieData", ErrMemorialFormatMismatch, format.FormatVersion, buildinfo.MemorialArchiveFormatVersion)
+	}
+	_ = archiveMinor
+	_ = expectedMinor
+	return nil
+}
+
+// parseMemorialVersion splits "memorial_v1", "memorial_v1.2", or
+// "memorial_v2.0" into (1, 0, true), (1, 2, true), (2, 0, true).
+// Returns (0, 0, false) for empty / unrecognised shapes.
+func parseMemorialVersion(s string) (major, minor int, ok bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, 0, false
+	}
+	const prefix = "memorial_v"
+	if !strings.HasPrefix(s, prefix) {
+		return 0, 0, false
+	}
+	body := strings.TrimPrefix(s, prefix)
+	parts := strings.SplitN(body, ".", 2)
+	mj, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, false
+	}
+	major = mj
+	if len(parts) == 2 {
+		mn, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return 0, 0, false
+		}
+		minor = mn
+	}
+	return major, minor, true
 }
 
 func mapMemorialEntry(entry memorialArchiveEntry) (models.Soldier, error) {
@@ -319,4 +441,26 @@ func setSoldierImportBatch(conn *sql.DB, soldierID int64, batchID string) error 
 	}
 	_, err := conn.Exec(`UPDATE soldiers SET import_batch_id = ? WHERE id = ?`, strings.TrimSpace(batchID), soldierID)
 	return err
+}
+
+// memorialFormatWarnings returns the user-facing warning strings
+// the preview / summary should surface based on the archive's
+// format metadata. Decision 2 of #383: pre-v1 archives warn but
+// import; minor bumps warn but import; major bumps refuse
+// (handled by checkMemorialFormatVersion before this runs). The
+// pre-v1 warning names the upgrade path (re-export from the
+// updated scraper) so the user knows how to silence it.
+func memorialFormatWarnings(format MemorialImportFormat) []string {
+	out := make([]string, 0)
+	if format.FormatVersion == "" {
+		out = append(out, "archive has no format_version field — treating as pre-v1. Re-export from an updated FindAGrave scraper to silence this warning and enable future format-drift detection.")
+		return out
+	}
+	if format.FormatVersion != buildinfo.MemorialArchiveFormatVersion {
+		_, _, ok := parseMemorialVersion(format.FormatVersion)
+		if ok {
+			out = append(out, fmt.Sprintf("archive format_version %q differs from this build's expected %q — proceeding with a best-effort import. Review the imported rows before continuing.", format.FormatVersion, buildinfo.MemorialArchiveFormatVersion))
+		}
+	}
+	return out
 }

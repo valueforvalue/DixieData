@@ -49,6 +49,19 @@ const (
 	// archive shape. Read back at restore time to decide whether
 	// to apply a forward-migration or refuse the restore.
 	BackupFormatVersion = 3
+	// MemorialArchiveFormatVersion is the version string the
+	// FindAGraveScraper browser-side script (externals/
+	// FindaGraveScraper.user.js) stamps into every export.
+	// Independent of DixieData semver — bumped when the SCRIPT
+	// changes shape (entry fields renamed, fields added,
+	// envelope structure changed), NOT when DixieData itself
+	// ships. Per-surface namespace pattern (Decision 1 in #383).
+	// Read back at ImportMemorialArchive time:
+	//   - missing → treat as pre-v1, warn in summary, import
+	//   - same → silent
+	//   - minor bump (memorial_v1.0 → memorial_v1.1) → warn in summary, import
+	//   - major bump (memorial_v1 → memorial_v2) → refuse (typed error)
+	MemorialArchiveFormatVersion = "memorial_v1"
 )
 
 // AppVersion is the release-line version string in the
