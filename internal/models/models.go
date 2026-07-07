@@ -208,6 +208,7 @@ type Record struct {
 	RecordType    string `json:"record_type"`
 	AppID         string `json:"app_id"`
 	Details       string `json:"details"`
+	SortOrder     int64  `json:"sort_order"`
 }
 
 // Article is a free-form markdown-bodied essay with inline Person

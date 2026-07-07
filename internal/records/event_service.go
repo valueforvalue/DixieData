@@ -74,10 +74,10 @@ func NewEventService(soldiers *SoldierService) *EventService {
 // table so the Update path leaves them alone.
 func (e *EventService) ListSourcesForEvent(eventID int64) ([]models.Record, error) {
 	rows, err := e.soldiers.db.Conn().Query(
-		`SELECT id, sync_id, record_type, app_id, details
+		`SELECT id, sync_id, record_type, app_id, details, sort_order
 		 FROM event_sources
 		 WHERE event_id = ?
-		 ORDER BY id`, eventID)
+		 ORDER BY sort_order, id`, eventID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (e *EventService) ListSourcesForEvent(eventID int64) ([]models.Record, erro
 	out := make([]models.Record, 0)
 	for rows.Next() {
 		var r models.Record
-		if err := rows.Scan(&r.ID, &r.SyncID, &r.RecordType, &r.AppID, &r.Details); err != nil {
+		if err := rows.Scan(&r.ID, &r.SyncID, &r.RecordType, &r.AppID, &r.Details, &r.SortOrder); err != nil {
 			return nil, err
 		}
 		r.PersonRecordID = eventID

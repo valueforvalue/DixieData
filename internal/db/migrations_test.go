@@ -21,6 +21,8 @@ func TestMigrationsCatalogueIsOrdered(t *testing.T) {
 		"block-1-schema-baseline",
 		"block-60-v54-to-v60-jump",
 		"block-2-event-sources",
+		"block-3-articles",
+		"block-63-source-sort-order",
 	}
 	for i, wantID := range want {
 		if migs[i].ID != wantID {
@@ -94,10 +96,11 @@ func TestMigrationsIrreversibleDownRefuses(t *testing.T) {
 // mapping mirrors docs/migrations/reversibility.md exactly.
 func TestMigrationsReversibilityMapping(t *testing.T) {
 	want := map[string]Reversibility{
-		"block-1-schema-baseline":  Reversible,
-		"block-60-v54-to-v60-jump": Irreversible,
-		"block-2-event-sources":    Reversible,
-		"block-3-articles":         Reversible,
+		"block-1-schema-baseline":    Reversible,
+		"block-60-v54-to-v60-jump":   Irreversible,
+		"block-2-event-sources":      Reversible,
+		"block-3-articles":           Reversible,
+		"block-63-source-sort-order": Reversible,
 	}
 
 	for _, m := range Migrations() {

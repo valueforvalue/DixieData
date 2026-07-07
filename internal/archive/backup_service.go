@@ -2766,7 +2766,7 @@ func loadSoldierSnapshotByID(tx *sql.Tx, soldierID int64) (*mergeReviewSnapshot,
 }
 
 func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, error) {
-	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, soldierID)
+	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY sort_order, id`, soldierID)
 	if err != nil {
 		return nil, err
 	}
@@ -2774,7 +2774,7 @@ func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, erro
 	records := []models.Record{}
 	for rows.Next() {
 		var record models.Record
-		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details, &record.SortOrder); err != nil {
 			return nil, err
 		}
 		records = append(records, record)

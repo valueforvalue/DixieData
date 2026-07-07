@@ -573,6 +573,84 @@ var migrations = []Migration{
 			return nil
 		},
 	},
+	// Block 4 (block-63) — Source Record reorder column
+	// (issue #368, slice 1). Adds `sort_order INTEGER NOT NULL
+	// DEFAULT 0` to both Source Record tables so the read paths
+	// can order rows by user intent instead of insertion order.
+	// The PATCH /soldiers/{id}/sources/{sourceId}/position and
+	// PATCH /events/{id}/sources/{sourceId}/position endpoints
+	// land in slice 3; slice 1 is the tracer bullet (schema +
+	// read-path ORDER BY change only) so existing writes
+	// continue to insert with sort_order=0 (the default) and
+	// existing archives preserve current display order via the
+	// backfill that assigns sort_order = id.
+	//
+	// Reversibility: Reversible. ADD COLUMN is reversible
+	// (DROP COLUMN works because sort_order has no FK + no
+	// inbound references). The backfill UPDATE is a no-op
+	// reverse on DOWN (column gets dropped; rows lose their
+	// sort_order values; the read path flips back to
+	// ORDER BY id on code revert).
+	{
+		ID:            "block-63-source-sort-order",
+		Reversibility: Reversible,
+		Reason:        "Pure additive: ALTER TABLE ADD COLUMN sort_order on records + event_sources, with backfill UPDATE that sets sort_order = id so existing archives preserve current display order. No FK, no inbound references, no data loss on DOWN.",
+		Up: func(tx *sql.Tx) error {
+			recordsExists, err := columnExists(tx, "records", "sort_order")
+			if err != nil {
+				return err
+			}
+			if !recordsExists {
+				if _, err := tx.Exec(`ALTER TABLE records ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`); err != nil {
+					return err
+				}
+			}
+			// Backfill: every existing row gets sort_order = id
+			// so the first read after upgrade preserves the
+			// current id-order display. WHERE sort_order = 0 OR
+			// sort_order IS NULL is defensive — on a fresh
+			// install the inline schema carries DEFAULT 0 so
+			// every row already has sort_order = 0, and the
+			// UPDATE rewrites them all to id (still correct).
+			if _, err := tx.Exec(`UPDATE records SET sort_order = id WHERE sort_order = 0 OR sort_order IS NULL`); err != nil {
+				return err
+			}
+			eventSourcesExists, err := columnExists(tx, "event_sources", "sort_order")
+			if err != nil {
+				return err
+			}
+			if !eventSourcesExists {
+				if _, err := tx.Exec(`ALTER TABLE event_sources ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`); err != nil {
+					return err
+				}
+			}
+			if _, err := tx.Exec(`UPDATE event_sources SET sort_order = id WHERE sort_order = 0 OR sort_order IS NULL`); err != nil {
+				return err
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			recordsExists, err := columnExists(tx, "records", "sort_order")
+			if err != nil {
+				return err
+			}
+			if recordsExists {
+				if _, err := tx.Exec(`ALTER TABLE records DROP COLUMN sort_order`); err != nil {
+					return err
+				}
+			}
+			eventSourcesExists, err := columnExists(tx, "event_sources", "sort_order")
+			if err != nil {
+				return err
+			}
+			if eventSourcesExists {
+				if _, err := tx.Exec(`ALTER TABLE event_sources DROP COLUMN sort_order`); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every
