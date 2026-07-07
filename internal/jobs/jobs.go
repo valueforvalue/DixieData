@@ -1241,13 +1241,25 @@ func (r *Registry) MostRecentActive() *Job {
 	defer r.mu.Unlock()
 	var latest *Job
 	for _, j := range r.jobs {
-		if j.Status != StatusQueued && j.Status != StatusRunning {
+		// Read Status + Kind under j.mu so the read is
+		// race-free against the worker's writes in
+		// Start.func1 (which holds j.mu around every Status
+		// mutation at jobs.go:557, :573, :574). r.mu alone
+		// is insufficient because the worker writes Status
+		// under j.mu only. The subsequent j.Snapshot() call
+		// takes j.mu again to copy the rest of the public
+		// fields race-free. issue #418.
+		j.mu.Lock()
+		status := j.Status
+		kind := j.Kind
+		j.mu.Unlock()
+		if status != StatusQueued && status != StatusRunning {
 			continue
 		}
-		if IsSilentKind(j.Kind) {
+		if IsSilentKind(kind) {
 			continue
 		}
-		snap := cloneJob(j)
+		snap := j.Snapshot()
 		if latest == nil || snap.StartedAt.After(latest.StartedAt) {
 			latest = &snap
 		}
@@ -1272,8 +1284,25 @@ func (r *Registry) MostRecentActive() *Job {
 func (r *Registry) Shutdown(ctx context.Context) error {
 	r.mu.Lock()
 	for _, j := range r.jobs {
-		if j.Status == StatusQueued || j.Status == StatusRunning {
-			j.cancelCause()
+		// Read j.Status under j.mu so the read is race-free
+		// against the worker's writes in Start.func1 (which
+		// holds j.mu around every Status mutation at
+		// jobs.go:557, :573, :574). r.mu alone is insufficient
+		// because the worker writes Status under j.mu only.
+		// Cancel is the per-job context.CancelFunc, captured
+		// under the lock so the worker can't swap it out
+		// between the read and the call (it doesn't, but
+		// the lock + capture pattern is the same shape as
+		// the registry uses for the in-flight Set on the
+		// job). Cancel is idempotent per the context
+		// package contract, so calling it after the worker
+		// has already exited is a no-op. issue #418.
+		j.mu.Lock()
+		status := j.Status
+		cancel := j.cancelCause
+		j.mu.Unlock()
+		if status == StatusQueued || status == StatusRunning {
+			cancel()
 		}
 	}
 	r.mu.Unlock()
