@@ -11,6 +11,10 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
+### Fixed
+
+- **docs: bump version refs in user-manual / implementation-and-features / ai-handoff to v1.1.65** (issue #421). The three user-facing docs were stuck at `v1.1.59` while `internal/versioninfo/versioninfo.go` carried `CurrentSchemaVersion = 65` (bumped from 59 → 63 → 64 → 65 across the source-records + provenance + restore-at slices). `scripts/bump-version.ps1 -VerifyOnly` was failing in CI with three "does not reference 1.1.65" errors. The failure was pre-existing but masked for ~24h by the rapid-flag workflow parse error that #417 fixed. One mechanical edit per doc (the leading "current release line" line + the ai-handoff's two-line version/snapshot block). `pwsh -File scripts/bump-version.ps1 -VerifyOnly` now exits clean: `VERIFY OK: schema 65, update_flow 1, release 1 / app version: 1.1.65 / doc + changelog references intact`.
+
 ### Maintenance
 
 - **routebuilder: remove unused PersonEventAttach helper** (issue #415). The `routebuilder.PersonEventAttach(soldierID, eventID)` function had no `.templ` invoker — confirmed by grepping `internal/templates/` — and the only remaining reference was a stale comment in `person_events_tab.templ` that mis-named the routing surface (the actual handler at `routes.go:252` handles `/soldiers/{id}/events/{eventId}/attach` via the string literal in the handler, not a typed routebuilder call). The sibling helper `PersonEventAttachByDisplayID` (used by the inline "Add existing event" form on the Person Record → Events tab) stays — it's a different URL. Updated the stale comment to point at the route literal. Verified `go build ./...` + `go test ./internal/routebuilder/...` pass; the orphan-handler probe (`audit/discover_orphan_handlers.mjs`) was already flagging the `/soldiers/{id}/events/{eventId}/attach` route as an orphan before the change — no new orphans introduced (the helper had no caller). The pre-existing #414 `TestNoPostThenNavigateHXXAttrs` baseline failure is unrelated.

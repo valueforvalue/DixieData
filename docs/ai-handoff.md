@@ -12,8 +12,8 @@
 ## Project snapshot
 
 - **App:** DixieData
-- **Version:** `1.1.59` (issue #266 v{MAJOR}.{U}.{N} split; U=1 implicit for legacy v1.2.N releases, schema version N=59)
-- **Schema version:** `59`
+- **Version:** `1.1.65` (issue #266 v{MAJOR}.{U}.{N} split; U=1 implicit for legacy v1.2.N releases, schema version N=65)
+- **Schema version:** `65`
 - **Platform:** Wails desktop app (Windows-first workflow)
 - **Backend:** Go + SQLite
 - **Frontend:** server-rendered Templ HTML, Tailwind CDN styling, custom `frontend\app.js`
