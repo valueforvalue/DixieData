@@ -2036,6 +2036,26 @@ func parseBirthCountyState(value string) (string, string) {
 	return "", ""
 }
 
+// HasUnitForCamaraderie reports whether the soldier has unit
+// information recorded. Used by the picker (issue #422 slice 2)
+// to decide whether to surface the Camaraderie sub-page in the
+// Continue shortcut. Empty unit means the graph would render as
+// an empty state.
+func HasUnitForCamaraderie(soldier models.Soldier) bool {
+	return strings.TrimSpace(soldier.Unit) != ""
+}
+
+// HasCountyInBirth reports whether the soldier's birth_info
+// contains a county (the "County, State" pattern). Used by the
+// picker (issue #422 slice 2) to decide whether to surface the
+// Research Pack County sub-option in the picker sub-screen.
+// Empty or pattern-free birth_info means the county pack would
+// render as an empty state.
+func HasCountyInBirth(soldier models.Soldier) bool {
+	county, _ := parseBirthCountyState(soldier.BirthInfo)
+	return county != ""
+}
+
 func researchPackDescription(scope, label string) string {
 	switch scope {
 	case "county":

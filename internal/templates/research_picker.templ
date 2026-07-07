@@ -23,6 +23,27 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
+// pickerActionLabel returns a human-readable label for a picker
+// action key (issue #422 slice 2). Used by the Continue shortcut
+// to render button text. The keys stay kebab-case for form values
+// (so the pickerNextAction allowlist in the handler still matches)
+// while the labels are Title Case for display.
+func pickerActionLabel(action string) string {
+	switch action {
+	case "camaraderie":
+		return "Camaraderie"
+	case "timeline":
+		return "Timeline"
+	case "research-log":
+		return "Research Log"
+	case "conflict-ledger":
+		return "Conflict Ledger"
+	case "research-pack":
+		return "Research Pack"
+	}
+	return action
+}
+
 // pickerNextEcho returns the value to render into the hidden ?next
 // field of every picker form. Falls back to "camaraderie" when the
 // supplied view has no NextAction (avoids echo'ing an empty string,
@@ -51,21 +72,31 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 						Continue: { view.CurrentPerson.FirstName } { view.CurrentPerson.LastName }
 						<span class="font-mono text-xs text-slate-500">({ view.CurrentPerson.DisplayID })</span>
 					</p>
-					<form
-						method="post"
-						action={ templ.SafeURL(routebuilder.ResearchSelect()) }
-						class="flex flex-wrap items-center gap-2"
+					// Issue #422 slice 2: one Continue button per
+					// supported sub-page. Soldiers missing the data
+					// for a sub-page don't see that button (e.g. no
+					// unit => no Camaraderie). The Change Person
+					// form stays separate (no person_id needed).
+					<div class="flex flex-wrap items-center gap-2">
+						for _, action := range view.SupportedActions {
+							<form
+								method="post"
+								action={ templ.SafeURL(routebuilder.ResearchSelect()) }
+								class="inline"
+							>
+								<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", view.CurrentPerson.ID) }/>
+								<input type="hidden" name="next" value={ action }/>
+								<button type="submit" class="pill-link" data-research-continue-action={ action }>Continue to { pickerActionLabel(action) }</button>
+							</form>
+						}
+						<form
+							method="post"
+						action={ templ.SafeURL(routebuilder.ResearchClear()) }
+						class="inline"
 					>
-						<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", view.CurrentPerson.ID) }/>
-						<input type="hidden" name="next" value={ pickerNextEcho(view) }/>
-						<button type="submit" class="primary-button">Continue</button>
-						<button
-							type="submit"
-							formaction={ templ.SafeURL(routebuilder.ResearchClear()) }
-							class="pill-link"
-							data-research-clear
-						>Change Person…</button>
-					</form>
+							<button type="submit" class="pill-link" data-research-clear>Change Person…</button>
+						</form>
+					</div>
 				</div>
 			}
 			<section id={ uiids.PanelResearchPickerSearch } class="card rounded-3xl p-5 space-y-3">
@@ -116,7 +147,9 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 							data-research-pack-geography
 						>
 							<option value="state" data-research-pack-state>State</option>
-							<option value="county" data-research-pack-county>County</option>
+							if view.HasCountyInBirth {
+								<option value="county" data-research-pack-county>County</option>
+							}
 						</select>
 						<button type="submit" class="pill-link">Save choice</button>
 					</form>

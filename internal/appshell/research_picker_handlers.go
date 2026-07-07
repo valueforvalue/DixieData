@@ -47,7 +47,9 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/cookies"
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -78,6 +80,23 @@ func researchSubPathForAction(personID int64, action, geography string) string {
 		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/research-pack/" + scope
 	}
 	return ""
+}
+
+// supportedPickerActions returns the list of sub-page action
+// names the supplied soldier can support (issue #422 slice 2).
+// The order is the display order in the Continue shortcut.
+// Camaraderie is conditional on the soldier having a unit; the
+// rest always work (Timeline / Research Log / Conflict Ledger
+// handle empty data gracefully; Research Pack falls through to
+// the state sub-screen which works because PensionState
+// normalizes to N/A).
+func supportedPickerActions(soldier models.Soldier) []string {
+	var actions []string
+	if records.HasUnitForCamaraderie(soldier) {
+		actions = append(actions, "camaraderie")
+	}
+	actions = append(actions, "timeline", "research-log", "conflict-ledger", "research-pack")
+	return actions
 }
 
 // isValidResearchAction reports whether the supplied action keyword
@@ -118,11 +137,19 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var current *viewmodel.PersonRecord
+	var supportedActions []string
+	hasCountyInBirth := false
 	if a.personCtxKey != nil {
 		if ctx, ok := cookies.ReadPersonCtx(r, a.personCtxKey); ok && ctx.PersonID > 0 {
 			if soldier, err := a.soldiers.GetByID(ctx.PersonID); err == nil && soldier != nil {
 				rec := viewmodel.PersonRecordFromModel(*soldier)
 				current = &rec
+				// Issue #422 slice 2: compute which sub-pages the
+				// current person can support. The Continue
+				// shortcut renders one button per supported
+				// action; unsupported ones are hidden entirely.
+				supportedActions = supportedPickerActions(*soldier)
+				hasCountyInBirth = records.HasCountyInBirth(*soldier)
 			}
 		}
 	}
@@ -137,10 +164,12 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	view := viewmodel.ResearchPickerView{
-		CurrentPerson: current,
-		SearchQuery:   query,
-		SearchResults: results,
-		NextAction:    next,
+		CurrentPerson:    current,
+		SearchQuery:      query,
+		SearchResults:    results,
+		NextAction:       next,
+		SupportedActions: supportedActions,
+		HasCountyInBirth: hasCountyInBirth,
 	}
 	presentation.ResearchPickerView(view).Render(r.Context(), w)
 }
