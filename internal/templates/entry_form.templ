@@ -758,13 +758,32 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 							<label class="block rounded-xl border border-sepia-500/[0.2] bg-white/80 px-3 py-2 text-sm text-slate-700">
 								<div class="flex items-start gap-3">
 									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
-									<div class="min-w-0">
+									<div class="min-w-0 flex-1">
 										<div class="font-medium">{ issue.DisplayID } · { issue.Name }</div>
 										<div class="mt-1 text-xs text-slate-500">{ issue.Summary }</div>
 										if strings.TrimSpace(issue.Detail) != "" {
 											<div class="mt-1 text-xs text-slate-500">{ issue.Detail }</div>
 										}
 									</div>
+									// Issue #416: per-row "Generate Display ID"
+									// affordance for identity-missing rows
+									// only. Separate form (different action)
+									// so it lives outside the outer
+									// Move-Selected form.
+									if issue.Code == "identity-missing" {
+										<form
+											method="post"
+											action={ templ.SafeURL(routebuilder.SoldierRecoverDisplayID(issue.PersonRecordID)) }
+											data-dixie-submit="true"
+											class="shrink-0"
+										>
+											<button
+												type="submit"
+												class="pill-link"
+												data-recover-display-id={ fmt.Sprintf("%d", issue.PersonRecordID) }
+											>Generate Display ID</button>
+										</form>
+									}
 								</div>
 							</label>
 						}

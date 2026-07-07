@@ -31,6 +31,7 @@ type personRecordsFacade interface {
 	GetByDisplayID(displayID string) (*personRecord, error)
 	Update(personRecord personRecord) error
 	Delete(id int64) error
+	RecoverDisplayID(id int64) (string, error)
 	UnitCamaraderieGraph(personRecordID int64) (*records.UnitCamaraderieGraph, error)
 	ServiceTimeline(personRecordID int64) (*records.ServiceTimeline, error)
 	ResearchLog(personRecordID int64) (*records.ResearchLog, error)

@@ -73,6 +73,12 @@ func (a *App) setupRoutes() {
 	// first when both patterns cover the same path.
 	// Per-card Delete + Set-Primary forms land in B.2.
 	r.Get("/soldiers/{id:[0-9]+}/images", a.handleSoldierImagesRoute)
+	// Issue #416: per-row "Generate Display ID" affordance on
+	// the data-quality scan results. Dedicated chi route so
+	// the per-row POST has a stable URL; the picker-guard
+	// doesn't apply here (this is an admin/recovery path,
+	// not a foldout entry).
+	r.Post("/soldiers/{id:[0-9]+}/display-id/recover", a.handleRecoverDisplayID)
 	r.Post("/browse/bulk-tag", a.handleBulkTagFromBrowse)
 	r.Get("/soldiers/*", a.handleSoldierByID)
 	r.Post("/soldiers/*", a.handleSoldierByID)
