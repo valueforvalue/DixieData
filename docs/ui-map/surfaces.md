@@ -72,6 +72,11 @@ table in sync when adding or renaming surfaces.
 | `panel.review-queue.compare` | panel | Side-by-side compare panel |
 | `page.research-collections.hub` | page | Research collections hub |
 | `panel.research-collections.hub` | panel | Named collections list and create-collection section |
+| `page.research.picker` | page | Research & Review Person picker landing (issue #378 slice 1); search + recents + Continue shortcut |
+| `panel.research.picker.search` | panel | Search input region on the picker page |
+| `panel.research.picker.results` | panel | Live search results region on the picker page |
+| `panel.research.picker.recent` | panel | Recent-persons region on the picker page (empty in slice 1; localStorage persistence lands in slice 3) |
+| `panel.research.picker.continue` | panel | Continue shortcut region on the picker page (renders only when `dd_person_ctx` cookie is set) |
 | `page.research-collections.detail` | page | Research collection detail |
 | `panel.research-collection.detail` | panel | Items list and add-row section |
 | `page.research-log` | page | Research log page |

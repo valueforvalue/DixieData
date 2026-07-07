@@ -72,6 +72,9 @@ templ screen that renders it. URL builders live in
 
 | Path | Builder | Templ | Notes |
 | --- | --- | --- | --- |
+| `/research` | `routebuilder.ResearchPicker()` | `research_picker.templ` | Person picker landing (issue #378 slice 1); renders Continue shortcut when `dd_person_ctx` cookie is set |
+| `/research/select` POST | `routebuilder.ResearchSelect()` | — | Records chosen Person in `dd_person_ctx` cookie + redirects via `X-DixieData-Redirect` to the requested sub-page (issue #378 slice 1) |
+| `/research/clear` POST | `routebuilder.ResearchClear()` | — | Clears the cookie (`MaxAge=-1`) + redirects to `/research` (issue #378 slice 1) |
 | `/research-collections` | — (handler direct) | `research_collections.templ` | Hub |
 | `/research-collections` POST | `routebuilder.ResearchCollectionsCreate()` | — | Create collection |
 | `/research-collections/{id}` | — (handler direct) | `research_collections.templ` | Detail |

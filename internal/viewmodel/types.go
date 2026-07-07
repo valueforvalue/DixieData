@@ -754,3 +754,23 @@ type RecentJobEntry struct {
 	FinishedAt  string // RFC3339
 	DetailURL   string // /jobs/{id}
 }
+
+// ResearchPickerView is the page-level viewmodel for the Research &
+// Review Person picker landing (issue #378 slice 1). Carries the bare
+// minimum needed to render the slice-1 shell:
+//
+//   - CurrentPerson: the person currently in dd_person_ctx cookie context
+//     (nil when no cookie). Renders the "Continue: <name> (#id)" shortcut.
+//   - RecentPersons: last N viewed persons (slice 1: empty list; slice 3
+//     lifts persistence to localStorage).
+//   - SearchQuery: the most-recent search string (echoed into the input).
+//   - SearchResults: matches for SearchQuery (slice 1: empty; live
+//     htmx swap lands in a follow-up slice).
+//
+// The picker UI lives at internal/templates/research_picker.templ.
+type ResearchPickerView struct {
+	CurrentPerson *PersonRecord
+	RecentPersons []PersonRecord
+	SearchQuery   string
+	SearchResults []PersonRecord
+}

@@ -410,3 +410,10 @@ func ArticleEditShell(view *viewmodel.Article) templ.Component {
 	}
 	return templates.ArticleEditShell(*view)
 }
+
+// ResearchPickerView wraps the bare picker templ with the supplied
+// viewmodel. Slice 1 ships the page shell only — search-results swap
+// (slice 2) and recents persistence (slice 3) land as follow-up slices.
+func ResearchPickerView(view viewmodel.ResearchPickerView) templ.Component {
+	return templates.ResearchPickerView(view)
+}
