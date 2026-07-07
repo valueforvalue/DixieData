@@ -774,4 +774,14 @@ type ResearchPickerView struct {
 	SearchQuery   string
 	SearchResults []PersonRecord
 	NextAction    string
+	// SupportedActions is the list of sub-page action names the
+	// current person can support (issue #422 slice 2). Used by
+	// the picker Continue shortcut to hide sub-pages the soldier
+	// lacks data for (e.g. Camaraderie hidden when unit is empty).
+	// Empty when no current person is set.
+	SupportedActions []string
+	// HasCountyInBirth reports whether the current person has a
+	// county in birth_info. Used by the picker sub-screen to
+	// hide the County option for soldiers without county data.
+	HasCountyInBirth bool
 }
