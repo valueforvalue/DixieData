@@ -100,6 +100,17 @@ type Soldier struct {
 	// lands the schema + struct + read/write plumbing.
 	CreatedByVersion      string   `json:"created_by_version,omitempty"`
 	CreatedByImportPath   string   `json:"created_by_import_path,omitempty"`
+	// v65 (issue #423): timestamp the row was carried over a
+	// SQLite-snapshot restore. Distinct from CreatedByImportPath
+	// (which records the row's origin) — a row created today and
+	// restored tomorrow has CreatedByImportPath = "create_soldier"
+	// AND RestoredAt = "2026-07-08T...". NULLable + json:"-"
+	// because the field is metadata about the row's transport
+	// history, not part of the row's wire shape; never-restored
+	// rows must NOT pollute static archive output. Set by
+	// restoreSnapshotBackup's bulk UPDATE (slice 2); frozen
+	// across Update (same policy as CreatedByImportPath).
+	RestoredAt            string   `json:"-"`
 	SearchMatchField      string   `json:"-"`
 	SearchMatchSnippet    string   `json:"-"`
 	SpouseDisplayID       string   `json:"-"`
