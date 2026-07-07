@@ -106,6 +106,13 @@ func Generate(options Options) (Summary, error) {
 
 	for i := 0; i < options.Soldiers; i++ {
 		soldier := buildSoldier(rng, i)
+		// Issue #377 slice 2: stamp the import path so future
+		// "where did this row come from?" investigations can
+		// attribute the row to the bulk seed importer. The
+		// service-layer default already covers empty values, but
+		// explicit stamping documents the intent at the call site
+		// and survives any future defaulting change.
+		soldier.CreatedByImportPath = "seed"
 		created, err := soldierSvc.Create(soldier)
 		if err != nil {
 			return Summary{}, fmt.Errorf("create soldier %d: %w", i+1, err)
