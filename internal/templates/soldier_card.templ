@@ -72,7 +72,7 @@ templ SoldierCard(s viewmodel.PersonRecord, highlighted bool) {
 
 templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query string, suggestions viewmodel.PersonRecordFormSuggestions) {
 	@Layout("Soldiers") {
-		<div class="relative">
+		<div id={ uiids.PageSoldiersList } class="relative">
 			<div class="mb-4">
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<h2 class="text-2xl gold font-bold">Person Records</h2>
@@ -90,7 +90,8 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 						
 					</button>
 				</div>
-				<div data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
+				<div id={ uiids.PanelSoldiersSearchBasic } class="contents">
+					<div data-tab-panel="soldier-search" data-tab-id="basic" class="relative space-y-2">
 					<form { htmxattr.Mux{
 						Get:     routebuilder.SoldierSearch(false),
 						Target:  "#soldier-list",
@@ -108,6 +109,8 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					</div>
 					<p class="text-xs text-slate-500">Quick search matches names, relationship labels, units, ranks, pension states, burial locations, and display IDs.</p>
 				</div>
+				</div>
+				<div id={ uiids.PanelSoldiersSearchAdvanced } class="contents">
 				<form data-tab-panel="soldier-search" data-tab-id="advanced" class="responsive-two-col relative hidden card rounded-2xl p-5 grid gap-4"
 					hx-get={ templ.SafeURL(routebuilder.SoldierSearchAdvanced()) } hx-target="#soldier-list">
 					
@@ -224,6 +227,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 					</div>
 					<p class="responsive-span-2 col-span-2 text-xs text-slate-500">Advanced search uses <strong>LIKE contains</strong> matching for text fields. Enter one year for an exact match, or add a <strong>Through</strong> year to search a range. Birth and death dates are still <strong>exact</strong> canonical matches using MM/DD/YYYY with 00 for unknown parts.</p>
 				</form>
+				</div>
 				@SuggestionDatalist("advanced-record-type-suggestions", suggestions.SourceRecordType)
 				@SuggestionDatalist("advanced-rank-in-suggestions", suggestions.RankIn)
 				@SuggestionDatalist("advanced-rank-out-suggestions", suggestions.RankOut)
@@ -233,8 +237,10 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 				@SuggestionDatalist("advanced-buried-in-suggestions", suggestions.BuriedIn)
 				@SuggestionDatalist("advanced-relationship-label-suggestions", suggestions.RelationshipLabel)
 			</div>
-			<div id="soldier-list" class="relative">
-				@SearchResults(soldiers, viewmodel.PersonRecordSearch{Mode: "basic", Query: query}, page, total, 50)
+			<div id={ uiids.PanelSoldiersResults } class="contents">
+				<div id="soldier-list" class="relative">
+					@SearchResults(soldiers, viewmodel.PersonRecordSearch{Mode: "basic", Query: query}, page, total, 50)
+				</div>
 			</div>
 		</div>
 	}
@@ -242,7 +248,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 
 templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []viewmodel.Article) {
 	@Layout(detailHeading(s)) {
-			<div data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
+			<div id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				<div class="mb-4 flex flex-wrap gap-3">
 					<button
 						type="button"
@@ -345,6 +351,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						</div>
 					</div>
 				}
+				<div id={ uiids.PanelSoldierDetailSummary } class="contents">
 				<dl class="responsive-two-col grid gap-2 text-sm">
 					<dt class="text-slate-500">Person Record Type</dt><dd>{ entryBadgeLabel(s) }</dd>
 					<dt class="text-slate-500">Display ID</dt><dd>{ emptyDetail(s.DisplayID) }</dd>
@@ -383,6 +390,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						@LinkedText(s.Biography, "mt-3 text-sm text-slate-700 leading-6")
 					</div>
 				}
+				</div>
 				<details class="mt-5 overflow-hidden rounded-2xl border border-sepia-500/[0.45] bg-ink-deep/[0.04]">
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
@@ -538,7 +546,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 					</div>
 				</div>
 				if len(s.SourceRecords) > 0 {
-					<section class="relative">
+					<section id={ uiids.PanelSoldierDetailRecords } class="relative">
 						<h3 class="mt-8 text-lg gold font-semibold">Source Records</h3>
 						for _, r := range s.SourceRecords {
 							<div class="card rounded-2xl p-4 mt-3 text-sm">

@@ -362,3 +362,357 @@ func TestHandleSoldierImagesSetPrimaryFragmentSwap(t *testing.T) {
 		t.Errorf("after set-primary want IsPrimary=true, got false")
 	}
 }
+
+// TestHandleSoldiersListRendersPageWrapper pins the
+// PageSoldiersList UIID (issue #397 wide.1). The /soldiers
+// browse page must render the canonical `id="page.soldiers.list"`
+// wrapper around the main content area so smoke selectors and
+// goquery invariant tests can pin against the same registry
+// that internal/uiids/uiids.go declares. Mirrors the Slice A
+// pattern of canonicalizing only the content wrapper, not the
+// full body (per #397 locked decision 1).
+func TestHandleSoldiersListRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageSoldiersList)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s wrapper anchor; got %q",
+			uiids.PageSoldiersList,
+			bodyExtract(body, "Person Records", 200),
+		)
+	}
+}
+
+// TestHandleSoldiersListRendersSearchBasicPanel pins
+// PanelSoldiersSearchBasic — the Quick Search tab panel on
+// /soldiers.
+func TestHandleSoldiersListRendersSearchBasicPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldiersSearchBasic)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s quick-search panel; got %q",
+			uiids.PanelSoldiersSearchBasic,
+			bodyExtract(body, "Quick search", 200),
+		)
+	}
+}
+
+// TestHandleSoldiersListRendersSearchAdvancedPanel pins
+// PanelSoldiersSearchAdvanced — the Advanced Search form on
+// /soldiers.
+func TestHandleSoldiersListRendersSearchAdvancedPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldiersSearchAdvanced)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s advanced-search panel; got %q",
+			uiids.PanelSoldiersSearchAdvanced,
+			bodyExtract(body, "Advanced Search", 200),
+		)
+	}
+}
+
+// TestHandleSoldiersListRendersResultsPanel pins
+// PanelSoldiersResults — the results wrapper around the
+// SearchResults partial on /soldiers. Coexists with the
+// existing `id="soldier-list"` (the htmx swap target) —
+// adding the UIID wrapper is non-disruptive.
+func TestHandleSoldiersListRendersResultsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers")
+	if err != nil {
+		t.Fatalf("GET /soldiers: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldiersResults)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers missing #%s results panel; got %q",
+			uiids.PanelSoldiersResults,
+			bodyExtract(body, "soldier-list", 200),
+		)
+	}
+}
+
+// TestHandleSoldierDetailRendersPageWrapper pins the
+// PageSoldierDetail UIID (issue #397 wide.2). The /soldiers/{id}
+// detail page must render the canonical `id="page.soldier.detail"`
+// wrapper around the main content area so smoke selectors and
+// goquery invariant tests can pin against the same registry
+// that internal/uiids/uiids.go declares. Per #397 locked
+// decision 1, the page wrapper scopes the main content area
+// only — not the full body.
+func TestHandleSoldierDetailRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "DetailPageWrapper")
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageSoldierDetail)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"soldier detail page missing #%s wrapper anchor; got %q",
+			uiids.PageSoldierDetail,
+			bodyExtract(body, "Edit Person Record", 200),
+		)
+	}
+}
+
+// TestHandleSoldierDetailRendersSummaryPanel pins
+// PanelSoldierDetailSummary — the summary card on
+// /soldiers/{id} (the main card with title + field dl +
+// biography block). Wraps the inner card div, not the
+// outer page wrapper; class=contents on the wrapper so
+// the card's relative+grid layout is preserved.
+func TestHandleSoldierDetailRendersSummaryPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "DetailSummaryPanel")
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierDetailSummary)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"soldier detail page missing #%s summary panel; got %q",
+			uiids.PanelSoldierDetailSummary,
+			bodyExtract(body, "Display ID", 200),
+		)
+	}
+}
+
+// TestHandleSoldierDetailRendersRecordsPanel pins
+// PanelSoldierDetailRecords — the Source Records section
+// on /soldiers/{id}. The section is conditionally rendered
+// (only when s.SourceRecords > 0), so the test seeds a
+// record via the soldiers facade to ensure the wrapper
+// anchors on a populated row.
+func TestHandleSoldierDetailRendersRecordsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s, err := app.soldiers.Create(models.Soldier{
+		FirstName: "Robert",
+		LastName:  "E Lee",
+		Records: []models.Record{
+			{RecordType: "TestSource", AppID: "APP-1", Details: "Sample source for panel anchor."},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create seeded soldier with record: %v", err)
+	}
+
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierDetailRecords)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"soldier detail page missing #%s records panel; got %q",
+			uiids.PanelSoldierDetailRecords,
+			bodyExtract(body, "Source Records", 200),
+		)
+	}
+}
+
+// TestHandleNewSoldierRendersPageWrapper pins the
+// PageSoldierNew UIID (issue #397 wide.3). GET /soldiers/new
+// renders the EntryForm (entry_form.templ) which is the same
+// templ the /soldiers/{id}/edit route uses — so the wrapper
+// must conditional-render via templ's if isEdit branch to
+// pin PageSoldierNew on the new page and PageSoldierEdit on
+// the edit page (per #397 locked decision 3 — same templ,
+// different page UIID).
+func TestHandleNewSoldierRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers/new")
+	if err != nil {
+		t.Fatalf("GET /soldiers/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/new status = %d, want 200", resp.StatusCode)
+	}
+
+	wantNew := fmt.Sprintf(`id="%s"`, uiids.PageSoldierNew)
+	if !strings.Contains(body, wantNew) {
+		t.Errorf(
+			"/soldiers/new missing #%s wrapper anchor; got %q",
+			uiids.PageSoldierNew,
+			bodyExtract(body, "Add Person Record", 200),
+		)
+	}
+}
+
+// TestHandleEditSoldierRendersEditPageWrapper pins the
+// PageSoldierEdit UIID. Mirrors the new-page test above —
+// on /soldiers/{id}/edit, PageSoldierEdit must render and
+// PageSoldierNew must NOT render (mutual exclusion via
+// templ's if/else).
+func TestHandleEditSoldierRendersEditPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "EditPageWrapper")
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID) + "/edit")
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d/edit: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d/edit status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	wantEdit := fmt.Sprintf(`id="%s"`, uiids.PageSoldierEdit)
+	if !strings.Contains(body, wantEdit) {
+		t.Errorf(
+			"/soldiers/%d/edit missing #%s wrapper anchor; got %q",
+			s.ID,
+			uiids.PageSoldierEdit,
+			bodyExtract(body, "Edit Person Record", 200),
+		)
+	}
+}
+
+// TestHandleNewSoldierRendersFormScratchpadPanel pins
+// PanelSoldierFormScratchpad on the new-record form. Per
+// #397 locked decision 3 the panel renders on BOTH new +
+// edit because the same templ serves both routes; a new-page
+// assertion is sufficient (the edit-page assertion lives
+// alongside the TestHandleEditSoldierRendersFormScratchpadPanel
+// test below — kept separate so a regression that breaks one
+// route but not the other surfaces the right diagnostic).
+func TestHandleNewSoldierRendersFormScratchpadPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers/new")
+	if err != nil {
+		t.Fatalf("GET /soldiers/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/new status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierFormScratchpad)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers/new missing #%s scratchpad panel; got %q",
+			uiids.PanelSoldierFormScratchpad,
+			bodyExtract(body, "record-persistence", 200),
+		)
+	}
+}
+
+// TestHandleNewSoldierRendersFormRecordsPanel pins
+// PanelSoldierFormRecords on the new-record form — the
+// Source Records editor section inside the entry form.
+// Renders on BOTH new + edit (same templ, same UIID).
+func TestHandleNewSoldierRendersFormRecordsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers/new")
+	if err != nil {
+		t.Fatalf("GET /soldiers/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/new status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierFormRecords)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers/new missing #%s form-records panel; got %q",
+			uiids.PanelSoldierFormRecords,
+			bodyExtract(body, "Source Records", 200),
+		)
+	}
+}
