@@ -589,3 +589,130 @@ func TestHandleSoldierDetailRendersRecordsPanel(t *testing.T) {
 		)
 	}
 }
+
+// TestHandleNewSoldierRendersPageWrapper pins the
+// PageSoldierNew UIID (issue #397 wide.3). GET /soldiers/new
+// renders the EntryForm (entry_form.templ) which is the same
+// templ the /soldiers/{id}/edit route uses — so the wrapper
+// must conditional-render via templ's if isEdit branch to
+// pin PageSoldierNew on the new page and PageSoldierEdit on
+// the edit page (per #397 locked decision 3 — same templ,
+// different page UIID).
+func TestHandleNewSoldierRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers/new")
+	if err != nil {
+		t.Fatalf("GET /soldiers/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/new status = %d, want 200", resp.StatusCode)
+	}
+
+	wantNew := fmt.Sprintf(`id="%s"`, uiids.PageSoldierNew)
+	if !strings.Contains(body, wantNew) {
+		t.Errorf(
+			"/soldiers/new missing #%s wrapper anchor; got %q",
+			uiids.PageSoldierNew,
+			bodyExtract(body, "Add Person Record", 200),
+		)
+	}
+}
+
+// TestHandleEditSoldierRendersEditPageWrapper pins the
+// PageSoldierEdit UIID. Mirrors the new-page test above —
+// on /soldiers/{id}/edit, PageSoldierEdit must render and
+// PageSoldierNew must NOT render (mutual exclusion via
+// templ's if/else).
+func TestHandleEditSoldierRendersEditPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "EditPageWrapper")
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID) + "/edit")
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d/edit: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d/edit status = %d, want 200", s.ID, resp.StatusCode)
+	}
+
+	wantEdit := fmt.Sprintf(`id="%s"`, uiids.PageSoldierEdit)
+	if !strings.Contains(body, wantEdit) {
+		t.Errorf(
+			"/soldiers/%d/edit missing #%s wrapper anchor; got %q",
+			s.ID,
+			uiids.PageSoldierEdit,
+			bodyExtract(body, "Edit Person Record", 200),
+		)
+	}
+}
+
+// TestHandleNewSoldierRendersFormScratchpadPanel pins
+// PanelSoldierFormScratchpad on the new-record form. Per
+// #397 locked decision 3 the panel renders on BOTH new +
+// edit because the same templ serves both routes; a new-page
+// assertion is sufficient (the edit-page assertion lives
+// alongside the TestHandleEditSoldierRendersFormScratchpadPanel
+// test below — kept separate so a regression that breaks one
+// route but not the other surfaces the right diagnostic).
+func TestHandleNewSoldierRendersFormScratchpadPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers/new")
+	if err != nil {
+		t.Fatalf("GET /soldiers/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/new status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierFormScratchpad)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers/new missing #%s scratchpad panel; got %q",
+			uiids.PanelSoldierFormScratchpad,
+			bodyExtract(body, "record-persistence", 200),
+		)
+	}
+}
+
+// TestHandleNewSoldierRendersFormRecordsPanel pins
+// PanelSoldierFormRecords on the new-record form — the
+// Source Records editor section inside the entry form.
+// Renders on BOTH new + edit (same templ, same UIID).
+func TestHandleNewSoldierRendersFormRecordsPanel(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/soldiers/new")
+	if err != nil {
+		t.Fatalf("GET /soldiers/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/new status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PanelSoldierFormRecords)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/soldiers/new missing #%s form-records panel; got %q",
+			uiids.PanelSoldierFormRecords,
+			bodyExtract(body, "Source Records", 200),
+		)
+	}
+}
