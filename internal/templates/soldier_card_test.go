@@ -818,3 +818,37 @@ func TestSoldierDetailHasShareQueueButton(t *testing.T) {
 		}
 	}
 }
+
+// === Issue #368 slice 3 UI tests ===
+
+// TestSoldierDetailRendersReorderControlsOnEachSourceRecord proves
+// the up/down/position controls render for every Source Record on
+// the Person detail page (issue #368 slice 3). Each row must
+// have a PATCH form to /soldiers/{id}/sources/{sourceId}/position.
+func TestSoldierDetailRendersReorderControlsOnEachSourceRecord(t *testing.T) {
+	var buf bytes.Buffer
+	err := SoldierDetail(viewmodel.PersonRecord{
+		ID:        42,
+		DisplayID: "DXD-00042",
+		FirstName: "Robert",
+		LastName:  "Lee",
+		SourceRecords: []viewmodel.SourceRecord{
+			{ID: 100, SourceRecordType: "Roster", AppID: "APP-A", Details: "first"},
+			{ID: 101, SourceRecordType: "Parole", AppID: "APP-B", Details: "second"},
+			{ID: 102, SourceRecordType: "Letter", AppID: "APP-C", Details: "third"},
+		},
+	}, nil, nil).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	content := buf.String()
+	for _, sourceID := range []string{"100", "101", "102"} {
+		expected := `action="/soldiers/42/sources/` + sourceID + `/position"`
+		if !strings.Contains(content, expected) {
+			t.Fatalf("record %s reorder form action not found; expected %s", sourceID, expected)
+		}
+	}
+	if !strings.Contains(content, `name="position"`) {
+		t.Fatalf("expected position input fields; not found in content")
+	}
+}

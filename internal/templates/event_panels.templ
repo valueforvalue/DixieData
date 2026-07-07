@@ -40,15 +40,77 @@ templ EventSourcesListFragment(eventID int64, sources []viewmodel.SourceRecord) 
 	if len(sources) == 0 {
 		@components.EmptyState("No Source Records attached", "Add sources from the event editor — open Edit Event, paste your source rows, save.", "")
 	} else {
-		<ul class="space-y-2">
-			for _, src := range sources {
-				<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm">
-					<span class="font-mono text-xs text-slate-500">{ src.AppID }</span>
-					<span class="ml-2 font-semibold">{ src.SourceRecordType }</span>
-					<p class="mt-1 whitespace-pre-line text-xs text-slate-600">{ src.Details }</p>
+		<ol class="space-y-2" data-event-sources-list>
+			for i, src := range sources {
+				<li class="rounded-2xl border border-slate-200 bg-white/70 p-3 text-sm" data-event-source-id={ fmt.Sprintf("%d", src.ID) }>
+					<div class="flex flex-wrap items-center gap-2">
+						<div class="flex-1 min-w-0">
+							<span class="font-mono text-xs text-slate-500">{ src.AppID }</span>
+							<span class="ml-2 font-semibold">{ src.SourceRecordType }</span>
+							<p class="mt-1 whitespace-pre-line text-xs text-slate-600">{ src.Details }</p>
+						</div>
+						<div class="flex items-center gap-1 shrink-0">
+							<form
+								method="patch"
+								action={ templ.SafeURL(routebuilder.EventSourcePosition(eventID, src.ID)) }
+								data-dixie-submit="true"
+								data-reload-on-success="true"
+								class="inline"
+							>
+								<input type="hidden" name="position" value={ fmt.Sprintf("%d", i) }/>
+								<button
+									type="submit"
+									class="icon-link"
+									if i == 0 {
+										disabled
+									}
+									aria-label="Move up"
+									data-event-source-move="up"
+									data-event-source-id={ fmt.Sprintf("%d", src.ID) }
+								>▲</button>
+							</form>
+							<form
+								method="patch"
+								action={ templ.SafeURL(routebuilder.EventSourcePosition(eventID, src.ID)) }
+								data-dixie-submit="true"
+								data-reload-on-success="true"
+								class="inline"
+							>
+								<input
+									type="number"
+									name="position"
+									value={ fmt.Sprintf("%d", i+1) }
+									min="1"
+									max={ fmt.Sprintf("%d", len(sources)) }
+									class="w-14 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-2 py-1 text-center text-xs text-[color:var(--ink)]"
+									data-event-source-position
+									data-event-source-id={ fmt.Sprintf("%d", src.ID) }
+								/>
+							</form>
+							<form
+								method="patch"
+								action={ templ.SafeURL(routebuilder.EventSourcePosition(eventID, src.ID)) }
+								data-dixie-submit="true"
+								data-reload-on-success="true"
+								class="inline"
+							>
+								<input type="hidden" name="position" value={ fmt.Sprintf("%d", i+2) }/>
+								<button
+									type="submit"
+									class="icon-link"
+									if i == len(sources)-1 {
+										disabled
+									}
+									aria-label="Move down"
+									data-event-source-move="down"
+									data-event-source-id={ fmt.Sprintf("%d", src.ID) }
+								>▼</button>
+							</form>
+						</div>
+					</div>
 				</li>
 			}
-		</ul>
+		</ol>
 	}
 }
 

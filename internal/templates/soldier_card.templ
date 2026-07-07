@@ -548,15 +548,7 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 				if len(s.SourceRecords) > 0 {
 					<section id={ uiids.PanelSoldierDetailRecords } class="relative">
 						<h3 class="mt-8 text-lg gold font-semibold">Source Records</h3>
-						for _, r := range s.SourceRecords {
-							<div class="card rounded-2xl p-4 mt-3 text-sm">
-								<span class="gold">{ r.SourceRecordType }</span>
-								if r.AppID != "" {
-									<span class="ml-2 text-slate-500">App: { r.AppID }</span>
-								}
-								@LinkedText(r.Details, "text-slate-600 mt-2 leading-6")
-							</div>
-						}
+						@SoldierRecordsListFragment(s.ID, s.SourceRecords)
 					</section>
 				}
 				<section class="relative">
@@ -648,6 +640,90 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 		}
 	}
 }
+
+// SoldierRecordsListFragment renders the Source Records list
+// for the Person detail page (issue #368 slice 3). Each row
+// carries up/down arrow buttons + a numeric position input that
+// PATCH /soldiers/{id}/sources/{sourceId}/position with the new
+// position. The arrows use hidden inputs to encode the target
+// position; the position input takes a user-typed value. Disabled
+// state for the arrows prevents clicking past either end.
+templ SoldierRecordsListFragment(soldierID int64, records []viewmodel.SourceRecord) {
+	<ol class="space-y-3 mt-3" data-source-records-list>
+		for i, r := range records {
+			<li class="card rounded-2xl p-4 text-sm" data-source-record-id={ fmt.Sprintf("%d", r.ID) }>
+				<div class="flex flex-wrap items-center gap-2">
+					<div class="flex-1 min-w-0">
+						<span class="gold">{ r.SourceRecordType }</span>
+						if r.AppID != "" {
+							<span class="ml-2 text-slate-500">App: { r.AppID }</span>
+						}
+						@LinkedText(r.Details, "text-slate-600 mt-2 leading-6")
+					</div>
+					<div class="flex items-center gap-1 shrink-0">
+						<form
+							method="patch"
+							action={ templ.SafeURL(routebuilder.SoldierSourcePosition(soldierID, r.ID)) }
+							data-dixie-submit="true"
+							data-reload-on-success="true"
+							class="inline"
+						>
+							<input type="hidden" name="position" value={ fmt.Sprintf("%d", i) }/>
+							<button
+								type="submit"
+								class="icon-link"
+								if i == 0 {
+									disabled
+								}
+								aria-label="Move up"
+								data-source-record-move="up"
+								data-source-record-id={ fmt.Sprintf("%d", r.ID) }
+							>▲</button>
+						</form>
+						<form
+							method="patch"
+							action={ templ.SafeURL(routebuilder.SoldierSourcePosition(soldierID, r.ID)) }
+							data-dixie-submit="true"
+							data-reload-on-success="true"
+							class="inline"
+						>
+							<input
+								type="number"
+								name="position"
+								value={ fmt.Sprintf("%d", i+1) }
+								min="1"
+								max={ fmt.Sprintf("%d", len(records)) }
+								class="w-14 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-2 py-1 text-center text-sm text-[color:var(--ink)]"
+								data-source-record-position
+								data-source-record-id={ fmt.Sprintf("%d", r.ID) }
+							/>
+						</form>
+						<form
+							method="patch"
+							action={ templ.SafeURL(routebuilder.SoldierSourcePosition(soldierID, r.ID)) }
+							data-dixie-submit="true"
+							data-reload-on-success="true"
+							class="inline"
+						>
+							<input type="hidden" name="position" value={ fmt.Sprintf("%d", i+2) }/>
+							<button
+								type="submit"
+								class="icon-link"
+								if i == len(records)-1 {
+									disabled
+								}
+								aria-label="Move down"
+								data-source-record-move="down"
+								data-source-record-id={ fmt.Sprintf("%d", r.ID) }
+							>▼</button>
+						</form>
+					</div>
+				</div>
+			</li>
+		}
+	</ol>
+}
+
 
 // SoldierImagesListFragment (issue #391 Slice B.1) renders
 // the per-soldier Images panel as a fragment-only payload
