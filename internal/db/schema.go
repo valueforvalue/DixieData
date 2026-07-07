@@ -89,7 +89,8 @@ CREATE TABLE IF NOT EXISTS records (
     person_sync_id TEXT,
     record_type  TEXT,
     app_id       TEXT,
-    details      TEXT
+    details      TEXT,
+    sort_order   INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS images (
@@ -328,7 +329,8 @@ CREATE TABLE IF NOT EXISTS event_sources (
     event_sync_id   TEXT,
     record_type     TEXT NOT NULL,
     app_id          TEXT NOT NULL,
-    details         TEXT NOT NULL DEFAULT ''
+    details         TEXT NOT NULL DEFAULT '',
+    sort_order      INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_event_sources_event ON event_sources(event_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_sources_sync_id ON event_sources(sync_id);
@@ -586,6 +588,14 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 		query = `PRAGMA table_info(scratchpad_cache)`
 	case "research_tasks":
 		query = `PRAGMA table_info(research_tasks)`
+	// v63 (issue #368): the records + event_sources source-record
+	// tables were added to the schema across multiple migrations
+	// (records: block-1 inline, event_sources: block-2). Supporting
+	// them here lets block-63's sort_order ALTER TABLE ADD COLUMN
+	// statements run idempotently on fresh installs (where the
+	// column is already inline) without erroring.
+	case "event_sources":
+		query = `PRAGMA table_info(event_sources)`
 	default:
 		return false, fmt.Errorf("unsupported table for schema introspection: %s", table)
 	}

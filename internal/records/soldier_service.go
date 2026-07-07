@@ -22,7 +22,7 @@ import (
 const (
 	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description`
 	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.person_record_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.person_record_id = soldiers.id)`
-	recordSelectColumns      = `id, sync_id, person_record_id, person_sync_id, record_type, app_id, details`
+	recordSelectColumns      = `id, sync_id, person_record_id, person_sync_id, record_type, app_id, details, sort_order`
 	imageSelectColumns       = `id, sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary`
 )
 
@@ -248,14 +248,14 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 		return nil, err
 	}
 
-	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, id)
+	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY sort_order, id`, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var r models.Record
-		if err := rows.Scan(&r.ID, &r.SyncID, &r.PersonRecordID, &r.PersonSyncID, &r.RecordType, &r.AppID, &r.Details); err != nil {
+		if err := rows.Scan(&r.ID, &r.SyncID, &r.PersonRecordID, &r.PersonSyncID, &r.RecordType, &r.AppID, &r.Details, &r.SortOrder); err != nil {
 			return nil, err
 		}
 		soldier.Records = append(soldier.Records, r)
@@ -296,14 +296,14 @@ func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, erro
 		return nil, err
 	}
 
-	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, soldier.ID)
+	rows, err := conn.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY sort_order, id`, soldier.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var record models.Record
-		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details, &record.SortOrder); err != nil {
 			return nil, err
 		}
 		soldier.Records = append(soldier.Records, record)
@@ -2853,14 +2853,14 @@ func loadSoldierAuditSnapshot(tx *sql.Tx, soldierID int64) (*models.Soldier, err
 	if err != nil {
 		return nil, err
 	}
-	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY id`, soldierID)
+	rows, err := tx.Query(`SELECT `+recordSelectColumns+` FROM records WHERE person_record_id = ? ORDER BY sort_order, id`, soldierID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var record models.Record
-		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details); err != nil {
+		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details, &record.SortOrder); err != nil {
 			return nil, err
 		}
 		soldier.Records = append(soldier.Records, record)
