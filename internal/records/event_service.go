@@ -149,7 +149,7 @@ func (e *EventService) DetachTagFromEvent(eventID, tagID int64) error {
 // event_sync_id); the handler layer only carries record_type,
 // app_id, and details. SyncID is minted if absent (distributed-
 // merge ready).
-func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record) (int64, error) {
+func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record, sortOrder int64) (int64, error) {
 	if eventID < 1 {
 		return 0, fmt.Errorf("event id must be positive")
 	}
@@ -167,9 +167,11 @@ func (e *EventService) AttachSourceToEvent(eventID int64, source models.Record) 
 		}
 		source.PersonSyncID = eventRow.SyncID
 	}
+	// Issue #368 slice 2: pass sort_order from the array index
+	// so a re-save preserves the user's current display order.
 	res, err := e.soldiers.db.Conn().Exec(
-		`INSERT INTO event_sources (sync_id, event_id, event_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
-		source.SyncID, eventID, source.PersonSyncID, source.RecordType, source.AppID, source.Details,
+		`INSERT INTO event_sources (sync_id, event_id, event_sync_id, record_type, app_id, details, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		source.SyncID, eventID, source.PersonSyncID, source.RecordType, source.AppID, source.Details, sortOrder,
 	)
 	if err != nil {
 		return 0, err
@@ -210,11 +212,11 @@ func (e *EventService) AttachSourcesToEvent(eventID int64, sources []models.Reco
 		return nil, fmt.Errorf("event id must be positive")
 	}
 	ids := make([]int64, 0, len(sources))
-	for _, src := range sources {
+	for idx, src := range sources {
 		if strings.TrimSpace(src.RecordType) == "" && strings.TrimSpace(src.AppID) == "" && strings.TrimSpace(src.Details) == "" {
 			continue
 		}
-		id, err := e.AttachSourceToEvent(eventID, src)
+		id, err := e.AttachSourceToEvent(eventID, src, int64(idx))
 		if err != nil {
 			return ids, fmt.Errorf("attach source %q: %w", src.RecordType, err)
 		}
@@ -741,4 +743,83 @@ func slugifyEventFilename(event models.Soldier, orientation string) string {
 		return fmt.Sprintf("Event-%s-%s.pdf", event.DisplayID, short)
 	}
 	return fmt.Sprintf("Event-%s-%s-%s.pdf", event.DisplayID, slug, short)
+}
+
+// MoveEventSource reorders an Event Source within its owning
+// Event. Mirrors MoveRecordWithinPerson but writes to the
+// event_sources table. The person_record_id check (ownerID ==
+// eventID) uses the event_id column on event_sources.
+//
+// Issue #368 slice 2.
+func (e *EventService) MoveEventSource(eventID, sourceID, position int64) error {
+	if eventID < 1 || sourceID < 1 {
+		return fmt.Errorf("event id and source id must be positive")
+	}
+	conn := e.soldiers.db.Conn()
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var ownerID int64
+	if err := tx.QueryRow(
+		`SELECT event_id FROM event_sources WHERE id = ?`,
+		sourceID,
+	).Scan(&ownerID); err != nil {
+		return err
+	}
+	if ownerID != eventID {
+		return fmt.Errorf("source %d is not attached to event %d", sourceID, eventID)
+	}
+
+	var n int64
+	if err := tx.QueryRow(
+		`SELECT COUNT(*) FROM event_sources WHERE event_id = ?`,
+		eventID,
+	).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("no event sources to reorder for event %d", eventID)
+	}
+	if position < 1 {
+		position = 1
+	}
+	if position > n {
+		position = n
+	}
+
+	var currentOrder int64
+	if err := tx.QueryRow(
+		`SELECT sort_order FROM event_sources WHERE id = ?`,
+		sourceID,
+	).Scan(&currentOrder); err != nil {
+		return err
+	}
+
+	if currentOrder < position {
+		if _, err := tx.Exec(
+			`UPDATE event_sources SET sort_order = sort_order - 1 WHERE event_id = ? AND id <> ? AND sort_order > ? AND sort_order <= ?`,
+			eventID, sourceID, currentOrder, position,
+		); err != nil {
+			return err
+		}
+	} else if currentOrder > position {
+		if _, err := tx.Exec(
+			`UPDATE event_sources SET sort_order = sort_order + 1 WHERE event_id = ? AND id <> ? AND sort_order >= ? AND sort_order < ?`,
+			eventID, sourceID, position, currentOrder,
+		); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(
+		`UPDATE event_sources SET sort_order = ? WHERE id = ?`,
+		position, sourceID,
+	); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

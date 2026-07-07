@@ -187,6 +187,24 @@ func SoldierRecoverDisplayID(soldierID int64) string {
 	return fmt.Sprintf("/soldiers/%d/display-id/recover", soldierID)
 }
 
+// SoldierSourcePosition returns the URL for the PATCH
+// endpoint that reorders a Source Record within a Person
+// Record (issue #368 slice 2). Registered as PATCH
+// /soldiers/{id}/sources/{sourceId}/position in routes.go.
+// Accepts a form field `position` (1-indexed, clamped to
+// [1, N] server-side).
+func SoldierSourcePosition(soldierID, sourceID int64) string {
+	return fmt.Sprintf("/soldiers/%d/sources/%d/position", soldierID, sourceID)
+}
+
+// EventSourcePosition returns the URL for the PATCH
+// endpoint that reorders an Event Source within its Event
+// (issue #368 slice 2). Registered as PATCH
+// /events/{id}/sources/{sourceId}/position in routes.go.
+func EventSourcePosition(eventID, sourceID int64) string {
+	return fmt.Sprintf("/events/%d/sources/%d/position", eventID, sourceID)
+}
+
 // SoldierCamaraderie returns the URL for the camaraderie graph page.
 // Registered as GET /soldiers/{id}/camaraderie in routes.go.
 func SoldierCamaraderie(id int64) string {

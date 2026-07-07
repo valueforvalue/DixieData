@@ -695,3 +695,64 @@ func (a *App) handleRecoverDisplayID(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"display_id":%q}`, newID)
 }
+
+// handleMoveSoldierSource reorders a Source Record within
+// its owning Person Record. Issue #368 slice 2.
+//
+// Method: PATCH /soldiers/{id}/sources/{sourceId}/position
+// Body: form field `position` (1-indexed; clamped server-side
+// to [1, N] where N is the current row count).
+// Status codes:
+//   - 200 OK on success (returns the soldier detail page in
+//     htmx-friendly form so the UI swaps the source list in place)
+//   - 400 on invalid position
+//   - 404 on missing person or source
+//   - 500 on unexpected
+func (a *App) handleMoveSoldierSource(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/soldiers/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "sources" || parts[3] != "position" {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	personID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid person id", http.StatusBadRequest)
+		return
+	}
+	sourceID, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid source id", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the position form.", err)
+		return
+	}
+	position, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("position")), 10, 64)
+	if err != nil || position < 1 {
+		respondValidation(w, r, "Position must be a positive integer.", err)
+		return
+	}
+	if err := a.soldiers.MoveRecordWithinPerson(personID, sourceID, position); err != nil {
+		if strings.Contains(err.Error(), "not attached to person") {
+			respondNotFound(w, r, fmt.Sprintf("Source %d is not attached to person %d.", sourceID, personID), err)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			respondNotFound(w, r, fmt.Sprintf("Source %d not found.", sourceID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not reorder source %d for person %d.", sourceID, personID), err)
+		return
+	}
+	setToastHeader(w, "Source reordered.")
+	// Redirect to the soldier detail page; the source list will
+	// render in the new order on next GET.
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/soldiers/%d", personID))
+	w.WriteHeader(http.StatusOK)
+}

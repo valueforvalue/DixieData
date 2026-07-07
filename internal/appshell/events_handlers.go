@@ -49,6 +49,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/templates"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
+	"database/sql"
 )
 
 // handleEvents renders the /events list page. Method must be
@@ -1005,7 +1006,8 @@ func (a *App) handleEventSourceAttach(w http.ResponseWriter, r *http.Request, ev
 		AppID:      strings.TrimSpace(r.FormValue("app_id")),
 		Details:    strings.TrimSpace(r.FormValue("details")),
 	}
-	if _, err := a.events.AttachSourceToEvent(eventID, source); err != nil {
+	sortOrder, _ := strconv.ParseInt(strings.TrimSpace(r.FormValue("sort_order")), 10, 64)
+	if _, err := a.events.AttachSourceToEvent(eventID, source, sortOrder); err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not attach source to event record %d.", eventID), err)
 		return
 	}
@@ -1394,4 +1396,57 @@ func (a *App) handleEventLinksDetachRoute(w http.ResponseWriter, r *http.Request
 		return
 	}
 	a.handleEventLinksDetach(w, r, eventID, personID)
+}
+
+// handleMoveEventSource reorders an Event Source within
+// its owning Event. Issue #368 slice 2.
+//
+// Method: PATCH /events/{id}/sources/{sourceId}/position
+// Body: form field `position` (1-indexed; clamped server-side
+// to [1, N]).
+func (a *App) handleMoveEventSource(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/events/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[1] != "sources" || parts[3] != "position" {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	eventID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid event id", http.StatusBadRequest)
+		return
+	}
+	sourceID, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid source id", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		respondValidation(w, r, "Could not read the position form.", err)
+		return
+	}
+	position, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("position")), 10, 64)
+	if err != nil || position < 1 {
+		respondValidation(w, r, "Position must be a positive integer.", err)
+		return
+	}
+	if err := a.events.MoveEventSource(eventID, sourceID, position); err != nil {
+		if strings.Contains(err.Error(), "not attached to event") {
+			respondNotFound(w, r, fmt.Sprintf("Source %d is not attached to event %d.", sourceID, eventID), err)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			respondNotFound(w, r, fmt.Sprintf("Source %d not found.", sourceID), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not reorder source %d for event %d.", sourceID, eventID), err)
+		return
+	}
+	setToastHeader(w, "Event source reordered.")
+	w.Header().Set("X-DixieData-Redirect", fmt.Sprintf("/events/%d", eventID))
+	w.WriteHeader(http.StatusOK)
 }

@@ -79,6 +79,12 @@ func (a *App) setupRoutes() {
 	// doesn't apply here (this is an admin/recovery path,
 	// not a foldout entry).
 	r.Post("/soldiers/{id:[0-9]+}/display-id/recover", a.handleRecoverDisplayID)
+	// Issue #368 slice 2: PATCH endpoint for reordering a
+	// Source Record within a Person Record. Top-level chi
+	// route (not a sub-dispatch in handleSoldierByID) so
+	// the picker-guard doesn't apply and the method is
+	// method-specific (chi 405s other methods automatically).
+	r.Patch("/soldiers/{id:[0-9]+}/sources/{sourceId:[0-9]+}/position", a.handleMoveSoldierSource)
 	r.Post("/browse/bulk-tag", a.handleBulkTagFromBrowse)
 	r.Get("/soldiers/*", a.handleSoldierByID)
 	r.Post("/soldiers/*", a.handleSoldierByID)
@@ -207,6 +213,9 @@ func (a *App) setupRoutes() {
 	// before deleting in a future cleanup issue.
 	r.Post("/events/{id:[0-9]+}/sources/attach", a.handleEventSourcesRoute)
 	r.Post("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/detach", a.handleEventSourcesRoute)
+	// Issue #368 slice 2: PATCH endpoint for reordering an
+	// Event Source. Same shape as the soldier-side route.
+	r.Patch("/events/{id:[0-9]+}/sources/{sourceId:[0-9]+}/position", a.handleMoveEventSource)
 	// Issue #320 slice #333: per-Event Tags chips. The
 	// person_record_tags junction FKs soldiers(id) so the
 	// same table covers Events.

@@ -341,7 +341,7 @@ func TestEventService_UpdateEventPreservesAttachedSources(t *testing.T) {
 		RecordType: "Pension Application",
 		AppID:      "APP-1880-7701",
 		Details:    "Filed 1880, Co. B, 4th VA Infantry",
-	})
+	}, 0)
 	if err != nil {
 		t.Fatalf("AttachSourceToEvent: %v", err)
 	}
@@ -393,7 +393,7 @@ func TestEventService_SourceRoundTripOnEventSourcesTable(t *testing.T) {
 		RecordType: "Pension",
 		AppID:      "APP-1",
 		Details:    "first",
-	})
+	}, 0)
 	if err != nil {
 		t.Fatalf("AttachSourceToEvent 1: %v", err)
 	}
@@ -409,7 +409,7 @@ func TestEventService_SourceRoundTripOnEventSourcesTable(t *testing.T) {
 		RecordType: "Roster",
 		AppID:      "APP-2",
 		Details:    "second",
-	})
+	}, 0)
 	if err != nil {
 		t.Fatalf("AttachSourceToEvent 2: %v", err)
 	}
@@ -473,7 +473,7 @@ func TestEventService_GetEventByIDReturnsEventSourcesField(t *testing.T) {
 		RecordType: "Pension Application",
 		AppID:      "APP-1880-7701",
 		Details:    "Filed 1880",
-	})
+	}, 0)
 	if err != nil {
 		t.Fatalf("AttachSourceToEvent: %v", err)
 	}

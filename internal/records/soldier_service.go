@@ -2129,7 +2129,7 @@ func replaceRecords(tx *sql.Tx, soldierID int64, soldierSyncID string, records [
 	if _, err := tx.Exec(`DELETE FROM records WHERE person_record_id = ?`, soldierID); err != nil {
 		return err
 	}
-	for _, record := range normalizeRecords(records) {
+	for idx, record := range normalizeRecords(records) {
 		if strings.TrimSpace(record.SyncID) == "" {
 			syncID, err := db.NewSyncID()
 			if err != nil {
@@ -2138,14 +2138,21 @@ func replaceRecords(tx *sql.Tx, soldierID int64, soldierSyncID string, records [
 			record.SyncID = syncID
 		}
 		record.PersonSyncID = soldierSyncID
+		// Issue #368 slice 2: write sort_order from the form-array
+		// index so a re-save preserves the user's current display
+		// order. The replaceRecords path deletes + reinserts, so
+		// without this the new rows would all carry sort_order=0
+		// (the column DEFAULT) and the secondary `id` tiebreak
+		// would hide the user's reorder.
 		if _, err := tx.Exec(
-			`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details) VALUES (?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO records (sync_id, person_record_id, person_sync_id, record_type, app_id, details, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			record.SyncID,
 			soldierID,
 			record.PersonSyncID,
 			record.RecordType,
 			record.AppID,
 			record.Details,
+			int64(idx),
 		); err != nil {
 			return err
 		}
@@ -3210,4 +3217,106 @@ func (s *SoldierService) RecoverDisplayID(id int64) (string, error) {
 		return row.DisplayID, nil
 	}
 	return minted, nil
+}
+
+// MoveRecordWithinPerson reorders a Source Record within its
+// owning Person so it lands at `position` (1-indexed) in the
+// sort_order sequence. The method writes a single transaction
+// that shifts the other rows' sort_order so the requested row
+// can take its new slot. Clamps `position` to [1, N] where N is
+// the row count. Returns an error if the record doesn't exist
+// OR doesn't belong to the supplied person (the WHERE clause
+// scopes the UPDATE so a foreign record id is a no-op + 0 rows
+// affected, which we surface as an error to the caller).
+//
+// Issue #368 slice 2.
+func (s *SoldierService) MoveRecordWithinPerson(personID, recordID, position int64) error {
+	if personID < 1 || recordID < 1 {
+		return fmt.Errorf("person id and record id must be positive")
+	}
+	conn := s.db.Conn()
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Verify the record exists AND belongs to this person.
+	var ownerID int64
+	if err := tx.QueryRow(
+		`SELECT person_record_id FROM records WHERE id = ?`,
+		recordID,
+	).Scan(&ownerID); err != nil {
+		return err
+	}
+	if ownerID != personID {
+		return fmt.Errorf("record %d is not attached to person %d", recordID, personID)
+	}
+
+	// Count N (the current row count for this person) so we can
+	// clamp position. N is stable within a single transaction.
+	var n int64
+	if err := tx.QueryRow(
+		`SELECT COUNT(*) FROM records WHERE person_record_id = ?`,
+		personID,
+	).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("no records to reorder for person %d", personID)
+	}
+	if position < 1 {
+		position = 1
+	}
+	if position > n {
+		position = n
+	}
+
+	// Shift every other row's sort_order so the requested row
+	// can take its new slot. Two strategies depending on whether
+	// the row is moving up or down.
+	//
+	// The shift is +1 for every row between the requested row's
+	// current position and the new position (inclusive on one
+	// end, exclusive on the other), then the requested row gets
+	// `position`. The single-transaction shape avoids an interim
+	// state where two rows share a sort_order.
+	//
+	// First: read the requested row's current sort_order.
+	var currentOrder int64
+	if err := tx.QueryRow(
+		`SELECT sort_order FROM records WHERE id = ?`,
+		recordID,
+	).Scan(&currentOrder); err != nil {
+		return err
+	}
+
+	if currentOrder < position {
+		// Moving down: rows between currentOrder+1 and position
+		// shift up by -1.
+		if _, err := tx.Exec(
+			`UPDATE records SET sort_order = sort_order - 1 WHERE person_record_id = ? AND id <> ? AND sort_order > ? AND sort_order <= ?`,
+			personID, recordID, currentOrder, position,
+		); err != nil {
+			return err
+		}
+	} else if currentOrder > position {
+		// Moving up: rows between position and currentOrder-1
+		// shift down by +1.
+		if _, err := tx.Exec(
+			`UPDATE records SET sort_order = sort_order + 1 WHERE person_record_id = ? AND id <> ? AND sort_order >= ? AND sort_order < ?`,
+			personID, recordID, position, currentOrder,
+		); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(
+		`UPDATE records SET sort_order = ? WHERE id = ?`,
+		position, recordID,
+	); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
