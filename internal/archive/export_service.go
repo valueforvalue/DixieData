@@ -56,12 +56,13 @@ type pdfToJPEGRasterizer interface {
 	Rasterize(pdfPath, outputDir string) ([]string, error)
 }
 
-// ExportMetadata is the per-export envelope written into every export format (PDF, JPG, JSON, CSV, iCal, etc.): the app + schema version, the source app's commit SHA, the source dataDir, the export timestamp, and the per-archive-kind toggles (issue #183's include_tags etc.).
+// ExportMetadata is the per-export envelope written into every export format (PDF, JPG, JSON, CSV, iCal, etc.): the app + schema version, the source app's commit SHA, the source dataDir, the export timestamp, and the per-archive-kind toggles (issue #183's include_tags etc.). FormatVersion is the per-surface discoverable stamp (issue #383 Decision 1) that lets a re-import detect format drift — the value is per-surface (e.g. "csv_v1", "json_v1", "ical_v1") so each surface can carry its own major.minor namespace, decoupled from DixieData semver.
 type ExportMetadata struct {
 	AppVersion    string `json:"app_version"`
 	SchemaVersion int    `json:"schema_version"`
 	Format        string `json:"format"`
 	Version       int    `json:"version"`
+	FormatVersion string `json:"format_version"`
 	GeneratedAt   string `json:"generated_at"`
 }
 
@@ -797,7 +798,42 @@ func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldi
 			return nil, fmt.Errorf("save JPG page %d: %w", i+1, err)
 		}
 	}
+	// Issue #383 slice 4: stamp the JPG export with a
+	// sidecar `<stem>.meta.json` next to the rendered page(s).
+	// JPGs don't carry an envelope (no header block, EXIF is
+	// limited), so the sidecar is the discoverable hook. A
+	// re-import reads the sidecar to detect format drift
+	// (refuse major / warn minor / silent same).
+	if err := writeJPGFormatSidecar(finalPaths[0], buildinfo.JPGFormatVersion, "soldier"); err != nil {
+		return nil, fmt.Errorf("write JPG format sidecar: %w", err)
+	}
 	return finalPaths, nil
+}
+
+// writeJPGFormatSidecar writes a `<stem>.meta.json` next to a
+// rendered JPG export carrying the discoverable format version
+// (issue #383 slice 4). The sidecar lives next to the FIRST
+// page of the export; multi-page exports share one sidecar so
+// the reader doesn't have to guess which page to inspect.
+func writeJPGFormatSidecar(firstPagePath string, formatVersion, contentKind string) error {
+	dir := filepath.Dir(firstPagePath)
+	base := filepath.Base(firstPagePath)
+	// Strip the `.jpg` extension; add `.meta.json` so the
+	// sidecar lives next to its JPG.
+	stem := strings.TrimSuffix(base, filepath.Ext(base))
+	sidecarPath := filepath.Join(dir, stem+".meta.json")
+	payload := map[string]string{
+		"format_version": formatVersion,
+		"app_version":    buildinfo.AppVersion,
+		"schema_version": fmt.Sprintf("%d", buildinfo.SchemaVersion),
+		"exported_at":    time.Now().UTC().Format(time.RFC3339),
+		"content_kind":   contentKind,
+	}
+	body, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(sidecarPath, body, 0o644)
 }
 
 func ensureJPGOutputPath(outputPath string) string {
@@ -851,7 +887,7 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 	enc.SetIndent("", "  ")
 
 	payload := JSONExportDocument{
-		Metadata: newExportMetadata("json", buildinfo.JSONExportVersion),
+		Metadata: newExportMetadataWithFormatVersion("json", buildinfo.JSONExportVersion, buildinfo.JSONFormatVersion),
 		Soldiers: []models.Soldier{},
 	}
 	page := 1
@@ -904,7 +940,7 @@ func (e *ExportService) ExportJSONWithStats(outputPath string) (records, images,
 	enc.SetIndent("", "  ")
 
 	payload := JSONExportDocument{
-		Metadata: newExportMetadata("json", buildinfo.JSONExportVersion),
+		Metadata: newExportMetadataWithFormatVersion("json", buildinfo.JSONExportVersion, buildinfo.JSONFormatVersion),
 		Soldiers: []models.Soldier{},
 	}
 	page := 1
@@ -974,17 +1010,18 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 		return err
 	}
 
-	metadata := newExportMetadata("xlsx", buildinfo.XLSXExportVersion)
+	metadata := newExportMetadataWithFormatVersion("xlsx", buildinfo.XLSXExportVersion, buildinfo.XLSXFormatVersion)
 	spouseIndex := map[int64]models.Soldier{}
 	for _, soldier := range soldiers {
 		spouseIndex[soldier.ID] = soldier
 	}
 
-	metadataHeaders := []string{"app_version", "schema_version", "export_version", "generated_at", "format"}
+	metadataHeaders := []string{"app_version", "schema_version", "export_version", "format_version", "generated_at", "format"}
 	metadataValues := []string{
 		metadata.AppVersion,
 		fmt.Sprintf("%d", metadata.SchemaVersion),
 		fmt.Sprintf("%d", metadata.Version),
+		metadata.FormatVersion,
 		metadata.GeneratedAt,
 		metadata.Format,
 	}
@@ -1007,7 +1044,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 	}
 
 	archiveHeaders := []string{
-		"app_version", "schema_version", "export_version", "generated_at",
+		"app_version", "schema_version", "export_version", "format_version", "generated_at",
 		"db_id", "display_id", "entry_type",
 		"linked_spouse_db_id", "linked_spouse_display_id", "linked_spouse_name",
 		"relationship_label", "maiden_name", "is_generated", "pension_id", "application_id",
@@ -1037,6 +1074,7 @@ func (e *ExportService) ExportExcel(outputPath string) error {
 			metadata.AppVersion,
 			fmt.Sprintf("%d", metadata.SchemaVersion),
 			fmt.Sprintf("%d", metadata.Version),
+			metadata.FormatVersion,
 			metadata.GeneratedAt,
 			fmt.Sprintf("%d", soldier.ID),
 			soldier.DisplayID,
@@ -1255,6 +1293,7 @@ func (e *ExportService) ExportICalendar(outputPath string, preferences models.Ca
 		fmt.Sprintf("X-DIXIEDATA-APP-VERSION:%s", buildinfo.AppVersion),
 		fmt.Sprintf("X-DIXIEDATA-SCHEMA-VERSION:%d", buildinfo.SchemaVersion),
 		fmt.Sprintf("X-DIXIEDATA-EXPORT-VERSION:%d", buildinfo.ICalendarExportVersion),
+		fmt.Sprintf("X-DIXIEDATA-FORMAT-VERSION:%s", buildinfo.ICalendarFormatVersion),
 	} {
 		if err := writeICalendarLine(f, line); err != nil {
 			return err
@@ -1328,8 +1367,8 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	w := csv.NewWriter(f)
 	defer w.Flush()
 
-	metadata := newExportMetadata("csv", buildinfo.CSVExportVersion)
-	header := []string{"app_version", "schema_version", "export_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "relationship_label", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "biography", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
+	metadata := newExportMetadataWithFormatVersion("csv", buildinfo.CSVExportVersion, buildinfo.CSVFormatVersion)
+	header := []string{"app_version", "schema_version", "export_version", "format_version", "generated_at", "id", "display_id", "entry_type", "spouse_soldier_id", "relationship_label", "maiden_name", "is_generated", "pension_id", "application_id", "prefix", "first_name", "middle_name", "last_name", "suffix", "rank", "rank_in", "rank_out", "unit", "pension_state", "confederate_home_status", "confederate_home_name", "birth_date", "death_date", "birth_info", "buried_in", "biography", "notes", "added_by", "last_edited_by", "last_edited_fields", "last_edited_at", "created_at", "updated_at"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1349,6 +1388,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 				metadata.AppVersion,
 				fmt.Sprintf("%d", metadata.SchemaVersion),
 				fmt.Sprintf("%d", metadata.Version),
+				metadata.FormatVersion,
 				metadata.GeneratedAt,
 				fmt.Sprintf("%d", s.ID),
 				s.DisplayID,
@@ -1774,11 +1814,23 @@ func uniqueCopiedImagePath(rootDir, fileName string, usedNames map[string]bool) 
 
 
 func newExportMetadata(format string, version int) ExportMetadata {
+	return newExportMetadataWithFormatVersion(format, version, "")
+}
+
+// newExportMetadataWithFormatVersion is the per-surface
+// constructor for issue #383: each export surface passes its
+// own discoverable stamp (e.g. buildinfo.CSVFormatVersion)
+// so a re-import can detect format drift. The legacy
+// newExportMetadata is preserved for any test/caller that
+// doesn't care about the stamp (the empty FormatVersion is
+// treated as "pre-#383 stamp" by readers).
+func newExportMetadataWithFormatVersion(format string, version int, formatVersion string) ExportMetadata {
 	return ExportMetadata{
 		AppVersion:    buildinfo.AppVersion,
 		SchemaVersion: buildinfo.SchemaVersion,
 		Format:        format,
 		Version:       version,
+		FormatVersion: formatVersion,
 		GeneratedAt:   time.Now().Format(time.RFC3339),
 	}
 }

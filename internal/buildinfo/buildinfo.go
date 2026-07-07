@@ -62,6 +62,54 @@ const (
 	//   - minor bump (memorial_v1.0 → memorial_v1.1) → warn in summary, import
 	//   - major bump (memorial_v1 → memorial_v2) → refuse (typed error)
 	MemorialArchiveFormatVersion = "memorial_v1"
+	// CSVFormatVersion is the discoverable stamp the DixieData
+	// CSV exporter (internal/archive.ExportCSV) writes into
+	// the per-row metadata block as a `format_version` column.
+	// Bumped on DixieData-side CSV shape changes (column
+	// additions, encoding changes, header rewrites). Distinct
+	// from the legacy integer CSVExportVersion (which is the
+	// row-shape counter); the per-surface namespace pattern
+	// (Decision 1 in #383) decouples from DixieData semver.
+	CSVFormatVersion = "csv_v1"
+	// ICalendarFormatVersion is the discoverable stamp the
+	// DixieData iCal exporter writes as the
+	// `X-DIXIEDATA-FORMAT-VERSION` extension property. Sibling
+	// to ICalendarExportVersion (integer row-shape counter).
+	ICalendarFormatVersion = "ical_v1"
+	// JPGFormatVersion is the discoverable stamp the DixieData
+	// JPG exporter writes into a sidecar `.meta.json` next to
+	// each rendered page. JPGs don't have an obvious header
+	// field for stamps (no envelope, EXIF is limited); the
+	// sidecar is the practical hook. Bumped on DixieData-side
+	// JPG layout changes (page count changes, filename
+	// conventions change, embedded PDF metadata changes).
+	JPGFormatVersion = "jpg_v1"
+	// PDFFormatVersion is the discoverable stamp the DixieData
+	// Typst render path threads into every PDF via the
+	// `dixiedata_format_version` --input flag (templates read
+	// via `sys.inputs.dixiedata_format_version`). Per-template
+	// version (events_v7, soldier_landscape_v6) is separate
+	// and lives in the .typ files themselves; this constant
+	// is the DixieData-side envelope stamp that travels with
+	// every PDF regardless of which template rendered it.
+	PDFFormatVersion = "pdf_v1"
+	// DDBakFormatVersion is the discoverable stamp the
+	// DixieData user-export .ddbak writer writes into the
+	// root-level manifest.json as `format_version`. Distinct
+	// from the legacy integer BackupFormatVersion (the
+	// row-shape counter); the per-surface namespace pattern
+	// (Decision 1 in #383) decouples from DixieData semver.
+	DDBakFormatVersion = "ddbak_v1"
+	// JSONFormatVersion is the discoverable stamp the
+	// DixieData JSON exporter writes into the metadata
+	// envelope as `format_version`. Sibling to
+	// JSONExportVersion (integer row-shape counter).
+	JSONFormatVersion = "json_v1"
+	// XLSXFormatVersion is the discoverable stamp the
+	// DixieData Excel exporter writes into the per-row
+	// metadata block + the workbook properties. Sibling to
+	// XLSXExportVersion (integer row-shape counter).
+	XLSXFormatVersion = "xlsx_v1"
 )
 
 // AppVersion is the release-line version string in the
