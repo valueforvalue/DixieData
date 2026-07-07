@@ -417,6 +417,18 @@ func TestHandleQuickAddEvent(t *testing.T) {
 	if len(linked) != 1 {
 		t.Errorf("linked = %v, want exactly one event", linked)
 	}
+
+	// Issue #377 slice 2: Quick-Add Event rows must carry
+	// CreatedByImportPath = "quick_add_event" so the provenance
+	// footer can distinguish them from rows created via the
+	// dedicated /events/new form (which stamps "create_event").
+	quickAdded, err := app.soldiers.GetByID(linked[0].ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if quickAdded.CreatedByImportPath != "quick_add_event" {
+		t.Errorf("CreatedByImportPath = %q, want %q", quickAdded.CreatedByImportPath, "quick_add_event")
+	}
 }
 
 // TestHandleUpdateEvent verifies PUT /events/{id} updates
