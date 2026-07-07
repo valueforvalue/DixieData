@@ -5,15 +5,24 @@
 // stay on *App; routes registered in routes.go. The handleResearchLog
 // function dispatches to handleResearchTaskCreate and handleResearchTaskResolve
 // based on URL parts.
+//
+// Issue #422 slice 1: empty-state pages replace 500 errors for
+// soldiers with missing data (no unit → camaraderie empty,
+// no birth_info county → research-pack empty). Error dispatch
+// normalized: sql.ErrNoRows → 404, validation errors → 400,
+// everything else → 500.
 package appshell
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/presentation"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id int64) {
@@ -23,8 +32,17 @@ func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id i
 	}
 	graph, err := a.soldiers.UnitCamaraderieGraph(id)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "not found") {
-			respondNotFound(w, r, fmt.Sprintf("Unit camaraderie for person record %d is unavailable.", id), err)
+		if errors.Is(err, records.ErrNoUnitInfo) {
+			soldier, ferr := a.soldiers.GetByID(id)
+			name := fmt.Sprintf("Person #%d", id)
+			if ferr == nil && soldier != nil {
+				name = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
+			}
+			presentation.UnitCamaraderieEmpty(name, id).Render(r.Context(), w)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
 			return
 		}
 		respondInternal(w, r, "Could not build the unit camaraderie graph.", err)
@@ -40,7 +58,7 @@ func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id i
 	}
 	timeline, err := a.soldiers.ServiceTimeline(id)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+		if errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "not found") {
 			respondNotFound(w, r, fmt.Sprintf("Service timeline for person record %d is unavailable.", id), err)
 			return
 		}
@@ -54,7 +72,11 @@ func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64
 	if len(parts) == 1 && r.Method == http.MethodGet {
 		log, err := a.soldiers.ResearchLog(id)
 		if err != nil {
-			respondNotFound(w, r, fmt.Sprintf("Research log for person record %d not found.", id), err)
+			if errors.Is(err, sql.ErrNoRows) {
+				respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
+				return
+			}
+			respondInternal(w, r, fmt.Sprintf("Could not build research log for record %d.", id), err)
 			return
 		}
 		presentation.ResearchLogView(*log).Render(r.Context(), w)
@@ -84,7 +106,17 @@ func (a *App) handleResearchTaskCreate(w http.ResponseWriter, r *http.Request, i
 	title := strings.TrimSpace(r.FormValue("title"))
 	notes := strings.TrimSpace(r.FormValue("notes"))
 	evidenceType := strings.TrimSpace(r.FormValue("evidence_type"))
+	// Issue #422: validate title before calling the service so a
+	// blank form returns 400 (validation), not 500.
+	if title == "" {
+		respondValidation(w, r, "Research task title is required.", nil)
+		return
+	}
 	if err := a.soldiers.AddResearchTask(id, title, notes, evidenceType); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
+			return
+		}
 		setToastHeaderWithType(w, "Research task could not be saved.", "error")
 		respondInternal(w, r, fmt.Sprintf("Could not save research task for record %d.", id), err)
 		return
@@ -96,6 +128,12 @@ func (a *App) handleResearchTaskCreate(w http.ResponseWriter, r *http.Request, i
 
 func (a *App) handleResearchTaskResolve(w http.ResponseWriter, r *http.Request, id, taskID int64) {
 	if err := a.soldiers.ResolveResearchTask(id, taskID); err != nil {
+		// Issue #422: the service returns "research task not found"
+		// when the task doesn't exist. Map to 404 instead of 500.
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			respondNotFound(w, r, fmt.Sprintf("Research task %d not found for person record %d.", taskID, id), err)
+			return
+		}
 		setToastHeaderWithType(w, "Research task could not be resolved.", "error")
 		respondInternal(w, r, fmt.Sprintf("Could not resolve research task %d for record %d.", taskID, id), err)
 		return
@@ -112,7 +150,13 @@ func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id in
 	}
 	ledger, err := a.backup.ConflictLedger(id)
 	if err != nil {
-		respondNotFound(w, r, fmt.Sprintf("Conflict ledger for person record %d not found.", id), err)
+		// Issue #422: distinguish genuinely missing soldier (404)
+		// from database failures (500).
+		if errors.Is(err, sql.ErrNoRows) {
+			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not build conflict ledger for record %d.", id), err)
 		return
 	}
 	presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w)
@@ -125,7 +169,18 @@ func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int6
 	}
 	pack, err := a.soldiers.ResearchPackForPersonRecord(id, scope)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+		// Issue #422: when the soldier lacks the data the scope
+		// needs, render an empty-state page instead of 500.
+		if scope == "county" && errors.Is(err, records.ErrNoCountyPack) {
+			soldier, ferr := a.soldiers.GetByID(id)
+			name := fmt.Sprintf("Person #%d", id)
+			if ferr == nil && soldier != nil {
+				name = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
+			}
+			presentation.ResearchPackCountyEmpty(name, id).Render(r.Context(), w)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "not found") {
 			respondNotFound(w, r, fmt.Sprintf("Research pack for person record %d not found.", id), err)
 			return
 		}
