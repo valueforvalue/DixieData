@@ -215,6 +215,27 @@ const (
 	// tests pin against it the same way the soldier-side
 	// PanelSoldierDetailImages does.
 	PanelEventDetailImages = "panel.event.detail.images"
+
+	// PageEventList is the canonical UI surface identifier for the
+	// /events browse page wrapper (issue #396). Wraps the
+	// EventList templ's main content area (header + grid of
+	// EventCard). Mirrors the soldier-side PageSoldiersList shape.
+	PageEventList = "page.event.list"
+	// PageEventDetail is the canonical UI surface identifier for
+	// the /events/{id} detail page wrapper. Wraps the
+	// EventDetail templ's main content area (back button +
+	// summary card + linked persons + tags + images + research log).
+	PageEventDetail = "page.event.detail"
+	// PageEventNew is the canonical UI surface identifier for
+	// the /events/new page wrapper. Wraps the EventFormFragment
+	// body when isEdit=false (i.e. event creation form).
+	PageEventNew = "page.event.new"
+	// PageEventEdit is the canonical UI surface identifier for
+	// the /events/{id}/edit page wrapper. Wraps the
+	// EventFormFragment body when isEdit=true (i.e. event update
+	// form). Same templ as PageEventNew, different UIID — mutual
+	// exclusion via templ's if isEdit { ... } else { ... } block.
+	PageEventEdit = "page.event.edit"
 )
 
 type Surface struct {
@@ -310,6 +331,10 @@ var Registry = []Surface{
 	{ID: PanelShareSync, Kind: "panel", Description: "Sync card on /share (issue #265). Google Integration card wrapped in a section header. Below the fold."},
 	{ID: PanelShareSupport, Kind: "panel", Description: "Support & Diagnostics card on /share (issue #265). Below the fold. Moved from 'Export & Backup' to its own section."},
 	{ID: PanelEventDetailImages, Kind: "panel", Description: "Images gallery section on the event detail page (/events/{id}); wraps the per-card grid plus empty state and is targeted by the post-delete fragment swap (issue #390)."},
+	{ID: PageEventList, Kind: "page", Description: "Event Record browse page on /events; wraps the main content area (header + list of EventCard). Mirrors PageSoldiersList (issue #396)."},
+	{ID: PageEventDetail, Kind: "page", Description: "Event Record detail page on /events/{id}; wraps the main content area (back button + summary card + linked persons + tags + images + research log). Mirrors PageSoldierDetail (issue #396)."},
+	{ID: PageEventNew, Kind: "page", Description: "Event Record create page on /events/new; wraps the EventFormFragment body when isEdit=false. Mutually exclusive with PageEventEdit (issue #396)."},
+	{ID: PageEventEdit, Kind: "page", Description: "Event Record edit page on /events/{id}/edit; wraps the EventFormFragment body when isEdit=true. Same templ as PageEventNew (issue #396)."},
 }
 
 

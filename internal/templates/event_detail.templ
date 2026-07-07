@@ -19,7 +19,7 @@ import (
 
 templ EventDetail(event viewmodel.PersonRecord, linked []viewmodel.PersonRecord) {
 	@Layout(eventDetailTitle(event)) {
-		<div class="relative mx-auto max-w-4xl">
+		<div id={ uiids.PageEventDetail } class="relative mx-auto max-w-4xl">
 			<div class="mb-4 flex flex-wrap gap-3">
 				<button
 					type="button"

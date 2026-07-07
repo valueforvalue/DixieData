@@ -1671,3 +1671,127 @@ func TestHandleEventLinksAttachByName(t *testing.T) {
 		t.Errorf("not-found body should echo user input %q, got: %q", "NonexistentName", body)
 	}
 }
+
+// TestHandleEventsListRendersPageWrapper pins the
+// PageEventList UIID (issue #396). The /events browse
+// page must render the canonical `id="page.event.list"`
+// wrapper around the main content area. Mirrors the
+// soldier-side #397 pattern: Page* wrappers scope the
+// main content area only, NOT the body.
+func TestHandleEventsListRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/events")
+	if err != nil {
+		t.Fatalf("GET /events: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /events status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageEventList)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/events missing #%s wrapper anchor; got %q",
+			uiids.PageEventList,
+			bodyExtract(body, "Event Records", 200),
+		)
+	}
+}
+
+// TestHandleEventByIDRendersDetailPageWrapper pins the
+// PageEventDetail UIID. GET /events/{id} renders
+// EventDetail (event_detail.templ); the wrapper anchors
+// the page-level main content area.
+func TestHandleEventByIDRendersDetailPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "DetailPageWrapper")
+	resp, err := http.Get(server.URL + "/events/" + strconv.FormatInt(e.ID, 10))
+	if err != nil {
+		t.Fatalf("GET /events/%d: %v", e.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /events/%d status = %d, want 200", e.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageEventDetail)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/events/%d missing #%s wrapper anchor; got %q",
+			e.ID,
+			uiids.PageEventDetail,
+			bodyExtract(body, "Edit Event", 200),
+		)
+	}
+}
+
+// TestHandleNewEventRendersPageWrapper pins the PageEventNew
+// UIID on /events/new. EventForm/EventFormWithError share
+// the same EventFormFragment body (mirroring soldier's
+// entry_form shape), so the page wrapper conditional-renders
+// via templ's if isEdit { ... } else { ... } block.
+func TestHandleNewEventRendersPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL + "/events/new")
+	if err != nil {
+		t.Fatalf("GET /events/new: %v", err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /events/new status = %d, want 200", resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageEventNew)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/events/new missing #%s wrapper anchor; got %q",
+			uiids.PageEventNew,
+			bodyExtract(body, "EVT-", 200),
+		)
+	}
+}
+
+// TestHandleEditEventRendersEditPageWrapper pins the
+// PageEventEdit UIID on /events/{id}/edit. Mirrors the
+// Edit-soldier-page test from #397 wide.3 — the Edit-page
+// wrapper must render and the New-page wrapper must NOT
+// render (mutual exclusion via templ's if/else).
+func TestHandleEditEventRendersEditPageWrapper(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "EditPageWrapper")
+	resp, err := http.Get(server.URL + "/events/" + strconv.FormatInt(e.ID, 10) + "/edit")
+	if err != nil {
+		t.Fatalf("GET /events/%d/edit: %v", e.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /events/%d/edit status = %d, want 200", e.ID, resp.StatusCode)
+	}
+
+	want := fmt.Sprintf(`id="%s"`, uiids.PageEventEdit)
+	if !strings.Contains(body, want) {
+		t.Errorf(
+			"/events/%d/edit missing #%s wrapper anchor; got %q",
+			e.ID,
+			uiids.PageEventEdit,
+			bodyExtract(body, "EVT-", 200),
+		)
+	}
+}
