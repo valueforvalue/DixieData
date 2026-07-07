@@ -187,6 +187,13 @@ func (s *SoldierService) ImportMemorialArchive(path string) (MemorialImportSumma
 			summary.Skipped++
 			continue
 		}
+		// Issue #377 slice 2: stamp the import path so future
+		// "where did this row come from?" investigations can
+		// attribute the row to the Memorial JSON importer. The
+		// service-layer default already covers empty values, but
+		// explicit stamping documents the intent at the call site
+		// and survives any future defaulting change.
+		mapped.CreatedByImportPath = "memorial_json_import"
 		created, createErr := s.Create(mapped)
 		if createErr != nil {
 			summary.Failed++
