@@ -250,9 +250,25 @@
     const heightPx = Math.ceil(rect.height) + 48;
     html.style.setProperty("--floating-dock-height", `${heightPx}px`);
     const appShell = doc.querySelector(".app-shell");
-    if (appShell instanceof HTMLElement) {
-      appShell.style.paddingBottom = `${heightPx}px`;
+    if (!(appShell instanceof HTMLElement)) {
+      return;
     }
+    // Issue #235: only override the inline padding-bottom when the
+    // measured value is LARGER than the CSS-computed padding-bottom.
+    // The CSS baseline (.app-shell padding-bottom: 7.5rem / 9rem at
+    // narrower viewports) already accommodates the standard 3-button
+    // dock; unconditionally writing the measured value shrinks the
+    // content area on first hydration and causes the visible scrollbar
+    // shift + cursor swap when the page is a fresh archive (no
+    // cached layout-mode preference to mask the reflow). When the
+    // dock is taller than the baseline (e.g. wrapped buttons on a
+    // narrow viewport) the inline write is necessary so the dock
+    // never overlaps content.
+    const computedPadding = parseFloat(window.getComputedStyle(appShell).paddingBottom) || 0;
+    if (heightPx <= computedPadding) {
+      return;
+    }
+    appShell.style.paddingBottom = `${heightPx}px`;
   }
 
   function clampPopoutPanels(root = document) {
