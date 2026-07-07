@@ -57,6 +57,10 @@ func TestRegistryIncludesResponsiveFoundationSurfaces(t *testing.T) {
 		PanelSoldierCamaraderie,
 		PanelSoldierConflictLedger,
 		PanelEventDetailImages,
+		PageEventList,
+		PageEventDetail,
+		PageEventNew,
+		PageEventEdit,
 	}
 
 	seen := map[string]bool{}
