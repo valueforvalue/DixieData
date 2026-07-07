@@ -318,15 +318,30 @@ try {
     const persistence = document.querySelector('[data-record-persistence]');
     const source = document.querySelector('[data-article-editor-source]');
     const preview = document.querySelector('[data-article-editor-preview]');
+    // Issue #375 regression net: the Back button must use
+    // data-history-back (history navigation) rather than
+    // data-dixie-submit + data-action (which coerces GET to
+    // POST and 405s against the list route).
+    const backBtn = Array.from(document.querySelectorAll('button')).find(
+      (b) => (b.textContent || '').includes('Back')
+    );
     return {
       draftKeyExists: draftKey !== null,
       persistenceExists: persistence !== null,
       sourceExists: source !== null,
       previewExists: preview !== null,
+      backBtnExists: backBtn !== undefined,
+      backBtnUsesHistoryBack: backBtn?.hasAttribute('data-history-back') ?? false,
+      backBtnHasDispatcherAttrs: backBtn?.hasAttribute('data-dixie-submit') ?? false,
+      backBtnHasDataAction: backBtn?.hasAttribute('data-action') ?? false,
     };
   });
   record('editor-draft-key-attr', editorState.draftKeyExists, editorState);
   record('editor-persistence-attr', editorState.persistenceExists, editorState);
+  record('editor-back-btn-renders', editorState.backBtnExists, editorState);
+  record('editor-back-btn-uses-history-back', editorState.backBtnUsesHistoryBack, editorState);
+  record('editor-back-btn-no-dispatcher-attrs', !editorState.backBtnHasDispatcherAttrs, editorState);
+  record('editor-back-btn-no-data-action', !editorState.backBtnHasDataAction, editorState);
   record('editor-source-textarea', editorState.sourceExists, editorState);
   record('editor-preview-pane', editorState.previewExists, editorState);
 
