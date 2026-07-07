@@ -248,7 +248,7 @@ templ SoldierList(soldiers []viewmodel.PersonRecord, page, total int, query stri
 
 templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []viewmodel.Article) {
 	@Layout(detailHeading(s)) {
-			<div id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
+			<div id={ uiids.PageSoldierDetail } data-scratchpad-display-id={ strings.TrimSpace(s.DisplayID) } data-recent-record-id={ fmt.Sprintf("%d", s.ID) } data-research-record-id={ fmt.Sprintf("%d", s.ID) } class="relative mx-auto max-w-4xl">
 				<div class="mb-4 flex flex-wrap gap-3">
 					<button
 						type="button"

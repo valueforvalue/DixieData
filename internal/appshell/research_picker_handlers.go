@@ -56,7 +56,7 @@ import (
 // accepted by handleResearchSelect; anything else returns 400 to keep
 // open-redirect payloads out (the picker test fixture supplies
 // "../../etc/passwd" specifically to prove the gate fires).
-func researchSubPathForAction(personID int64, action string) string {
+func researchSubPathForAction(personID int64, action, geography string) string {
 	switch action {
 	case "camaraderie":
 		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/camaraderie"
@@ -67,10 +67,15 @@ func researchSubPathForAction(personID int64, action string) string {
 	case "conflict-ledger":
 		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/conflict-ledger"
 	case "research-pack":
-		// Slice 3 adds a sub-screen asking state vs county before the
-		// final redirect. Slice 2 routes straight to /state for any
-		// research-pack next so the picker-gate contract is proven.
-		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/research-pack/state"
+		// Slice 3: the picker sub-screen asks state vs county first.
+		// We forward the choice to /research-pack/{state|county} so
+		// the soldier-scoped sub-page knows which geography to look
+		// up. Slice 2 routes to /state as a safe default.
+		scope := strings.TrimSpace(geography)
+		if scope != "state" && scope != "county" {
+			scope = "state"
+		}
+		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/research-pack/" + scope
 	}
 	return ""
 }
@@ -200,7 +205,8 @@ func (a *App) handleResearchSelect(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	setToastHeader(w, "Person selection recorded.")
-	writeExportRedirect(w, researchSubPathForAction(personID, next))
+	geography := strings.TrimSpace(r.FormValue("geography"))
+	writeExportRedirect(w, researchSubPathForAction(personID, next, geography))
 }
 
 func (a *App) handleResearchClear(w http.ResponseWriter, r *http.Request) {
@@ -233,13 +239,66 @@ func (a *App) pickerContextPresent(r *http.Request) bool {
 // (issue #378 slice 3, option C1). Registered at GET /research/recent
 // in routes.go. Reads ?ids=... (comma-separated Person IDs from
 // localStorage) and returns the recent-persons ul fragment so
-// app.js can swap it in. Slice 2 ships the route + handler shape
-// so the routebuilder is stable; full hydration lands in slice 3.
+// app.js can swap it in.
+//
+// The handler:
+//   - parses comma-separated ids from ?ids=...
+//   - caps the input at 10 to match the localStorage cap
+//   - forwards ?next=... into the rendered hidden fields
+//   - fetches the persons via a.soldiers.ByIDs
+//   - silently drops unknown ids
+//   - re-iterates in the request order so the rendered ul mirrors
+//     the localStorage push-to-head order
+//   - renders the empty-state paragraph when 0 valid ids
 func (a *App) handleResearchRecent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	view := viewmodel.ResearchPickerView{}
+	q := r.URL.Query()
+	idsRaw := strings.TrimSpace(q.Get("ids"))
+	nextRaw := strings.TrimSpace(q.Get("next"))
+
+	next := "camaraderie"
+	if nextRaw != "" && isValidResearchAction(nextRaw) {
+		next = nextRaw
+	}
+
+	requested := make([]int64, 0, 10)
+	if idsRaw != "" {
+		for _, part := range strings.Split(idsRaw, ",") {
+			id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+			if err != nil || id <= 0 {
+				continue
+			}
+			requested = append(requested, id)
+			if len(requested) >= 10 {
+				break
+			}
+		}
+	}
+
+	view := viewmodel.ResearchPickerView{
+		NextAction: next,
+	}
+	if len(requested) == 0 {
+		presentation.ResearchPickerRecent(view).Render(r.Context(), w)
+		return
+	}
+
+	rows, err := a.soldiers.ByIDs(requested)
+	if err != nil {
+		respondInternal(w, r, "Could not load recent persons.", err)
+		return
+	}
+	byID := make(map[int64]viewmodel.PersonRecord, len(rows))
+	for i := range rows {
+		byID[rows[i].ID] = viewmodel.PersonRecordFromModel(rows[i])
+	}
+	for _, id := range requested {
+		if rec, ok := byID[id]; ok {
+			view.RecentPersons = append(view.RecentPersons, rec)
+		}
+	}
 	presentation.ResearchPickerRecent(view).Render(r.Context(), w)
 }

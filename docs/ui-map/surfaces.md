@@ -77,7 +77,8 @@ table in sync when adding or renaming surfaces.
 | `layout.research.menu.trigger` | nav | Top-nav Research & Review foldout trigger button (issue #378 slice 2); clicks open `layout.research.menu`. Sits between Insights and the Share foldout per Q2 lock. |
 | `panel.research.picker.search` | panel | Search input region on the picker page |
 | `panel.research.picker.results` | panel | Live search results region on the picker page |
-| `panel.research.picker.recent` | panel | Recent-persons region on the picker page (empty in slice 1; localStorage persistence lands in slice 3) |
+| `panel.research.picker.recent` | panel | Recent-persons region on the picker page; populated via `localStorage[dixiedata.research.recents]` + `/research/recent?ids=...&next=...` fragment swap (issue #378 slice 3). Hydrated by `app.js#hydrateResearchPickerRecents` on DOMContentLoaded. |
+| `panel.research.picker.pack-sub-screen` | panel | Research-pack picker sub-screen (issue #378 slice 3); renders a `<select name="geography">` with state + county options when `?next=research-pack` is set so the picker form submits `?geography=state|county` to the soldier-scoped sub-page. |
 | `panel.research.picker.continue` | panel | Continue shortcut region on the picker page (renders only when `dd_person_ctx` cookie is set) |
 | `page.research-collections.detail` | page | Research collection detail |
 | `panel.research-collection.detail` | panel | Items list and add-row section |
