@@ -533,6 +533,13 @@ func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
 	if restoredSoldier == nil {
 		t.Fatalf("restored soldier missing from search results: %#v", results)
 	}
+	// Issue #377 slice 2: legacy JSON backup restore must stamp
+	// CreatedByImportPath = "restore_backup_archive" so the
+	// provenance footer can distinguish restored rows from
+	// rows created via the form.
+	if restoredSoldier.CreatedByImportPath != "restore_backup_archive" {
+		t.Errorf("restored CreatedByImportPath = %q, want %q", restoredSoldier.CreatedByImportPath, "restore_backup_archive")
+	}
 	linkedResults, _, err := reopenedSvc.SearchPage("PENSION-LEGACY-LINK", 1, 10)
 	if err != nil {
 		t.Fatalf("SearchPage linked: %v", err)

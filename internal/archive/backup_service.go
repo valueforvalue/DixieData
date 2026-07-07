@@ -1332,6 +1332,13 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 	}
 
 	createLegacySoldier := func(soldier models.Soldier, linkedSoldierID int64) (*models.Soldier, error) {
+		// Issue #377 slice 2: stamp the import path so future
+		// "where did this row come from?" investigations can
+		// attribute the row to the legacy-JSON backup restore
+		// (pre-SQLite .ddbak archives). The service-layer default
+		// already covers empty values, but explicit stamping
+		// documents the intent at the call site and survives any
+		// future defaulting change.
 		created, err := soldierSvc.Create(models.Soldier{
 			DisplayID:             soldier.DisplayID,
 			EntryType:             soldier.EntryType,
@@ -1370,6 +1377,7 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 			CreatedAt:             soldier.CreatedAt,
 			UpdatedAt:             soldier.UpdatedAt,
 			Records:               soldier.Records,
+			CreatedByImportPath:   "restore_backup_archive",
 		})
 		if err != nil {
 			return nil, err
