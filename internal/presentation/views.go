@@ -119,6 +119,18 @@ func ResearchPackView(pack records.ResearchPack) templ.Component {
 	return templates.ResearchPackView(viewmodel.ResearchPackFromDomain(pack))
 }
 
+// UnitCamaraderieEmpty wraps the empty-state page for soldiers
+// without unit data (issue #422 slice 1).
+func UnitCamaraderieEmpty(name string, id int64) templ.Component {
+	return templates.UnitCamaraderieEmpty(name, id)
+}
+
+// ResearchPackCountyEmpty wraps the empty-state page for soldiers
+// without county data in their birth_info (issue #422 slice 1).
+func ResearchPackCountyEmpty(name string, id int64) templ.Component {
+	return templates.ResearchPackCountyEmpty(name, id)
+}
+
 func ShareView(conflicts []models.MergeReviewConflict, counts models.ArchiveCounts, recentJobs []viewmodel.RecentJobEntry) templ.Component {
 	return templates.ShareView(
 		viewmodel.MergeReviewConflictsFromModels(conflicts),

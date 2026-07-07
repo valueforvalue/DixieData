@@ -1138,7 +1138,7 @@ func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderie
 	}
 	keys := deriveUnitGraphKeys(central.Unit)
 	if keys.normalizedUnit == "" {
-		return nil, fmt.Errorf("this record does not have enough unit information for camaraderie analysis")
+		return nil, fmt.Errorf("%w", ErrNoUnitInfo)
 	}
 
 	rows, err := s.db.Conn().Query(`
@@ -1392,7 +1392,7 @@ func (s *SoldierService) ResearchPackForSoldier(soldierID int64, scope string) (
 	case "county":
 		label, _ = parseBirthCountyState(central.BirthInfo)
 		if label == "" {
-			return nil, fmt.Errorf("this record does not have a county research pack yet")
+			return nil, fmt.Errorf("%w", ErrNoCountyPack)
 		}
 		whereClause = `LOWER(COALESCE(birth_info, '')) LIKE LOWER(?)`
 		args = []interface{}{"%" + label + "%"}
@@ -1680,6 +1680,16 @@ var (
 	birthCountyStatePattern  = regexp.MustCompile(`(?i)\b(?:in\s+)?([A-Za-z .'-]+ County),\s*([A-Za-z .'-]+)\b`)
 	birthStateTailPattern    = regexp.MustCompile(`(?i),\s*([A-Za-z .'-]+)\.?\s*$`)
 )
+
+// ErrNoUnitInfo is returned by UnitCamaraderieGraph when the soldier
+// has no unit information recorded. Handlers should render an
+// empty-state page (200), not a 500.
+var ErrNoUnitInfo = errors.New("this record does not have enough unit information for camaraderie analysis")
+
+// ErrNoCountyPack is returned by ResearchPackForSoldier when the
+// soldier has no birth_info with a county. Handlers should render
+// an empty-state page (200), not a 500.
+var ErrNoCountyPack = errors.New("this record does not have a county research pack yet")
 
 func deriveUnitGraphKeys(unit string) unitGraphKeys {
 	trimmed := strings.TrimSpace(unit)
