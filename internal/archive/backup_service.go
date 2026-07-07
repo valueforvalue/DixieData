@@ -646,8 +646,71 @@ func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 		return BackupManifest{}, err
 	}
 
+	// Issue #423 slice 2: stamp every pre-existing row's
+	// restored_at with the restore event timestamp so a
+	// future "when was this row carried over the most recent
+	// restore point?" question collapses to one query. We
+	// open the restored DB (which runs the v65 migration and
+	// adds the restored_at column if it isn't there yet),
+	// then run a single bulk UPDATE. The columnExists guard
+	// makes the stamp a no-op on extremely old archives that
+	// somehow haven't been migrated to v65 (the next
+	// db.Open will land the column and the rows stay NULL
+	// until the next restore).
+	if err := stampRestoredAtAfterRestore(dataDir); err != nil {
+		// The swap already happened — log + continue rather
+		// than fail the restore. The next db.Open on the new
+		// data dir is the operator's natural next step; the
+		// missing stamp is a degradation, not a data loss.
+		log.Printf("archive: stampRestoredAtAfterRestore(%s) failed: %v (restore succeeded; restored_at will be NULL until next restore)", dataDir, err)
+	}
+
 	stagingActive = false
 	return contents.Manifest, nil
+}
+
+// stampRestoredAtAfterRestore opens the restored data dir's DB
+// (which triggers applySchema and the v65 ADD COLUMN for
+// restored_at) and bulk-UPDATEs every row's restored_at to the
+// current UTC timestamp. Used by RestoreBackupArchive to record
+// the restore event on every pre-existing row. Idempotent: a
+// second restore over the first re-stamps every row with the
+// new timestamp (so restored_at always reflects the most-recent
+// restore event, not the first one).
+func stampRestoredAtAfterRestore(dataDir string) error {
+	d, err := db.Open(dataDir)
+	if err != nil {
+		return fmt.Errorf("open restored db: %w", err)
+	}
+	defer d.Close()
+
+	// columnExists guard: a freshly-restored archive might
+	// predate v65 and the migration might somehow not have
+	// run (e.g. a manually-edited DB on a v64 binary). Skip
+	// silently rather than fail the restore.
+	var hasRestoredAt int
+	row := d.Conn().QueryRow(
+		`SELECT COUNT(*) FROM pragma_table_info('soldiers') WHERE name = 'restored_at'`,
+	)
+	if err := row.Scan(&hasRestoredAt); err != nil {
+		return fmt.Errorf("pragma_table_info(restored_at): %w", err)
+	}
+	if hasRestoredAt == 0 {
+		return nil
+	}
+
+	stamp := time.Now().UTC().Format(time.RFC3339)
+	// Stamp every row unconditionally: restored_at always
+	// reflects the most-recent restore event, not the first
+	// one. A second restore over the first re-stamps every
+	// row with the new timestamp.
+	if _, err := d.Conn().Exec(
+		`UPDATE soldiers SET restored_at = ?`,
+		stamp,
+	); err != nil {
+		return fmt.Errorf("UPDATE soldiers SET restored_at: %w", err)
+	}
+	return nil
 }
 
 // ImportWithLocalIdentity restores a Shared Archive using the
