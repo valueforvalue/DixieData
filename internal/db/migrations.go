@@ -651,6 +651,88 @@ var migrations = []Migration{
 			return nil
 		},
 	},
+	// Block 5 (block-64) — Row provenance columns on soldiers
+	// (issue #377, slice 1). Adds `created_by_version TEXT NOT
+	// NULL DEFAULT ''` + `created_by_import_path TEXT NOT NULL
+	// DEFAULT ''` to the soldiers table so every row carries the
+	// DixieData release + code path that wrote it. The motivating
+	// case is the #376 diagnostic trail for soldier id=411: 30
+	// minutes of git-archaeology + timestamp cross-referencing
+	// would have collapsed into one query with these columns.
+	//
+	// Both columns default to '' so the backfill is a no-op on
+	// fresh installs (the inline schema carries the columns
+	// already) and pre-v64 rows land with '' rather than NULL.
+	// The backfill UPDATE rewrites '' to "unknown" so the read
+	// side can distinguish "never stamped" from "explicitly
+	// empty" — defensive future-proofing since today every path
+	// either stamps or leaves empty.
+	//
+	// Slice 2 (next session) wires every Create/Update call site
+	// to stamp the appropriate path. Slice 1 only lands the
+	// schema + struct + read path — the per-handler stamping is
+	// mechanical (one of 8 path strings) and benefits from a
+	// fresh-context review pass per the tracer-bullet rule.
+	//
+	// Reversibility: Reversible. ADD COLUMN is reversible
+	// (DROP COLUMN works because created_by_version +
+	// created_by_import_path are not FK-constrained and have
+	// no inbound references). The backfill UPDATE is a no-op
+	// reverse on DOWN (column gets dropped; rows lose their
+	// provenance values; the read path stops returning them).
+	{
+		ID:            "block-64-row-provenance",
+		Reversibility: Reversible,
+		Reason:        "Pure additive: ALTER TABLE ADD COLUMN created_by_version + created_by_import_path on soldiers (both NOT NULL DEFAULT ''), with backfill UPDATE that rewrites '' to 'unknown' for pre-v64 rows. No FK, no inbound references, no data loss on DOWN.",
+		Up: func(tx *sql.Tx) error {
+			versionExists, err := columnExists(tx, "soldiers", "created_by_version")
+			if err != nil {
+				return err
+			}
+			if !versionExists {
+				if _, err := tx.Exec(`ALTER TABLE soldiers ADD COLUMN created_by_version TEXT NOT NULL DEFAULT ''`); err != nil {
+					return err
+				}
+			}
+			if _, err := tx.Exec(`UPDATE soldiers SET created_by_version = 'unknown' WHERE created_by_version = ''`); err != nil {
+				return err
+			}
+			pathExists, err := columnExists(tx, "soldiers", "created_by_import_path")
+			if err != nil {
+				return err
+			}
+			if !pathExists {
+				if _, err := tx.Exec(`ALTER TABLE soldiers ADD COLUMN created_by_import_path TEXT NOT NULL DEFAULT ''`); err != nil {
+					return err
+				}
+			}
+			if _, err := tx.Exec(`UPDATE soldiers SET created_by_import_path = 'unknown' WHERE created_by_import_path = ''`); err != nil {
+				return err
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			versionExists, err := columnExists(tx, "soldiers", "created_by_version")
+			if err != nil {
+				return err
+			}
+			if versionExists {
+				if _, err := tx.Exec(`ALTER TABLE soldiers DROP COLUMN created_by_version`); err != nil {
+					return err
+				}
+			}
+			pathExists, err := columnExists(tx, "soldiers", "created_by_import_path")
+			if err != nil {
+				return err
+			}
+			if pathExists {
+				if _, err := tx.Exec(`ALTER TABLE soldiers DROP COLUMN created_by_import_path`); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every
