@@ -258,6 +258,9 @@ async function main() {
       if (!page.url().endsWith('/events')) {
         throw new Error(`expected url to end with /events, got ${page.url()}`);
       }
+      if (!(await page.evaluate(() => document.querySelector('[id="page.event.list"]') !== null))) {
+        throw new Error('expected page.event.list wrapper on /events (issue #396)');
+      }
       const text = await page.evaluate(() => document.body.innerText);
       if (!/No event records yet/i.test(text)) {
         throw new Error(`expected empty-state copy, body starts: ${text.slice(0, 200)}`);
@@ -270,6 +273,9 @@ async function main() {
       await wait(200);
       if (!page.url().endsWith('/events/new')) {
         throw new Error(`expected /events/new, got ${page.url()}`);
+      }
+      if (!(await page.evaluate(() => document.querySelector('[id="page.event.new"]') !== null))) {
+        throw new Error('expected page.event.new wrapper on /events/new (issue #396)');
       }
     });
 
@@ -305,6 +311,9 @@ async function main() {
     const createdEventID = trackedEventIDs[trackedEventIDs.length - 1];
 
     await step(page, 'step-04 detail-shows-values', async () => {
+      if (!(await page.evaluate(() => document.querySelector('[id="page.event.detail"]') !== null))) {
+        throw new Error('expected page.event.detail wrapper on /events/{id} (issue #396)');
+      }
       const text = await page.evaluate(() => document.body.innerText);
       if (!/SmokeBattle-/.test(text)) {
         throw new Error(`kind not visible on detail; body starts: ${text.slice(0, 200)}`);
@@ -428,6 +437,9 @@ async function main() {
       await page.click('a:has-text("Edit Event")');
       await page.waitForURL(`**/events/${createdEventID}/edit`, { timeout: 5000 });
       await wait(200);
+      if (!(await page.evaluate(() => document.querySelector('[id="page.event.edit"]') !== null))) {
+        throw new Error('expected page.event.edit wrapper on /events/{id}/edit (issue #396)');
+      }
       // Issue #357: edit form must expose the Source Records
       // section so the user can attach sources inline.
       const editHasSources = await page.evaluate(() =>

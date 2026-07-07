@@ -18,18 +18,35 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ EventForm(s viewmodel.PersonRecord, isEdit bool) {
 	@Layout(eventFormTitle(s, isEdit)) {
-		@EventFormFragment(s, isEdit, "")
+		if isEdit {
+			<div id={ uiids.PageEventEdit }>
+				@EventFormFragment(s, isEdit, "")
+			</div>
+		} else {
+			<div id={ uiids.PageEventNew }>
+				@EventFormFragment(s, isEdit, "")
+			</div>
+		}
 	}
 }
 
 templ EventFormWithError(s viewmodel.PersonRecord, isEdit bool, errorMessage string) {
 	@Layout(eventFormTitle(s, isEdit)) {
-		@EventFormFragment(s, isEdit, errorMessage)
+		if isEdit {
+			<div id={ uiids.PageEventEdit }>
+				@EventFormFragment(s, isEdit, errorMessage)
+			</div>
+		} else {
+			<div id={ uiids.PageEventNew }>
+				@EventFormFragment(s, isEdit, errorMessage)
+			</div>
+		}
 	}
 }
 

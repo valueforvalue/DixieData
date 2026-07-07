@@ -8,12 +8,13 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/templates/components"
+	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
 templ EventList(events []viewmodel.PersonRecord, page, total int) {
 	@Layout("Events") {
-		<div class="relative mx-auto max-w-4xl">
+		<div id={ uiids.PageEventList } class="relative mx-auto max-w-4xl">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<h2 class="text-2xl gold font-bold">Event Records</h2>
 				<a href={ templ.SafeURL(routebuilder.EventNew()) } class="primary-button">+ Add Event Record</a>
