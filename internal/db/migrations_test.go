@@ -23,6 +23,7 @@ func TestMigrationsCatalogueIsOrdered(t *testing.T) {
 		"block-2-event-sources",
 		"block-3-articles",
 		"block-63-source-sort-order",
+		"block-64-row-provenance",
 	}
 	for i, wantID := range want {
 		if migs[i].ID != wantID {
@@ -101,6 +102,7 @@ func TestMigrationsReversibilityMapping(t *testing.T) {
 		"block-2-event-sources":      Reversible,
 		"block-3-articles":           Reversible,
 		"block-63-source-sort-order": Reversible,
+		"block-64-row-provenance":    Reversible,
 	}
 
 	for _, m := range Migrations() {

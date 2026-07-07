@@ -88,6 +88,18 @@ type Soldier struct {
 	BeginDate             string   `json:"begin_date,omitempty"`
 	EndDate               string   `json:"end_date,omitempty"`
 	Description           string   `json:"description,omitempty"`
+	// v64 (issue #377): row provenance columns. CreatedByVersion
+	// captures the DixieData release (e.g. "v1.2.63") that wrote
+	// the row; CreatedByImportPath captures the code path that
+	// wrote it (e.g. "create_soldier", "memorial_json_import",
+	// "restore_backup_archive", "cli_export"). Both are stamped
+	// at Create-time and frozen across Update (Decision 3). Empty
+	// string == unknown; the backfill assigns a sentinel for pre-
+	// v64 rows. The next session (slice 2) wires handlers to
+	// stamp the appropriate path per write site; Slice 1 only
+	// lands the schema + struct + read/write plumbing.
+	CreatedByVersion      string   `json:"created_by_version,omitempty"`
+	CreatedByImportPath   string   `json:"created_by_import_path,omitempty"`
 	SearchMatchField      string   `json:"-"`
 	SearchMatchSnippet    string   `json:"-"`
 	SpouseDisplayID       string   `json:"-"`

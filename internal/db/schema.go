@@ -79,7 +79,19 @@ CREATE TABLE IF NOT EXISTS soldiers (
     kind         TEXT,
     begin_date   TEXT,
     end_date     TEXT,
-    description  TEXT
+    description  TEXT,
+    -- v64 (issue #377): row provenance columns. CreatedByVersion
+    -- stamps the DixieData release that wrote the row (e.g.
+    -- "v1.2.63"). CreatedByImportPath stamps the code path that
+    -- wrote it (e.g. "create_soldier", "memorial_json_import",
+    -- "restore_backup_archive", "cli_export"). Both are stamped
+    -- at Create time and frozen across Update (Decision 3). The
+    -- v64 backfill assigns "unknown" to pre-v64 rows. Both columns
+    -- are nullable + empty-string default so the backfill is a
+    -- no-op on fresh installs (the inline schema carries the
+    -- column) and the migration is reversible without data loss.
+    created_by_version TEXT NOT NULL DEFAULT '',
+    created_by_import_path TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS records (

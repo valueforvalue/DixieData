@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description`
+	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description, created_by_version, created_by_import_path`
 	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.person_record_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.person_record_id = soldiers.id)`
 	recordSelectColumns      = `id, sync_id, person_record_id, person_sync_id, record_type, app_id, details, sort_order`
 	imageSelectColumns       = `id, sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary`
@@ -201,10 +201,10 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 	}
 	stampCreateAuditFields(s.currentAuditActor(), &soldier)
 
-	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description, created_by_version, created_by_import_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
 		soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, soldier.PensionState, soldier.ConfederateHomeStatus, soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth,
-		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, soldier.Kind, soldier.BeginDate, soldier.EndDate, soldier.Description)
+		soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, soldier.Kind, soldier.BeginDate, soldier.EndDate, soldier.Description, soldier.CreatedByVersion, soldier.CreatedByImportPath)
 	if err != nil {
 		return nil, err
 	}
@@ -2156,6 +2156,8 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		confederateHomeName   sql.NullString
 		birthInfo             sql.NullString
 		buriedIn              sql.NullString
+		createdByVersion      sql.NullString
+		createdByImportPath   sql.NullString
 		biography             sql.NullString
 		pdfExcerptOverride    sql.NullString
 		notes                 sql.NullString
@@ -2223,6 +2225,8 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.BeginDate, &beginDate),
 		nullStringDest(&s.EndDate, &endDate),
 		nullStringDest(&s.Description, &description),
+		nullStringDest(&s.CreatedByVersion, &createdByVersion),
+		nullStringDest(&s.CreatedByImportPath, &createdByImportPath),
 	}
 }
 
