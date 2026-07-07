@@ -92,6 +92,19 @@ func PersonRecordFromModel(input models.Soldier) PersonRecord {
 		// v61 decomposition) instead of SourceRecords.
 		EventSources:          SourceRecordsFromModels(input.EventSources),
 		Images:                ImagesFromModels(input.Images),
+		// Issue #377 / #423: row provenance fields (slice 3
+		// surfaces in the Soldier detail page footer + the
+		// data-quality scan results). v64 CreatedBy* are
+		// stamped at Create time; v65 RestoredAt is stamped
+		// by restoreSnapshotBackup's bulk UPDATE. All three
+		// default to '' when not populated (e.g. a row
+		// written before the v64 migration carries
+		// CreatedBy* = "unknown" from the backfill;
+		// RestoredAt is empty until the row is carried
+		// over a restore point).
+		CreatedByVersion:    input.CreatedByVersion,
+		CreatedByImportPath: input.CreatedByImportPath,
+		RestoredAt:          input.RestoredAt,
 	}
 }
 
@@ -765,6 +778,14 @@ func DataQualityScanResultFromDomain(input records.DataQualityScanResult) DataQu
 			Severity:       issue.Severity,
 			Summary:        issue.Summary,
 			Detail:         issue.Detail,
+			// Issue #377 / #423: row provenance surfaced in
+			// the scan results. ImportPath + RestoredAt carry
+			// through from the records-layer type so the
+			// entry_form.templ settings scan can render
+			// "via <path>, restored at <ts>" next to each
+			// flagged row's name.
+			ImportPath: issue.ImportPath,
+			RestoredAt: issue.RestoredAt,
 		}
 		groupIndex, ok := indexByGroup[group]
 		if !ok {

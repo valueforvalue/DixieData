@@ -36,6 +36,8 @@ const (
 	PanelSoldierDetailRecords   = "panel.soldier.detail.records"
 // PanelSoldierDetailImages is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PanelSoldierDetailImages    = "panel.soldier.detail.images"
+// PanelSoldierDetailProvenance is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
+	PanelSoldierDetailProvenance = "panel.soldier.detail.provenance"
 // PageSoldierNew is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	PageSoldierNew              = "page.soldier.new"
 // PageSoldierEdit is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
@@ -285,6 +287,7 @@ var Registry = []Surface{
 	{ID: PanelSoldierDetailSummary, Kind: "panel", Description: "Summary and actions panel on the soldier detail page."},
 	{ID: PanelSoldierDetailRecords, Kind: "panel", Description: "Records section on the soldier detail page."},
 	{ID: PanelSoldierDetailImages, Kind: "panel", Description: "Images section on the soldier detail page."},
+	{ID: PanelSoldierDetailProvenance, Kind: "panel", Description: "Row provenance footer (Created by DixieData v1.2.N via <path> + Restored at <timestamp>) on the soldier detail page. Hidden when both fields are empty."},
 	{ID: PageSoldierNew, Kind: "page", Description: "New soldier record form page."},
 	{ID: PageSoldierEdit, Kind: "page", Description: "Edit soldier record form page."},
 	{ID: PanelSoldierFormScratchpad, Kind: "panel", Description: "Scratch pad launcher section inside the soldier form."},

@@ -85,6 +85,22 @@ type PersonRecord struct {
 	// inline link/unlink surface without a second round-trip.
 	// Issue #361 slice 2.
 	LinkedPersons         []PersonRecord
+	// Issue #377 / #423: row provenance fields. CreatedByVersion
+	// is the DixieData release that wrote the row (e.g.
+	// "v1.2.64"); CreatedByImportPath is the code path that
+	// wrote it (e.g. "create_soldier", "memorial_json_import",
+	// "restore_backup_archive"); RestoredAt is the RFC3339
+	// timestamp the row was carried over the most recent
+	// SQLite-snapshot restore (empty = never restored). The
+	// Soldier detail page footer renders the v64 line when
+	// either CreatedBy* is non-empty, and a "Restored at
+	// <human-readable timestamp>" line when RestoredAt is
+	// non-empty. v64 stamps are populated by every Create
+	// call site (slice 2 of #377); v65 RestoredAt is populated
+	// by restoreSnapshotBackup's bulk UPDATE (slice 2 of #423).
+	CreatedByVersion      string
+	CreatedByImportPath   string
+	RestoredAt            string
 }
 
 // SourceRecord is the UI-shaped projection of a Source Record
@@ -624,6 +640,16 @@ type DataQualityIssue struct {
 	Severity       string
 	Summary        string
 	Detail         string
+	// Issue #377 / #423: row provenance fields surfaced in
+	// the data-quality scan results so the user can see at
+	// a glance whether a flagged row's corruption came from
+	// an external import vs. a local edit. ImportPath is the
+	// code path that wrote the row (e.g. "create_soldier",
+	// "memorial_json_import"); RestoredAt is the RFC3339
+	// timestamp the row was carried over the most recent
+	// SQLite-snapshot restore (empty = never restored).
+	ImportPath      string
+	RestoredAt      string
 }
 
 // DataQualityIssueGroup is a rollup of DataQualityIssue rows by
