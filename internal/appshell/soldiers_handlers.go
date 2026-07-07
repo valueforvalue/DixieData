@@ -415,6 +415,40 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Issue #363 server-gate: an Event row (entry_type="event")
+	// must never render the Person Record surface via
+	// /soldiers/{id}*. Redirect every HTTP method to its
+	// /events/{id}* equivalent — the user reaches the canonical
+	// Event surface and PUT/DELETE never reaches the wrong
+	// handler. Early-return covers edit / update / delete / pdf
+	// / pdf-no-images / jpg / research-log / conflict-ledger /
+	// research-pack / camaraderie / timeline / tags /
+	// events-tab / images in one place. NotFound is left for
+	// the sub-handlers to surface (it means the id resolves to
+	// no row, Event or Person).
+	if soldier, ferr := a.soldiers.GetByID(id); ferr == nil && soldier.EntryType == models.EntryTypeEvent {
+		// Map sub-paths to /events/{id} equivalents. The edit
+		// suffix redirects to /events/{id} (the detail page) —
+		// per the issue's locked decision, NOT /events/{id}/edit,
+		// so the user can navigate from detail to editor with the
+		// back-link they expect from /soldiers/{id}/edit today.
+		eventsTarget := "/events/" + strconv.FormatInt(id, 10)
+		if len(parts) > 1 {
+			switch parts[1] {
+			case "pdf", "jpg":
+				eventsTarget += "/" + parts[1]
+			}
+		}
+		// writeExportRedirect sets both the standard Location header
+		// + the X-DixieData-Redirect header the Option C dispatcher
+		// reads in frontend/app.js. TestPostThenNavigateUsesDixieRedirect
+		// enforces this contract on every 303 in the catch-all chain.
+		w.Header().Set("Location", eventsTarget)
+		w.Header().Set("X-DixieData-Redirect", eventsTarget)
+		w.WriteHeader(http.StatusSeeOther)
+		return
+	}
+
 	if len(parts) > 1 && parts[1] == "edit" {
 		a.handleEditSoldier(w, r, id)
 		return
