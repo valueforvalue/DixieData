@@ -1132,6 +1132,14 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 		t.Fatalf("imported sync mismatch: got %q want %q", results[0].SyncID, imported.SyncID)
 	}
 
+	// Issue #377 slice 2: rows newly inserted by the shared-archive
+	// import path must carry CreatedByImportPath = "import_shared_archive"
+	// (raw SQL INSERT in upsertSharedSoldier bypasses the service-layer
+	// defaulting policy, so the stamp has to land at the SQL site).
+	if results[0].CreatedByImportPath != "import_shared_archive" {
+		t.Errorf("imported CreatedByImportPath = %q, want %q", results[0].CreatedByImportPath, "import_shared_archive")
+	}
+
 	merged, err := targetSvc.GetByID(shared.ID)
 	if err != nil {
 		t.Fatalf("GetByID merged shared: %v", err)

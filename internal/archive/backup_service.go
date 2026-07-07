@@ -1873,8 +1873,9 @@ func upsertSharedSoldierFromEvent(tx *sql.Tx, event models.Soldier, sessionID st
 	res, err := tx.Exec(
 		`INSERT INTO soldiers (
 			display_id, sync_id, entry_type, kind, begin_date, end_date, description,
-			added_by, last_edited_by, last_edited_at, last_edited_fields, import_batch_id
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+			added_by, last_edited_by, last_edited_at, last_edited_fields, import_batch_id,
+			created_by_version, created_by_import_path
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		strings.TrimSpace(event.DisplayID),
 		strings.TrimSpace(event.SyncID),
 		models.EntryTypeEvent,
@@ -1887,6 +1888,14 @@ func upsertSharedSoldierFromEvent(tx *sql.Tx, event models.Soldier, sessionID st
 		event.LastEditedAt,
 		event.LastEditedFields,
 		sessionID,
+		// Issue #377 slice 2: stamp the import path so future
+		// "where did this row come from?" investigations can
+		// attribute the row to the shared-archive importer. The
+		// SQLite default ('') would leave these as empty strings
+		// indistinguishable from the v63→v64 backfill 'unknown'
+		// sentinel, so the raw SQL path needs explicit stamps.
+		versioninfo.AppVersion(),
+		"import_shared_archive",
 	)
 	if err != nil {
 		return 0, fmt.Errorf("insert event %s: %w", event.DisplayID, err)
@@ -2259,9 +2268,17 @@ func upsertSharedSoldier(tx *sql.Tx, soldier models.Soldier, importBatchID strin
 	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers
-		(display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, import_batch_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		displayID, syncID, soldier.EntryType, nil, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, pensionstate.Normalize(soldier.PensionState), confederatehomestatus.Normalize(soldier.ConfederateHomeStatus), soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, strings.TrimSpace(importBatchID))
+		(display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, import_batch_id, created_by_version, created_by_import_path)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		displayID, syncID, soldier.EntryType, nil, soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix, soldier.Rank, soldier.RankIn, soldier.RankOut, soldier.Unit, pensionstate.Normalize(soldier.PensionState), confederatehomestatus.Normalize(soldier.ConfederateHomeStatus), soldier.ConfederateHomeName, soldier.DeathYear, soldier.DeathMonth, soldier.DeathDay, soldier.BirthDate, soldier.DeathDate, soldier.BirthInfo, soldier.BuriedIn, soldier.Biography, soldier.PDFExcerptOverride, soldier.Notes, soldier.NeedsReview, soldier.ReviewReason, soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, strings.TrimSpace(importBatchID),
+		// Issue #377 slice 2: stamp the import path so future
+		// "where did this row come from?" investigations can
+		// attribute the row to the shared-archive importer. The
+		// SQLite default ('') would leave these as empty strings
+		// indistinguishable from the v63→v64 backfill 'unknown'
+		// sentinel, so the raw SQL path needs explicit stamps.
+		versioninfo.AppVersion(),
+		"import_shared_archive")
 	if err != nil {
 		return 0, false, "", err
 	}
