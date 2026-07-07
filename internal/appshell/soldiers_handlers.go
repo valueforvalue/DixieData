@@ -390,6 +390,13 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 		s.NeedsReview = true
 		s.ReviewReason = "Saved with no name; researcher should fill in."
 	}
+	// Issue #377 slice 2: stamp the import path so future
+	// "where did this row come from?" investigations can
+	// attribute the row to the form path. The service-layer
+	// default already covers this when the field is empty,
+	// but explicit stamping documents the intent at the
+	// handler site.
+	s.CreatedByImportPath = "create_soldier"
 
 	created, err := a.soldiers.Create(s)
 	if err != nil {
