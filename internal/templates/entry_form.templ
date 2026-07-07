@@ -15,13 +15,29 @@ import (
 
 templ EntryForm(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, isEdit bool) {
 	@Layout(formTitle(s, isEdit)) {
-		@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, "")
+		if isEdit {
+			<div id={ uiids.PageSoldierEdit }>
+				@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, "")
+			</div>
+		} else {
+			<div id={ uiids.PageSoldierNew }>
+				@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, "")
+			</div>
+		}
 	}
 }
 
 templ EntryFormWithError(s viewmodel.PersonRecord, spouseCandidates []viewmodel.PersonRecord, suggestions viewmodel.PersonRecordFormSuggestions, isEdit bool, errorMessage string) {
 	@Layout(formTitle(s, isEdit)) {
-		@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, errorMessage)
+		if isEdit {
+			<div id={ uiids.PageSoldierEdit }>
+				@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, errorMessage)
+			</div>
+		} else {
+			<div id={ uiids.PageSoldierNew }>
+				@EntryFormFragment(s, spouseCandidates, suggestions, isEdit, errorMessage)
+			</div>
+		}
 	}
 }
 
@@ -53,6 +69,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 		>
 			<input type="hidden" name="existing_needs_review" value={ boolFlag(s.NeedsReview) }/>
 			<input type="hidden" name="existing_review_reason" value={ s.ReviewReason }/>
+			<div id={ uiids.PanelSoldierFormScratchpad } class="contents">
 			<div data-record-persistence data-record-persistence-kind={ draftMode(isEdit) } class={ recordPersistenceClass(isEdit) }>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
@@ -112,6 +129,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</div>
 				</div>
+			</div>
 			</div>
 			<div class="space-y-5">
 				<section class="rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
@@ -286,7 +304,7 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 						</div>
 					</div>
 				</section>
-				<section class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
+				<section id={ uiids.PanelSoldierFormRecords } class="relative rounded-[1.7rem] border border-sepia-500/[0.35] bg-white/[0.58] p-5">
 					<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.26em] text-[#8d7440]">Source Records</p>
