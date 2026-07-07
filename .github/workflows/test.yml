@@ -63,13 +63,30 @@ jobs:
           # in CI only. Catches the concurrency bug class per
           # docs/COMMON_BUGS.md §4.1 (goroutine leak / race).
           $env:CGO_ENABLED = '1'
-          # -rapid.checks=500 ensures pgregory.net/rapid property
-          # tests (internal/dates/dates_property_test.go) run ≥100
-          # iterations even under -short (which halves by 5x).
+          # Two invocations on purpose. -args forwards everything
+          # after it to every test binary ./... compiles; rapid flags
+          # are only defined in packages that import pgregory.net/rapid
+          # (currently internal/dates). Passing -rapid.checks=500 to
+          # ./... makes every other package fail with
+          # "flag provided but not defined: -rapid.checks" — issue
+          # #417. Run the unscoped suite first, then scope the
+          # property-test flag to the package that owns it.
           # rapid flags must follow -args so the test binary
           # receives them as test-package flags, not build flags.
-          # issue #318 Slice 3.
-          go test -race ./... -short -count=1 -args -rapid.checks=500
+          # issue #318 Slice 3 (rapid), issue #417 (workflow flag routing).
+          go test -race ./... -short -count=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # PowerShell splits '-rapid.checks=500' at the '=' into
+          # '-rapid' + '.checks=500' because it parses '=' as a
+          # parameter binding. Quote the rapid arg so the test
+          # binary receives the literal token '-rapid.checks=500'.
+          # The fail-fast $LASTEXITCODE check above stops the
+          # step here if the unscoped run found any failures;
+          # without it, the last command's exit code (the dates
+          # run, which passes) would mask the first run's
+          # failures because pwsh does not auto-propagate exit
+          # codes between commands. issue #417.
+          go test -race ./internal/dates/... -short -count=1 -args '-rapid.checks=500'
         timeout-minutes: 15
 
       # Mirror the trace harness across both build-tag modes so the
