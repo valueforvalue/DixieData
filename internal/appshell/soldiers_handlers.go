@@ -23,6 +23,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -447,6 +448,30 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-DixieData-Redirect", eventsTarget)
 		w.WriteHeader(http.StatusSeeOther)
 		return
+	}
+
+	// Issue #378 slice 2: picker-guard for soldier-scoped sub-pages.
+	// Only GET requests to research-scoped sub-paths redirect through
+	// the picker when no dd_person_ctx cookie is set. The /edit,
+	// /review/*, /images/*, and bare /soldiers/{id} paths stay
+	// ungated (they are not foldout entries and do not need Person
+	// context). research-pack is gated on the prefix; the picker
+	// sub-screen resolves state vs county in slice 3.
+	pickerGated := map[string]string{
+		"camaraderie":     "camaraderie",
+		"timeline":        "timeline",
+		"research-log":    "research-log",
+		"conflict-ledger": "conflict-ledger",
+		"research-pack":   "research-pack",
+	}
+	if len(parts) > 1 && r.Method == http.MethodGet {
+		if next, ok := pickerGated[parts[1]]; ok {
+			if !a.pickerContextPresent(r) {
+				redirect := routebuilder.ResearchPicker() + "?next=" + url.QueryEscape(next)
+				http.Redirect(w, r, redirect, http.StatusSeeOther)
+				return
+			}
+		}
 	}
 
 	if len(parts) > 1 && parts[1] == "edit" {

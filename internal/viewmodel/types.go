@@ -773,4 +773,5 @@ type ResearchPickerView struct {
 	RecentPersons []PersonRecord
 	SearchQuery   string
 	SearchResults []PersonRecord
+	NextAction    string
 }

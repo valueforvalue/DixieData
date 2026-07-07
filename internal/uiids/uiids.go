@@ -183,6 +183,13 @@ const (
 	LayoutShareMenu       = "layout.share.menu"
 // LayoutShareMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	LayoutShareMenuTrigger = "layout.share.menu.trigger"
+	// LayoutResearchMenu is the top-nav foldout panel for the
+	// Research & Review surfaces (issue #378 slice 2). Sits between
+	// Insights and the Share foldout; lists the 6 soldier-scoped
+	// sub-pages plus Research Collections + Change Person… .
+	LayoutResearchMenu       = "layout.research.menu"
+// LayoutResearchMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
+	LayoutResearchMenuTrigger = "layout.research.menu.trigger"
 
 	// Issue #378: Research & Review picker (slice 1 — picker landing).
 	// PageResearchPicker wraps the page-level main content area on
@@ -336,6 +343,8 @@ var Registry = []Surface{
 	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues card on the /share/queue management page (issue #310 PR 3, ported from the Share Build modal in issue #192) listing named presets with Load + Delete per row."},
 	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
 	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
+	{ID: LayoutResearchMenu, Kind: "nav", Description: "Top-nav foldout panel under the Research & Review trigger; lists the 6 soldier-scoped sub-pages (camaraderie / timeline / research-log / conflict-ledger / research-pack / research-collections) plus Change Person… (issue #378 slice 2). Soldier-scoped entries route through the picker when no dd_person_ctx cookie is set."},
+	{ID: LayoutResearchMenuTrigger, Kind: "nav", Description: "Top-nav Research & Review foldout trigger button (issue #378 slice 2); clicking opens LayoutResearchMenu. Sits between Insights and Share per the slice-2 nav placement decision."},
 	{ID: PageResearchPicker, Kind: "page", Description: "Research & Review Person picker landing page (issue #378 slice 1). Search + recents + continue shortcut; honors dd_person_ctx cookie for sticky person context."},
 	{ID: PanelResearchPickerSearch, Kind: "panel", Description: "Search input region on the Research picker page; htmx target for the live results swap."},
 	{ID: PanelResearchPickerResults, Kind: "panel", Description: "Live search results region on the Research picker page; htmx swap target for the search fragment."},

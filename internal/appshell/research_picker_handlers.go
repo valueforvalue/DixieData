@@ -1,25 +1,39 @@
 // research_picker_handlers.go — Research & Review Person picker handlers
-// (issue #378 slice 1). Three handlers:
+// (issue #378 slice 1 + slice 2 + slice 3). Six handlers:
 //
-//   - handleResearchPicker    GET  /research        — render the picker shell
-//   - handleResearchSelect    POST /research/select — record chosen Person in
-//                                                     dd_person_ctx cookie +
-//                                                     redirect to sub-page
-//   - handleResearchClear     POST /research/clear  — clear the cookie +
-//                                                     redirect to picker
+//   - handleResearchPicker    GET  /research            — render the picker
+//                                                       shell. Branches on
+//                                                       ?partial=1 to return
+//                                                       only the results
+//                                                       panel fragment
+//                                                       (slice 2 option B2).
+//   - handleResearchSelect    POST /research/select     — record chosen
+//                                                       Person in
+//                                                       dd_person_ctx cookie
+//                                                       + redirect to
+//                                                       sub-page.
+//   - handleResearchClear     POST /research/clear      — clear the cookie
+//                                                       + redirect to picker.
+//   - handleResearchRecent    GET  /research/recent     — return the
+//                                                       recents-list fragment
+//                                                       (slice 3 option C1).
 //
-// Slice 1 ships the bare picker shell: search input, "Continue" shortcut
-// when a cookie is set, recents list (empty in slice 1; slice 3 lifts
-// persistence to localStorage), results region (empty in slice 1; slice 2
-// swaps in live htmx-driven results).
+// Slices' responsibilities:
 //
-// The three handlers share a small allowlist of "next" actions (camaraderie,
-// timeline, research-log, conflict-ledger, research-pack/state|county)
-// that map to existing /soldiers/{id}/* sub-routes. The allowlist is
-// the gate that protects against open-redirect payloads (issue #378
-// "Decisions to confirm Q1"): an attacker-supplied next value can never
-// reach handleResearchSelect's redirect target unless it appears in the
-// allowlist, which keeps the X-DixieData-Redirect path safe.
+//   Slice 1 ships the bare picker shell.
+//   Slice 2 adds: ?next= forwarding through the picker (the picker forms
+//     carry the request's NextAction into the hidden form field); the
+//     partial-fragment branch on ?partial=1; pickerContextPresent helper
+//     consumed by handleSoldierByID's sub-route guard.
+//   Slice 3 adds: /research/recent fragment hydrates from
+//     localStorage-supplied ids via JS.
+//
+// The picker-guard (redirect-through-picker when no
+// dd_person_ctx cookie is set) lives at the top of
+// handleSoldierByID's switch on parts[1] rather than as chi
+// middleware. /soldiers/* is registered as a chi catch-all so chi
+// can't route by sub-path intent; the single insert site captures
+// the contract for all 6 foldout sub-paths.
 //
 // Kept in a dedicated file (research_picker_handlers.go) so the per-soldier
 // research handlers in research_handlers.go stay grouped with their
@@ -27,6 +41,7 @@
 package appshell
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -51,10 +66,11 @@ func researchSubPathForAction(personID int64, action string) string {
 		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/research-log"
 	case "conflict-ledger":
 		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/conflict-ledger"
-	case "research-pack-state":
+	case "research-pack":
+		// Slice 3 adds a sub-screen asking state vs county before the
+		// final redirect. Slice 2 routes straight to /state for any
+		// research-pack next so the picker-gate contract is proven.
 		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/research-pack/state"
-	case "research-pack-county":
-		return "/soldiers/" + strconv.FormatInt(personID, 10) + "/research-pack/county"
 	}
 	return ""
 }
@@ -65,7 +81,7 @@ func researchSubPathForAction(personID int64, action string) string {
 func isValidResearchAction(action string) bool {
 	switch action {
 	case "camaraderie", "timeline", "research-log", "conflict-ledger",
-		"research-pack-state", "research-pack-county":
+		"research-pack":
 		return true
 	}
 	return false
@@ -76,7 +92,25 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	q := r.URL.Query()
+	query := strings.TrimSpace(q.Get("q"))
+	nextRaw := strings.TrimSpace(q.Get("next"))
+	partial := q.Get("partial") == "1"
+
+	// Issue #378 slice 2: forward ?next=... into the viewmodel so the
+	// picker echo's it as a hidden field on every result form. The
+	// allowlist is the only gate; an unknown ?next= falls back to the
+	// default so we never echo a payload the picker would refuse at
+	// submit time.
+	next := "camaraderie"
+	if nextRaw != "" && isValidResearchAction(nextRaw) {
+		next = nextRaw
+	}
+
+	if partial {
+		a.renderResearchSearchFragment(w, query, next)
+		return
+	}
 
 	var current *viewmodel.PersonRecord
 	if a.personCtxKey != nil {
@@ -101,8 +135,42 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 		CurrentPerson: current,
 		SearchQuery:   query,
 		SearchResults: results,
+		NextAction:    next,
 	}
 	presentation.ResearchPickerView(view).Render(r.Context(), w)
+}
+
+// renderResearchSearchFragment returns only the picker results panel
+// (issue #378 slice 2 B2). The htmx-driven live search swap targets
+// #panel.research.picker.results so a full-page render would
+// double-render the rest of the picker chrome.
+func (a *App) renderResearchSearchFragment(w http.ResponseWriter, query, next string) {
+	var results []viewmodel.PersonRecord
+	if query != "" {
+		if rows, _, err := a.soldiers.SearchPage(query, 1, 10); err == nil {
+			for i := range rows {
+				results = append(results, viewmodel.PersonRecordFromModel(rows[i]))
+			}
+		}
+	}
+	view := viewmodel.ResearchPickerView{
+		SearchQuery:   query,
+		SearchResults: results,
+		NextAction:    next,
+	}
+	presentation.ResearchPickerSearchResults(view).Render(requestContext(w), w)
+}
+
+// requestContext returns a non-nil context derived from the request
+// when one is available, else context.Background(). Templ rendering
+// requires a non-nil context for hx-* attribute processing; the
+// test recorder doesn't carry a real Request, so we tolerate that
+// path. This helper is currently a passthrough to context.Background()
+// because the picker fragment doesn't depend on request-scoped data;
+// future slice-3 work that needs request data should plumb a real
+// context here.
+func requestContext(_ http.ResponseWriter) context.Context {
+	return context.Background()
 }
 
 func (a *App) handleResearchSelect(w http.ResponseWriter, r *http.Request) {
@@ -143,4 +211,35 @@ func (a *App) handleResearchClear(w http.ResponseWriter, r *http.Request) {
 	cookies.ClearPersonCtx(w)
 	setToastHeader(w, "Person selection cleared.")
 	writeExportRedirect(w, "/research")
+}
+
+// pickerContextPresent reports whether the supplied request carries
+// a dd_person_ctx cookie that this app can verify. Returns true
+// when no cookie key is configured (no-context mode pass-through)
+// or when the cookie is present and verifies.
+//
+// Issue #378 slice 2: handleSoldierByID checks this before the
+// soldier-scoped sub-route branch fires so users without a Person
+// in context are routed through the picker.
+func (a *App) pickerContextPresent(r *http.Request) bool {
+	if a.personCtxKey == nil {
+		return true
+	}
+	_, ok := cookies.ReadPersonCtx(r, a.personCtxKey)
+	return ok
+}
+
+// handleResearchRecent is the recents-list fragment endpoint
+// (issue #378 slice 3, option C1). Registered at GET /research/recent
+// in routes.go. Reads ?ids=... (comma-separated Person IDs from
+// localStorage) and returns the recent-persons ul fragment so
+// app.js can swap it in. Slice 2 ships the route + handler shape
+// so the routebuilder is stable; full hydration lands in slice 3.
+func (a *App) handleResearchRecent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	view := viewmodel.ResearchPickerView{}
+	presentation.ResearchPickerRecent(view).Render(r.Context(), w)
 }

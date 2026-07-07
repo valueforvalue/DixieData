@@ -417,3 +417,20 @@ func ArticleEditShell(view *viewmodel.Article) templ.Component {
 func ResearchPickerView(view viewmodel.ResearchPickerView) templ.Component {
 	return templates.ResearchPickerView(view)
 }
+
+// ResearchPickerSearchResults wraps the results-only fragment returned
+// by the live htmx search (issue #378 slice 2). Renders into
+// #panel.research.picker.results so the htmx swap replaces just that
+// panel — the rest of the picker chrome (search input, Continue
+// shortcut, Recent list) is unaffected.
+func ResearchPickerSearchResults(view viewmodel.ResearchPickerView) templ.Component {
+	return templates.ResearchPickerSearchResults(view)
+}
+
+// ResearchPickerRecent wraps the recents-only fragment returned by
+// the /research/recent endpoint (issue #378 slice 3, option C1). JS
+// reads localStorage dixiedata.research.recents, fetches the
+// fragment, and swaps #panel.research.picker.recent in place.
+func ResearchPickerRecent(view viewmodel.ResearchPickerView) templ.Component {
+	return templates.ResearchPickerRecent(view)
+}
