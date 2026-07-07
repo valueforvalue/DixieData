@@ -154,6 +154,24 @@ func LogsRoot(dataDir string) string {
 	return filepath.Join(filepath.Dir(dataDir), folderName+"-logs")
 }
 
+// CookiesRoot is the sibling directory that holds HMAC keys for
+// signed cookies (Research & Review picker context, issue #378).
+// Same shape + rationale as LogsRoot: must NOT live under dataDir
+// because .ddbak restore renames dataDir atomically and any file
+// handle held inside it blocks the rename on Windows. For
+// dataDir = ".../DixieData/.dixiedata" this returns
+// ".../DixieData/.dixiedata-cookies".
+func CookiesRoot(dataDir string) string {
+	return filepath.Join(filepath.Dir(dataDir), folderName+"-cookies")
+}
+
+// CookiesDir is an alias for CookiesRoot. Mirrors the LogsDir /
+// LogsRoot split in case future files (e.g. rotated key archive)
+// join the directory.
+func CookiesDir(dataDir string) string {
+	return CookiesRoot(dataDir)
+}
+
 // LogsDir returns the directory that holds the JSONL log files. As
 // of the layout change that splits app state from archive state,
 // this is LogsRoot(dataDir), not dataDir/logs. The data directory
