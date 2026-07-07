@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -254,6 +255,16 @@ func runTypstCompile(binPath, workDir, mainPath, outputPath string) error {
 	args := []string{
 		"compile",
 		"--root", workDir,
+		// Issue #383 slice 5: thread the discoverable format
+		// version into every Typst render so a viewer / a
+		// future re-import can read it back via
+		// `sys.inputs.dixiedata_format_version` (templates
+		// that need it can render a small footer line; the
+		// default templates stay silent so the visual
+		// surface doesn't change). The flag is per-invocation
+		// so the value is always fresh from buildinfo (no
+		// caching risk).
+		"--input", "dixiedata_format_version=" + buildinfo.PDFFormatVersion,
 	}
 	switch strings.ToLower(filepath.Ext(outputPath)) {
 	case ".svg":
