@@ -5,12 +5,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +32,13 @@ const (
 	archiveKindBackup = "backup"
 	archiveKindShared = "shared"
 )
+
+// Issue #383 slice 7: typed error for major-bump .ddbak
+// format_version refusals. The same pattern as
+// records.ErrMemorialFormatMismatch — GUI handlers use
+// errors.Is to surface a friendly "refused" message
+// (KindValidation), CLI runners branch to exit code 2.
+var ErrDDBakFormatMismatch = errors.New("ddbak archive format mismatch")
 
 // BackupManifest is the metadata envelope written into every
 // backup-archive (.ddbak) export. Carries the format + version
@@ -625,9 +634,12 @@ func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 	}
 	defer reader.Close()
 
-	contents, err := readBackupContents(&reader.Reader)
+	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
 		return BackupManifest{}, err
+	}
+	for _, w := range driftWarnings {
+		log.Printf("archive: %s", w)
 	}
 	if contents.Manifest.ArchiveKind != archiveKindBackup {
 		return BackupManifest{}, fmt.Errorf("archive is not a backup archive")
@@ -733,9 +745,12 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 	}
 	defer reader.Close()
 
-	contents, err := readBackupContents(&reader.Reader)
+	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
 		return BackupManifest{}, err
+	}
+	for _, w := range driftWarnings {
+		log.Printf("archive: %s", w)
 	}
 	if contents.Manifest.ArchiveKind != archiveKindBackup {
 		return BackupManifest{}, fmt.Errorf("archive is not a backup archive")
@@ -849,9 +864,12 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 	}
 	defer reader.Close()
 
-	contents, err := readBackupContents(&reader.Reader)
+	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
 		return SharedImportSummary{}, err
+	}
+	for _, w := range driftWarnings {
+		log.Printf("archive: %s", w)
 	}
 	if contents.Manifest.ArchiveKind != archiveKindShared {
 		return SharedImportSummary{}, fmt.Errorf("archive is not a shared archive")
@@ -1162,6 +1180,120 @@ func addSelectedBackupImages(zipWriter *zip.Writer, imageRoot string, selectedPa
 	return nil
 }
 
+// parseDDBakVersion splits a ddbak_vN[.M] string into
+// (major, minor, ok). Mirrors records.parseMemorialVersion
+// (issue #383 slice 7). Returns ok=false for any string
+// that doesn't match the ddbak_vN[.M] shape; the caller
+// (checkDDBakFormatVersion) treats unparseable as a
+// mismatch so a malformed stamp triggers the same refusal
+// path as a major bump.
+func parseDDBakVersion(s string) (major, minor int, ok bool) {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "ddbak_v") {
+		return 0, 0, false
+	}
+	rest := strings.TrimPrefix(s, "ddbak_v")
+	parts := strings.SplitN(rest, ".", 3)
+	if len(parts) > 2 {
+		return 0, 0, false
+	}
+	maj, err := strconv.Atoi(parts[0])
+	if err != nil || maj < 0 {
+		return 0, 0, false
+	}
+	if len(parts) == 1 {
+		return maj, 0, true
+	}
+	min, err := strconv.Atoi(parts[1])
+	if err != nil || min < 0 {
+		return 0, 0, false
+	}
+	return maj, min, true
+}
+
+// CheckDDBakFormatVersion enforces the per-surface stamp
+// drift policy for .ddbak + .ddshare archives. Mirrors
+// records.checkMemorialFormatVersion. Returns:
+//   - (nil, nil) on same version or missing stamp (silent
+//     for the former; warning for the latter is the
+//     caller's job via DDBakFormatWarnings)
+//   - (nil, warning) on a missing stamp, so the caller can
+//     surface "pre-v1" in the summary
+//   - (err, nil) on a major-bump or unparseable stamp
+//     (wrapped ErrDDBakFormatMismatch for errors.Is dispatch)
+//
+// Exported so the CLI dry-run path (appshell/cli_import.go)
+// can call it BEFORE starting a destructive import.
+func CheckDDBakFormatVersion(archiveVersion string) error {
+	expected := buildinfo.DDBakFormatVersion
+	if strings.TrimSpace(archiveVersion) == "" {
+		// Missing stamp: treat as pre-v1 backward compat
+		// (warn, don't refuse). The warning is the caller's
+		// responsibility via ddbakFormatWarnings.
+		return nil
+	}
+	arcMaj, arcMin, arcOK := parseDDBakVersion(archiveVersion)
+	expMaj, expMin, expOK := parseDDBakVersion(expected)
+	if !arcOK || !expOK {
+		return fmt.Errorf("%w: cannot parse format_version %q (expected %q)", ErrDDBakFormatMismatch, archiveVersion, expected)
+	}
+	if arcMaj != expMaj {
+		return fmt.Errorf("%w: archive is %q (major v%d), this build expects %q (major v%d) — refuse", ErrDDBakFormatMismatch, archiveVersion, arcMaj, expected, expMaj)
+	}
+	if arcMin < expMin {
+		// Defensive: same major, archive is older. Treat as
+		// a mismatch because the archive's surface is older
+		// than what the running binary assumes.
+		return fmt.Errorf("%w: archive is %q (minor v%d), this build expects %q (minor v%d) — refuse", ErrDDBakFormatMismatch, archiveVersion, arcMin, expected, expMin)
+	}
+	return nil
+}
+
+// DDBakFormatWarnings returns the human-readable warning
+// lines for the format_version drift cases that don't
+// refuse (pre-v1 + minor-bump). The caller appends these
+// to the import summary / CLI output / dry-run output.
+// Returns nil for the same-version case (silent).
+func DDBakFormatWarnings(archiveVersion string) []string {
+	expected := buildinfo.DDBakFormatVersion
+	if strings.TrimSpace(archiveVersion) == "" {
+		return []string{fmt.Sprintf("archive has no format_version field; treating as pre-v1 (expected %s); import will proceed", expected)}
+	}
+	arcMaj, arcMin, arcOK := parseDDBakVersion(archiveVersion)
+	expMaj, expMin, expOK := parseDDBakVersion(expected)
+	if !arcOK || !expOK {
+		return nil // unparseable; the check function refused already
+	}
+	if arcMaj == expMaj && arcMin > expMin {
+		return []string{fmt.Sprintf("archive format_version %s is a minor bump past this build's %s; import will proceed but new fields may be missing", archiveVersion, expected)}
+	}
+	return nil
+}
+
+// readBackupContentsWithWarnings is the drift-aware
+// variant of readBackupContents. Returns the parsed
+// contents, the drift warnings (for caller summary
+// surfaces), and any error. Major-bump refusals
+// surface as ErrDDBakFormatMismatch (errors.Is dispatch).
+//
+// Issue #383 slice 7: this is the single seam where
+// every reader (ImportWithLocalIdentity,
+// RestoreBackupArchive, ImportSharedBackup) gates
+// the format_version check. The legacy readBackupContents
+// is preserved as a thin wrapper that drops the
+// warnings so existing callers compile unchanged; new
+// readers migrate to the WithWarnings variant.
+func readBackupContentsWithWarnings(reader *zip.Reader) (backupContents, []string, error) {
+	contents, err := readBackupContents(reader)
+	if err != nil {
+		return backupContents{}, nil, err
+	}
+	if err := CheckDDBakFormatVersion(contents.Manifest.FormatVersion); err != nil {
+		return backupContents{}, nil, err
+	}
+	return contents, DDBakFormatWarnings(contents.Manifest.FormatVersion), nil
+}
+
 func readBackupContents(reader *zip.Reader) (backupContents, error) {
 	fileMap := make(map[string]*zip.File, len(reader.File))
 	for _, file := range reader.File {
@@ -1179,6 +1311,16 @@ func readBackupContents(reader *zip.Reader) (backupContents, error) {
 	}
 	if manifest.Format != backupFormatName {
 		return backupContents{}, fmt.Errorf("unsupported backup format")
+	}
+	// Issue #383 slice 7: enforce the per-surface stamp
+	// drift policy before any file-presence or schema
+	// checks. The typed error (ErrDDBakFormatMismatch) lets
+	// every caller (ImportWithLocalIdentity,
+	// RestoreBackupArchive, ImportSharedBackup) surface
+	// the refusal via errors.Is dispatch in the GUI +
+	// CLI runners.
+	if err := CheckDDBakFormatVersion(manifest.FormatVersion); err != nil {
+		return backupContents{}, err
 	}
 	switch manifest.Version {
 	case 1:
