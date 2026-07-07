@@ -143,13 +143,13 @@ func TestExportService_ExportExcel(t *testing.T) {
 	if len(sheets) < 3 || sheets[0] != "Archive Export" {
 		t.Fatalf("unexpected workbook sheets: %v", sheets)
 	}
-	if value, err := workbook.GetCellValue("Archive Export", "F2"); err != nil || value != "STC38-00001" {
+	if value, err := workbook.GetCellValue("Archive Export", "G2"); err != nil || value != "STC38-00001" {
 		t.Fatalf("display ID cell = %q err=%v", value, err)
 	}
-	if value, err := workbook.GetCellValue("Archive Export", "I2"); err != nil || value != "" {
+	if value, err := workbook.GetCellValue("Archive Export", "J2"); err != nil || value != "" {
 		t.Fatalf("linked spouse display should be empty for the soldier row before spouse backfill check: %q err=%v", value, err)
 	}
-	if value, err := workbook.GetCellValue("Archive Export", "AB2"); err != nil || value != "1831-11-09T00:00:00Z" {
+	if value, err := workbook.GetCellValue("Archive Export", "AC2"); err != nil || value != "1831-11-09T00:00:00Z" {
 		t.Fatalf("birth date cell = %q err=%v", value, err)
 	}
 	if value, err := workbook.GetCellValue("Linked Relationships", "A2"); err != nil || value != "STC38-00002" {
