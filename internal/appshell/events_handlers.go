@@ -123,6 +123,7 @@ func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
 			presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
 			return
 		}
+		event.CreatedByImportPath = "create_event"
 		created, err := a.events.CreateEvent(event)
 		if err != nil {
 			defaults, defaultsErr := a.newEventDefaults()
