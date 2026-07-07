@@ -371,6 +371,17 @@ func runImportBackup(ctx context.Context, a *App, opts ImportOptions) (int, erro
 
 	manifest, err := a.backup.ImportWithLocalIdentity(from, a.dataDir, localIdentity, preserveLocalIdentity)
 	if err != nil {
+		// Issue #383 slice 7: major-bump format_version
+		// refusal (ErrDDBakFormatMismatch) gets a distinct
+		// exit code (2) so CI scripts can branch. The
+		// user-actionable message includes the version
+		// strings via errors.Is dispatch.
+		if errors.Is(err, archive.ErrDDBakFormatMismatch) {
+			if reopenErr := a.reopenDatabase(); reopenErr != nil {
+				return 2, fmt.Errorf("backup import refused: %w (and the database could not be reopened: %v)", err, reopenErr)
+			}
+			return 2, fmt.Errorf("backup import refused: %w", err)
+		}
 		if reopenErr := a.reopenDatabase(); reopenErr != nil {
 			return 1, fmt.Errorf("backup import failed (%v) and the database could not be reopened (%v)", err, reopenErr)
 		}
@@ -458,6 +469,14 @@ func runImportSharedArchive(ctx context.Context, a *App, opts ImportOptions) (in
 
 	summary, err := a.backup.ImportSharedBackup(from, a.dataDir)
 	if err != nil {
+		// Issue #383 slice 7: same exit-code-2 branch for
+		// the shared-archive reader; the same
+		// ErrDDBakFormatMismatch surfaces for both .ddbak
+		// and .ddshare (they share the ddbak_v1 namespace
+		// per commit b1dc871).
+		if errors.Is(err, archive.ErrDDBakFormatMismatch) {
+			return 2, fmt.Errorf("shared archive import refused: %w", err)
+		}
 		return 1, fmt.Errorf("shared archive import failed: %w", err)
 	}
 
@@ -788,6 +807,10 @@ func importRestorePointSibling(dataDir string) string {
 // readBackupManifestFromZip opens a .ddbak and reads just the
 // manifest.json entry. Used by import backup --dry-run to
 // surface the count summary without staging anything.
+// Issue #383 slice 7: also runs the format_version drift
+// check so a --dry-run surfaces a major-bump refusal
+// BEFORE any commit happens (the user sees the typed
+// ErrDDBakFormatMismatch without starting a restore).
 func readBackupManifestFromZip(path string) (archive.BackupManifest, error) {
 	var manifest archive.BackupManifest
 	zr, err := openZip(path)
@@ -815,7 +838,15 @@ func readBackupManifestFromZip(path string) (archive.BackupManifest, error) {
 			// reader fills them in so the rest of the
 			// import pipeline can compare axes without
 			// re-parsing the AppVersion string.
-			return archive.NormalizeManifestBackwardsCompat(manifest), nil
+			manifest = archive.NormalizeManifestBackwardsCompat(manifest)
+			// Drift check (issue #383 slice 7): a
+			// major-bump surfaces here so a --dry-run
+			// doesn't let the user queue a destructive
+			// import they'd have to cancel.
+			if err := archive.CheckDDBakFormatVersion(manifest.FormatVersion); err != nil {
+				return manifest, err
+			}
+			return manifest, nil
 		}
 	}
 	return manifest, errors.New("archive contains no manifest.json")
