@@ -388,6 +388,124 @@
     saveRecentRecords(next);
   }
 
+  // Issue #378 slice 3: research picker recents are persisted in
+  // localStorage (key dixiedata.research.recents), capped at 10,
+  // deduped by id, push-to-head. Mirrors the loadRecentRecords /
+  // saveRecentRecords shape above so the storage policy is
+  // consistent across both recent lists.
+  const researchRecentsStorageKey = "dixiedata.research.recents";
+  const researchRecentsStorageCap = 10;
+  const researchRecentsHydrationState = { token: 0 };
+
+  function loadResearchRecents() {
+    try {
+      const raw = window.localStorage.getItem(researchRecentsStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((value) => Number.isInteger(value) && value > 0) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveResearchRecents(ids) {
+    try {
+      const normalized = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((value) => Number.isInteger(value) && value > 0))).slice(0, researchRecentsStorageCap);
+      if (normalized.length === 0) {
+        window.localStorage.removeItem(researchRecentsStorageKey);
+        return;
+      }
+      window.localStorage.setItem(researchRecentsStorageKey, JSON.stringify(normalized));
+    } catch (error) {
+      // Ignore storage failures.
+    }
+  }
+
+  function rememberResearchPickFromPage() {
+    const detail = document.querySelector("[data-research-record-id]");
+    if (!(detail instanceof HTMLElement)) {
+      return;
+    }
+    const id = Number.parseInt(detail.getAttribute("data-research-record-id") || "", 10);
+    if (!Number.isInteger(id) || id < 1) {
+      return;
+    }
+    const next = [id].concat(loadResearchRecents().filter((value) => value !== id)).slice(0, researchRecentsStorageCap);
+    saveResearchRecents(next);
+  }
+
+  // researchPickerNextKeyword returns the current NextAction the
+  // picker is configured with so the recents-list forms redirect to
+  // the right sub-page. The picker echoes it into a hidden form
+  // field with name="next"; we read that off the first picker form
+  // and fall back to "camaraderie" when no picker is on the page.
+  function researchPickerNextKeyword() {
+    const form = document.querySelector("#" + "page.research.picker form input[name='next']");
+    if (form instanceof HTMLInputElement && form.value) {
+      return form.value;
+    }
+    return "camaraderie";
+  }
+
+  function researchRecentsTarget() {
+    return document.getElementById("panel.research.picker.recent");
+  }
+
+  function researchRecentsEmptyState() {
+    return document.querySelector("[data-research-recent-empty]");
+  }
+
+  function researchRecentsList() {
+    return document.querySelector("[data-research-recent-list]");
+  }
+
+  function invalidateResearchRecentsHydration() {
+    researchRecentsHydrationState.token += 1;
+  }
+
+  async function hydrateResearchPickerRecents() {
+    const emptyState = researchRecentsEmptyState();
+    const target = researchRecentsTarget();
+    if (!(emptyState instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+      return;
+    }
+    const ids = loadResearchRecents();
+    if (ids.length === 0) {
+      return;
+    }
+    const next = researchPickerNextKeyword();
+    const token = researchRecentsHydrationState.token + 1;
+    researchRecentsHydrationState.token = token;
+    try {
+      const response = await fetch("/research/recent?ids=" + encodeURIComponent(ids.join(",")) + "&next=" + encodeURIComponent(next), {
+        headers: {
+          "X-Requested-With": "fetch",
+        },
+      });
+      if (!response.ok || researchRecentsHydrationState.token !== token) {
+        return;
+      }
+      const html = await response.text();
+      if (researchRecentsHydrationState.token !== token) {
+        return;
+      }
+      const liveEmpty = researchRecentsEmptyState();
+      const liveTarget = researchRecentsTarget();
+      if (!(liveEmpty instanceof HTMLElement) || !(liveTarget instanceof HTMLElement)) {
+        return;
+      }
+      // Replace the entire recents-region innerHTML (it is a
+      // section wrapper holding either an empty <p> or a populated
+      // <ul>). On a populated response, the empty <p> goes away
+      // and the <ul> appears; on an empty response (no ids mapped
+      // to a person), the server returns the empty-state again.
+      liveTarget.innerHTML = html;
+      initializeDynamicContent();
+    } catch (error) {
+      // Leave the empty state in place if the recent list cannot
+      // be loaded.
+    }
+  }
+
   function quickSearchInput() {
     const input = document.querySelector('input[name="q"][hx-get="/soldiers/search"]');
     return input instanceof HTMLInputElement ? input : null;
@@ -2875,7 +2993,9 @@
     restorePendingToast();
     applySmartBackLabels();
     rememberRecentRecordFromPage();
+    rememberResearchPickFromPage();
     hydrateRecentSearchResults();
+    hydrateResearchPickerRecents();
     initializeBrowseView();
     applyCalendarAnniversaryDensity();
     initializeCopyPathButtons();
@@ -4975,7 +5095,9 @@
     restorePendingToast();
     applySmartBackLabels();
     rememberRecentRecordFromPage();
+    rememberResearchPickFromPage();
     hydrateRecentSearchResults();
+    hydrateResearchPickerRecents();
     initializeBrowseView();
     // Issue #249: install the dismiss-job button handler at boot
     // so document.referrer-based navigation works on first

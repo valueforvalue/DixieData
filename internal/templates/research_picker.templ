@@ -98,6 +98,30 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 					@ResearchPickerSearchResults(view)
 				</div>
 			</section>
+			if view.NextAction == "research-pack" {
+				<section id={ uiids.PanelResearchPickerPackSubScreen } class="card rounded-3xl p-5 space-y-3" data-research-pack-sub-screen>
+					<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Research Pack geography</p>
+					<p class="text-sm text-slate-600">Choose state or county before picking the Person Record. The choice is forwarded into the sub-page URL.</p>
+					<form
+						method="get"
+						action={ templ.SafeURL(routebuilder.ResearchPicker()) }
+						class="flex flex-wrap items-center gap-2"
+					>
+						<input type="hidden" name="next" value="research-pack"/>
+						<label class="text-sm text-[color:var(--ink)]" for="research-pack-geography">Geography</label>
+						<select
+							id="research-pack-geography"
+							name="geography"
+							class="rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-4 py-2 text-sm text-[color:var(--ink)]"
+							data-research-pack-geography
+						>
+							<option value="state" data-research-pack-state>State</option>
+							<option value="county" data-research-pack-county>County</option>
+						</select>
+						<button type="submit" class="pill-link">Save choice</button>
+					</form>
+				</section>
+			}
 			<section id={ uiids.PanelResearchPickerRecent } class="card rounded-3xl p-5 space-y-3">
 				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Recent</p>
 				@ResearchPickerRecent(view)

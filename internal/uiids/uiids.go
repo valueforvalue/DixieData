@@ -202,6 +202,10 @@ const (
 	PanelResearchPickerResults    = "panel.research.picker.results"
 	PanelResearchPickerRecent     = "panel.research.picker.recent"
 	PanelResearchPickerContinue   = "panel.research.picker.continue"
+	// Issue #378 slice 3: research-pack picker sub-screen that asks
+	// the user to choose state vs county before redirecting to the
+	// sub-page. Only renders when ?next=research-pack is set.
+	PanelResearchPickerPackSubScreen = "panel.research.picker.pack-sub-screen"
 	// Issue #265: /share landing sections. The page is
 	// reorganised into a top-of-page stack (Quick Actions,
 	// Recent activity) above the existing Export/Import/Sync
@@ -350,6 +354,7 @@ var Registry = []Surface{
 	{ID: PanelResearchPickerResults, Kind: "panel", Description: "Live search results region on the Research picker page; htmx swap target for the search fragment."},
 	{ID: PanelResearchPickerRecent, Kind: "panel", Description: "Recent-persons region on the Research picker page; populated via localStorage + /soldiers/search/recent?ids=."},
 	{ID: PanelResearchPickerContinue, Kind: "panel", Description: "Continue shortcut on the Research picker page when dd_person_ctx cookie is set; links to the most-recent-scoped sub-page."},
+	{ID: PanelResearchPickerPackSubScreen, Kind: "panel", Description: "Research-pack picker sub-screen on /research?next=research-pack (issue #378 slice 3); offers a state vs county geography choice before the user picks a Person Record."},
 	{ID: PanelShareQuickActions, Kind: "panel", Description: "Quick Actions card on /share (issue #265). Three large tiles: Export JSON, Import .ddbak, Share Queue. Above the fold."},
 	{ID: PanelShareRecent, Kind: "panel", Description: "Recent activity card on /share (issue #265). Last 3 terminal jobs sorted by StartedAt desc. Empty state when no jobs exist."},
 	{ID: PanelShareAllExports, Kind: "panel", Description: "All Exports card on /share (issue #265). Below the fold. Renamed from 'Export & Backup'."},
