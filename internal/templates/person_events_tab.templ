@@ -9,7 +9,7 @@
 //   - inline "Unlink" form per linked Event row → POSTs to
 //     routebuilder.PersonEventDetach
 //   - "Add existing event" <details> with a Display-ID input
-//     → POSTs to routebuilder.PersonEventAttach; the handler
+//     → POSTs to /soldiers/{id}/events/{eventId}/attach (see routes.go); the handler
 //     resolves Event by Display ID via events.GetEventByDisplayID
 //   - "Quick add new event" <details> with kind + begin/end +
 //     description → POSTs to routebuilder.PersonEventQuickAdd;

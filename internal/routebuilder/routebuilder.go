@@ -784,13 +784,6 @@ func PersonEventsTab(soldierID int64) string {
 	return fmt.Sprintf("/soldiers/%d/events", soldierID)
 }
 
-// PersonEventAttach returns the URL for attaching an Event to
-// a Person Record. Registered as POST
-// /soldiers/{id}/events/{eventId}/attach in routes.go.
-func PersonEventAttach(soldierID, eventID int64) string {
-	return fmt.Sprintf("/soldiers/%d/events/%d/attach", soldierID, eventID)
-}
-
 // PersonEventDetach returns the URL for detaching an Event
 // from a Person Record. Registered as POST
 // /soldiers/{id}/events/{eventId}/detach in routes.go.
