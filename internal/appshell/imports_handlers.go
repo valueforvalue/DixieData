@@ -6,6 +6,7 @@ package appshell
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/records"
 )
 
 func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
@@ -251,16 +253,33 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	// real work happens after the worker is released.
 	preview, err := a.soldiers.PreviewMemorialArchive(path)
 	if err != nil {
+		if errors.Is(err, records.ErrMemorialFormatMismatch) {
+			// Major-bump refusal is a user-actionable surface,
+			// not an internal error. Show the wrapped message
+			// verbatim so the user sees "your scraper produced a
+			// newer format than this build understands".
+			respondError(w, r, KindValidation, err.Error(), err)
+			return
+		}
 		respondInternal(w, r, "Memorial JSON preflight failed.", err)
 		return
 	}
 	// Seed the queued snapshot with the preflight summary so
 	// /jobs/{id} shows the headline before the user confirms.
+	// Version warnings (pre-v1, minor bump) are appended so the
+	// user sees the format-drift signal at confirmation time.
 	summary := fmt.Sprintf(
 		"Awaiting confirmation: will create %d, skip %d, fail %d (of %d rows in %s).",
 		preview.WouldCreate, preview.WouldSkip, preview.WouldFail,
 		preview.TotalRows, filepath.Base(path),
 	)
+	if preview.Format.FormatVersion != "" {
+		summary = fmt.Sprintf("%s Scraped by %s script version %s (format %s).",
+			summary, preview.Format.ScriptName, preview.Format.ScriptVersion, preview.Format.FormatVersion)
+	}
+	for _, w := range preview.Warnings {
+		summary = summary + " ⚠ " + w
+	}
 
 	// The closure captures `id` by reference, but `id` is not in
 	// scope until after StartManual returns. Pass it via a tiny
@@ -272,6 +291,11 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 		p.Set(20, "Reading Memorial archive")
 		import_summary, err := a.soldiers.ImportMemorialArchive(path)
 		if err != nil {
+			// Major-bump refusal surfaces a clear typed error
+			// to the job result; the worker treats it like any
+			// other failure (status + log) but the message in
+			// the user's debug-console dump points to the
+			// exact format mismatch.
 			return err
 		}
 		p.Set(80, "Writing error log")
