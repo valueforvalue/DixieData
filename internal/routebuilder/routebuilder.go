@@ -176,6 +176,17 @@ func ResearchLogTasksCreate(soldierID int64) string {
 	return fmt.Sprintf("/soldiers/%d/research-log/tasks", soldierID)
 }
 
+// SoldierRecoverDisplayID returns the URL for the per-row
+// "Generate Display ID" affordance on the data-quality scan
+// results (issue #416). Registered as POST
+// /soldiers/{id}/display-id/recover in routes.go. The
+// handler stamps a fresh DXDID via db.NextDXDID() when the
+// row's display_id is empty and writes it back; refuses
+// with 409 when the row already has a non-empty id.
+func SoldierRecoverDisplayID(soldierID int64) string {
+	return fmt.Sprintf("/soldiers/%d/display-id/recover", soldierID)
+}
+
 // SoldierCamaraderie returns the URL for the camaraderie graph page.
 // Registered as GET /soldiers/{id}/camaraderie in routes.go.
 func SoldierCamaraderie(id int64) string {

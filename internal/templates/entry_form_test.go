@@ -848,3 +848,52 @@ func TestEntryFormHelpersEntryTypesOmitsEvent(t *testing.T) {
 		t.Fatalf("/soldiers/new HTML must not contain an option with value=\"event\" (issue #362)")
 	}
 }
+
+// === Issue #416 UI test additions ===
+// TestSettingsQualityScanResultsRendersGenerateDisplayIDButton proves
+// the per-row "Generate Display ID" button renders for identity-missing
+// rows and does NOT render for other issue codes. (Issue #416.)
+
+func TestSettingsQualityScanResultsRendersGenerateDisplayIDButton(t *testing.T) {
+	var buf bytes.Buffer
+	err := SettingsQualityScanResults(viewmodel.DataQualityScanResult{
+		Mode:           "advanced",
+		ScannedRecords: 12,
+		IssueCount:     2,
+		Groups: []viewmodel.DataQualityIssueGroup{
+			{
+				Group: "Identity",
+				Count: 2,
+				Issues: []viewmodel.DataQualityIssue{
+					// identity-missing: button MUST render.
+					{PersonRecordID: 7, Code: "identity-missing", DisplayID: "", Name: "John Doe", Summary: "Missing display ID"},
+					// non-identity-missing: button MUST NOT render.
+					{PersonRecordID: 8, Code: "identity-malformed", DisplayID: "DXD-00008", Name: "Jane Doe", Summary: "Malformed display ID"},
+				},
+			},
+		},
+	}).Render(context.Background(), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+
+	content := buf.String()
+	// The identity-missing row's button is present.
+	if !strings.Contains(content, `data-recover-display-id="7"`) {
+		t.Fatalf("identity-missing row should render the Generate Display ID button; got content: %s", content)
+	}
+	if !strings.Contains(content, "Generate Display ID") {
+		t.Fatalf("button label not found in render; got: %s", content)
+	}
+	if !strings.Contains(content, "/soldiers/7/display-id/recover") {
+		t.Fatalf("button action URL not found; got: %s", content)
+	}
+	// The non-identity-missing row's button is NOT present.
+	if strings.Contains(content, `data-recover-display-id="8"`) {
+		t.Fatalf("non-identity-missing row should NOT render the Generate Display ID button")
+	}
+	// The Move Selected to Review Queue form is unchanged.
+	if !strings.Contains(content, "Move Selected to Review Queue") {
+		t.Fatalf("Move Selected to Review Queue button should still render (unchanged)")
+	}
+}

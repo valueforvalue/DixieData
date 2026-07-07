@@ -1691,6 +1691,12 @@ var ErrNoUnitInfo = errors.New("this record does not have enough unit informatio
 // an empty-state page (200), not a 500.
 var ErrNoCountyPack = errors.New("this record does not have a county research pack yet")
 
+// ErrDisplayIDNotEmpty is returned by RecoverDisplayID when the
+// supplied soldier already has a display_id. The recovery
+// affordance is for blank-id rows only; a healthy row must not
+// be re-minted.
+var ErrDisplayIDNotEmpty = errors.New("this record already has a display_id")
+
 func deriveUnitGraphKeys(unit string) unitGraphKeys {
 	trimmed := strings.TrimSpace(unit)
 	if trimmed == "" {
@@ -3159,4 +3165,49 @@ func searchableUnit(soldier models.Soldier) string {
 
 func searchableRank(soldier models.Soldier) string {
 	return strings.TrimSpace(strings.TrimSpace(soldier.RankIn) + " " + strings.TrimSpace(soldier.RankOut))
+}
+
+// RecoverDisplayID mints a fresh DXDID for the soldier with the
+// given id and writes it back to the row, but ONLY when the
+// row's display_id is currently empty (issue #416). Returns
+// ErrSoldierNotFound (wrapped sql.ErrNoRows) when no row exists;
+// ErrDisplayIDNotEmpty when the row already has a non-empty id.
+// The UPDATE includes the empty-guard in the WHERE clause so
+// concurrent / stale clicks are no-ops (rows_affected == 0) rather
+// than overwrites — the handler surfaces a 409 in that case.
+// Stamps last_edited_by / last_edited_at / updated_at to mark
+// the recovery in the audit trail.
+func (s *SoldierService) RecoverDisplayID(id int64) (string, error) {
+	row, err := s.GetByID(id)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(row.DisplayID) != "" {
+		return "", fmt.Errorf("%w", ErrDisplayIDNotEmpty)
+	}
+	minted, err := s.db.NextDXDID()
+	if err != nil {
+		return "", err
+	}
+	now := currentSQLiteTimestamp()
+	audit := s.currentAuditActor()
+	res, err := s.db.Conn().Exec(
+		`UPDATE soldiers SET display_id = ?, last_edited_by = ?, last_edited_at = ?, updated_at = ? WHERE id = ? AND display_id = ''`,
+		minted, audit, now, now, id,
+	)
+	if err != nil {
+		return "", err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		// Race: another caller mints between our GetByID and
+		// our UPDATE. Re-read and return the now-existing id so
+		// the handler can respond 200 with the real value.
+		row, err := s.GetByID(id)
+		if err != nil {
+			return "", err
+		}
+		return row.DisplayID, nil
+	}
+	return minted, nil
 }

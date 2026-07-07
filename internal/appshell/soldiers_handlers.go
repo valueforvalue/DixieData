@@ -14,6 +14,8 @@
 package appshell
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -644,4 +646,52 @@ func (a *App) attachArchiveCounts(search models.SoldierSearch) models.SoldierSea
 		return viewmodel.WithArchiveCounts(search, models.ArchiveCounts{})
 	}
 	return viewmodel.WithArchiveCounts(search, counts)
+}
+
+// handleRecoverDisplayID mints a fresh display_id for a soldier
+// whose display_id is empty (corrupted by the pre-#376 Update
+// path) and writes it back to the row. Issue #416.
+//
+// Status codes:
+//   - 200 OK with body `{"display_id": "DXD-00XXX"}` on success
+//   - 404 if no soldier with that id exists
+//   - 409 if the soldier already has a non-empty display_id
+//     (recovery is for blank-id rows only)
+//   - 500 with the underlying error message otherwise
+//
+// The handler returns JSON when the request has `Accept: application/json`
+// or when invoked by the htmx-driven UI. For the simple click
+// path it returns plain text with the new id in the response body
+// AND an X-DixieData-Toast header so the existing toast machinery
+// surfaces success.
+func (a *App) handleRecoverDisplayID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/soldiers/")
+	parts := strings.Split(path, "/")
+	id, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	newID, err := a.soldiers.RecoverDisplayID(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
+			return
+		}
+		if errors.Is(err, records.ErrDisplayIDNotEmpty) {
+			http.Error(w, "this record already has a display_id", http.StatusConflict)
+			return
+		}
+		respondInternal(w, r, fmt.Sprintf("Could not recover display_id for record %d.", id), err)
+		return
+	}
+	w.Header().Set("X-DixieData-Toast", fmt.Sprintf("Display ID recovered: %s", newID))
+	w.Header().Set("X-DixieData-Toast-Type", "success")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"display_id":%q}`, newID)
 }
