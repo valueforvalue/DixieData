@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -714,5 +715,227 @@ func TestHandleNewSoldierRendersFormRecordsPanel(t *testing.T) {
 			uiids.PanelSoldierFormRecords,
 			bodyExtract(body, "Source Records", 200),
 		)
+	}
+}
+
+// TestHandleSoldierByID_RedirectsEventRowsToEventsDetail
+// (issue #363) pins the server-gate that protects against
+// an Event row ever rendering the Person Record shape via
+// /soldiers/{id}*. The catch-all handleSoldierByID must
+// 303-redirect GET /soldiers/{id} to /events/{id} when the
+// row is an Event Record (entry_type="event").
+func TestHandleSoldierByID_RedirectsEventRowsToEventsDetail(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "Gettysburg")
+
+	client := noRedirectClient()
+	resp, err := client.Get(server.URL + "/soldiers/" + strconv.FormatInt(e.ID, 10))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", e.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("GET /soldiers/%d status = %d, want 303 (issue #363)", e.ID, resp.StatusCode)
+	}
+	loc := resp.Header.Get("Location")
+	if loc != "/events/"+strconv.FormatInt(e.ID, 10) {
+		t.Errorf("Location = %q, want /events/%d", loc, e.ID)
+	}
+}
+
+// TestHandleSoldierByID_RedirectsEventRowsForEditSuffix
+// (issue #363) pins the /soldiers/{id}/edit redirect
+// target. The redirect goes to /events/{id} (the detail
+// page) NOT /events/{id}/edit — the user can navigate
+// from the detail to the editor.
+func TestHandleSoldierByID_RedirectsEventRowsForEditSuffix(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "Battle", "07/01/1863", "07/03/1863", "Gettysburg")
+
+	client := noRedirectClient()
+	resp, err := client.Get(server.URL + "/soldiers/" + strconv.FormatInt(e.ID, 10) + "/edit")
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d/edit: %v", e.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("GET /soldiers/%d/edit status = %d, want 303", e.ID, resp.StatusCode)
+	}
+	loc := resp.Header.Get("Location")
+	if loc != "/events/"+strconv.FormatInt(e.ID, 10) {
+		t.Errorf("Location = %q, want /events/%d (detail, not edit)", loc, e.ID)
+	}
+}
+
+// TestHandleSoldierByID_PUTOnEventRowRedirectsAndDoesNotMutate
+// (issue #363) pins the corruption-prevention guarantee.
+// PUT on an Event row via /soldiers/{id} must:
+//   - 303 to /events/{id}
+//   - leave the row's kind / begin_date / description
+//     unchanged from their pre-PUT values (i.e. the
+//     redirect fired BEFORE parseSoldierForm could strip
+//     them or rewrite entry_type).
+func TestHandleSoldierByID_PUTOnEventRowRedirectsAndDoesNotMutate(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "OriginalKind", "01/15/1864", "", "Original description")
+
+	form := url.Values{}
+	form.Set("kind", "MaliciousOverride")
+	form.Set("begin_date", "12/25/2025")
+	form.Set("description", "PWNED")
+
+	req, err := http.NewRequest(http.MethodPut,
+		server.URL+"/soldiers/"+strconv.FormatInt(e.ID, 10),
+		strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf("build PUT: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	client := noRedirectClient()
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("PUT /soldiers/%d: %v", e.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("PUT /soldiers/%d status = %d, want 303", e.ID, resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/events/"+strconv.FormatInt(e.ID, 10) {
+		t.Errorf("Location = %q, want /events/%d", loc, e.ID)
+	}
+
+	after, err := app.soldiers.GetByID(e.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if after.Kind != "OriginalKind" {
+		t.Errorf("after PUT kind = %q, want unchanged %q (issue #363 corruption guard)",
+			after.Kind, "OriginalKind")
+	}
+	if after.BeginDate != "01/15/1864" {
+		t.Errorf("after PUT begin_date = %q, want unchanged %q",
+			after.BeginDate, "01/15/1864")
+	}
+	if after.Description != "Original description" {
+		t.Errorf("after PUT description = %q, want unchanged",
+			after.Description)
+	}
+	if after.EntryType != models.EntryTypeEvent {
+		t.Errorf("after PUT entry_type = %q, want unchanged %q",
+			after.EntryType, models.EntryTypeEvent)
+	}
+}
+
+// TestHandleSoldierByID_DELETEOnEventRowRedirects (issue #363)
+// is the defensive DELETE gate. An Event reached via
+// /soldiers/{id} DELETE would route to a.soldiers.Delete(id)
+// which cascades event_person_links references away. Wrong
+// surface for the operation. The 303 sends the user to the
+// canonical Event surface where DELETE is meaningless
+// (events have no delete affordance).
+func TestHandleSoldierByID_DELETEOnEventRowRedirects(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "ToNotDelete", "06/15/1863", "", "")
+
+	req, err := http.NewRequest(http.MethodDelete,
+		server.URL+"/soldiers/"+strconv.FormatInt(e.ID, 10), nil)
+	if err != nil {
+		t.Fatalf("build DELETE: %v", err)
+	}
+	client := noRedirectClient()
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE /soldiers/%d: %v", e.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("DELETE /soldiers/%d status = %d, want 303", e.ID, resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/events/"+strconv.FormatInt(e.ID, 10) {
+		t.Errorf("Location = %q, want /events/%d", loc, e.ID)
+	}
+
+	// Row must still exist.
+	if _, err := app.soldiers.GetByID(e.ID); err != nil {
+		t.Errorf("after DELETE GetByID failed: %v (Event row was deleted via /soldiers/!)", err)
+	}
+}
+
+// TestHandleSoldierByID_PDFOnEventRowRedirects (issue #363)
+// pins the PDF path redirect. Soldier PDF for an Event
+// would render soldier_landscape.typ (wrong template).
+// The redirect sends the user to the event's PDF surface.
+func TestHandleSoldierByID_PDFOnEventRowRedirects(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	e := createEvent(t, app, "PdfEvent", "07/01/1863", "", "")
+
+	client := noRedirectClient()
+	resp, err := client.Get(server.URL + "/soldiers/" + strconv.FormatInt(e.ID, 10) + "/pdf")
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d/pdf: %v", e.ID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("GET /soldiers/%d/pdf status = %d, want 303", e.ID, resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/events/"+strconv.FormatInt(e.ID, 10)+"/pdf" {
+		t.Errorf("Location = %q, want /events/%d/pdf", loc, e.ID)
+	}
+}
+
+// TestHandleSoldierByID_PersonRowStillRendersSoldierCard is the
+// protection test (issue #363): the gate must NOT regress
+// non-Event rows. A Person Record reached via /soldiers/{id}
+// must still render the detail card (status 200, body
+// contains the SoldierDetail fragments).
+func TestHandleSoldierByID_PersonRowStillRendersSoldierCard(t *testing.T) {
+	app := newStressApp(t)
+	server := httptest.NewServer(app)
+	defer server.Close()
+
+	s := createSoldier(t, app, "PersonRowStillRendersCard")
+
+	resp, err := http.Get(server.URL + "/soldiers/" + intStr(s.ID))
+	if err != nil {
+		t.Fatalf("GET /soldiers/%d: %v", s.ID, err)
+	}
+	body := readAll(t, resp)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /soldiers/%d status = %d, want 200 (Person row)", s.ID, resp.StatusCode)
+	}
+	// SoldierDetail renders 'Edit Person Record' button as a
+	// smoke-pinned fragment; asserting on its presence is
+	// enough to confirm Person Record shape rendered.
+	if !strings.Contains(body, "Edit Person Record") {
+		t.Errorf("Person row /soldiers/%d body missing 'Edit Person Record' fragment — gate may have over-reached", s.ID)
+	}
+}
+
+// noRedirectClient returns an *http.Client that does NOT follow
+// redirects. Used by the issue #363 gate tests so the 303
+// response from handleSoldierByID is observed directly (default
+// http.Get follows 3xx and reports the final 200/whatever on
+// the destination, hiding the gate's status).
+func noRedirectClient() *http.Client {
+	return &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 }
