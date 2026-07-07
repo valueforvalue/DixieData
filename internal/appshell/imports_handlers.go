@@ -100,10 +100,15 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 	// blocked on the HTTP goroutine for 10+ seconds on a 500 MB
 	// archive (issue #133). The worker closes the DB, replaces the
 	// data dir, and reopens the DB + reloads services when done.
-	var jobID string
-	jobID = a.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #419: closure-capture race on jobID. Use a one-shot
+	// buffered channel to hand the ID from the outer assignment
+	// to the worker goroutine without a data race. See the long
+	// comment in appshell.exports_handlers.enqueueExport.
+	jobIDCh := make(chan string, 1)
+	jobID := a.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
+		id := <-jobIDCh
 		a.importInFlight.Store(true)
-		a.importInFlightJobIDSet(jobID)
+		a.importInFlightJobIDSet(id)
 		defer a.importInFlight.Store(false)
 		defer a.importInFlightJobIDClear()
 		p.Set(5, "Closing database")
@@ -148,7 +153,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		// overwrote and whether the schema migration ran. Backup
 		// restore is a full replace (not a merge) so the summary
 		// wording switches accordingly.
-		a.jobs.SetResult(jobID, jobs.JobResult{
+		a.jobs.SetResult(id, jobs.JobResult{
 			ReplacedRecords: manifest.Soldiers,
 			ReplacedImages:  manifest.Images,
 			BackupSchema:    manifest.SchemaVersion,
@@ -157,6 +162,7 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		})
 		return nil
 	})
+	jobIDCh <- jobID
 
 	setInfoToastHeader(w, fmt.Sprintf("Restoring backup: %s", filepath.Base(path)))
 	// Option C: dispatchDixieDataForm reads X-DixieData-Redirect.
@@ -189,8 +195,12 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 	// progress. We pre-compute the summary outside the worker (the
 	// worker only touches jobs state) because ImportSharedBackup is
 	// a single blocking call and we want a single progress tick.
-	var jobID string
-	jobID = a.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #419: closure-capture race on jobID (see the long comment
+	// in appshell.exports_handlers.enqueueExport for the channel
+	// pattern).
+	jobIDCh := make(chan string, 1)
+	jobID := a.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
+		id := <-jobIDCh
 		p.Set(20, "Merging shared archive")
 		// Shared-archive import is bounded by file IO and merge
 		// review compare-pass duration. Without Shimmer the bar
@@ -225,16 +235,16 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		// Note: SharedImportSummary currently does not return a
 		// source-records count. SourcesImported stays 0; if the
 		// service ever surfaces that field, plumb it through here.
-		a.jobs.SetResult(jobID, jobs.JobResult{
+		a.jobs.SetResult(id, jobs.JobResult{
 			Added:          summary.SoldiersInserted,
 			Merged:         summary.SoldiersUpdated,
 			Skipped:        summary.SoldiersSkipped,
 			Conflicts:      summary.PendingConflicts,
 			ImagesImported: summary.ImagesInserted + summary.ImagesUpdated,
 		})
-		_ = jobID
 		return nil
 	})
+	jobIDCh <- jobID
 	setInfoToastHeader(w, "Shared archive import started…")
 	writeExportRedirect(w, "/jobs/"+jobID)
 }
