@@ -50,6 +50,14 @@ dixiedata-tune --db ~/.dixiedata render \
     --template soldier_landscape --mode record --record 54 \
     --out out.pdf
 
+# Render a single Event Record (issue #358; uses the same
+# path as the appshell's /events/{id}/pdf handler, so a
+# tune render is byte-identical to the appshell render).
+dixiedata-tune --db ~/.dixiedata render \
+    --template event_landscape --mode event --record 12 \
+    --orientation L \
+    --out event.pdf
+
 # Render the full bulk archive
 dixiedata-tune --db ~/.dixiedata render \
     --template bulk_soldier --mode bulk \
