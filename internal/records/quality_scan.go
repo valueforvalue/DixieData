@@ -20,15 +20,25 @@ const (
 )
 
 type DataQualityIssue struct {
-	SoldierID int64
-	DisplayID string
-	Name      string
-	EntryType string
-	Group     string
-	Code      string
-	Severity  string
-	Summary   string
-	Detail    string
+	SoldierID         int64
+	DisplayID         string
+	Name              string
+	EntryType         string
+	Group             string
+	Code              string
+	Severity          string
+	Summary           string
+	Detail            string
+	// Issue #377 / #423: row provenance fields (slice 3 of #423
+	// surfaces them in the data-quality scan results so the user
+	// can see at a glance whether a flagged row's corruption came
+	// from an external import vs. a local edit). ImportPath is
+	// the code path that wrote the row (e.g. "create_soldier",
+	// "memorial_json_import", "restore_backup_archive"); RestoredAt
+	// is the RFC3339 timestamp the row was carried over the most
+	// recent SQLite-snapshot restore (empty = never restored).
+	ImportPath         string
+	RestoredAt         string
 }
 
 // DataQualityScanResult is a records-layer type used by the matching service.
@@ -58,6 +68,12 @@ type qualityScanCandidate struct {
 	DeathDate       string
 	BirthInfo       string
 	BuriedIn        string
+	// Issue #377 / #423: row provenance fields carried from
+	// the soldiers table into the scan candidate so every
+	// DataQualityIssue can be stamped with the row's origin
+	// + restore history.
+	ImportPath      string
+	RestoredAt      string
 }
 
 func normalizeDataQualityMode(raw string) DataQualityMode {
@@ -198,7 +214,8 @@ func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, er
 		SELECT id, display_id, entry_type, COALESCE(spouse_soldier_id, 0),
 		       COALESCE(first_name, ''), COALESCE(middle_name, ''), COALESCE(last_name, ''),
 		       COALESCE(birth_date, ''), COALESCE(death_date, ''),
-		       COALESCE(birth_info, ''), COALESCE(buried_in, '')
+		       COALESCE(birth_info, ''), COALESCE(buried_in, ''),
+		       COALESCE(created_by_import_path, ''), COALESCE(restored_at, '')
 		FROM soldiers`)
 	if err != nil {
 		return nil, err
@@ -213,6 +230,7 @@ func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, er
 			&candidate.FirstName, &candidate.MiddleName, &candidate.LastName,
 			&candidate.BirthDate, &candidate.DeathDate,
 			&candidate.BirthInfo, &candidate.BuriedIn,
+			&candidate.ImportPath, &candidate.RestoredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -241,13 +259,14 @@ func (s *SoldierService) loadEntryTypesByID() (map[int64]string, error) {
 
 func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, error) {
 	rows, err := s.db.Conn().Query(`
-		SELECT s.id, COALESCE(s.display_id, ''), COALESCE(s.first_name, ''), COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COUNT(r.id)
+		SELECT s.id, COALESCE(s.display_id, ''), COALESCE(s.first_name, ''), COALESCE(s.middle_name, ''), COALESCE(s.last_name, ''), COUNT(r.id),
+		       COALESCE(s.created_by_import_path, ''), COALESCE(s.restored_at, '')
 		FROM soldiers s
 		JOIN records r ON r.person_record_id = s.id
 		WHERE TRIM(COALESCE(r.record_type, '')) = ''
 		  AND TRIM(COALESCE(r.app_id, '')) = ''
 		  AND TRIM(COALESCE(r.details, '')) = ''
-		GROUP BY s.id, s.display_id, s.first_name, s.middle_name, s.last_name`)
+		GROUP BY s.id, s.display_id, s.first_name, s.middle_name, s.last_name, s.created_by_import_path, s.restored_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -262,22 +281,49 @@ func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, e
 			middleName       string
 			lastName         string
 			incompleteRecord int
+			importPath       string
+			restoredAt       string
 		)
-		if err := rows.Scan(&id, &displayID, &firstName, &middleName, &lastName, &incompleteRecord); err != nil {
+		if err := rows.Scan(&id, &displayID, &firstName, &middleName, &lastName, &incompleteRecord, &importPath, &restoredAt); err != nil {
 			return nil, err
 		}
 		issues = append(issues, DataQualityIssue{
-			SoldierID: id,
-			DisplayID: strings.TrimSpace(displayID),
-			Name:      buildIssueName(firstName, middleName, lastName),
-			Group:     "Source Records",
-			Code:      "source-record-empty",
-			Severity:  "medium",
-			Summary:   "One or more source records are effectively blank.",
-			Detail:    fmt.Sprintf("%d source record row(s) have empty type, app ID, and details.", incompleteRecord),
+			SoldierID:  id,
+			DisplayID:  strings.TrimSpace(displayID),
+			Name:       buildIssueName(firstName, middleName, lastName),
+			Group:      "Source Records",
+			Code:       "source-record-empty",
+			Severity:   "medium",
+			Summary:    "One or more source records are effectively blank.",
+			Detail:     fmt.Sprintf("%d source record row(s) have empty type, app ID, and details.", incompleteRecord),
+			ImportPath: strings.TrimSpace(importPath),
+			RestoredAt: strings.TrimSpace(restoredAt),
 		})
 	}
 	return issues, rows.Err()
+}
+
+func candidateIssue(candidate qualityScanCandidate, name, entryType, group, code, severity, summary, detail string) DataQualityIssue {
+	// Issue #377 / #423: stamp the row's provenance fields so the
+	// data-quality scan results can show "via memorial_json_import,
+	// restored at 2026-07-08" next to each flagged row's name.
+	// ImportPath and RestoredAt are the same values the
+	// viewmodel.PersonRecord projection would carry; we duplicate
+	// them here because the records-layer type is the canonical
+	// shape the scan returns.
+	return DataQualityIssue{
+		SoldierID:  candidate.ID,
+		DisplayID:  strings.TrimSpace(candidate.DisplayID),
+		Name:       name,
+		EntryType:  entryType,
+		Group:      group,
+		Code:       code,
+		Severity:   severity,
+		Summary:    summary,
+		Detail:     detail,
+		ImportPath: candidate.ImportPath,
+		RestoredAt: candidate.RestoredAt,
+	}
 }
 
 func evaluateQualityIssues(candidate qualityScanCandidate, spouseTypes map[int64]string, mode DataQualityMode) []DataQualityIssue {
@@ -290,131 +336,77 @@ func evaluateQualityIssues(candidate qualityScanCandidate, spouseTypes map[int64
 	name := buildIssueName(firstName, middleName, lastName)
 
 	if displayID == "" || (firstName == "" && lastName == "") {
-		issues = append(issues, DataQualityIssue{
-			SoldierID: candidate.ID,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: entryType,
-			Group:     "Identity & Naming",
-			Code:      "identity-missing",
-			Severity:  "high",
-			Summary:   "Core identity data is missing.",
-			Detail:    "Record is missing display ID or both first/last name values.",
-		})
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Identity & Naming", "identity-missing", "high",
+			"Core identity data is missing.",
+			"Record is missing display ID or both first/last name values.",
+		))
 	}
 
 	birth, birthErr := dates.ParseCanonical(candidate.BirthDate)
 	death, deathErr := dates.ParseCanonical(candidate.DeathDate)
 	if strings.TrimSpace(candidate.BirthDate) != "" && birthErr != nil {
-		issues = append(issues, DataQualityIssue{
-			SoldierID: candidate.ID,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: entryType,
-			Group:     "Dates & Chronology",
-			Code:      "birth-date-invalid",
-			Severity:  "high",
-			Summary:   "Birth date is not in canonical format.",
-			Detail:    fmt.Sprintf("Birth date %q could not be parsed as MM/DD/YYYY with 00 placeholders.", strings.TrimSpace(candidate.BirthDate)),
-		})
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Dates & Chronology", "birth-date-invalid", "high",
+			"Birth date is not in canonical format.",
+			fmt.Sprintf("Birth date %q could not be parsed as MM/DD/YYYY with 00 placeholders.", strings.TrimSpace(candidate.BirthDate)),
+		))
 	}
 	if strings.TrimSpace(candidate.DeathDate) != "" && deathErr != nil {
-		issues = append(issues, DataQualityIssue{
-			SoldierID: candidate.ID,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: entryType,
-			Group:     "Dates & Chronology",
-			Code:      "death-date-invalid",
-			Severity:  "high",
-			Summary:   "Death date is not in canonical format.",
-			Detail:    fmt.Sprintf("Death date %q could not be parsed as MM/DD/YYYY with 00 placeholders.", strings.TrimSpace(candidate.DeathDate)),
-		})
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Dates & Chronology", "death-date-invalid", "high",
+			"Death date is not in canonical format.",
+			fmt.Sprintf("Death date %q could not be parsed as MM/DD/YYYY with 00 placeholders.", strings.TrimSpace(candidate.DeathDate)),
+		))
 	}
 	if birthErr == nil && deathErr == nil && chronologyClearlyInvalid(birth, death) {
-		issues = append(issues, DataQualityIssue{
-			SoldierID: candidate.ID,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: entryType,
-			Group:     "Dates & Chronology",
-			Code:      "chronology-death-before-birth",
-			Severity:  "high",
-			Summary:   "Chronology is contradictory.",
-			Detail:    "Death date is earlier than birth date.",
-		})
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Dates & Chronology", "chronology-death-before-birth", "high",
+			"Chronology is contradictory.",
+			"Death date is earlier than birth date.",
+		))
 	}
 
 	if entryType != "soldier" {
 		switch {
 		case candidate.SpouseSoldierID < 1:
-			issues = append(issues, DataQualityIssue{
-				SoldierID: candidate.ID,
-				DisplayID: displayID,
-				Name:      name,
-				EntryType: entryType,
-				Group:     "Relationship Integrity",
-				Code:      "spouse-link-missing",
-				Severity:  "high",
-				Summary:   "Spouse-linked entry is missing its linked soldier.",
-				Detail:    fmt.Sprintf("Entry type %q requires a spouse_soldier_id.", entryType),
-			})
+			issues = append(issues, candidateIssue(candidate,
+				name, entryType, "Relationship Integrity", "spouse-link-missing", "high",
+				"Spouse-linked entry is missing its linked soldier.",
+				fmt.Sprintf("Entry type %q requires a spouse_soldier_id.", entryType),
+			))
 		default:
 			spouseType, ok := spouseTypes[candidate.SpouseSoldierID]
 			if !ok {
-				issues = append(issues, DataQualityIssue{
-					SoldierID: candidate.ID,
-					DisplayID: displayID,
-					Name:      name,
-					EntryType: entryType,
-					Group:     "Relationship Integrity",
-					Code:      "spouse-link-target-missing",
-					Severity:  "high",
-					Summary:   "Linked spouse target no longer exists.",
-					Detail:    fmt.Sprintf("spouse_soldier_id %d does not match an existing soldier row.", candidate.SpouseSoldierID),
-				})
+				issues = append(issues, candidateIssue(candidate,
+					name, entryType, "Relationship Integrity", "spouse-link-target-missing", "high",
+					"Linked spouse target no longer exists.",
+					fmt.Sprintf("spouse_soldier_id %d does not match an existing soldier row.", candidate.SpouseSoldierID),
+				))
 			} else if spouseType != "soldier" {
-				issues = append(issues, DataQualityIssue{
-					SoldierID: candidate.ID,
-					DisplayID: displayID,
-					Name:      name,
-					EntryType: entryType,
-					Group:     "Relationship Integrity",
-					Code:      "spouse-link-target-invalid",
-					Severity:  "high",
-					Summary:   "Linked spouse target is not a soldier record.",
-					Detail:    fmt.Sprintf("spouse_soldier_id %d points to entry type %q.", candidate.SpouseSoldierID, spouseType),
-				})
+				issues = append(issues, candidateIssue(candidate,
+					name, entryType, "Relationship Integrity", "spouse-link-target-invalid", "high",
+					"Linked spouse target is not a soldier record.",
+					fmt.Sprintf("spouse_soldier_id %d points to entry type %q.", candidate.SpouseSoldierID, spouseType),
+				))
 			}
 		}
 	}
 
 	if hasObviousPlaceholderNoise(firstName, lastName, candidate.BirthInfo, candidate.BuriedIn) {
-		issues = append(issues, DataQualityIssue{
-			SoldierID: candidate.ID,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: entryType,
-			Group:     "Placeholder Content",
-			Code:      "placeholder-noise",
-			Severity:  "medium",
-			Summary:   "Core fields contain obvious placeholder noise.",
-			Detail:    "Detected obvious placeholder markers (for example lorem/todo/placeholder/asdf/???) in key identity or location fields.",
-		})
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Placeholder Content", "placeholder-noise", "medium",
+			"Core fields contain obvious placeholder noise.",
+			"Detected obvious placeholder markers (for example lorem/todo/placeholder/asdf/???) in key identity or location fields.",
+		))
 	}
 
 	if mode == DataQualityModeAdvanced && len(lastName) == 1 {
-		issues = append(issues, DataQualityIssue{
-			SoldierID: candidate.ID,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: entryType,
-			Group:     "Identity & Naming",
-			Code:      "surname-too-short",
-			Severity:  "medium",
-			Summary:   "Last name looks unusually short.",
-			Detail:    "Last name is a single character; verify this is intentional.",
-		})
+		issues = append(issues, candidateIssue(candidate,
+			name, entryType, "Identity & Naming", "surname-too-short", "medium",
+			"Last name looks unusually short.",
+			"Last name is a single character; verify this is intentional.",
+		))
 	}
 
 	return issues
@@ -485,7 +477,8 @@ func buildIssueName(first, middle, last string) string {
 // ID still uses the EVT-NNNNN namespace.
 func (s *SoldierService) loadEventZeroLinkIssues() ([]DataQualityIssue, error) {
 	rows, err := s.db.Conn().Query(
-		`SELECT s.id, s.display_id, s.kind, s.begin_date, s.end_date
+		`SELECT s.id, s.display_id, s.kind, s.begin_date, s.end_date,
+		        COALESCE(s.created_by_import_path, ''), COALESCE(s.restored_at, '')
 		 FROM soldiers s
 		 LEFT JOIN event_person_links epl ON epl.event_id = s.id
 		 WHERE s.entry_type = ? AND epl.id IS NULL
@@ -504,21 +497,25 @@ func (s *SoldierService) loadEventZeroLinkIssues() ([]DataQualityIssue, error) {
 			kind        string
 			beginDate   string
 			endDate     string
+			importPath  string
+			restoredAt  string
 		)
-		if err := rows.Scan(&id, &displayID, &kind, &beginDate, &endDate); err != nil {
+		if err := rows.Scan(&id, &displayID, &kind, &beginDate, &endDate, &importPath, &restoredAt); err != nil {
 			return nil, err
 		}
 		name := buildEventIssueName(kind, beginDate, endDate)
 		issues = append(issues, DataQualityIssue{
-			SoldierID: id,
-			DisplayID: displayID,
-			Name:      name,
-			EntryType: models.EntryTypeEvent,
-			Group:     "Event Integrity",
-			Code:      "event-zero-links",
-			Severity:  "medium",
-			Summary:   "Event Record is not linked to any Person Record.",
-			Detail:    "Event exists but has zero event_person_links rows. Attach at least one Person Record, or delete the Event if it was created by accident.",
+			SoldierID:  id,
+			DisplayID:  displayID,
+			Name:       name,
+			EntryType:  models.EntryTypeEvent,
+			Group:      "Event Integrity",
+			Code:       "event-zero-links",
+			Severity:   "medium",
+			Summary:    "Event Record is not linked to any Person Record.",
+			Detail:     "Event exists but has zero event_person_links rows. Attach at least one Person Record, or delete the Event if it was created by accident.",
+			ImportPath: strings.TrimSpace(importPath),
+			RestoredAt: strings.TrimSpace(restoredAt),
 		})
 	}
 	return issues, rows.Err()

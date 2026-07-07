@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/htmxattr"
@@ -633,6 +634,9 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 						</form>
 					</details>
 				</div>
+				if provenanceFooterVisible(s) {
+					@ProvenanceFooter(s)
+				}
 			</div>
 		</div>
 		if len(citedIn) > 0 {
@@ -1205,4 +1209,68 @@ func primaryImageButtonClass(isPrimary bool) string {
 		className += " hidden"
 	}
 	return className
+}
+
+// provenanceFooterVisible returns true when at least one of the
+// three provenance fields is populated. The footer is hidden
+// entirely on a row that pre-dates v64 (no CreatedBy* stamp, no
+// restored_at stamp) so a fully-unknown row does not surface a
+// "Created by unknown" / "Restored at unknown" line — absence
+// IS the signal.
+func provenanceFooterVisible(s viewmodel.PersonRecord) bool {
+	return strings.TrimSpace(s.CreatedByVersion) != "" ||
+		strings.TrimSpace(s.CreatedByImportPath) != "" ||
+		strings.TrimSpace(s.RestoredAt) != ""
+}
+
+// provenanceCreatedLine returns the v64 footer line: "Created
+// by DixieData v1.2.N via <path>". Returns "" when both
+// fields are empty so the templ can skip the <p> entirely.
+func provenanceCreatedLine(s viewmodel.PersonRecord) string {
+	version := strings.TrimSpace(s.CreatedByVersion)
+	path := strings.TrimSpace(s.CreatedByImportPath)
+	switch {
+	case version == "" && path == "":
+		return ""
+	case version == "":
+		return fmt.Sprintf("Created by DixieData via %s", path)
+	case path == "":
+		return fmt.Sprintf("Created by DixieData %s", version)
+	default:
+		return fmt.Sprintf("Created by DixieData %s via %s", version, path)
+	}
+}
+
+// provenanceRestoredLine returns the v65 footer line: "Restored
+// at <human-readable timestamp>". Returns "" when RestoredAt
+// is empty so the templ can skip the <p> entirely.
+func provenanceRestoredLine(s viewmodel.PersonRecord) string {
+	ts := strings.TrimSpace(s.RestoredAt)
+	if ts == "" {
+		return ""
+	}
+	parsed, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		// Fall back to the raw timestamp if it isn't
+		// RFC3339 (shouldn't happen in practice — the
+		// stamp is always time.Now().UTC().Format(time.RFC3339)
+		// — but the helper must not panic on legacy data).
+		return fmt.Sprintf("Restored at %s", ts)
+	}
+	return fmt.Sprintf("Restored at %s", parsed.Local().Format("Jan 2, 2006 at 3:04 PM MST"))
+}
+
+// ProvenanceFooter renders the two-line provenance footer
+// below the Tags section on the Soldier detail page. Each
+// line is hidden when its source field is empty; the whole
+// footer is hidden when no provenance field is populated.
+templ ProvenanceFooter(s viewmodel.PersonRecord) {
+	<div id={ uiids.PanelSoldierDetailProvenance } class="mt-4 border-t border-sepia-500/[0.18] pt-3 text-xs text-slate-500">
+		if created := provenanceCreatedLine(s); created != "" {
+			<p data-provenance-created>{ created }</p>
+		}
+		if restored := provenanceRestoredLine(s); restored != "" {
+			<p data-provenance-restored class="mt-1">{ restored }</p>
+		}
+	</div>
 }

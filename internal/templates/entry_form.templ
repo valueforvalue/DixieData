@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"strings"
+	"time"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/debug"
@@ -760,6 +761,9 @@ templ SettingsQualityScanResults(result viewmodel.DataQualityScanResult) {
 									<input type="checkbox" name="selected_ids" value={ fmt.Sprintf("%d", issue.PersonRecordID) } class="mt-1 h-4 w-4 rounded border-slate-300 text-[#8d7440] focus:ring-[#8d7440]"/>
 									<div class="min-w-0 flex-1">
 										<div class="font-medium">{ issue.DisplayID } · { issue.Name }</div>
+										if qualityScanProvenanceLine(issue) != "" {
+											<div class="mt-1 text-xs text-slate-500" data-quality-scan-provenance>{ qualityScanProvenanceLine(issue) }</div>
+										}
 										<div class="mt-1 text-xs text-slate-500">{ issue.Summary }</div>
 										if strings.TrimSpace(issue.Detail) != "" {
 											<div class="mt-1 text-xs text-slate-500">{ issue.Detail }</div>
@@ -1134,4 +1138,26 @@ templ emptyArchiveSetupCard(search viewmodel.PersonRecordSearch) {
 			Local Archives hold Person Records, Source Records, scratch pads, images, and research logs. They never leave your machine unless you choose to export them.
 		</p>
 	</section>
+}
+
+// qualityScanProvenanceLine returns the import-path +
+// restored-at line for a data-quality scan issue, e.g.
+// "via memorial_json_import · restored at Jul 8, 2026".
+// Returns "" when both fields are empty (the row has no
+// provenance stamp; the row either pre-dates v64 or was
+// written by a code path that didn't stamp, e.g. the
+// migration backfill).
+func qualityScanProvenanceLine(issue viewmodel.DataQualityIssue) string {
+	parts := make([]string, 0, 2)
+	if path := strings.TrimSpace(issue.ImportPath); path != "" {
+		parts = append(parts, "via "+path)
+	}
+	if restored := strings.TrimSpace(issue.RestoredAt); restored != "" {
+		if parsed, err := time.Parse(time.RFC3339, restored); err == nil {
+			parts = append(parts, "restored at "+parsed.Local().Format("Jan 2, 2006"))
+		} else {
+			parts = append(parts, "restored at "+restored)
+		}
+	}
+	return strings.Join(parts, " · ")
 }
