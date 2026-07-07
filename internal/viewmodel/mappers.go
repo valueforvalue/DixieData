@@ -822,3 +822,22 @@ func WithArchiveCounts(s models.SoldierSearch, counts models.ArchiveCounts) mode
 	s.TotalRecordCount = counts.TotalRecords()
 	return s
 }
+
+// ResearchPickerFromContext builds the picker viewmodel from the
+// dd_person_ctx cookie + the supplied recents list. currentPerson is nil
+// when no cookie (or the cookie points at a deleted Person); the picker
+// then renders no "Continue" shortcut.
+func ResearchPickerFromContext(currentPerson *models.Soldier, recents []models.Soldier, query string, results []models.Soldier) ResearchPickerView {
+	view := ResearchPickerView{
+		SearchQuery:   query,
+		SearchResults: PersonRecordsFromModels(results),
+	}
+	if currentPerson != nil {
+		rec := PersonRecordFromModel(*currentPerson)
+		view.CurrentPerson = &rec
+	}
+	if len(recents) > 0 {
+		view.RecentPersons = PersonRecordsFromModels(recents)
+	}
+	return view
+}

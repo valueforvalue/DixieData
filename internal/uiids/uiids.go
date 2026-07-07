@@ -183,6 +183,18 @@ const (
 	LayoutShareMenu       = "layout.share.menu"
 // LayoutShareMenuTrigger is the canonical UI surface identifier (string ID). See the Registry entry below for the human-readable description.
 	LayoutShareMenuTrigger = "layout.share.menu.trigger"
+
+	// Issue #378: Research & Review picker (slice 1 — picker landing).
+	// PageResearchPicker wraps the page-level main content area on
+	// /research. PanelResearchPickerSearch is the search-input +
+	// results region (target of the htmx search swap). PanelResearchPickerRecent
+	// is the localStorage-backed recent-persons list region. PanelResearchPickerContinue
+	// is the "Continue: ..." shortcut to the most-recent-scoped sub-page.
+	PageResearchPicker            = "page.research.picker"
+	PanelResearchPickerSearch    = "panel.research.picker.search"
+	PanelResearchPickerResults    = "panel.research.picker.results"
+	PanelResearchPickerRecent     = "panel.research.picker.recent"
+	PanelResearchPickerContinue   = "panel.research.picker.continue"
 	// Issue #265: /share landing sections. The page is
 	// reorganised into a top-of-page stack (Quick Actions,
 	// Recent activity) above the existing Export/Import/Sync
@@ -324,6 +336,11 @@ var Registry = []Surface{
 	{ID: PanelShareQueuePresets, Kind: "panel", Description: "Saved Queues card on the /share/queue management page (issue #310 PR 3, ported from the Share Build modal in issue #192) listing named presets with Load + Delete per row."},
 	{ID: LayoutShareMenu, Kind: "nav", Description: "Top-nav foldout panel under the Share trigger; lists Export / Import / Share Queue / Build Share Archive menu items (issue #264)."},
 	{ID: LayoutShareMenuTrigger, Kind: "nav", Description: "Top-nav Share foldout trigger button (issue #264); clicking opens LayoutShareMenu. aria-controls points at the panel's id."},
+	{ID: PageResearchPicker, Kind: "page", Description: "Research & Review Person picker landing page (issue #378 slice 1). Search + recents + continue shortcut; honors dd_person_ctx cookie for sticky person context."},
+	{ID: PanelResearchPickerSearch, Kind: "panel", Description: "Search input region on the Research picker page; htmx target for the live results swap."},
+	{ID: PanelResearchPickerResults, Kind: "panel", Description: "Live search results region on the Research picker page; htmx swap target for the search fragment."},
+	{ID: PanelResearchPickerRecent, Kind: "panel", Description: "Recent-persons region on the Research picker page; populated via localStorage + /soldiers/search/recent?ids=."},
+	{ID: PanelResearchPickerContinue, Kind: "panel", Description: "Continue shortcut on the Research picker page when dd_person_ctx cookie is set; links to the most-recent-scoped sub-page."},
 	{ID: PanelShareQuickActions, Kind: "panel", Description: "Quick Actions card on /share (issue #265). Three large tiles: Export JSON, Import .ddbak, Share Queue. Above the fold."},
 	{ID: PanelShareRecent, Kind: "panel", Description: "Recent activity card on /share (issue #265). Last 3 terminal jobs sorted by StartedAt desc. Empty state when no jobs exist."},
 	{ID: PanelShareAllExports, Kind: "panel", Description: "All Exports card on /share (issue #265). Below the fold. Renamed from 'Export & Backup'."},

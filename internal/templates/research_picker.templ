@@ -1,0 +1,130 @@
+// research_picker.templ — Research & Review Person picker landing
+// (issue #378 slice 1). The picker is the entry point for the
+// top-nav Research & Review foldout (slice 2) and the landing
+// route for soldier-scoped sub-pages when no dd_person_ctx cookie
+// is set. The page is intentionally minimal in slice 1:
+//
+//   - Search input (POST to /research/select with person_id)
+//   - "Continue: <name>" shortcut when a cookie is present
+//   - Recents list (empty in slice 1; slice 3 lifts persistence
+//     to localStorage and back-fills this region)
+//   - Results region (empty in slice 1; slice 2 swaps in live
+//     htmx-driven results)
+//
+// Each apply-site UIID matches internal/uiids/registry entries
+// for the picker page + panels.
+package templates
+
+import (
+	"fmt"
+
+	"github.com/valueforvalue/DixieData/internal/routebuilder"
+	"github.com/valueforvalue/DixieData/internal/uiids"
+	"github.com/valueforvalue/DixieData/internal/viewmodel"
+)
+
+templ ResearchPickerView(view viewmodel.ResearchPickerView) {
+	@Layout("Research & Review") {
+		<div id={ uiids.PageResearchPicker } class="relative mx-auto max-w-4xl space-y-6">
+			<header class="space-y-2">
+				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Research & Review</p>
+				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">Choose a Person Record</h1>
+				<p class="text-sm text-slate-600">
+					Pick the Person Record you want to research. Your selection is stored in a signed cookie so navigating between sub-pages does not re-prompt.
+				</p>
+			</header>
+			if view.CurrentPerson != nil {
+				<div id={ uiids.PanelResearchPickerContinue } class="card rounded-3xl p-5 space-y-3">
+					<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Continue</p>
+					<p class="text-base text-[color:var(--ink)]">
+						Continue: { view.CurrentPerson.FirstName } { view.CurrentPerson.LastName }
+						<span class="font-mono text-xs text-slate-500">({ view.CurrentPerson.DisplayID })</span>
+					</p>
+					<form
+						method="post"
+						action={ templ.SafeURL(routebuilder.ResearchSelect()) }
+						class="flex flex-wrap items-center gap-2"
+					>
+						<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", view.CurrentPerson.ID) }/>
+						<input type="hidden" name="next" value="camaraderie"/>
+						<button type="submit" class="primary-button">Continue</button>
+						<button
+							type="submit"
+							formaction={ templ.SafeURL(routebuilder.ResearchClear()) }
+							class="pill-link"
+							data-research-clear
+						>Change Person…</button>
+					</form>
+				</div>
+			}
+			<section id={ uiids.PanelResearchPickerSearch } class="card rounded-3xl p-5 space-y-3">
+				<label class="block text-sm font-medium text-[color:var(--ink)]" for="research-picker-query">Search by name or Display ID</label>
+				<form
+					method="get"
+					action={ templ.SafeURL(routebuilder.ResearchPicker()) }
+					class="flex flex-wrap items-center gap-2"
+				>
+					<input
+						id="research-picker-query"
+						type="search"
+						name="q"
+						value={ view.SearchQuery }
+						placeholder="e.g. Gillespie or CSA-00411"
+						class="flex-1 min-w-[12rem] rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-4 py-2 text-sm text-[color:var(--ink)]"
+						data-research-query
+					/>
+					<button type="submit" class="pill-link">Search</button>
+				</form>
+				<div id={ uiids.PanelResearchPickerResults } class="space-y-2" data-research-results>
+					if len(view.SearchResults) == 0 && view.SearchQuery == "" {
+						<p class="text-sm text-slate-500">Type a name or Display ID to find a Person Record.</p>
+					} else if len(view.SearchResults) == 0 {
+						<p class="text-sm text-slate-500">No matches for that query.</p>
+					} else {
+						for _, person := range view.SearchResults {
+							<form
+								method="post"
+								action={ templ.SafeURL(routebuilder.ResearchSelect()) }
+								class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.4)] px-4 py-3"
+							>
+								<div>
+									<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
+									<p class="font-mono text-xs text-slate-500">{ person.DisplayID }</p>
+								</div>
+								<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", person.ID) }/>
+								<input type="hidden" name="next" value="camaraderie"/>
+								<button type="submit" class="pill-link">Open</button>
+							</form>
+						}
+					}
+				</div>
+			</section>
+			<section id={ uiids.PanelResearchPickerRecent } class="card rounded-3xl p-5 space-y-3">
+				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Recent</p>
+				if len(view.RecentPersons) == 0 {
+					<p class="text-sm text-slate-500">No recent picks yet. Open a Person Record from a search result and it will appear here.</p>
+				} else {
+					<ul class="space-y-2">
+						for _, person := range view.RecentPersons {
+							<li>
+								<form
+									method="post"
+									action={ templ.SafeURL(routebuilder.ResearchSelect()) }
+									class="flex flex-wrap items-center justify-between gap-3"
+								>
+									<div>
+										<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
+										<p class="font-mono text-xs text-slate-500">{ person.DisplayID }</p>
+									</div>
+									<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", person.ID) }/>
+									<input type="hidden" name="next" value="camaraderie"/>
+									<button type="submit" class="pill-link">Open</button>
+								</form>
+							</li>
+						}
+					</ul>
+				}
+			</section>
+		</div>
+	}
+}

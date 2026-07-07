@@ -256,6 +256,16 @@ func (a *App) setupRoutes() {
 	r.Get("/share/sync", a.handleShareSync)
 	r.Get("/research-collections", a.handleResearchCollections)
 	r.Get("/research-collections/*", a.handleResearchCollectionByID)
+	// Issue #378 slice 1: Research & Review Person picker landing
+	// + select/clear cookie actions. The /research route MUST
+	// register before any /soldiers/* catch-all (see
+	// TestRouteOrderResearchBeatsSoldiersWildcard) — chi resolves
+	// the literal pattern first when both could match, but
+	// documenting the order here so a future agent who reorders
+	// the routes file lands on this constraint.
+	r.Get("/research", a.handleResearchPicker)
+	r.Post("/research/select", a.handleResearchSelect)
+	r.Post("/research/clear", a.handleResearchClear)
 
 	r.Get("/insights", a.handleInsights)
 	r.Get("/insights/drilldown", a.handleInsightsDrilldown)

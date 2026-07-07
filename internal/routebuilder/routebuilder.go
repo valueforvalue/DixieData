@@ -786,3 +786,24 @@ func PersonEventQuickAdd(soldierID int64) string {
 func PersonEventAttachByDisplayID(soldierID int64) string {
 	return fmt.Sprintf("/soldiers/%d/events/attach-by-display-id", soldierID)
 }
+
+// ResearchPicker returns the URL for the Research & Review Person picker
+// landing (issue #378 slice 1). Registered as GET /research in routes.go
+// BEFORE the /soldiers/* catch-all so chi resolves the literal first.
+func ResearchPicker() string {
+	return "/research"
+}
+
+// ResearchSelect returns the URL for the picker form submission that
+// records the chosen Person in the dd_person_ctx cookie and redirects
+// to the requested sub-page. Registered as POST /research/select.
+func ResearchSelect() string {
+	return "/research/select"
+}
+
+// ResearchClear returns the URL for the clear-context action. Registered
+// as POST /research/clear. Emits a MaxAge=-1 cookie so the picker
+// re-prompts the user on next visit.
+func ResearchClear() string {
+	return "/research/clear"
+}
