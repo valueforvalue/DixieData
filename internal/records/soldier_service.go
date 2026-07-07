@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description, created_by_version, created_by_import_path`
+	soldierSelectColumns     = `id, display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description, created_by_version, created_by_import_path, restored_at`
 	soldierListSelectColumns = soldierSelectColumns + `, COALESCE((SELECT display_id FROM soldiers linked WHERE linked.id = soldiers.spouse_soldier_id), ''), (SELECT COUNT(*) FROM records WHERE records.person_record_id = soldiers.id), (SELECT COUNT(*) FROM images WHERE images.person_record_id = soldiers.id)`
 	recordSelectColumns      = `id, sync_id, person_record_id, person_sync_id, record_type, app_id, details, sort_order`
 	imageSelectColumns       = `id, sync_id, person_record_id, person_sync_id, file_name, file_path, caption, is_primary`
@@ -2217,6 +2217,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		buriedIn              sql.NullString
 		createdByVersion      sql.NullString
 		createdByImportPath   sql.NullString
+		restoredAt            sql.NullString
 		biography             sql.NullString
 		pdfExcerptOverride    sql.NullString
 		notes                 sql.NullString
@@ -2286,6 +2287,7 @@ func soldierScanDest(s *models.Soldier) []interface{} {
 		nullStringDest(&s.Description, &description),
 		nullStringDest(&s.CreatedByVersion, &createdByVersion),
 		nullStringDest(&s.CreatedByImportPath, &createdByImportPath),
+		nullStringDest(&s.RestoredAt, &restoredAt),
 	}
 }
 

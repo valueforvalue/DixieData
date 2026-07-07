@@ -177,6 +177,7 @@ Mapped against `docs/migrations/v52.md` through `v62.md`.
 | **v60** | v60 Event Records + FK rename to `person_record_id` (issue #320) | Block 18 (4 sub-blocks: events + FK rename + FTS5 rebuild + sync_id backfill) | **Partially Reversible** (RENAME COLUMN is reversible; FTS5 trigger rebuild is a no-op on DOWN; sync_id backfill is a no-op). |
 | **v61** | No schema-level changes | `CurrentSchemaVersion` 60 → 61 | **No-op**. DOWN is trivially reversible. |
 | **v62** | Add `articles` + `article_refs` tables + 4 indexes (issue #321) | Block 20 (additive: CREATE TABLE IF NOT EXISTS + 4 CREATE INDEX IF NOT EXISTS; no data migration; Articles are a greenfield entity) | **Reversible** at SQL level. Inverse: `DROP INDEX` + `DROP TABLE` for each, in reverse order. |
+| **v65** | Add `restored_at TEXT` (nullable, no DEFAULT) to `soldiers` (issue #423 slice 1) | Block 6 (additive: ALTER TABLE ADD COLUMN; no data migration; the column stores transport metadata, not domain data) | **Reversible** at SQL level. Inverse: `ALTER TABLE soldiers DROP COLUMN restored_at` (no FK, no inbound references). The DOWN path discards the transport-metadata values but loses no domain data. |
 
 ## Block 20 — `articles` + `article_refs` (issue #321 v62)
 

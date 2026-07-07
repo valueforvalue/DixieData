@@ -103,6 +103,7 @@ func TestMigrationsReversibilityMapping(t *testing.T) {
 		"block-3-articles":           Reversible,
 		"block-63-source-sort-order": Reversible,
 		"block-64-row-provenance":    Reversible,
+		"block-65-restored-at":       Reversible,
 	}
 
 	for _, m := range Migrations() {

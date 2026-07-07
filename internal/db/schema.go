@@ -91,7 +91,17 @@ CREATE TABLE IF NOT EXISTS soldiers (
     -- no-op on fresh installs (the inline schema carries the
     -- column) and the migration is reversible without data loss.
     created_by_version TEXT NOT NULL DEFAULT '',
-    created_by_import_path TEXT NOT NULL DEFAULT ''
+    created_by_import_path TEXT NOT NULL DEFAULT '',
+    -- v65 (issue #423): timestamp the row was carried over a
+    -- SQLite-snapshot restore. Distinct from created_by_import_path
+    -- (which records the row's origin) — a row created today and
+    -- restored tomorrow has created_by_import_path = "create_soldier"
+    -- AND restored_at = "2026-07-08T...". NULLable (no DEFAULT) so
+    -- fresh inserts leave the column NULL = "never carried over a
+    -- restore point" and the presence/absence of the value is itself
+    -- the signal. Set by restoreSnapshotBackup's bulk UPDATE in
+    -- slice 2; frozen across Update (same policy as created_by_*).
+    restored_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS records (

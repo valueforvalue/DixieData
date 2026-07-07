@@ -733,6 +733,64 @@ var migrations = []Migration{
 			return nil
 		},
 	},
+	// Block 6 (block-65) — restored_at column on soldiers
+	// (issue #423, slice 1). Adds `restored_at TEXT` (nullable, no
+	// DEFAULT) to the soldiers table so every row carries the
+	// timestamp of the most recent SQLite-snapshot restore that
+	// carried it over. Distinct from created_by_import_path (which
+	// records the row's origin) — a row created today and restored
+	// tomorrow has created_by_import_path = "create_soldier" AND
+	// restored_at = "2026-07-08T...". The presence/absence of the
+	// value is itself the signal: NULL == never carried over a
+	// restore point, non-NULL == carried over at that timestamp.
+	//
+	// The column is NULLable + no DEFAULT so the migration is a
+	// no-op on data: pre-v65 rows get NULL (not a synthetic
+	// "unknown" sentinel) and never-restored rows stay NULL
+	// forever. Slice 2 wires restoreSnapshotBackup to bulk-UPDATE
+	// every pre-existing row's restored_at after the SQLite file
+	// swap lands; slice 3 surfaces the column in the soldier_card
+	// footer + data-quality scan results.
+	//
+	// The Go struct field (models.Soldier.RestoredAt) carries
+	// `json:"-"` so static archive output is unchanged — the value
+	// is transport metadata, not wire shape.
+	//
+	// Reversibility: Reversible. ADD COLUMN without a default is
+	// reversible (DROP COLUMN works because restored_at is not
+	// FK-constrained and has no inbound references). DROP COLUMN
+	// discards the restored_at values for every row, but those
+	// values are transport metadata (not domain data) so the loss
+	// is acceptable on a DOWN-grade.
+	{
+		ID:            "block-65-restored-at",
+		Reversibility: Reversible,
+		Reason:        "Pure additive: ALTER TABLE ADD COLUMN restored_at on soldiers (nullable TEXT, no DEFAULT). No FK, no inbound references, no data loss on DOWN (the column stores transport metadata, not domain data).",
+		Up: func(tx *sql.Tx) error {
+			exists, err := columnExists(tx, "soldiers", "restored_at")
+			if err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec(`ALTER TABLE soldiers ADD COLUMN restored_at TEXT`); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			exists, err := columnExists(tx, "soldiers", "restored_at")
+			if err != nil {
+				return err
+			}
+			if exists {
+				if _, err := tx.Exec(`ALTER TABLE soldiers DROP COLUMN restored_at`); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every

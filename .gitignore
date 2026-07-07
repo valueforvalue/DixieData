@@ -154,3 +154,4 @@ docs/renderings/*/round-*.pdf
 # reviewed. These are operational artifacts; the release line
 # itself lives in internal/versioninfo/versioninfo.go (tracked).
 .release-state/
+.dixiedata-cookies/
