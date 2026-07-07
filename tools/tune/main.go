@@ -164,7 +164,9 @@ func findTypstBinary() (string, error) {
 }
 
 // findTemplatesDir walks up from CWD looking for templates/ with
-// soldier_landscape.typ inside.
+// any *_landscape.typ inside. Accepting the suffix rather than
+// the literal soldier_landscape.typ means the same walker serves
+// both soldier and event template families (issue #358).
 func findTemplatesDir() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -173,7 +175,7 @@ func findTemplatesDir() (string, error) {
 	for i := 0; i < 8; i++ {
 		candidate := filepath.Join(dir, "templates")
 		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
-			if _, err := os.Stat(filepath.Join(candidate, "soldier_landscape.typ")); err == nil {
+			if hasLandscapeTemplate(candidate) {
 				abs, err := filepath.Abs(candidate)
 				if err != nil {
 					return "", err
@@ -187,7 +189,28 @@ func findTemplatesDir() (string, error) {
 		}
 		dir = parent
 	}
-	return "", fmt.Errorf("no templates/ directory with soldier_landscape.typ found; pass --templates")
+	return "", fmt.Errorf("no templates/ directory with a *_landscape.typ found; pass --templates")
+}
+
+// hasLandscapeTemplate reports whether dir contains any
+// file matching the *_landscape.typ naming convention. Used by
+// findTemplatesDir to accept soldier, event, or any future
+// sub-discriminator template family.
+func hasLandscapeTemplate(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasSuffix(name, "_landscape.typ") {
+			return true
+		}
+	}
+	return false
 }
 
 // usage prints the help message.
@@ -302,8 +325,8 @@ func parseRenderFlags(name string, args []string) (*renderFlags, error) {
 	if rf.format != formatHuman && rf.format != formatJSON {
 		return nil, fmt.Errorf("--format must be human or json (got %q)", rf.format)
 	}
-	if rf.mode != "record" && rf.mode != "bulk" {
-		return nil, fmt.Errorf("--mode must be record or bulk (got %q)", rf.mode)
+	if rf.mode != "record" && rf.mode != "bulk" && rf.mode != "event" {
+		return nil, fmt.Errorf("--mode must be record, bulk, or event (got %q)", rf.mode)
 	}
 	return rf, nil
 }
@@ -445,6 +468,29 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			return err
 		}
 		recordIDs = []int64{soldier.ID}
+
+	case "event":
+		// Issue #358: tune needs to render Event Records via the
+		// bridge's RenderEventSingle (which pre-projects linked
+		// Person Records via EventService.ListForEvent). The bridge
+		// already ships the method (added in issue #374, commit
+		// predating #358); this is purely a CLI dispatch gap. The
+		// record-type resolution for `event_landscape` lives in
+		// exportService.recordTypeForSoldier (entry_type="event"),
+		// so this case routes via the same event_<orientation>.typ
+		// template the appshell's /events/{id}/pdf handler uses.
+		if rf.recordID == 0 {
+			return fmt.Errorf("--record is required when --mode event")
+		}
+		opts := render.PDFOptions{
+			Orientation:     rf.orientation,
+			PrinterFriendly: rf.printer,
+			IncludeImages:   true,
+		}
+		if err := r.RenderEventSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
+			return err
+		}
+		recordIDs = []int64{rf.recordID}
 
 	case "bulk":
 		ids := splitCSV(rf.recordIDsRaw)
