@@ -72,7 +72,6 @@ func (a *App) handleGoogleBackup(w http.ResponseWriter, r *http.Request) {
 		}
 		p.Set(100, fmt.Sprintf("Uploaded %d soldiers, %d images.", manifest.Soldiers, manifest.Images))
 		_ = uploaded
-		_ = jobID
 		return nil
 	})
 	setInfoToastHeader(w, "Google Drive upload started…")
@@ -110,7 +109,6 @@ func (a *App) handleGoogleSheetsExport(w http.ResponseWriter, r *http.Request) {
 		}
 		p.Set(100, "Google Sheet ready.")
 		_ = uploaded
-		_ = jobID
 		return nil
 	})
 	setInfoToastHeader(w, "Google Sheets export started…")

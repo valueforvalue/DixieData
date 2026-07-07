@@ -148,7 +148,6 @@ func (a *App) handleRunDuplicateAudit(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		p.Set(100, fmt.Sprintf("Scanned %d records, %d candidate pairs (%d suppressed).", result.ScannedRecords, result.FindingsDiscovered, result.FindingsSuppressed))
-		_ = jobID
 		return nil
 	})
 	setInfoToastHeader(w, "Duplicate audit started…")

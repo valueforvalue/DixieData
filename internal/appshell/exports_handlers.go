@@ -246,16 +246,27 @@ type enqueueExportOpt struct {
 // handleExportStaticArchive, which is reached by a plain <form
 // method="post"> without hx-post.
 func (a *App) enqueueExport(dupKey, kind string, work func(ctx context.Context, p *jobs.Progress) error, path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
-	var jobID string
-	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #419: the worker goroutine needs the job ID to call
+	// SetResultPath, but a.jobs.Start returns the ID AFTER spawning
+	// the goroutine. Capturing the outer `var jobID` by reference
+	// races with the outer assignment (the worker may read `jobID`
+	// before the outer code assigns it). Use a one-shot buffered
+	// channel as the synchronization point: the outer code sends
+	// the ID into the channel AFTER Start returns; the worker
+	// reads it before it needs the value. The channel send
+	// happens-before the channel receive, so the worker observes
+	// the assigned ID without a data race.
+	jobIDCh := make(chan string, 1)
+	jobID := a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
 		err := work(ctx, p)
 		if err == nil && path != "" {
-			a.jobs.SetResultPath(jobID, path)
+			a.jobs.SetResultPath(<-jobIDCh, path)
 			p.Set(100, "Done")
 		}
 		return err
 	})
+	jobIDCh <- jobID
 	if dupKey != "" {
 		if actual, loaded := a.inFlight.Load(dupKey); loaded {
 			if entry, ok := actual.(*inFlightEntry); ok {
@@ -279,19 +290,24 @@ func (a *App) enqueueExport(dupKey, kind string, work func(ctx context.Context, 
 // workers that compute per-record counts use this helper with
 // the matching ExportXxxWithStats service method.
 func (a *App) enqueueExportWithResult(dupKey, kind string, work func(ctx context.Context, p *jobs.Progress) (jobs.JobResult, error), path string, w http.ResponseWriter, opts ...enqueueExportOpt) {
-	var jobID string
-	jobID = a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
+	// Issue #419: same closure-capture race as enqueueExport. See
+	// the comment there for the channel-based synchronization
+	// pattern; SetResult needs the job ID inside the worker for
+	// the stats-aware path.
+	jobIDCh := make(chan string, 1)
+	jobID := a.jobs.Start(kind, func(ctx context.Context, p *jobs.Progress) error {
 		p.Set(5, "Preparing")
 		result, err := work(ctx, p)
 		if err == nil {
 			if path != "" {
 				result.Path = path
 			}
-			a.jobs.SetResult(jobID, result)
+			a.jobs.SetResult(<-jobIDCh, result)
 			p.Set(100, "Done")
 		}
 		return err
 	})
+	jobIDCh <- jobID
 	if dupKey != "" {
 		if actual, loaded := a.inFlight.Load(dupKey); loaded {
 			if entry, ok := actual.(*inFlightEntry); ok {
