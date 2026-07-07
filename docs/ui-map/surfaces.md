@@ -72,7 +72,9 @@ table in sync when adding or renaming surfaces.
 | `panel.review-queue.compare` | panel | Side-by-side compare panel |
 | `page.research-collections.hub` | page | Research collections hub |
 | `panel.research-collections.hub` | panel | Named collections list and create-collection section |
-| `page.research.picker` | page | Research & Review Person picker landing (issue #378 slice 1); search + recents + Continue shortcut |
+| `page.research.picker` | page | Research & Review Person picker landing (issue #378 slice 1 + slice 2 + slice 3); search + recents + Continue shortcut. With `?partial=1` returns the `#panel.research.picker.results` fragment only (slice 2). |
+| `layout.research.menu` | nav | Top-nav Research & Review foldout panel (issue #378 slice 2). Lists 5 soldier-scoped sub-page links (camaraderie / timeline / research-log / conflict-ledger / research-pack) routed through the picker when no `dd_person_ctx` cookie + Research Collections (global) + Change Person… . |
+| `layout.research.menu.trigger` | nav | Top-nav Research & Review foldout trigger button (issue #378 slice 2); clicks open `layout.research.menu`. Sits between Insights and the Share foldout per Q2 lock. |
 | `panel.research.picker.search` | panel | Search input region on the picker page |
 | `panel.research.picker.results` | panel | Live search results region on the picker page |
 | `panel.research.picker.recent` | panel | Recent-persons region on the picker page (empty in slice 1; localStorage persistence lands in slice 3) |

@@ -266,6 +266,11 @@ func (a *App) setupRoutes() {
 	r.Get("/research", a.handleResearchPicker)
 	r.Post("/research/select", a.handleResearchSelect)
 	r.Post("/research/clear", a.handleResearchClear)
+	// Issue #378 slice 3 placeholder: /research/recent fragment
+	// endpoint registered here so the routebuilder is stable at
+	// slice 2 land; the handler returns an empty recents list
+	// until slice 3 wires the localStorage hydration.
+	r.Get("/research/recent", a.handleResearchRecent)
 
 	r.Get("/insights", a.handleInsights)
 	r.Get("/insights/drilldown", a.handleInsightsDrilldown)

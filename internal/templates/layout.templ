@@ -122,6 +122,29 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this"></span>
 						</a>
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
+					@components.Foldout("Research & Review", uiids.LayoutResearchMenu, nil) {
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=camaraderie") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-camaraderie>Open Camaraderie</a>
+						</li>
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=timeline") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-timeline>Open Timeline</a>
+						</li>
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=research-log") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-research-log>Open Research Log</a>
+						</li>
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=conflict-ledger") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-conflict-ledger>Open Merge Review Ledger</a>
+						</li>
+						<li role="none">
+							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=research-pack") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-research-pack>Research Packs</a>
+						</li>
+						<li role="none">
+							<a href="/research-collections" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-research-collections>Research Collections</a>
+						</li>
+						<li role="none">
+							<a href="/research" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-change-person>Change Person…</a>
+						</li>
+					}
 					@components.Foldout("Share", uiids.LayoutShareMenu, nil) {
 						<li role="none">
 							<a href={ templ.SafeURL(routebuilder.ShareExports()) } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-export>Export</a>

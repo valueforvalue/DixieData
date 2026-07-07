@@ -807,3 +807,21 @@ func ResearchSelect() string {
 func ResearchClear() string {
 	return "/research/clear"
 }
+
+// ResearchSearch returns the URL for the htmx-driven live search
+// fragment endpoint (issue #378 slice 2, option B2). Returns the
+// canonical "/research?partial=1" string so handlers can branch on
+// partial=1 to render only the results panel via
+// presentation.ResearchPickerSearchResults.
+func ResearchSearch() string {
+	return "/research?partial=1"
+}
+
+// ResearchRecent returns the URL for the recents-list fragment
+// endpoint (issue #378 slice 3, option C1). Registered as GET
+// /research/recent in routes.go. Reads ?ids=... (comma-separated
+// Person IDs from localStorage) and returns the recent-persons
+// ul fragment so app.js can swap it in.
+func ResearchRecent() string {
+	return "/research/recent"
+}

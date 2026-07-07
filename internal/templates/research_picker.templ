@@ -1,18 +1,18 @@
-// research_picker.templ — Research & Review Person picker landing
-// (issue #378 slice 1). The picker is the entry point for the
-// top-nav Research & Review foldout (slice 2) and the landing
+// research_picker.templ - Research & Review Person picker landing
+// (issue #378 slice 1 + slice 2 + slice 3). The picker is the entry
+// point for the top-nav Research & Review foldout and the landing
 // route for soldier-scoped sub-pages when no dd_person_ctx cookie
-// is set. The page is intentionally minimal in slice 1:
+// is set.
 //
-//   - Search input (POST to /research/select with person_id)
-//   - "Continue: <name>" shortcut when a cookie is present
-//   - Recents list (empty in slice 1; slice 3 lifts persistence
-//     to localStorage and back-fills this region)
-//   - Results region (empty in slice 1; slice 2 swaps in live
-//     htmx-driven results)
-//
-// Each apply-site UIID matches internal/uiids/registry entries
-// for the picker page + panels.
+// Slice 1: page shell (search input, Continue shortcut, empty
+//   Results + Recent placeholders).
+// Slice 2: live htmx search swap; picker forms forward ?next=
+//   through to /research/select so the post-redirect lands on the
+//   correct sub-page; results-only fragment kept as a separate
+//   component so the picker handler can return just the panel
+//   when ?partial=1 is set.
+// Slice 3: Recent list populated by app.js reading localStorage on
+//   page load + new /research/recent fragment endpoint.
 package templates
 
 import (
@@ -22,6 +22,17 @@ import (
 	"github.com/valueforvalue/DixieData/internal/uiids"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
+
+// pickerNextEcho returns the value to render into the hidden ?next
+// field of every picker form. Falls back to "camaraderie" when the
+// supplied view has no NextAction (avoids echo'ing an empty string,
+// which would 400 at select-time).
+func pickerNextEcho(view viewmodel.ResearchPickerView) string {
+	if view.NextAction != "" {
+		return view.NextAction
+	}
+	return "camaraderie"
+}
 
 templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 	@Layout("Research & Review") {
@@ -46,7 +57,7 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 						class="flex flex-wrap items-center gap-2"
 					>
 						<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", view.CurrentPerson.ID) }/>
-						<input type="hidden" name="next" value="camaraderie"/>
+						<input type="hidden" name="next" value={ pickerNextEcho(view) }/>
 						<button type="submit" class="primary-button">Continue</button>
 						<button
 							type="submit"
@@ -72,59 +83,85 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 						placeholder="e.g. Gillespie or CSA-00411"
 						class="flex-1 min-w-[12rem] rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.6)] px-4 py-2 text-sm text-[color:var(--ink)]"
 						data-research-query
+						hx-get={ templ.SafeURL(routebuilder.ResearchSearch()) }
+						hx-trigger="keyup changed delay:300ms, search"
+						hx-target={ "#" + uiids.PanelResearchPickerResults }
+						hx-swap="outerHTML"
+						hx-include="[name='next']"
 					/>
+					if view.NextAction != "" {
+						<input type="hidden" name="next" value={ view.NextAction }/>
+					}
 					<button type="submit" class="pill-link">Search</button>
 				</form>
 				<div id={ uiids.PanelResearchPickerResults } class="space-y-2" data-research-results>
-					if len(view.SearchResults) == 0 && view.SearchQuery == "" {
-						<p class="text-sm text-slate-500">Type a name or Display ID to find a Person Record.</p>
-					} else if len(view.SearchResults) == 0 {
-						<p class="text-sm text-slate-500">No matches for that query.</p>
-					} else {
-						for _, person := range view.SearchResults {
-							<form
-								method="post"
-								action={ templ.SafeURL(routebuilder.ResearchSelect()) }
-								class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.4)] px-4 py-3"
-							>
-								<div>
-									<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
-									<p class="font-mono text-xs text-slate-500">{ person.DisplayID }</p>
-								</div>
-								<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", person.ID) }/>
-								<input type="hidden" name="next" value="camaraderie"/>
-								<button type="submit" class="pill-link">Open</button>
-							</form>
-						}
-					}
+					@ResearchPickerSearchResults(view)
 				</div>
 			</section>
 			<section id={ uiids.PanelResearchPickerRecent } class="card rounded-3xl p-5 space-y-3">
 				<p class="text-xs uppercase tracking-[0.2em] text-slate-500">Recent</p>
-				if len(view.RecentPersons) == 0 {
-					<p class="text-sm text-slate-500">No recent picks yet. Open a Person Record from a search result and it will appear here.</p>
-				} else {
-					<ul class="space-y-2">
-						for _, person := range view.RecentPersons {
-							<li>
-								<form
-									method="post"
-									action={ templ.SafeURL(routebuilder.ResearchSelect()) }
-									class="flex flex-wrap items-center justify-between gap-3"
-								>
-									<div>
-										<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
-										<p class="font-mono text-xs text-slate-500">{ person.DisplayID }</p>
-									</div>
-									<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", person.ID) }/>
-									<input type="hidden" name="next" value="camaraderie"/>
-									<button type="submit" class="pill-link">Open</button>
-								</form>
-							</li>
-						}
-					</ul>
-				}
+				@ResearchPickerRecent(view)
 			</section>
 		</div>
+	}
+}
+
+// ResearchPickerSearchResults is the results-only fragment returned
+// by handleResearchPicker when ?partial=1 is set (issue #378 slice 2
+// option B2). The htmx live-search swap on the search input replaces
+// this wrapper, not the whole picker page.
+templ ResearchPickerSearchResults(view viewmodel.ResearchPickerView) {
+	<div id={ uiids.PanelResearchPickerResults } class="space-y-2" data-research-results>
+		if len(view.SearchResults) == 0 && view.SearchQuery == "" {
+			<p class="text-sm text-slate-500">Type a name or Display ID to find a Person Record.</p>
+		} else if len(view.SearchResults) == 0 {
+			<p class="text-sm text-slate-500">No matches for that query.</p>
+		} else {
+			for _, person := range view.SearchResults {
+				<form
+					method="post"
+					action={ templ.SafeURL(routebuilder.ResearchSelect()) }
+					class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.4)] px-4 py-3"
+				>
+					<div>
+						<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
+						<p class="font-mono text-xs text-slate-500">{ person.DisplayID }</p>
+					</div>
+					<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", person.ID) }/>
+					<input type="hidden" name="next" value={ pickerNextEcho(view) }/>
+					<button type="submit" class="pill-link">Open</button>
+				</form>
+			}
+		}
+	</div>
+}
+
+// ResearchPickerRecent renders just the recents-list ul region
+// (issue #378 slice 3, option C1). The full picker page embeds
+// this directly; the standalone /research/recent fragment endpoint
+// renders it for the JS-driven swap on localStorage hydration.
+templ ResearchPickerRecent(view viewmodel.ResearchPickerView) {
+	if len(view.RecentPersons) == 0 {
+		<p class="text-sm text-slate-500" data-research-recent-empty>No recent picks yet. Open a Person Record from a search result and it will appear here.</p>
+	} else {
+		<ul class="space-y-2" data-research-recent-list>
+			for _, person := range view.RecentPersons {
+				<li>
+					<form
+						method="post"
+						action={ templ.SafeURL(routebuilder.ResearchSelect()) }
+						class="flex flex-wrap items-center justify-between gap-3"
+					>
+						<div>
+							<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
+							<p class="font-mono text-xs text-slate-500">{ person.DisplayID }</p>
+						</div>
+						<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", person.ID) }/>
+						<input type="hidden" name="next" value={ pickerNextEcho(view) }/>
+						<button type="submit" class="pill-link">Open</button>
+					</form>
+				</li>
+			}
+		</ul>
 	}
 }
