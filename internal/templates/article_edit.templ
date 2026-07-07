@@ -10,30 +10,14 @@
 // data-record-persistence attrs as entry_form.templ so the
 // JS initializeDraftForms() helper auto-wires the
 // localStorage persistence for the edit-side draft.
+//
+// The back-link is rendered inside ArticleArticleForm
+// (issue #375 fix); this file exists only as the thin
+// route-handler shell wrapper around the shared form.
 package templates
 
-import (
-	"github.com/valueforvalue/DixieData/internal/routebuilder"
-	"github.com/valueforvalue/DixieData/internal/templates/components"
-	"github.com/valueforvalue/DixieData/internal/viewmodel"
-)
+import "github.com/valueforvalue/DixieData/internal/viewmodel"
 
 templ ArticleEditShell(view viewmodel.Article) {
 	@ArticleArticleForm(view, true)
 }
-
-// articleEditBackURL is the URL the "← Back" button on
-// the edit form navigates to. It is a helper so the form
-// does not couple directly to routebuilder beyond the
-// shared action + list helpers in ArticleArticleForm.
-func articleEditBackURL(article viewmodel.Article) templ.SafeURL {
-	return templ.SafeURL(routebuilder.ArticleByID(article.ID))
-}
-
-// ensureBackButtonComponent pulls components.Button into
-// the import set without binding a real reference here
-// -- the back-link is rendered inside ArticleArticleForm
-// already; this helper exists so future slice-3.x edits
-// to article_edit.templ have a place to drop component
-// references without re-deriving the import list.
-var _ = components.Button

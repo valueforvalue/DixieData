@@ -35,9 +35,9 @@ templ ArticleArticleForm(article viewmodel.Article, isEdit bool) {
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<h1 class="font-display text-3xl font-semibold text-[color:var(--ink)]">{ articleFormTitle(article, isEdit) }</h1>
 				@components.Button("← Back", components.ButtonSecondary, "", templ.Attributes{
-					"data-action":       templ.SafeURL(routebuilder.ArticleList()),
-					"data-method":       "GET",
-					"data-dixie-submit": "true",
+					"data-history-back":  "",
+					"data-fallback-href": templ.SafeURL(routebuilder.ArticleList()),
+					"data-fallback-label": "Articles",
 				})
 			</div>
 			<form
