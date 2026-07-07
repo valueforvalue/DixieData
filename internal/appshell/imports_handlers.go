@@ -15,6 +15,7 @@ import (
 
 	runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/debug/trace"
 	"github.com/valueforvalue/DixieData/internal/jobs"
@@ -121,6 +122,17 @@ func (a *App) handleImportBackup(w http.ResponseWriter, r *http.Request) {
 		p.Shimmer(ctx, 20, 85, 60*time.Second, "Restoring records…")
 		manifest, err := a.backup.ImportWithLocalIdentity(path, a.dataDir, localIdentity, preserveLocalIdentity)
 		if err != nil {
+			// Issue #383 slice 7: the major-bump refusal
+			// error (ErrDDBakFormatMismatch) carries a
+			// user-actionable message. The /jobs/{id}
+			// failure card surfaces it verbatim so the
+			// user sees the version mismatch.
+			if errors.Is(err, archive.ErrDDBakFormatMismatch) {
+				if reopenErr := a.reopenDatabase(); reopenErr != nil {
+					return fmt.Errorf("backup import refused (%w) and database could not be reopened (%v); restart DixieData to recover", err, reopenErr)
+				}
+				return fmt.Errorf("backup import refused: %w", err)
+			}
 			if reopenErr := a.reopenDatabase(); reopenErr != nil {
 				return fmt.Errorf("import failed (%w) and database could not be reopened (%v); restart DixieData to recover", err, reopenErr)
 			}
@@ -188,6 +200,14 @@ func (a *App) handleImportSharedArchive(w http.ResponseWriter, r *http.Request) 
 		p.Shimmer(ctx, 20, 95, 45*time.Second, "Merging records…")
 		summary, err := a.backup.ImportSharedBackup(path, a.dataDir)
 		if err != nil {
+			// Issue #383 slice 7: same exit-code-2 branch
+			// for the shared-archive reader; the same
+			// ErrDDBakFormatMismatch surfaces for both
+			// .ddbak and .ddshare (they share the ddbak_v1
+			// namespace per commit b1dc871).
+			if errors.Is(err, archive.ErrDDBakFormatMismatch) {
+				return fmt.Errorf("shared archive import refused: %w", err)
+			}
 			return err
 		}
 		if summary.PendingConflicts > 0 {
