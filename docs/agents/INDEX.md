@@ -36,6 +36,7 @@ all of them; load only the ones that match your task.
 | [`docs/agents/manual-audit-playbook.md`](manual-audit-playbook.md) | Manual UI walk. |
 | [`docs/agents/audit-notes-TEMPLATE.md`](audit-notes-TEMPLATE.md) | Template for audit notes. |
 | [`docs/agents/jobs-artifact-content-disposition-bug.md`](jobs-artifact-content-disposition-bug.md) | Working in the jobs area. |
+| [`docs/agents/probe-clean.md`](probe-clean.md) | Build cleanup — AV / debugger / watcher stragglers after Windows builds. Load when "make probe-clean" fails or when designing the pre-build step. |
 
 ### Feature work
 
