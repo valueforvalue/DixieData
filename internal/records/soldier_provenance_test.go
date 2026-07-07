@@ -98,14 +98,17 @@ func TestSoldierService_CreateStampsProvenance(t *testing.T) {
 	}
 }
 
-// TestSoldierService_CreateDefaultsProvenanceToEmpty pins the
-// backward-compat contract: existing callers that don't populate
-// the new fields must continue to work unchanged. The struct
-// defaults to "" so Create writes '' to both columns. Slice 2
-// (handler stamping) changes the per-handler behaviour — every
-// handler stamps before calling Create — but Slice 1 must not
-// break callers that haven't been updated yet.
-func TestSoldierService_CreateDefaultsProvenanceToEmpty(t *testing.T) {
+// TestSoldierService_CreateDefaultsProvenanceWhenCallerOmitsFields
+// pins the slice-2 default-stamping policy: when the caller
+// leaves CreatedByVersion + CreatedByImportPath empty, the
+// service stamps the running binary's version + a "create_soldier"
+// sentinel. This is the policy change from slice 1 (where the
+// fields were written as '' for backward compat) to slice 2
+// (where every Create call site gets a sensible default without
+// code changes). Callers that want a more-specific import path
+// (memorial_json_import, cli_export, etc.) still set the field
+// explicitly.
+func TestSoldierService_CreateDefaultsProvenanceWhenCallerOmitsFields(t *testing.T) {
 	d := newTestDB(t)
 	configureExportIdentity(t, d)
 	svc := NewSoldierService(d)
@@ -114,24 +117,27 @@ func TestSoldierService_CreateDefaultsProvenanceToEmpty(t *testing.T) {
 		FirstName: "Robert",
 		LastName:  "Lee",
 		// CreatedByVersion + CreatedByImportPath deliberately
-		// not populated — slice 1 must not require them.
+		// not populated — slice 2 stamps defaults.
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if created.CreatedByVersion != "" {
-		t.Errorf("CreatedByVersion = %q, want empty (caller didn't stamp; Slice 2 will auto-fill)", created.CreatedByVersion)
+	if created.CreatedByVersion == "" {
+		t.Errorf("CreatedByVersion is empty; expected the service to stamp the app version")
 	}
-	if created.CreatedByImportPath != "" {
-		t.Errorf("CreatedByImportPath = %q, want empty (caller didn't stamp; Slice 2 will auto-fill)", created.CreatedByImportPath)
+	if created.CreatedByImportPath != "create_soldier" {
+		t.Errorf("CreatedByImportPath = %q, want %q", created.CreatedByImportPath, "create_soldier")
 	}
 
 	got, err := svc.GetByID(created.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.CreatedByVersion != "" || got.CreatedByImportPath != "" {
-		t.Errorf("GetByID provenance = (%q, %q), want ('', '')", got.CreatedByVersion, got.CreatedByImportPath)
+	if got.CreatedByVersion == "" {
+		t.Errorf("GetByID returned empty CreatedByVersion; the service default should round-trip through the read path")
+	}
+	if got.CreatedByImportPath != "create_soldier" {
+		t.Errorf("GetByID CreatedByImportPath = %q, want %q", got.CreatedByImportPath, "create_soldier")
 	}
 }
 
@@ -200,16 +206,23 @@ func TestSoldierService_BackfillAssignsUnknownToEmpty(t *testing.T) {
 	d := newTestDB(t)
 	svc := NewSoldierService(d)
 
-	// Create a row with no provenance stamp — the inline schema
-	// writes '' to both columns because the caller didn't supply
-	// them and the DEFAULT is ''.
-	created, err := svc.Create(models.Soldier{
-		FirstName: "Pierre",
-		LastName:  "Beauregard",
-	})
+	// Insert a row directly via raw SQL with '' provenance so
+	// we simulate the pre-v64 shape (where the inline schema
+	// DEFAULT wrote '' to both columns). Slice 2's Create
+	// stamps the app version + create_soldier sentinel by
+	// default, so we use raw SQL to set up the backfill
+	// precondition (this is what pre-v64 rows actually look
+	// like on disk in operator archives).
+	now := "2026-07-07T00:00:00Z"
+	res, err := d.Conn().Exec(
+		`INSERT INTO soldiers (id, display_id, sync_id, entry_type, first_name, last_name, created_at, updated_at, created_by_version, created_by_import_path)
+		 VALUES (?, ?, ?, 'soldier', ?, ?, ?, ?, '', '')`,
+		int64(999), "PRE-V64-999", "pre-v64-999", "Pierre", "Beauregard", now, now,
+	)
 	if err != nil {
-		t.Fatalf("Create: %v", err)
+		t.Fatalf("raw insert: %v", err)
 	}
+	createdID, _ := res.LastInsertId()
 
 	// Run the same backfill UPDATEs block-64 ships.
 	if _, err := d.Conn().Exec(`UPDATE soldiers SET created_by_version = 'unknown' WHERE created_by_version = ''`); err != nil {
@@ -219,7 +232,7 @@ func TestSoldierService_BackfillAssignsUnknownToEmpty(t *testing.T) {
 		t.Fatalf("backfill path: %v", err)
 	}
 
-	got, err := svc.GetByID(created.ID)
+	got, err := svc.GetByID(createdID)
 	if err != nil {
 		t.Fatalf("GetByID after backfill: %v", err)
 	}

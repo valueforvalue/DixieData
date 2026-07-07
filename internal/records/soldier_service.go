@@ -17,6 +17,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
+	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
 const (
@@ -200,6 +201,21 @@ func (s *SoldierService) Create(soldier models.Soldier) (*models.Soldier, error)
 		soldier.UpdatedAt = soldier.CreatedAt
 	}
 	stampCreateAuditFields(s.currentAuditActor(), &soldier)
+
+	// Issue #377 slice 2: default created_by_version to the
+	// running binary's version + created_by_import_path to
+	// "create_soldier" when the caller leaves them empty.
+	// Slice 1 left them empty (backward compat); slice 2 flips
+	// the policy so existing call sites stamp a sensible value
+	// without code changes. Callers that want a more-specific
+	// path (memorial_json_import, cli_export, etc.) keep
+	// setting the field explicitly.
+	if strings.TrimSpace(soldier.CreatedByVersion) == "" {
+		soldier.CreatedByVersion = versioninfo.AppVersion()
+	}
+	if strings.TrimSpace(soldier.CreatedByImportPath) == "" {
+		soldier.CreatedByImportPath = "create_soldier"
+	}
 
 	res, err := tx.Exec(`INSERT INTO soldiers (display_id, sync_id, entry_type, spouse_soldier_id, relationship_label, maiden_name, is_generated, pension_id, application_id, prefix, show_prefix_before_name, first_name, middle_name, last_name, suffix, rank, rank_in, rank_out, unit, pension_state, confederate_home_status, confederate_home_name, death_year, death_month, death_day, birth_date, death_date, birth_info, buried_in, biography, pdf_excerpt_override, notes, needs_review, review_reason, added_by, last_edited_by, last_edited_fields, last_edited_at, created_at, updated_at, kind, begin_date, end_date, description, created_by_version, created_by_import_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		soldier.DisplayID, soldier.SyncID, soldier.EntryType, nullableInt64(soldier.SpouseSoldierID), soldier.RelationshipLabel, soldier.MaidenName, soldier.IsGenerated, soldier.PensionID, soldier.ApplicationID, soldier.Prefix, soldier.ShowPrefixBeforeName, soldier.FirstName, soldier.MiddleName, soldier.LastName, soldier.Suffix,
