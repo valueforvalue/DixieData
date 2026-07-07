@@ -566,6 +566,13 @@ func (a *App) handleQuickAddEvent(w http.ResponseWriter, r *http.Request, person
 		respondValidation(w, r, err.Error(), err)
 		return
 	}
+	// Issue #377 slice 2: stamp the import path so future
+	// "where did this row come from?" investigations can
+	// attribute the row to the Quick-Add Event form (vs. the
+	// dedicated /events/new form, which stamps 'create_event').
+	// The service-layer default already covers empty values, but
+	// explicit stamping documents the intent at the handler site.
+	event.CreatedByImportPath = "quick_add_event"
 	created, err := a.events.CreateEvent(event)
 	if err != nil {
 		respondInternal(w, r, fmt.Sprintf("Could not create the event for person record %d.", personID), err)
