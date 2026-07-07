@@ -43,6 +43,14 @@ type BackupManifest struct {
 	ArchiveKind   string `json:"archive_kind,omitempty"`
 	AppVersion    string `json:"app_version,omitempty"`
 	SchemaVersion int    `json:"schema_version,omitempty"`
+	// FormatVersion (issue #383 slice 6) is the discoverable
+	// per-surface stamp for the .ddbak envelope. Distinct from
+	// the legacy integer `Version` (the row-shape counter); the
+	// per-surface namespace pattern (Decision 1 in #383)
+	// decouples from DixieData semver. Bumped on DixieData-side
+	// .ddbak shape changes (manifest schema changes, new top-
+	// level files added, restore-side field renames).
+	FormatVersion string `json:"format_version,omitempty"`
 	// CurrentUpdateFlowVersion (U) and ReleaseCounter (N) are
 	// the explicit axes of the v{MAJOR}.{U}.{N} version split
 	// (issues #266 + #296). New backups write both fields so
@@ -972,6 +980,10 @@ func (b *BackupService) loadBackupData(archiveKind string) (BackupManifest, erro
 		ArchiveKind:              archiveKind,
 		AppVersion:               buildinfo.AppVersion,
 		SchemaVersion:            buildinfo.SchemaVersion,
+		// Issue #383 slice 6: stamp the discoverable per-surface
+		// format version into every .ddbak manifest. Restore
+		// paths read this field to detect format drift.
+		FormatVersion:            buildinfo.DDBakFormatVersion,
 		CurrentUpdateFlowVersion: versioninfo.CurrentUpdateFlowVersion,
 		ReleaseCounter:           versioninfo.AppRelease(),
 		CreatedAt:                time.Now().Format(time.RFC3339),
