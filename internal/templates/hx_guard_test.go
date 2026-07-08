@@ -31,6 +31,41 @@ var pollingFiles = map[string]bool{
 	"job_slot_fragment.templ": true,
 }
 
+// scanTemplFile scans one .templ file for hx-post / hx-put /
+// hx-delete / hx-confirm attributes. Returns the offenders
+// found, each as a "file:line — attrs — src" string ready for
+// t.Errorf inclusion. Extracted from TestNoPostThenNavigateHXXAttrs
+// so the regression net (hxm_guard_comment_filter_test.go) can
+// exercise the scanner logic directly without re-running the
+// production test.
+func scanTemplFile(path string) ([]string, error) {
+	base := filepath.Base(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var offenders []string
+	scanner := bufio.NewScanner(f)
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := scanner.Text()
+		// Issue #414: skip `//` comment lines. The earlier
+		// scanner matched hx-confirm inside a doc comment
+		// (soldier_card.templ:691) as a real offender. Comment
+		// text is documentation, not a templ attribute, so it
+		// cannot be a real htmx call.
+		if strings.HasPrefix(strings.TrimSpace(line), "//") {
+			continue
+		}
+		if matches := hxSubmitRe.FindAllString(line, -1); len(matches) > 0 {
+			offenders = append(offenders, formatTemplOffender(base, lineNum, matches, line))
+		}
+	}
+	return offenders, scanner.Err()
+}
+
 // TestNoPostThenNavigateHXXAttrs walks every .templ file and
 // fails if any file contains hx-post / hx-put / hx-delete /
 // hx-confirm attributes. After the Option C templ retag, every
@@ -62,26 +97,12 @@ func TestNoPostThenNavigateHXXAttrs(t *testing.T) {
 
 	var offenders []string
 	for _, file := range templFiles {
-		base := filepath.Base(file)
-		f, err := os.Open(file)
+		fileOffenders, err := scanTemplFile(file)
 		if err != nil {
-			t.Errorf("open %s: %v", base, err)
+			t.Errorf("scan %s: %v", filepath.Base(file), err)
 			continue
 		}
-		scanner := bufio.NewScanner(f)
-		lineNum := 0
-		for scanner.Scan() {
-			lineNum++
-			line := scanner.Text()
-			// The pollingFiles allow-list applies only to hx-get.
-			// hx-post / hx-put / hx-delete / hx-confirm are forbidden
-			// everywhere (including the polling files; polling
-			// fragments never carry them).
-			if matches := hxSubmitRe.FindAllString(line, -1); len(matches) > 0 {
-				offenders = append(offenders, formatTemplOffender(base, lineNum, matches, line))
-			}
-		}
-		f.Close()
+		offenders = append(offenders, fileOffenders...)
 	}
 
 	if len(offenders) > 0 {
