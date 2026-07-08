@@ -140,5 +140,46 @@ test('dispatcher bails when submitter button is disabled', () => {
   );
 });
 
+test('dispatcher rewrites PATCH/PUT/DELETE to POST + X-HTTP-Method-Override inside Wails', () => {
+  // Wails v2.12.0's wails.localhost custom protocol does
+  // not deliver the body for non-GET/POST requests to the
+  // Go handler (confirmed in TDM65-00514 / soldier 525:
+  // every PATCH reorder request reached the server with an
+  // empty body, surfacing as a 'Position must be a positive
+  // integer' validation toast). The server already accepts
+  // X-HTTP-Method-Override (internal/appshell/app.go:487
+  // requestMethodOverride) so the dispatcher rewrites the
+  // method to POST and sets the override header when the
+  // request is going to wails.localhost. Plain-Chromium
+  // (audit harness) requests keep the real PATCH so
+  // Playwright assertions still see the genuine method.
+  const dispatcherIdx = src.indexOf('async function dispatchDixieDataForm');
+  // The Wails-PATCH block + FormData-to-URLSearchParams
+  // conversion both live in the dispatcher. Widen the window
+  // enough to reach both (the URLSearchParams block sits
+  // ~8500 chars after the function declaration).
+  const window = src.slice(dispatcherIdx, dispatcherIdx + 10000);
+  assert.ok(
+    /X-HTTP-Method-Override/.test(window),
+    'dispatchDixieDataForm should set X-HTTP-Method-Override when the request is PATCH/PUT/DELETE and the URL is wails.localhost; otherwise Wails strips the body and the server returns 400',
+  );
+  assert.ok(
+    /wails\.localhost/.test(window),
+    'Wails-PATCH workaround should be scoped to wails.localhost so the audit harness keeps using real PATCH',
+  );
+  assert.ok(
+    /new\s+URLSearchParams\s*\(\s*\)/.test(window),
+    'dispatchDixieDataForm should construct a URLSearchParams to convert FormData entries for the wails.localhost path',
+  );
+  assert.ok(
+    /application\/x-www-form-urlencoded/.test(window),
+    'dispatcher should set Content-Type: application/x-www-form-urlencoded after FormData → URLSearchParams conversion',
+  );
+  assert.ok(
+    /params\.toString\s*\(\s*\)/.test(window),
+    'URLSearchParams must be serialized to a string before being assigned to fetchOptions.body',
+  );
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
