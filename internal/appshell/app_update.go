@@ -28,7 +28,10 @@ func (a *App) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
 		}
 		current.NoticeKind = "error"
 		current.NoticeMessage = err.Error()
-		presentation.SettingsUpdatePanel(current).Render(r.Context(), w)
+		// Issue #384 / Slice 5: wrap Render.
+		if err := presentation.SettingsUpdatePanel(current).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the update settings panel.", err)
+		}
 		return
 	}
 	settings.NoticeKind = "success"
@@ -38,7 +41,10 @@ func (a *App) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
 		settings.NoticeMessage = "Saved custom update source."
 	}
 	setToastHeader(w, settings.NoticeMessage)
-	presentation.SettingsUpdatePanel(settings).Render(r.Context(), w)
+	// Issue #384 / Slice 5: wrap Render.
+	if err := presentation.SettingsUpdatePanel(settings).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the update settings panel.", err)
+	}
 }
 
 func (a *App) handleCheckForUpdates(w http.ResponseWriter, r *http.Request) {
@@ -49,10 +55,16 @@ func (a *App) handleCheckForUpdates(w http.ResponseWriter, r *http.Request) {
 	result, err := a.updater.Check()
 	if err != nil {
 		setToastHeaderWithType(w, "Update check failed.", "error")
-		presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w)
+		// Issue #384 / Slice 5: wrap Render.
+		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the update check error.", err)
+		}
 		return
 	}
-	presentation.SettingsUpdateStatus(result).Render(r.Context(), w)
+	// Issue #384 / Slice 5: wrap Render.
+	if err := presentation.SettingsUpdateStatus(result).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the update check result.", err)
+	}
 }
 
 func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
@@ -63,17 +75,26 @@ func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
 	prepared, err := a.updater.PrepareLatest()
 	if err != nil {
 		setToastHeaderWithType(w, "Update apply failed.", "error")
-		presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w)
+		// Issue #384 / Slice 5: wrap Render.
+		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the apply-update error.", err)
+		}
 		return
 	}
 	command := exec.Command("powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", prepared.ScriptPath)
 	if err := command.Start(); err != nil {
 		setToastHeaderWithType(w, "Unable to start the update installer.", "error")
-		presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w)
+		// Issue #384 / Slice 5: wrap Render.
+		if err := presentation.SettingsUpdateStatusMessage("error", err.Error()).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the installer-start error.", err)
+		}
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Applying DixieData v%s. The app will restart shortly.", prepared.Version))
-	presentation.SettingsUpdateApplyStarted(prepared.Version).Render(r.Context(), w)
+	// Issue #384 / Slice 5: wrap Render.
+	if err := presentation.SettingsUpdateApplyStarted(prepared.Version).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the apply-started status.", err)
+	}
 	go func() {
 		time.Sleep(750 * time.Millisecond)
 		if a.ctx != nil {

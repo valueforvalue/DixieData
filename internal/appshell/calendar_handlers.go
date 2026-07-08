@@ -43,7 +43,10 @@ func (a *App) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	trace.Log("handleCalendar_render", "totalRecords", counts.TotalRecords(), "totalSoldiers", counts.TotalSoldiers)
-	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+	// Issue #384 / Slice 5: wrap Render.
+	if err := presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the calendar page.", err)
+	}
 }
 
 func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
@@ -53,20 +56,29 @@ func (a *App) handleInitialSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		presentation.InitialSetupView(models.InitialSetupForm{}).Render(r.Context(), w)
+		// Issue #384 / Slice 5: wrap Render.
+		if err := presentation.InitialSetupView(models.InitialSetupForm{}).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the initial setup form.", err)
+		}
 	case http.MethodPost:
 		form, birthYear, err := parseInitialSetupForm(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			form.ErrorMessage = err.Error()
-			presentation.InitialSetupView(form).Render(r.Context(), w)
+			// Issue #384 / Slice 5: wrap Render.
+			if err := presentation.InitialSetupView(form).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the initial setup form with errors.", err)
+			}
 			return
 		}
 		_, err = a.database.ConfigureUserIdentity(form.FirstName, form.MiddleName, form.LastName, birthYear)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			form.ErrorMessage = err.Error()
-			presentation.InitialSetupView(form).Render(r.Context(), w)
+			// Issue #384 / Slice 5: wrap Render.
+			if err := presentation.InitialSetupView(form).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the initial setup form with errors.", err)
+			}
 			return
 		}
 		// Order matters: reloadServices re-checks the DB identity state
@@ -136,7 +148,10 @@ func (a *App) handleCalendarMonth(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load archive counts for the calendar.", err)
 		return
 	}
-	presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)
+	// Issue #384 / Slice 5: wrap Render.
+	if err := presentation.Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the month calendar.", err)
+	}
 }
 
 func (a *App) handleCalendarGrid(w http.ResponseWriter, r *http.Request, monthValue string) {
@@ -150,7 +165,10 @@ func (a *App) handleCalendarGrid(w http.ResponseWriter, r *http.Request, monthVa
 		respondInternal(w, r, "Could not load the month calendar grid.", err)
 		return
 	}
-	presentation.CalendarGrid(month, summary).Render(r.Context(), w)
+	// Issue #384 / Slice 5: wrap Render.
+	if err := presentation.CalendarGrid(month, summary).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the calendar grid.", err)
+	}
 }
 
 func (a *App) handleAnniversary(w http.ResponseWriter, r *http.Request) {
