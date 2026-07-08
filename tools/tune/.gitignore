@@ -3,5 +3,6 @@ bin/
 compare/
 baseline/
 *.pdf
+!testdata/*.pdf
 *.md
 !README.md

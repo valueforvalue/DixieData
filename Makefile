@@ -210,11 +210,16 @@ dev: ## wails dev (interactive — no log capture)
 # --- Test targets ---
 
 # Go test default mode is non-verbose; -short skips integration tests that flood logs.
+# tools/tune is a separate Go module (its own go.mod) so its
+# tests run from its own dir; the snapshot test there auto-
+# skips on dev machines without typst + seed-data in PATH.
 test: ## Go test ./... with -short -count=1
 	go test ./... -short -count=1
+	cd tools/tune && go test -short -count=1
 
 test-quiet: ## Alias of `make test`
 	go test ./... -short -count=1
+	cd tools/tune && go test -short -count=1
 
 stress: SCRIPT := scripts/run-stress-tests.ps1
 stress: TARGET := stress
