@@ -107,12 +107,14 @@ func TestHandleJobArtifactStreamsResultFile(t *testing.T) {
 	if err := os.WriteFile(artifactPath, []byte("PK\x03\x04sample"), 0o644); err != nil {
 		t.Fatalf("seed artifact: %v", err)
 	}
-	var id string
-	id = app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+	idCh := make(chan string, 1)
+	id := app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+		id := <-idCh
 		p.Set(100, "Done")
 		app.jobs.SetResultPath(id, artifactPath)
 		return nil
 	})
+	idCh <- id
 	// Wait for the worker to finish so ResultPath is populated.
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
@@ -390,12 +392,14 @@ func TestRenderActiveJobSuppressesSilentKinds(t *testing.T) {
 
 func TestHandleJobArtifactMissingFileReturns500(t *testing.T) {
 	app := newStressApp(t)
-	var id string
-	id = app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+	idCh := make(chan string, 1)
+	id := app.jobs.Start("static_archive", func(ctx context.Context, p *jobs.Progress) error {
+		id := <-idCh
 		p.Set(100, "Done")
 		app.jobs.SetResultPath(id, "/nonexistent/path/that/does/not/exist.zip")
 		return nil
 	})
+	idCh <- id
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		snap, _ := app.jobs.Get(id)
@@ -424,8 +428,9 @@ func TestHandleJobArtifactMissingFileReturns500(t *testing.T) {
 // size + duration on the card.
 func TestRenderJobStatusShowsExportStatsOnSummaryCard(t *testing.T) {
 	app := newStressApp(t)
-	var id string
-	id = app.jobs.Start("backup_archive", func(ctx context.Context, p *jobs.Progress) error {
+	idCh := make(chan string, 1)
+	id := app.jobs.Start("backup_archive", func(ctx context.Context, p *jobs.Progress) error {
+		id := <-idCh
 		p.Set(100, "Done")
 		// Mirror the real worker: a backup manifest with 247
 		// soldiers, 312 images, 18 source records.
@@ -436,6 +441,7 @@ func TestRenderJobStatusShowsExportStatsOnSummaryCard(t *testing.T) {
 		})
 		return nil
 	})
+	idCh <- id
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		snap, _ := app.jobs.Get(id)
@@ -471,8 +477,9 @@ func TestRenderJobStatusShowsExportStatsOnSummaryCard(t *testing.T) {
 func TestRenderJobStatusShowsImportStatsOnSummaryCard(t *testing.T) {
 	t.Run("shared import", func(t *testing.T) {
 		app := newStressApp(t)
-		var id string
-		id = app.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
+		idCh := make(chan string, 1)
+		id := app.jobs.Start("shared_import", func(ctx context.Context, p *jobs.Progress) error {
+			id := <-idCh
 			p.Set(100, "Done")
 			app.jobs.SetResult(id, jobs.JobResult{
 				Added:          5,
@@ -483,6 +490,7 @@ func TestRenderJobStatusShowsImportStatsOnSummaryCard(t *testing.T) {
 			})
 			return nil
 		})
+		idCh <- id
 		waitJobDone(t, app, id)
 		body := renderJobBody(t, app, id)
 		if !strings.Contains(body, "5 added, 3 merged, 12 skipped") {
@@ -497,8 +505,9 @@ func TestRenderJobStatusShowsImportStatsOnSummaryCard(t *testing.T) {
 	})
 	t.Run("backup restore", func(t *testing.T) {
 		app := newStressApp(t)
-		var id string
-		id = app.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
+		idCh := make(chan string, 1)
+		id := app.jobs.Start("backup_import", func(ctx context.Context, p *jobs.Progress) error {
+			id := <-idCh
 			p.Set(100, "Done")
 			app.jobs.SetResult(id, jobs.JobResult{
 				ReplacedRecords: 247,
@@ -509,6 +518,7 @@ func TestRenderJobStatusShowsImportStatsOnSummaryCard(t *testing.T) {
 			})
 			return nil
 		})
+		idCh <- id
 		waitJobDone(t, app, id)
 		body := renderJobBody(t, app, id)
 		if !strings.Contains(body, "Replaced: 247 records, 312 images") {
