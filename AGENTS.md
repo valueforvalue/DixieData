@@ -395,10 +395,16 @@ works until the code ships.
 - **Batched discovery.** Up to 3 focused questions per turn, batched
   in a single `ask_user_question` call. One-at-a-time questioning
   breaks flow. Skip discovery entirely if the request is already clear.
-- **YAGNI.** Do not introduce abstractions, extension points, or
-  flexibility for requirements that do not exist yet. If a future
-  change needs it, add it then. Speculative design creates more
-  problems than it solves.
+- **YAGNI — features only, not interfaces.** Do not introduce
+  *features* (methods nobody calls, branches nobody exercises,
+  parameters nobody passes) for requirements that do not exist
+  yet. Speculative behavior creates more problems than it solves.
+  Interface shape is a separate question. Apply the
+  net-complexity-gain test in `docs/agents/complexity.md` §1: a
+  slightly broader interface that costs the implementer an hour but
+  saves every caller from relearning the module earns its keep.
+  The two-adapter rule in `feature-protocol.md` §Module discipline
+  and the deep-module rule are the operational form.
 - **Bias toward action.** When two options are close in quality, pick
   one and go. Movement creates clarity. The cost of "wrong choice
   easily reversible" is lower than the cost of a long deliberation.

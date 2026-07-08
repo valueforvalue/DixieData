@@ -28,6 +28,12 @@ or [`AGENTS.md`](../../AGENTS.md). Load at session start.
 These are loaded when the task matches the role. Don't pre-load
 all of them; load only the ones that match your task.
 
+### Cross-cutting (load for any non-trivial work)
+
+| Doc | When |
+|---|---|
+| [`docs/agents/complexity.md`](complexity.md) | Designing a new module, debating YAGNI vs broad interface, reviewing for strategic-programming correctness. Cite § numbers in code review. |
+
 ### Bug work
 
 | Doc | When |
