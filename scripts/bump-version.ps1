@@ -84,6 +84,8 @@ param(
     [switch]$BumpSchema,
     [switch]$BumpUpdateFlow,
     [switch]$BumpRelease,
+    [switch]$BumpCodename,
+    [string]$Codename,
     [switch]$Force,
     [switch]$VerifyOnly,
     [switch]$DetectDrift
@@ -101,8 +103,9 @@ $explicitBumps = @()
 if ($BumpSchema) { $explicitBumps += 'Schema' }
 if ($BumpUpdateFlow) { $explicitBumps += 'UpdateFlow' }
 if ($BumpRelease) { $explicitBumps += 'Release' }
+if ($BumpCodename) { $explicitBumps += 'Codename' }
 if ($explicitBumps.Count -gt 1) {
-    throw "Pass only one of -BumpSchema, -BumpUpdateFlow, -BumpRelease. Got: $($explicitBumps -join ', ')"
+    throw "Pass only one of -BumpSchema, -BumpUpdateFlow, -BumpRelease, -BumpCodename. Got: $($explicitBumps -join ', ')"
 }
 if ($explicitBumps.Count -eq 0) {
     $bumpKind = 'Schema'
@@ -127,6 +130,18 @@ function Read-Counter($Source, [string]$Name) {
 $currentSchema = Read-Counter $content 'CurrentSchemaVersion'
 $currentUpdateFlow = Read-Counter $content 'CurrentUpdateFlowVersion'
 $currentRelease = Read-Counter $content 'CurrentAppVersionInt'
+
+# Read-Codename is a string-valued variant of Read-Counter. Uses
+# a quoted-string match (no escape decoding; release names
+# contain no quotes).
+function Read-Codename($Source) {
+    $m = [regex]::Match($Source, 'CurrentReleaseName\s*=\s*"([^"]*)"')
+    if (-not $m.Success) {
+        throw "Failed to locate 'CurrentReleaseName = ...' in $versionInfoPath."
+    }
+    return $m.Groups[1].Value
+}
+$currentReleaseName = Read-Codename $content
 
 # VerifyOnly: non-mutating validation pass. Returns 0 on pass, 1 on fail.
 # Checks (covers all three counters per issue #294 acceptance):
@@ -199,7 +214,7 @@ if ($VerifyOnly) {
         foreach ($e in $errors) { Write-Host "  - $e" -ForegroundColor Red }
         exit 1
     }
-    Write-Host "VERIFY OK: schema $currentSchema, update_flow $currentUpdateFlow, release $currentRelease" -ForegroundColor Green
+    Write-Host "VERIFY OK: schema $currentSchema, update_flow $currentUpdateFlow, release $currentRelease / codename: $currentReleaseName" -ForegroundColor Green
     Write-Host "  app version: 1.$currentUpdateFlow.$currentSchema"
     Write-Host "  doc + changelog references intact"
     exit 0
@@ -364,5 +379,38 @@ switch ($bumpKind) {
         Write-Host "  3. git add internal/versioninfo/versioninfo.go CHANGELOG.md"
         Write-Host "  4. git commit -m 'Bump release counter to $appVersion'"
         Write-Host "  5. make archive && make release-github"
+    }
+    'Codename' {
+        # Codename bump: rewrite the CurrentReleaseName var. Does
+        # not touch schema / U / N — the codename is a chrome
+        # label, not a data-plane version. Pairs naturally with
+        # a Release bump (new N + new codename = new release line),
+        # but the user can also rename a codename independently
+        # if the previous one turns out to be embarrassing (per
+        # docs/RELEASING.md deprecation rule).
+        $name = $Codename
+        if (-not $name) {
+            $name = Read-Host 'New codename (single English word, no hyphens/underscores; spaces allowed between words)'
+        }
+        # Validation: no hyphens, no underscores, no tabs, no
+        # special characters. Spaces between words are allowed
+        # (e.g. "First Manassas" is two words).
+        if ($name -match '[_\-\t!@#$%^&*()+={}[\]|:;<>,.?/\\]') {
+            throw "Codename '$name' contains a forbidden character (hyphen, underscore, or special char). Use a single English word or short phrase with spaces between words."
+        }
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            throw "Codename cannot be empty."
+        }
+        $newContent = $content -replace 'CurrentReleaseName\s*=\s*"[^"]*"', "CurrentReleaseName = `"$name`""
+        Set-Content -Path $versionInfoPath -Value $newContent -NoNewline
+
+        Write-Host ""
+        Write-Host "Bumped CurrentReleaseName: $currentReleaseName -> $name" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Next steps:" -ForegroundColor Cyan
+        Write-Host "  1. Update docs/RELEASING.md 'Choosing the codename' section if the naming rationale changed."
+        Write-Host "  2. Run the test suite (make test-quiet) — versioninfo tests pin the codename."
+        Write-Host "  3. git add internal/versioninfo/versioninfo.go"
+        Write-Host "  4. git commit -m 'Bump release codename to $name'"
     }
 }
