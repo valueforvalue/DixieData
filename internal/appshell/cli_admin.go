@@ -438,6 +438,8 @@ func runAdminMigrateStatus(ctx context.Context, opts AdminOptions) (int, error) 
 		return 0, writeJSON(opts.Writer, map[string]any{
 			"app_version":        buildinfo.AppVersion,
 			"build_identity":     buildinfo.BuildIdentity(),
+			"release_name":       versioninfo.CurrentReleaseName,
+			"git_branch":         buildinfo.GitBranch,
 			"update_flow_version": versioninfo.CurrentUpdateFlowVersion,
 			"release_counter":    versioninfo.AppRelease(),
 			"data_dir":           app.dataDir,
@@ -449,6 +451,8 @@ func runAdminMigrateStatus(ctx context.Context, opts AdminOptions) (int, error) 
 	}
 	fmt.Fprintf(opts.Writer, "data_dir        = %s\n", app.dataDir)
 	fmt.Fprintf(opts.Writer, "app_version     = %s\n", buildinfo.AppVersion)
+	fmt.Fprintf(opts.Writer, "release_name    = %s\n", versioninfo.CurrentReleaseName)
+	fmt.Fprintf(opts.Writer, "git_branch      = %s\n", buildinfo.GitBranch)
 	fmt.Fprintf(opts.Writer, "build_identity  = %s\n", buildinfo.BuildIdentity())
 	fmt.Fprintf(opts.Writer, "applied_version = %d\n", applied)
 	fmt.Fprintf(opts.Writer, "current_version = %d\n", current)

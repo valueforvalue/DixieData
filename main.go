@@ -28,7 +28,20 @@ var assets embed.FS
 func handleVersionFlag(argv []string) (output string, done bool) {
 	for _, a := range argv[1:] {
 		if a == "--version" || a == "-v" {
-			return fmt.Sprintf("%s\n%s\n", buildinfo.AppLabel(), buildinfo.BuildIdentity()), true
+			// Issue #370: include the codename + branch so a
+			// user (or a support ticket) can identify the
+			// exact build. Shape:
+			//   DixieData v1.1.65 · First Manassas
+			//   dev · commit abc1234 · 2026-07-08T...Z
+			branch := buildinfo.GitBranch
+			if strings.TrimSpace(branch) == "" {
+				branch = "unknown"
+			}
+			return fmt.Sprintf("%s · %s\n%s\n",
+				buildinfo.AppLabel(),
+				buildinfo.ReleaseLabel(),
+				branch+" · "+buildinfo.BuildIdentity(),
+			), true
 		}
 	}
 	return "", false
@@ -175,7 +188,7 @@ func main() {
 	app := appshell.NewApp().WithFrontendAssets(frontendAssets)
 
 	err = wails.Run(&options.App{
-		Title:  fmt.Sprintf("DixieData v%s", db.GetAppVersion()),
+		Title:  fmt.Sprintf("%s · %s · %s", buildinfo.ReleaseLabel(), db.GetAppVersion(), buildinfo.GitBranch),
 		Width:  1280,
 		Height: 800,
 		Bind: []interface{}{

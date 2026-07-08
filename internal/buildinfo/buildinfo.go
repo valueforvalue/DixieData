@@ -157,6 +157,13 @@ var GitCommit = "dev"
 // at. Set by the build pipeline; empty in dev builds.
 var BuildTimestamp = ""
 
+// GitBranch is the git branch the binary was built from. Set by
+// the build pipeline (scripts/build-common.ps1) via the same
+// -X ldflag that injects GitCommit + BuildTimestamp. Default "dev"
+// matches GitCommit so a developer running `go test` (no ldflag)
+// sees a coherent "dev" identity in the footer.
+var GitBranch = "dev"
+
 // AppLabel returns the human-readable name + version string for
 // UI banners and CLI headers: "DixieData v1.1.55". Stable shape;
 // the UI's title bar, the CLI's `--version` output, and the
@@ -172,6 +179,9 @@ func AppLabel() string {
 // exactly which build the user is on.
 func BuildIdentity() string {
 	parts := []string{}
+	if strings.TrimSpace(GitBranch) != "" {
+		parts = append(parts, strings.TrimSpace(GitBranch))
+	}
 	if strings.TrimSpace(GitCommit) != "" {
 		parts = append(parts, "commit "+strings.TrimSpace(GitCommit))
 	}
@@ -182,4 +192,15 @@ func BuildIdentity() string {
 		return "commit dev"
 	}
 	return strings.Join(parts, " · ")
+}
+
+// ReleaseLabel is the chrome-friendly codename string. Re-exported
+// from versioninfo so the footer + window title read from one
+// import path (buildinfo is already imported by every chrome site).
+// Mirrors versioninfo.ReleaseLabel; intentionally a thin pass-through
+// rather than a const so a future maintainer can override the
+// release name from buildinfo (e.g. a custom build that brands itself
+// differently) without touching versioninfo.
+func ReleaseLabel() string {
+	return versioninfo.ReleaseLabel()
 }
