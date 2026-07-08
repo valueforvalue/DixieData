@@ -3284,7 +3284,12 @@
     if (!isCreateAction) {
       return false;
     }
-    const method = String(form.method || "GET").toUpperCase();
+    // Read the method via getAttribute so a method="patch" form
+    // doesn't get normalized to "get" by the HTMLFormElement
+    // IDL getter (see #428 — same browser quirk as the main
+    // dispatcher fix below).
+    const methodAttr = (form.getAttribute && form.getAttribute("method")) || "";
+    const method = String(methodAttr || "GET").toUpperCase();
     if (method !== "POST") {
       return false;
     }
@@ -3423,7 +3428,15 @@
     setBusyGroupState(submitter || form, true);
     try {
       const explicitMethod = (form.getAttribute && form.getAttribute("method")) || "";
-      const fetchOptions = { method: explicitMethod ? form.method.toUpperCase() : "POST" };
+      // Read the method from the HTML attribute (not form.method
+      // IDL), because browsers normalize unsupported values
+      // (PATCH, PUT, DELETE) to "get" via the HTMLFormElement
+      // IDL getter per the HTML spec. Using form.method here
+      // would silently turn every PATCH/PUT reorder form into a
+      // GET against a route that only accepts PATCH — see
+      // issue #428 for the smoke repro on Source Records and
+      // event sources.
+      const fetchOptions = { method: explicitMethod ? explicitMethod.toUpperCase() : "POST" };
       // Only attach a body for non-GET / non-HEAD requests. Bare-button
       // synthetic forms have no FormData to attach anyway.
       const methodUpper = String(fetchOptions.method).toUpperCase();
