@@ -83,6 +83,7 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 								method="post"
 								action={ templ.SafeURL(routebuilder.ResearchSelect()) }
 								class="inline"
+								data-dixie-submit="true"
 							>
 								<input type="hidden" name="person_id" value={ fmt.Sprintf("%d", view.CurrentPerson.ID) }/>
 								<input type="hidden" name="next" value={ action }/>
@@ -93,6 +94,7 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 							method="post"
 						action={ templ.SafeURL(routebuilder.ResearchClear()) }
 						class="inline"
+						data-dixie-submit="true"
 					>
 							<button type="submit" class="pill-link" data-research-clear>Change Person…</button>
 						</form>
@@ -179,6 +181,7 @@ templ ResearchPickerSearchResults(view viewmodel.ResearchPickerView) {
 					method="post"
 					action={ templ.SafeURL(routebuilder.ResearchSelect()) }
 					class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#8d7440] bg-[rgba(36,48,61,0.4)] px-4 py-3"
+					data-dixie-submit="true"
 				>
 					<div>
 						<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>
