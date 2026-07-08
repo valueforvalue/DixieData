@@ -49,6 +49,8 @@ const APP_GO = join(ROOT, "internal/appshell/app.go");
 const EVENTS_GO = join(ROOT, "internal/appshell/events_handlers.go");
 const SOLDIERS_GO = join(ROOT, "internal/appshell/soldiers_handlers.go");
 const RESEARCH_GO = join(ROOT, "internal/appshell/research_handlers.go");
+const UPDATE_GO = join(ROOT, "internal/appshell/app_update.go");
+const CALENDAR_GO = join(ROOT, "internal/appshell/calendar_handlers.go");
 const EMPTY_STATE_TEMPL = join(ROOT, "internal/templates/components/empty_state.templ");
 const RESPOND_GO = join(ROOT, "internal/appshell/respond.go");
 
@@ -58,6 +60,8 @@ const appGoSrc = readFileSync(APP_GO, "utf8");
 const eventsGoSrc = readFileSync(EVENTS_GO, "utf8");
 const soldiersGoSrc = readFileSync(SOLDIERS_GO, "utf8");
 const researchGoSrc = readFileSync(RESEARCH_GO, "utf8");
+const updateGoSrc = readFileSync(UPDATE_GO, "utf8");
+const calendarGoSrc = readFileSync(CALENDAR_GO, "utf8");
 const emptyStateTemplSrc = readFileSync(EMPTY_STATE_TEMPL, "utf8");
 const respondGoSrc = readFileSync(RESPOND_GO, "utf8");
 
@@ -318,6 +322,98 @@ for (const [label, token] of researchSites) {
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// 3e. Slice 5 — all 7 Render sites in app_update.go are wrapped.
+// ---------------------------------------------------------------------------
+
+const updateSites = [
+  ["app_update.go SettingsUpdateStatusMessage (check)", "SettingsUpdateStatusMessage(\"error\", err.Error()).Render(r.Context(), w)"],
+  ["app_update.go SettingsUpdateStatus (check)",         "SettingsUpdateStatus(result).Render(r.Context(), w)"],
+  ["app_update.go SettingsUpdateApplyStarted",            "SettingsUpdateApplyStarted(prepared.Version).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of updateSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = updateGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in app_update.go`);
+    for (const h of hits) {
+      const tail = updateGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
+// SettingsUpdatePanel has 2 distinct call sites (error + success).
+test("app_update.go SettingsUpdatePanel wrapped (2 sites)", () => {
+  const hits = [];
+  let idx = 0;
+  while ((idx = updateGoSrc.indexOf("SettingsUpdatePanel(", idx)) >= 0) {
+    // Only count the ones that are .Render(...) calls.
+    if (updateGoSrc.slice(idx, idx + 80).includes(".Render(r.Context(), w)")) {
+      hits.push(idx);
+    }
+    idx++;
+  }
+  assert.strictEqual(hits.length, 2, `expected 2 SettingsUpdatePanel Render sites, found ${hits.length}`);
+  for (const h of hits) {
+    const tail = updateGoSrc.slice(h, h + 500);
+    assert.match(tail, /respondErrorFragment\(/, `SettingsUpdatePanel at offset ${h} not wrapped`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 3f. Slice 5 — all 6 Render sites in calendar_handlers.go are wrapped.
+// ---------------------------------------------------------------------------
+
+const calendarSites = [
+  ["calendar_handlers.go Calendar (handleCalendar)",   "Calendar(month, summary, counts, selectQuoteForArchive(a.quotes, counts.TotalSoldiers)).Render(r.Context(), w)"],
+  ["calendar_handlers.go CalendarGrid",                 "CalendarGrid(month, summary).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of calendarSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = calendarGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in calendar_handlers.go`);
+    for (const h of hits) {
+      const tail = calendarGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
+// InitialSetupView has 3 call sites (GET + 2 POST error paths).
+test("calendar_handlers.go InitialSetupView wrapped (3 sites)", () => {
+  const hits = [];
+  let idx = 0;
+  while ((idx = calendarGoSrc.indexOf("InitialSetupView(", idx)) >= 0) {
+    if (calendarGoSrc.slice(idx, idx + 80).includes(".Render(r.Context(), w)")) {
+      hits.push(idx);
+    }
+    idx++;
+  }
+  assert.strictEqual(hits.length, 3, `expected 3 InitialSetupView Render sites, found ${hits.length}`);
+  for (const h of hits) {
+    const tail = calendarGoSrc.slice(h, h + 500);
+    assert.match(tail, /respondErrorFragment\(/, `InitialSetupView at offset ${h} not wrapped`);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // 4. EmptyStateError component must be exported and render the right markers.
