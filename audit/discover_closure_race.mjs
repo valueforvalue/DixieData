@@ -272,6 +272,34 @@ function channelHandoffInWorker(body) {
 	return /<-\s*[A-Za-z_][A-Za-z0-9_]*\b/.test(body);
 }
 
+// channelHandoffShadowFor returns true if the worker body
+// has a top-level binding `V := <-something` for the given
+// outer-scope variable V. The shadow-bind is the #419 fix
+// shape — the outer-scope V is no longer read by the
+// worker because the channel read replaces it with a
+// happens-before edge. Walks the first 12 statements of
+// the worker body (a single shadow bind at the top of the
+// worker is the canonical fix shape; deeper shadow binds
+// are rare and not worth the complexity).
+//
+// Issue #424: this check lets the probe suppress
+// false-positive candidates like the
+// handleImportMemorialJSON case in imports_handlers.go
+// where the worker has a channel handoff in place but the
+// probe still surfaced the candidate (low-confidence).
+function channelHandoffShadowFor(body, variable) {
+	// Restrict to the first ~10 statements: each statement
+	// ends at `;` or `\n`. We slice on those, take the first
+	// 10 non-empty pieces, and look for `<var> := <-<ch>`
+	// in any of them.
+	const statements = body.split(/[;\n]/).map((s) => s.trim()).filter((s) => s.length > 0).slice(0, 12);
+	const shadowRe = new RegExp('\\b' + variable + '\\s*:=\\s*<-\\s*[A-Za-z_][A-Za-z0-9_]*\\b');
+	for (const stmt of statements) {
+		if (shadowRe.test(stmt)) return true;
+	}
+	return false;
+}
+
 // removeStringContents removes the contents of string and
 // rune literals so the regex doesn't match identifiers
 // inside comments or strings.
@@ -336,6 +364,11 @@ for (const file of listGoFiles(APPSHELL_DIR)) {
 		const usesChannel = channelHandoffInWorker(w.body);
 		for (const v of outerVars) {
 			if (!workerIdents.has(v)) continue;
+			// Channel-handoff shadow bind check (issue #424):
+			// if the worker has a top-level `V := <-ch` bind
+			// for the outer-scope V, the outer scope is shadowed
+			// and no longer racing. Suppress the candidate.
+			if (channelHandoffShadowFor(w.body, v)) continue;
 			// The worker references the outer-scope variable.
 			// If the worker ALSO reads from a channel, this is
 			// likely the #419 fix shape (channel handoff) and
