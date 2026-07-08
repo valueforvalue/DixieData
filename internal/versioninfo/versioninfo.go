@@ -3,6 +3,11 @@ package versioninfo
 
 import "fmt"
 
+// AppName is the human-readable app name emitted alongside the
+// codename in chrome surfaces. Mirrors buildinfo.AppName for
+// callers that don't want the import cycle.
+const AppName = "DixieData"
+
 // CurrentSchemaVersion is the SQLite user_version the data
 // plane ships with today. Bumped when migration files in
 // internal/db/ land. Independent from the app version string
@@ -65,4 +70,35 @@ func AppVersionForSchema(schemaVersion int) string {
 // New code should use AppVersion() (v1.{U}.{N}).
 func CurrentAppVersion() string {
 	return AppVersionForSchema(CurrentSchemaVersion)
+}
+
+// CurrentReleaseName is the human-friendly codename the user
+// picks per release (issue #370). Single source of truth -
+// every chrome surface (footer, window title, CLI --version,
+// /settings/build panel, gold-master report) reads from this
+// constant. Bumped by scripts/bump-version.ps1 -BumpCodename
+// exactly like the other counters (mutually exclusive with
+// -BumpSchema / -BumpUpdateFlow / -BumpRelease per the law in
+// CONTEXT.md Release counter N != schema version).
+//
+// Naming rules:
+//   - Single English word(s) (no hyphens, no underscores)
+//   - Thematic - Southern place names work for DixieData
+//   - Stable across the lifetime of one release; deprecation
+//     rule for embarrassing names lives in docs/RELEASING.md
+//
+// First codename: First Manassas (the first battle of
+// Bull Run, July 21 1861 - thematically apt for the first
+// named release).
+var CurrentReleaseName = "First Manassas"
+
+// ReleaseLabel is the chrome-friendly string combining the app
+// name and the current codename: "DixieData First Manassas".
+// Window title, footer, and CLI banner read from this helper
+// so a codename rename updates all chrome surfaces in one
+// place. Distinct from AppLabel() (which carries the numeric
+// version, "DixieData v1.1.65"); both render in the footer
+// together - "DixieData v1.1.65 . First Manassas".
+func ReleaseLabel() string {
+	return AppName + " " + CurrentReleaseName
 }
