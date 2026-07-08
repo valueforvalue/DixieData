@@ -588,3 +588,39 @@ html { scrollbar-gutter: stable; }
   /* No-op; the trigger button already has the pill-link
      styles. We just document the convention here. */
 }
+
+/* Source Record "just moved" highlight (UX pass). The form
+   dispatcher stashes the moved record's ID in sessionStorage
+   before the post-reorder navigation, and the
+   flashLastMovedSourceRecord() helper applies
+   data-just-moved="true" to the matching <li> on the next
+   page load. The animation peaks at amber, holds, then fades
+   back to the page's default card surface. ~1.5s total so
+   it's noticeable without being noisy when the user mashes
+   the arrows in a row. The cleanup path also strips the
+   attribute on transitionend / animationend / 2s timeout
+   (whichever fires first) so the row returns to its
+   resting style. */
+[data-source-record-id][data-just-moved="true"] {
+  animation: source-row-flash 1500ms ease-out;
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px #f59e0b;
+}
+@keyframes source-row-flash {
+  0% {
+    background-color: #fef3c7;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 1px #f59e0b;
+  }
+  60% {
+    background-color: #fef3c7;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 1px #f59e0b;
+  }
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}

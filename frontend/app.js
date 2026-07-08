@@ -689,6 +689,68 @@
     });
   }
 
+  // Source record reorder highlight (UX pass). The form-submit
+  // dispatcher stashes the moved record's ID in sessionStorage
+  // just before navigating to the reload URL. On the next page
+  // load this helper reads that flag, applies
+  // [data-just-moved=\"true\"] to the matching <li>, and clears
+  // the flag once the highlight animation completes. Single
+  // flash per successful reorder; no flash if the user landed
+  // here without a preceding reorder (e.g. a manual deep link).
+  // The CSS animation lives in frontend/tailwind.css under
+  // [data-source-record-id][data-just-moved=\"true\"].
+  function flashLastMovedSourceRecord() {
+    let movedId = null;
+    try {
+      movedId = window.sessionStorage.getItem("dixiedata.lastMovedSource");
+    } catch (_) {
+      return;
+    }
+    if (!movedId) {
+      return;
+    }
+    const row = document.querySelector(
+      `[data-source-record-id=\"${movedId}\"]`
+    );
+    if (!(row instanceof HTMLElement)) {
+      // No matching row on this page — clear the flag and
+      // bail. Could happen if the user navigates back to a
+      // different soldier before the reload finishes.
+      try {
+        window.sessionStorage.removeItem("dixiedata.lastMovedSource");
+      } catch (_) {}
+      return;
+    }
+    // Defer to next frame so the browser has applied the page
+    // load styles before the keyframe starts (otherwise the
+    // first frame of the animation can flash without the
+    // starting amber background).
+    requestAnimationFrame(() => {
+      row.setAttribute("data-just-moved", "true");
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const cleanup = () => {
+        row.removeAttribute("data-just-moved");
+        try {
+          window.sessionStorage.removeItem("dixiedata.lastMovedSource");
+        } catch (_) {}
+      };
+      // Primary cleanup: when the CSS transition ends.
+      // Fallback: 2s timeout in case the transitionend event
+      // never fires (e.g. the user navigates away mid-flash).
+      const onEnd = (ev) => {
+        if (ev && ev.target !== row) {
+          return;
+        }
+        row.removeEventListener("transitionend", onEnd);
+        row.removeEventListener("animationend", onEnd);
+        cleanup();
+      };
+      row.addEventListener("transitionend", onEnd, { once: true });
+      row.addEventListener("animationend", onEnd, { once: true });
+      setTimeout(cleanup, 2000);
+    });
+  }
+
   function restoreBackSnapshot() {
     const stack = loadBackStack();
     const snapshot = stack.pop();
@@ -3667,6 +3729,38 @@
         scrollY: window.scrollY,
       };
       rememberRedirectState(submitter || form, redirectTo || window.location.pathname, "", requestState);
+      // Source Record reorder highlight (UX pass, see AGENTS.md
+      // "Wails runtime hazards" + soldier_card.templ). When the
+      // request was a successful Source reorder — PATCH/POST to
+      // /soldiers/{id}/sources/{sourceId}/position with a 2xx
+      // response — stash the moved source record's ID in
+      // sessionStorage so the next page load can flash the
+      // row that just moved. The sessionStorage is cleared
+      // inside the DOMContentLoaded handler after the
+      // animation finishes, so a single highlight fires per
+      // successful reorder.
+      if (
+        responseOk
+        && typeof form === "object"
+        && form
+        && form.action
+        && typeof URL !== "undefined"
+      ) {
+        try {
+          const u = new URL(form.action, window.location.href);
+          const m = u.pathname.match(/^\/soldiers\/(\d+)\/sources\/(\d+)\/position$/);
+          if (m && response.status >= 200 && response.status < 300) {
+            try {
+              window.sessionStorage.setItem("dixiedata.lastMovedSource", m[2]);
+            } catch (_) {
+              // sessionStorage may be disabled (private mode);
+              // the highlight is a nice-to-have, not essential.
+            }
+          }
+        } catch (_) {
+          // non-URL form.action (e.g. relative); skip
+        }
+      }
       if (redirectTo) {
         window.location.assign(redirectTo);
       }
@@ -5197,6 +5291,7 @@
     hydrateRecentSearchResults();
     hydrateResearchPickerRecents();
     initializeBrowseView();
+    flashLastMovedSourceRecord();
     // Issue #249: install the dismiss-job button handler at boot
     // so document.referrer-based navigation works on first
     // dismissal. The handler prefers the same-origin referer
