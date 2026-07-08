@@ -314,18 +314,23 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 	// The closure captures `id` by reference, but `id` is not in
 	// scope until after StartManual returns. Pass it via a tiny
 	// indirection so the deferred SetResult / forgetManualJob
-	// calls can read it.
+	// Issue #419: closure-capture race on id (the same shape as
+	// enqueueExport / enqueueExportWithResult). StartManual returns
+	// the id tuple BEFORE the worker goroutine is fully wired up,
+	// but the deferred SetResult + forgetManualJob calls inside the
+	// worker reference the outer-scope `id`. Channel handoff: send
+	// id from the outer assignment into a buffered channel; worker
+	// reads via `<-idCh`. Channel send happens-before channel receive
+	// so the worker always observes the assigned id without a data
+	// race.
+	idCh := make(chan string, 1)
 	var id string
 	id, release, cancel := a.jobs.StartManual("memorial_import", summary, func(ctx context.Context, p *jobs.Progress) error {
+		id := <-idCh
 		defer a.forgetManualJob(id)
 		p.Set(20, "Reading Memorial archive")
 		import_summary, err := a.soldiers.ImportMemorialArchive(path)
 		if err != nil {
-			// Major-bump refusal surfaces a clear typed error
-			// to the job result; the worker treats it like any
-			// other failure (status + log) but the message in
-			// the user's debug-console dump points to the
-			// exact format mismatch.
 			return err
 		}
 		p.Set(80, "Writing error log")
@@ -342,9 +347,9 @@ func (a *App) handleImportMemorialJSON(w http.ResponseWriter, r *http.Request) {
 		})
 		return nil
 	})
+	idCh <- id
 	_ = cancel
 	a.rememberManualJob(id, release, cancel)
-
 	setInfoToastHeader(w, "Memorial JSON import queued. Confirm on the status page to proceed.")
 	writeExportRedirect(w, "/jobs/"+id)
 }

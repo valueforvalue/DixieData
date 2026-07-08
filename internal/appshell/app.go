@@ -1172,7 +1172,6 @@ func (a *App) runSoldierImageImportJob(w http.ResponseWriter, soldier *models.So
 			return importErr
 		}
 		_ = redirectPath
-		_ = jobID
 		p.Set(100, fmt.Sprintf("Imported %d image(s).", imported))
 		return nil
 	})
