@@ -58,6 +58,18 @@ dixiedata-tune --db ~/.dixiedata render \
     --orientation L \
     --out event.pdf
 
+# Render a single Article Record (issue #430; uses the same
+# path as the appshell's /articles/{id}/pdf handler, so a
+# tune render is byte-identical to the appshell render).
+dixiedata-tune --db ~/.dixiedata render \
+    --template article_landscape --mode article --record 1 \
+    --orientation L \
+    --out article.pdf
+
+# List Article ids (issue #430; without this you had to
+# write SQL to find an article id to render).
+dixiedata-tune --db ~/.dixiedata list-records --kind article
+
 # Render the full bulk archive
 dixiedata-tune --db ~/.dixiedata render \
     --template bulk_soldier --mode bulk \

@@ -102,6 +102,14 @@ func (b *BulkRenderer) List(page, pageSize int) ([]models.Soldier, int, error) {
 	return b.soldier.List(page, pageSize)
 }
 
+// ListArticles returns a page of articles. Mirrors
+// internal/records.ArticleService.List. Used by tools/tune's
+// list-records subcommand (issue #430) so a user iterating on
+// article templates can find an article id without writing SQL.
+func (b *BulkRenderer) ListArticles(page, pageSize int) ([]models.Article, int, error) {
+	return b.article.List(page, pageSize)
+}
+
 // SetRegistry wires the typst-backed Registry into the underlying
 // export service. The appshell calls this at startup; tools call
 // it after constructing the renderer. After SetRegistry returns
