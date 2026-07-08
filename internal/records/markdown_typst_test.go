@@ -107,9 +107,20 @@ func TestMarkdownRenderer_RenderTypst(t *testing.T) {
 			mustHave: []string{"#list[", "- a", "- b", "- c"},
 		},
 		{
-			name:     "ordered list renders as typst #enum[]",
+			name:     "ordered list renders as typst #enum(numbering: '1.')",
 			source:   "1. a\n2. b",
-			mustHave: []string{"#enum[", "- a", "- b"},
+			mustHave: []string{"#enum(", `numbering: "1."`, "- a", "- b"},
+		},
+		{
+			// Issue #433: PDF body list markers rendered as
+			// U+FFFD because the default typst #enum marker uses
+			// a private-use glyph the bundled font lacks. The
+			// converter now passes `numbering: "1."` as a
+			// named arg so every font renders plain ASCII
+			// digit-period instead of the typst-private glyph.
+			name:     "ordered list pins ASCII numbering: '1.' for font-independence (#433)",
+			source:   "1. a\n2. b",
+			mustHave: []string{`numbering: "1."`},
 		},
 		{
 			name:     "blockquote renders with #quote()",
