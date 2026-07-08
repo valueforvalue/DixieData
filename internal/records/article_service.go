@@ -1156,17 +1156,38 @@ func (a *ArticleService) RenderPDF(articleID int64, orientation string) (*PDFRes
 	// can't render arbitrary HTML natively, so we walk the
 	// goldmark AST instead of round-tripping through the
 	// sanitized HTML -- the same source feeds both the web
-	// render (BodyHTML) and the PDF render (body_typst).
+	// render (BodyHTML) and the PDF render (article.body_typst).
 	bodyTypst, typstErr := a.renderer.RenderTypst(article.BodyMD)
 	if typstErr != nil {
 		return nil, fmt.Errorf("RenderPDF %d: typst body: %w", articleID, typstErr)
 	}
+	// The article template reads body_typst via
+	// `a.at("body_typst", default: "")` where `a` is the
+	// `article` map. Embed the typst body INSIDE the article
+	// map (not at the top level of the data payload) so the
+	// template picks it up. Mirrors the original `body_html`
+	// shape from before commit 6cb6e40.
+	articleWithBody := *article
+	articlePayload := map[string]any{
+		"id":             articleWithBody.ID,
+		"sync_id":        articleWithBody.SyncID,
+		"display_id":     articleWithBody.DisplayID,
+		"title":          articleWithBody.Title,
+		"subtitle":       articleWithBody.Subtitle,
+		"body_md":        articleWithBody.BodyMD,
+		"body_html":      articleWithBody.BodyHTML,
+		"body_typst":     bodyTypst,
+		"created_at":     articleWithBody.CreatedAt,
+		"updated_at":     articleWithBody.UpdatedAt,
+		"is_snapshot":    articleWithBody.IsSnapshot,
+		"snapshot_of_id":  articleWithBody.SnapshotOfID,
+	}
+	_ = articleWithBody
 	data := map[string]any{
-		"article":       *article,
+		"article":       articlePayload,
 		"resolved_refs": resolvedRefs,
 		"options":       opts,
 		"branding":      map[string]string{},
-		"body_typst":    bodyTypst,
 	}
 	var buf bytes.Buffer
 	if err := a.registry.RenderArticle(contextBackground(), "article", normalizeOrientation(orientation), data, &buf); err != nil {

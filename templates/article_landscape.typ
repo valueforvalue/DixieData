@@ -84,7 +84,13 @@
     #let body-typst = a.at("body_typst", default: "")
     #if body-typst != "" {
       set par(leading: 0.6em); set text(size: 10.5pt)
-      body-typst
+      // body_typst is a typst-markup string produced by
+      // MarkdownRenderer.RenderTypst in the Go side. typst
+      // treats a string as literal text in content mode;
+      // eval(..., mode: "markup") parses it as typst markup
+      // and emits the rendered result. See commit 6cb6e40
+      // + the article body PDF bug for context.
+      eval(body-typst, mode: "markup")
     }
   ],
   [
