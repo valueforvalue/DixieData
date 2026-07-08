@@ -3409,6 +3409,21 @@
     if (confirmMessage && !window.confirm(confirmMessage)) {
       return false;
     }
+    // Respect the disabled state on the submitter. Native HTML
+    // forms ignore clicks on disabled submit buttons, but the
+    // JS dispatcher can still be invoked via dispatchEvent() or
+    // by WebView2 quirks that don't fully honor the disabled
+    // attribute. Per the HTML spec for FormData(form, submitter),
+    // a disabled submitter produces an EMPTY entry list — so the
+    // fetch would go out with no body and the server would 400
+    // (e.g. Source Record ▲/▼ on the soldier card was hitting
+    // "Position must be a positive integer." because the position
+    // hidden input wasn't included in FormData). Bailing here is
+    // a defense-in-depth net; the visible UI still relies on
+    // `disabled` for the user-facing affordance.
+    if (submitter instanceof HTMLButtonElement && submitter.disabled) {
+      return false;
+    }
     // Issue #151: soft confirm for empty-name new-soldier saves.
     // The form's #ef-first_name + #ef-last_name both empty after
     // trim means the user wants to capture an unknown-nam record
