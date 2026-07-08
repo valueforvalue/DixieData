@@ -6,6 +6,9 @@
 // landed in slice 3.3). Slice 3.4 adds the Revisions tab +
 // the Save copy / Restore / Delete affordances. Slice 3.6
 // swaps the verbatim Body for the sanitized HTML render.
+// Slice 3.7 (issue #431) adds the /articles/{id}/edit CTA
+// next to the DisplayID so a user editing an existing article
+// doesn't need to know the route shape.
 //
 // The picker modal lives in components/person_record_picker.templ;
 // the Revisions tab fragment lives in
@@ -28,7 +31,14 @@ templ ArticleDetailShell(view viewmodel.Article) {
 					href={ templ.SafeURL(routebuilder.ArticleList()) }
 					class="secondary-button"
 				>← Back to Articles</a>
-				<span class="font-mono text-xs text-slate-500" data-article-display-id>{ view.DisplayID }</span>
+				<div class="flex flex-wrap items-center gap-3">
+					<span class="font-mono text-xs text-slate-500" data-article-display-id>{ view.DisplayID }</span>
+					<a
+						href={ templ.SafeURL(routebuilder.ArticleEdit(view.ID)) }
+						class="pill-link"
+						data-article-edit-link
+					>Edit</a>
+				</div>
 			</div>
 			<div class="mb-4 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white/60 px-4 py-3" data-article-export-bar>
 				@components.ArticlePDFExport(view.ID)
@@ -71,9 +81,6 @@ templ ArticleDetailShell(view viewmodel.Article) {
 			</article>
 			@ArticleRefsPanel(view)
 			@ArticleRevisionsTab(view)
-			// Slice 3.6 swaps the verbatim Body for the
-			// sanitized HTML render. Slice 3.7 adds the
-			// /articles/{id}/edit CTA on this surface.
 		</div>
 	}
 }
