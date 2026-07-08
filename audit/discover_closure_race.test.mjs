@@ -87,5 +87,26 @@ test('--strict mode flag is recognized', () => {
     `--strict should exit 0 or 1; got ${r.status}\n${r.stdout}`);
 });
 
+// Test 6 (issue #424): the imports_handlers.go
+// handleImportMemorialJSON candidate is a false positive —
+// the worker uses the channel-handoff fix shape
+// (`id := <-idCh`) so the outer-scope `id` is shadowed by
+// the channel read. The probe correctly classifies it as
+// low-confidence (because it has channel reads); the new
+// shadow-bind check (added by #424) should suppress it
+// entirely so the report no longer surfaces it as a
+// candidate at all. This pins that contract.
+test('channel-handoff shadow suppresses false-positive candidate (issue #424)', () => {
+  const r = spawnSync('node', [PROBE], { encoding: 'utf8' });
+  const tail = r.stdout.split('=== CANDIDATES ===')[1] || '';
+  // The imports_handlers.go candidate should no longer appear
+  // after the #424 shadow-bind check lands. If it does, the
+  // shadow detection isn't working.
+  const importsFlag = tail.split('\n').filter((l) =>
+    l.includes('imports_handlers.go') && /\[(high|low)\]/.test(l));
+  assert.equal(importsFlag.length, 0,
+    `expected imports_handlers.go candidate to be suppressed by #424 shadow-bind check; got:\n${importsFlag.join('\n')}`);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
