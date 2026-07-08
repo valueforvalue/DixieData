@@ -201,6 +201,35 @@ try {
   if (articleId) {
     await page.goto(BASE + '/articles/' + articleId);
     await wait(800);
+    const editLinkState = await page.evaluate((id) => {
+      const link = document.querySelector('[data-article-edit-link]');
+      return {
+        linkExists: link !== null,
+        href: link ? link.getAttribute('href') : null,
+        expectedHref: '/articles/' + id + '/edit',
+        text: link ? link.textContent.trim() : null,
+      };
+    }, articleId);
+    record('article-detail-edit-link-renders', editLinkState.linkExists, editLinkState);
+    record(
+      'article-detail-edit-link-href-correct',
+      editLinkState.href === editLinkState.expectedHref,
+      editLinkState,
+    );
+    record(
+      'article-detail-edit-link-text-is-edit',
+      editLinkState.text === 'Edit',
+      editLinkState,
+    );
+    await page.click('[data-article-edit-link]');
+    await wait(800);
+    record(
+      'article-detail-edit-link-lands-on-edit-page',
+      page.url() === BASE + '/articles/' + articleId + '/edit',
+      { url: page.url(), expected: BASE + '/articles/' + articleId + '/edit' },
+    );
+    await page.goto(BASE + '/articles/' + articleId);
+    await wait(800);
     const refsPanelState = await page.evaluate(() => {
       const panel = document.querySelector('[data-article-refs-panel]');
       const empty = document.querySelector('[data-article-refs-empty]');
