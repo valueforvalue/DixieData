@@ -624,3 +624,184 @@ html { scrollbar-gutter: stable; }
     box-shadow: 0 0 0 0 transparent;
   }
 }
+
+/* Article Record body prose (issue filed by user, see
+   matching GitHub issue). The .prose / .prose-sm class
+   names in the templ imply the @tailwindcss/typography
+   plugin, but the plugin isn't installed in this repo —
+   so the classes are inert. Without a real stylesheet,
+   Tailwind's preflight resets h1–h6 to inherit font-size,
+   so the article body's `text-sm` (14px) parent makes
+   headings render at the same size as body text. The
+   user sees the heading text but doesn't perceive it as
+   a heading.
+
+   This scoped stylesheet covers h1–h6, p, ul, ol, li so
+   the rendered Markdown matches the DixieData sepia
+   palette. Custom CSS (not the typography plugin) so the
+   colors tie into the existing design tokens (gold, sepia,
+   ink) without overriding the plugin's defaults. Scoped
+   to [data-article-body] so the same elements on other
+   pages (the soldier card, browse table, etc.) keep their
+   existing styles. */
+[data-article-body] h1,
+[data-article-body] h2,
+[data-article-body] h3,
+[data-article-body] h4,
+[data-article-body] h5,
+[data-article-body] h6 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--ink, #22303d);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+[data-article-body] h1 {
+  font-size: 1.85rem;
+  border-bottom: 1px solid rgba(141, 116, 64, 0.28);
+  padding-bottom: 0.35rem;
+}
+[data-article-body] h2 {
+  font-size: 1.5rem;
+  color: #6f2c26;
+}
+[data-article-body] h3 {
+  font-size: 1.25rem;
+}
+[data-article-body] h4 {
+  font-size: 1.1rem;
+}
+[data-article-body] h5,
+[data-article-body] h6 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(34, 48, 61, 0.78);
+}
+[data-article-body] h1:first-child,
+[data-article-body] h2:first-child,
+[data-article-body] h3:first-child,
+[data-article-body] h4:first-child,
+[data-article-body] h5:first-child,
+[data-article-body] h6:first-child {
+  margin-top: 0;
+}
+[data-article-body] p {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+[data-article-body] p:first-child {
+  margin-top: 0;
+}
+[data-article-body] ul,
+[data-article-body] ol {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+  padding-left: 1.4rem;
+}
+[data-article-body] ul {
+  list-style: disc;
+}
+[data-article-body] ol {
+  list-style: decimal;
+}
+[data-article-body] li {
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+[data-article-body] li > p {
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+[data-article-body] a {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+[data-article-body] a:hover {
+  color: #6f2c26;
+}
+[data-article-body] strong {
+  font-weight: 700;
+}
+[data-article-body] em {
+  font-style: italic;
+}
+[data-article-body] del {
+  color: rgba(34, 48, 61, 0.55);
+  text-decoration: line-through;
+}
+[data-article-body] hr {
+  border: 0;
+  border-top: 1px solid rgba(141, 116, 64, 0.28);
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+[data-article-body] blockquote {
+  border-left: 3px solid rgba(141, 116, 64, 0.55);
+  padding: 0.4rem 0 0.4rem 0.85rem;
+  margin: 0.85rem 0;
+  color: rgba(34, 48, 61, 0.85);
+  font-style: italic;
+  background: rgba(246, 241, 228, 0.45);
+  border-radius: 0 0.4rem 0.4rem 0;
+}
+[data-article-body] blockquote > p:first-child {
+  margin-top: 0;
+}
+[data-article-body] blockquote > p:last-child {
+  margin-bottom: 0;
+}
+[data-article-body] code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92em;
+  background: rgba(36, 48, 61, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  color: #1f2b38;
+}
+[data-article-body] pre {
+  background: rgba(21, 29, 38, 0.95);
+  color: #fff8e7;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  overflow-x: auto;
+  margin: 0.85rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+[data-article-body] pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
+}
+[data-article-body] img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.4rem;
+  margin: 0.5rem 0;
+  display: block;
+}
+[data-article-body] table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.85rem 0;
+  font-size: 0.92em;
+}
+[data-article-body] thead {
+  background: rgba(141, 116, 64, 0.12);
+}
+[data-article-body] th,
+[data-article-body] td {
+  border: 1px solid rgba(141, 116, 64, 0.28);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+[data-article-body] th {
+  font-weight: 600;
+  color: #22303d;
+}

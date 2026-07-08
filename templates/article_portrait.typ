@@ -96,10 +96,10 @@
 
 // --- body ---
 
-#let body-html = a.at("body_html", default: "")
-#if body-html != "" {
+#let body-typst = a.at("body_typst", default: "")
+#if body-typst != "" {
   set par(leading: 0.65em); set text(size: 11pt)
-  raw(block: true, body-html)
+  body-typst
 }
 
 #v(1.2em)

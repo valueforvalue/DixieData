@@ -1149,11 +1149,24 @@ func (a *ArticleService) RenderPDF(articleID int64, orientation string) (*PDFRes
 		})
 	}
 	opts := renderDefaultPDFOptions(orientation)
+	// Render the markdown body to typst markup so the PDF
+	// template can inline it as styled content (see
+	// internal/records/markdown_typst.go for the converter
+	// + the linked GitHub issue for the original bug). typst
+	// can't render arbitrary HTML natively, so we walk the
+	// goldmark AST instead of round-tripping through the
+	// sanitized HTML -- the same source feeds both the web
+	// render (BodyHTML) and the PDF render (body_typst).
+	bodyTypst, typstErr := a.renderer.RenderTypst(article.BodyMD)
+	if typstErr != nil {
+		return nil, fmt.Errorf("RenderPDF %d: typst body: %w", articleID, typstErr)
+	}
 	data := map[string]any{
 		"article":       *article,
 		"resolved_refs": resolvedRefs,
 		"options":       opts,
 		"branding":      map[string]string{},
+		"body_typst":    bodyTypst,
 	}
 	var buf bytes.Buffer
 	if err := a.registry.RenderArticle(contextBackground(), "article", normalizeOrientation(orientation), data, &buf); err != nil {
