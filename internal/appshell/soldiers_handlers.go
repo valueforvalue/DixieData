@@ -48,9 +48,15 @@ func (a *App) handleSoldiers(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load browse suggestions.", err)
 		return
 	}
-	presentation.SoldierList(nil, page, 0, "", suggestions).Render(r.Context(), w)
+	// Issue #384 / Slice 3: wrap Render so a templ failure surfaces an
+	// EmptyStateError fragment instead of empty response.
+	if err := presentation.SoldierList(nil, page, 0, "", suggestions).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the browse soldiers list.", err)
+	}
 }
 
+// Issue #384 / Slice 3: wrap Render so a templ failure surfaces an
+// EmptyStateError fragment instead of empty response.
 func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -64,7 +70,11 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Browse: r.URL.Query().Get("browse") == "1",
 	}
 	if strings.TrimSpace(q) == "" && !search.Browse {
-		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
+		// Issue #384 / Slice 3: wrap Render so a templ failure surfaces an
+		// EmptyStateError fragment instead of empty response.
+		if err := presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the empty search results.", err)
+		}
 		return
 	}
 	if strings.TrimSpace(q) == "" && search.Browse {
@@ -73,7 +83,10 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 			respondInternal(w, r, "Could not list person records.", err)
 			return
 		}
-		presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+		// Issue #384 / Slice 3: wrap Render.
+		if err := presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render browse search results.", err)
+		}
 		return
 	}
 	soldiers, total, err := a.soldiers.SearchPage(q, page, 50)
@@ -81,7 +94,10 @@ func (a *App) handleSearch(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Search failed.", err)
 		return
 	}
-	presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+	// Issue #384 / Slice 3: wrap Render.
+	if err := presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render search results.", err)
+	}
 }
 
 func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +150,11 @@ func (a *App) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	for pid, tags := range soldierTags {
 		tagMap[pid] = viewmodel.TagsFromModels(tags)
 	}
-	presentation.BrowseView(soldiers, normalized, total, suggestions, nil, availableTags, tagMap).Render(r.Context(), w)
+	// Issue #384 / Slice 3: wrap Render so a templ failure surfaces an
+	// EmptyStateError fragment instead of empty response.
+	if err := presentation.BrowseView(soldiers, normalized, total, suggestions, nil, availableTags, tagMap).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the browse view.", err)
+	}
 }
 
 func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +183,10 @@ func (a *App) handleBrowseResults(w http.ResponseWriter, r *http.Request) {
 	// Fetch available tags for the bulk-tag toolbar datalist.
 	availableTags, _ := a.tags.List(r.Context())
 	avail := viewmodel.TagsFromModels(availableTags)
-	presentation.BrowseResults(soldiers, normalized, total, tagMap, avail).Render(r.Context(), w)
+	// Issue #384 / Slice 3: wrap Render.
+	if err := presentation.BrowseResults(soldiers, normalized, total, tagMap, avail).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render browse results.", err)
+	}
 }
 
 func parseBrowseRequest(values url.Values) records.BrowseRequest {
@@ -225,7 +248,10 @@ func (a *App) handleRecentSearch(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load recent person records.", err)
 		return
 	}
-	presentation.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)
+	// Issue #384 / Slice 3: wrap Render.
+	if err := presentation.SearchResults(soldiers, models.SoldierSearch{Mode: "basic", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render recent search results.", err)
+	}
 }
 
 func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
@@ -264,7 +290,10 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	page := parsePage(r.URL.Query().Get("page"))
 	if !hasAdvancedSearchInput(search) {
-		presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)
+		// Issue #384 / Slice 3: wrap Render.
+		if err := presentation.SearchResults(nil, search, page, 0, 50).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the empty advanced search.", err)
+		}
 		return
 	}
 
@@ -274,7 +303,10 @@ func (a *App) handleAdvancedSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w)
+	// Issue #384 / Slice 3: wrap Render.
+	if err := presentation.SearchResults(soldiers, search, page, total, 50).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render advanced search results.", err)
+	}
 }
 
 func hasAdvancedSearchInput(search models.SoldierSearch) bool {
@@ -361,7 +393,7 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 		if !confirmed {
 			defaults, defaultsErr := a.newSoldierDefaults()
 			if defaultsErr != nil {
-				http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, "Could not build the new-person defaults.", defaultsErr)
 				return
 			}
 			a.renderEntryForm(w, r, defaults, false, "First name or last name is required to save a new person record.", http.StatusBadRequest)
@@ -373,7 +405,7 @@ func (a *App) handleCreateSoldier(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		defaults, defaultsErr := a.newSoldierDefaults()
 		if defaultsErr != nil {
-			http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+			respondInternal(w, r, "Could not build the new-person defaults.", defaultsErr)
 			return
 		}
 		a.renderEntryForm(w, r, defaults, false, err.Error(), http.StatusBadRequest)
@@ -571,7 +603,10 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		// the panel rather than 500 -- the panel is a
 		// load-bearing-but-non-critical surface.
 		citedIn, _ := a.articles.CitedInArticles(id)
-		presentation.SoldierDetailWithCitedIn(*soldier, soldierTags, citedIn).Render(r.Context(), w)
+		// Issue #384 / Slice 3: wrap Render.
+		if err := presentation.SoldierDetailWithCitedIn(*soldier, soldierTags, citedIn).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the person record detail page.", err)
+		}
 	case http.MethodPut:
 		a.handleUpdateSoldier(w, r, id)
 	case http.MethodDelete:

@@ -47,6 +47,7 @@ const TOOLBOX = join(ROOT, "frontend/debug-toolbox.js");
 const APP_JS = join(ROOT, "frontend/app.js");
 const APP_GO = join(ROOT, "internal/appshell/app.go");
 const EVENTS_GO = join(ROOT, "internal/appshell/events_handlers.go");
+const SOLDIERS_GO = join(ROOT, "internal/appshell/soldiers_handlers.go");
 const EMPTY_STATE_TEMPL = join(ROOT, "internal/templates/components/empty_state.templ");
 const RESPOND_GO = join(ROOT, "internal/appshell/respond.go");
 
@@ -54,6 +55,7 @@ const toolboxSrc = readFileSync(TOOLBOX, "utf8");
 const appJsSrc = readFileSync(APP_JS, "utf8");
 const appGoSrc = readFileSync(APP_GO, "utf8");
 const eventsGoSrc = readFileSync(EVENTS_GO, "utf8");
+const soldiersGoSrc = readFileSync(SOLDIERS_GO, "utf8");
 const emptyStateTemplSrc = readFileSync(EMPTY_STATE_TEMPL, "utf8");
 const respondGoSrc = readFileSync(RESPOND_GO, "utf8");
 
@@ -240,6 +242,45 @@ test("events_handlers.go no longer leaks defaultsErr.Error() to http.Error", () 
 test("events_handlers.go no longer leaks fetchErr.Error() to http.Error", () => {
   assert.match(eventsGoSrc, /respondInternal\(w, r, fmt\.Sprintf\("Could not load Event %d for the error form."/);
   assert.doesNotMatch(eventsGoSrc, /http\.Error\(w, fetchErr\.Error\(\)/);
+});
+
+// ---------------------------------------------------------------------------
+// 3c. Slice 3 — all 10 Render sites in soldiers_handlers.go are wrapped.
+//     Plus the 2 http.Error leaks are gone.
+// ---------------------------------------------------------------------------
+
+const soldiersSites = [
+  ["soldiers_handlers.go SoldierList",                 "SoldierList(nil, page, 0, \"\", suggestions).Render(r.Context(), w)"],
+  ["soldiers_handlers.go SearchResults empty",          "SearchResults(nil, search, page, 0, 50).Render(r.Context(), w)"],
+  ["soldiers_handlers.go BrowseView",                  "BrowseView(soldiers, normalized, total, suggestions, nil, availableTags, tagMap).Render(r.Context(), w)"],
+  ["soldiers_handlers.go BrowseResults",               "BrowseResults(soldiers, normalized, total, tagMap, avail).Render(r.Context(), w)"],
+  ["soldiers_handlers.go SearchResults recent",        "SearchResults(soldiers, models.SoldierSearch{Mode: \"basic\", Recent: true}, 1, len(soldiers), 10).Render(r.Context(), w)"],
+  ["soldiers_handlers.go SoldierDetailWithCitedIn",    "SoldierDetailWithCitedIn(*soldier, soldierTags, citedIn).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of soldiersSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = soldiersGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in soldiers_handlers.go`);
+    for (const h of hits) {
+      const tail = soldiersGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
+
+test("soldiers_handlers.go no longer leaks defaultsErr.Error() to http.Error", () => {
+  assert.match(soldiersGoSrc, /respondInternal\(w, r, "Could not build the new-person defaults."/);
+  assert.doesNotMatch(soldiersGoSrc, /http\.Error\(w, defaultsErr\.Error\(\)/);
 });
 
 // ---------------------------------------------------------------------------
