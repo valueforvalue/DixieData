@@ -195,6 +195,54 @@ test("events_handlers.go EventList (line ~76) wrapped with respondErrorFragment"
 });
 
 // ---------------------------------------------------------------------------
+// 3b. Slice 2 — all 11 Render sites in events_handlers.go are wrapped.
+//     Table-driven: each row is (label, render-token). The probe asserts
+//     respondErrorFragment appears within 500 chars of each token.
+// ---------------------------------------------------------------------------
+
+const eventsSites = [
+  ["events_handlers.go EventForm GET",              "EventForm(defaults, false).Render(r.Context(), w)"],
+  ["events_handlers.go EventFormWithError (parse)",  "EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)"],
+  ["events_handlers.go EventDetail",                 "EventDetail(tags, event).Render(r.Context(), w)"],
+  ["events_handlers.go EventFormWithErrorAndLinks (edit parse)", "EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w)"],
+  ["events_handlers.go EventFormWithLinksAndTags GET","EventFormWithLinksAndTags(event.Event, linked, tags, true).Render(r.Context(), w)"],
+  ["events_handlers.go PersonEventsTab",             "PersonEventsTab(personID, linked).Render(r.Context(), w)"],
+  ["events_handlers.go ResearchLogView",             "ResearchLogView(*log).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of eventsSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = eventsGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in events_handlers.go`);
+    // Assert EVERY occurrence of this token is wrapped.
+    for (const h of hits) {
+      const tail = eventsGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
+
+// Also assert the 4 http.Error-leak sites from the edit-event handler
+// are GONE — they should now be respondInternal.
+test("events_handlers.go no longer leaks defaultsErr.Error() to http.Error", () => {
+  assert.match(eventsGoSrc, /respondInternal\(w, r, "Could not build the new-event defaults."/);
+  assert.doesNotMatch(eventsGoSrc, /http\.Error\(w, defaultsErr\.Error\(\)/);
+});
+test("events_handlers.go no longer leaks fetchErr.Error() to http.Error", () => {
+  assert.match(eventsGoSrc, /respondInternal\(w, r, fmt\.Sprintf\("Could not load Event %d for the error form."/);
+  assert.doesNotMatch(eventsGoSrc, /http\.Error\(w, fetchErr\.Error\(\)/);
+});
+
+// ---------------------------------------------------------------------------
 // 4. EmptyStateError component must be exported and render the right markers.
 // ---------------------------------------------------------------------------
 
