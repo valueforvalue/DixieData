@@ -190,7 +190,14 @@ func (s *typstState) walk(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		ordered := v.IsOrdered()
 		if entering {
 			if ordered {
-				s.out.WriteString("#enum[\n")
+				// Issue #433: pass `numbering: "1."` as a named
+				// arg so every font renders plain ASCII
+				// digit-period. Without the explicit arg,
+				// typst 0.13+ falls back to a private-use
+				// glyph for the marker that bundled fonts
+				// (Liberation Sans etc.) lack, surfacing as
+				// U+FFFD in the PDF output.
+				s.out.WriteString(`#enum(numbering: "1.")[\n`)
 			} else {
 				s.out.WriteString("#list[\n")
 			}
