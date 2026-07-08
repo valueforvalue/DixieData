@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
 	"github.com/valueforvalue/DixieData/internal/debug"
@@ -467,6 +468,7 @@ templ SettingsView(confirmationWord string, updateState viewmodel.UpdateSettings
 		<div class="relative mx-auto max-w-3xl space-y-6">
 			<h2 class="text-2xl gold font-bold mb-6">Settings</h2>
 			@SettingsUpdatePanel(updateState)
+			@SettingsBuildPanel()
 			<div class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				<div>
 					<h3 class="text-xl gold font-bold">Responsive Layout Mode</h3>
@@ -1160,4 +1162,32 @@ func qualityScanProvenanceLine(issue viewmodel.DataQualityIssue) string {
 		}
 	}
 	return strings.Join(parts, " · ")
+}
+
+// SettingsBuildPanel is the v1 About/Build panel (issue #370).
+// Surfaces the codename + branch + commit + timestamp on the
+// /settings page so a user can identify the exact build without
+// squinting at the footer. No DB state; reads entirely from
+// buildinfo so the panel renders identically in dev + production.
+templ SettingsBuildPanel() {
+	<div id="settings-build-panel" data-settings-build class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
+		<div>
+			<h3 class="text-xl gold font-bold">Build Information</h3>
+			<p class="mt-2 text-sm text-slate-600">The codename, branch, and commit this DixieData binary was built from. Useful for support tickets and bug reports.</p>
+		</div>
+		<dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
+			<dt class="text-slate-500">Codename</dt>
+			<dd class="font-mono font-semibold" data-settings-build-codename>{ buildinfo.ReleaseLabel() }</dd>
+			<dt class="text-slate-500">App Version</dt>
+			<dd class="font-mono">{ buildinfo.AppLabel() }</dd>
+			<dt class="text-slate-500">Branch</dt>
+			<dd class="font-mono" data-settings-build-branch>{ buildinfo.GitBranch }</dd>
+			<dt class="text-slate-500">Commit</dt>
+			<dd class="font-mono text-xs">{ buildinfo.GitCommit }</dd>
+			if buildinfo.BuildTimestamp != "" {
+				<dt class="text-slate-500">Built</dt>
+				<dd class="font-mono text-xs">{ buildinfo.BuildTimestamp }</dd>
+			}
+		</dl>
+	</div>
 }
