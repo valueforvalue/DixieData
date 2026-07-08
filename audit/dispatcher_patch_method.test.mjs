@@ -120,5 +120,25 @@ test('formIsNewSoldierWithEmptyNames uses getAttribute, not IDL', () => {
   );
 });
 
+test('dispatcher bails when submitter button is disabled', () => {
+  // Defense-in-depth net for the Source Record ▲/▼ buttons
+  // (and any future form with a disabled submit button):
+  // when the submitter's `disabled` is true, the HTML spec
+  // says FormData(form, submitter) produces an empty entry
+  // list, so the fetch would go out with no body and the
+  // server would 400. Native HTML form submission ignores
+  // disabled buttons, but the JS dispatcher can be invoked
+  // via dispatchEvent() or by WebView2 quirks. Bail before
+  // the fetch so the user doesn't see a misleading
+  // validation toast.
+  const dispatcherIdx = src.indexOf('async function dispatchDixieDataForm');
+  assert.ok(dispatcherIdx >= 0, 'dispatchDixieDataForm function not found in frontend/app.js');
+  const window = src.slice(dispatcherIdx, dispatcherIdx + 5000);
+  assert.ok(
+    /submitter\s+instanceof\s+HTMLButtonElement\s*&&\s*submitter\.disabled/.test(window),
+    'dispatchDixieDataForm should check submitter.disabled and bail; otherwise FormData(form, submitter) returns empty body and server 400s',
+  );
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
