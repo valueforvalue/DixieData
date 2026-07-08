@@ -111,7 +111,11 @@ func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
 			respondInternal(w, r, "Could not build the new-event defaults.", err)
 			return
 		}
-		presentation.EventForm(defaults, false).Render(r.Context(), w)
+		// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+		// EmptyStateError fragment instead of leaving the user with an empty body.
+		if err := presentation.EventForm(defaults, false).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the new-event form.", err)
+		}
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the event form.", err)
@@ -121,10 +125,17 @@ func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			defaults, defaultsErr := a.newEventDefaults()
 			if defaultsErr != nil {
-				http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, "Could not build the new-event defaults.", defaultsErr)
 				return
 			}
-			presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
+			// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+			// EmptyStateError fragment instead of leaving the user with an empty
+			// body. The err here is the parse failure the form is meant to surface
+			// inline; a Render failure on top of that would leave the user staring
+			// at a blank panel.
+			if err := presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the new-event form with errors.", err)
+			}
 			return
 		}
 		event.CreatedByImportPath = "create_event"
@@ -132,10 +143,13 @@ func (a *App) handleNewEvent(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			defaults, defaultsErr := a.newEventDefaults()
 			if defaultsErr != nil {
-				http.Error(w, defaultsErr.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, "Could not build the new-event defaults.", defaultsErr)
 				return
 			}
-			presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w)
+			// Issue #384 / Slice 2: see sibling block above.
+			if err := presentation.EventFormWithError(defaults, false, err.Error()).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the new-event form with errors.", err)
+			}
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -179,7 +193,11 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 			respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", id), tagErr)
 			return
 		}
-		presentation.EventDetail(tags, event).Render(r.Context(), w)
+		// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+		// EmptyStateError fragment instead of leaving the user with an empty body.
+		if err := presentation.EventDetail(tags, event).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render event record %d.", id), err)
+		}
 	case http.MethodPut, http.MethodPost:
 		// Issue #320 child #323: the smoke probe caught that the
 		// edit form in event_form.templ posts to /events/{id} (not
@@ -215,7 +233,11 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", event.Event.ID), tagErr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
+			// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+			// EmptyStateError fragment instead of leaving the user with an empty body.
+			if err := presentation.EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the edit-event form with errors.", err)
+			}
 			return
 		}
 		updated.ID = id
@@ -235,7 +257,11 @@ func (a *App) handleEventByID(w http.ResponseWriter, r *http.Request) {
 				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", event.Event.ID), tagErr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
+			// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+			// EmptyStateError fragment instead of leaving the user with an empty body.
+			if err := presentation.EventFormWithErrorAndLinksAndTags(event.Event, linked, tags, true, err.Error()).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the edit-event form with errors.", err)
+			}
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -284,7 +310,11 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 			respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", event.Event.ID), tagErr)
 			return
 		}
-		presentation.EventFormWithLinksAndTags(event.Event, linked, tags, true).Render(r.Context(), w)
+		// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+		// EmptyStateError fragment instead of leaving the user with an empty body.
+		if err := presentation.EventFormWithLinksAndTags(event.Event, linked, tags, true).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render the edit-event form for event record %d.", event.Event.ID), err)
+		}
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the event form.", err)
@@ -294,7 +324,7 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 		if err != nil {
 			existing, fetchErr := a.events.GetEventByID(id)
 			if fetchErr != nil {
-				http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, fmt.Sprintf("Could not load Event %d for the error form.", id), fetchErr)
 				return
 			}
 			// Issue #361 slice 2: load links for the error
@@ -311,14 +341,18 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", existing.Event.ID), tagErr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinksAndTags(existing.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
+			// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+			// EmptyStateError fragment instead of leaving the user with an empty body.
+			if err := presentation.EventFormWithErrorAndLinksAndTags(existing.Event, linked, tags, true, err.Error()).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the edit-event form with errors.", err)
+			}
 			return
 		}
 		event.ID = id
 		if err := a.events.UpdateEvent(event); err != nil {
 			existing, fetchErr := a.events.GetEventByID(id)
 			if fetchErr != nil {
-				http.Error(w, fetchErr.Error(), http.StatusInternalServerError)
+				respondInternal(w, r, fmt.Sprintf("Could not load Event %d for the error form.", id), fetchErr)
 				return
 			}
 			// Issue #361 slice 2: load links for the error
@@ -335,7 +369,11 @@ func (a *App) handleEditEvent(w http.ResponseWriter, r *http.Request, id int64) 
 				respondInternal(w, r, fmt.Sprintf("Could not load tags for event record %d.", existing.Event.ID), tagErr)
 				return
 			}
-			presentation.EventFormWithErrorAndLinksAndTags(existing.Event, linked, tags, true, err.Error()).Render(r.Context(), w)
+			// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+			// EmptyStateError fragment instead of leaving the user with an empty body.
+			if err := presentation.EventFormWithErrorAndLinksAndTags(existing.Event, linked, tags, true, err.Error()).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the edit-event form with errors.", err)
+			}
 			return
 		}
 		// Issue #357: attach inline Source Record rows submitted
@@ -374,7 +412,11 @@ func (a *App) handlePersonEventsTab(w http.ResponseWriter, r *http.Request, pers
 		respondInternal(w, r, fmt.Sprintf("Could not load linked Event Records for Person %d.", personID), err)
 		return
 	}
-	presentation.PersonEventsTab(personID, linked).Render(r.Context(), w)
+	// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+	// EmptyStateError fragment instead of leaving the user with an empty tab.
+	if err := presentation.PersonEventsTab(personID, linked).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render the Events tab for Person %d.", personID), err)
+	}
 }
 // Record by creating a row in event_person_links. The
 // request body is empty (no form fields). On duplicate-link
@@ -667,7 +709,11 @@ func (a *App) handleEventResearchLog(w http.ResponseWriter, r *http.Request, eve
 			respondNotFound(w, r, fmt.Sprintf("Research log for event record %d not found.", eventID), err)
 			return
 		}
-		presentation.ResearchLogView(*log).Render(r.Context(), w)
+		// Issue #384 / Slice 2: wrap Render so a templ failure surfaces an
+		// EmptyStateError fragment instead of leaving the user with an empty body.
+		if err := presentation.ResearchLogView(*log).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render the research log for event record %d.", eventID), err)
+		}
 	case http.MethodPost:
 		if suffix == "tasks" {
 			a.handleEventResearchTaskCreate(w, r, eventID)
