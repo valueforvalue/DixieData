@@ -287,6 +287,25 @@ over-mock.
   could add one as a `pgregory.net/rapid`-shaped
   characterization test, but it's not required by this
   protocol today.
+- **Per-iter SQL footprint, when the test has a perf budget.**
+  Any test that asserts a wall-clock budget on a service
+  call MUST document the actual per-iter SQL footprint in
+  the test's doc-comment: count the SELECTs, INSERTs,
+  UPDATEs, DELETEs, transactions, and any Go-side work
+  (UUID mint, marshal, fsync) that the call performs. The
+  budget must be sized against the slowest supported runner
+  (currently Windows CI with SQLite fsync + disk-pressure
+  overhead), not the dev box. The pre-#420 budget on
+  `TestStressEventAttachDetachRoundTrip` was 5ms based on a
+  "1 INSERT + 1 DELETE" assumption that didn't match the
+  real per-iter footprint (5 SQL ops + 2 fsync-flushed
+  statements); the resulting 5880us/iter regression on CI
+  went unflagged for 24h because the budget was tuned to
+  the dev box. The correct shape is "real footprint in
+  comments, budget at slowest-runner observation + 70%
+  headroom, the test is a regression detector not a perf
+  SLA." `git log --grep='per-iter SQL footprint'` finds the
+  doc-comment pattern future tests should mirror.
 
 ### templ
 

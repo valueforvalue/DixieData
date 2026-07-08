@@ -1,0 +1,124 @@
+# Race detector + stress harness workflow.
+#
+# Why a separate workflow: -race doubles the per-test runtime
+# (cgo overhead + shadow state), and tests/stress deliberately
+# loops the heavy paths 200x to catch perf regressions. Both
+# are too slow to run on every push. This workflow runs them
+# on pushes to dev (the integration branch per AGENTS.md) +
+# manual dispatch, and surfaces #419-pattern races + perf
+# regressions that would otherwise pile up behind the main
+# test workflow's parse-error short-circuit (the #417 root
+# cause for #419 + #420 going unflagged for 24h).
+#
+# Two jobs:
+#   race-detector: runs `go test -race ./...` against the full
+#     suite. The two-pass invocation (unscoped then dates-only
+#     with -rapid.checks=500) mirrors the main test.yml shape.
+#     Pulled out of test.yml so the main workflow stays fast.
+#   stress-harness: runs `go test ./tests/stress/...` against
+#     the slow path (the long stress tests skip under -short).
+#     This is the workload that surfaced #420 (the 5880us/iter
+#     attach+detach regression).
+#
+# Trigger:
+#   - push to dev: catches races + perf regressions as they
+#     land on the integration branch.
+#   - workflow_dispatch: manual rerun (e.g. after fixing the
+#     perf budget but wanting to confirm).
+#   - NOT triggered on PRs: the main test.yml already runs
+#     -race against the PR; this workflow's purpose is the
+#     stress harness + the slower full-suite race run that
+#     main test.yml skips for speed.
+
+name: race-stress
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  race-detector:
+    name: go test -race ./...
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Build CSS (frontend/app.css)
+        shell: pwsh
+        run: |
+          npm ci
+          npx tailwindcss -c tailwind.config.js -i ./frontend/tailwind.css -o ./frontend/app.css --minify
+        timeout-minutes: 5
+
+      - name: Regenerate templ files
+        shell: pwsh
+        run: |
+          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+        timeout-minutes: 5
+
+      - name: Go test (race detector, full suite)
+        shell: pwsh
+        run: |
+          # Same two-pass shape as .github/workflows/test.yml —
+          # run the unscoped suite first (catches everything
+          # except the dates-only rapid flags), then run the
+          # dates package with -rapid.checks=500 forwarded via
+          # -args. The fail-fast $LASTEXITCODE check between
+          # the two runs is required because pwsh does not
+          # auto-propagate exit codes between commands; without
+          # it, the dates-only run's exit code would mask the
+          # unscoped run's failures. See #417 for the original
+          # pwsh '='-splitting fix and the exit-code propagation
+          # workaround.
+          $env:CGO_ENABLED = '1'
+          go test -race ./... -count=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -race ./internal/dates/... -count=1 -args '-rapid.checks=500'
+        timeout-minutes: 25
+
+  stress-harness:
+    name: tests/stress harness
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Regenerate templ files
+        shell: pwsh
+        run: |
+          go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+        timeout-minutes: 5
+
+      - name: Go test (stress harness)
+        shell: pwsh
+        run: |
+          # Run WITHOUT -short so the long-running stress tests
+          # (TestStressEventAttachDetachRoundTrip, etc.) execute.
+          # The stress tests are deterministic and surface perf
+          # regressions like #420 (the 5880us/iter attach+detach
+          # regression that was masked by the rapid-flag workflow
+          # parse error for 24h). Without this workflow the next
+          # similar regression would only surface when a developer
+          # happened to run `make stress` locally.
+          go test ./tests/stress/... -count=1
+        timeout-minutes: 15
