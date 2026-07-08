@@ -81,10 +81,10 @@
   columns: (1fr, 12cm),
   column-gutter: 1cm,
   [
-    #let body-html = a.at("body_html", default: "")
-    #if body-html != "" {
+    #let body-typst = a.at("body_typst", default: "")
+    #if body-typst != "" {
       set par(leading: 0.6em); set text(size: 10.5pt)
-      raw(block: true, body-html)
+      body-typst
     }
   ],
   [
