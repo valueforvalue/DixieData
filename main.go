@@ -85,6 +85,7 @@ Subcommands:
   list                List records (soldiers, sources)
   show                Show a single record
   search              Search across records
+  soldier             Mutate a soldier (create; update/delete follow)
   export              Export PDFs / JPGs / JSON / CSV / iCal / archives
   import              Import .ddbak / .ddshare / images / memorial-json
   migrate             Apply / inspect schema migrations
@@ -143,6 +144,10 @@ func main() {
 	}
 	if appshell.HasQuerySubcommand(os.Args[1:]) {
 		code := runQuerySubcommand()
+		os.Exit(code)
+	}
+	if appshell.HasMutateSubcommand(os.Args[1:]) {
+		code := runMutateSubcommand()
 		os.Exit(code)
 	}
 	if appshell.HasExportSubcommand(os.Args[1:]) {
@@ -262,6 +267,35 @@ func runQuerySubcommand() int {
 		defer a.Shutdown(ctx)
 		opts.App = a
 		return appshell.RunQuery(ctx, opts)
+	})
+	if err != nil && code != 5 {
+		writeError(os.Stderr, err.Error())
+	}
+	return code
+}
+
+// runMutateSubcommand builds an App, parses the mutate args,
+// dispatches to RunMutate, and returns the exit code. Same
+// lifecycle as runQuerySubcommand. Phase 8 of cli-plan.md
+// (issue #371) — write verbs split from read-only queries
+// because the mutate surface will grow (update / delete /
+// event create / tag-attach / etc.) and doesn't belong in
+// the cli_query.go file.
+func runMutateSubcommand() int {
+	code, err := recoverExit5(func() (int, error) {
+		if dir := firstDataDir(os.Args[1:]); dir != "" {
+			_ = os.Setenv("DIXIEDATA_DATA_DIR", dir)
+		}
+		opts, ok := appshell.ParseMutateCommand(os.Args[1:])
+		if !ok {
+			return 3, fmt.Errorf("usage: dixiedata soldier create --from <path> | --from-stdin")
+		}
+		a := appshell.NewApp()
+		ctx := context.Background()
+		a.Startup(ctx)
+		defer a.Shutdown(ctx)
+		opts.App = a
+		return appshell.RunMutate(ctx, opts)
 	})
 	if err != nil && code != 5 {
 		writeError(os.Stderr, err.Error())
