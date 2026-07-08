@@ -327,3 +327,70 @@ func headerFor(b []byte) string {
 	}
 	return strings.ReplaceAll(string(b), "\n", "\\n")
 }
+
+// TestTuneListRecordsKindFilter pins the --kind flag on the
+// list-records subcommand (issue #430). Defaults to soldier
+// (matches the legacy default); --kind article switches to
+// the article list. The seed-data fixture doesn't seed
+// articles, so the article count is 0; the soldier count
+// matches whatever the fixture seeded. Both must print a
+// `total: N` line on stderr and exit 0.
+func TestTuneListRecordsKindFilter(t *testing.T) {
+	if findTypstBin(t) == "" {
+		t.Skip("typst binary not found; set TYPST_BIN or build bin/typst-*")
+	}
+	dataDir := ensureSeedFixture(t)
+	if dataDir == "" {
+		t.Skip("seed fixture unavailable; build cmd/seed-data via `make debug`")
+	}
+	tuneBin := findUp("tools/tune/bin/dixiedata-tune.exe")
+	if tuneBin == "" {
+		t.Skip("dixiedata-tune binary not found; run `make tune`")
+	}
+	typstPath := findTypstBin(t)
+
+	cases := []struct {
+		name       string
+		kind       string
+		wantTotal  string
+		wantErrSub string // substring expected in the `total:` line; "" = no check
+	}{
+		{"default is soldier", "", "total: 10 records", ""},
+		{"--kind soldier", "soldier", "total: 10 records", ""},
+		{"--kind article (empty archive)", "article", "total: 0 articles", ""},
+		{"--kind bad value", "bogus", "", `--kind must be soldier or article`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := []string{"--db", dataDir, "--typst", typstPath, "--templates", templatesAbs(t), "list-records"}
+			if tc.kind != "" {
+				args = append(args, "--kind", tc.kind)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, tuneBin, args...)
+			cmd.Dir = t.TempDir()
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
+			out := stdout.String() + stderr.String()
+			if tc.wantErrSub != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q; got success with output:\n%s", tc.wantErrSub, out)
+				}
+				if !strings.Contains(out, tc.wantErrSub) {
+					t.Fatalf("expected error containing %q; got %v:\n%s", tc.wantErrSub, err, out)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("list-records failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+			}
+			if tc.wantTotal != "" && !strings.Contains(out, tc.wantTotal) {
+				t.Fatalf("expected output to contain %q; got:\n%s", tc.wantTotal, out)
+			}
+		})
+	}
+}

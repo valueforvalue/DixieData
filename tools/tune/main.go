@@ -120,7 +120,7 @@ func run(args []string) error {
 	case "list-templates":
 		return doListTemplates(*typstPath, *templatesDir)
 	case "list-records":
-		return doListRecords(*dbPath, *dataDir)
+		return doListRecords(*dbPath, *dataDir, subArgs)
 	case "print-defaults":
 		return doPrintDefaults(subArgs)
 	case "help", "-h", "--help":
@@ -488,6 +488,29 @@ func doRender(args []string, dbPath, typstPath, templatesDir, dataDir string) er
 			IncludeImages:   true,
 		}
 		if err := r.RenderEventSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
+			return err
+		}
+		recordIDs = []int64{rf.recordID}
+
+	case "article":
+		// Issue #430: Article Records (issue #321) have a
+		// template family (article_landscape.typ /
+		// article_portrait.typ) and a bridge method
+		// (RenderArticleSingle, added when the articles slice
+		// landed) but no tune dispatch case. Without this case
+		// a user iterating on article_*.typ has no way to
+		// render an article via tune. Mirrors the event case
+		// shape: --record is the article id, --template picks
+		// the template family, --orientation picks the layout.
+		if rf.recordID == 0 {
+			return fmt.Errorf("--record is required when --mode article")
+		}
+		opts := render.PDFOptions{
+			Orientation:     rf.orientation,
+			PrinterFriendly: rf.printer,
+			IncludeImages:   false,
+		}
+		if err := r.RenderArticleSingle(ctx, rf.recordID, opts, mustCreate(rf.out)); err != nil {
 			return err
 		}
 		recordIDs = []int64{rf.recordID}
@@ -895,9 +918,14 @@ func doListTemplates(typstPath, templatesDir string) error {
 }
 
 // doListRecords lists records in --db.
-func doListRecords(dbPath, dataDir string) error {
+func doListRecords(dbPath, dataDir string, args []string) error {
 	if dbPath == "" {
 		return fmt.Errorf("--db is required (or DIXIEDATA_DB env)")
+	}
+	fs := flag.NewFlagSet("list-records", flag.ContinueOnError)
+	kind := fs.String("kind", "soldier", "record kind: soldier or article (issue #430 adds article)")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
 	r, err := openRenderer(dbPath, dataDir, "", "")
 	if err != nil {
@@ -905,6 +933,21 @@ func doListRecords(dbPath, dataDir string) error {
 	}
 	defer r.Close()
 
+	switch *kind {
+	case "soldier", "soldiers":
+		return listSoldiers(r)
+	case "article", "articles":
+		return listArticles(r)
+	default:
+		return fmt.Errorf("--kind must be soldier or article, got %q", *kind)
+	}
+}
+
+// listSoldiers prints one tab-separated line per Person Record:
+// id, display_id, name. Paginated internally so a large archive
+// doesn't exhaust memory. Mirrors the legacy default behaviour
+// of doListRecords before issue #430.
+func listSoldiers(r *exportbridge.BulkRenderer) error {
 	page := 1
 	const pageSize = 50
 	total := 0
@@ -926,6 +969,38 @@ func doListRecords(dbPath, dataDir string) error {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "total: %d records\n", total)
+	return nil
+}
+
+// listArticles prints one tab-separated line per Article:
+// id, display_id, title. Used by issue #430 so a user iterating
+// on article_*.typ can find an article id without writing SQL.
+func listArticles(r *exportbridge.BulkRenderer) error {
+	page := 1
+	const pageSize = 50
+	total := 0
+	for {
+		batch, count, err := r.ListArticles(page, pageSize)
+		if err != nil {
+			return err
+		}
+		total = count
+		for _, a := range batch {
+			title := strings.TrimSpace(a.Title)
+			if title == "" {
+				title = "(untitled)"
+			}
+			fmt.Printf("%d\t%s\t%s\n", a.ID, a.DisplayID, title)
+		}
+		if len(batch) < pageSize {
+			break
+		}
+		page++
+		if page > 50 {
+			break
+		}
+	}
+	fmt.Fprintf(os.Stderr, "total: %d articles\n", total)
 	return nil
 }
 
