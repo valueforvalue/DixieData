@@ -73,7 +73,11 @@ func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) {
 	// the EventService grows a Count() method the total
 	// here can switch to the real value.
 	total := len(events)
-	presentation.EventList(events, page, total).Render(r.Context(), w)
+	// Issue #384 / Slice 1: wrap the Render call so a templ failure
+	// surfaces an EmptyStateError fragment instead of an empty body.
+	if err := presentation.EventList(events, page, total).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the events list.", err)
+	}
 }
 
 // newEventDefaults builds the starting values for the

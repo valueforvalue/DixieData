@@ -552,7 +552,13 @@ func (a *App) handleShare(w http.ResponseWriter, r *http.Request) {
 	if a.jobs != nil {
 		recentJobs = buildRecentJobEntries(a.jobs.RecentJobs(3))
 	}
-	presentation.ShareView(conflicts, domainCounts, recentJobs).Render(r.Context(), w)
+	if err := presentation.ShareView(conflicts, domainCounts, recentJobs).Render(r.Context(), w); err != nil {
+		// Issue #384 / Slice 1: bare Render used to silently swallow
+		// the failure — the user saw a half-rendered page. Fall back
+		// to respondErrorFragment so the toast fires AND the body
+		// shows an EmptyStateError instead of an empty response.
+		respondErrorFragment(w, r, KindInternal, "Could not render the share view.", err)
+	}
 }
 
 // buildRecentJobEntries converts the jobs.Registry output
@@ -615,7 +621,11 @@ func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) 
 			respondInternal(w, r, "Could not load research collections.", err)
 			return
 		}
-		presentation.ResearchCollectionsHubView(*hub).Render(r.Context(), w)
+		// Issue #384 / Slice 1: wrap the Render call so a templ failure
+		// surfaces an EmptyStateError fragment instead of an empty body.
+		if err := presentation.ResearchCollectionsHubView(*hub).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the research collections hub.", err)
+		}
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			respondValidation(w, r, "Could not read the collection form.", err)

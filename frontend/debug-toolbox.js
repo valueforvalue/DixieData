@@ -201,6 +201,14 @@ function readShareQueueFromLocalStorage() {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
+    // Issue #384 / Slice 1: surface the failure to the debug console so a
+    // user whose share queue vanished has a breadcrumb to act on. The
+    // toolbox is standalone-loadable (runs before app.js installs
+    // showToast) so console.warn is the right channel here. Return []
+    // to preserve prior behavior for the rest of the app.
+    if (typeof console !== "undefined") {
+      console.warn("[dixie:toolbox] readShareQueueFromLocalStorage failed", err);
+    }
     return [];
   }
 }
@@ -210,6 +218,13 @@ function writeShareQueueToLocalStorage(ids) {
     window.localStorage.setItem("dixiedata.share-queue", JSON.stringify(ids));
     return true;
   } catch (err) {
+    // Issue #384 / Slice 1: log quota / serialization errors instead of
+    // silently returning false. Callers can still inspect the boolean;
+    // the log gives the user a hint that LS is full or the value is
+    // not serializable.
+    if (typeof console !== "undefined") {
+      console.warn("[dixie:toolbox] writeShareQueueToLocalStorage failed", err);
+    }
     return false;
   }
 }
@@ -220,6 +235,12 @@ function readPresetsFromLocalStorage() {
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (err) {
+    // Issue #384 / Slice 1: presets vanishing silently is the worst kind
+    // of swallowed error — the user customizes once, then it disappears
+    // and they have no idea why. Log so the debug-console dump surfaces it.
+    if (typeof console !== "undefined") {
+      console.warn("[dixie:toolbox] readPresetsFromLocalStorage failed", err);
+    }
     return null;
   }
 }

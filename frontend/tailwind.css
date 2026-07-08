@@ -68,6 +68,16 @@ html { scrollbar-gutter: stable; }
     @apply bg-parchment-soft;
     padding: 1rem 1.25rem;
   }
+  /* Issue #384 / Slice 1: error variant of the empty-state surface.
+     Used by appshell.respondErrorFragment and any handler that wants
+     the fragment body itself to BE the error surface (vs. respondError
+     which only sets the X-DixieData-Toast header). The data-empty-state
+     attribute is the audit hook, data-empty-state-kind="error" is the
+     regression-net pin in audit/smoke_swallowed_errors.mjs. */
+  .empty-state-error {
+    @apply border-red-300;
+    @apply bg-red-50;
+  }
   /* Field input — colors via token @apply so a future token
      change in tailwind.config.js flows through (issue #291
      Phase 2 field-input). The bg rgba(245, 242, 236, 0.96) is

@@ -3933,8 +3933,26 @@
       })
       .catch((err) => {
         printRecordsFragmentInflight = null;
+        // Issue #384 / Slice 1: the user clicked Print, the modal opened,
+        // and then nothing happened. console.warn alone is invisible to
+        // most users. Swap the modal body for an EmptyStateError-style
+        // inline message AND fire a toast so the failure is unmistakable.
         if (typeof console !== "undefined") {
           console.warn("print-records fragment load failed", err);
+        }
+        if (document.body.contains(modal)) {
+          body.innerHTML = `
+            <div class="empty-state empty-state-error" role="alert" data-empty-state-kind="error">
+              <p class="text-sm font-semibold text-red-800">
+                <span aria-hidden="true" class="mr-1">⚠</span>Could not load print options.
+              </p>
+              <p class="mt-1 text-sm text-red-700">
+                Check your connection and try opening Print again.
+              </p>
+            </div>`;
+        }
+        if (typeof showToast === "function") {
+          showToast("Could not load print options.", "error");
         }
       });
   }
