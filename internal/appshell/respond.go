@@ -32,6 +32,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/templates"
+	"github.com/valueforvalue/DixieData/internal/templates/components"
 )
 
 // ErrorKind is the user-facing category for an error response. The kind
@@ -261,4 +262,73 @@ func (a *App) respondErrorPage(w http.ResponseWriter, r *http.Request, kind Erro
 		return
 	}
 	_, _ = w.Write(buf.Bytes())
+}
+
+// respondErrorFragment renders an EmptyStateError fragment via the
+// components templ package, sets the X-DixieData-Toast headers so
+// the page-level toast region still fires, and logs the raw error
+// server-side. Use this instead of respondError when:
+//
+//   - the handler is an htmx fragment endpoint whose swap target is
+//     the whole region (not a toast region), so a plain toast header
+//     leaves the user staring at an unchanged/empty panel
+//   - the failure is in the Render call itself, and returning the
+//     error as a fragment is the only way the user sees anything
+//
+// The body is the EmptyStateError component (red border, role=alert,
+// data-empty-state-kind="error"). The audit harness
+// audit/smoke_swallowed_errors.mjs pins the data-empty-state-kind
+// attribute so a future refactor that drops the marker fails the
+// regression net.
+//
+// Tracking: issue #384 / Slice 1. The three sites converted in this
+// slice are app.go:555 (ShareView), app.go:618 (ResearchCollectionsHubView),
+// and events_handlers.go:76 (EventList). Future slices extend the
+// sweep to the other ~30 sites surfaced in issue #384.
+func respondErrorFragment(w http.ResponseWriter, r *http.Request, kind ErrorKind, userMessage string, err error) {
+	if w == nil {
+		return
+	}
+	message := strings.TrimSpace(userMessage)
+	if message == "" {
+		message = defaultMessageForKind(kind)
+	}
+	status := statusForKind(kind)
+	if w.Header().Get("X-DixieData-RespondError-Marker") == "" {
+		w.Header().Set("X-DixieData-RespondError-Marker", "1")
+		w.Header().Set("X-DixieData-Toast", message)
+		w.Header().Set("X-DixieData-Toast-Type", toastKindForKind(kind))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+	}
+
+	body := "An error occurred."
+	if err != nil {
+		body = err.Error()
+	}
+	var buf bytes.Buffer
+	renderErr := components.EmptyStateError(message, body, "").Render(r.Context(), &buf)
+	if renderErr != nil {
+		// Fall back to plain text if even the fragment fails to render
+		// (defence-in-depth — should never happen because EmptyStateError
+		// has no template branches that depend on external data).
+		_, _ = fmt.Fprint(w, message)
+	} else {
+		_, _ = w.Write(buf.Bytes())
+	}
+
+	if err != nil {
+		log := debug.FromContext(nil)
+		if r != nil {
+			log = debug.FromContext(r.Context())
+		}
+		log.Error("appshell: fragment render failed",
+			"component", "http",
+			"audit", "respond-error-fragment",
+			"kind", string(kind),
+			"path", requestPath(r),
+			"method", requestMethod(r),
+			"err", err.Error(),
+		)
+	}
 }
