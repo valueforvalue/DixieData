@@ -3424,12 +3424,6 @@
     if (submitter instanceof HTMLButtonElement && submitter.disabled) {
       return false;
     }
-    // Issue #151: soft confirm for empty-name new-soldier saves.
-    // The form's #ef-first_name + #ef-last_name both empty after
-    // trim means the user wants to capture an unknown-nam record
-    // (genealogical data is fuzzy). Surface a single window.confirm
-    // and, on accept, append confirm_empty_name=1 to the FormData
-    // so the server's handleCreateSoldier routes the row into the
     // review queue with NeedsReview=true + ReviewReason set.
     if (formIsNewSoldierWithEmptyNames(button, form)) {
       if (!window.confirm("Saving a record with no name. It will be marked for review. Continue?")) {
@@ -3487,6 +3481,66 @@
         }
       }
       const requestUrl = form.action || window.location.pathname;
+      // [Wails-PATCH] Wails v2.12.0 strips the body from
+      // PATCH/PUT/DELETE requests sent through the
+      // wails.localhost custom protocol — confirmed by the
+      // dispatcher's body probe showing FormData(entries=[...])
+      // at fetch time but the server receiving an empty body.
+      // The server's requestMethodOverride middleware
+      // (internal/appshell/app.go:487) already accepts the
+      // standard X-HTTP-Method-Override header pattern, so
+      // we rewrite non-GET/POST methods to POST + header when
+      // we're inside the Wails runtime. Plain Chromium (the
+      // audit harness) keeps the real PATCH so Playwright
+      // tests still observe the genuine method.
+      if (
+        fetchOptions
+        && fetchOptions.method
+        && fetchOptions.method !== "GET"
+        && fetchOptions.method !== "HEAD"
+        && fetchOptions.method !== "POST"
+        && typeof requestUrl === "string"
+        && (requestUrl.indexOf("wails.localhost") >= 0
+          || requestUrl.indexOf("://wails.") >= 0)
+      ) {
+        fetchOptions.headers = Object.assign({}, fetchOptions.headers, {
+          "X-HTTP-Method-Override": String(fetchOptions.method).toUpperCase(),
+        });
+        fetchOptions.method = "POST";
+      }
+      // [Wails-FormData] Wails v2.12.0's custom-protocol
+      // HTTP server appears to strip multipart FormData
+      // bodies (the FormData entries show up at fetch time
+      // but the Go handler sees an empty form). JSON bodies
+      // (used by /debug/client-logs) DO survive — and so do
+      // urlencoded bodies per spec. Convert FormData to
+      // urlencoded when running inside the Wails runtime so
+      // the asset server forwards the form fields verbatim.
+      // The audit harness (vanilla Chromium against
+      // dixiedata-web) keeps using FormData so large bodies
+      // and file uploads keep working there.
+      if (
+        fetchOptions
+        && fetchOptions.body
+        && typeof FormData !== "undefined"
+        && fetchOptions.body instanceof FormData
+        && typeof URLSearchParams !== "undefined"
+        && typeof requestUrl === "string"
+        && requestUrl.indexOf("wails.localhost") >= 0
+      ) {
+        try {
+          const params = new URLSearchParams();
+          for (const [k, v] of fetchOptions.body.entries()) {
+            params.append(k, typeof v === "string" ? v : (v && v.name) || "");
+          }
+          fetchOptions.body = params.toString();
+          fetchOptions.headers = Object.assign({}, fetchOptions.headers, {
+            "Content-Type": "application/x-www-form-urlencoded",
+          });
+        } catch (_) {
+          // leave FormData intact on any encoding error
+        }
+      }
       const response = await fetch(requestUrl, fetchOptions);
       // Two response shapes to handle during the Option C migration:
       //   - 200 + X-DixieData-Redirect (new contract, after Commits 3–5)
