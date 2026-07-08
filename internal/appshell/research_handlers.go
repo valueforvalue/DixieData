@@ -38,7 +38,10 @@ func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id i
 			if ferr == nil && soldier != nil {
 				name = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
 			}
-			presentation.UnitCamaraderieEmpty(name, id).Render(r.Context(), w)
+			// Issue #384 / Slice 4: wrap Render.
+			if err := presentation.UnitCamaraderieEmpty(name, id).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the unit camaraderie page.", err)
+			}
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
@@ -48,7 +51,10 @@ func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id i
 		respondInternal(w, r, "Could not build the unit camaraderie graph.", err)
 		return
 	}
-	presentation.UnitCamaraderieView(*graph).Render(r.Context(), w)
+	// Issue #384 / Slice 4: wrap Render.
+	if err := presentation.UnitCamaraderieView(*graph).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the unit camaraderie graph.", err)
+	}
 }
 
 func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id int64) {
@@ -65,7 +71,10 @@ func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id i
 		respondInternal(w, r, "Could not build the service timeline.", err)
 		return
 	}
-	presentation.ServiceTimelineView(*timeline).Render(r.Context(), w)
+	// Issue #384 / Slice 4: wrap Render.
+	if err := presentation.ServiceTimelineView(*timeline).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the service timeline.", err)
+	}
 }
 
 func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64, parts []string) {
@@ -79,7 +88,10 @@ func (a *App) handleResearchLog(w http.ResponseWriter, r *http.Request, id int64
 			respondInternal(w, r, fmt.Sprintf("Could not build research log for record %d.", id), err)
 			return
 		}
-		presentation.ResearchLogView(*log).Render(r.Context(), w)
+		// Issue #384 / Slice 4: wrap Render.
+		if err := presentation.ResearchLogView(*log).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render the research log for person record %d.", id), err)
+		}
 		return
 	}
 	if len(parts) == 2 && parts[1] == "tasks" && r.Method == http.MethodPost {
@@ -159,7 +171,10 @@ func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id in
 		respondInternal(w, r, fmt.Sprintf("Could not build conflict ledger for record %d.", id), err)
 		return
 	}
-	presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w)
+	// Issue #384 / Slice 4: wrap Render.
+	if err := presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the merge review ledger.", err)
+	}
 }
 
 func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int64, scope string) {
@@ -177,7 +192,10 @@ func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int6
 			if ferr == nil && soldier != nil {
 				name = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
 			}
-			presentation.ResearchPackCountyEmpty(name, id).Render(r.Context(), w)
+			// Issue #384 / Slice 4: wrap Render.
+			if err := presentation.ResearchPackCountyEmpty(name, id).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the research pack county page.", err)
+			}
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "not found") {
@@ -187,5 +205,8 @@ func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int6
 		respondInternal(w, r, "Could not build the research pack.", err)
 		return
 	}
-	presentation.ResearchPackView(*pack).Render(r.Context(), w)
+	// Issue #384 / Slice 4: wrap Render.
+	if err := presentation.ResearchPackView(*pack).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the research pack.", err)
+	}
 }

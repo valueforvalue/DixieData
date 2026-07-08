@@ -48,6 +48,7 @@ const APP_JS = join(ROOT, "frontend/app.js");
 const APP_GO = join(ROOT, "internal/appshell/app.go");
 const EVENTS_GO = join(ROOT, "internal/appshell/events_handlers.go");
 const SOLDIERS_GO = join(ROOT, "internal/appshell/soldiers_handlers.go");
+const RESEARCH_GO = join(ROOT, "internal/appshell/research_handlers.go");
 const EMPTY_STATE_TEMPL = join(ROOT, "internal/templates/components/empty_state.templ");
 const RESPOND_GO = join(ROOT, "internal/appshell/respond.go");
 
@@ -56,6 +57,7 @@ const appJsSrc = readFileSync(APP_JS, "utf8");
 const appGoSrc = readFileSync(APP_GO, "utf8");
 const eventsGoSrc = readFileSync(EVENTS_GO, "utf8");
 const soldiersGoSrc = readFileSync(SOLDIERS_GO, "utf8");
+const researchGoSrc = readFileSync(RESEARCH_GO, "utf8");
 const emptyStateTemplSrc = readFileSync(EMPTY_STATE_TEMPL, "utf8");
 const respondGoSrc = readFileSync(RESPOND_GO, "utf8");
 
@@ -282,6 +284,40 @@ test("soldiers_handlers.go no longer leaks defaultsErr.Error() to http.Error", (
   assert.match(soldiersGoSrc, /respondInternal\(w, r, "Could not build the new-person defaults."/);
   assert.doesNotMatch(soldiersGoSrc, /http\.Error\(w, defaultsErr\.Error\(\)/);
 });
+
+// ---------------------------------------------------------------------------
+// 3d. Slice 4 — all 7 Render sites in research_handlers.go are wrapped.
+// ---------------------------------------------------------------------------
+
+const researchSites = [
+  ["research_handlers.go UnitCamaraderieEmpty",  "UnitCamaraderieEmpty(name, id).Render(r.Context(), w)"],
+  ["research_handlers.go UnitCamaraderieView",   "UnitCamaraderieView(*graph).Render(r.Context(), w)"],
+  ["research_handlers.go ServiceTimelineView",   "ServiceTimelineView(*timeline).Render(r.Context(), w)"],
+  ["research_handlers.go ResearchLogView",       "ResearchLogView(*log).Render(r.Context(), w)"],
+  ["research_handlers.go MergeReviewLedgerView", "MergeReviewLedgerView(*ledger).Render(r.Context(), w)"],
+  ["research_handlers.go ResearchPackCountyEmpty","ResearchPackCountyEmpty(name, id).Render(r.Context(), w)"],
+  ["research_handlers.go ResearchPackView",      "ResearchPackView(*pack).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of researchSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = researchGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in research_handlers.go`);
+    for (const h of hits) {
+      const tail = researchGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // 4. EmptyStateError component must be exported and render the right markers.
