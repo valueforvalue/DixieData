@@ -605,6 +605,14 @@ function Invoke-DixieDataBuild {
         if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitCommit)) {
             throw "failed to resolve git commit for build metadata"
         }
+        # Issue #370: capture the current branch so the
+        # footer + window title can show "running on dev" /
+        # "running on stable". Default to "unknown" if git is
+        # absent (cold rebuild from a tarball without .git/).
+        $gitBranch = (& git rev-parse --abbrev-ref HEAD 2>$null).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitBranch)) {
+            $gitBranch = "unknown"
+        }
         $buildTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
         # -X injects the build metadata. When -DebugBuild is set
         # we also pass -debug to Wails, which:
@@ -616,7 +624,7 @@ function Invoke-DixieDataBuild {
         #     menu (F12 / Ctrl+Shift+I works in the running app).
         # The Go runtime symbol table is intact in both modes,
         # so `dlv attach $PID` works against any build.
-        $buildLdFlags = "-X github.com/valueforvalue/DixieData/internal/buildinfo.GitCommit=$gitCommit -X github.com/valueforvalue/DixieData/internal/buildinfo.BuildTimestamp=$buildTimestamp"
+        $buildLdFlags = "-X github.com/valueforvalue/DixieData/internal/buildinfo.GitCommit=$gitCommit -X github.com/valueforvalue/DixieData/internal/buildinfo.GitBranch=$gitBranch -X github.com/valueforvalue/DixieData/internal/buildinfo.BuildTimestamp=$buildTimestamp"
         $effectiveWailsArguments = @($WailsArguments)
         if ($DebugBuild) {
             # Strip -trimpath from the caller-supplied args; the

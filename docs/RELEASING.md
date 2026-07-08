@@ -18,6 +18,11 @@ The local update feature (`internal/appdata/`) downloads release packages and ap
 - **Schema bump semantics**: `-BumpSchema` bumps `CurrentSchemaVersion`; requires a paired `docs/migrations/v{N+1}.md` with at least one `- ` bullet.
 - **Bump increment**: always `+1` per release for each counter. `bump-version.ps1` refuses jumps greater than `+1` unless `-Force` is passed.
 - **Migration note**: `docs/migrations/v{N+1}.md` must exist before `-BumpSchema` will run.
+- **Codename (issue #370)**: every release also carries a human-friendly codename (`CurrentReleaseName` in `internal/versioninfo/versioninfo.go`, bumped by `bump-version.ps1 -BumpCodename`). The codename is a chrome label, not a data-plane version — it does not affect the in-place update flow's `compareVersions` logic. Conventions:
+  - Single English word(s); no hyphens, underscores, or special characters. Spaces between words are allowed (e.g. `First Manassas`).
+  - Thematic: Southern place names work well for DixieData's domain (per the current `First Manassas` choice — the first battle of Bull Run, July 21 1861).
+  - macOS-style landmark names (`Sequoia`, `Sonoma`) are an alternative if the Southern-place tradition doesn't fit a future release line.
+  - Deprecation: if a codename turns out to be embarrassing later, rename it via `-BumpCodename` and add a one-line note to the CHANGELOG entry for the new release. The history is reconstructable from CHANGELOG.md; we don't keep a registry map (per the v1 design decision in #370).
 
 ## Release workflow
 
