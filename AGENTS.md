@@ -21,6 +21,66 @@ match. **Before writing any user-facing copy or schema-touching code, read
 
 See `CONTEXT.md` for the full glossary and anti-patterns.
 
+## Wails runtime hazards (READ BEFORE TOUCHING frontend/app.js form-dispatch)
+
+The Wails v2.12.0 desktop binary embeds the frontend in a custom
+WebView2 host that exposes the Go HTTP server as
+`http://wails.localhost`. That custom-protocol server has two
+quirks every frontend change must respect. Issue #428 / commit
+`77290ca` documented them; this section is the working-memory
+reminder so the next agent doesn't re-discover them by
+debugging "Position must be a positive integer" toasts.
+
+**Quirk 1 — PATCH/PUT/DELETE bodies are stripped.** The
+asset server delivers the body of GET and POST requests to
+the Go handler, but a real PATCH/PUT/DELETE sent from the
+WebView2 reaches the handler with an empty `r.Body`. The
+method is correct; only the body is missing. Repro: click a
+Source Record ▲/▼ button on `/soldiers/{id}`. Symptom: server
+returns 400 "Position must be a positive integer" because
+`r.ParseForm()` is empty.
+
+**Workaround:** the dispatcher in `frontend/app.js`
+(`dispatchDixieDataForm`) rewrites PATCH/PUT/DELETE to POST
+and sets the `X-HTTP-Method-Override` header when the target
+URL contains `wails.localhost`. The server's
+`requestMethodOverride` middleware
+(`internal/appshell/app.go:487`) already accepts the header
+and rewrites the method back to PATCH before the chi router
+dispatches, so handlers stay PATCH-only. Plain Chromium (the
+audit harness, which talks to `dixiedata-web` over plain
+HTTP) keeps the real PATCH so Playwright assertions on the
+genuine method still pass.
+
+**Quirk 2 — multipart/form-data bodies are stripped too.** Even
+with the override, the FormData body itself was being dropped
+by the asset server. JSON bodies (used by `/debug/client-logs`)
+DO survive, and urlencoded bodies (`Content-Type:
+application/x-www-form-urlencoded`) survive per the asset
+server's contract.
+
+**Workaround:** the same dispatcher branch converts
+`FormData` to `URLSearchParams.toString()` when the target
+URL contains `wails.localhost`. The form fields are delivered
+verbatim to `r.ParseForm()`. Vanilla Chromium keeps the
+FormData body so file uploads + large bodies still work in
+the audit harness.
+
+**Regression net:** `audit/dispatcher_patch_method.test.mjs`
+has 7 assertions that pin both workarounds. If a future
+refactor removes either, the test fails with a clear
+message. The `Wails-PATCH` and `Wails-FormData` comments in
+`frontend/app.js` are the source-of-truth breadcrumbs.
+
+**TL;DR for future agents:** any new form on a templ page
+that uses `method="patch"` (or PUT/DELETE) and a
+`data-dixie-submit` form will hit these workarounds
+automatically. The dispatcher catches it. You do NOT need to
+add a per-form workaround. If a fetch in some other path
+*doesn't* go through `dispatchDixieDataForm`, replicate the
+wails.localhost gate there too — see the comments for the
+exact checks.
+
 ## File map (entry points)
 
 | Path | Role |
