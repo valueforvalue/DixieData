@@ -77,12 +77,14 @@ func TestOpenJobsRegistryWritesStateChangesBackToLog(t *testing.T) {
 	reg := openJobsRegistry(dir)
 	t.Cleanup(func() { reg.SetLogWriter(nil, nil) })
 
-	var id string
-	id = reg.Start("unit", func(ctx context.Context, p *jobs.Progress) error {
+	idCh := make(chan string, 1)
+	id := reg.Start("unit", func(ctx context.Context, p *jobs.Progress) error {
+		id := <-idCh
 		p.Set(100, "Done")
 		reg.SetResultPath(id, "/tmp/out.zip")
 		return nil
 	})
+	idCh <- id
 
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
