@@ -466,8 +466,15 @@ func TestRunAdminMigrateDown_ManifestPrinted(t *testing.T) {
 	if !strings.Contains(out, "pre-downgrade snapshot:") {
 		t.Errorf("pre-downgrade snapshot line missing; got: %q", out)
 	}
-	if !strings.Contains(out, "available for rollback") {
-		t.Errorf("rollback hint missing; got: %q", out)
+	// The runner's pre-downgrade rollback hint copy was updated
+	// to a multi-line "to recover, restore the pre-downgrade
+	// snapshot via: dixiedata restore point create ..." directive
+	// after v60 added the irreversible block-60-v54-to-v60-jump;
+	// the old single-line "available for rollback" suffix no
+	// longer appears in the manifest path. Assert the new
+	// directive instead.
+	if !strings.Contains(out, "restore the pre-downgrade snapshot via:") {
+		t.Errorf("rollback directive line missing; got: %q", out)
 	}
 	if err == nil {
 		t.Errorf("expected refusal error (path crosses block-60-v54-to-v60-jump Irreversible)")
