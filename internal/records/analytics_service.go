@@ -6,6 +6,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
@@ -150,7 +151,7 @@ func (s *AnalyticsService) queryCounts(query string, args ...any) ([]AnalyticsCo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "queryCounts.rows")
 
 	results := []AnalyticsCount{}
 	for rows.Next() {
@@ -173,7 +174,7 @@ func (s *AnalyticsService) queryDecadeCounts(query string, args ...any) ([]Analy
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "queryDecadeCounts.rows")
 
 	results := []AnalyticsCount{}
 	for rows.Next() {

@@ -72,6 +72,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
@@ -817,7 +818,7 @@ func readBackupManifestFromZip(path string) (archive.BackupManifest, error) {
 	if err != nil {
 		return manifest, err
 	}
-	defer zr.Close()
+	defer debug.DeferCloseLog(zr, "readBackupManifestFromZip.zr")
 
 	for _, f := range zr.File {
 		if filepath.Base(f.Name) == "manifest.json" {
@@ -825,7 +826,7 @@ func readBackupManifestFromZip(path string) (archive.BackupManifest, error) {
 			if err != nil {
 				return manifest, err
 			}
-			defer rc.Close()
+			defer debug.DeferCloseLog(rc, "readBackupManifestFromZip.rc")
 			body, err := io.ReadAll(rc)
 			if err != nil {
 				return manifest, err

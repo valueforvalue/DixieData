@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -91,7 +92,7 @@ func (c *CalendarService) GetMonthSummary(month int) (map[int]CalendarDaySummary
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "GetMonthSummary.rows")
 	for rows.Next() {
 		var day int
 		var itemType string
@@ -208,7 +209,7 @@ func (c *CalendarService) listCalendarItems(month, day int) ([]models.CalendarIt
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "listCalendarItems.rows")
 	var items []models.CalendarItem
 	for rows.Next() {
 		item, err := scanCalendarItem(rows)
