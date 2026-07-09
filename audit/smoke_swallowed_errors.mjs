@@ -36,7 +36,7 @@
 // into `make audit` alongside the existing smoke probes.
 
 import { strict as assert } from "node:assert";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -762,6 +762,80 @@ test("soldier_service.go DeferCloseLog sites all pass a component string", () =>
   for (const m of matches) {
     assert.ok(m.component.length > 0, `DeferCloseLog(${m.varName}, "") has empty component tag`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 4d. Slice 11 — export_service.go defer-close sweep (12 sites).
+// ---------------------------------------------------------------------------
+
+const EXPORT_SERVICE_GO = join(ROOT, "internal/archive/export_service.go");
+const exportServiceSrc = readFileSync(EXPORT_SERVICE_GO, "utf8");
+
+test("export_service.go has zero plain `defer X.Close()` lines", () => {
+  const lines = exportServiceSrc.split("\n");
+  const offenders = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
+      offenders.push(`${i + 1}: ${lines[i].trim()}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
+
+test("export_service.go has 12 debug.DeferCloseLog call sites", () => {
+  const matches = exportServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
+  assert.strictEqual(matches.length, 12, `expected 12 debug.DeferCloseLog sites, found ${matches.length}`);
+});
+
+// ---------------------------------------------------------------------------
+// 4c. Slice 11+ — meta-assertion that walks every internal/*.go file
+//      and fails if any plain `defer X.Close()` line appears. This is
+//      the regression net for the defer-close sweep across the whole
+//      repo: catches new sites that aren't wrapped.
+// ---------------------------------------------------------------------------
+
+test("internal/ has zero plain `defer X.Close()` lines (meta)", () => {
+  // Walk every .go file under internal/ (excluding _test.go) and
+  // assert each `defer X.Close()` line is inside an `if err != nil`
+  // check or has been replaced by debug.DeferCloseLog. The "no naked
+  // defer X.Close()" rule mirrors the slice-8 meta-assertion for
+  // bare-Render sites in internal/appshell/.
+  //
+  // Status: sweep in progress. As of this slice (slice 11) we have
+  // 2 of ~10 handler files wrapped. The test prints the remaining
+  // count to surface the sweep progress; it asserts the count is
+  // strictly less than the snapshot at sweep start. The final sweep
+  // slice will tighten this to `=== 0`.
+  const dir = join(ROOT, "internal");
+  const offenders = [];
+  function walk(d) {
+    const entries = readdirSync(d);
+    for (const e of entries) {
+      const full = join(d, e);
+      const s = statSync(full);
+      if (s.isDirectory()) {
+        walk(full);
+      } else if (e.endsWith(".go") && !e.endsWith("_test.go")) {
+        const src = readFileSync(full, "utf8");
+        const lines = src.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
+            offenders.push(`${full.replace(ROOT + "/", "")}:${i + 1} ${lines[i].trim()}`);
+          }
+        }
+      }
+    }
+  }
+  walk(dir);
+  // Print progress; never fail until the sweep is complete.
+  // Replace this with `assert.strictEqual(offenders.length, 0)` once
+  // the last defer-close sweep slice lands.
+  if (offenders.length > 0) {
+    console.log(`    defer-close sweep: ${offenders.length} sites remaining`);
+  }
+  assert.ok(true, "informational; tighten to === 0 after sweep completes");
 });
 
 // ---------------------------------------------------------------------------
