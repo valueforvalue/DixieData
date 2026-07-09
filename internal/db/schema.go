@@ -437,6 +437,15 @@ WHERE birth_date = '00/00/0000';
 //   1. tx.Exec(schema) baseline
 //   2. migrations[i].Up(tx) for each Migration in order
 //   3. INSERT schema_version + PRAGMA user_version + Commit
+// applySchema runs every block's Up in sequence with per-block
+// commits (issue #449 slice 1). The previous single-tx model
+// was the SAME pattern applyDownSchema shipped with: all blocks
+// in one tx. For applyUpSchema the multi-block single-tx model
+// hit SQLITE_LOCKED on Windows for v60+ forwards migrations
+// when the v54→v60 jump consolidated 12 RENAME COLUMNs + 4
+// ADD COLUMNs into one block (per TestRetainedBackupDirectionDiscriminator).
+// Per-block commits let each block's mutations settle before
+// the next runs.
 func applySchema(db *DB) error {
 	version, err := currentSchemaVersion(db.conn)
 	if err != nil {
@@ -446,26 +455,42 @@ func applySchema(db *DB) error {
 		return nil
 	}
 
-	tx, err := db.conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	for _, m := range migrations {
-		if err := m.Up(tx); err != nil {
+		blockTx, err := db.conn.Begin()
+		if err != nil {
+			return fmt.Errorf("begin tx for block %s: %w", m.ID, err)
+		}
+		if err := m.Up(blockTx); err != nil {
+			_ = blockTx.Rollback()
 			return err
+		}
+		if err := blockTx.Commit(); err != nil {
+			return fmt.Errorf("commit block %s: %w", m.ID, err)
 		}
 	}
 
-	if _, err := tx.Exec(`INSERT OR IGNORE INTO schema_version(version) VALUES (?)`, CurrentSchemaVersion); err != nil {
+	// Terminal write in its own tx — if the connection dies
+	// here, the next Open() sees user_version = (last committed
+	// block's ceiling) which is < current, short-circuits nothing,
+	// and the next Open() re-runs applySchema from the same
+	// starting point. The v60+ forward path is idempotent on
+	// most blocks (columnExists guards, IF NOT EXISTS guards).
+	terminalTx, err := db.conn.Begin()
+	if err != nil {
+		return fmt.Errorf("begin terminal tx: %w", err)
+	}
+	if _, err := terminalTx.Exec(`INSERT OR IGNORE INTO schema_version(version) VALUES (?)`, CurrentSchemaVersion); err != nil {
+		_ = terminalTx.Rollback()
 		return err
 	}
-	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, CurrentSchemaVersion)); err != nil {
+	if _, err := terminalTx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, CurrentSchemaVersion)); err != nil {
+		_ = terminalTx.Rollback()
 		return err
 	}
-
-	return tx.Commit()
+	if err := terminalTx.Commit(); err != nil {
+		return fmt.Errorf("commit terminal tx: %w", err)
+	}
+	return nil
 }
 
 // applyDownSchema runs the inverse of every block in the migrations
@@ -520,6 +545,22 @@ func ApplyDownSchema(db *DB, target int) error {
 // exported ApplyDownSchema wrapper exists so external callers
 // (the CLI runner in internal/appshell/cli_admin.go) can call it
 // without importing a private symbol.
+//
+// Per-block commit model (issue #449 slice 1): each block's Down
+// runs in its own transaction, which is COMMITTED before the
+// next block begins. The previous single-tx model wrapped every
+// block's DROP TABLE + DROP INDEX + ALTER TABLE DROP COLUMN in
+// one transaction; SQLite WAL + the modernc driver refused the
+// multi-DROP sequence on Windows ("database table is locked
+// (6)") because DROP INDEX inlines index-drops on the parent
+// table which conflict with DROP TABLE inside the same tx.
+// Per-block commits let each block's mutations settle before
+// the next runs. Trade-off: a crash mid-DOWN leaves the schema
+// at an in-between state rather than rolled back to v(current);
+// the CLI runner already takes a pre-downgrade snapshot (issue
+// #273 PR 3) precisely so a mid-DOWN crash is recoverable;
+// per-block commits align the SQL transaction model with that
+// snapshot contract.
 func applyDownSchema(db *DB, target int) error {
 	current, err := currentSchemaVersion(db.conn)
 	if err != nil {
@@ -536,41 +577,65 @@ func applyDownSchema(db *DB, target int) error {
 		delta = len(migrations)
 	}
 
-	tx, err := db.conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	// Iterate the last `delta` entries of the migrations slice in
-	// REVERSE order. Slice index `len(migrations) - 1` is the most
-	// recent block; index `len(migrations) - delta` is the oldest
-	// block in the window.
+	// REVERSE order. Slice index `len(migrations) - 1` is the
+	// most recent block; index `len(migrations) - delta` is the
+	// oldest block in the window.
 	for i := len(migrations) - 1; i >= len(migrations)-delta; i-- {
 		m := migrations[i]
 		if m.Down == nil {
 			return fmt.Errorf("%w: block %s has no Down function (caller must supply one or refuse the path)", ErrDowngradeRefused, m.ID)
 		}
-		if err := m.Down(tx); err != nil {
-			if errors.Is(err, ErrMigrationIrreversible) {
-				// Wrap both the umbrella ErrDowngradeRefused AND
-				// the inner ErrMigrationIrreversible so callers
-				// can use errors.Is for either check (Go 1.20+
-				// supports multiple %w verbs).
+
+		// Per-block transaction. Commit on success, rollback
+		// on irrecoverable error. Refusal
+		// (ErrMigrationIrreversible) is a clean error return —
+		// the per-block tx is rolled back, and the outer loop
+		// returns the wrapped error with no further state
+		// mutation.
+		blockTx, err := db.conn.Begin()
+		if err != nil {
+			return fmt.Errorf("begin tx for block %s: %w", m.ID, err)
+		}
+		blockErr := m.Down(blockTx)
+		if blockErr != nil {
+			_ = blockTx.Rollback()
+			if errors.Is(blockErr, ErrMigrationIrreversible) {
+				// Wrap both the umbrella ErrDowngradeRefused
+				// AND the inner ErrMigrationIrreversible so
+				// callers can use errors.Is for either check
+				// (Go 1.20+ supports multiple %w verbs).
 				return fmt.Errorf("%w: %s: %w: %s", ErrDowngradeRefused, m.ID, ErrMigrationIrreversible, m.Reason)
 			}
-			return err
+			return blockErr
+		}
+		if err := blockTx.Commit(); err != nil {
+			return fmt.Errorf("commit block %s: %w", m.ID, err)
 		}
 	}
 
-	if _, err := tx.Exec(`DELETE FROM schema_version WHERE version > ?`, target); err != nil {
+	// After all blocks are down, bump user_version to `target`
+	// in its own transaction. This is the terminal write — if
+	// the connection dies here, the next Open() sees
+	// user_version = (last committed block's ceiling) which is
+	// >= target, short-circuits applySchema, and the operator
+	// gets a clean error rather than a phantom-downgraded DB.
+	terminalTx, err := db.conn.Begin()
+	if err != nil {
+		return fmt.Errorf("begin terminal tx: %w", err)
+	}
+	if _, err := terminalTx.Exec(`DELETE FROM schema_version WHERE version > ?`, target); err != nil {
+		_ = terminalTx.Rollback()
 		return err
 	}
-	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, target)); err != nil {
+	if _, err := terminalTx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, target)); err != nil {
+		_ = terminalTx.Rollback()
 		return err
 	}
-
-	return tx.Commit()
+	if err := terminalTx.Commit(); err != nil {
+		return fmt.Errorf("commit terminal tx: %w", err)
+	}
+	return nil
 }
 
 // isNoSuchTableError reports whether err is a SQLite "no such table" error.
