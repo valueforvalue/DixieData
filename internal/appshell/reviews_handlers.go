@@ -42,7 +42,10 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load archive counts.", err)
 		return
 	}
-	presentation.ReviewQueueView(soldiers, findings, domainCounts, page, total, 50).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ReviewQueueView(soldiers, findings, domainCounts, page, total, 50).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the review queue.", err)
+	}
 }
 
 func (a *App) handleReviewQueueBulk(w http.ResponseWriter, r *http.Request) {
@@ -226,7 +229,10 @@ func (a *App) handleReviewQueueCompare(w http.ResponseWriter, r *http.Request) {
 		respondNotFound(w, r, fmt.Sprintf("Duplicate audit comparison %d not found.", findingID), err)
 		return
 	}
-	presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, fmt.Sprintf("Could not render duplicate audit comparison %d.", findingID), err)
+	}
 }
 
 func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
@@ -252,5 +258,8 @@ func (a *App) handleCompare(w http.ResponseWriter, r *http.Request) {
 		comparison.BackHref = fmt.Sprintf("/soldiers/%d", fromID)
 		comparison.BackLabel = "Back to Person Record"
 	}
-	presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ReviewQueueCompareView(*comparison).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the comparison view.", err)
+	}
 }

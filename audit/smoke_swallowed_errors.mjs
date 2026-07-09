@@ -52,6 +52,10 @@ const RESEARCH_GO = join(ROOT, "internal/appshell/research_handlers.go");
 const UPDATE_GO = join(ROOT, "internal/appshell/app_update.go");
 const CALENDAR_GO = join(ROOT, "internal/appshell/calendar_handlers.go");
 const JOBS_GO = join(ROOT, "internal/appshell/jobs_handlers.go");
+const SETTINGS_GO = join(ROOT, "internal/appshell/settings_handlers.go");
+const SHARE_SUBPAGES_GO = join(ROOT, "internal/appshell/share_subpages_handlers.go");
+const REVIEWS_GO = join(ROOT, "internal/appshell/reviews_handlers.go");
+const RESEARCH_PICKER_GO = join(ROOT, "internal/appshell/research_picker_handlers.go");
 const EMPTY_STATE_TEMPL = join(ROOT, "internal/templates/components/empty_state.templ");
 const RESPOND_GO = join(ROOT, "internal/appshell/respond.go");
 
@@ -64,6 +68,10 @@ const researchGoSrc = readFileSync(RESEARCH_GO, "utf8");
 const updateGoSrc = readFileSync(UPDATE_GO, "utf8");
 const calendarGoSrc = readFileSync(CALENDAR_GO, "utf8");
 const jobsGoSrc = readFileSync(JOBS_GO, "utf8");
+const settingsGoSrc = readFileSync(SETTINGS_GO, "utf8");
+const shareSubpagesGoSrc = readFileSync(SHARE_SUBPAGES_GO, "utf8");
+const reviewsGoSrc = readFileSync(REVIEWS_GO, "utf8");
+const researchPickerGoSrc = readFileSync(RESEARCH_PICKER_GO, "utf8");
 const emptyStateTemplSrc = readFileSync(EMPTY_STATE_TEMPL, "utf8");
 const respondGoSrc = readFileSync(RESPOND_GO, "utf8");
 
@@ -484,6 +492,89 @@ for (const [label, token] of appGoSites) {
 test("app.go no longer leaks records.ErrCalendarItemNotFound.Error() to http.Error", () => {
   assert.doesNotMatch(appGoSrc, /http\.Error\(w, records\.ErrCalendarItemNotFound\.Error\(\)/);
 });
+
+// ---------------------------------------------------------------------------
+// 3i. Slice 7 — Render sites in settings + share_subpages + reviews +
+//     research_picker handler families are wrapped.
+// ---------------------------------------------------------------------------
+
+const settingsSites = [
+  ["settings_handlers.go SettingsView",                "SettingsView(initializeDataConfirmationWord, settings).Render(r.Context(), w)"],
+  ["settings_handlers.go SettingsOrphanedImages",     "SettingsOrphanedImages(orphans).Render(r.Context(), w)"],
+  ["settings_handlers.go SettingsQualityScanResults", "SettingsQualityScanResults(result).Render(r.Context(), w)"],
+  ["settings_handlers.go SettingsQualityScanApplyResult","SettingsQualityScanApplyResult(result).Render(r.Context(), w)"],
+];
+
+const shareSubpagesSites = [
+  ["share_subpages_handlers.go ShareExportsView", "ShareExportsView(exportRecords, shareIncludeTags).Render(r.Context(), w)"],
+  ["share_subpages_handlers.go ShareImportsView", "ShareImportsView().Render(r.Context(), w)"],
+  ["share_subpages_handlers.go ShareSyncView",    "ShareSyncView(status).Render(r.Context(), w)"],
+];
+
+const reviewsSites = [
+  ["reviews_handlers.go ReviewQueueView",           "ReviewQueueView(soldiers, findings, domainCounts, page, total, 50).Render(r.Context(), w)"],
+];
+
+const researchPickerSites = [
+  ["research_picker_handlers.go ResearchPickerView", "ResearchPickerView(view).Render(r.Context(), w)"],
+];
+
+function assertAllWrapped(sites, src, fileLabel) {
+  for (const [label, token] of sites) {
+    test(`${label} wrapped with respondErrorFragment`, () => {
+      const hits = [];
+      let idx = 0;
+      while ((idx = src.indexOf(token, idx)) >= 0) {
+        hits.push(idx);
+        idx++;
+      }
+      assert.ok(hits.length > 0, `render token "${token}" not found in ${fileLabel}`);
+      for (const h of hits) {
+        const tail = src.slice(h, h + 500);
+        assert.match(
+          tail,
+          /respondErrorFragment\(/,
+          `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+        );
+      }
+    });
+  }
+}
+
+// ReviewQueueCompareView appears 2x in reviews_handlers.go.
+test("reviews_handlers.go ReviewQueueCompareView wrapped (2 sites)", () => {
+  const hits = [];
+  let idx = 0;
+  while ((idx = reviewsGoSrc.indexOf("ReviewQueueCompareView(*comparison).Render(r.Context(), w)", idx)) >= 0) {
+    hits.push(idx);
+    idx++;
+  }
+  assert.strictEqual(hits.length, 2, `expected 2 ReviewQueueCompareView sites, found ${hits.length}`);
+  for (const h of hits) {
+    const tail = reviewsGoSrc.slice(h, h + 500);
+    assert.match(tail, /respondErrorFragment\(/, `ReviewQueueCompareView at offset ${h} not wrapped`);
+  }
+});
+
+// ResearchPickerRecent appears 2x in research_picker_handlers.go.
+test("research_picker_handlers.go ResearchPickerRecent wrapped (2 sites)", () => {
+  const hits = [];
+  let idx = 0;
+  while ((idx = researchPickerGoSrc.indexOf("ResearchPickerRecent(view).Render(r.Context(), w)", idx)) >= 0) {
+    hits.push(idx);
+    idx++;
+  }
+  assert.strictEqual(hits.length, 2, `expected 2 ResearchPickerRecent sites, found ${hits.length}`);
+  for (const h of hits) {
+    const tail = researchPickerGoSrc.slice(h, h + 500);
+    assert.match(tail, /respondErrorFragment\(/, `ResearchPickerRecent at offset ${h} not wrapped`);
+  }
+});
+
+assertAllWrapped(settingsSites, settingsGoSrc, "settings_handlers.go");
+assertAllWrapped(shareSubpagesSites, shareSubpagesGoSrc, "share_subpages_handlers.go");
+assertAllWrapped(reviewsSites, reviewsGoSrc, "reviews_handlers.go");
+assertAllWrapped(researchPickerSites, researchPickerGoSrc, "research_picker_handlers.go");
 
 // ---------------------------------------------------------------------------
 // 4. EmptyStateError component must be exported and render the right markers.

@@ -39,7 +39,10 @@ func (a *App) handleShareExports(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	shareIncludeTags := a.archiveMeta.IncludeTags(r.Context(), records.ArchiveKindShared)
-	presentation.ShareExportsView(exportRecords, shareIncludeTags).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ShareExportsView(exportRecords, shareIncludeTags).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the share exports page.", err)
+	}
 }
 
 // handleShareImports serves GET /share/imports. Static
@@ -51,7 +54,10 @@ func (a *App) handleShareImports(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	presentation.ShareImportsView().Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ShareImportsView().Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the share imports page.", err)
+	}
 }
 
 // handleShareSync serves GET /share/sync. Data: full
@@ -84,5 +90,8 @@ func (a *App) handleShareSync(w http.ResponseWriter, r *http.Request) {
 	status.DriftUpdated = drift.Updated
 	status.DriftRemoved = drift.Removed
 	status.OutOfSync = drift.OutOfSync
-	presentation.ShareSyncView(status).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ShareSyncView(status).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the share sync page.", err)
+	}
 }
