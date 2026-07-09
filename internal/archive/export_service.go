@@ -16,6 +16,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/peopleinfo"
@@ -355,7 +356,7 @@ func (e *ExportService) exportFullDatabasePDFViaRegistry(outputPath string, sett
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "exportFullDatabasePDFViaRegistry.f")
 	ctx := context.Background()
 	if err := e.registry.Render(ctx, settings, "bulk", data, f); err != nil {
 		os.Remove(outputPath)
@@ -428,7 +429,7 @@ func (e *ExportService) exportSingleRecordViaRegistry(outputPath string, soldier
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "exportSingleRecordViaRegistry.f")
 	soldierCopy := soldier
 	// Look up the linked spouse's display_id so the typst
 	// template can render the spouse reference using the
@@ -508,7 +509,7 @@ func (e *ExportService) exportEventViaRegistry(outputPath string, event models.S
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "exportEventViaRegistry.f")
 
 	linkedDicts := make([]map[string]any, 0, len(linked))
 	for _, p := range linked {
@@ -588,7 +589,7 @@ func (e *ExportService) exportArticleViaRegistry(outputPath string, article mode
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "exportArticleViaRegistry.f")
 
 	data := map[string]any{
 		"article":       article,
@@ -611,7 +612,7 @@ func (e *ExportService) exportAnniversaryViaRegistry(outputPath string, month in
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "exportAnniversaryViaRegistry.f")
 	normalizedOptions := options.Normalize("P", false)
 	// Build a map from soldier ID (as string, matching the JSON
 	// shape typst will see) to the first Find a Grave URL for
@@ -673,7 +674,7 @@ func (e *ExportService) firstFindAGraveLinks(calendar map[int][]models.Soldier) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "firstFindAGraveLinks.rows")
 	out := make(map[string]string)
 	for rows.Next() {
 		var sid int64
@@ -702,7 +703,7 @@ func (e *ExportService) exportAnalyticsViaRegistry(outputPath string, snapshot A
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "exportAnalyticsViaRegistry.f")
 	normalizedOptions := options.Normalize("P", false)
 	data := map[string]any{
 		"options":  normalizedOptions,
@@ -721,7 +722,7 @@ func writeNoRecordsPDF(outDir string, settings PrintSettings) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "writeNoRecordsPDF.f")
 	_, err = f.WriteString("%PDF-1.4\n%placeholder\n")
 	return err
 }
@@ -881,7 +882,7 @@ func (e *ExportService) ExportJSON(outputPath string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "ExportJSON.f")
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
@@ -934,7 +935,7 @@ func (e *ExportService) ExportJSONWithStats(outputPath string) (records, images,
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "ExportJSONWithStats.f")
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
@@ -1266,7 +1267,7 @@ func (e *ExportService) ExportICalendar(outputPath string, preferences models.Ca
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "ExportICalendar.f")
 
 	soldiers, err := exportSoldiers(e.soldier)
 	if err != nil {
@@ -1362,7 +1363,7 @@ func (e *ExportService) ExportCSV(outputPath string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "ExportCSV.f")
 
 	w := csv.NewWriter(f)
 	defer w.Flush()
