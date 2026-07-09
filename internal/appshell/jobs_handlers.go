@@ -92,14 +92,23 @@ func (a *App) renderJobStatus(w http.ResponseWriter, r *http.Request, id string,
 		return
 	}
 	if r.URL.Query().Get("slot") == "1" {
-		presentation.JobStatusSlotFragment(job).Render(r.Context(), w)
+		// Issue #384 / Slice 6: wrap Render.
+		if err := presentation.JobStatusSlotFragment(job).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the job status slot.", err)
+		}
 		return
 	}
 	if fragmentOnly {
-		presentation.JobStatusFragment(job).Render(r.Context(), w)
+		// Issue #384 / Slice 6: wrap Render.
+		if err := presentation.JobStatusFragment(job).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the job status fragment.", err)
+		}
 		return
 	}
-	templates.JobStatusView(job).Render(r.Context(), w)
+	// Issue #384 / Slice 6: wrap Render.
+	if err := templates.JobStatusView(job).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the job status view.", err)
+	}
 }
 
 // renderJobReport serves /jobs/{id}/report. Renders the job's
@@ -120,7 +129,10 @@ func (a *App) renderJobReport(w http.ResponseWriter, r *http.Request, id string)
 		http.NotFound(w, r)
 		return
 	}
-	templates.JobReportView(job).Render(r.Context(), w)
+	// Issue #384 / Slice 6: wrap Render.
+	if err := templates.JobReportView(job).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the job report.", err)
+	}
 }
 
 // renderActiveJob serves /jobs/active: returns the slot variant of
@@ -146,7 +158,10 @@ func (a *App) renderActiveJob(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	presentation.JobStatusSlotFragment(*job).Render(r.Context(), w)
+	// Issue #384 / Slice 6: wrap Render.
+	if err := presentation.JobStatusSlotFragment(*job).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the active job status.", err)
+	}
 }
 
 func (a *App) cancelJob(w http.ResponseWriter, r *http.Request, id string) {
