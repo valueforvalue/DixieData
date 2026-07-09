@@ -1015,6 +1015,38 @@ for (const [label, expected, path] of slice19Files) {
 }
 
 // ---------------------------------------------------------------------------
+// 4m. Slice 20 — final cleanup. 10 single-site files.
+// ---------------------------------------------------------------------------
+
+const slice20Files = [
+  ["update/retained_backup_manager.go",  join(ROOT, "internal/update/retained_backup_manager.go")],
+  ["records/status_normalization.go",   join(ROOT, "internal/records/status_normalization.go")],
+  ["records/share_queue_presets.go",   join(ROOT, "internal/records/share_queue_presets.go")],
+  ["records/export_templates.go",       join(ROOT, "internal/records/export_templates.go")],
+  ["records/browse.go",                join(ROOT, "internal/records/browse.go")],
+  ["records/anniversary_service.go",    join(ROOT, "internal/records/anniversary_service.go")],
+  ["db/scratchpad.go",                  join(ROOT, "internal/db/scratchpad.go")],
+  ["archive/pdfium_windows.go",        join(ROOT, "internal/archive/pdfium_windows.go")],
+  ["archive/diagnostics_service.go",   join(ROOT, "internal/archive/diagnostics_service.go")],
+  ["appshell/app_feedback.go",          join(ROOT, "internal/appshell/app_feedback.go")],
+];
+
+for (const [label, path] of slice20Files) {
+  test(`${label} has zero plain defer .Close() + 1 DeferCloseLog site`, () => {
+    const src = readFileSync(path, "utf8");
+    const offenders = [];
+    for (const line of src.split("\n")) {
+      if (/^\s*defer\s+\w+\.Close\(\)/.test(line)) {
+        offenders.push(line.trim());
+      }
+    }
+    assert.strictEqual(offenders.length, 0, `plain defer .Close() remaining in ${label}: ${offenders.join("; ")}`);
+    const matches = src.match(/debug\.DeferCloseLog\(/g) || [];
+    assert.strictEqual(matches.length, 1, `${label}: expected 1 DeferCloseLog site, found ${matches.length}`);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 4c. Slice 11+ — meta-assertion that walks every internal/*.go file
 //      and fails if any plain `defer X.Close()` line appears. This is
 //      the regression net for the defer-close sweep across the whole
@@ -1022,17 +1054,12 @@ for (const [label, expected, path] of slice19Files) {
 // ---------------------------------------------------------------------------
 
 test("internal/ has zero plain `defer X.Close()` lines (meta)", () => {
-  // Walk every .go file under internal/ (excluding _test.go) and
-  // assert each `defer X.Close()` line is inside an `if err != nil`
-  // check or has been replaced by debug.DeferCloseLog. The "no naked
-  // defer X.Close()" rule mirrors the slice-8 meta-assertion for
-  // bare-Render sites in internal/appshell/.
-  //
-  // Status: sweep in progress. As of this slice (slice 11) we have
-  // 2 of ~10 handler files wrapped. The test prints the remaining
-  // count to surface the sweep progress; it asserts the count is
-  // strictly less than the snapshot at sweep start. The final sweep
-  // slice will tighten this to `=== 0`.
+  // Walks every .go file under internal/ (excluding _test.go) and
+  // asserts each `defer X.Close()` line has been replaced by
+  // debug.DeferCloseLog. The "no naked defer X.Close()" rule mirrors
+  // the slice-8 meta-assertion for bare-Render sites in
+  // internal/appshell/. Slice 20 (this slice) marks the defer-close
+  // sweep as complete; the assertion is now strict.
   const dir = join(ROOT, "internal");
   const offenders = [];
   function walk(d) {
@@ -1054,13 +1081,9 @@ test("internal/ has zero plain `defer X.Close()` lines (meta)", () => {
     }
   }
   walk(dir);
-  // Print progress; never fail until the sweep is complete.
-  // Replace this with `assert.strictEqual(offenders.length, 0)` once
-  // the last defer-close sweep slice lands.
   if (offenders.length > 0) {
-    console.log(`    defer-close sweep: ${offenders.length} sites remaining`);
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
   }
-  assert.ok(true, "informational; tighten to === 0 after sweep completes");
 });
 
 // ---------------------------------------------------------------------------

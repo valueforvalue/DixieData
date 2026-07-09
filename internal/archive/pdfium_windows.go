@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 const pdfiumRenderDPI = 144
@@ -200,7 +202,7 @@ func (a *pdfiumAPI) renderPageToJPG(document uintptr, pageIndex int, outputPath 
 	if err != nil {
 		return fmt.Errorf("create JPG page %d: %w", pageIndex+1, err)
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "renderPageToJPG.file")
 
 	if err := jpeg.Encode(file, rgba, &jpeg.Options{Quality: 92}); err != nil {
 		return fmt.Errorf("encode JPG page %d: %w", pageIndex+1, err)

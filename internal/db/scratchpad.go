@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 const scratchpadLegacyImportConfigKey = "scratchpad_legacy_import_complete"
@@ -157,7 +158,7 @@ func scratchpadSoldierIDsByStem(tx *sql.Tx) (map[string]int64, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "scratchpadSoldierIDsByStem.rows")
 
 	result := map[string]int64{}
 	for rows.Next() {

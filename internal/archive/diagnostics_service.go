@@ -13,6 +13,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 const diagnosticsFormatName = "dixiedata-diagnostic-bundle"
@@ -211,7 +212,7 @@ func addTruncatedLogFile(zipWriter *zip.Writer, srcPath, entryName string, maxLi
 		}
 		return err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "addTruncatedLogFile.f")
 
 	const maxRead = 4 * 1024 * 1024
 	stat, err := f.Stat()
