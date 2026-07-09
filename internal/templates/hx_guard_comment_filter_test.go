@@ -8,19 +8,29 @@
 // RED-first regression net: this test file pins the new
 // filter's behaviour by exercising scanTemplFile (the helper
 // extracted from TestNoPostThenNavigateHXXAttrs in hx_guard_test.go)
-// directly. Two cases:
+// directly.
 //
-//   1. Synthetic .templ with a comment + a real attr: the
-//      comment line is filtered, the attr line is flagged.
-//   2. The remaining real hx-post offender file
-//      (soldier_card.templ, post-issue-#414 partial migration)
-//      still reports an offender. entry_form.templ was migrated
-//      to a real <form enctype="multipart/form-data"> in the
-//      first slice of #414 and is no longer on this list.
-//      soldier_card.templ comes off in the next slice. If a
-//      future refactor filters too aggressively (e.g. also skips
-//      hx-* attrs on real attribute lines), this test catches it
-//      by asserting at least one real offender is still flagged.
+// As of issue #414 final slice (entry_form.templ + soldier_card.templ
+// both migrated to real <form enctype="multipart/form-data">
+// shapes), zero production .templ files carry hx-* attrs.
+// TestNoPostThenNavigateHXXAttrsCommentFalsePositivesGone below
+// remains the active regression net: synthetic .templ with a
+// comment + a real attr asserts the comment line is filtered AND
+// the real attr line is flagged. If a future refactor filters
+// too aggressively, this synthetic case catches it; if a future
+// PR adds a new hx-post offender, TestNoPostThenNavigateHXXAttrs
+// (in hx_guard_test.go) catches it first.
+//
+// An earlier form of this file also asserted
+// TestNoPostThenNavigateHXXAttrsGuardFileStillFlagsImageUploads
+// as a safety net pinning "real hx-post offender files still get
+// flagged". Slice 1/2 + Slice 2/2 of the #414 migration removed
+// both real offender files; the synthetic case above is the only
+// assertion left because the safety net has no production offender
+// to anchor against. Future migrations that re-introduce hx-* on
+// a real form will surface again via TestNoPostThenNavigateHXXAttrs
+// itself — and the next slice of #414-style work should re-introduce
+// the safety-net test against the new offender list.
 //
 // scanTemplFile lives in hx_guard_test.go (same package); if
 // a future refactor removes the helper, this file fails to
@@ -30,7 +40,6 @@ package templates
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -59,32 +68,5 @@ func TestNoPostThenNavigateHXXAttrsCommentFalsePositivesGone(t *testing.T) {
 	}
 	if !strings.Contains(offenders[0], ":3") {
 		t.Errorf("expected offender to cite line 3; got: %s", offenders[0])
-	}
-}
-
-// TestNoPostThenNavigateHXXAttrsGuardFileStillFlagsImageUploads
-// is the safety net: the 2 real hx-post offenders on the
-// image-upload forms (entry_form.templ + soldier_card.templ)
-// must STILL be flagged after the comment filter. A future
-// refactor that filters too aggressively (e.g. also skips
-// hx-* attrs on real attribute lines) would let those two
-// real offenders hide behind the filter; this test catches
-// that regression by asserting the live production scanner
-// reports at least one hx-post offender in the repo.
-func TestNoPostThenNavigateHXXAttrsGuardFileStillFlagsImageUploads(t *testing.T) {
-	_, thisFile, _, _ := runtime.Caller(0)
-	thisDir := filepath.Dir(thisFile)
-
-	knownReal := []string{"soldier_card.templ"}
-	for _, file := range knownReal {
-		path := filepath.Join(thisDir, file)
-		offenders, err := scanTemplFile(path)
-		if err != nil {
-			t.Errorf("scan %s: %v", file, err)
-			continue
-		}
-		if len(offenders) == 0 {
-			t.Errorf("%s: expected at least one hx-post offender (image upload form not yet migrated to Option C); got 0", file)
-		}
 	}
 }

@@ -1838,6 +1838,64 @@ func TestHandleImportSoldierImagesAcceptsMultipart(t *testing.T) {
 	}
 }
 
+// TestHandleImportSoldierImagesAcceptsMultipartNoReturn is the
+// slice-2 (#414) companion: soldier_card.templ's Add Images From
+// Computer form posts to /soldiers/{id}/images/import with NO
+// ?return=edit query string. Same handler, different return
+// target — both shapes must survive the multipart parse. Without
+// this test, a future regression that introduces return-target
+// branching in the handler could silently break the soldier-card
+// branch while leaving the edit branch green. Companion to
+// TestHandleImportSoldierImagesAcceptsMultipart.
+func TestHandleImportSoldierImagesAcceptsMultipartNoReturn(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	configureTestIdentity(t, app)
+
+	created, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CSA-NORETURN",
+		FirstName: "No",
+		LastName:  "Return",
+		EntryType: "soldier",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	body, contentType := multipartRequestBody(t, map[string][]byte{
+		"upload.png": pngFixture(),
+	})
+	req := httptest.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("/soldiers/%d/images/import", created.ID),
+		body,
+	)
+	req.Header.Set("Content-Type", contentType)
+	rr := httptest.NewRecorder()
+
+	app.handleImportSoldierImages(rr, req, created.ID)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned %d: %s", rr.Code, rr.Body.String())
+	}
+
+	soldier, err := app.soldiers.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(soldier.Images) != 1 {
+		t.Fatalf("images len = %d, want 1 (handler failed to consume multipart body without return=edit)", len(soldier.Images))
+	}
+}
+
 func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)
