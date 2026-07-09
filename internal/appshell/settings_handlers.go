@@ -30,7 +30,10 @@ func (a *App) handleSettings(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load update settings.", err)
 		return
 	}
-	presentation.SettingsView(initializeDataConfirmationWord, settings).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.SettingsView(initializeDataConfirmationWord, settings).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the settings page.", err)
+	}
 }
 
 func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +46,10 @@ func (a *App) handleScanImageOrphans(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not scan for orphaned images.", err)
 		return
 	}
-	presentation.SettingsOrphanedImages(orphans).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.SettingsOrphanedImages(orphans).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the orphaned-images results.", err)
+	}
 }
 
 func (a *App) handleScanDataQuality(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +67,10 @@ func (a *App) handleScanDataQuality(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Data quality scan failed.", err)
 		return
 	}
-	presentation.SettingsQualityScanResults(result).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.SettingsQualityScanResults(result).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the data-quality scan results.", err)
+	}
 }
 
 func (a *App) handleApplyDataQuality(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +98,10 @@ func (a *App) handleApplyDataQuality(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setToastHeader(w, fmt.Sprintf("Moved %d record(s) to Review Queue (%d already queued).", result.Flagged, result.AlreadyInQueue))
-	presentation.SettingsQualityScanApplyResult(result).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.SettingsQualityScanApplyResult(result).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the apply-data-quality results.", err)
+	}
 }
 
 func (a *App) handleCleanupImageOrphans(w http.ResponseWriter, r *http.Request) {

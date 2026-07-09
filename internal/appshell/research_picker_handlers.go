@@ -171,7 +171,10 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 		SupportedActions: supportedActions,
 		HasCountyInBirth: hasCountyInBirth,
 	}
-	presentation.ResearchPickerView(view).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ResearchPickerView(view).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the research picker.", err)
+	}
 }
 
 // renderResearchSearchFragment returns only the picker results panel
@@ -311,7 +314,10 @@ func (a *App) handleResearchRecent(w http.ResponseWriter, r *http.Request) {
 		NextAction: next,
 	}
 	if len(requested) == 0 {
-		presentation.ResearchPickerRecent(view).Render(r.Context(), w)
+		// Issue #384 / Slice 7: wrap Render.
+		if err := presentation.ResearchPickerRecent(view).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the recent research picker.", err)
+		}
 		return
 	}
 
@@ -329,5 +335,8 @@ func (a *App) handleResearchRecent(w http.ResponseWriter, r *http.Request) {
 			view.RecentPersons = append(view.RecentPersons, rec)
 		}
 	}
-	presentation.ResearchPickerRecent(view).Render(r.Context(), w)
+	// Issue #384 / Slice 7: wrap Render.
+	if err := presentation.ResearchPickerRecent(view).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the recent research picker.", err)
+	}
 }
