@@ -335,11 +335,38 @@ async function waitForServer(url, maxMs = 30000) {
 	throw new Error(`server at ${url} never came up within ${maxMs}ms`);
 }
 
+async function serverSetupStatus(url) {
+	// Returns 'ready' | 'needs-setup' | 'unknown'. A bare /soldiers
+	// 303-redirects to /setup when the wizard hasn't completed.
+	const r = await fetch(`${url}/soldiers`, { redirect: 'manual' });
+	if (r.status === 303) {
+		const loc = r.headers.get('location') || '';
+		if (/\/setup/.test(loc)) return 'needs-setup';
+	}
+	return 'ready';
+}
+
 async function main() {
 	await waitForServer(BASE);
 	console.log(`BASE_URL: ${BASE}`);
 	console.log(`typst available: ${typstAvailable}`);
 	console.log('');
+
+	// Cheap compatibility check: did the server complete /setup?
+	// If not, every probe below would 303-redirect to /setup and
+	// there's nothing meaningful for the user to see. Skip with a
+	// clear note rather than producing five misleading passes that
+	// satisfy the loop but mean nothing for the actual bug class.
+	const setupStatus = await serverSetupStatus(BASE).catch(() => 'unknown');
+	if (setupStatus === 'needs-setup') {
+		console.log('=== error-surface probe (issue #444) ===');
+		console.log('  ⊘ server at ' + BASE + ' is on the /setup wizard — error surfaces cannot be probed yet.');
+		console.log('    Run `make seed && ./build/bin/dixiedata-web.exe -scratch-dir=.scratch/webmode` after');
+		console.log('    completing setup, then re-run `make probe-error-surfaces`.');
+		process.exit(0);
+	}
+
+	console.log('=== error-surface probe (issue #444) ===');
 
 	const browser = await chromium.launch({ headless: true });
 	const context = await browser.newContext({
