@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -81,7 +82,7 @@ func (e *EventService) ListSourcesForEvent(eventID int64) ([]models.Record, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListSourcesForEvent.rows")
 	out := make([]models.Record, 0)
 	for rows.Next() {
 		var r models.Record
@@ -108,7 +109,7 @@ func (e *EventService) ListTagsForEvent(eventID int64) ([]Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListTagsForEvent.rows")
 	var out []Tag
 	for rows.Next() {
 		var t Tag
@@ -443,7 +444,7 @@ func (e *EventService) ListEvents(page, pageSize int) ([]models.Soldier, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListEvents.rows")
 	return scanSoldiers(rows)
 }
 
@@ -529,7 +530,7 @@ func (e *EventService) ListForPerson(personID int64) ([]models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListForPerson.rows")
 	return scanSoldiers(rows)
 }
 
@@ -546,7 +547,7 @@ func (e *EventService) ListForEvent(eventID int64) ([]models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListForEvent.rows")
 	return scanSoldiers(rows)
 }
 
@@ -580,7 +581,7 @@ func (e *EventService) linksForEvent(eventID int64) ([]EventLink, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "linksForEvent.rows")
 	var links []EventLink
 	for rows.Next() {
 		var link EventLink
