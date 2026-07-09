@@ -15,6 +15,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 )
@@ -92,7 +93,7 @@ func Generate(options Options) (Summary, error) {
 	if err != nil {
 		return Summary{}, fmt.Errorf("open database: %w", err)
 	}
-	defer database.Close()
+	defer debug.DeferCloseLog(database, "Generate.db")
 
 	soldierSvc := records.NewSoldierService(database)
 	conn := database.Conn()
@@ -273,7 +274,7 @@ func createImage(dataDir string, rng *rand.Rand, soldier models.Soldier, index i
 	if err != nil {
 		return models.Image{}, err
 	}
-	defer output.Close()
+	defer debug.DeferCloseLog(output, "createImage.output")
 	if err := png.Encode(output, img); err != nil {
 		return models.Image{}, err
 	}

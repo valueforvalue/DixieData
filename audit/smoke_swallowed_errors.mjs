@@ -988,6 +988,33 @@ for (const [label, expected, path] of slice18Files) {
 }
 
 // ---------------------------------------------------------------------------
+// 4l. Slice 19 — batched defer-close sweep across 4 small files
+//     with 2 sites each (8 sites total).
+// ---------------------------------------------------------------------------
+
+const slice19Files = [
+  ["seed/seed.go",                       2, join(ROOT, "internal/seed/seed.go")],
+  ["records/calendar_service.go",        2, join(ROOT, "internal/records/calendar_service.go")],
+  ["records/analytics_service.go",       2, join(ROOT, "internal/records/analytics_service.go")],
+  ["appshell/cli_import.go",            2, join(ROOT, "internal/appshell/cli_import.go")],
+];
+
+for (const [label, expected, path] of slice19Files) {
+  test(`${label} has zero plain defer .Close() + ${expected} DeferCloseLog sites`, () => {
+    const src = readFileSync(path, "utf8");
+    const offenders = [];
+    for (const line of src.split("\n")) {
+      if (/^\s*defer\s+\w+\.Close\(\)/.test(line)) {
+        offenders.push(line.trim());
+      }
+    }
+    assert.strictEqual(offenders.length, 0, `plain defer .Close() remaining in ${label}: ${offenders.join("; ")}`);
+    const matches = src.match(/debug\.DeferCloseLog\(/g) || [];
+    assert.strictEqual(matches.length, expected, `${label}: expected ${expected} DeferCloseLog sites, found ${matches.length}`);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 4c. Slice 11+ — meta-assertion that walks every internal/*.go file
 //      and fails if any plain `defer X.Close()` line appears. This is
 //      the regression net for the defer-close sweep across the whole
