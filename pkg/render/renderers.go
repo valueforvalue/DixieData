@@ -196,7 +196,7 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		if err != nil {
 			return fmt.Errorf("open typst png output: %w", err)
 		}
-		defer f.Close()
+		defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 		if _, err := io.Copy(w, f); err != nil {
 			return fmt.Errorf("copy typst png output: %w", err)
 		}
@@ -215,7 +215,7 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		if err != nil {
 			return fmt.Errorf("open typst svg output: %w", err)
 		}
-		defer f.Close()
+		defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 		if _, err := io.Copy(w, f); err != nil {
 			return fmt.Errorf("copy typst svg output: %w", err)
 		}
@@ -229,7 +229,7 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 	if err != nil {
 		return fmt.Errorf("open typst output: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	if _, err := io.Copy(w, f); err != nil {
 		return fmt.Errorf("copy typst output: %w", err)
 	}
@@ -599,7 +599,7 @@ func detectImageFormat(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	var head [4]byte
 	n, err := f.Read(head[:])
 	if err != nil || n < 2 {

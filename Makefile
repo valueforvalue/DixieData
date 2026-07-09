@@ -414,11 +414,15 @@ lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
 # binary directly is not supported.
 lint-defer-close: ## Go defer-.Close() lint (issue #438, ADR 0010)
 	cd tools/lintrules && go build -o bin/lintrules.exe ./cmd/lintrules
-	go vet -vettool=tools/lintrules/bin/lintrules.exe ./...
+	@go vet -vettool=tools/lintrules/bin/lintrules.exe ./... > $(LOGDIR)/lint-defer-close.txt 2>&1; rc=$$?; \
+	  if [ $$rc -ne 0 ]; then cat $(LOGDIR)/lint-defer-close.txt; exit $$rc; fi; \
+	  node -e "var s=require('fs').readFileSync('$(LOGDIR)/lint-defer-close.txt','utf8');if(s.includes('\"message\"')){console.log(s);process.exit(1)}"
 
 lint-bare-templ-render: ## Go bare-templ-Render lint (issue #438, ADR 0010)
 	cd tools/lintrules && go build -o bin/lintrules.exe ./cmd/lintrules
-	go vet -vettool=tools/lintrules/bin/lintrules.exe ./...
+	@go vet -vettool=tools/lintrules/bin/lintrules.exe ./... > $(LOGDIR)/lint-bare-templ.txt 2>&1; rc=$$?; \
+	  if [ $$rc -ne 0 ]; then cat $(LOGDIR)/lint-bare-templ.txt; exit $$rc; fi; \
+	  node -e "var s=require('fs').readFileSync('$(LOGDIR)/lint-bare-templ.txt','utf8');if(s.includes('\"message\"')){console.log(s);process.exit(1)}"
 
 lint-no-bare-catch: ## JS bare-.catch() lint (issue #438, ADR 0010) — slice 3
 	@echo "lint-no-bare-catch: running ESLint..."
