@@ -25,6 +25,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/models"
 )
@@ -36,6 +38,8 @@ type MutateCommand int
 const (
 	MutateUnknown MutateCommand = iota
 	MutateSoldierCreate
+	MutateSoldierUpdate
+	MutateSoldierDelete
 )
 
 // MutateOptions configures RunMutate. Zero value = text output.
@@ -43,6 +47,7 @@ type MutateOptions struct {
 	Command   MutateCommand
 	From      string // --from <path> input file
 	FromStdin bool   // --from-stdin input
+	TargetID  string // <id|dxd-id> positional for update/delete
 	JSON      bool   // --json envelope output
 	DryRun    bool   // --dry-run
 	Yes       bool   // --yes (skip confirm)
@@ -129,6 +134,59 @@ func ParseMutateCommand(args []string) (MutateOptions, bool) {
 				return MutateOptions{}, false
 			}
 			return opts, true
+		case "update":
+			// `soldier update <id|dxd-id> --from <path> | --from-stdin`
+			// The id is the first positional after `update`;
+			// the same --from/--from-stdin flags as create.
+			// Must be a non-flag arg, otherwise the caller
+			// forgot the id.
+			if len(filtered) < 2 || strings.HasPrefix(filtered[1], "--") {
+				return MutateOptions{}, false
+			}
+			opts := MutateOptions{
+				Command:  MutateSoldierUpdate,
+				TargetID: filtered[1],
+				JSON:     jsonSeen,
+			}
+			for _, a := range filtered[2:] {
+				switch a {
+				case "--from-stdin":
+					opts.FromStdin = true
+				case "--dry-run":
+					opts.DryRun = true
+				case "--yes":
+					opts.Yes = true
+				}
+			}
+			for i := 0; i < len(filtered)-1; i++ {
+				if filtered[i] == "--from" {
+					opts.From = filtered[i+1]
+				}
+			}
+			if opts.From == "" && !opts.FromStdin {
+				return MutateOptions{}, false
+			}
+			return opts, true
+		case "delete":
+			// `soldier delete <id|dxd-id> [--yes]`
+			// No --from; the row id is the only input.
+			// --yes is a future hook for the TTY confirm
+			// prompt (deferred — no prompt in v1 because
+			// no one runs this by hand yet).
+			if len(filtered) < 2 || strings.HasPrefix(filtered[1], "--") {
+				return MutateOptions{}, false
+			}
+			opts := MutateOptions{
+				Command:  MutateSoldierDelete,
+				TargetID: filtered[1],
+				JSON:     jsonSeen,
+			}
+			for _, a := range filtered[2:] {
+				if a == "--yes" {
+					opts.Yes = true
+				}
+			}
+			return opts, true
 		}
 	}
 	return MutateOptions{}, false
@@ -153,6 +211,10 @@ func RunMutate(ctx context.Context, opts MutateOptions) (int, error) {
 	switch opts.Command {
 	case MutateSoldierCreate:
 		return runMutateSoldierCreate(ctx, app, opts)
+	case MutateSoldierUpdate:
+		return runMutateSoldierUpdate(ctx, app, opts)
+	case MutateSoldierDelete:
+		return runMutateSoldierDelete(ctx, app, opts)
 	default:
 		return 3, fmt.Errorf("unknown mutate command")
 	}
@@ -208,4 +270,115 @@ func runMutateSoldierCreate(ctx context.Context, app *App, opts MutateOptions) (
 	}
 	fmt.Fprintf(opts.Writer, "created soldier %d (%s)\n", created.ID, created.DisplayID)
 	return 0, nil
+}
+
+// runMutateSoldierUpdate reads a models.Soldier JSON from
+// --from/--from-stdin, resolves the positional <id|dxd-id> to a
+// row id, and dispatches to app.soldiers.Update. Mirrors the
+// create handler's read/parse/dispatch shape; the id resolution
+// lives in resolveSoldierTargetID so the same code path serves
+// both update and delete.
+func runMutateSoldierUpdate(ctx context.Context, app *App, opts MutateOptions) (int, error) {
+	id, err := resolveSoldierTargetID(ctx, app, opts.TargetID)
+	if err != nil {
+		return 1, fmt.Errorf("resolve target id: %w", err)
+	}
+	var input []byte
+	if opts.FromStdin {
+		input, err = io.ReadAll(os.Stdin)
+	} else {
+		input, err = os.ReadFile(opts.From)
+	}
+	if err != nil {
+		return 1, fmt.Errorf("read input: %w", err)
+	}
+	var soldier models.Soldier
+	if err := json.Unmarshal(input, &soldier); err != nil {
+		return 1, fmt.Errorf("parse input JSON: %w", err)
+	}
+	// The positional id is the source of truth; the input
+	// JSON's ID is overwritten so a script that forgot to set
+	// it (or set the wrong one) can't accidentally re-key
+	// the row.
+	soldier.ID = id
+	if opts.DryRun {
+		if opts.JSON {
+			fmt.Fprintln(opts.Writer, `{"dry_run":true,"ok":true}`)
+		} else {
+			fmt.Fprintf(opts.Writer, "dry-run: input parses cleanly (%d bytes); would update id=%d\n", len(input), id)
+		}
+		return 0, nil
+	}
+	if err := app.soldiers.Update(soldier); err != nil {
+		return 1, fmt.Errorf("update soldier: %w", err)
+	}
+	// Re-fetch the row so the JSON echo carries the
+	// post-update DisplayID (the Update() path mutates the
+	// row in place and the caller's struct may not reflect
+	// the new normalization).
+	got, err := app.soldiers.GetByID(id)
+	if err != nil {
+		return 1, fmt.Errorf("re-read soldier: %w", err)
+	}
+	if opts.JSON {
+		out := map[string]any{
+			"id":         got.ID,
+			"display_id": got.DisplayID,
+		}
+		enc := json.NewEncoder(opts.Writer)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(out)
+		return 0, nil
+	}
+	fmt.Fprintf(opts.Writer, "updated soldier %d (%s)\n", got.ID, got.DisplayID)
+	return 0, nil
+}
+
+// runMutateSoldierDelete resolves the positional <id|dxd-id> to a
+// row id and dispatches to app.soldiers.Delete. No --from input
+// in v1; the id is the only argument. --yes is accepted but
+// currently a no-op (no TTY confirm prompt in v1 — scripts are
+// the primary caller).
+func runMutateSoldierDelete(ctx context.Context, app *App, opts MutateOptions) (int, error) {
+	id, err := resolveSoldierTargetID(ctx, app, opts.TargetID)
+	if err != nil {
+		return 1, fmt.Errorf("resolve target id: %w", err)
+	}
+	if err := app.soldiers.Delete(id); err != nil {
+		return 1, fmt.Errorf("delete soldier: %w", err)
+	}
+	if opts.JSON {
+		out := map[string]any{
+			"id":  id,
+			"ok":  true,
+		}
+		enc := json.NewEncoder(opts.Writer)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(out)
+		return 0, nil
+	}
+	fmt.Fprintf(opts.Writer, "deleted soldier %d\n", id)
+	return 0, nil
+}
+
+// resolveSoldierTargetID accepts either a numeric id (e.g. "42")
+// or a DisplayID (e.g. "DXD-00001") and returns the numeric row
+// id. Shared by update + delete; lives in cli_mutate.go because
+// the resolution rule is CLI-shape (positional argv, not a form
+// value), and the soldier_service has its own GetByDisplayID that
+// the GUI uses for its own purposes.
+func resolveSoldierTargetID(ctx context.Context, app *App, target string) (int64, error) {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return 0, fmt.Errorf("target id is required")
+	}
+	if id, err := strconv.ParseInt(target, 10, 64); err == nil {
+		return id, nil
+	}
+	// Not numeric — treat as a DisplayID.
+	s, err := app.soldiers.GetByDisplayID(target)
+	if err != nil {
+		return 0, fmt.Errorf("lookup by display_id %q: %w", target, err)
+	}
+	return s.ID, nil
 }
