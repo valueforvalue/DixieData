@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 // ShareQueuePreset is the row shape returned by Get/List. The
@@ -121,7 +123,7 @@ func (s *ShareQueuePresetService) List() ([]ShareQueuePreset, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ShareQueuePresetService.List.rows")
 	var out []ShareQueuePreset
 	for rows.Next() {
 		p, err := scanShareQueuePreset(rows)

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 const (
@@ -388,7 +390,7 @@ func copyFileAtomic(sourcePath, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer debug.DeferCloseLog(source, "copyFileAtomic.source")
 
 	if err := os.MkdirAll(filepath.Dir(destinationPath), 0o755); err != nil {
 		return err

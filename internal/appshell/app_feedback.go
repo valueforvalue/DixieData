@@ -13,6 +13,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -151,7 +152,7 @@ func appendFeedbackEntry(dataDir string, entry feedbackEntry) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "appendFeedbackEntry.file")
 
 	payload, err := json.Marshal(entry)
 	if err != nil {

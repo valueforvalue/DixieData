@@ -2,6 +2,7 @@ package records
 
 import (
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -39,7 +40,7 @@ func (a *AnniversaryService) GetByMonthDay(month, day int) ([]models.Soldier, er
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer debug.DeferCloseLog(r, "GetByMonthDay.r")
 	return scanSoldiers(r)
 }
 

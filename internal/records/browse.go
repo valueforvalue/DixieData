@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
@@ -194,7 +195,7 @@ func (s *SoldierService) BrowsePage(request BrowseRequest) ([]models.Soldier, in
 	if err != nil {
 		return nil, 0, request, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "BrowsePage.rows")
 
 	columns, err := rows.Columns()
 	if err != nil {

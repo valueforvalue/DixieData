@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
 )
 
@@ -38,7 +39,7 @@ func distinctNormalizedTextValues(conn *sql.DB, query string, normalize func(str
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "distinctNormalizedTextValues.rows")
 
 	values := []string{}
 	seen := map[string]struct{}{}

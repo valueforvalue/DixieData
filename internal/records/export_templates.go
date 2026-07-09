@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 // ExportTemplate is the row shape returned by Get/List. The
@@ -223,7 +225,7 @@ func (s *ExportTemplateService) List() ([]ExportTemplate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ExportTemplateService.List.rows")
 	out := []ExportTemplate{}
 	for rows.Next() {
 		t, err := scanExportTemplate(rows)
