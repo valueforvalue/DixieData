@@ -14,6 +14,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
@@ -268,7 +269,7 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "GetByID.records")
 	for rows.Next() {
 		var r models.Record
 		if err := rows.Scan(&r.ID, &r.SyncID, &r.PersonRecordID, &r.PersonSyncID, &r.RecordType, &r.AppID, &r.Details, &r.SortOrder); err != nil {
@@ -281,7 +282,7 @@ func (s *SoldierService) GetByID(id int64) (*models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer imgRows.Close()
+	defer debug.DeferCloseLog(imgRows, "GetByID.images")
 	for imgRows.Next() {
 		var img models.Image
 		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.PersonRecordID, &img.PersonSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
@@ -316,7 +317,7 @@ func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "GetByDisplayID.records")
 	for rows.Next() {
 		var record models.Record
 		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details, &record.SortOrder); err != nil {
@@ -329,7 +330,7 @@ func (s *SoldierService) GetByDisplayID(displayID string) (*models.Soldier, erro
 	if err != nil {
 		return nil, err
 	}
-	defer imgRows.Close()
+	defer debug.DeferCloseLog(imgRows, "GetByDisplayID.images")
 	for imgRows.Next() {
 		var img models.Image
 		if err := imgRows.Scan(&img.ID, &img.SyncID, &img.PersonRecordID, &img.PersonSyncID, &img.FileName, &img.FilePath, &img.Caption, &img.IsPrimary); err != nil {
@@ -548,7 +549,7 @@ func (s *SoldierService) ReviewQueue(page, pageSize int) ([]models.Soldier, int,
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ReviewQueue.rows")
 	soldiers, err := scanSoldiers(rows)
 	return soldiers, total, err
 }
@@ -667,7 +668,7 @@ func (s *SoldierService) searchWithFTS(query string, pageSize, offset int) ([]mo
 	}); err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "searchWithFTS.rows")
 
 	soldiers := []models.Soldier{}
 	for rows.Next() {
@@ -746,7 +747,7 @@ func (s *SoldierService) searchWithLike(query string, pageSize, offset int) ([]m
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "searchWithLike.rows")
 
 	soldiers, err := scanListSoldiers(rows)
 	return annotateQuickSearchMatches(soldiers, query), total, err
@@ -1012,7 +1013,7 @@ func (s *SoldierService) AdvancedSearch(search models.SoldierSearch, page, pageS
 	}); err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "AdvancedSearch.rows")
 
 	soldiers, err := scanListSoldiers(rows)
 	return soldiers, total, err
@@ -1039,7 +1040,7 @@ func (s *SoldierService) List(page, pageSize int) ([]models.Soldier, int, error)
 	}); err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "List.rows")
 	soldiers, err := scanListSoldiers(rows)
 	return soldiers, total, err
 }
@@ -1090,7 +1091,7 @@ func (s *SoldierService) ListByEntryTypes(entryTypes []string, page, pageSize in
 	}); err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListByEntryTypes.rows")
 	soldiers, err := scanListSoldiers(rows)
 	return soldiers, total, err
 }
@@ -1125,7 +1126,7 @@ func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "RecentByIDs.rows")
 	soldiers, err := scanRecentSoldiers(rows)
 	if err != nil {
 		return nil, err
@@ -1168,7 +1169,7 @@ func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderie
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "UnitCamaraderieGraph.rows")
 
 	peers, err := scanListSoldiers(rows)
 	if err != nil {
@@ -1328,7 +1329,7 @@ func (s *SoldierService) ResearchLog(soldierID int64) (*ResearchLog, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ResearchLog.rows")
 
 	log := &ResearchLog{
 		Central:     *central,
@@ -1423,7 +1424,7 @@ func (s *SoldierService) ResearchPackForSoldier(soldierID int64, scope string) (
 	if err != nil {
 		return nil, err
 	}
-	defer relatedRows.Close()
+	defer debug.DeferCloseLog(relatedRows, "ResearchPackForSoldier.relatedRows")
 	related, err := scanListSoldiers(relatedRows)
 	if err != nil {
 		return nil, err
@@ -1474,7 +1475,7 @@ func (s *SoldierService) ResearchCollectionsHub(currentSoldierID int64) (*Resear
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ResearchCollectionsHub.rows")
 	for rows.Next() {
 		var (
 			collection ResearchCollection
@@ -1561,7 +1562,7 @@ func (s *SoldierService) ResearchCollectionDetail(collectionID int64, currentSol
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ResearchCollectionDetail.rows")
 	members, err := scanListSoldiers(rows)
 	if err != nil {
 		return nil, err
@@ -2100,7 +2101,7 @@ func (s *SoldierService) researchPackCounts(whereClause string, args []interface
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "researchPackCounts.rows")
 	counts := []AnalyticsCount{}
 	for rows.Next() {
 		var count AnalyticsCount
@@ -2555,7 +2556,7 @@ func distinctTextValues(conn *sql.DB, query string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "distinctTextValues.rows")
 
 	values := []string{}
 	for rows.Next() {
@@ -2604,7 +2605,7 @@ func (s *SoldierService) MarriageCandidates() ([]models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "MarriageCandidates.rows")
 	return scanSoldiers(rows)
 }
 
@@ -2922,7 +2923,7 @@ func loadSoldierAuditSnapshot(tx *sql.Tx, soldierID int64) (*models.Soldier, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadSoldierAuditSnapshot.rows")
 	for rows.Next() {
 		var record models.Record
 		if err := rows.Scan(&record.ID, &record.SyncID, &record.PersonRecordID, &record.PersonSyncID, &record.RecordType, &record.AppID, &record.Details, &record.SortOrder); err != nil {
@@ -3089,7 +3090,7 @@ func (s *SoldierService) ByIDs(ids []int64) ([]models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ByIDs.rows")
 	var found []models.Soldier
 	for rows.Next() {
 		var soldier models.Soldier
@@ -3160,7 +3161,7 @@ func (s *SoldierService) linkedEventsForTimeline(soldierID int64) ([]LinkedEvent
 	if err != nil {
 		return nil, fmt.Errorf("linkedEventsForTimeline query: %w", err)
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "linkedEventsForTimeline.rows")
 
 	markers := make([]LinkedEventTimelineMarker, 0)
 	for rows.Next() {
