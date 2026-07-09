@@ -161,7 +161,10 @@ func (a *App) handleDebugConsole(w http.ResponseWriter, r *http.Request) {
 		}
 		entries = filtered
 	}
-	presentation.DebugConsole(entries, rb.Total(), debug.LogPath()).Render(r.Context(), w)
+	// Issue #384 / Slice 8: wrap Render.
+	if err := presentation.DebugConsole(entries, rb.Total(), debug.LogPath()).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the debug console.", err)
+	}
 }
 
 // Phase 6 stubs (added in Phase 6; declared here so route registration

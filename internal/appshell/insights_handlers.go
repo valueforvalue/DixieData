@@ -33,7 +33,10 @@ func (a *App) handleInsights(w http.ResponseWriter, r *http.Request) {
 		TotalWivesWidows:  snapshot.RecordTypes.TotalWivesWidows,
 		TotalLinkedPeople: snapshot.RecordTypes.TotalLinkedPeople,
 	}
-	presentation.InsightsView(snapshot, counts).Render(r.Context(), w)
+	// Issue #384 / Slice 8: wrap Render.
+	if err := presentation.InsightsView(snapshot, counts).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the insights page.", err)
+	}
 }
 
 func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +67,10 @@ func (a *App) handleInsightsDrilldown(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not run the insights drilldown search.", err)
 		return
 	}
-	presentation.InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w)
+	// Issue #384 / Slice 8: wrap Render.
+	if err := presentation.InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the insights drilldown page.", err)
+	}
 }
 
 func insightDrilldownConfig(scope, value string) (string, string, models.SoldierSearch, bool, error) {

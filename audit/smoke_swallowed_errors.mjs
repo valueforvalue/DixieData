@@ -36,7 +36,7 @@
 // into `make audit` alongside the existing smoke probes.
 
 import { strict as assert } from "node:assert";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -56,6 +56,10 @@ const SETTINGS_GO = join(ROOT, "internal/appshell/settings_handlers.go");
 const SHARE_SUBPAGES_GO = join(ROOT, "internal/appshell/share_subpages_handlers.go");
 const REVIEWS_GO = join(ROOT, "internal/appshell/reviews_handlers.go");
 const RESEARCH_PICKER_GO = join(ROOT, "internal/appshell/research_picker_handlers.go");
+const APP_RECOVERY_GO = join(ROOT, "internal/appshell/app_recovery.go");
+const INSIGHTS_GO = join(ROOT, "internal/appshell/insights_handlers.go");
+const SHARE_QUEUE_GO = join(ROOT, "internal/appshell/share_queue_handlers.go");
+const DEBUG_GO = join(ROOT, "internal/appshell/debug_handlers.go");
 const EMPTY_STATE_TEMPL = join(ROOT, "internal/templates/components/empty_state.templ");
 const RESPOND_GO = join(ROOT, "internal/appshell/respond.go");
 
@@ -72,6 +76,10 @@ const settingsGoSrc = readFileSync(SETTINGS_GO, "utf8");
 const shareSubpagesGoSrc = readFileSync(SHARE_SUBPAGES_GO, "utf8");
 const reviewsGoSrc = readFileSync(REVIEWS_GO, "utf8");
 const researchPickerGoSrc = readFileSync(RESEARCH_PICKER_GO, "utf8");
+const appRecoveryGoSrc = readFileSync(APP_RECOVERY_GO, "utf8");
+const insightsGoSrc = readFileSync(INSIGHTS_GO, "utf8");
+const shareQueueGoSrc = readFileSync(SHARE_QUEUE_GO, "utf8");
+const debugGoSrc = readFileSync(DEBUG_GO, "utf8");
 const emptyStateTemplSrc = readFileSync(EMPTY_STATE_TEMPL, "utf8");
 const respondGoSrc = readFileSync(RESPOND_GO, "utf8");
 
@@ -575,6 +583,93 @@ assertAllWrapped(settingsSites, settingsGoSrc, "settings_handlers.go");
 assertAllWrapped(shareSubpagesSites, shareSubpagesGoSrc, "share_subpages_handlers.go");
 assertAllWrapped(reviewsSites, reviewsGoSrc, "reviews_handlers.go");
 assertAllWrapped(researchPickerSites, researchPickerGoSrc, "research_picker_handlers.go");
+
+// ---------------------------------------------------------------------------
+// 3j. Slice 8 — final cleanup. Render sites in app_recovery +
+//     insights + share_queue + debug handler families are wrapped.
+// ---------------------------------------------------------------------------
+
+// UpdateRecoveryPage appears 3x in app_recovery.go (GET + POST error + POST success).
+test("app_recovery.go UpdateRecoveryPage wrapped (3 sites)", () => {
+  const hits = [];
+  let idx = 0;
+  while ((idx = appRecoveryGoSrc.indexOf("UpdateRecoveryPage(", idx)) >= 0) {
+    // UpdateRecoveryPage takes (*a.pendingRecovery, message, successFlag) before
+    // .Render(r.Context(), w) — the full call string is ~95 chars, so widen
+    // the window to 120 to be safe.
+    if (appRecoveryGoSrc.slice(idx, idx + 120).includes(".Render(r.Context(), w)")) {
+      hits.push(idx);
+    }
+    idx++;
+  }
+  assert.strictEqual(hits.length, 3, `expected 3 UpdateRecoveryPage Render sites, found ${hits.length}`);
+  for (const h of hits) {
+    const tail = appRecoveryGoSrc.slice(h, h + 500);
+    assert.match(tail, /respondErrorFragment\(/, `UpdateRecoveryPage at offset ${h} not wrapped`);
+  }
+});
+
+const insightsSites8 = [
+  ["insights_handlers.go InsightsView",         "InsightsView(snapshot, counts).Render(r.Context(), w)"],
+  ["insights_handlers.go InsightsDrilldownView","InsightsDrilldownView(title, description, soldiers, search, page, total, 50, scope, value).Render(r.Context(), w)"],
+];
+
+assertAllWrapped(insightsSites8, insightsGoSrc, "insights_handlers.go");
+
+test("share_queue_handlers.go ShareQueuePage wrapped", () => {
+  const idx = shareQueueGoSrc.indexOf("ShareQueuePage(rows).Render(r.Context(), w)");
+  assert.ok(idx >= 0, "ShareQueuePage Render site not found");
+  assert.match(
+    shareQueueGoSrc.slice(idx, idx + 500),
+    /respondErrorFragment\(/,
+    "ShareQueuePage Render not wrapped with respondErrorFragment"
+  );
+});
+
+test("debug_handlers.go DebugConsole wrapped", () => {
+  const idx = debugGoSrc.indexOf("DebugConsole(entries, rb.Total(), debug.LogPath()).Render(r.Context(), w)");
+  assert.ok(idx >= 0, "DebugConsole Render site not found");
+  assert.match(
+    debugGoSrc.slice(idx, idx + 500),
+    /respondErrorFragment\(/,
+    "DebugConsole Render not wrapped with respondErrorFragment"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 3k. Slice 8 — appshell is free of bare-Render sites. The full sweep
+//     across every handler file is complete.
+// ---------------------------------------------------------------------------
+
+test("internal/appshell/ has no bare-Render sites left", () => {
+  // Walk every .go file in internal/appshell/ and assert each
+  // `.Render(r.Context(), w)` line is inside an if-err block that calls
+  // respondErrorFragment / respondError. This is the meta-assertion that
+  // the full sweep is done — it catches new bare-Render sites that might
+  // appear in future commits before they ship.
+  const dir = join(ROOT, "internal/appshell");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".go") && !f.endsWith("_test.go"));
+  const offenders = [];
+  for (const f of files) {
+    const src = readFileSync(join(dir, f), "utf8");
+    const lines = src.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Match lines that END with `.Render(r.Context(), w)` (bare call).
+      if (/Render\(r\.Context\(\), w\)$/.test(line)) {
+        // Look back 3 lines + 1 line ahead for the if-err wrapping.
+        const start = Math.max(0, i - 3);
+        const block = lines.slice(start, i + 2).join("\n");
+        if (!/respondErrorFragment\(/.test(block) && !/respondError\(/.test(block)) {
+          offenders.push(`${f}:${i + 1} ${line.trim()}`);
+        }
+      }
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`bare-Render sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // 4. EmptyStateError component must be exported and render the right markers.
