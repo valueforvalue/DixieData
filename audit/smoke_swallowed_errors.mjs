@@ -51,6 +51,7 @@ const SOLDIERS_GO = join(ROOT, "internal/appshell/soldiers_handlers.go");
 const RESEARCH_GO = join(ROOT, "internal/appshell/research_handlers.go");
 const UPDATE_GO = join(ROOT, "internal/appshell/app_update.go");
 const CALENDAR_GO = join(ROOT, "internal/appshell/calendar_handlers.go");
+const JOBS_GO = join(ROOT, "internal/appshell/jobs_handlers.go");
 const EMPTY_STATE_TEMPL = join(ROOT, "internal/templates/components/empty_state.templ");
 const RESPOND_GO = join(ROOT, "internal/appshell/respond.go");
 
@@ -62,6 +63,7 @@ const soldiersGoSrc = readFileSync(SOLDIERS_GO, "utf8");
 const researchGoSrc = readFileSync(RESEARCH_GO, "utf8");
 const updateGoSrc = readFileSync(UPDATE_GO, "utf8");
 const calendarGoSrc = readFileSync(CALENDAR_GO, "utf8");
+const jobsGoSrc = readFileSync(JOBS_GO, "utf8");
 const emptyStateTemplSrc = readFileSync(EMPTY_STATE_TEMPL, "utf8");
 const respondGoSrc = readFileSync(RESPOND_GO, "utf8");
 
@@ -413,6 +415,74 @@ test("calendar_handlers.go InitialSetupView wrapped (3 sites)", () => {
     const tail = calendarGoSrc.slice(h, h + 500);
     assert.match(tail, /respondErrorFragment\(/, `InitialSetupView at offset ${h} not wrapped`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 3g. Slice 6 — all 5 Render sites in jobs_handlers.go are wrapped.
+// ---------------------------------------------------------------------------
+
+const jobsSites = [
+  ["jobs_handlers.go JobStatusSlotFragment (slot)",  "JobStatusSlotFragment(job).Render(r.Context(), w)"],
+  ["jobs_handlers.go JobStatusFragment",             "JobStatusFragment(job).Render(r.Context(), w)"],
+  ["jobs_handlers.go JobStatusView",                 "JobStatusView(job).Render(r.Context(), w)"],
+  ["jobs_handlers.go JobReportView",                 "JobReportView(job).Render(r.Context(), w)"],
+  ["jobs_handlers.go JobStatusSlotFragment (active)","JobStatusSlotFragment(*job).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of jobsSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = jobsGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in jobs_handlers.go`);
+    for (const h of hits) {
+      const tail = jobsGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 3h. Slice 6 — all 5 Render sites + 1 http.Error leak in app.go fixed.
+// ---------------------------------------------------------------------------
+
+const appGoSites = [
+  ["app.go ResearchCollectionDetailView", "ResearchCollectionDetailView(*detail).Render(r.Context(), w)"],
+  ["app.go CalendarDayDetail",            "CalendarDayDetail(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)"],
+  ["app.go CalendarDayDetailPage",        "CalendarDayDetailPage(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)"],
+  ["app.go EntryFormWithError",           "EntryFormWithError(soldier, candidates, suggestions, isEdit, errorMessage).Render(r.Context(), w)"],
+  ["app.go EntryForm",                    "EntryForm(soldier, candidates, suggestions, isEdit).Render(r.Context(), w)"],
+];
+
+for (const [label, token] of appGoSites) {
+  test(`${label} wrapped with respondErrorFragment`, () => {
+    const hits = [];
+    let idx = 0;
+    while ((idx = appGoSrc.indexOf(token, idx)) >= 0) {
+      hits.push(idx);
+      idx++;
+    }
+    assert.ok(hits.length > 0, `render token "${token}" not found in app.go`);
+    for (const h of hits) {
+      const tail = appGoSrc.slice(h, h + 500);
+      assert.match(
+        tail,
+        /respondErrorFragment\(/,
+        `${label}: Render token at offset ${h} is not wrapped with respondErrorFragment.`
+      );
+    }
+  });
+}
+
+test("app.go no longer leaks records.ErrCalendarItemNotFound.Error() to http.Error", () => {
+  assert.doesNotMatch(appGoSrc, /http\.Error\(w, records\.ErrCalendarItemNotFound\.Error\(\)/);
 });
 
 // ---------------------------------------------------------------------------

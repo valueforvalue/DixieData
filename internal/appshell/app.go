@@ -695,7 +695,10 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 			respondInternal(w, r, "Could not load the research collection detail.", err)
 			return
 		}
-		presentation.ResearchCollectionDetailView(*detail).Render(r.Context(), w)
+		// Issue #384 / Slice 6: wrap Render.
+		if err := presentation.ResearchCollectionDetailView(*detail).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the research collection detail.", err)
+		}
 		return
 	}
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -1561,8 +1564,10 @@ func (a *App) renderCalendarDayDetail(w http.ResponseWriter, r *http.Request, mo
 	}
 	if editingID > 0 && strings.TrimSpace(itemType) == "" && strings.TrimSpace(title) == "" && strings.TrimSpace(notes) == "" {
 		item, ok := findCalendarItem(detail.Items, editingID)
+		// Issue #384 / Slice 6: replace http.Error leak with respondNotFound
+		// so the raw error text doesn't reach the client.
 		if !ok {
-			http.Error(w, records.ErrCalendarItemNotFound.Error(), http.StatusNotFound)
+			respondNotFound(w, r, "Calendar item not found in the day's list.", records.ErrCalendarItemNotFound)
 			return
 		}
 		itemType = item.ItemType
@@ -1579,9 +1584,15 @@ func (a *App) renderCalendarDayDetail(w http.ResponseWriter, r *http.Request, mo
 	// link, curl) has no header and needs the Layout shell so
 	// app.css + the top-nav + the floating dock load.
 	if r.Header.Get("HX-Request") == "true" {
-		presentation.CalendarDayDetail(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)
+		// Issue #384 / Slice 6: wrap Render.
+		if err := presentation.CalendarDayDetail(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the calendar day detail.", err)
+		}
 	} else {
-		presentation.CalendarDayDetailPage(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w)
+		// Issue #384 / Slice 6: wrap Render.
+		if err := presentation.CalendarDayDetailPage(detail, editingID, itemType, title, notes, errorMessage, statusKind, statusMessage).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the calendar day detail page.", err)
+		}
 	}
 }
 
@@ -1629,10 +1640,16 @@ func (a *App) renderEntryForm(w http.ResponseWriter, r *http.Request, soldier mo
 	}
 	w.WriteHeader(statusCode)
 	if errorMessage != "" {
-		presentation.EntryFormWithError(soldier, candidates, suggestions, isEdit, errorMessage).Render(r.Context(), w)
+		// Issue #384 / Slice 6: wrap Render.
+		if err := presentation.EntryFormWithError(soldier, candidates, suggestions, isEdit, errorMessage).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the entry form with errors.", err)
+		}
 		return
 	}
-	presentation.EntryForm(soldier, candidates, suggestions, isEdit).Render(r.Context(), w)
+	// Issue #384 / Slice 6: wrap Render.
+	if err := presentation.EntryForm(soldier, candidates, suggestions, isEdit).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the entry form.", err)
+	}
 }
 
 func parseOptionalCanonicalDate(value, field string) (string, error) {
