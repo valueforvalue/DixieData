@@ -724,6 +724,47 @@ test("backup_service.go DeferCloseLog sites all pass a component string", () => 
 });
 
 // ---------------------------------------------------------------------------
+// 4b. Slice 10 — defer .Close() sweep extends to soldier_service.go
+//      (22 sites). Same shape as slice 9; the meta-assertion lives
+//      in section 6 (the cross-file sweep that walks every internal/
+//      *.go file for plain defer .Close() patterns).
+// ---------------------------------------------------------------------------
+
+const SOLDIER_SERVICE_GO = join(ROOT, "internal/records/soldier_service.go");
+const soldierServiceSrc = readFileSync(SOLDIER_SERVICE_GO, "utf8");
+
+test("soldier_service.go has zero plain `defer X.Close()` lines", () => {
+  const lines = soldierServiceSrc.split("\n");
+  const offenders = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
+      offenders.push(`${i + 1}: ${lines[i].trim()}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
+
+test("soldier_service.go has 22 debug.DeferCloseLog call sites", () => {
+  const matches = soldierServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
+  assert.strictEqual(matches.length, 22, `expected 22 debug.DeferCloseLog sites, found ${matches.length}`);
+});
+
+test("soldier_service.go DeferCloseLog sites all pass a component string", () => {
+  const re = /debug\.DeferCloseLog\(([^,]+),\s*"([^"]*)"\)/g;
+  const matches = [];
+  let m;
+  while ((m = re.exec(soldierServiceSrc)) !== null) {
+    matches.push({ varName: m[1].trim(), component: m[2] });
+  }
+  assert.strictEqual(matches.length, 22, `expected 22 DeferCloseLog sites with string component`);
+  for (const m of matches) {
+    assert.ok(m.component.length > 0, `DeferCloseLog(${m.varName}, "") has empty component tag`);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 5. EmptyStateError component must be exported and render the right markers.
 // ---------------------------------------------------------------------------
 
