@@ -195,7 +195,7 @@ func (a *App) renderResearchSearchFragment(w http.ResponseWriter, query, next st
 		SearchResults: results,
 		NextAction:    next,
 	}
-	presentation.ResearchPickerSearchResults(view).Render(requestContext(w), w)
+	presentation.ResearchPickerSearchResults(view).Render(requestContext(w), w) //nolint:dixie/baretempl // #438 follow-up: missed by #384 sweep
 }
 
 // requestContext returns a non-nil context derived from the request

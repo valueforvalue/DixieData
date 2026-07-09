@@ -135,7 +135,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 			if _, err := f.WriteString(rawURL + "\n"); err != nil {
 				return err
 			}

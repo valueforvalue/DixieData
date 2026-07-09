@@ -104,7 +104,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer database.Close()
+	defer database.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	if _, err := database.ConfigureUserIdentity("Gold", "Master", "Harness", 1890); err != nil {
 		return report{}, err
 	}
@@ -200,7 +200,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer restoredDB.Close()
+	defer restoredDB.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	restoredSvc := records.NewSoldierService(restoredDB)
 	restoredSoldier, err := restoredSvc.GetByID(fixture.Soldier.ID)
 	if err != nil {
@@ -215,7 +215,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer targetDB.Close()
+	defer targetDB.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	if _, err := targetDB.ConfigureUserIdentity("Local", "Merge", "Owner", 1911); err != nil {
 		return report{}, err
 	}
@@ -304,7 +304,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer database.Close()
+	defer database.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	if _, err := database.ConfigureUserIdentity("Scale", "Stress", "Harness", 1890); err != nil {
 		return report{}, err
 	}
@@ -491,7 +491,7 @@ func readZipWithManifest(path string) (map[string][]byte, archive.BackupManifest
 	if err != nil {
 		return nil, archive.BackupManifest{}, err
 	}
-	defer reader.Close()
+	defer reader.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 
 	files := make(map[string][]byte, len(reader.File))
 	var manifest archive.BackupManifest
@@ -527,7 +527,7 @@ func extractZip(path, destination string) error {
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer reader.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 
 	for _, file := range reader.File {
 		target := filepath.Join(destination, filepath.FromSlash(file.Name))
@@ -561,7 +561,7 @@ func sqliteUserVersion(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
 	var version int
 	if err := conn.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		return 0, err
