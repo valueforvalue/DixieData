@@ -437,7 +437,11 @@ lint-swallowed-errors: ## Run all swallowed-error lints (issue #438, ADR 0010)
 
 lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-swallowed-errors
+	make lint-migration-columns
 	make lint-htmx-guard
+
+lint-migration-columns: ## Grep production Go for SQL referencing renamed columns (issue #435)
+	@node audit/smoke_migration_columns.mjs
 
 # Kill any leftover dixiedata-* processes from a previous probe run.
 # Without this, the next `make debug` fails with `unlinkat ...

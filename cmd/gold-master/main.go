@@ -450,11 +450,11 @@ func seedFixture(dataDir string, database *db.DB, soldierSvc *records.SoldierSer
 	if err := database.SaveScratchpad(soldier.DisplayID, "Gold master scratch pad note for FTS coverage."); err != nil {
 		return sampleFixture{}, err
 	}
-	if _, err := database.Conn().Exec(`INSERT INTO duplicate_audit_findings (pair_key, left_soldier_id, right_soldier_id, finding_type, reason, highlight_fields, status, last_detected_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+	if _, err := database.Conn().Exec(`INSERT INTO duplicate_audit_findings (pair_key, left_record_id, right_record_id, finding_type, reason, highlight_fields, status, last_detected_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 		fmt.Sprintf("%d:%d", soldier.ID, spouse.ID), soldier.ID, spouse.ID, "reviewed", "Linked spouse pair reviewed during portability audit.", "spouse_soldier_id,entry_type", "resolved"); err != nil {
 		return sampleFixture{}, err
 	}
-	if _, err := database.Conn().Exec(`INSERT INTO research_tasks (soldier_id, title, notes, evidence_type, status, created_at, updated_at, resolved_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+	if _, err := database.Conn().Exec(`INSERT INTO research_tasks (person_record_id, title, notes, evidence_type, status, created_at, updated_at, resolved_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 		soldier.ID, "Confirm widow pension packet", "Audit fixture task", "pension", "resolved"); err != nil {
 		return sampleFixture{}, err
 	}
