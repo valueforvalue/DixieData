@@ -51,6 +51,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/update"
@@ -418,7 +419,7 @@ func runAdminMigrateStatus(ctx context.Context, opts AdminOptions) (int, error) 
 	if err != nil {
 		return 2, fmt.Errorf("open db: %w", err)
 	}
-	defer database.Close()
+	defer debug.DeferCloseLog(database, "runAdminMigrateStatus.db")
 
 	current := db.CurrentSchemaVersion
 	applied := 0
@@ -545,7 +546,7 @@ func runAdminMigrateDown(ctx context.Context, opts AdminOptions) (int, error) {
 	if err != nil {
 		return 2, fmt.Errorf("open db: %w", err)
 	}
-	defer database.Close()
+	defer debug.DeferCloseLog(database, "runAdminMigrateDown.db")
 
 	current, err := queryUserVersion(database.Conn())
 	if err != nil {
@@ -1043,7 +1044,7 @@ func tailFile(path string, n int) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "tailFile.f")
 	// Read all lines (log files are small enough for this).
 	var all []string
 	scanner := bufio.NewScanner(f)

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/jobs"
 )
 
@@ -82,12 +83,12 @@ func copyFileContents(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer debug.DeferCloseLog(in, "copyFileContents.in")
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer debug.DeferCloseLog(out, "copyFileContents.out")
 	if _, err := io.Copy(out, in); err != nil {
 		return err
 	}
@@ -162,7 +163,7 @@ func rehydrateJobsFromLog(path string) (*jobs.Registry, error) {
 		}
 		return nil, err
 	}
-	defer f.Close()
+	defer debug.DeferCloseLog(f, "rehydrateJobsFromLog.f")
 	return jobs.NewFromLog(f)
 }
 
