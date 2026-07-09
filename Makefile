@@ -17,7 +17,7 @@ LOGDIR := build/log
         stress goldmaster tune tune-smoke tune-snapshots tune-bin \
         web seed gold render-round render-round-ONE update-snapshots-ONE \
         render-svg tpl css audit clean log-clean bump release-github \
-        probe-clean freshness release-pipeline cli-coverage
+        probe-clean freshness release-pipeline cli-coverage changelog-archive
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -470,6 +470,14 @@ log-clean: ## Truncate build/log/*.log
 	@mkdir -p $(LOGDIR)
 	@rm -f $(LOGDIR)/*.log
 	@echo "Cleared $(LOGDIR)/*.log"
+
+# Archive CHANGELOG.md entries older than the current year into
+# archive/CHANGELOG-{year}.md (issue #442). The active file keeps
+# [Unreleased] + current-year entries; legacy/undated entries
+# (pre-2026 header format) go to archive/CHANGELOG-legacy.md.
+# Idempotent — re-running on an already-archived file is a no-op.
+changelog-archive: ## Move entries older than current year to archive/CHANGELOG-{year}.md
+	$(PWSH) -NoLogo -NoProfile -File scripts/archive-changelog.ps1
 
 # --- Release pipeline (interactive; output NOT logged) ---
 
