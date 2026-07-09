@@ -21,14 +21,23 @@ func (a *App) handleRecovery(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		presentation.UpdateRecoveryPage(*a.pendingRecovery, a.recoveryFailure, false).Render(r.Context(), w)
+		// Issue #384 / Slice 8: wrap Render.
+		if err := presentation.UpdateRecoveryPage(*a.pendingRecovery, a.recoveryFailure, false).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the recovery page.", err)
+		}
 	case http.MethodPost:
 		if err := a.runRecoveryRollback(); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			presentation.UpdateRecoveryPage(*a.pendingRecovery, err.Error(), false).Render(r.Context(), w)
+			// Issue #384 / Slice 8: wrap Render.
+			if err := presentation.UpdateRecoveryPage(*a.pendingRecovery, err.Error(), false).Render(r.Context(), w); err != nil {
+				respondErrorFragment(w, r, KindInternal, "Could not render the recovery error page.", err)
+			}
 			return
 		}
-		presentation.UpdateRecoveryPage(*a.pendingRecovery, "", true).Render(r.Context(), w)
+		// Issue #384 / Slice 8: wrap Render.
+		if err := presentation.UpdateRecoveryPage(*a.pendingRecovery, "", true).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the recovery success page.", err)
+		}
 		go func() {
 			time.Sleep(750 * time.Millisecond)
 			if a.ctx != nil {

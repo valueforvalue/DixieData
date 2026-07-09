@@ -100,5 +100,8 @@ func (a *App) handleShareQueuePage(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	presentation.ShareQueuePage(rows).Render(r.Context(), w)
+	// Issue #384 / Slice 8: wrap Render.
+	if err := presentation.ShareQueuePage(rows).Render(r.Context(), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the share queue page.", err)
+	}
 }
