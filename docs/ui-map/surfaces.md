@@ -71,6 +71,17 @@ table in sync when adding or renaming surfaces.
 | `page.review-queue.compare` | page | Review compare page |
 | `panel.review-queue.compare` | panel | Side-by-side compare panel |
 | `page.research-collections.hub` | page | Research collections hub |
+| `panel.event.detail.sources` | panel | Source Records list on the event detail page; wraps the `<div id=data-event-sources-list>` swap target rendered by `EventSourcesListFragment` (issue #342) |
+| `panel.event.detail.tags` | panel | Tags chips on the event detail page; wraps the `<div id=data-event-tags-list>` swap target rendered by `EventTagsListFragment` (issue #342) |
+| `panel.event.detail.linked-persons` | panel | Linked Person Records list on the event detail page; the `<ul>` of person records attached to this event (issue #342) |
+| `panel.event.form.sources` | panel | Source Records editor section on the event form (`/events/new` + `/events/{id}/edit`); wraps the `RecordInputRow` list rendered inside the main `<form>` (issue #342) |
+| `panel.event.form.linked-persons` | panel | Linked Persons section on the event edit page (`/events/{id}/edit`); rendered OUTSIDE the main `<form>` to avoid HTML-invalid nested forms; Add Link + Unlink actions target this panel (issue #342, #361) |
+| `panel.event.form.tags` | panel | Tags section on the event edit page (`/events/{id}/edit`); rendered OUTSIDE the main `<form>` for the same nested-form reason; Add Tag form posts to `/events/{id}/tags` and swaps into `#data-event-tags-list` (issue #342, #361) |
+| `panel.floating.dock` | panel | Persistent bottom dock rendered once in `layout.templ` (issue #283 / #289 / #313); hosts Scratch Pad + Feedback + Menu buttons. z-40 |
+| `panel.floating.nav-panel` | panel | Slide-out nav panel toggled by the Menu button via `data-floating-nav-toggle` (issue #283); duplicates top-nav links + renders the layout-mode picker; positioned bottom-right, z-50 |
+| `panel.floating.scratchpad-status` | panel | Live region in the floating dock (`data-floating-scratchpad-status`, `aria-live=polite`) for scratchpad open / save status announcements (issue #283) |
+| `panel.share-queue.pill` | panel | Persistent Share Queue status pill (issue #182); fixed bottom-center, hidden when the queue is empty; wraps `data-share-queue-pill` + `data-share-queue-pill-label` + `data-share-queue-pill-count` |
+| `layout.tags.link` | nav | Top-nav Tags link (`/tags`); literal href in `layout.templ` between the Share foldout and Settings. Surface ID is registered so a future Tags foldout (mirroring Share / Research) has a stable anchor (issue #256, #342) |
 | `panel.research-collections.hub` | panel | Named collections list and create-collection section |
 | `page.research.picker` | page | Research & Review Person picker landing (issue #378 slice 1 + slice 2 + slice 3); search + recents + Continue shortcut. With `?partial=1` returns the `#panel.research.picker.results` fragment only (slice 2). |
 | `layout.research.menu` | nav | Top-nav Research & Review foldout panel (issue #378 slice 2). Lists 5 soldier-scoped sub-page links (camaraderie / timeline / research-log / conflict-ledger / research-pack) routed through the picker when no `dd_person_ctx` cookie + Research Collections (global) + Change Person… . |
@@ -86,6 +97,10 @@ table in sync when adding or renaming surfaces.
 | `panel.research-log` | panel | Log entries and task creation form |
 | `page.research-pack` | page | Research pack page |
 | `panel.research-pack` | panel | Pack contents |
+| `page.event.list` | page | Event Record browse page on `/events` (issue #396, #342); wraps the main content area (header + list of `EventCard`). Mirrors `page.soldiers.list` |
+| `page.event.detail` | page | Event Record detail page on `/events/{id}` (issue #396, #342); wraps the main content area (back button + summary card + linked persons + tags + images + research log). Mirrors `page.soldier.detail` |
+| `page.event.new` | page | Event Record create page on `/events/new` (issue #396, #342); wraps the `EventFormFragment` body when `isEdit=false`. Mutually exclusive with `page.event.edit` |
+| `page.event.edit` | page | Event Record edit page on `/events/{id}/edit` (issue #396, #342); wraps the `EventFormFragment` body when `isEdit=true`. Same templ as `page.event.new` |
 | `page.service-timeline` | page | Service timeline page |
 | `panel.soldier.timeline` | panel | Evidence-backed chronology (soldier detail HTMX swap) |
 | `page.unit-camaraderie` | page | Unit camaraderie page |

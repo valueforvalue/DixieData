@@ -11,6 +11,7 @@ is a `templ` component callable from any screen.
 | `Field` | `components/field.templ` | input/select/textarea wrappers | Form controls |
 | `Pill` | `components/pill.templ` | default, link | Tags, nav links, status |
 | `Toast` | `components/toast.templ` | success, error, info | Transient notifications |
+| `Foldout` | `components/foldout.templ` | — | Top-nav foldout menu primitive (issue #264). Trigger + panel pair wired by `data-foldout-trigger` / `data-foldout-panel`; `installFoldout()` in `frontend/app.js` binds them. Used for the Share foldout + Research & Review foldout |
 
 ## Conventions
 

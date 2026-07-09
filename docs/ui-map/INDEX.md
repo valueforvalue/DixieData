@@ -13,12 +13,21 @@ below but worth knowing:
 
 - `header.top-shell` — brand + nav pill links (top)
 - `footer` — build identity, optional debug button
-- `[O] overlay.floating.menu` — toggled from floating dock
+- `[P] panel.floating.dock` — persistent bottom dock (issue #283)
+- `[P] panel.floating.scratchpad-status` — live region in the dock
+- `[P] panel.share-queue.pill` — persistent Share Queue status pill
+  (hidden when queue empty, issue #182)
+- `[O] overlay.floating.menu` — toggled from floating dock Menu btn
 - `[O] overlay.feedback.modal` — toggled from floating dock
 - `[O] overlay.jobs.progress` — fixed-position, polled 3s
 - `[O] overlay.image.viewer` — opened from image cards
 - `[O] overlay.print-config.modal` — opened from export popouts
 - `[O] overlay.google-calendar-prefs.modal` — Google settings
+- `[N] layout.share.menu` + `layout.share.menu.trigger` — top-nav
+  Share foldout (issue #264)
+- `[N] layout.research.menu` + `layout.research.menu.trigger` —
+  top-nav Research & Review foldout (issue #378 slice 2)
+- `[N] layout.tags.link` — top-nav Tags link (issue #256, #342)
 - `.toast-region` — top-right transient notifications
 
 ## Screens
@@ -51,8 +60,15 @@ below but worth knowing:
 | 21 | Settings | `panel.settings.layout`, `panel.settings.initialize`, `panel.settings.updates`, `panel.settings.debug` | — | — | [wireframes/21-settings.md](wireframes/21-settings.md) |
 | 22 | Initial Setup | — | — | — | [wireframes/22-initial-setup.md](wireframes/22-initial-setup.md) |
 | 23 | Recovery | — | — | — | [wireframes/23-recovery.md](wireframes/23-recovery.md) |
+| 24 | Events List | — | — | — | [wireframes/24-events-list.md](wireframes/24-events-list.md) |
+| 25 | Event Detail | `panel.event.detail.linked-persons`, `panel.event.detail.sources`, `panel.event.detail.tags`, `panel.event.detail.images` | — | `overlay.print-config.modal` (via EventPDFExport popout) | [wireframes/25-event-detail.md](wireframes/25-event-detail.md) |
+| 26 | Event New | — | — | — | [wireframes/26-event-new.md](wireframes/26-event-new.md) |
+| 27 | Event Edit | `panel.event.form.sources`, `panel.event.form.linked-persons`, `panel.event.form.tags` | — | — | [wireframes/27-event-edit.md](wireframes/27-event-edit.md) |
+| 28 | Event PDF | — | — | `overlay.print-config.modal` (via popout) | [wireframes/28-event-pdf.md](wireframes/28-event-pdf.md) |
 
-> All 23 wireframes drafted. Pilot validated — same format throughout.
+> All 28 wireframes drafted (v60 Event Records added in #342, top-nav
+> Share foldout + floating-dock Menu + Tags link folded into the
+> Global section). Pilot validated — same format throughout.
 
 ## Cross-references
 

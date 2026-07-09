@@ -123,6 +123,38 @@ Regression test `TestHandleImportBackupDialogGuard` added to
 ## Screen inventory: candidate deletions
 
 - `LayoutV2` already removed (per `layout.templ` doc comment).
+- Event Records (issue #320 + #342): 5 new wireframes added
+  (24-events-list, 25-event-detail, 26-event-new, 27-event-edit,
+  28-event-pdf). The Event surface IDs (`page.event.list`,
+  `page.event.detail`, `page.event.new`, `page.event.edit`,
+  `panel.event.detail.{sources,tags,linked-persons,images}`,
+  `panel.event.form.{sources,linked-persons,tags}`) are registered
+  in `internal/uiids/uiids.go`. The `/events/*` route family is
+  documented in [routes.md](routes.md).
+- Floating-dock (issue #283 / #289 / #313): the dock is a global
+  panel rendered once in `layout.templ`. Surface IDs
+  (`panel.floating.dock`, `panel.floating.nav-panel`,
+  `panel.floating.scratchpad-status`) are registered. The dock is
+  not a routable screen, so it lives in the Global section of
+  [INDEX.md](INDEX.md) rather than as a numbered wireframe row.
+- Top-nav Share foldout (issue #264): the foldout is a global
+  navigation primitive (trigger + panel pair), not a routable
+  screen. Surface IDs (`layout.share.menu`, `layout.share.menu.trigger`)
+  are registered. The 4 destinations (Export / Import / Share Queue
+  / Sync) have their own pages — see 08a / 08b / 08c wireframes +
+  `/share/queue` documented in [routes.md](routes.md).
+- Top-nav Research & Review foldout (issue #378 slice 2): same
+  primitive, same documentation pattern. The picker page is
+  documented inline in [routes.md](routes.md) (no separate
+  wireframe — it is a single-purpose page with no per-screen
+  regions worth wireframing beyond what the picker fragment shows).
+- Top-nav Tags link (issue #256): a literal `/tags` link. The
+  destination page has a wireframe-equivalent in the Tags section
+  of [routes.md](routes.md); a numbered wireframe row is deferred
+  until the tags page grows beyond its current single-table shape.
+- Share Queue pill (issue #182): persistent bottom-center pill
+  (`panel.share-queue.pill`). Documented in the Global section of
+  [INDEX.md](INDEX.md) and registered in `internal/uiids/uiids.go`.
 - Any `.templ` files in `internal/templates/` not yet covered by a
   wireframe will be enumerated after pilot approval.
 
