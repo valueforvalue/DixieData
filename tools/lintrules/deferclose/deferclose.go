@@ -64,6 +64,16 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
+		// Test files are exempt: tests assert on outputs, not
+		// on close errors. The #384 sweep did not convert
+		// defer .Close() sites in _test.go files; matching
+		// those would generate noise without changing
+		// production behavior. Production code goes through
+		// debug.DeferCloseLog.
+		if isTestFile(pass, call.Pos()) {
+			return
+		}
+
 		// Type-check: only flag Close() that returns error. This
 		// avoids false positives on Close() that returns nothing
 		// (rare but possible) or Close() returning a non-error
@@ -79,6 +89,25 @@ func run(pass *analysis.Pass) (any, error) {
 	})
 
 	return nil, nil
+}
+
+func isTestFile(pass *analysis.Pass, pos token.Pos) bool {
+	if pass.Fset == nil {
+		return false
+	}
+	tokFile := pass.Fset.File(pos)
+	if tokFile == nil {
+		return false
+	}
+	name := tokFile.Name()
+	// Walk to the base name.
+	for i := len(name) - 1; i >= 0; i-- {
+		if name[i] == '/' || name[i] == '\\' {
+			name = name[i+1:]
+			break
+		}
+	}
+	return strings.HasSuffix(name, "_test.go")
 }
 
 // closeReturnsError reports whether the selector expression's
