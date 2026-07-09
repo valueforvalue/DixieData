@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 // ErrTagNotFound is returned when a tag id has no row.
@@ -141,7 +143,7 @@ func (s *TagService) AttachMany(ctx context.Context, tagID int64, personIDs []in
 	if err != nil {
 		return 0, err
 	}
-	defer stmt.Close()
+	defer debug.DeferCloseLog(stmt, "AttachMany.stmt")
 	var inserted int
 	for _, pid := range personIDs {
 		res, err := stmt.ExecContext(ctx, pid, tagID)
@@ -307,7 +309,7 @@ func (s *TagService) List(ctx context.Context) ([]Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "List.rows")
 	var out []Tag
 	for rows.Next() {
 		t, err := scanTagRow(rows)
@@ -352,7 +354,7 @@ func (s *TagService) Autocomplete(ctx context.Context, query string, limit int) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "Autocomplete.rows")
 	var out []Tag
 	for rows.Next() {
 		t, err := scanTagRow(rows)
@@ -378,7 +380,7 @@ func (s *TagService) TagsForSoldier(ctx context.Context, soldierID int64) ([]Tag
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "TagsForSoldier.rows")
 	var out []Tag
 	for rows.Next() {
 		t, err := scanTagRow(rows)
@@ -422,7 +424,7 @@ func (s *TagService) TagsForSoldiers(ctx context.Context, personIDs []int64) (ma
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "TagsForSoldiers.rows")
 	for rows.Next() {
 		var t Tag
 		var personID int64
@@ -444,7 +446,7 @@ func (s *TagService) Members(ctx context.Context, tagID int64) ([]int64, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "Members.rows")
 	var out []int64
 	for rows.Next() {
 		var pid int64
@@ -498,7 +500,7 @@ func (s *TagService) ByIDsPreservesOrder(ctx context.Context, ids []int64) ([]Ta
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ByIDsPreservesOrder.rows")
 	byID := make(map[int64]Tag, len(ids))
 	for rows.Next() {
 		t, err := scanTagRow(rows)
@@ -574,7 +576,7 @@ func (s *TagService) MembersWithDetails(ctx context.Context, tagID int64, limit 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "MembersWithDetails.rows")
 	var out []TagMemberView
 	for rows.Next() {
 		var m TagMemberView
