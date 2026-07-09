@@ -128,8 +128,10 @@ var forbiddenByPackage = map[string][]string{
 // allowlist in the same commit that adds the import.
 var allowedInternalImportsPerPackage = map[string]map[string]bool{
 	"pkg/render": {
-		"github.com/valueforvalue/DixieData/internal/models":  true,
-		"github.com/valueforvalue/DixieData/internal/records": true,
+		"github.com/valueforvalue/DixieData/internal/buildinfo": true,
+		"github.com/valueforvalue/DixieData/internal/debug":     true,
+		"github.com/valueforvalue/DixieData/internal/models":    true,
+		"github.com/valueforvalue/DixieData/internal/records":   true,
 	},
 	"pkg/exportbridge": {
 		"github.com/valueforvalue/DixieData/internal/archive": true,
