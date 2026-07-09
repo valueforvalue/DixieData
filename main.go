@@ -11,7 +11,6 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appshell"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -193,7 +192,7 @@ func main() {
 	app := appshell.NewApp().WithFrontendAssets(frontendAssets)
 
 	err = wails.Run(&options.App{
-		Title:  fmt.Sprintf("%s · %s · %s", buildinfo.ReleaseLabel(), db.GetAppVersion(), buildinfo.GitBranch),
+		Title:  fmt.Sprintf("%s · %s · %s", buildinfo.ReleaseLabel(), buildinfo.AppVersion, buildinfo.GitBranch),
 		Width:  1280,
 		Height: 800,
 		Bind: []interface{}{
