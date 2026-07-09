@@ -456,6 +456,17 @@ lint-dialog-guard: ## Native-dialog-guard sweep (issue #445); docs/agents/dialog
 lint-dialog-guard-strict: ## Native-dialog-guard sweep as CI failure (--strict)
 	@node audit/smoke_dialog_guard.mjs --strict
 
+# Issue #446 — extend the dispatcher-contract coverage. Live-server
+# probe that sends POST + X-HTTP-Method-Override for every PATCH/
+# PUT/DELETE route in routes.go and asserts the body preserves
+# through the override chain. Complements the static-source
+# dispatcher_patch_method.test.mjs (which pins the JS dispatcher
+# code) with a runtime assertion that the server actually sees the
+# body. Requires a running dixiedata-web server at $BASE_URL
+# (default http://127.0.0.1:8765) with seed data.
+probe-dispatcher-contract: ## Runtime dispatcher-contract probe (issue #446)
+	@node audit/probe-dispatcher-contract.mjs
+
 # Kill any leftover dixiedata-* processes from a previous probe run.
 # Without this, the next `make debug` fails with `unlinkat ...
 # dixiedata-web.exe: The process cannot access the file because it
