@@ -214,7 +214,7 @@ func buildFieldAudit(liveDBPath, backupDBPath string, backupEntries map[string][
 	}
 	result["duplicate_audit_findings"] = check("duplicate_audit_findings", duplicateAuditCount > 0, "Duplicate audit findings survive inside the embedded backup snapshot.")
 
-	imageMetadataPresent, err := rowPresent(backupDBPath, `SELECT 1 FROM images WHERE soldier_id = ? AND is_primary = 1 AND (file_path LIKE 'images/%' OR file_path LIKE 'images\%')`, fixture.Soldier.ID)
+	imageMetadataPresent, err := rowPresent(backupDBPath, `SELECT 1 FROM images WHERE person_record_id = ? AND is_primary = 1 AND (file_path LIKE 'images/%' OR file_path LIKE 'images\%')`, fixture.Soldier.ID)
 	if err != nil {
 		return nil, err
 	}
