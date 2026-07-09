@@ -30,7 +30,7 @@
   let payloadBytes = 0;
 
   function nowIso() {
-    try { return new Date().toISOString(); } catch (_) { return ''; }
+    try { return new Date().toISOString(); } catch (_) { /* intentional: never-throw logger — see error-handling.md */ return ''; }
   }
 
   function push(level, args) {
@@ -45,9 +45,9 @@
       msg = args.map(function (a) {
         if (a instanceof Error) return a.message;
         if (typeof a === 'string') return a;
-        try { return JSON.stringify(a); } catch (_) { return String(a); }
+        try { return JSON.stringify(a); } catch (_) { /* intentional: never-throw logger — see error-handling.md */ return String(a); }
       }).join(' ');
-    } catch (_) { msg = '[unserializable]'; }
+    } catch (_) { /* intentional: never-throw logger — see error-handling.md */ msg = '[unserializable]'; }
     if (args[0] && args[0] instanceof Error) {
       stack = args[0].stack || '';
     }
@@ -79,8 +79,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: payload,
         keepalive: true,
-      }).catch(function () { /* swallow; debug only */ });
-    } catch (_) { /* ignore */ }
+      }).catch(function () { /* intentional: never-throw logger — see error-handling.md */ });
+    } catch (_) { /* intentional: never-throw logger — see error-handling.md */ }
   }
 
   // sendBeacon on beforeunload only. Bound by MAX_BEACON_BYTES (entries
@@ -107,9 +107,9 @@
             headers: { 'Content-Type': 'application/json' },
             body: payload,
             keepalive: true,
-          }).catch(function () { /* swallow */ });
+          }).catch(function () { /* intentional: never-throw logger — see error-handling.md */ });
         }
-      } catch (_) { /* ignore */ }
+      } catch (_) { /* intentional: never-throw logger — see error-handling.md */ }
     }
     payloadBytes = 0;
   }
@@ -118,7 +118,7 @@
     const original = console[method] ? console[method].bind(console) : function () {};
     console[method] = function () {
       try { push(level, Array.prototype.slice.call(arguments)); }
-      catch (_) { /* never let logging break app code */ }
+      catch (_) { /* intentional: never-throw logger — see error-handling.md */ }
       return original.apply(console, arguments);
     };
   }
@@ -148,10 +148,22 @@
     flush: flush,
     push: push,
     openFolder: function () {
-      fetch('/debug/open-folder', { method: 'GET' }).catch(function () {});
+      fetch('/debug/open-folder', { method: 'GET' }).catch(function (err) {
+        // Toolbox action — surface to the operator via console.
+        // Matches error-handling.md "Toolbox" pattern.
+        if (typeof console !== 'undefined') {
+          console.warn('[dixie:debug] open-folder failed', err);
+        }
+      });
     },
     clear: function () {
-      fetch('/debug/console/clear', { method: 'POST' }).catch(function () {});
+      fetch('/debug/console/clear', { method: 'POST' }).catch(function (err) {
+        // Toolbox action — surface to the operator via console.
+        // Matches error-handling.md "Toolbox" pattern.
+        if (typeof console !== 'undefined') {
+          console.warn('[dixie:debug] console/clear failed', err);
+        }
+      });
     },
     setEnabled: function (v) { enabled = !!v; },
   };
