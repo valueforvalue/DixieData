@@ -957,6 +957,37 @@ test("article_service.go has 4 debug.DeferCloseLog call sites", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 4k. Slice 18 — batched defer-close sweep across 7 small files
+//     (21 sites total). The meta-assertion below reports the global
+//     count. The final slice (20) tightens the meta to === 0.
+// ---------------------------------------------------------------------------
+
+const slice18Files = [
+  ["integrations/google_service.go", 3, join(ROOT, "internal/integrations/google_service.go")],
+  ["db/schema.go",                    3, join(ROOT, "internal/db/schema.go")],
+  ["db/csaid.go",                     3, join(ROOT, "internal/db/csaid.go")],
+  ["archive/static_archive.go",       3, join(ROOT, "internal/archive/static_archive.go")],
+  ["archive/image_service.go",        3, join(ROOT, "internal/archive/image_service.go")],
+  ["appshell/jobs_persistence.go",    3, join(ROOT, "internal/appshell/jobs_persistence.go")],
+  ["appshell/cli_admin.go",           3, join(ROOT, "internal/appshell/cli_admin.go")],
+];
+
+for (const [label, expected, path] of slice18Files) {
+  test(`${label} has zero plain defer .Close() + ${expected} DeferCloseLog sites`, () => {
+    const src = readFileSync(path, "utf8");
+    const offenders = [];
+    for (const line of src.split("\n")) {
+      if (/^\s*defer\s+\w+\.Close\(\)/.test(line)) {
+        offenders.push(line.trim());
+      }
+    }
+    assert.strictEqual(offenders.length, 0, `plain defer .Close() remaining in ${label}: ${offenders.join("; ")}`);
+    const matches = src.match(/debug\.DeferCloseLog\(/g) || [];
+    assert.strictEqual(matches.length, expected, `${label}: expected ${expected} DeferCloseLog sites, found ${matches.length}`);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // 4c. Slice 11+ — meta-assertion that walks every internal/*.go file
 //      and fails if any plain `defer X.Close()` line appears. This is
 //      the regression net for the defer-close sweep across the whole

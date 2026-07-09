@@ -21,6 +21,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/peopleinfo"
 	"github.com/valueforvalue/DixieData/internal/pensionstate"
@@ -1392,7 +1393,7 @@ func (e *ExportService) staticArchiveEvents() ([]StaticArchiveRecord, error) {
 		if err != nil {
 			return nil, fmt.Errorf("query event_person_links: %w", err)
 		}
-		defer rows.Close()
+		defer debug.DeferCloseLog(rows, "staticArchiveEvents.rows")
 		for rows.Next() {
 			var eventID int64
 			var displayID string
@@ -1686,7 +1687,7 @@ func copyFile(sourcePath, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer debug.DeferCloseLog(source, "copyFile.source")
 	target, err := os.Create(destPath)
 	if err != nil {
 		return err
@@ -1721,7 +1722,7 @@ func zipDirectory(outputPath, root string) error {
 			if err != nil {
 				return err
 			}
-			defer source.Close()
+			defer debug.DeferCloseLog(source, "zipDirectory.source")
 			_, err = io.Copy(entry, source)
 			return err
 		})

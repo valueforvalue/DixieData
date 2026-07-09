@@ -3,6 +3,8 @@ package db
 import (
 	"fmt"
 	"strings"
+
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 // NextDXDID returns the next sequential DixieData ID (DXDID) for a newly-imported archive row. Monotonically increasing across the lifetime of the Local Archive.
@@ -15,7 +17,7 @@ func (d *DB) NextDXDID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "NextDXDID.rows")
 
 	maxID := 0
 	for rows.Next() {
@@ -67,7 +69,7 @@ func (d *DB) NextEventID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "NextEventID.rows")
 
 	maxSeq := 0
 	for rows.Next() {
@@ -110,7 +112,7 @@ func (d *DB) NextArticleID() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "NextArticleID.rows")
 
 	maxSeq := 0
 	for rows.Next() {

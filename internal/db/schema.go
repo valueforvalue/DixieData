@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
 )
 
@@ -625,7 +626,7 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "columnExists.rows")
 	for rows.Next() {
 		var (
 			cid        int
@@ -861,7 +862,7 @@ func migrateSanitizedDisplayIDs(tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "migrateSanitizedDisplayIDs.rows")
 
 	var (
 		records []displayRecord
@@ -935,7 +936,7 @@ func migrateCanonicalDateData(tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "migrateCanonicalDateData.rows")
 
 	type updateRow struct {
 		id        int64

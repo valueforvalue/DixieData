@@ -17,6 +17,7 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -260,7 +261,7 @@ func (g *GoogleService) Connect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer debug.DeferCloseLog(listener, "startOAuthFlow.listener")
 
 	state, err := randomOAuthState()
 	if err != nil {
@@ -553,7 +554,7 @@ func (g *GoogleService) UploadBackup(ctx context.Context, backupPath string) (Go
 	if err != nil {
 		return GoogleDriveUploadResult{}, err
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "UploadBackupToDrive.file")
 
 	driveFile := &drive.File{Name: filepath.Base(backupPath)}
 	if folderID, err := resolveGoogleDriveFolder(ctx, driveSvc, settings.DriveFolderID); err != nil {
@@ -585,7 +586,7 @@ func (g *GoogleService) UploadCSVAsSheet(ctx context.Context, csvPath, title str
 	if err != nil {
 		return GoogleDriveUploadResult{}, err
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "UploadCSVViaDrive.file")
 
 	uploadName := googleSheetUploadName(title, csvPath)
 	driveFile := &drive.File{

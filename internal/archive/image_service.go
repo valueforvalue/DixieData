@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/db"
 )
 
@@ -48,7 +49,7 @@ func (s *ImageService) EnsureShardedStorage(dataDir string) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "EnsureShardedStorage.rows")
 
 	type imageRow struct {
 		id        int64
@@ -109,7 +110,7 @@ func (s *ImageService) DiscoverOrphans(dataDir string) ([]OrphanedImage, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "DiscoverOrphans.rows")
 
 	referenced := map[string]struct{}{}
 	for rows.Next() {
@@ -250,7 +251,7 @@ func moveFile(source, target string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer debug.DeferCloseLog(in, "moveFile.in")
 	out, err := os.Create(target)
 	if err != nil {
 		return err
