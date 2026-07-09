@@ -912,6 +912,51 @@ test("appshell/app.go has 5 debug.DeferCloseLog call sites", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 4j. Slice 17 — quality_scan.go + article_service.go defer-close
+//     sweep (4 + 4 = 8 sites, all SQLite rows iterators).
+// ---------------------------------------------------------------------------
+
+const QUALITY_SCAN_GO = join(ROOT, "internal/records/quality_scan.go");
+const qualityScanSrc = readFileSync(QUALITY_SCAN_GO, "utf8");
+const articleServiceSrc = readFileSync(join(ROOT, "internal/records/article_service.go"), "utf8");
+
+test("quality_scan.go has zero plain `defer X.Close()` lines", () => {
+  const lines = qualityScanSrc.split("\n");
+  const offenders = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
+      offenders.push(`${i + 1}: ${lines[i].trim()}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
+
+test("quality_scan.go has 4 debug.DeferCloseLog call sites", () => {
+  const matches = qualityScanSrc.match(/debug\.DeferCloseLog\(/g) || [];
+  assert.strictEqual(matches.length, 4, `expected 4 debug.DeferCloseLog sites, found ${matches.length}`);
+});
+
+test("article_service.go has zero plain `defer X.Close()` lines", () => {
+  const lines = articleServiceSrc.split("\n");
+  const offenders = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
+      offenders.push(`${i + 1}: ${lines[i].trim()}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
+
+test("article_service.go has 4 debug.DeferCloseLog call sites", () => {
+  const matches = articleServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
+  assert.strictEqual(matches.length, 4, `expected 4 debug.DeferCloseLog sites, found ${matches.length}`);
+});
+
+// ---------------------------------------------------------------------------
 // 4c. Slice 11+ — meta-assertion that walks every internal/*.go file
 //      and fails if any plain `defer X.Close()` line appears. This is
 //      the regression net for the defer-close sweep across the whole
