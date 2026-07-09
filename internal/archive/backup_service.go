@@ -18,6 +18,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/versioninfo"
 	"github.com/valueforvalue/DixieData/internal/confederatehomestatus"
 	"github.com/valueforvalue/DixieData/internal/dates"
@@ -532,7 +533,7 @@ func listAllEvents(database *db.DB) ([]models.Soldier, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "listAllEvents.rows")
 	ids := make([]int64, 0, 8)
 	for rows.Next() {
 		var id int64
@@ -569,7 +570,7 @@ func loadAllEventPersonLinks(database *db.DB) (map[int64][]int64, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query event_person_links: %w", err)
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadAllEventPersonLinks.rows")
 	out := make(map[int64][]int64)
 	for rows.Next() {
 		var personID, eventID int64
@@ -632,7 +633,7 @@ func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer reader.Close()
+	defer debug.DeferCloseLog(reader, "RestoreBackupArchive.zip")
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -702,7 +703,7 @@ func stampRestoredAtAfterRestore(dataDir string) error {
 	if err != nil {
 		return fmt.Errorf("open restored db: %w", err)
 	}
-	defer d.Close()
+	defer debug.DeferCloseLog(d, "stampRestoredAtAfterRestore.db")
 
 	// columnExists guard: a freshly-restored archive might
 	// predate v65 and the migration might somehow not have
@@ -743,7 +744,7 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer reader.Close()
+	defer debug.DeferCloseLog(reader, "ImportWithLocalIdentity.zip")
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -827,7 +828,7 @@ func preserveSnapshotImportIdentity(dataDir string, identity models.UserIdentity
 	if err != nil {
 		return err
 	}
-	defer database.Close()
+	defer debug.DeferCloseLog(database, "preserveSnapshotImportIdentity.db")
 
 	_, err = database.ConfigureUserIdentity(identity.FirstName, identity.MiddleName, identity.LastName, identity.BirthYear)
 	return err
@@ -862,7 +863,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 	if err != nil {
 		return SharedImportSummary{}, err
 	}
-	defer reader.Close()
+	defer debug.DeferCloseLog(reader, "ImportSharedBackup.zip")
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -934,7 +935,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 		if err != nil {
 			return SharedImportSummary{}, fmt.Errorf("open shared backup database: %w", err)
 		}
-		defer sourceDB.Close()
+		defer debug.DeferCloseLog(sourceDB, "ImportSharedBackup.sourceDB")
 
 		sourceSvc := NewSoldierService(sourceDB)
 		soldiers, err := listAllSoldiers(sourceSvc)
@@ -1091,7 +1092,7 @@ func addBackupFile(zipWriter *zip.Writer, entryName, sourcePath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer debug.DeferCloseLog(source, "addBackupFile.source")
 
 	entry, err := zipWriter.Create(entryName)
 	if err != nil {
@@ -1126,7 +1127,7 @@ func addBackupImages(zipWriter *zip.Writer, imageRoot string) error {
 		if err != nil {
 			return err
 		}
-		defer source.Close()
+		defer debug.DeferCloseLog(source, "addBackupImages.source")
 
 		entry, err := zipWriter.Create(entryName)
 		if err != nil {
@@ -1438,7 +1439,7 @@ func validateSQLiteBackupImageEntries(contents backupContents) error {
 	if err != nil {
 		return fmt.Errorf("open staged backup database: %w", err)
 	}
-	defer stagedDB.Close()
+	defer debug.DeferCloseLog(stagedDB, "validateSQLiteBackupImageEntries.db")
 
 	soldierSvc := NewSoldierService(stagedDB)
 	soldiers, err := listAllSoldiers(soldierSvc)
@@ -1467,7 +1468,7 @@ func readBackupJSON(file *zip.File, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer debug.DeferCloseLog(reader, "readBackupJSON.reader")
 	return json.NewDecoder(reader).Decode(target)
 }
 
@@ -1517,13 +1518,13 @@ func extractBackupFile(file *zip.File, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer debug.DeferCloseLog(source, "extractBackupFile.source")
 
 	target, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer target.Close()
+	defer debug.DeferCloseLog(target, "extractBackupFile.target")
 
 	_, err = io.Copy(target, source)
 	return err
@@ -1534,7 +1535,7 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 	if err != nil {
 		return err
 	}
-	defer database.Close()
+	defer debug.DeferCloseLog(database, "restoreLegacyJSONBackup.db")
 
 	soldierSvc := NewSoldierService(database)
 	restoredIDsByLegacyID := make(map[int64]int64, len(soldiers))
@@ -1709,7 +1710,7 @@ func validateStagedBackup(dataDir string, manifest BackupManifest) error {
 	if err != nil {
 		return err
 	}
-	defer database.Close()
+	defer debug.DeferCloseLog(database, "validateStagedBackup.db")
 
 	soldierSvc := NewSoldierService(database)
 	page := 1
@@ -1861,13 +1862,13 @@ func copyBackupFile(sourcePath, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer debug.DeferCloseLog(source, "copyBackupFile.source")
 
 	target, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer target.Close()
+	defer debug.DeferCloseLog(target, "copyBackupFile.target")
 
 	_, err = io.Copy(target, source)
 	return err
@@ -2332,7 +2333,7 @@ func (b *BackupService) PendingMergeConflicts() ([]models.MergeReviewConflict, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "PendingMergeConflicts.rows")
 
 	conflicts := []models.MergeReviewConflict{}
 	for rows.Next() {
@@ -2378,7 +2379,7 @@ func (b *BackupService) ConflictLedger(soldierID int64) (*SourceConflictLedger, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ConflictLedger.rows")
 
 	ledger := &SourceConflictLedger{Central: *central}
 	for rows.Next() {
@@ -2651,7 +2652,7 @@ func nextLocalGeneratedDisplayID(tx *sql.Tx) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "nextLocalGeneratedDisplayID.rows")
 
 	maxID := 0
 	for rows.Next() {
@@ -3012,7 +3013,7 @@ func loadRecordsForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Record, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadRecordsForSoldierTx.rows")
 	records := []models.Record{}
 	for rows.Next() {
 		var record models.Record
@@ -3029,7 +3030,7 @@ func loadImagesForSoldierTx(tx *sql.Tx, soldierID int64) ([]models.Image, error)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadImagesForSoldierTx.rows")
 	images := []models.Image{}
 	for rows.Next() {
 		var image models.Image
@@ -3235,7 +3236,7 @@ func listAllArticles(database *db.DB) ([]models.Article, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "listAllArticles.rows")
 	ids := make([]int64, 0, 8)
 	for rows.Next() {
 		var id int64
@@ -3277,7 +3278,7 @@ func listAllArticleRefs(database *db.DB) ([]records.ArticleRef, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "listAllArticleRefs.rows")
 	out := make([]records.ArticleRef, 0, 8)
 	for rows.Next() {
 		var r records.ArticleRef
