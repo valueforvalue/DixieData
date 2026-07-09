@@ -840,6 +840,31 @@ test("updater.go has 7 debug.DeferCloseLog call sites", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 4g. Slice 14 — event_service.go defer-close sweep (6 sites).
+// ---------------------------------------------------------------------------
+
+const EVENT_SERVICE_GO = join(ROOT, "internal/records/event_service.go");
+const eventServiceSrc = readFileSync(EVENT_SERVICE_GO, "utf8");
+
+test("event_service.go has zero plain `defer X.Close()` lines", () => {
+  const lines = eventServiceSrc.split("\n");
+  const offenders = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
+      offenders.push(`${i + 1}: ${lines[i].trim()}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
+
+test("event_service.go has 6 debug.DeferCloseLog call sites", () => {
+  const matches = eventServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
+  assert.strictEqual(matches.length, 6, `expected 6 debug.DeferCloseLog sites, found ${matches.length}`);
+});
+
+// ---------------------------------------------------------------------------
 // 4c. Slice 11+ — meta-assertion that walks every internal/*.go file
 //      and fails if any plain `defer X.Close()` line appears. This is
 //      the regression net for the defer-close sweep across the whole
