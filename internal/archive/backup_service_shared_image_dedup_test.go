@@ -7,6 +7,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestBackupService_ImportSharedBackupImageDedup covers the regression
@@ -20,7 +21,7 @@ import (
 // "Imported 1140 images" with no net change. Post-fix: zero counters
 // + unchanged mtime for a full-duplicate second import.
 func TestBackupService_ImportSharedBackupImageDedup(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -29,7 +30,7 @@ func TestBackupService_ImportSharedBackupImageDedup(t *testing.T) {
 	targetSvc := NewSoldierService(targetDB)
 	backupSvc := NewBackupService(targetDB, targetSvc)
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
