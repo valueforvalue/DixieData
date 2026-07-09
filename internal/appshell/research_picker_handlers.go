@@ -132,7 +132,7 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if partial {
-		a.renderResearchSearchFragment(w, query, next)
+		a.renderResearchSearchFragment(w, r, query, next)
 		return
 	}
 
@@ -181,7 +181,7 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 // (issue #378 slice 2 B2). The htmx-driven live search swap targets
 // #panel.research.picker.results so a full-page render would
 // double-render the rest of the picker chrome.
-func (a *App) renderResearchSearchFragment(w http.ResponseWriter, query, next string) {
+func (a *App) renderResearchSearchFragment(w http.ResponseWriter, r *http.Request, query, next string) {
 	var results []viewmodel.PersonRecord
 	if query != "" {
 		if rows, _, err := a.soldiers.SearchPage(query, 1, 10); err == nil {
@@ -195,7 +195,9 @@ func (a *App) renderResearchSearchFragment(w http.ResponseWriter, query, next st
 		SearchResults: results,
 		NextAction:    next,
 	}
-	presentation.ResearchPickerSearchResults(view).Render(requestContext(w), w) //nolint:dixie/baretempl // #438 follow-up: missed by #384 sweep
+	if err := presentation.ResearchPickerSearchResults(view).Render(requestContext(w), w); err != nil {
+		respondErrorFragment(w, r, KindInternal, "Could not render the research picker search results.", err)
+	}
 }
 
 // requestContext returns a non-nil context derived from the request

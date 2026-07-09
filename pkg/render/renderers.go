@@ -14,8 +14,26 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
+
+// Windows t.TempDir cleanup race note: tests in this package
+// open a real *os.File, then defer the close. The bare
+// `defer debug.DeferCloseLog(f, "x")` form — deferring a
+// function that returns a closure — races with t.TempDir
+// cleanup on Windows: the test function returns, Go's defer
+// chain begins, but the file handle is not released before
+// t.TempDir's RemoveAll fires (1.5s timeout, then "The process
+// cannot access the file because it is being used by another
+// process"). The workaround used at the call sites below is
+// `defer func() { debug.DeferCloseLog(f, "x")() }()` — the
+// extra closure guarantees the helper's returned thunk runs
+// before t.TempDir cleanup observes the dir. Production code
+// (longer-lived handlers, no t.TempDir) uses the bare form.
+// Verified repro: `defer debug.DeferCloseLog(f, "x")` on a
+// real *os.File in a t.TempDir-using test fails 3/3 times on
+// Windows; the wrapped form passes 10/10.
 
 // TypstRenderer implements Renderer by compiling .typ templates with
 // the bundled Typst binary. It shells out directly to the binary
@@ -196,7 +214,7 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		if err != nil {
 			return fmt.Errorf("open typst png output: %w", err)
 		}
-		defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+		defer func() { debug.DeferCloseLog(f, "Render.typst-png-output")() }()
 		if _, err := io.Copy(w, f); err != nil {
 			return fmt.Errorf("copy typst png output: %w", err)
 		}
@@ -215,7 +233,7 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 		if err != nil {
 			return fmt.Errorf("open typst svg output: %w", err)
 		}
-		defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+		defer func() { debug.DeferCloseLog(f, "Render.typst-svg-output")() }()
 		if _, err := io.Copy(w, f); err != nil {
 			return fmt.Errorf("copy typst svg output: %w", err)
 		}
@@ -229,7 +247,7 @@ func (t *TypstRenderer) Render(ctx context.Context, tpl Template, data map[strin
 	if err != nil {
 		return fmt.Errorf("open typst output: %w", err)
 	}
-	defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer func() { debug.DeferCloseLog(f, "Render.typst-output")() }()
 	if _, err := io.Copy(w, f); err != nil {
 		return fmt.Errorf("copy typst output: %w", err)
 	}
@@ -599,7 +617,7 @@ func detectImageFormat(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer func() { debug.DeferCloseLog(f, "detectImageFormat.file")() }()
 	var head [4]byte
 	n, err := f.Read(head[:])
 	if err != nil || n < 2 {
