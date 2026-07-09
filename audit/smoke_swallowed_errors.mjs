@@ -672,7 +672,59 @@ test("internal/appshell/ has no bare-Render sites left", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. EmptyStateError component must be exported and render the right markers.
+// 4. Slice 9 — defer .Close() sweep. backup_service.go is the first
+//     family to wrap; 25 sites converted to debug.DeferCloseLog.
+// ---------------------------------------------------------------------------
+
+const BACKUP_SERVICE_GO = join(ROOT, "internal/archive/backup_service.go");
+const backupServiceSrc = readFileSync(BACKUP_SERVICE_GO, "utf8");
+
+test("internal/debug/close.go declares DeferCloseLog helper", () => {
+  const closeSrc = readFileSync(join(ROOT, "internal/debug/close.go"), "utf8");
+  assert.match(
+    closeSrc,
+    /func\s+DeferCloseLog\(/,
+    "internal/debug/close.go must declare DeferCloseLog"
+  );
+});
+
+test("backup_service.go has zero plain `defer X.Close()` lines", () => {
+  const lines = backupServiceSrc.split("\n");
+  const offenders = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Match `defer X.Close()` (NOT `defer debug.DeferCloseLog(...)` since
+    // `DeferCloseLog` doesn't contain a `.Close()` call in the line itself).
+    if (/^\s*defer\s+\w+\.Close\(\)/.test(line)) {
+      offenders.push(`${i + 1}: ${line.trim()}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
+  }
+});
+
+test("backup_service.go has 25 debug.DeferCloseLog call sites", () => {
+  const matches = backupServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
+  assert.strictEqual(matches.length, 25, `expected 25 debug.DeferCloseLog sites, found ${matches.length}`);
+});
+
+// Each defer must pass a component tag (a string literal). No nil tags.
+test("backup_service.go DeferCloseLog sites all pass a component string", () => {
+  const re = /debug\.DeferCloseLog\(([^,]+),\s*"([^"]*)"\)/g;
+  const matches = [];
+  let m;
+  while ((m = re.exec(backupServiceSrc)) !== null) {
+    matches.push({ varName: m[1].trim(), component: m[2] });
+  }
+  assert.strictEqual(matches.length, 25, `expected 25 DeferCloseLog sites with string component`);
+  for (const m of matches) {
+    assert.ok(m.component.length > 0, `DeferCloseLog(${m.varName}, "") has empty component tag`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 5. EmptyStateError component must be exported and render the right markers.
 // ---------------------------------------------------------------------------
 
 test("EmptyStateError is declared in empty_state.templ", () => {
