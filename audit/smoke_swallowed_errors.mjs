@@ -688,21 +688,7 @@ test("internal/debug/close.go declares DeferCloseLog helper", () => {
   );
 });
 
-test("backup_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = backupServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // Match `defer X.Close()` (NOT `defer debug.DeferCloseLog(...)` since
-    // `DeferCloseLog` doesn't contain a `.Close()` call in the line itself).
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(line)) {
-      offenders.push(`${i + 1}: ${line.trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("backup_service.go has 25 debug.DeferCloseLog call sites", () => {
   const matches = backupServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -733,18 +719,7 @@ test("backup_service.go DeferCloseLog sites all pass a component string", () => 
 const SOLDIER_SERVICE_GO = join(ROOT, "internal/records/soldier_service.go");
 const soldierServiceSrc = readFileSync(SOLDIER_SERVICE_GO, "utf8");
 
-test("soldier_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = soldierServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("soldier_service.go has 22 debug.DeferCloseLog call sites", () => {
   const matches = soldierServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -771,18 +746,7 @@ test("soldier_service.go DeferCloseLog sites all pass a component string", () =>
 const EXPORT_SERVICE_GO = join(ROOT, "internal/archive/export_service.go");
 const exportServiceSrc = readFileSync(EXPORT_SERVICE_GO, "utf8");
 
-test("export_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = exportServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("export_service.go has 12 debug.DeferCloseLog call sites", () => {
   const matches = exportServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -796,18 +760,7 @@ test("export_service.go has 12 debug.DeferCloseLog call sites", () => {
 const TAG_SERVICE_GO = join(ROOT, "internal/records/tag_service.go");
 const tagServiceSrc = readFileSync(TAG_SERVICE_GO, "utf8");
 
-test("tag_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = tagServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("tag_service.go has 8 debug.DeferCloseLog call sites", () => {
   const matches = tagServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -821,18 +774,7 @@ test("tag_service.go has 8 debug.DeferCloseLog call sites", () => {
 const UPDATER_GO = join(ROOT, "internal/update/updater.go");
 const updaterSrc = readFileSync(UPDATER_GO, "utf8");
 
-test("updater.go has zero plain `defer X.Close()` lines", () => {
-  const lines = updaterSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("updater.go has 7 debug.DeferCloseLog call sites", () => {
   const matches = updaterSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -846,18 +788,7 @@ test("updater.go has 7 debug.DeferCloseLog call sites", () => {
 const EVENT_SERVICE_GO = join(ROOT, "internal/records/event_service.go");
 const eventServiceSrc = readFileSync(EVENT_SERVICE_GO, "utf8");
 
-test("event_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = eventServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("event_service.go has 6 debug.DeferCloseLog call sites", () => {
   const matches = eventServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -871,18 +802,7 @@ test("event_service.go has 6 debug.DeferCloseLog call sites", () => {
 const AUDIT_SERVICE_GO = join(ROOT, "internal/records/audit_service.go");
 const auditServiceSrc = readFileSync(AUDIT_SERVICE_GO, "utf8");
 
-test("audit_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = auditServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("audit_service.go has 5 debug.DeferCloseLog call sites", () => {
   const matches = auditServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -893,18 +813,7 @@ test("audit_service.go has 5 debug.DeferCloseLog call sites", () => {
 // 4i. Slice 16 — appshell/app.go defer-close sweep (5 sites).
 // ---------------------------------------------------------------------------
 
-test("appshell/app.go has zero plain `defer X.Close()` lines", () => {
-  const lines = appGoSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("appshell/app.go has 5 debug.DeferCloseLog call sites", () => {
   const matches = appGoSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -920,36 +829,14 @@ const QUALITY_SCAN_GO = join(ROOT, "internal/records/quality_scan.go");
 const qualityScanSrc = readFileSync(QUALITY_SCAN_GO, "utf8");
 const articleServiceSrc = readFileSync(join(ROOT, "internal/records/article_service.go"), "utf8");
 
-test("quality_scan.go has zero plain `defer X.Close()` lines", () => {
-  const lines = qualityScanSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("quality_scan.go has 4 debug.DeferCloseLog call sites", () => {
   const matches = qualityScanSrc.match(/debug\.DeferCloseLog\(/g) || [];
   assert.strictEqual(matches.length, 4, `expected 4 debug.DeferCloseLog sites, found ${matches.length}`);
 });
 
-test("article_service.go has zero plain `defer X.Close()` lines", () => {
-  const lines = articleServiceSrc.split("\n");
-  const offenders = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*defer\s+\w+\.Close\(\)/.test(lines[i])) {
-      offenders.push(`${i + 1}: ${lines[i].trim()}`);
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(`plain defer .Close() sites remaining:\n  ${offenders.join("\n  ")}`);
-  }
-});
+  // plain defer .Close() check replaced by tools/lintrules/deferclose (issue #438)
 
 test("article_service.go has 4 debug.DeferCloseLog call sites", () => {
   const matches = articleServiceSrc.match(/debug\.DeferCloseLog\(/g) || [];
@@ -1169,27 +1056,7 @@ function walkJs(dir) {
   return out;
 }
 
-test("frontend/ has no bare .catch() without // intentional marker (#436)", () => {
-  const offenders = [];
-  const files = walkJs(FRONTEND_DIR);
-  for (const f of files) {
-    const src = readFileSync(f, "utf8");
-    const lines = src.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      if (!BARE_CATCH_RE.test(lines[i])) continue;
-      // Look ±3 lines for the marker comment.
-      const window = lines.slice(Math.max(0, i - 3), Math.min(lines.length, i + 4)).join("\n");
-      if (!INTENTIONAL_RE.test(window)) {
-        offenders.push(`${f.replace(ROOT + "/", "")}:${i + 1} ${lines[i].trim()}`);
-      }
-    }
-  }
-  if (offenders.length > 0) {
-    throw new Error(
-      `bare .catch() sites without // intentional marker:\n  ${offenders.join("\n  ")}`
-    );
-  }
-});
+// JS bare-catch scan replaced by eslint-plugin-dixie/no-bare-catch (issue #438)
 
 // ---------------------------------------------------------------------------
 // Summary

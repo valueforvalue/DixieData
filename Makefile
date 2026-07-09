@@ -421,12 +421,19 @@ lint-bare-templ-render: ## Go bare-templ-Render lint (issue #438, ADR 0010)
 	go vet -vettool=tools/lintrules/bin/lintrules.exe ./...
 
 lint-no-bare-catch: ## JS bare-.catch() lint (issue #438, ADR 0010) — slice 3
-	@echo "lint-no-bare-catch: shipped in slice 3 (issue #438)"
+	@echo "lint-no-bare-catch: running ESLint..."
+	npm run lint:js
 
 lint-swallowed-errors: ## Run all swallowed-error lints (issue #438, ADR 0010)
+	@echo "=== swallowed-error lint sweep ==="
 	make lint-defer-close
 	make lint-bare-templ-render
 	make lint-no-bare-catch
+	@echo "swallowed-error lint sweep: OK"
+
+lint: ## Run all codebase lints (including swallowed-errors)
+	make lint-swallowed-errors
+	make lint-htmx-guard
 
 # Kill any leftover dixiedata-* processes from a previous probe run.
 # Without this, the next `make debug` fails with `unlinkat ...
