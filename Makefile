@@ -402,6 +402,32 @@ lint-htmx-guard-strict: ## htmx-guard lint as a CI failure
 lint-htmx-guard-test: ## Run the discover_htmx_guard probe test suite
 	node audit/discover_htmx_guard.test.mjs
 
+# Swallowed-error lint (issue #438, ADR 0010). Three rules that
+# prevent the #384 + #436 manual sweeps from regressing:
+#   1. Go deferclose  -- no `defer X.Close()` discards
+#   2. Go baretempl   -- no bare `templ.Component.Render(...)` discards (slice 2)
+#   3. JS no-bare-catch -- no `.catch(() => {})` without a // intentional marker (slice 3)
+#
+# Build the Go analyzer binary once, then use `go vet -vettool`
+# to run the registered analyzers against the DixieData module.
+# The unitchecker driver requires go-vet semantics; calling the
+# binary directly is not supported.
+lint-defer-close: ## Go defer-.Close() lint (issue #438, ADR 0010)
+	cd tools/lintrules && go build -o bin/lintrules.exe ./cmd/lintrules
+	go vet -vettool=tools/lintrules/bin/lintrules.exe ./...
+
+lint-bare-templ-render: ## Go bare-templ-Render lint (issue #438, ADR 0010)
+	cd tools/lintrules && go build -o bin/lintrules.exe ./cmd/lintrules
+	go vet -vettool=tools/lintrules/bin/lintrules.exe ./...
+
+lint-no-bare-catch: ## JS bare-.catch() lint (issue #438, ADR 0010) — slice 3
+	@echo "lint-no-bare-catch: shipped in slice 3 (issue #438)"
+
+lint-swallowed-errors: ## Run all swallowed-error lints (issue #438, ADR 0010)
+	make lint-defer-close
+	make lint-bare-templ-render
+	make lint-no-bare-catch
+
 # Kill any leftover dixiedata-* processes from a previous probe run.
 # Without this, the next `make debug` fails with `unlinkat ...
 # dixiedata-web.exe: The process cannot access the file because it
