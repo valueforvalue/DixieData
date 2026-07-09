@@ -394,9 +394,12 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 										<p>Desktop image uploads use the native file picker.</p>
 										<p class="mt-2">Use the button below to import one or more images without leaving the edit form.</p>
 									</div>
-								<div
-									data-soldier-image-import-form={ fmt.Sprintf("%d", s.ID) }
-									data-progress-label="Importing images…"
+								<form
+									action={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
+									method="post"
+									enctype="multipart/form-data"
+									data-dixie-submit="true"
+									data-results-target={ "#" + uiids.PanelSoldierDetailImages }
 									class="inline"
 								>
 									<label class="primary-button w-full sm:w-auto cursor-pointer">
@@ -407,16 +410,10 @@ templ EntryFormFragment(s viewmodel.PersonRecord, spouseCandidates []viewmodel.P
 											multiple
 											accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/svg+xml"
 											class="hidden"
-											data-soldier-image-input={ fmt.Sprintf("%d", s.ID) }
-											hx-post={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
-											hx-trigger="change"
-											hx-target={ "[id=\"" + uiids.PanelSoldierDetailImages + "\"]" }
-											hx-swap="innerHTML"
-											hx-encoding="multipart/form-data"
-											data-import-url={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/images/import?return=edit", s.ID)) }
+											onchange="this.form.requestSubmit()"
 										/>
 									</label>
-								</div>
+								</form>
 									</div>
 							} else {
 								<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
