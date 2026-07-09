@@ -4,7 +4,7 @@
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i ./frontend/tailwind.css -o ./frontend/app.css --minify",
     "audit": "node audit/run.mjs",
-    "lint:js": "eslint 'frontend/**/*.js'"
+    "lint:js": "eslint frontend/**/*.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
