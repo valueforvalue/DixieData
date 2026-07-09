@@ -9,6 +9,7 @@ import (
 
 	"github.com/agnivade/levenshtein"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/persondisplay"
 )
@@ -274,7 +275,7 @@ func (s *AuditService) ResolveFindingsForSoldier(soldierID int64) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ResolveFindingsForSoldier.rows")
 
 	affected := map[int64]struct{}{soldierID: {}}
 	var findingIDs []int64
@@ -335,7 +336,7 @@ func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]Dupl
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "FindingsForSoldiers.rows")
 
 	type findingRow struct {
 		ID      int64
@@ -461,7 +462,7 @@ func (s *AuditService) loadCandidates() ([]auditCandidate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadCandidates.rows")
 
 	candidates := []auditCandidate{}
 	for rows.Next() {
@@ -486,7 +487,7 @@ func loadExistingDuplicateAuditFindings(tx *sql.Tx) (map[string]duplicateAuditFi
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadExistingDuplicateAuditFindings.rows")
 
 	states := map[string]duplicateAuditFindingState{}
 	for rows.Next() {
@@ -770,7 +771,7 @@ func (s *AuditService) lookupCandidateMap(ids map[int64]struct{}) (map[int64]mod
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "lookupCandidateMap.rows")
 	soldiers, err := scanSoldiers(rows)
 	if err != nil {
 		return nil, err
