@@ -21,6 +21,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 const (
@@ -353,7 +354,7 @@ func (s *Service) resolveRelease() (resolvedRelease, error) {
 	if err != nil {
 		return resolvedRelease{}, err
 	}
-	defer response.Body.Close()
+	defer debug.DeferCloseLog(response.Body, "resolveRelease.response")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return resolvedRelease{}, fmt.Errorf("update source returned %s", response.Status)
 	}
@@ -716,7 +717,7 @@ func (s *Service) downloadFile(downloadURL, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer debug.DeferCloseLog(response.Body, "downloadFile.response")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return fmt.Errorf("update download returned %s", response.Status)
 	}
@@ -724,7 +725,7 @@ func (s *Service) downloadFile(downloadURL, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "downloadFile.file")
 	_, err = io.Copy(file, response.Body)
 	return err
 }
@@ -734,7 +735,7 @@ func verifyFileChecksum(filePath, expectedHex string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "verifyFileChecksum.file")
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return err
@@ -752,7 +753,7 @@ func extractZip(zipPath, destinationRoot string) error {
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer debug.DeferCloseLog(reader, "extractZip.reader")
 	rootPrefix := strings.ToLower(destinationRoot + string(os.PathSeparator))
 	for _, file := range reader.File {
 		relativePath := filepath.Clean(filepath.FromSlash(file.Name))
@@ -829,12 +830,12 @@ func copyFile(sourcePath, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer debug.DeferCloseLog(source, "copyFile.source")
 	destination, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer destination.Close()
+	defer debug.DeferCloseLog(destination, "copyFile.destination")
 	if _, err := io.Copy(destination, source); err != nil {
 		return err
 	}
