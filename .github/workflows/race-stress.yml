@@ -23,17 +23,21 @@
 # Trigger:
 #   - push to dev: catches races + perf regressions as they
 #     land on the integration branch.
+#   - pull_request targeting dev: same race + stress coverage
+#     at PR time so the merge-to-dev push doesn't have to
+#     catch what the PR missed (the #419 / #420 gap). Costs
+#     ~2-3 min of PR CI per run; the issue's trade-off
+#     section (#425 body) called this out as the chosen
+#     trade.
 #   - workflow_dispatch: manual rerun (e.g. after fixing the
 #     perf budget but wanting to confirm).
-#   - NOT triggered on PRs: the main test.yml already runs
-#     -race against the PR; this workflow's purpose is the
-#     stress harness + the slower full-suite race run that
-#     main test.yml skips for speed.
 
 name: race-stress
 
 on:
   push:
+    branches: [dev]
+  pull_request:
     branches: [dev]
   workflow_dispatch:
 
