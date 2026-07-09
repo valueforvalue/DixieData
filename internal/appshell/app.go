@@ -1875,7 +1875,7 @@ func writeMemorialImportErrorLog(summary records.MemorialImportSummary) (string,
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer debug.DeferCloseLog(file, "writeMemorialImportErrorLog.file")
 	for _, issue := range summary.Issues {
 		_, err := fmt.Fprintf(file, "row=%d memorial_id=%q name=%q error=%q\n", issue.Row, issue.MemorialID, issue.Name, issue.Error)
 		if err != nil {
@@ -2660,13 +2660,13 @@ func saveUploadedFile(fileHeader *multipart.FileHeader, destination string) erro
 	if err != nil {
 		return fmt.Errorf("open upload %s: %w", fileHeader.Filename, err)
 	}
-	defer src.Close()
+	defer debug.DeferCloseLog(src, "saveUploadedFile.src")
 
 	dst, err := os.Create(destination)
 	if err != nil {
 		return fmt.Errorf("create image file %s: %w", destination, err)
 	}
-	defer dst.Close()
+	defer debug.DeferCloseLog(dst, "saveUploadedFile.dst")
 
 	written, err := io.Copy(dst, src)
 	if err != nil {
@@ -2685,13 +2685,13 @@ func copyImageFile(sourcePath, destination string) error {
 	if err != nil {
 		return fmt.Errorf("open image file %s: %w", filepath.Base(sourcePath), err)
 	}
-	defer src.Close()
+	defer debug.DeferCloseLog(src, "copyImageFile.src")
 
 	dst, err := os.Create(destination)
 	if err != nil {
 		return fmt.Errorf("create image file %s: %w", destination, err)
 	}
-	defer dst.Close()
+	defer debug.DeferCloseLog(dst, "copyImageFile.dst")
 
 	written, err := io.Copy(dst, src)
 	if err != nil {
