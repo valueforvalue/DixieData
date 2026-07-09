@@ -35,23 +35,15 @@ func TestApplyDownSchema_NoOpWhenAlreadyAtTarget(t *testing.T) {
 // contract: any path that crosses an Irreversible block must be
 // refused with ErrDowngradeRefused wrapping ErrMigrationIrreversible.
 // The CLI unwraps this to print the blocking block ID + Reason.
+//
+// Issue #449 slice 1: applyDownSchema now commits per-block. The
+// pre-v60 comments referencing "Block 4 (phase1)" + "v59" predate
+// the v60 schema but the contract (refusal on irreversible
+// boundary) holds for the v65 schema — block-60-v54-to-v60-jump
+// is now the irreversible marker and its Down returns
+// ErrMigrationIrreversible. All v<58 from current are still
+// refused; the test's assertions remain valid.
 func TestApplyDownSchema_RefusesPastIrreversible(t *testing.T) {
-	// DEPRECATED — wp3-unlinkat follow-up. The v60+ migration
-	// redesign expanded the migrations slice from 17 (Block 4
-	// phase1) to 7 blocks with stronger one-tx-all-downs semantics.
-	// Running all blocks in a single transaction hits
-	// SQLITE_LOCKED on Windows (modernc driver) when the v63+
-	// reverse: ALTER TABLE DROP COLUMN + DROP TABLE combinations
-	// execute inside one conn in WAL mode. A separate follow-up
-	// refactor needs applyDownSchema to commit per-block; the
-	// test comments reference "Block 4 (phase1)" + "v59" which
-	// predate the v60 schema. The behavior-under-test (refusal on
-	// irreversible boundary) is implicitly verified by
-	// TestDiagReverseWalk and by the CLI runner's runAdminMigrateDown
-	// refusal path. Skip on Windows until the applyDownSchema
-	// single-tx fix lands.
-	t.Skip("deprecated since v60+ migration redesign; applyDownSchema single-tx needs per-block commits (separate refactor)")
-
 	dataDir := t.TempDir()
 	database, err := Open(dataDir)
 	if err != nil {
@@ -99,9 +91,6 @@ func TestApplyDownSchema_RefusesPastIrreversible(t *testing.T) {
 // path forward (via --restore-point + --force-irreversible + a
 // documented acceptance of the data loss).
 func TestApplyDownSchema_PartialReversibleStepDown(t *testing.T) {
-	// DEPRECATED — see TestApplyDownSchema_RefusesPastIrreversible.
-	t.Skip("deprecated since v60+ migration redesign; applyDownSchema single-tx needs per-block commits (separate refactor)")
-
 	dataDir := t.TempDir()
 	database, err := Open(dataDir)
 	if err != nil {
@@ -164,9 +153,6 @@ func TestApplyDownSchema_EmptyArchiveSucceedsAtCurrentVersion(t *testing.T) {
 // would unwind it, but the test asserts the post-refusal state
 // is byte-identical to pre-refusal.
 func TestApplyDownSchema_RefusalDoesNotMutateTables(t *testing.T) {
-	// DEPRECATED — see TestApplyDownSchema_RefusesPastIrreversible.
-	t.Skip("deprecated since v60+ migration redesign; applyDownSchema single-tx needs per-block commits (separate refactor)")
-
 	dataDir := t.TempDir()
 	database, err := Open(dataDir)
 	if err != nil {
@@ -221,10 +207,24 @@ func TestApplyDownSchema_RefusalDoesNotMutateTables(t *testing.T) {
 // (SourceSchemaVersion, TargetSchemaVersion).
 func TestRetainedBackupDirectionDiscriminator(t *testing.T) {
 	// DEPRECATED — see TestApplyDownSchema_RefusesPastIrreversible.
-	// Open() twice on a legacy-v1 archive triggers applySchema's
-	// single-tx migration path which hits SQLITE_LOCKED on Windows
-	// for the same per-block-commit reason.
-	t.Skip("deprecated since v60+ migration redesign; applySchema single-tx needs per-block commits (separate refactor)")
+	// DEPRECATED — wp3-unlinkat follow-up, slice 1 limitation.
+	// This test calls Open() twice on the same dataDir (once
+	// fresh at v0, then again at v1 after manually rewriting
+	// user_version). The modernc SQLite driver on Windows
+	// holds the WAL/SHM sidecar files across the (*DB).Close()
+	// call, so the second Open's applySchema per-block-commit
+	// loop gets SQLITE_LOCKED on the first block's BEGIN. The
+	// fix is a per-Open db-file recreation (delete + create)
+	// between the two Opens, but that breaks the test's intent
+	// (it wants to exercise the snapshot path on an EXISTING
+	// pre-upgrade archive). Skipped until the SQLite lifecycle
+	// handling is separately refactored (e.g. move to the
+	// testtemp wrapper from issue #449 slice 3). The behavior
+	// under test (RetainedBackupManager.CreatePreSchemaUpgradeBackup
+	// records Source/Target schema versions) is implicitly
+	// verified by cli_admin integration paths and by the
+	// pre-schema-upgrade snapshot taken on the first Open().
+	t.Skip("deprecated: second Open hits SQLITE_LOCKED on Windows even with per-block commits; needs SQLite-lifecycle refactor")
 
 	dataDir := t.TempDir()
 	database, err := Open(dataDir)
