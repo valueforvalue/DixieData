@@ -467,6 +467,18 @@ lint-dialog-guard-strict: ## Native-dialog-guard sweep as CI failure (--strict)
 probe-dispatcher-contract: ## Runtime dispatcher-contract probe (issue #446)
 	@node audit/probe-dispatcher-contract.mjs
 
+# Issue #444 — end-to-end "button click → user sees error" probe.
+# Browser-driven probe that clicks five representative buttons that
+# should produce a user-visible error surface (toast / empty-state-
+# error / aria-alert / inline-validation / 404-chrome), then asserts
+# the surface appeared within a timeout. Two cases (PDF export with
+# missing typst; "Move Source Up past top") are documented skips —
+# see audit/probe-error-surfaces.mjs for the rationale per case.
+# Requires a running dixiedata-web at $BASE_URL with seed data
+# (same as probe-dispatcher-contract).
+probe-error-surfaces: ## Browser end-to-end button-click error probe (issue #444)
+	@node audit/probe-error-surfaces.mjs
+
 # Kill any leftover dixiedata-* processes from a previous probe run.
 # Without this, the next `make debug` fails with `unlinkat ...
 # dixiedata-web.exe: The process cannot access the file because it
