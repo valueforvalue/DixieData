@@ -1130,6 +1130,67 @@ test("respondErrorFragment sets X-DixieData-Toast headers", () => {
   );
 });
 
+// --- Section 5: JS bare-catch regression net (#436) ---------------------
+//
+// Walks every .js file under frontend/ and asserts no bare
+// `.catch(() => {})` or `.catch((e) => {})` appears without a
+// `// intentional` comment marker in the surrounding 3 lines.
+// The "intentional" marker is the documented escape hatch for
+// never-throw components (e.g. the debug logger — see
+// error-handling.md "JS catches (client-side)" and
+// frontend/debug.js).
+
+const FRONTEND_DIR = join(ROOT, "frontend");
+const BARE_CATCH_RE = /\.catch\(\s*(?:\(\s*\)|\((?:\s*[A-Za-z_$][\w$]*\s*,\s*)*[A-Za-z_$][\w$]*\s*\))\s*=>\s*\{\s*\}\s*\)/;
+const INTENTIONAL_RE = /intentional/;
+
+function walkJs(dir) {
+  const out = [];
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch (_) {
+    return out;
+  }
+  for (const e of entries) {
+    const full = join(dir, e);
+    let s;
+    try {
+      s = statSync(full);
+    } catch (_) {
+      continue;
+    }
+    if (s.isDirectory()) {
+      out.push(...walkJs(full));
+    } else if (e.endsWith(".js")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+test("frontend/ has no bare .catch() without // intentional marker (#436)", () => {
+  const offenders = [];
+  const files = walkJs(FRONTEND_DIR);
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    const lines = src.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (!BARE_CATCH_RE.test(lines[i])) continue;
+      // Look ±3 lines for the marker comment.
+      const window = lines.slice(Math.max(0, i - 3), Math.min(lines.length, i + 4)).join("\n");
+      if (!INTENTIONAL_RE.test(window)) {
+        offenders.push(`${f.replace(ROOT + "/", "")}:${i + 1} ${lines[i].trim()}`);
+      }
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(
+      `bare .catch() sites without // intentional marker:\n  ${offenders.join("\n  ")}`
+    );
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------

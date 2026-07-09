@@ -3910,7 +3910,16 @@
             onPrintRecordsFragmentReady(modal);
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          // The inflight fragment fetch failed (network error,
+          // server 500, etc.). The catch-all is intentional — the
+          // user is already on the modal-open code path that has
+          // its own status/empty-state plumbing; this promise is
+          // only the dedup-cache. Log so the operator can see it
+          // but don't double-surface to the user.
+          // See error-handling.md "JS catches (client-side)".
+          console.warn("print records fragment dedup failed", err);
+        });
       return;
     }
     printRecordsFragmentInflight = fetch("/share/print-records-fragment", {
@@ -5005,7 +5014,20 @@
         method: "POST", // handler accepts POST as well as PATCH
         body: fd,
       });
-      const body = await response.json().catch(() => ({}));
+      let body = {};
+      try {
+        body = await response.json();
+      } catch (err) {
+        // The server returned a non-JSON body (e.g. a Wails-internal
+        // error page). Surface a modal-local error instead of
+        // pretending success. Matches error-handling.md "inline
+        // message" pattern for fragment targets.
+        console.warn("export template update: response was not JSON", err);
+        if (status instanceof HTMLElement) {
+          status.textContent = "Server returned an unexpected response.";
+        }
+        return;
+      }
       if (!response.ok) {
         if (status instanceof HTMLElement) {
           status.textContent = (body && body.error) || `Could not update template. (${response.status})`;
