@@ -71,7 +71,12 @@ func (a *App) handleNewArticle(w http.ResponseWriter, r *http.Request) {
 		// Slice 3 swaps this for the markdown editor + sanitized
 		// preview + local-draft-persistence block.
 		if err := presentation.ArticleNewShell().Render(r.Context(), w); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			// Issue #443: was `http.Error(w, err.Error(), 500)` —
+			// a raw Go error leak. The Render call itself failed,
+			// so the error IS the response body (per the #384
+			// decision flow: "Render itself failed? →
+			// respondErrorFragment").
+			respondErrorFragment(w, r, KindInternal, "Could not render the new article form.", err)
 		}
 	case http.MethodPost:
 		a.createArticle(w, r)
@@ -89,7 +94,11 @@ func (a *App) handleNewArticle(w http.ResponseWriter, r *http.Request) {
 //   - any other parse error     -> 400 with a short error body
 func (a *App) createArticle(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form: "+err.Error(), http.StatusBadRequest)
+		// Issue #443: was `http.Error(w, "bad form: "+err.Error(), 400)` —
+		// raw Go error leak. respondValidation sets 400 + sets
+		// X-DixieData-Toast headers so the user sees a toast in
+		// addition to the status (per the #384 contract).
+		respondValidation(w, r, "Could not parse the article form.", err)
 		return
 	}
 	title := strings.TrimSpace(r.PostFormValue("title"))
@@ -104,10 +113,20 @@ func (a *App) createArticle(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, records.ErrArticleTitleRequired) {
+			// Note: this stays as `http.Error(w, "title is required", 400)`
+			// because the message is a static user-facing string
+			// (no err.Error() to leak). The respondValidation helper
+			// would log a spurious "err=nil" line and the existing
+			// TestHandleArticleCRUD_RoundTrip test asserts the 400
+			// status which respondValidation also sets. Keeping the
+			// direct http.Error here matches the validation
+			// pattern at lines 97 + 107 (which are also static
+			// messages without err).
 			http.Error(w, "title is required", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, "create article: "+err.Error(), http.StatusInternalServerError)
+		// Issue #443: was `http.Error(w, "create article: "+err.Error(), 500)`.
+		respondInternal(w, r, "Could not create the article.", err)
 		return
 	}
 	// Per the #341 / Option C convention: 200 + X-DixieData-Redirect
@@ -346,7 +365,8 @@ func (a *App) handleEditArticle(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "bad form: "+err.Error(), http.StatusBadRequest)
+			// Issue #443: was `http.Error(w, "bad form: "+err.Error(), 400)`.
+			respondValidation(w, r, "Could not parse the article form.", err)
 			return
 		}
 		title := strings.TrimSpace(r.PostFormValue("title"))
@@ -613,7 +633,8 @@ func (a *App) handleArticlePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form: "+err.Error(), http.StatusBadRequest)
+		// Issue #443: was `http.Error(w, "bad form: "+err.Error(), 400)`.
+		respondValidation(w, r, "Could not parse the article preview form.", err)
 		return
 	}
 	body := r.PostFormValue("body")
