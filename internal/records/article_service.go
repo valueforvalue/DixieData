@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -282,7 +283,7 @@ func (a *ArticleService) List(page, pageSize int) ([]models.Article, int, error)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list articles: %w", err)
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "List.rows")
 	out := make([]models.Article, 0, pageSize)
 	for rows.Next() {
 		var (
@@ -465,7 +466,7 @@ func (a *ArticleService) ListSnapshots(articleID int64) ([]models.Article, error
 	if err != nil {
 		return nil, fmt.Errorf("ListSnapshots %d: %w", articleID, err)
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ListSnapshots.rows")
 	out := make([]models.Article, 0)
 	for rows.Next() {
 		var (
@@ -538,7 +539,7 @@ func (a *ArticleService) ScanRefs(articleID int64) ([]ArticleRef, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scan refs for article %d: %w", articleID, err)
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "ScanRefs.rows")
 	out := make([]ArticleRef, 0)
 	for rows.Next() {
 		var r ArticleRef
@@ -1055,7 +1056,7 @@ func (a *ArticleService) CitedInArticles(personID int64) ([]models.Article, erro
 	if err != nil {
 		return nil, fmt.Errorf("CitedInArticles %d: %w", personID, err)
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "CitedInArticles.rows")
 	out := make([]models.Article, 0)
 	for rows.Next() {
 		var (

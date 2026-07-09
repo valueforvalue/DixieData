@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/dates"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 )
 
@@ -220,7 +221,7 @@ func (s *SoldierService) loadQualityScanCandidates() ([]qualityScanCandidate, er
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadQualityScanCandidates.rows")
 
 	candidates := make([]qualityScanCandidate, 0)
 	for rows.Next() {
@@ -244,7 +245,7 @@ func (s *SoldierService) loadEntryTypesByID() (map[int64]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadEntryTypesByID.rows")
 	results := map[int64]string{}
 	for rows.Next() {
 		var id int64
@@ -270,7 +271,7 @@ func (s *SoldierService) loadAdvancedSourceRecordIssues() ([]DataQualityIssue, e
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadAdvancedSourceRecordIssues.rows")
 
 	issues := make([]DataQualityIssue, 0)
 	for rows.Next() {
@@ -488,7 +489,7 @@ func (s *SoldierService) loadEventZeroLinkIssues() ([]DataQualityIssue, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer debug.DeferCloseLog(rows, "loadEventZeroLinkIssues.rows")
 	var issues []DataQualityIssue
 	for rows.Next() {
 		var (
