@@ -261,6 +261,51 @@ const (
 	// form). Same templ as PageEventNew, different UIID — mutual
 	// exclusion via templ's if isEdit { ... } else { ... } block.
 	PageEventEdit = "page.event.edit"
+
+	// Issue #342: Event detail sub-panels (sources / tags /
+	// linked-persons). The literal DOM IDs `data-event-sources-list`
+	// and `data-event-tags-list` live in event_detail.templ
+	// (rendered by EventSourcesListFragment + EventTagsListFragment);
+	// the post-action fragment swap targets are these surfaces.
+	// PanelEventDetailLinkedPersons is the <ul> of linked
+	// Person Records on the event detail page.
+	PanelEventDetailSources     = "panel.event.detail.sources"
+	PanelEventDetailTags        = "panel.event.detail.tags"
+	PanelEventDetailLinkedPersons = "panel.event.detail.linked-persons"
+
+	// Issue #342: Event form sub-panels (sources editor / linked
+	// persons / tags). The sources list is the same RecordInputRow
+	// region the soldier form uses; the linked-persons and tags
+	// sections sit OUTSIDE the main edit <form> to avoid HTML-
+	// invalid nested <form> (per the comment block in
+	// event_form.templ). Each gets its own panel so the fragment
+	// post-action swap target is canonical.
+	PanelEventFormSources     = "panel.event.form.sources"
+	PanelEventFormLinkedPersons = "panel.event.form.linked-persons"
+	PanelEventFormTags        = "panel.event.form.tags"
+
+	// Issue #342: floating-dock + floating-nav-panel + scratchpad
+	// status pill. The dock is rendered once in layout.templ and
+	// persists on every page (issue #283 / #289 / #313). The
+	// scratchpad status region (`data-floating-scratchpad-status`)
+	// is its own surface so live-region announcements don't
+	// collide with the dock buttons.
+	PanelFloatingDock           = "panel.floating.dock"
+	PanelFloatingNavPanel       = "panel.floating.nav-panel"
+	PanelFloatingScratchpadStatus = "panel.floating.scratchpad-status"
+
+	// Issue #342: persistent Share Queue status pill (issue
+	// #182). Fixed-position, hidden when the queue is empty so
+	// the layout stays quiet for users who never touched it.
+	// Lives outside the floating dock per the issue spec to avoid
+	// z-index collision with the recent overlay fix.
+	PanelShareQueuePill = "panel.share-queue.pill"
+
+	// Issue #342: Tags top-nav link target. The link is a literal
+	// href in layout.templ; the surface ID is registered so the
+	// next pass that adds a Tags foldout (mirror of Share /
+	// Research) has a stable anchor to swap against.
+	LayoutTagsLink = "layout.tags.link"
 )
 
 type Surface struct {
@@ -369,6 +414,17 @@ var Registry = []Surface{
 	{ID: PageEventDetail, Kind: "page", Description: "Event Record detail page on /events/{id}; wraps the main content area (back button + summary card + linked persons + tags + images + research log). Mirrors PageSoldierDetail (issue #396)."},
 	{ID: PageEventNew, Kind: "page", Description: "Event Record create page on /events/new; wraps the EventFormFragment body when isEdit=false. Mutually exclusive with PageEventEdit (issue #396)."},
 	{ID: PageEventEdit, Kind: "page", Description: "Event Record edit page on /events/{id}/edit; wraps the EventFormFragment body when isEdit=true. Same templ as PageEventNew (issue #396)."},
+	{ID: PanelEventDetailSources, Kind: "panel", Description: "Source Records list on the event detail page (/events/{id}); wraps the <div id=data-event-sources-list> swap target rendered by EventSourcesListFragment (issue #342)."},
+	{ID: PanelEventDetailTags, Kind: "panel", Description: "Tags chips on the event detail page (/events/{id}); wraps the <div id=data-event-tags-list> swap target rendered by EventTagsListFragment (issue #342)."},
+	{ID: PanelEventDetailLinkedPersons, Kind: "panel", Description: "Linked Person Records list on the event detail page (/events/{id}); the <ul> of person records attached to this event (issue #342)."},
+	{ID: PanelEventFormSources, Kind: "panel", Description: "Source Records editor section on the event form (/events/new + /events/{id}/edit); wraps the RecordInputRow list rendered inside the main <form> (issue #342)."},
+	{ID: PanelEventFormLinkedPersons, Kind: "panel", Description: "Linked Persons section on the event edit page (/events/{id}/edit); rendered OUTSIDE the main <form> to avoid HTML-invalid nested forms; Add Link + Unlink actions target this panel (issue #342, #361)."},
+	{ID: PanelEventFormTags, Kind: "panel", Description: "Tags section on the event edit page (/events/{id}/edit); rendered OUTSIDE the main <form> for the same nested-form reason; Add Tag form posts to /events/{id}/tags and swaps into #data-event-tags-list (issue #342, #361)."},
+	{ID: PanelFloatingDock, Kind: "panel", Description: "Persistent bottom dock rendered once in layout.templ (issue #283 / #289 / #313); hosts Scratch Pad + Feedback + Menu buttons. z-40."},
+	{ID: PanelFloatingNavPanel, Kind: "panel", Description: "Slide-out nav panel toggled by the Menu button via data-floating-nav-toggle (issue #283). Duplicates top-nav links + renders the layout-mode picker; positioned bottom-right, z-50."},
+	{ID: PanelFloatingScratchpadStatus, Kind: "panel", Description: "Live region in the floating dock (data-floating-scratchpad-status, aria-live=polite) for scratchpad open / save status announcements; mirrors the aria-live contract used by jobs-progress-overlay (issue #283)."},
+	{ID: PanelShareQueuePill, Kind: "panel", Description: "Persistent Share Queue status pill (issue #182); fixed bottom-center, hidden when the queue is empty. Wraps data-share-queue-pill + data-share-queue-pill-label + data-share-queue-pill-count."},
+	{ID: LayoutTagsLink, Kind: "nav", Description: "Top-nav Tags link (/tags); literal href in layout.templ between the Share foldout and Settings. Surface ID is registered so a future Tags foldout (mirroring Share / Research) has a stable anchor to swap against (issue #256, #342)."},
 }
 
 

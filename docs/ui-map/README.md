@@ -47,8 +47,9 @@ Wireframes show the relaxed mode unless flagged otherwise.
 
 ## Status
 
-Complete. All 23 screens wired. Gaps, routes, surfaces, components,
-glossary, states, and per-screen footguns captured.
+Complete. All 28 screens wired (v60 Event Records added per issue
+#342). Gaps, routes, surfaces, components, glossary, states, and
+per-screen footguns captured.
 
 **Open follow-ups** (see [gaps.md](gaps.md)):
 - Routebuilder coverage for `/export/*`, `/import/*`, `/integrations/*`,
