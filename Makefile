@@ -439,9 +439,22 @@ lint: ## Run all codebase lints (including swallowed-errors)
 	make lint-swallowed-errors
 	make lint-migration-columns
 	make lint-htmx-guard
+	make lint-dialog-guard
 
 lint-migration-columns: ## Grep production Go for SQL referencing renamed columns (issue #435)
 	@node audit/smoke_migration_columns.mjs
+
+# Issue #445 — extend the dialog-guard sweep. Walks every native
+# (Open|Save)(File|Directory|MultipleFiles)?Dialog call in
+# internal/appshell/ and asserts the enclosing function has a
+# enterInFlight / LoadOrStore / guarded*Dialog helper / errExportInFlight
+# sentinel per docs/agents/dialog-guard.md. Exits 0 with 0 unguarded
+# sites; informational by default (--strict flips to CI failure).
+lint-dialog-guard: ## Native-dialog-guard sweep (issue #445); docs/agents/dialog-guard.md
+	@node audit/smoke_dialog_guard.mjs
+
+lint-dialog-guard-strict: ## Native-dialog-guard sweep as CI failure (--strict)
+	@node audit/smoke_dialog_guard.mjs --strict
 
 # Kill any leftover dixiedata-* processes from a previous probe run.
 # Without this, the next `make debug` fails with `unlinkat ...
