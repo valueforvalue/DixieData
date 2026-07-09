@@ -21,6 +21,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -104,7 +105,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer database.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(database, "runOutputAudit.database")
 	if _, err := database.ConfigureUserIdentity("Gold", "Master", "Harness", 1890); err != nil {
 		return report{}, err
 	}
@@ -200,7 +201,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer restoredDB.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(restoredDB, "runOutputAudit.restoredDB")
 	restoredSvc := records.NewSoldierService(restoredDB)
 	restoredSoldier, err := restoredSvc.GetByID(fixture.Soldier.ID)
 	if err != nil {
@@ -215,7 +216,7 @@ func runOutputAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer targetDB.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(targetDB, "runOutputAudit.targetDB")
 	if _, err := targetDB.ConfigureUserIdentity("Local", "Merge", "Owner", 1911); err != nil {
 		return report{}, err
 	}
@@ -304,7 +305,7 @@ func runBenchmark(reportDir, dataDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer database.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(database, "runBenchmark.database")
 	if _, err := database.ConfigureUserIdentity("Scale", "Stress", "Harness", 1890); err != nil {
 		return report{}, err
 	}
@@ -491,7 +492,7 @@ func readZipWithManifest(path string) (map[string][]byte, archive.BackupManifest
 	if err != nil {
 		return nil, archive.BackupManifest{}, err
 	}
-	defer reader.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(reader, "readZipWithManifest.reader")
 
 	files := make(map[string][]byte, len(reader.File))
 	var manifest archive.BackupManifest
@@ -527,7 +528,7 @@ func extractZip(path, destination string) error {
 	if err != nil {
 		return err
 	}
-	defer reader.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(reader, "extractZip.reader")
 
 	for _, file := range reader.File {
 		target := filepath.Join(destination, filepath.FromSlash(file.Name))
@@ -561,7 +562,7 @@ func sqliteUserVersion(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(conn, "sqliteUserVersion.conn")
 	var version int
 	if err := conn.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		return 0, err

@@ -13,6 +13,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/archive"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/records"
 )
 
@@ -37,7 +38,7 @@ func runPortabilityAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer database.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(database, "runPortabilityAudit.database")
 	if _, err := database.ConfigureUserIdentity("Portability", "Audit", "Harness", 1890); err != nil {
 		return report{}, err
 	}
@@ -90,7 +91,7 @@ func runPortabilityAudit(reportDir string) (report, error) {
 	if err != nil {
 		return report{}, err
 	}
-	defer targetDB.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(targetDB, "runPortabilityAudit.targetDB")
 	if _, err := targetDB.ConfigureUserIdentity("Receiver", "Local", "Archivist", 1910); err != nil {
 		return report{}, err
 	}
@@ -318,12 +319,12 @@ func tableColumns(dbPath, table string) ([]string, map[string]bool, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(conn, "tableColumns.conn")
 	rows, err := conn.Query(`PRAGMA table_info(` + table + `)`)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(rows, "tableColumns.rows")
 	columns := []string{}
 	set := map[string]bool{}
 	for rows.Next() {
@@ -345,7 +346,7 @@ func tableCount(dbPath, table string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(conn, "tableCount.conn")
 	var count int
 	if err := conn.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&count); err != nil {
 		return 0, err
@@ -358,7 +359,7 @@ func rowPresent(dbPath, query string, args ...any) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(conn, "rowPresent.conn")
 	var marker int
 	err = conn.QueryRow(query, args...).Scan(&marker)
 	if err == sql.ErrNoRows {
@@ -372,7 +373,7 @@ func tableDiffCount(beforeDBPath, afterDBPath, table string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(conn, "tableDiffCount.conn")
 	if _, err := conn.Exec(`ATTACH DATABASE ? AS afterdb`, afterDBPath); err != nil {
 		return 0, err
 	}
@@ -395,12 +396,12 @@ func imagePaths(dbPath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(conn, "imagePaths.conn")
 	rows, err := conn.Query(`SELECT file_path FROM images ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+	defer debug.DeferCloseLog(rows, "imagePaths.rows")
 	paths := []string{}
 	for rows.Next() {
 		var path string

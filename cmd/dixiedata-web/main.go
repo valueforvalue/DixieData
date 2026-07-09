@@ -31,6 +31,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/appshell"
+	"github.com/valueforvalue/DixieData/internal/debug"
 )
 
 func main() {
@@ -135,7 +136,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			defer f.Close() //nolint:dixie/deferclose // #438 follow-up: missed by #384 sweep
+			defer debug.DeferCloseLog(f, "main.BrowserOpenURLOverride.url-log")
 			if _, err := f.WriteString(rawURL + "\n"); err != nil {
 				return err
 			}
