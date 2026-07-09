@@ -2747,7 +2747,7 @@ func insertMergeReviewConflict(tx *sql.Tx, sessionID, conflictType, reason strin
 		localDisplayID = localSnapshot.Soldier.DisplayID
 	}
 	_, err = tx.Exec(`INSERT INTO merge_review_conflicts
-		(session_id, conflict_type, reason, person_sync_id, local_record_id, local_display_id, source_display_id, local_data, source_data)
+		(session_id, conflict_type, reason, soldier_sync_id, local_record_id, local_display_id, source_display_id, local_data, source_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		sessionID, conflictType, reason, sourceSnapshot.Soldier.SyncID, nullableInt64(localSoldierID), localDisplayID, sourceSnapshot.Soldier.DisplayID, nullableString(localJSON), sourceJSON)
 	return err
