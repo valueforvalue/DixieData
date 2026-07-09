@@ -12,10 +12,15 @@
 //
 //   1. Synthetic .templ with a comment + a real attr: the
 //      comment line is filtered, the attr line is flagged.
-//   2. The two known-real hx-post offender files
-//      (entry_form.templ + soldier_card.templ) still report
-//      offenders. If a future refactor filters too aggressively
-//      and silently drops real offenders, this case fails.
+//   2. The remaining real hx-post offender file
+//      (soldier_card.templ, post-issue-#414 partial migration)
+//      still reports an offender. entry_form.templ was migrated
+//      to a real <form enctype="multipart/form-data"> in the
+//      first slice of #414 and is no longer on this list.
+//      soldier_card.templ comes off in the next slice. If a
+//      future refactor filters too aggressively (e.g. also skips
+//      hx-* attrs on real attribute lines), this test catches it
+//      by asserting at least one real offender is still flagged.
 //
 // scanTemplFile lives in hx_guard_test.go (same package); if
 // a future refactor removes the helper, this file fails to
@@ -70,7 +75,7 @@ func TestNoPostThenNavigateHXXAttrsGuardFileStillFlagsImageUploads(t *testing.T)
 	_, thisFile, _, _ := runtime.Caller(0)
 	thisDir := filepath.Dir(thisFile)
 
-	knownReal := []string{"entry_form.templ", "soldier_card.templ"}
+	knownReal := []string{"soldier_card.templ"}
 	for _, file := range knownReal {
 		path := filepath.Join(thisDir, file)
 		offenders, err := scanTemplFile(path)

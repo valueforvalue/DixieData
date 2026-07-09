@@ -1775,6 +1775,69 @@ func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
 	}
 }
 
+// TestHandleImportSoldierImagesAcceptsMultipart exercises the
+// full /soldiers/{id}/images/import HTTP handler with a multipart
+// body shape — mirrors exactly what the Option C <form
+// enctype="multipart/form-data"> on entry_form.templ now sends.
+// Pre-#414 migration this branch was not covered; the htmx-driven
+// input used `hx-encoding="multipart/form-data"` but the handler
+// had no Go test asserting the body shape survives. The form
+// migration removed htmx from the request shape, so this test
+// catches the regression class where the form's enctype is
+// mismatched against the handler's ParseMultipartForm.
+func TestHandleImportSoldierImagesAcceptsMultipart(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	configureTestIdentity(t, app)
+
+	created, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CSA-IMPORT-MULTI",
+		FirstName: "Multi",
+		LastName:  "Part",
+		EntryType: "soldier",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	body, contentType := multipartRequestBody(t, map[string][]byte{
+		"upload-1.png": pngFixture(),
+		"upload-2.jpg": pngFixture(),
+	})
+	req := httptest.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("/soldiers/%d/images/import?return=edit", created.ID),
+		body,
+	)
+	req.Header.Set("Content-Type", contentType)
+	rr := httptest.NewRecorder()
+
+	app.handleImportSoldierImages(rr, req, created.ID)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned %d: %s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/html") {
+		t.Fatalf("Content-Type = %q, want text/html fragment", got)
+	}
+
+	soldier, err := app.soldiers.GetByID(created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(soldier.Images) != 2 {
+		t.Fatalf("images len = %d, want 2 (handler failed to consume multipart body)", len(soldier.Images))
+	}
+}
+
 func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
 	database, err := db.Open(dataDir)
