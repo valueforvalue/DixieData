@@ -556,6 +556,28 @@ func TestHandleVersionReturnsBuildMetadata(t *testing.T) {
 	}
 }
 
+// TestServeHTTPNilSoldiersDoesNotPanic is the regression net for issue
+// #463. NewApp() returns a zero-value *App (Startup is never called
+// in the HTTP-only test path), so a.soldiers is nil. The middleware
+// that hoists the Open Review Queue menuitem flag must not dereference
+// it — the menuitem stays neutral until a real Startup wires the
+// facade, which is the correct render for the test path. Before the
+// nil guard the middleware panicked with a nil pointer dereference
+// and the recover middleware returned 500, breaking 21 tests.
+func TestServeHTTPNilSoldiersDoesNotPanic(t *testing.T) {
+	app := NewApp()
+	app.setupRoutes()
+
+	req := httptest.NewRequest(http.MethodGet, "/version", nil)
+	rec := httptest.NewRecorder()
+
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d; nil a.soldiers must not panic the middleware", rec.Code, http.StatusOK)
+	}
+}
+
 func TestParsePrintSettingsRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/export/database-pdf", strings.NewReader(url.Values{
 		"scope":                            {"all"},

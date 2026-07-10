@@ -458,8 +458,14 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// transient query error here doesn't lose information). Pages
 	// that know they are NOT a review-queue surface don't override
 	// the flag — clear() in defer restores the next render's default.
-	if count, err := a.soldiers.CountNeedsReview(); err == nil {
-		templates.SetLayoutHasOpenReview(count > 0)
+	// Issue #463: nil-guard a.soldiers for the HTTP-only test path
+	// (NewApp() returns a zero-value *App without calling Startup,
+	// so the soldier facade is unset; production always calls
+	// Startup before ServeHTTP).
+	if a.soldiers != nil {
+		if count, err := a.soldiers.CountNeedsReview(); err == nil {
+			templates.SetLayoutHasOpenReview(count > 0)
+		}
 	}
 	defer templates.ClearLayoutHasOpenReview()
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
