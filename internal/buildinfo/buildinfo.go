@@ -204,3 +204,16 @@ func BuildIdentity() string {
 func ReleaseLabel() string {
 	return versioninfo.ReleaseLabel()
 }
+
+// Codename returns just the release-name portion of the
+// chrome label (e.g. "First Manassas") for chrome sites
+// that already carry the app name and only need the codename
+// alongside it (the top-shell brand pill, the Settings →
+// Build panel's italic codename tag). Re-exported from
+// versioninfo for the same import-path uniformity as
+// ReleaseLabel() — buildinfo is already imported by every
+// chrome site, so callers don't need to add versioninfo.
+// Issue #462.
+func Codename() string {
+	return versioninfo.CurrentReleaseName
+}

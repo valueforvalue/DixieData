@@ -34,7 +34,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<title>{ title } - DixieData</title>
+		<title>{ title } — DixieData</title>
 		<script>
 			(() => {
 				const root = document.documentElement;
@@ -101,7 +101,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 			<div class="app-shell">
 				<header class="top-shell flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-[#8d7440] bg-ink-deep/[0.92] px-5 py-3 shadow-[0_20px_40px_rgba(21,29,38,0.2)] backdrop-blur">
 				<div class="flex items-center gap-3">
-					<p class="top-brand-title gold leading-none">DixieData</p>
+					<p class="top-brand-title gold leading-none">DixieData — { buildinfo.Codename() }</p>
 				</div>
 				<nav class="flex flex-wrap items-center gap-2">
 					<a href="/calendar" class="pill-link top-nav-link">Calendar</a>
@@ -296,7 +296,7 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 				</div>
 			</div>
 			<footer class="mt-8 text-right text-xs text-slate-600" data-build-identity={ buildinfo.BuildIdentity() }>
-				{ buildinfo.AppLabel() } · { buildinfo.ReleaseLabel() } · Schema v{ fmt.Sprintf("%d", buildinfo.SchemaVersion) } · { buildinfo.BuildIdentity() }
+				{ buildinfo.AppLabel() } — { buildinfo.ReleaseLabel() } · Schema v{ fmt.Sprintf("%d", buildinfo.SchemaVersion) } · { buildinfo.BuildIdentity() }
 				if debug.IsDebugMode(ctx) {
 					<button type="button"
 						class="ml-3 rounded bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600"
