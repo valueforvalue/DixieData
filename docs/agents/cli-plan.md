@@ -707,6 +707,32 @@ optional polish.
    messages. `dixiedata help` listing every subcommand
    + their flags would be useful. ~50 lines.
 
+10. **`dixiedata soldier create|update|delete` documentation.**
+    Implemented in `internal/appshell/cli_mutate.go` (Phase 6
+    companion work) but not yet listed in the cli-plan
+    taxonomy above. Reach the doc here so the cli-coverage
+    drift detector (CI) stops flagging `create`, `update`,
+    `delete` as implemented-but-undocumented. The verbs are
+    leaf verbs under the `soldier` parent — reachable as
+    `dixiedata soldier create --from <path>`, etc.
+    Format reference: `cli_mutate_test.go` lines 39-247.
+
+    ```
+    dixiedata soldier create  --from <path> | --from-stdin
+    dixiedata soldier update  <id|display-id> --from <path> | --from-stdin
+    dixiedata soldier delete  <id|display-id>
+    ```
+
+    Per the same leaf-verb alias pattern used for `export`
+    (`dixiedata pdf` aliases `dixiedata export pdf`), pin the
+    leaf verbs here so the drift detector sees them:
+
+    ```
+    dixiedata create
+    dixiedata update
+    dixiedata delete
+    ```
+
 ### Deferred indefinitely
 
 10. **JSON envelope unification.** Per-subcommand shapes

@@ -101,23 +101,80 @@ for (const funcName of funcRefs) {
     );
     const fd = funcDefRe.exec(txt);
     if (!fd) continue;
-    // Find first `case "<verb>":` (or `case "<v1>", "<v2>":`).
-    const caseRe = /case\s+"([a-z][a-z0-9_-]*)"(?:\s*,\s*"([a-z][a-z0-9_-]*)")*\s*:/;
-    const cm = caseRe.exec(fd[1]);
-    if (cm) {
-      implSet.add(cm[1]);
-      const verbRe = /"([a-z][a-z0-9_-]*)"/g;
-      let v;
-      const caseText = fd[1].slice(cm.index, cm.index + 200);
-      while ((v = verbRe.exec(caseText))) implSet.add(v[1]);
-    }
-    // ALSO run the eq-based fallback (in case the function
-    // uses args[0] != / == / a == rather than a switch).
+    // Issue #448 follow-up: only extract the TOP-LEVEL verb for
+    // this function — the one reachable as `dixiedata <verb> ...`.
+    // The function body may also contain leaf verbs in a case
+    // statement on args[1]+ (e.g. `soldier create/update/delete`
+    // where `soldier` is the top-level and `create/update/delete`
+    // are leaf verbs under it). Leaf verbs should NOT be added
+    // to implSet because they're reachable as
+    // `dixiedata <parent> <leaf>`, not as top-level commands.
+    //
+    // Heuristic:
+    // - If the body has an `args[0] != "<parent>"` check, that's
+    //   the top-level verb. Skip any case statements in the body.
+    // - If the body has a `switch args[0]` (no prior eq check),
+    //   ALL cases are top-level verbs.
+    // - If the body has a `switch args[len(args)-1]` (flag-style),
+    //   the first case is the top-level verb.
+    const body = fd[1];
     const eqRe = /args\[0\]\s*[!=]=\s*"((?:--?)?[a-z][a-z0-9_\-]*)"/g;
     let em;
-    while ((em = eqRe.exec(fd[1]))) implSet.add(em[1]);
+    let hasEqCheck = false;
+    while ((em = eqRe.exec(body))) {
+      implSet.add(em[1]);
+      hasEqCheck = true;
+    }
+    if (hasEqCheck) {
+      // Body has `args[0] != "<parent>"`. Extract the parent
+      // from the eq check, AND any leaf verbs from a subsequent
+      // `switch args[N]` (N > 0) case statement. These leaf
+      // verbs are documented as top-level aliases in cli-plan.md
+      // (e.g. `dixiedata pdf` aliases `dixiedata export pdf`).
+      const switchLeafRe = /switch\s+args\[(\d+)\][\s\S]*?\{([\s\S]*?)\}/g;
+      let sl;
+      while ((sl = switchLeafRe.exec(body))) {
+        const switchIdx = parseInt(sl[1], 10);
+        if (switchIdx === 0) continue; // already handled above
+        const caseLineRe = /case\s+"([a-z][a-z0-9_-]*)"(?:\s*,\s*"([a-z][a-z0-9_-]*)")*\s*:/g;
+        let cl;
+        while ((cl = caseLineRe.exec(sl[2]))) {
+          implSet.add(cl[1]);
+          const moreRe = /"([a-z][a-z0-9_-]*)"/g;
+          let mv;
+          const lineText = sl[2].slice(cl.index, cl.index + 100);
+          while ((mv = moreRe.exec(lineText))) implSet.add(mv[1]);
+        }
+      }
+    } else {
+      // No args[0] eq check — try switch args[0] (all cases
+      // are top-level) or switch args[len(args)-1] (first case).
+      const switchArgs0Re = /switch\s+args\[0\][\s\S]*?\{([\s\S]*?)\}/;
+      const sw0 = switchArgs0Re.exec(body);
+      if (sw0) {
+        const caseLineRe = /case\s+"([a-z][a-z0-9_-]*)"(?:\s*,\s*"([a-z][a-z0-9_-]*)")*\s*:/g;
+        let cl;
+        while ((cl = caseLineRe.exec(sw0[1]))) {
+          implSet.add(cl[1]);
+          const moreRe = /"([a-z][a-z0-9_-]*)"/g;
+          let mv;
+          const lineText = sw0[1].slice(cl.index, cl.index + 100);
+          while ((mv = moreRe.exec(lineText))) implSet.add(mv[1]);
+        }
+      } else {
+        // Flag-style: switch args[len(args)-1], first case only.
+        const switchFlagRe = /switch\s+args\[len\(args\)-1\][\s\S]*?\{([\s\S]*?)\}/;
+        const swf = switchFlagRe.exec(body);
+        if (swf) {
+          const firstCaseRe = /case\s+"([a-z][a-z0-9_-]*)"/;
+          const fc = firstCaseRe.exec(swf[1]);
+          if (fc) implSet.add(fc[1]);
+        }
+      }
+    }
+    // Also handle the `a == "..."` style (used by some dispatchers).
     const aeqRe = /\ba\s*==\s*"((?:--?)?[a-z][a-z0-9_\-]*)"/g;
-    while ((em = aeqRe.exec(fd[1]))) implSet.add(em[1]);
+    while ((em = aeqRe.exec(body))) implSet.add(em[1]);
   }
 }
 
