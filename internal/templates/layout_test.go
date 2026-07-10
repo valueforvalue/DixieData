@@ -37,6 +37,23 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	if !strings.Contains(content, buildinfo.AppLabel()) || !strings.Contains(content, fmt.Sprintf("Schema v%d", buildinfo.SchemaVersion)) {
 		t.Fatalf("layout should include app and schema versions")
 	}
+	// Issue #462: chrome polish — em dash between DixieData and
+	// codename in (a) the <title> bar, (b) the top-shell brand pill,
+	// (c) the footer boundary between AppLabel and ReleaseLabel.
+	// The mid-dot `·` separators elsewhere in the footer stay.
+	if !strings.Contains(content, " — DixieData</title>") {
+		t.Fatalf("layout <title> should use an em dash before DixieData (issue #462)")
+	}
+	if !strings.Contains(content, "DixieData — ") && !strings.Contains(content, `DixieData &#x2014;`) && !strings.Contains(content, `DixieData —`) {
+		t.Fatalf("layout top-shell brand should pair \"DixieData\" with the codename via an em dash (issue #462)")
+	}
+	expectedFooterBoundary := buildinfo.AppLabel() + " — " + buildinfo.ReleaseLabel()
+	if !strings.Contains(content, expectedFooterBoundary) {
+		t.Fatalf("layout footer should swap the · between AppLabel and ReleaseLabel to an em dash (issue #462); expected substring %q in:\n%s", expectedFooterBoundary, content)
+	}
+	if !strings.Contains(content, buildinfo.ReleaseLabel()+" · Schema v") {
+		t.Fatalf("layout footer should keep the · separator between ReleaseLabel and Schema (issue #462 scope boundary)")
+	}
 	if !strings.Contains(content, `data-build-identity="`) || !strings.Contains(content, buildinfo.BuildIdentity()) {
 		t.Fatalf("layout should surface build identity")
 	}

@@ -35,4 +35,26 @@ func TestSettingsBuildPanelRendersCodenameAndBranch(t *testing.T) {
 	if !strings.Contains(content, "data-settings-build") {
 		t.Errorf("SettingsBuildPanel output missing data-settings-build selector:\n%s", content)
 	}
+
+	// Issue #462: codename is a proper noun (First Battle of
+	// Bull Run / First Manassas); the Settings Build panel
+	// renders it italic alongside monospace + semibold. Pin
+	// the class list so a refactor doesn't silently drop
+	// the italic styling.
+	const codenameOpen = `<dd class="`
+	codenameIdx := strings.Index(content, codenameOpen)
+	if codenameIdx < 0 {
+		t.Fatalf("codename <dd class=...> not found")
+	}
+	codenameClose := strings.Index(content[codenameIdx:], `">`)
+	if codenameClose < 0 {
+		t.Fatalf("codename <dd class=...> close not found")
+	}
+	codenameTag := content[codenameIdx : codenameIdx+codenameClose+2]
+	if !strings.Contains(codenameTag, "data-settings-build-codename") {
+		t.Fatalf("expected data-settings-build-codename on the codename <dd>: %s", codenameTag)
+	}
+	if !strings.Contains(codenameTag, "italic") {
+		t.Fatalf("codename <dd> should carry the `italic` Tailwind class (issue #462): %s", codenameTag)
+	}
 }
