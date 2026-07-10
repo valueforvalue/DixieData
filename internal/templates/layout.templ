@@ -113,25 +113,36 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// surface they use for Person Records.
 					<a href="/events" class="pill-link top-nav-link">Events</a>
 					// v62 (issue #321 slice 3): Article Record
-					// nav link. Sits between Events and Review
-					// Queue so the long-form content surfaces
-					// stay grouped on the left.
+					// nav link. Sits between Events and the R&R
+					// foldout (issue #455 slice 1.5
+					// relocated Review Queue into the
+					// foldout; the top-nav pill that used
+					// to live here is gone, its live-count
+					// wire now drives the foldout
+					// trigger's badge span) so the
+					// long-form content surfaces stay
+					// grouped on the left.
 					<a href={ templ.SafeURL(routebuilder.ArticleList()) } class="pill-link top-nav-link" data-article-nav-link>Articles</a>
-					<a href="/review-queue" class="pill-link top-nav-link inline-flex items-center gap-2">
-							Review Queue
-							<span data-layout-review-count hx-get={ templ.SafeURL(routebuilder.LayoutReviewCount()) } hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this"></span>
-						</a>
 					<a href="/insights" class="pill-link top-nav-link">Insights</a>
-					// Issue #455 slice 1: R&R foldout trimmed
-					// from 7 menu items to 5 (Camaraderie /
-					// Research Packs / Merge Review Ledger
-					// removed; slated for handler/service
-					// removal in slices 3 + 4). Top-nav RQ
-					// pill stays until slice 1.5 relocates
-					// the live-count badge onto the foldout
-					// trigger (one move, atomic — no
-					// intermediate broken state).
-					@components.Foldout("Research & Review", uiids.LayoutResearchMenu, nil) {
+					// Issue #455 slice 1.5: R&R foldout gains
+					// a live-count badge inside the trigger
+					// button (between label and chevron),
+					// served by the existing
+					// /layout/review-count endpoint via
+					// the same hx-trigger="load, every
+					// 30s" hx-swap="innerHTML" wire the
+					// old top-nav RQ pill used. Foldout
+					// primitive gets the new
+					// FoldoutWithBadge variant (issue #455
+					// slice 1.5) which accepts an extra
+					// templ.Component slot; the Share
+					// foldout keeps the old Foldout()
+					// API unchanged. The badge content is
+					// a trusted templ.Raw span (internal
+					// template authoring only — see the
+					// foldout.templ badge htmx span for
+					// the canonical wire shape).
+					@components.FoldoutWithBadge("Research & Review", uiids.LayoutResearchMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`)) {
 						<li role="none">
 							<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a>
 						</li>
