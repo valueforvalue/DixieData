@@ -14,6 +14,16 @@ package templates
 // is the safe pattern.
 var currentPagePath string
 
+// currentLayoutHasOpenReview mirrors currentPagePath for the
+// per-render flag that drives the red review-state treatment on
+// the Research & Review foldout's "Open Review Queue" menuitem
+// (issue #460). Default false: only handlers that know the
+// pending review count flips it on. The badge poll
+// (/layout/review-count) carries its own red background, so this
+// is purely visual continuity between the trigger badge + the
+// menuitem it counts.
+var currentLayoutHasOpenReview bool
+
 // SetCurrentPagePath sets the package-level current page path
 // before rendering a page templ. Issue #309: the breadcrumb +
 // dev badge + (eventually) the JS toolbox's `dixie.page()` all
@@ -30,6 +40,24 @@ func ClearCurrentPagePath() {
 	currentPagePath = ""
 }
 
+// SetLayoutHasOpenReview sets the per-render flag that drives the
+// red treatment on the Research & Review foldout's "Open Review
+// Queue" menuitem (issue #460). Pair with ClearLayoutHasOpenReview
+// via defer so the next request starts in the default state. The
+// helper itself does not query the audit: callers are responsible
+// for the CountNeedsReview() check. Pages that don't have the
+// count handy (most of them) skip the Set call and the menuitem
+// renders in its neutral pill state.
+func SetLayoutHasOpenReview(hasOpenReview bool) {
+	currentLayoutHasOpenReview = hasOpenReview
+}
+
+// ClearLayoutHasOpenReview resets the per-render flag. Pair with
+// SetLayoutHasOpenReview via defer.
+func ClearLayoutHasOpenReview() {
+	currentLayoutHasOpenReview = false
+}
+
 // layoutCurrentPath is a private helper that Layout calls. Kept
 // here rather than in the templ file so the layer that owns the
 // state (this file) and the layer that reads it (the templ) are
@@ -37,4 +65,10 @@ func ClearCurrentPagePath() {
 // same package, so this is the right shape.
 func layoutCurrentPath() string {
 	return currentPagePath
+}
+
+// layoutHasOpenReview mirrors layoutCurrentPath for the red
+// treatment flag. Same go-template-callable contract.
+func layoutHasOpenReview() bool {
+	return currentLayoutHasOpenReview
 }

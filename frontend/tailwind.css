@@ -576,6 +576,25 @@ html { scrollbar-gutter: stable; }
   background: rgba(255, 247, 231, 0.08);
   color: #fff8e7;
 }
+/* Issue #460: when the audit badge polling confirms there are
+   pending review items, the "Open Review Queue" menuitem gains
+   a red border + a slight red background tint that mirrors the
+   trigger pill's red badge (#6f2c26). The attribute is set by
+   handlers that already know the count (notably the review-
+   queue page itself); pages that don't query the count skip
+   the Set call and the menuitem renders in its neutral
+   pill-link state. The hover state is ratcheted brighter so
+   the cue is still readable on the dark panel surface. */
+.foldout-menuitem[data-research-review-has-count] {
+  border-color: rgba(111, 44, 38, 0.6);
+  background: rgba(111, 44, 38, 0.18);
+  color: #fbe1de;
+}
+.foldout-menuitem[data-research-review-has-count]:hover,
+.foldout-menuitem[data-research-review-has-count]:focus-visible {
+  background: rgba(111, 44, 38, 0.32);
+  color: #fff1ee;
+}
 /* On narrow viewports the absolute-positioned panel can clip
    past the right edge. Drop the transform + position the
    panel full-width under the trigger instead. The

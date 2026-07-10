@@ -445,6 +445,23 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// the previous request's path to the next one.
 	templates.SetCurrentPagePath(r.URL.Path)
 	defer templates.ClearCurrentPagePath()
+	// Issue #460 follow-up: hoist the SetLayoutHasOpenReview flag
+	// into the per-request hook so the red review-state treatment
+	// on the "Open Review Queue" menuitem ships on the very first
+	// paint of any page — landing screen (/calendar), browse, a
+	// deep-linked Person Record, an htmx-driven fragment swap.
+	// Previously only the /review-queue handler set the flag, so
+	// the menuitem rendered neutral everywhere else. The query is
+	// a single COUNT on the needs_review index; failure silently
+	// keeps the neutral render (the trigger's own /layout/review-
+	// count badge stays authoritative for the live number, so a
+	// transient query error here doesn't lose information). Pages
+	// that know they are NOT a review-queue surface don't override
+	// the flag — clear() in defer restores the next render's default.
+	if count, err := a.soldiers.CountNeedsReview(); err == nil {
+		templates.SetLayoutHasOpenReview(count > 0)
+	}
+	defer templates.ClearLayoutHasOpenReview()
 	a.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 

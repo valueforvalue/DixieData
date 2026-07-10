@@ -80,6 +80,7 @@ type reviewFacade interface {
 	RunDuplicateAudit() (records.DuplicateAuditRunResult, error)
 	ResolveFinding(findingID int64) error
 	Comparison(findingID int64) (*records.DuplicateAuditComparison, error)
+	ListResolvedFindings(page, pageSize int) ([]records.ResolvedFindingSummary, int, error)
 }
 
 type imageFacade interface {
@@ -128,6 +129,7 @@ type backupFacade interface {
 	ImportSharedBackup(backupPath, dataDir string) (archive.SharedImportSummary, error)
 	ResolveMergeConflict(conflictID int64, decision, dataDir string) error
 	PendingMergeConflicts() ([]models.MergeReviewConflict, error)
+	ListResolvedConflicts(page, pageSize int) ([]models.MergeReviewConflict, int, error)
 	ConflictLedger(soldierID int64) (*archive.SourceConflictLedger, error)
 }
 
