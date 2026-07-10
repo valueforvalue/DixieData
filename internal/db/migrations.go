@@ -791,6 +791,86 @@ var migrations = []Migration{
 			return nil
 		},
 	},
+	// Block 7 (block-66) — rename research_collection_items.soldier_id
+	// to research_collection_items.person_record_id.
+	//
+	// The v54→v60 consolidated rename migration (block-60, see
+	// renames slice at internal/db/migrations.go:310) renamed
+	// soldier_id→person_record_id on 5 FK tables (records, images,
+	// scratchpad_cache, research_tasks, etc.) but missed
+	// research_collection_items. The table was added in commit
+	// 4645ae5 (v1.1 research workflow, May 2026) with the old
+	// soldier_id column name; the inline schema constant in
+	// internal/db/schema.go was later updated to use
+	// person_record_id for fresh installs, but no migration was
+	// ever added to rename the column on existing DBs. As a
+	// result, every DixieData instance that pre-dates the schema
+	// constant update carries a research_collection_items table
+	// with the legacy soldier_id column.
+	//
+	// Symptom: a GET /research-collections request runs the
+	// ResearchCollectionsHub query (internal/records/soldier_service.go
+	// :1471) which references i.person_record_id. The DB returns
+	// `SQL logic error: no such column: i.person_record_id` and
+	// the handler 500s. The user sees the dark-slate "Internal
+	// server error" page (matches the "research collection button
+	// leads to a black page with a message" report). The Wails
+	// debug console log (reproduced 2026-07-09) shows:
+	//   ERROR appshell: request failed http method=GET err=SQL
+	//   logic error: no such column: i.person_record_id (1)
+	//   component=http audit=respond-error kind=internal
+	//   path=/research-collections
+	//
+	// Fix: ALTER TABLE research_collection_items RENAME COLUMN
+	// soldier_id TO person_record_id, guarded by columnExists so
+	// fresh installs (where the column is already person_record_id)
+	// are no-ops. SQLite's RENAME COLUMN automatically updates
+	// index references — the legacy
+	// idx_research_collection_items_soldier ON (soldier_id, ...)
+	// index becomes (person_record_id, ...) without an explicit
+	// DROP/CREATE round-trip.
+	//
+	// The PRIMARY KEY (collection_id, soldier_id) constraint
+	// similarly rewrites to (collection_id, person_record_id)
+	// automatically.
+	//
+	// The schema.go constant still hard-codes the new column name
+	// (person_record_id) — no edit needed there, the constant is
+	// only applied via CREATE TABLE IF NOT EXISTS for fresh installs.
+	//
+	// Reversibility: Reversible. RENAME COLUMN is reversible via
+	// a second RENAME COLUMN soldier_id→person_record_id reverse.
+	// No data is moved; only the column header name changes. No
+	// FK semantics shift (the FK still targets soldiers(id)).
+	{
+		ID:            "block-66-research-collection-items-rename-soldier-id",
+		Reversibility: Reversible,
+		Reason:        "Pure rename: ALTER TABLE research_collection_items RENAME COLUMN soldier_id TO person_record_id. No data is moved, FK semantics are unchanged (still targets soldiers(id)), and SQLite auto-updates the PRIMARY KEY constraint + idx_research_collection_items_soldier index references. Idempotent on fresh installs where the column is already person_record_id (columnExists guard).",
+		Up: func(tx *sql.Tx) error {
+			exists, err := columnExists(tx, "research_collection_items", "soldier_id")
+			if err != nil {
+				return err
+			}
+			if exists {
+				if _, err := tx.Exec(`ALTER TABLE research_collection_items RENAME COLUMN soldier_id TO person_record_id`); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Down: func(tx *sql.Tx) error {
+			exists, err := columnExists(tx, "research_collection_items", "person_record_id")
+			if err != nil {
+				return err
+			}
+			if exists {
+				if _, err := tx.Exec(`ALTER TABLE research_collection_items RENAME COLUMN person_record_id TO soldier_id`); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	},
 }
 
 // reverseAddColumnLoop is the inverse of Block 2 — it drops every
