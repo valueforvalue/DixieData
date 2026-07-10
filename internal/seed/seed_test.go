@@ -38,9 +38,32 @@ func TestGenerateCreatesDatabaseRecordsAndImages(t *testing.T) {
 	}
 	defer database.Close()
 
-	assertCount(t, database, "soldiers", 12)
+	// Issue #447: events are also soldiers rows (entry_type='event').
+	// Use WHERE entry_type = 'soldier' to count only soldier-type rows.
+	assertCountWhere(t, database, "soldiers", "entry_type = 'soldier'", 12)
 	assertCount(t, database, "records", summary.Records)
 	assertCount(t, database, "images", summary.Images)
+
+	// Issue #447: v58-v65 surface — assert non-zero counts on
+	// the new entity tables when schema >= 58.
+	if summary.Events > 0 {
+		assertCountWhere(t, database, "soldiers", "entry_type = 'event'", summary.Events)
+		assertCount(t, database, "event_person_links", summary.EventLinks)
+		assertCount(t, database, "event_sources", summary.EventSources)
+		assertCount(t, database, "articles", summary.Articles)
+		assertCount(t, database, "article_refs", summary.ArticleRefs)
+		assertCount(t, database, "tags", summary.Tags)
+		assertCount(t, database, "person_record_tags", summary.PersonRecordTags)
+		if summary.EventLinks == 0 {
+			t.Fatalf("event_person_links should be > 0 on v58+ schema")
+		}
+		if summary.Articles == 0 {
+			t.Fatalf("articles should be > 0 on v58+ schema")
+		}
+		if summary.Tags == 0 {
+			t.Fatalf("tags should be > 0 on v58+ schema")
+		}
+	}
 
 	var displayID, pensionID, applicationID, middleName, rankIn, rankOut, pensionState string
 	if err := database.Conn().QueryRow("SELECT display_id, pension_id, application_id, middle_name, rank_in, rank_out, pension_state FROM soldiers ORDER BY id LIMIT 1").Scan(&displayID, &pensionID, &applicationID, &middleName, &rankIn, &rankOut, &pensionState); err != nil {
@@ -87,5 +110,17 @@ func assertCount(t *testing.T, database *db.DB, table string, want int) {
 	}
 	if got != want {
 		t.Fatalf("%s count=%d want %d", table, got, want)
+	}
+}
+
+func assertCountWhere(t *testing.T, database *db.DB, table, where string, want int) {
+	t.Helper()
+
+	var got int
+	if err := database.Conn().QueryRow("SELECT COUNT(*) FROM " + table + " WHERE " + where).Scan(&got); err != nil {
+		t.Fatalf("count %s WHERE %s: %v", table, where, err)
+	}
+	if got != want {
+		t.Fatalf("%s WHERE %s count=%d want %d", table, where, got, want)
 	}
 }
