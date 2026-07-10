@@ -34,7 +34,7 @@ func TestGenerateStampsSeedProvenance(t *testing.T) {
 	}
 	defer database.Close()
 
-	rows, err := database.Conn().Query(`SELECT display_id, created_by_version, created_by_import_path FROM soldiers ORDER BY id`)
+	rows, err := database.Conn().Query(`SELECT display_id, created_by_version, created_by_import_path FROM soldiers WHERE entry_type = 'soldier' ORDER BY id`)
 	if err != nil {
 		t.Fatalf("Query: %v", err)
 	}
