@@ -763,7 +763,14 @@ func (e *ExportService) ExportSoldierJPG(outputPath string, soldier models.Soldi
 	if err != nil {
 		return nil, fmt.Errorf("create temporary JPG export directory: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	// Issue #449 follow-up: deferred os.RemoveAll on a temp
+	// directory whose contents include files pdfium.exe just
+	// read races with Windows' file-handle retention. The
+	// retry-on-busy helper survives the unlinkat error and
+	// leaves no leftovers — which is what the
+	// TestExportService_ExportSoldierJPGLeavesNoPartialOutputsOnRasterFailure
+	// test asserts.
+	defer func() { _ = removeAllWithRetry(tempDir) }()
 
 	pdfPath := filepath.Join(tempDir, "record.pdf")
 	if e.registry == nil {
@@ -1675,7 +1682,7 @@ func (e *ExportService) ExportStaticArchive(outputPath, dataDir string) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(exportRoot)
+	defer func() { _ = removeAllWithRetry(exportRoot) }()
 
 	if err := copyDirectoryContents(filepath.Join(dataDir, "images"), filepath.Join(exportRoot, "images")); err != nil {
 		return err

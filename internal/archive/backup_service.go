@@ -593,7 +593,7 @@ func (b *BackupService) exportArchive(outputPath, dataDir, archiveKind string) (
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = removeAllWithRetry(tempDir) }()
 
 	snapshotPath := filepath.Join(tempDir, db.FileName)
 	if err := b.db.SnapshotTo(snapshotPath); err != nil {
@@ -634,7 +634,7 @@ func RestoreBackupArchive(backupPath, dataDir string) (BackupManifest, error) {
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer debug.DeferCloseLog(reader, "RestoreBackupArchive.zip")
+	defer func() { debug.DeferCloseLog(reader, "RestoreBackupArchive.zip")() }()
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -755,7 +755,7 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer debug.DeferCloseLog(reader, "ImportWithLocalIdentity.zip")
+	defer func() { debug.DeferCloseLog(reader, "ImportWithLocalIdentity.zip")() }()
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -772,7 +772,7 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 	if err != nil {
 		return BackupManifest{}, err
 	}
-	defer os.RemoveAll(extractDir)
+	defer func() { _ = removeAllWithRetry(extractDir) }()
 
 	if err := extractBackupImages(&reader.Reader, extractDir, contents.Manifest.ImageRoot); err != nil {
 		return BackupManifest{}, err
@@ -889,7 +889,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 	if err != nil {
 		return SharedImportSummary{}, err
 	}
-	defer debug.DeferCloseLog(reader, "ImportSharedBackup.zip")
+	defer func() { debug.DeferCloseLog(reader, "ImportSharedBackup.zip")() }()
 
 	contents, driftWarnings, err := readBackupContentsWithWarnings(&reader.Reader)
 	if err != nil {
@@ -948,7 +948,7 @@ func (b *BackupService) ImportSharedBackup(backupPath, dataDir string) (summary 
 		if err != nil {
 			return SharedImportSummary{}, err
 		}
-		defer os.RemoveAll(sourceDir)
+		defer func() { _ = removeAllWithRetry(sourceDir) }()
 
 		databaseFile := contents.FileMap[contents.Manifest.DatabaseFile]
 		if databaseFile == nil {
@@ -1118,7 +1118,7 @@ func addBackupFile(zipWriter *zip.Writer, entryName, sourcePath string) error {
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(source, "addBackupFile.source")
+	defer func() { debug.DeferCloseLog(source, "addBackupFile.source")() }()
 
 	entry, err := zipWriter.Create(entryName)
 	if err != nil {
@@ -1153,7 +1153,7 @@ func addBackupImages(zipWriter *zip.Writer, imageRoot string) error {
 		if err != nil {
 			return err
 		}
-		defer debug.DeferCloseLog(source, "addBackupImages.source")
+		defer func() { debug.DeferCloseLog(source, "addBackupImages.source")() }()
 
 		entry, err := zipWriter.Create(entryName)
 		if err != nil {
@@ -1458,7 +1458,7 @@ func validateSQLiteBackupImageEntries(contents backupContents) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(stageDir)
+	defer func() { _ = removeAllWithRetry(stageDir) }()
 
 	databaseFile := contents.FileMap[contents.Manifest.DatabaseFile]
 	if databaseFile == nil {
@@ -1471,7 +1471,14 @@ func validateSQLiteBackupImageEntries(contents backupContents) error {
 	if err != nil {
 		return fmt.Errorf("open staged backup database: %w", err)
 	}
-	defer debug.DeferCloseLog(stagedDB, "validateSQLiteBackupImageEntries.db")
+	// Issue #449 follow-up: bare-thunk `defer debug.DeferCloseLog(...)`
+	// does not invoke the closure (see copyBackupFile for the
+	// full rationale). Use the closure-wrap form so the *db.DB
+	// connection releases before the test boundary hits the
+	// modernc driver's connectionOpener-still-holding-handles
+	// state, which on Windows surfaces as unlinkat / SQLITE_LOCKED
+	// on subsequent t.TempDir cleanup or next db.Open.
+	defer func() { debug.DeferCloseLog(stagedDB, "validateSQLiteBackupImageEntries.db")() }()
 
 	soldierSvc := NewSoldierService(stagedDB)
 	soldiers, err := listAllSoldiers(soldierSvc)
@@ -1500,7 +1507,7 @@ func readBackupJSON(file *zip.File, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(reader, "readBackupJSON.reader")
+	defer func() { debug.DeferCloseLog(reader, "readBackupJSON.reader")() }()
 	return json.NewDecoder(reader).Decode(target)
 }
 
@@ -1550,13 +1557,13 @@ func extractBackupFile(file *zip.File, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(source, "extractBackupFile.source")
+	defer func() { debug.DeferCloseLog(source, "extractBackupFile.source")() }()
 
 	target, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(target, "extractBackupFile.target")
+	defer func() { debug.DeferCloseLog(target, "extractBackupFile.target")() }()
 
 	_, err = io.Copy(target, source)
 	return err
@@ -1799,13 +1806,22 @@ func copyBackupFile(sourcePath, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(source, "copyBackupFile.source")
+	// Issue #449 follow-up: bare `defer debug.DeferCloseLog(source, ...)`
+	// form defers a function call whose return value (the close
+	// thunk) is the deferred action — but Go runs the deferred
+	// function-value's RETURNED closure, NOT the return value of
+	// `debug.DeferCloseLog`. The bare form therefore never closes
+	// the underlying *os.File. The wrapper below invokes the
+	// returned thunk explicitly inside an inline closure so the
+	// close fires before the test boundary (which is where the
+	// unlinkat race on the leaked file handle bites on Windows).
+	defer func() { debug.DeferCloseLog(source, "copyBackupFile.source")() }()
 
 	target, err := os.Create(destinationPath)
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(target, "copyBackupFile.target")
+	defer func() { debug.DeferCloseLog(target, "copyBackupFile.target")() }()
 
 	_, err = io.Copy(target, source)
 	return err
