@@ -46,7 +46,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/valueforvalue/DixieData/internal/cookies"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -136,21 +135,21 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Issue #455 slice 2: cookie context replaced with a
+	// ?person=ID query param. The picker landing acts as a
+	// search surface + Continue shortcut when ?person is
+	// supplied in the URL. Recents (localStorage) still feed
+	// the <ul data-research-recent-list> hydration in
+	// app.js#hydrateResearchPickerRecents.
 	var current *viewmodel.PersonRecord
 	var supportedActions []string
 	hasCountyInBirth := false
-	if a.personCtxKey != nil {
-		if ctx, ok := cookies.ReadPersonCtx(r, a.personCtxKey); ok && ctx.PersonID > 0 {
-			if soldier, err := a.soldiers.GetByID(ctx.PersonID); err == nil && soldier != nil {
-				rec := viewmodel.PersonRecordFromModel(*soldier)
-				current = &rec
-				// Issue #422 slice 2: compute which sub-pages the
-				// current person can support. The Continue
-				// shortcut renders one button per supported
-				// action; unsupported ones are hidden entirely.
-				supportedActions = supportedPickerActions(*soldier)
-				hasCountyInBirth = records.HasCountyInBirth(*soldier)
-			}
+	if personID, perr := parseOptionalInt64(r.URL.Query().Get("person"), "person"); perr == nil && personID > 0 {
+		if soldier, err := a.soldiers.GetByID(personID); err == nil && soldier != nil {
+			rec := viewmodel.PersonRecordFromModel(*soldier)
+			current = &rec
+			supportedActions = supportedPickerActions(*soldier)
+			hasCountyInBirth = records.HasCountyInBirth(*soldier)
 		}
 	}
 
@@ -232,12 +231,12 @@ func (a *App) handleResearchSelect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if a.personCtxKey != nil {
-		if err := cookies.WritePersonCtxFromRequest(w, a.personCtxKey, r, personID); err != nil {
-			respondInternal(w, r, "Could not record the Person selection.", err)
-			return
-		}
-	}
+	// Issue #455 slice 2: cookie-write path removed. The picker
+	// now resolves directly to the sub-page via writeExportRedirect;
+	// the picked Person ID survives in the URL (e.g.
+	// /timeline?person={id}) instead of being persisted across
+	// navigation in a cookie. Deep-links + bookmarks preserve the
+	// context.
 	setToastHeader(w, "Person selection recorded.")
 	geography := strings.TrimSpace(r.FormValue("geography"))
 	writeExportRedirect(w, researchSubPathForAction(personID, next, geography))
@@ -248,25 +247,19 @@ func (a *App) handleResearchClear(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	cookies.ClearPersonCtx(w)
+	// Issue #455 slice 2: cookie machinery deleted; this endpoint
+	// is preserved for URL stability (no cookie to clear). It now
+	// just bounces back to the picker landing.
 	setToastHeader(w, "Person selection cleared.")
 	writeExportRedirect(w, "/research")
 }
 
-// pickerContextPresent reports whether the supplied request carries
-// a dd_person_ctx cookie that this app can verify. Returns true
-// when no cookie key is configured (no-context mode pass-through)
-// or when the cookie is present and verifies.
-//
-// Issue #378 slice 2: handleSoldierByID checks this before the
-// soldier-scoped sub-route branch fires so users without a Person
-// in context are routed through the picker.
+// pickerContextPresent is kept (always returns true post-pivot)
+// as a no-op sentinel for any future gating that might want
+// person context; today's deep-links to /soldiers/{id}/* work
+// without any cookie or query context. Issue #455 slice 2.
 func (a *App) pickerContextPresent(r *http.Request) bool {
-	if a.personCtxKey == nil {
-		return true
-	}
-	_, ok := cookies.ReadPersonCtx(r, a.personCtxKey)
-	return ok
+	return true
 }
 
 // handleResearchRecent is the recents-list fragment endpoint

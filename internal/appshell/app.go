@@ -115,12 +115,6 @@ type App struct {
 	scratchpads             scratchpadOpener
 	frontendAssets          fs.FS
 	jobs                    *jobs.Registry
-
-	// personCtxKey is the HMAC key for the dd_person_ctx cookie
-	// (Research & Review picker, issue #378). Loaded by startup()
-	// from <dataDir>/person_ctx.key via cookies.EnsureKey. Stays
-	// in-memory only; rotation requires restart.
-	personCtxKey []byte
 }
 
 func shouldAttemptPostUpdateHealthClear(r *http.Request) bool {
