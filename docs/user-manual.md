@@ -510,7 +510,73 @@ Recommended routine:
 
 **Before any destructive action** — Initialize Data (§16.1), Load Backup (§13.2), or Bulk Delete on the Review Queue (§10) — export a fresh `.ddbak` first via §13.1 Export options. None of those operations are reversible within the app; only a recent `.ddbak` lets you roll back.
 
-## 19. Troubleshooting
+## 19. Headless / CLI restore
+
+The DixieData desktop binary doubles as a headless CLI for the import / export surface. The same `DixieData.exe` you launch as the Wails GUI can be invoked with a subcommand to restore a `.ddbak` from a terminal — useful for scripted backups, CI smoke tests, or restoring on a machine where the desktop UI isn't available.
+
+### 19.1 Restore a `.ddbak` from the command line
+
+The CLI binary is `build/bin/DixieData.exe` (Linux / macOS equivalents: `build/bin/dixiedata`). The full subcommand tree is at `dixiedata --help`. The restore verb:
+
+```bash
+# Set the target data dir for this invocation (overrides
+# the app's normal default of $HOME/.dixiedata).
+export DIXIEDATA_DATA_DIR="/path/to/target/data-dir"
+
+# Preview — reads the .ddbak's manifest, prints what would be restored,
+# touches nothing. Use this to confirm before committing.
+DixieData.exe import backup --from /path/to/backup.ddbak --dry-run
+
+# Apply — overwrites the target data dir contents with the .ddbak.
+# Destructive: this is the OS-level `os.Rename` swap, not an
+# in-place update. The previous target dir is moved aside as
+# `<target>-previous-<rand>`; if the rename itself fails the
+# previous state is untouched (the swap is atomic at the
+# file-system level).
+DixieData.exe import backup --from /path/to/backup.ddbak --yes
+```
+
+Sample output:
+
+```
+dry-run: would restore C:/Users/me/Archives/backup-2026-07-05.ddbak
+  soldiers=319 records=854 images=761
+  format=dixiedata-backup version=2
+pass --yes to apply
+```
+
+```
+restored C:/Users/me/Archives/backup-2026-07-05.dddbak
+  soldiers=319 records=854 images=761
+rollback: re-run with a different .ddbak (no pre-import snapshot taken; the imported .ddbak is the source of truth)
+```
+
+### 19.2 When to use the CLI vs the GUI
+
+- **Use the GUI (Share → Load Backup, §13.2)** when an interactive restore is fine, the same machine has the desktop UI, and you want the live progress UI plus the before/after confirmations.
+- **Use the CLI** for scripted restores from cron / task scheduler / CI, or when the desktop binary is not running on the target machine. The CLI dispatch lives at `main.go` (`runImportSubcommand`); the disk-level swap path is the same `archive.BackupService.Import` the GUI invokes, so the lock / schema / image semantics are identical.
+
+### 19.3 Required environment
+
+- `DIXIEDATA_DATA_DIR` — the target data directory. Required. The CLI bypasses the Wails GUI dialogs (`OpenFileDialog`, `SaveFileDialog`, `OpenDirectoryDialog`, `BrowserOpenURL`) by design; that scope is not exposed via the headless path. The data dir is the only user-facing knob.
+- The target dir must NOT be the live data dir of a running DixieData desktop binary. The CLI's import path closes `b.db` around the staging swap (mirroring `handleImportBackup`'s close-then-reopen pattern), but two binaries holding the same data dir open at once risk racing on `replaceDataDir`'s `os.Rename`. Stop the desktop binary first, or point `DIXIEDATA_DATA_DIR` at a fresh empty dir.
+- A writable target parent dir. `replaceDataDir` writes a `<target>-previous-<rand>` sibling during the swap; the parent must allow that.
+
+### 19.4 Other CLI subcommands at a glance
+
+The CLI also exposes the rest of the headless surface for scripted workflows. For the full catalogue, see `docs/agents/cli-plan.md` and `dixiedata --help`:
+
+- `dixiedata doctor [--json] [--fix]` — check the local install (DB integrity, schema version, log migration).
+- `dixiedata list/show/search` — query Person Records / Source Records.
+- `dixiedata export pdf|jpg|csv|json|ical|archive [--from PID] [--output PATH]` — full-surface export without the GUI dialogs.
+- `dixiedata migrate status|apply [target]` — schema-migration management (commits user_version per block).
+- `dixiedata backup list|prune` — retained-backup manager from the `update` package.
+- `dixiedata restore point create|list|apply|prune` — pre-update recovery-point management.
+- `dixiedata logs --tail N` — JSONL log tail.
+- `dixiedata config get|set KEY=VALUE` — local setting overrides.
+- `dixiedata debug dump|hx-invariants|browser-tree|request|cli-coverage|in-place-safety` — diagnostic surfaces used by the audit harness.
+
+## 20. Troubleshooting
 
 ### The app says it is still starting up
 
@@ -587,7 +653,7 @@ grep deadbeef00000001 ~/.dixiedata-logs/app.log.jsonl | jq -c .
 
 The bug-report zip (Share → Support & Diagnostics → Export bug report) bundles `logs/app.log.jsonl` truncated to the last 1000 lines so operators have recent crash + error context without the file growing unboundedly. `feedback-log.jsonl` is included in full (user-submitted content, separate retention).
 
-## 20. Best practices
+## 21. Best practices
 
 - verify Find a Grave autofill before saving
 - use the Review Queue regularly
@@ -596,11 +662,11 @@ The bug-report zip (Share → Support & Diagnostics → Export bug report) bundl
 - set a primary image for cleaner exports and display behavior
 - use Insights and duplicate audit periodically on large archives
 
-## 20.1 Browse page (`/browse`)
+## 21.1 Browse page (`/browse`)
 
 A separate browsing view with paging, sortable columns, and a built-in **compare-selection** mode (check rows, then click **Compare** to open `/compare?id1=...&id2=...`). Useful for medium-to-large Local Archives where the `/soldiers` Quick Search list becomes unwieldy. The mobile breakpoint collapses rows to card view.
 
-## 20.2 Per-Person Record research views
+## 21.2 Per-Person Record research views
 
 Every Person Record detail page (`/soldiers/{id}`) exposes two research views accessible from the **Advanced Research & Review** accordion:
 
@@ -612,31 +678,31 @@ The Review Queue form tile (flag/resolve) and the Research Collections tile (nam
 
 The Person context for these sub-pages rides in the URL query as `?person={id}` (issue #455 slice 2). Deep-links like `/soldiers/{id}/timeline` load directly without any cookie or picker round-trip — bookmarks survive reloads.
 
-## 20.3 Research collections
+## 21.3 Research collections
 
 `/research-collections` lets you group related Person Records into named collections (a regiment, a family, an investigation). Each collection has its own page at `/research-collections/{id}` showing its Person Records and any collection-level notes. Useful for tracking multi-arc investigations.
 
-## 20.4 Research log only (Research Pack merged into Insights)
+## 21.4 Research log only (Research Pack merged into Insights)
 
 - **Research Log** (`/soldiers/{id}/research-log`) — append-only task list scoped to a Person Record. Create tasks (`Research Task Create`), resolve tasks (`Research Task Resolve`), and the log survives across sessions.
 - The pre-#455 Research Pack sub-page (`/soldiers/{id}/research-pack/{state|county}`) is gone; the same Top Units / Top Cemeteries / Related Person Records data lives on **Insights** (`/insights`) under the Military Representation, Burial Analytics, and Person Record Type Snapshot panels. Use **Open Unit on Insights** from the Person Record detail page to filter the drilldown by unit.
 
-## 20.5 Recent searches
+## 21.5 Recent searches
 
 `/soldiers/search/recent` shows the last 25 Quick Searches you've run this session and across sessions. Click any entry to re-run it.
 
-## 20.6 Per-month anniversary PDF
+## 21.6 Per-month anniversary PDF
 
 The Calendar page (`/calendar/`) renders the current month. Each month footer exposes **Export this month as PDF**, which produces a single-page printable of all anniversaries falling in that month (births, deaths, muster dates). Use it for monthly newsletter inserts or just-in-time planning.
 
-## 20.7 Individual Person Record exports
+## 21.7 Individual Person Record exports
 
 From the Person Record detail page header, you can export:
 
 - **PDF** — single-record printable, same template as the database PDF export but scoped to one Person Record. Useful for archival printouts and sharing one record without exposing the whole Local Archive.
 - **JPG** — flattened single-record image suitable for thumbnails, social posts, or quick visual reference.
 
-## 20.8 Memorial JSON import
+## 21.8 Memorial JSON import
 
 The Share page exposes a **Memorial JSON Import** flow separate from the Shared Archive path. It accepts a structured JSON document describing one or more Person Records (often exported from a third-party memorial platform) and lets you preview the parsed fields before confirming the import. Routes:
 
@@ -645,7 +711,7 @@ The Share page exposes a **Memorial JSON Import** flow separate from the Shared 
 
 This path does not run the merge-review flow (it is a fresh import, not a merge), so review each preview carefully before confirming.
 
-## 20.9 Data Quality Scan
+## 21.9 Data Quality Scan
 
 `/settings/quality/scan` runs a one-pass audit over the Local Archive flagging:
 
@@ -656,22 +722,22 @@ This path does not run the merge-review flow (it is a fresh import, not a merge)
 
 After the scan completes, `/settings/quality/apply` lets you apply automated fixes (e.g. normalize pension state values, drop orphan scratch pad entries). The apply step is reversible via the most recent `.ddbak`.
 
-## 20.10 Software Updates panel
+## 21.10 Software Updates panel
 
 `/settings/updates/*` exposes the in-place update flow:
 
 - `POST /settings/updates/source` — switch between release channels (stable, pre-release).
 - `POST /settings/updates/check` — fetch the latest available update metadata.
-- `POST /settings/updates/apply` — trigger the update. This **creates a Restore Point** (§19 Troubleshooting) before applying.
+- `POST /settings/updates/apply` — trigger the update. This **creates a Restore Point** (§20 Troubleshooting) before applying.
 - `POST /settings/updates/health/bootstrap` — internal heartbeat used by the update handoff. Not user-callable.
 
-If an update fails, the recovery screen (§19) takes over on the next launch.
+If an update fails, the recovery screen (§20 Troubleshooting) takes over on the next launch.
 
-## 20.11 Global Feedback modal
+## 21.11 Global Feedback modal
 
 A floating dock button (bottom-right) opens the **Feedback** modal. You can submit free-form feedback that is appended to a feedback log file in `.dixiedata/feedback.jsonl`. Use **Export Feedback Log** (`/export/feedback-log`) to download the full log for sharing with support or for your own records.
 
-## 20.12 Printable PDF grouping options
+## 21.12 Printable PDF grouping options
 
 The database printable PDF export (Settings → Export → Printable Database PDF) supports three grouping dimensions, selected at export time:
 
@@ -681,7 +747,7 @@ The database printable PDF export (Settings → Export → Printable Database PD
 
 Each grouping produces a separate section in the printed output with a divider page.
 
-## 20.13 Floating dock and server-side routes
+## 21.13 Floating dock and server-side routes
 
 The floating dock at the bottom of every page exposes quick links (Calendar, Browse, Review Queue, etc.). Two non-page routes work in the background:
 
@@ -690,7 +756,7 @@ The floating dock at the bottom of every page exposes quick links (Calendar, Bro
 
 These are not pages — they return immediately and trigger desktop-side behavior. They are listed here so future agents do not delete them while cleaning up routes.
 
-## 21. Quick reference
+## 22. Quick reference
 
 ### Best pages for common tasks
 
