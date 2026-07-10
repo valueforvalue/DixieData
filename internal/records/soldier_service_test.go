@@ -1536,8 +1536,8 @@ func TestSoldierService_ResearchCollections(t *testing.T) {
 	if len(hub.Collections) != 1 || hub.Collections[0].ContainsCurrent {
 		t.Fatalf("unexpected research collections hub: %#v", hub)
 	}
-	if err := svc.AddSoldierToResearchCollection(hub.Collections[0].ID, created.ID); err != nil {
-		t.Fatalf("AddSoldierToResearchCollection: %v", err)
+	if added, err := svc.AddSoldierToResearchCollection(hub.Collections[0].ID, created.ID); err != nil || !added {
+		t.Fatalf("AddSoldierToResearchCollection: added=%v, err=%v", added, err)
 	}
 	detail, err := svc.ResearchCollectionDetail(hub.Collections[0].ID, created.ID)
 	if err != nil {
