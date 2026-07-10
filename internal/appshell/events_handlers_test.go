@@ -20,9 +20,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/appdata"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
+"github.com/valueforvalue/DixieData/internal/appdata"
 )
 func TestHandleEventsEmptyList(t *testing.T) {
 	app := newStressApp(t)
@@ -517,7 +518,7 @@ func TestHandleEventPDF(t *testing.T) {
 
 	created := createEvent(t, app, "Battle of Springfield", "10/25/1864", "10/25/1864", "Decisive engagement")
 
-	want := filepath.Join(t.TempDir(), eventPDFName(created))
+	want := filepath.Join(testtemp.New(t).Path(), eventPDFName(created))
 	app.saveFileDialogOverride = func(opts any) (string, error) { return want, nil }
 	defer func() { app.saveFileDialogOverride = nil }()
 
@@ -592,9 +593,9 @@ func TestHandleEventPDF_OrientationPicker(t *testing.T) {
 	app := newStressApp(t)
 	created := createEvent(t, app, "Battle of Springfield", "10/25/1864", "10/25/1864", "Decisive engagement")
 
-	portraitPath := filepath.Join(t.TempDir(), "portrait.pdf")
-	landscapePath := filepath.Join(t.TempDir(), "landscape.pdf")
-	defaultPath := filepath.Join(t.TempDir(), "default.pdf")
+	portraitPath := filepath.Join(testtemp.New(t).Path(), "portrait.pdf")
+	landscapePath := filepath.Join(testtemp.New(t).Path(), "landscape.pdf")
+	defaultPath := filepath.Join(testtemp.New(t).Path(), "default.pdf")
 
 	// Each POST needs a fresh SaveFileDialog return path; reuse
 	// a queue so the same app routes each request to a different

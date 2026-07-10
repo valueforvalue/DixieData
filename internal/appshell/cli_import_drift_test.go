@@ -20,8 +20,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/archive"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+"github.com/valueforvalue/DixieData/internal/archive"
 )
 
 // writeTestManifestZip builds a minimal .ddbak / .ddshare
@@ -30,7 +31,7 @@ import (
 // internal/archive/backup_format_drift_test.go.
 func writeTestManifestZip(t *testing.T, formatVersion string, archiveKind string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "stamp.ddbak")
+	path := filepath.Join(testtemp.New(t).Path(), "stamp.ddbak")
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("Create: %v", err)

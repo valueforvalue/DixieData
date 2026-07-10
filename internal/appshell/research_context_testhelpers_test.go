@@ -7,14 +7,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/appdata"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/cookies"
 	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/appdata"
 )
 
 func newPickerApp(t *testing.T) *App {
 	t.Helper()
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)

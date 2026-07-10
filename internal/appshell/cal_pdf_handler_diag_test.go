@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/db"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestDiag_HandleCalendarPDF_NoDialog exercises the calendar PDF
@@ -52,7 +54,7 @@ func TestDiag_HandleCalendarPDF_NoDialog(t *testing.T) {
 	configureTestIdentity(t, app)
 	app.setupRoutes()
 
-	outPath := filepath.Join(t.TempDir(), "diag.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "diag.pdf")
 	app.saveFileDialogOverride = func(_ any) (string, error) { return outPath, nil }
 
 	form := strings.NewReader("orientation=P&printer_friendly=1")

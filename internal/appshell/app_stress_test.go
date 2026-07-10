@@ -15,13 +15,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/models"
+"github.com/valueforvalue/DixieData/internal/db"
 )
 
 func newStressApp(t *testing.T) *App {
 	t.Helper()
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -166,9 +167,9 @@ func TestStressAppLoggingToFile(t *testing.T) {
 	if testing.Short() {
 		t.Skip("stress test: run via `make stress` or `go test -run TestStress ./internal/appshell/`")
 	}
-	logPath := filepath.Join(t.TempDir(), "stress_test.log")
+	logPath := filepath.Join(testtemp.New(t).Path(), "stress_test.log")
 	t.Setenv("DIXIEDATA_STRESS_LOG", logPath)
-	t.Setenv("DIXIEDATA_DATA_DIR", filepath.Join(t.TempDir(), ".dixiedata"))
+	t.Setenv("DIXIEDATA_DATA_DIR", filepath.Join(testtemp.New(t).Path(), ".dixiedata"))
 	defer resetStressLoggingForTests()
 
 	app := NewApp()

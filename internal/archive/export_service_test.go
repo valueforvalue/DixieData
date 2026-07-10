@@ -22,6 +22,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/pkg/render"
 	"github.com/xuri/excelize/v2"
 )
@@ -57,7 +58,7 @@ func TestExportService_ExportJSON(t *testing.T) {
 	})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", DisplayID: "PENSION-001"})
 
-	outPath := filepath.Join(t.TempDir(), "export.json")
+	outPath := filepath.Join(testtemp.New(t).Path(), "export.json")
 	if err := exportSvc.ExportJSON(outPath); err != nil {
 		t.Fatalf("ExportJSON: %v", err)
 	}
@@ -128,7 +129,7 @@ func TestExportService_ExportExcel(t *testing.T) {
 		t.Fatalf("Create spouse: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "export.xlsx")
+	outPath := filepath.Join(testtemp.New(t).Path(), "export.xlsx")
 	if err := exportSvc.ExportExcel(outPath); err != nil {
 		t.Fatalf("ExportExcel: %v", err)
 	}
@@ -175,7 +176,7 @@ func TestExportService_ExportCSV(t *testing.T) {
 	})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Braxton", LastName: "Bragg", Unit: "Army of Tennessee"})
 
-	outPath := filepath.Join(t.TempDir(), "export.csv")
+	outPath := filepath.Join(testtemp.New(t).Path(), "export.csv")
 	if err := exportSvc.ExportCSV(outPath); err != nil {
 		t.Fatalf("ExportCSV: %v", err)
 	}
@@ -229,7 +230,7 @@ func TestExportService_ExportCSV(t *testing.T) {
 }
 
 func TestExportService_ExportStaticArchive(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -292,7 +293,7 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	outputPath := filepath.Join(t.TempDir(), "static-archive.zip")
+	outputPath := filepath.Join(testtemp.New(t).Path(), "static-archive.zip")
 	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
 		t.Fatalf("ExportStaticArchive: %v", err)
 	}
@@ -373,7 +374,7 @@ func TestExportService_ExportStaticArchive(t *testing.T) {
 // instead of bare array) is also asserted so a future slot
 // can render an Events tab without a second template pass.
 func TestExportStaticArchive_EventBundle(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -415,7 +416,7 @@ func TestExportStaticArchive_EventBundle(t *testing.T) {
 		t.Fatalf("AttachEventToPerson: %v", err)
 	}
 
-	outputPath := filepath.Join(t.TempDir(), "static-events.zip")
+	outputPath := filepath.Join(testtemp.New(t).Path(), "static-events.zip")
 	if err := exportSvc.ExportStaticArchive(outputPath, dataDir); err != nil {
 		t.Fatalf("ExportStaticArchive: %v", err)
 	}
@@ -604,7 +605,7 @@ func TestExportService_ExportSoldierPDFForSpouseEntry(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	outPath := filepath.Join(t.TempDir(), "wife.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "wife.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
 		DisplayID:     "TDM65-DXD-00002",
 		EntryType:     "widow",
@@ -645,7 +646,7 @@ func TestExportService_ExportImages(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	tempDir := t.TempDir()
+	tempDir := testtemp.New(t).Path()
 	firstPath := filepath.Join(tempDir, "front.png")
 	secondPath := filepath.Join(tempDir, "back.png")
 	if err := os.WriteFile(firstPath, []byte("front-image"), 0o644); err != nil {
@@ -685,12 +686,12 @@ func TestExportService_ExportSoldierPDF(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	imagePath := filepath.Join(testtemp.New(t).Path(), "portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "soldier.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "soldier.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
 		DisplayID:          "PENSION-42",
 		FirstName:          "Robert",
@@ -775,7 +776,7 @@ func TestExportService_ExportEventPDF(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	outPath := filepath.Join(t.TempDir(), "event.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "event.pdf")
 	event := models.Soldier{
 		DisplayID:          "EVT-00001",
 		EntryType:          models.EntryTypeEvent,
@@ -828,11 +829,11 @@ func TestExportService_ExportSoldierPDFWithoutImages(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	imagePath := filepath.Join(testtemp.New(t).Path(), "portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	outPath := filepath.Join(t.TempDir(), "soldier-no-images.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "soldier-no-images.pdf")
 	err := exportSvc.ExportSoldierPDFWithoutImages(outPath, models.Soldier{
 		DisplayID: "PENSION-42",
 		FirstName: "Robert",
@@ -863,12 +864,12 @@ func TestExportService_ExportSoldierPDFPrinterFriendly(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	imagePath := filepath.Join(testtemp.New(t).Path(), "portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "soldier-printer-friendly.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "soldier-printer-friendly.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
 		DisplayID:          "PENSION-42",
 		FirstName:          "Robert",
@@ -924,13 +925,13 @@ func TestExportService_ExportSoldierPDFPrinterFriendlyPortraitFits1200CharExcerp
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	imagePath := filepath.Join(t.TempDir(), "portrait.png")
+	imagePath := filepath.Join(testtemp.New(t).Path(), "portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
 	override := strings.Repeat("Portrait override text for compact portrait layout. ", 25)[:1200]
-	outPath := filepath.Join(t.TempDir(), "soldier-printer-friendly-1200.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "soldier-printer-friendly-1200.pdf")
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
 		DisplayID:          "PENSION-1200",
 		FirstName:          "Robert",
@@ -970,12 +971,12 @@ func TestExportService_ExportSoldierPDFOmitsPrimaryImageJPEGFileNameStoredAsCapt
 	configureExportIdentity(t, d)
 
 	imageName := "11558933_9fdc5984-1f88-40d7-be17-146e1caaaaf1.jpeg"
-	imagePath := filepath.Join(t.TempDir(), imageName)
+	imagePath := filepath.Join(testtemp.New(t).Path(), imageName)
 	if err := os.WriteFile(imagePath, jpegFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "soldier-primary-image-no-filename.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "soldier-primary-image-no-filename.pdf")
 	const captionText = "James A. Myers, photographed in 1910 at Letitia Cemetery."
 	err := exportSvc.ExportSoldierPDF(outPath, models.Soldier{
 		DisplayID:     "DXD-00054",
@@ -1019,7 +1020,7 @@ func TestExportService_ExportMonthlyAnniversaryPDF(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	outPath := filepath.Join(t.TempDir(), "monthly.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "monthly.pdf")
 	err := exportSvc.ExportMonthlyAnniversaryPDF(outPath, 4, map[int][]models.Soldier{
 		9: {
 			{DisplayID: "DD-1", FirstName: "John", LastName: "Smith"},
@@ -1045,7 +1046,7 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	imagePath := filepath.Join(t.TempDir(), "registry-portrait.png")
+	imagePath := filepath.Join(testtemp.New(t).Path(), "registry-portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -1087,7 +1088,7 @@ func TestExportService_ExportFullDatabasePDF(t *testing.T) {
 		t.Fatalf("GetByID second: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "registry.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "registry.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(outPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
@@ -1178,7 +1179,7 @@ func TestExportService_ExportFullDatabasePDFRoutesThroughRegistry(t *testing.T) 
 		Orientation: "L",
 		SortBy:      PrintSortLastName,
 	}.Normalize()
-	outDir := filepath.Join(t.TempDir(), "typst-out.pdf")
+	outDir := filepath.Join(testtemp.New(t).Path(), "typst-out.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(outDir, settings); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
@@ -1250,7 +1251,7 @@ func TestExportService_ExportSoldierJPGRoutesThroughRegistry(t *testing.T) {
 		DeathDate:  "00/00/1870",
 		BirthDate:  "00/00/1840",
 	}
-	outputPath := filepath.Join(t.TempDir(), "record.jpg")
+	outputPath := filepath.Join(testtemp.New(t).Path(), "record.jpg")
 	paths, err := exportSvc.ExportSoldierJPG(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: true})
 	if err != nil {
 		t.Fatalf("ExportSoldierJPG: %v", err)
@@ -1329,7 +1330,7 @@ func findTemplatesDirForTest() (string, error) {
 // data dir before handing the record to the typst renderer, and the
 // image is staged and embedded.
 func TestExportService_ExportFullDatabasePDFResolvesRelativeImagePaths(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	d, err := openExistingTestDB(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1363,7 +1364,7 @@ func TestExportService_ExportFullDatabasePDFResolvesRelativeImagePaths(t *testin
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	out := filepath.Join(testtemp.New(t).Path(), "bulk.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
@@ -1391,7 +1392,7 @@ func TestExportService_ExportFullDatabasePDFSuppressesImageCaption(t *testing.T)
 	configureExportIdentity(t, d)
 
 	// Real-sized PNG so the image panel has visible content.
-	imgPath := filepath.Join(t.TempDir(), "p.png")
+	imgPath := filepath.Join(testtemp.New(t).Path(), "p.png")
 	writeSizedPNGFixture(t, imgPath, 80, 80)
 
 	if _, err := soldierSvc.Create(models.Soldier{
@@ -1412,7 +1413,7 @@ func TestExportService_ExportFullDatabasePDFSuppressesImageCaption(t *testing.T)
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	out := filepath.Join(testtemp.New(t).Path(), "bulk.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
@@ -1441,7 +1442,7 @@ func TestExportService_ExportFullDatabasePDFSuppressesImageCaption(t *testing.T)
 // refactor that re-introduces the typst "file not found" hard
 // error from the per-record path.
 func TestExportService_ExportFullDatabasePDFWithoutDataDirRendersWithoutImage(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	d, err := openExistingTestDB(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1475,7 +1476,7 @@ func TestExportService_ExportFullDatabasePDFWithoutDataDirRendersWithoutImage(t 
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	out := filepath.Join(testtemp.New(t).Path(), "bulk.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
@@ -1517,7 +1518,7 @@ func TestExportService_ExportFullDatabasePDFUsesBulkTemplateField(t *testing.T) 
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	out := filepath.Join(t.TempDir(), "bulk.pdf")
+	out := filepath.Join(testtemp.New(t).Path(), "bulk.pdf")
 	err := exportSvc.ExportFullDatabasePDF(out, PrintSettings{BulkTemplate: "soldier_landscape"}.Normalize())
 	if err == nil {
 		t.Fatalf("bulk export must reject per-record BulkTemplate assignment, got nil")
@@ -1568,7 +1569,7 @@ func TestExportService_ExportFullDatabasePDFGroupByPensionState(t *testing.T) {
 		}
 	}
 
-	out := filepath.Join(t.TempDir(), "grouped.pdf")
+	out := filepath.Join(testtemp.New(t).Path(), "grouped.pdf")
 	settings := PrintSettings{GroupByPensionState: true}.Normalize()
 	if err := exportSvc.ExportFullDatabasePDF(out, settings); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
@@ -1625,7 +1626,7 @@ func TestExportService_ExportFullDatabasePDFGroupByUnitPrecedence(t *testing.T) 
 		}
 	}
 
-	out := filepath.Join(t.TempDir(), "precedence.pdf")
+	out := filepath.Join(testtemp.New(t).Path(), "precedence.pdf")
 	settings := PrintSettings{
 		GroupByUnit:          true,
 		GroupByPensionState:  true,
@@ -1694,7 +1695,7 @@ func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(
 		t.Fatalf("Create soldier: %v", err)
 	}
 
-	withoutAppendixPath := filepath.Join(t.TempDir(), "registry-default.pdf")
+	withoutAppendixPath := filepath.Join(testtemp.New(t).Path(), "registry-default.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(withoutAppendixPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF default: %v", err)
 	}
@@ -1708,7 +1709,7 @@ func TestExportService_ExportFullDatabasePDFAppendsFullBiographyPageWhenEnabled(
 	// does not assert biography suppression.
 	_ = withoutAppendixText
 
-	withAppendixPath := filepath.Join(t.TempDir(), "registry-full-biography.pdf")
+	withAppendixPath := filepath.Join(testtemp.New(t).Path(), "registry-full-biography.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(withAppendixPath, PrintSettings{FullBiographyPage: true}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF full biography: %v", err)
 	}
@@ -1739,7 +1740,7 @@ func TestExportService_ExportAnalyticsSummaryPDF(t *testing.T) {
 	exportSvc := newTestExportServiceWithRegistry(t, d, soldierSvc)
 	configureExportIdentity(t, d)
 
-	outPath := filepath.Join(t.TempDir(), "analytics-report.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "analytics-report.pdf")
 	err := exportSvc.ExportAnalyticsSummaryPDF(outPath, AnalyticsSnapshot{
 		RecordTypes: models.ArchiveCounts{
 			TotalSoldiers:    12,
@@ -1816,7 +1817,7 @@ func TestExportService_ExportFullDatabasePDFUsesMultiPageFallbackForLongRecords(
 	if err != nil {
 		t.Fatalf("Create soldier: %v", err)
 	}
-	outPath := filepath.Join(t.TempDir(), "single-page.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "single-page.pdf")
 	if err := exportSvc.ExportFullDatabasePDF(outPath, PrintSettings{}); err != nil {
 		t.Fatalf("ExportFullDatabasePDF: %v", err)
 	}
@@ -1884,7 +1885,7 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		return []string{first, second}, nil
 	})
 
-	imagePath := filepath.Join(t.TempDir(), "jpg-portrait.png")
+	imagePath := filepath.Join(testtemp.New(t).Path(), "jpg-portrait.png")
 	if err := os.WriteFile(imagePath, pngFixture(), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -1897,7 +1898,7 @@ func TestExportService_ExportSoldierJPGWritesSiblingPages(t *testing.T) {
 		Notes:              "JPG scratch note should stay out.",
 		Images:             []models.Image{{FileName: "jpg-portrait.png", FilePath: `images\stc38-00001\jpg-portrait.png`, ResolvedPath: imagePath, Caption: "JPG portrait"}},
 	}
-	outputPath := filepath.Join(t.TempDir(), "record.jpg")
+	outputPath := filepath.Join(testtemp.New(t).Path(), "record.jpg")
 	paths, err := exportSvc.ExportSoldierJPG(outputPath, soldier, PDFOptions{Orientation: "L", IncludeImages: true})
 	if err != nil {
 		t.Fatalf("ExportSoldierJPG: %v", err)
@@ -1938,7 +1939,7 @@ func TestExportService_ExportSoldierJPGRemovesStaleSiblingPages(t *testing.T) {
 		return []string{first}, nil
 	})
 
-	outputPath := filepath.Join(t.TempDir(), "record.jpg")
+	outputPath := filepath.Join(testtemp.New(t).Path(), "record.jpg")
 	stalePage := filepath.Join(filepath.Dir(outputPath), "record-page-002.jpg")
 	if err := os.WriteFile(outputPath, []byte("old-page-1"), 0o644); err != nil {
 		t.Fatalf("WriteFile outputPath: %v", err)
@@ -1969,7 +1970,7 @@ func TestExportService_ExportSoldierJPGLeavesNoPartialOutputsOnRasterFailure(t *
 		return nil, errors.New("render failed")
 	})
 
-	outputDir := t.TempDir()
+	outputDir := testtemp.New(t).Path()
 	outputPath := filepath.Join(outputDir, "record.jpg")
 	_, err := exportSvc.ExportSoldierJPG(outputPath, models.Soldier{DisplayID: "STC38-00001"}, PDFOptions{Orientation: "L", IncludeImages: true})
 	if err == nil || !strings.Contains(err.Error(), "render failed") {
@@ -2010,7 +2011,7 @@ func TestExportService_ExportICalendar(t *testing.T) {
 		DeathDay:   0,
 	})
 
-	outPath := filepath.Join(t.TempDir(), "anniversaries.ics")
+	outPath := filepath.Join(testtemp.New(t).Path(), "anniversaries.ics")
 	if err := exportSvc.ExportICalendar(outPath, models.DefaultCalendarEventPreferences()); err != nil {
 		t.Fatalf("ExportICalendar: %v", err)
 	}
@@ -2078,7 +2079,7 @@ func TestExportService_ExportJSONWithStatsCountsRecords(t *testing.T) {
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", DisplayID: "PENSION-001"})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "James", LastName: "Longstreet"})
 
-	outPath := filepath.Join(t.TempDir(), "export.json")
+	outPath := filepath.Join(testtemp.New(t).Path(), "export.json")
 	records, images, sources, err := exportSvc.ExportJSONWithStats(outPath)
 	if err != nil {
 		t.Fatalf("ExportJSONWithStats: %v", err)
@@ -2117,7 +2118,7 @@ func TestExportService_ExportExcelWithStatsCountsRecords(t *testing.T) {
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Robert", LastName: "Lee"})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson"})
 
-	outPath := filepath.Join(t.TempDir(), "export.xlsx")
+	outPath := filepath.Join(testtemp.New(t).Path(), "export.xlsx")
 	records, images, sources, err := exportSvc.ExportExcelWithStats(outPath)
 	if err != nil {
 		t.Fatalf("ExportExcelWithStats: %v", err)
@@ -2161,7 +2162,7 @@ func TestExportService_ExportICalendarWithStatsCountsRecords(t *testing.T) {
 		t.Fatalf("exportSoldiers returned %d soldiers; want 3 — Create likely failed silently and the test cannot continue", len(all))
 	}
 
-	outPath := filepath.Join(t.TempDir(), "export.ics")
+	outPath := filepath.Join(testtemp.New(t).Path(), "export.ics")
 	records, images, sources, err := exportSvc.ExportICalendarWithStats(outPath, models.DefaultCalendarEventPreferences())
 	if err != nil {
 		t.Fatalf("ExportICalendarWithStats: %v", err)
@@ -2186,7 +2187,7 @@ func TestExportService_ExportFullDatabasePDFWithStatsCountsRecords(t *testing.T)
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "Stonewall", LastName: "Jackson", Rank: "General"})
 	_, _ = soldierSvc.Create(models.Soldier{FirstName: "James", LastName: "Longstreet", Rank: "Lt. General"})
 
-	outPath := filepath.Join(t.TempDir(), "archive.pdf")
+	outPath := filepath.Join(testtemp.New(t).Path(), "archive.pdf")
 	records, images, _, err := exportSvc.ExportFullDatabasePDFWithStats(outPath, PrintSettings{Scope: PrintScopeAll})
 	if err != nil {
 		t.Fatalf("ExportFullDatabasePDFWithStats: %v", err)

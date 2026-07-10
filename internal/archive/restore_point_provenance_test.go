@@ -38,12 +38,14 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // readRestoredAt opens the restored DB and reads every row's
@@ -55,6 +57,20 @@ func readRestoredAt(t *testing.T, restoreDir string) (map[string]string, *sql.Ro
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
 	}
+	// Issue #449 slice 3: register a t.Cleanup that closes
+	// the DB. The bare `restoredDB.Close()` at the end of
+	// this function runs in the test's frame, but the modernc
+	// SQLite driver may hold a transient handle past Close()
+	// that only the finalizer releases. The cleanup here
+	// uses an explicit Close with a small settle + runtime.GC
+	// to make sure the file handle is released before
+	// testtemp.Release tries to RemoveAll the dir.
+	t.Cleanup(func() {
+		_ = restoredDB.Close()
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(50 * time.Millisecond)
+	})
 	rows, err := restoredDB.Conn().Query(`SELECT display_id, restored_at FROM soldiers ORDER BY id`)
 	if err != nil {
 		restoredDB.Close()
@@ -100,12 +116,12 @@ func TestRestoreBackupArchiveStampsRestoredAt(t *testing.T) {
 	}
 
 	beforeExport := time.Now().UTC()
-	backupPath := filepath.Join(t.TempDir(), "restore-point.ddbak")
-	if _, err := backupSvc.Export(backupPath, t.TempDir()); err != nil {
+	backupPath := filepath.Join(testtemp.New(t).Path(), "restore-point.ddbak")
+	if _, err := backupSvc.Export(backupPath, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := RestoreBackupArchive(backupPath, restoreDir); err != nil {
 		t.Fatalf("RestoreBackupArchive: %v", err)
 	}
@@ -164,11 +180,11 @@ func TestRestoreBackupArchiveOverwritesPriorStamp(t *testing.T) {
 	}
 
 	// First restore into restoreDir1.
-	backup1 := filepath.Join(t.TempDir(), "point1.ddbak")
-	if _, err := backupSvc.Export(backup1, t.TempDir()); err != nil {
+	backup1 := filepath.Join(testtemp.New(t).Path(), "point1.ddbak")
+	if _, err := backupSvc.Export(backup1, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("Export 1: %v", err)
 	}
-	restoreDir1 := t.TempDir()
+	restoreDir1 := testtemp.New(t).Path()
 	if _, err := RestoreBackupArchive(backup1, restoreDir1); err != nil {
 		t.Fatalf("RestoreBackupArchive 1: %v", err)
 	}
@@ -184,12 +200,12 @@ func TestRestoreBackupArchiveOverwritesPriorStamp(t *testing.T) {
 	// Make a 2nd backup from the same source (or a different
 	// source) and restore into restoreDir2 — the source row was
 	// the same, but the restore event is a different one.
-	backup2 := filepath.Join(t.TempDir(), "point2.ddbak")
-	if _, err := backupSvc.Export(backup2, t.TempDir()); err != nil {
+	backup2 := filepath.Join(testtemp.New(t).Path(), "point2.ddbak")
+	if _, err := backupSvc.Export(backup2, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("Export 2: %v", err)
 	}
 	time.Sleep(1100 * time.Millisecond) // ensure distinct second-precision timestamp
-	restoreDir2 := t.TempDir()
+	restoreDir2 := testtemp.New(t).Path()
 	if _, err := RestoreBackupArchive(backup2, restoreDir2); err != nil {
 		t.Fatalf("RestoreBackupArchive 2: %v", err)
 	}
@@ -231,12 +247,12 @@ func TestRestoreBackupArchiveStampsEvenWhenRestoredAtColumnMissing(t *testing.T)
 		t.Fatalf("Create: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "legacy.ddbak")
-	if _, err := backupSvc.Export(backupPath, t.TempDir()); err != nil {
+	backupPath := filepath.Join(testtemp.New(t).Path(), "legacy.ddbak")
+	if _, err := backupSvc.Export(backupPath, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := RestoreBackupArchive(backupPath, restoreDir); err != nil {
 		t.Fatalf("RestoreBackupArchive: %v", err)
 	}

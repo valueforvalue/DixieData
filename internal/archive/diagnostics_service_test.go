@@ -11,6 +11,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
@@ -18,7 +19,7 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 	soldierSvc := NewSoldierService(d)
 	diagnosticsSvc := NewDiagnosticsService(d, soldierSvc)
 
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	created, err := soldierSvc.Create(models.Soldier{
 		DisplayID: "PENSION-77",
 		FirstName: "Robert",
@@ -58,7 +59,7 @@ func TestDiagnosticsService_ExportCreatesBundle(t *testing.T) {
 		t.Fatalf("WriteFile log: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "bug-report.zip")
+	outPath := filepath.Join(testtemp.New(t).Path(), "bug-report.zip")
 	manifest, err := diagnosticsSvc.Export(outPath, dataDir)
 	if err != nil {
 		t.Fatalf("Export: %v", err)

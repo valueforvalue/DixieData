@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/db"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestCalendarPDFDedupClearsAfterCancel verifies the dedup key is
@@ -64,7 +66,7 @@ func TestCalendarPDFDedupClearsAfterCancel(t *testing.T) {
 	calls := 0
 	app.saveFileDialogOverride = func(_ any) (string, error) {
 		calls++
-		return filepath.Join(t.TempDir(), "cal.pdf"), nil
+		return filepath.Join(testtemp.New(t).Path(), "cal.pdf"), nil
 	}
 	req2 := httptest.NewRequest(http.MethodPost, "/calendar/6/report/pdf", strings.NewReader(formBody))
 	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")

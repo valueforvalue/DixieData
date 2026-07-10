@@ -21,10 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/archive"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/update"
+"github.com/valueforvalue/DixieData/internal/archive"
 )
 
 type scratchpadStub struct {
@@ -637,7 +638,7 @@ func TestParsePrintSettingsRequestForFilteredScope(t *testing.T) {
 }
 
 func TestHandleCalendarDefaultsToCurrentMonth(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -668,7 +669,7 @@ func TestHandleCalendarDefaultsToCurrentMonth(t *testing.T) {
 }
 
 func TestHandleAdvancedSearchByDeathYearMatchesFullDeathDate(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -777,7 +778,7 @@ func TestParseSoldierFormIncludesSpouseFields(t *testing.T) {
 }
 
 func TestHandleEditSoldierPreselectsLinkedSpouse(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1080,7 +1081,7 @@ func TestSelectQuoteForArchiveRotatesEveryThreeSoldiers(t *testing.T) {
 }
 
 func TestInitializeLocalDataRecreatesFreshArchive(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1332,7 +1333,7 @@ func TestAppServeHTTPAllowsHTMXAndDebugJSWhenSetupRequired(t *testing.T) {
 }
 
 func TestHandleUpdateBootstrapHealthClearsPendingLaunchState(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := update.NewRestorePointManager(dataDir)
 	if err := manager.SaveLaunchState(update.RestorePointRecord{
 		ID:               "restore-point-1",
@@ -1381,7 +1382,7 @@ func TestHandleUpdateBootstrapHealthNoPendingStateNoop(t *testing.T) {
 }
 
 func TestAppServeHTTPClearsPendingLaunchStateAfterHealthyCalendarResponse(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := update.NewRestorePointManager(dataDir)
 	if err := manager.SaveLaunchState(update.RestorePointRecord{
 		ID:               "restore-point-1",
@@ -1420,7 +1421,7 @@ func TestAppServeHTTPClearsPendingLaunchStateAfterHealthyCalendarResponse(t *tes
 }
 
 func TestAppServeHTTPPreservesPendingLaunchStateWhenCalendarFails(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := update.NewRestorePointManager(dataDir)
 	if err := manager.SaveLaunchState(update.RestorePointRecord{
 		ID:               "restore-point-1",
@@ -1480,7 +1481,7 @@ func TestAppServeHTTPFailsClosedWhenPendingLaunchStateCannotClear(t *testing.T) 
 }
 
 func TestAppServeHTTPClearsPendingLaunchStateAfterTrustedBrowseResponse(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := update.NewRestorePointManager(dataDir)
 	if err := manager.SaveLaunchState(update.RestorePointRecord{
 		ID:               "restore-point-1",
@@ -1512,7 +1513,7 @@ func TestAppServeHTTPClearsPendingLaunchStateAfterTrustedBrowseResponse(t *testi
 }
 
 func TestAppServeHTTPDoesNotClearPendingLaunchStateForAssetResponse(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := update.NewRestorePointManager(dataDir)
 	if err := manager.SaveLaunchState(update.RestorePointRecord{
 		ID:               "restore-point-1",
@@ -1544,7 +1545,7 @@ func TestAppServeHTTPDoesNotClearPendingLaunchStateForAssetResponse(t *testing.T
 }
 
 func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1598,7 +1599,7 @@ func TestHandleInitialSetupConfiguresIdentityAndPrefix(t *testing.T) {
 }
 
 func TestSoldierListStartsBlankUntilBrowseOrSearch(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1636,7 +1637,7 @@ func TestSoldierListStartsBlankUntilBrowseOrSearch(t *testing.T) {
 }
 
 func TestBrowseModeShowsAlphabeticalResults(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1674,7 +1675,7 @@ func TestBrowseModeShowsAlphabeticalResults(t *testing.T) {
 }
 
 func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1727,7 +1728,7 @@ func TestSaveUploadedImagesAcceptsMultipleFiles(t *testing.T) {
 }
 
 func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1786,7 +1787,7 @@ func TestSaveUploadedImagesDoesNotTrustZeroHeaderSize(t *testing.T) {
 // catches the regression class where the form's enctype is
 // mismatched against the handler's ParseMultipartForm.
 func TestHandleImportSoldierImagesAcceptsMultipart(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1848,7 +1849,7 @@ func TestHandleImportSoldierImagesAcceptsMultipart(t *testing.T) {
 // branch while leaving the edit branch green. Companion to
 // TestHandleImportSoldierImagesAcceptsMultipart.
 func TestHandleImportSoldierImagesAcceptsMultipartNoReturn(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1897,7 +1898,7 @@ func TestHandleImportSoldierImagesAcceptsMultipartNoReturn(t *testing.T) {
 }
 
 func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -1916,7 +1917,7 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	firstPath := filepath.Join(sourceDir, "first.jpeg")
 	secondPath := filepath.Join(sourceDir, "second.png")
 	if err := os.WriteFile(firstPath, pngFixture(), 0o644); err != nil {
@@ -1962,7 +1963,7 @@ func TestImportImagePathsCopiesMultipleFiles(t *testing.T) {
 }
 
 func TestNextStoredImageSequence(t *testing.T) {
-	recordDir := t.TempDir()
+	recordDir := testtemp.New(t).Path()
 	for _, name := range []string{"DXD-00001-img-001.jpg", "DXD-00001-img-003.png", "legacy-file-name.jpeg"} {
 		if err := os.WriteFile(filepath.Join(recordDir, name), []byte("x"), 0o644); err != nil {
 			t.Fatalf("WriteFile %s: %v", name, err)
@@ -1979,7 +1980,7 @@ func TestNextStoredImageSequence(t *testing.T) {
 }
 
 func TestRotateImageFileClockwise(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "rotate.jpg")
+	path := filepath.Join(testtemp.New(t).Path(), "rotate.jpg")
 	if err := writeJPEGFixture(path, 2, 3); err != nil {
 		t.Fatalf("writeJPEGFixture: %v", err)
 	}
@@ -2007,7 +2008,7 @@ func TestImageImportRedirectPath(t *testing.T) {
 }
 
 func TestHandleUpdateSoldierRendersFormErrorOnUploadFailure(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2066,7 +2067,7 @@ func TestHandleUpdateSoldierRendersFormErrorOnUploadFailure(t *testing.T) {
 }
 
 func TestFlagReviewStatusAddsRecordToQueue(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2116,7 +2117,7 @@ func TestFlagReviewStatusAddsRecordToQueue(t *testing.T) {
 }
 
 func TestHandleCompareUsesRecordBackLinkWhenSourceRecordProvided(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2162,7 +2163,7 @@ func TestHandleCompareUsesRecordBackLinkWhenSourceRecordProvided(t *testing.T) {
 }
 
 func TestHandleInsightsDrilldownShowsFilteredRecords(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2200,7 +2201,7 @@ func TestHandleInsightsDrilldownShowsFilteredRecords(t *testing.T) {
 }
 
 func TestHandleRecentSearchShowsRequestedRecords(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2243,7 +2244,7 @@ func TestHandleRecentSearchShowsRequestedRecords(t *testing.T) {
 }
 
 func TestHandleUnitCamaraderieShowsLinkedPeers(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2294,7 +2295,7 @@ func TestHandleUnitCamaraderieShowsLinkedPeers(t *testing.T) {
 }
 
 func TestHandleServiceTimelineShowsChronology(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2343,7 +2344,7 @@ func TestHandleServiceTimelineShowsChronology(t *testing.T) {
 }
 
 func TestHandleResearchLogShowsTasks(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2388,7 +2389,7 @@ func TestHandleResearchLogShowsTasks(t *testing.T) {
 }
 
 func TestHandleConflictLedgerShowsEntries(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2463,7 +2464,7 @@ func TestHandleConflictLedgerShowsEntries(t *testing.T) {
 }
 
 func TestHandleResearchPackShowsRelatedRecords(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2516,7 +2517,7 @@ func TestHandleResearchPackShowsRelatedRecords(t *testing.T) {
 }
 
 func TestHandleResearchCollectionsShowsHub(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -2639,7 +2640,7 @@ func imageDimensions(path string) (int, int, error) {
 // Requires Unix filesystem semantics (chmod blocks MkdirAll but not
 // same-filesystem rename); skipped on Windows.
 func TestInitializeLocalData_RestoresDataDirOnOpenFailure(t *testing.T) {
-	baseDir := t.TempDir()
+	baseDir := testtemp.New(t).Path()
 	dataDir := filepath.Join(baseDir, ".dixiedata")
 
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
@@ -2688,7 +2689,7 @@ func TestHandleSettingsInitializeErrorReRendersPage(t *testing.T) {
 	app := NewApp()
 	// Use a dataDir whose parent does not exist so os.MkdirTemp fails
 	// inside initializeLocalData, triggering the error path.
-	app.dataDir = filepath.Join(t.TempDir(), "nonexistent", ".dixiedata")
+	app.dataDir = filepath.Join(testtemp.New(t).Path(), "nonexistent", ".dixiedata")
 	app.setupRoutes()
 
 	form := url.Values{"confirmation_word": {"INITIALIZE"}}
@@ -2723,7 +2724,7 @@ func TestHandleSettingsInitializeErrorReRendersPage(t *testing.T) {
 func TestHandleSettingsInitializeErrorHtmxRedirects(t *testing.T) {
 	app := NewApp()
 	// Use a dataDir whose parent does not exist so initializeLocalData fails.
-	app.dataDir = filepath.Join(t.TempDir(), "nonexistent", ".dixiedata")
+	app.dataDir = filepath.Join(testtemp.New(t).Path(), "nonexistent", ".dixiedata")
 	app.setupRoutes()
 
 	form := url.Values{"confirmation_word": {"INITIALIZE"}}

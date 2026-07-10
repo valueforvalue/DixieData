@@ -3,10 +3,12 @@ package db
 import (
 	"fmt"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestNextDXDID_Format(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -22,7 +24,7 @@ func TestNextDXDID_Format(t *testing.T) {
 }
 
 func TestNextDXDID_Increment(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -50,7 +52,7 @@ func TestNextDXDID_Increment(t *testing.T) {
 }
 
 func TestNextDXDID_NonGeneratedIgnored(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -74,7 +76,7 @@ func TestNextDXDID_NonGeneratedIgnored(t *testing.T) {
 }
 
 func TestNextDXDID_UsesExistingDXDIDsWithoutGeneratedFlag(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -105,7 +107,7 @@ func TestBuildUserNodePrefix(t *testing.T) {
 }
 
 func TestIdentitySetupRequiredForFreshDatabase(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -139,7 +141,7 @@ func TestIdentitySetupRequiredForFreshDatabase(t *testing.T) {
 // TestNextEventID_Format (issue #320) verifies that NextEventID mints
 // EVT-00001 on a fresh archive. Mirrors TestNextDXDID_Format.
 func TestNextEventID_Format(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -157,7 +159,7 @@ func TestNextEventID_Format(t *testing.T) {
 // TestNextEventID_Increment verifies that NextEventID advances past
 // pre-existing EVT-NNNNN rows.
 func TestNextEventID_Increment(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -188,7 +190,7 @@ func TestNextEventID_Increment(t *testing.T) {
 // affect the EVT- counter. Mirrors TestNextDXDID_NonGeneratedIgnored
 // for cross-namespace isolation.
 func TestNextEventID_NamespaceIndependent(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

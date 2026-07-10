@@ -31,6 +31,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestExportCSVStampsFormatVersionInMetadataRow(t *testing.T) {
@@ -46,7 +47,7 @@ func TestExportCSVStampsFormatVersionInMetadataRow(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	outputPath := filepath.Join(t.TempDir(), "stamp.csv")
+	outputPath := filepath.Join(testtemp.New(t).Path(), "stamp.csv")
 	if err := exportSvc.ExportCSV(outputPath); err != nil {
 		t.Fatalf("ExportCSV: %v", err)
 	}

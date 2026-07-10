@@ -94,11 +94,12 @@ func (d *Dir) Path() string {
 // On Windows: RemoveAll can fail with Ebusy / "The process
 // cannot access the file because it is being used by another
 // process" mid-test if a file handle is still being torn down.
-// We retry with exponential backoff (5 attempts, 100/200/400/800ms)
+// We retry with exponential backoff (6 attempts, 200/400/800/1600/3200ms)
 // and call runtime.Gosched + runtime.GC between retries to give
-// the OS a settle window. After 5 attempts, the dir contents
-// may still leak in t.TempDir's umbrella; that's the existing
-// behavior, just delayed.
+// the OS a settle window. If the retry loop exhausts, the
+// error is logged via the test's testing.T (when available)
+// so the failure shows up in the JSONL log + a go test -v
+// output, NOT silently swallowed.
 func (d *Dir) Release() error {
 	d.mu.Lock()
 	if d.released {
@@ -110,15 +111,19 @@ func (d *Dir) Release() error {
 	d.path = ""
 	d.mu.Unlock()
 
-	return removeAllWithRetry(path)
+	err := removeAllWithRetry(path)
+	if err != nil && d.t != nil {
+		d.t.Logf("testtemp.Release: RemoveAll %s failed after retries: %v (file may be locked; outer t.TempDir cleanup will fail too)", path, err)
+	}
+	return err
 }
 
 // removeAllWithRetry is the platform-tolerant os.RemoveAll.
 // Exposed at package scope so future migration helpers
 // (testtemp.Copy, testtemp.Rename, etc.) can reuse it.
 func removeAllWithRetry(path string) error {
-	const attempts = 5
-	const baseDelay = 100 * time.Millisecond
+	const attempts = 6
+	const baseDelay = 200 * time.Millisecond
 	var lastErr error
 	delay := baseDelay
 	for i := 0; i < attempts; i++ {

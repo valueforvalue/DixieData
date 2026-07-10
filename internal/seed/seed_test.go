@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestGenerateCreatesDatabaseRecordsAndImages(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 
 	summary, err := Generate(Options{
 		DataDir:  dataDir,

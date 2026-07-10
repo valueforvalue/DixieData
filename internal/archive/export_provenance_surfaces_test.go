@@ -28,6 +28,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestExportICalendarStampsFormatVersion pins the iCal slice:
@@ -49,7 +50,7 @@ func TestExportICalendarStampsFormatVersion(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "ical-stamp.ics")
+	outPath := filepath.Join(testtemp.New(t).Path(), "ical-stamp.ics")
 	if err := exportSvc.ExportICalendar(outPath, defaultCalendarEventPreferences()); err != nil {
 		t.Fatalf("ExportICalendar: %v", err)
 	}
@@ -84,7 +85,7 @@ func TestExportSoldierJPGWritesFormatSidecar(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "jpg-stamp.jpg")
+	outPath := filepath.Join(testtemp.New(t).Path(), "jpg-stamp.jpg")
 	paths, err := exportSvc.ExportSoldierJPG(outPath, *created, defaultPDFOptions())
 	if err != nil {
 		t.Fatalf("ExportSoldierJPG: %v", err)
@@ -130,8 +131,8 @@ func TestExportDDBakStampsFormatVersion(t *testing.T) {
 	backupSvc := NewBackupService(d, svc)
 
 	// Full backup path.
-	backupPath := filepath.Join(t.TempDir(), "stamp.ddbak")
-	if _, err := backupSvc.Export(backupPath, t.TempDir()); err != nil {
+	backupPath := filepath.Join(testtemp.New(t).Path(), "stamp.ddbak")
+	if _, err := backupSvc.Export(backupPath, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 	if got := readManifestFormatVersion(t, backupPath); got != buildinfo.DDBakFormatVersion {
@@ -139,8 +140,8 @@ func TestExportDDBakStampsFormatVersion(t *testing.T) {
 	}
 
 	// Shared archive path.
-	sharedPath := filepath.Join(t.TempDir(), "stamp.ddshare")
-	if _, err := backupSvc.ExportShared(sharedPath, t.TempDir()); err != nil {
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "stamp.ddshare")
+	if _, err := backupSvc.ExportShared(sharedPath, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
 	if got := readManifestFormatVersion(t, sharedPath); got != buildinfo.DDBakFormatVersion {

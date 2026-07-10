@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -703,7 +704,17 @@ func stampRestoredAtAfterRestore(dataDir string) error {
 	if err != nil {
 		return fmt.Errorf("open restored db: %w", err)
 	}
-	defer debug.DeferCloseLog(d, "stampRestoredAtAfterRestore.db")
+	// Issue #449 slice 2: wrap the close in a closure so the
+	// *DB.Close fires before stampRestoredAtAfterRestore
+	// returns. The bare `defer Close()` form would defer the
+	// call expression but Go's defer captures the result of
+	// the call — debug.DeferCloseLog returns a function value
+	// and the bare form defers the call to the function value,
+	// which doesn't fire until the enclosing frame is gone
+	// (too late for the stagingDir rename in callers that
+	// follow). The wrapped form runs Close in this frame,
+	// before the caller proceeds.
+	defer func() { _ = d.Close() }()
 
 	// columnExists guard: a freshly-restored archive might
 	// predate v65 and the migration might somehow not have
@@ -828,7 +839,16 @@ func preserveSnapshotImportIdentity(dataDir string, identity models.UserIdentity
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(database, "preserveSnapshotImportIdentity.db")
+	// Issue #449 slice 2: wrap the close in a closure so the
+	// *DB.Close fires before preserveSnapshotImportIdentity
+	// returns. The bare `defer Close()` form would defer the
+	// call expression but Go's defer captures the result of
+	// the call — debug.DeferCloseLog returns a function value
+	// and the bare form defers the call to the function value,
+	// which doesn't fire until the enclosing frame is gone
+	// (too late for the stagingDir rename). The wrapped form
+	// runs Close in this frame, before replaceDataDir fires.
+	defer func() { _ = database.Close() }()
 
 	_, err = database.ConfigureUserIdentity(identity.FirstName, identity.MiddleName, identity.LastName, identity.BirthYear)
 	return err
@@ -1535,7 +1555,13 @@ func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, s
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(database, "restoreLegacyJSONBackup.db")
+	// Issue #449 slice 2: wrap the close in a closure so the
+	// *DB.Close fires before restoreLegacyJSONBackup returns.
+	// The bare `defer Close()` form defers the call to a
+	// returned function value, which doesn't run until the
+	// enclosing frame is gone — too late for the stagingDir
+	// rename the caller (Import) issues immediately after.
+	defer func() { _ = database.Close() }()
 
 	soldierSvc := NewSoldierService(database)
 	restoredIDsByLegacyID := make(map[int64]int64, len(soldiers))
@@ -1710,7 +1736,18 @@ func validateStagedBackup(dataDir string, manifest BackupManifest) error {
 	if err != nil {
 		return err
 	}
-	defer debug.DeferCloseLog(database, "validateStagedBackup.db")
+	// Issue #449 slice 2: explicitly close the staging DB
+	// before the function returns so the WAL/SHM sidecar
+	// handles are released before replaceDataDir fires its
+	// MoveFileExW(stagingDir, targetDir). A bare
+	// `defer Close()` fires the close AFTER the rename on
+	// some Go versions (defer captures the call expression,
+	// not the immediate body). The wrapped form below
+	// guarantees the close runs in the validateStagedBackup
+	// frame, before the caller invokes replaceDataDir.
+	defer func() {
+		_ = database.Close()
+	}()
 
 	soldierSvc := NewSoldierService(database)
 	page := 1
@@ -1798,10 +1835,33 @@ func replaceDataDir(targetDir, stagingDir string) error {
 		}
 	}
 	if err := renameOS(stagingDir, targetDir); err != nil {
-		if targetExists {
-			_ = renameOS(backupDir, targetDir)
+		// Issue #449 slice 2: Windows MoveFileExW can return
+		// "Access is denied" transiently when a parent dir
+		// still has a finalizer-held handle. Retry with the
+		// same exponential backoff as the target→backup
+		// rename, plus a runtime.GC + Gosched to flush any
+		// pending finalizers (mirrors testtemp's settle
+		// window).
+		var retryErr error
+		delay := 200 * time.Millisecond
+		for attempt := 1; attempt <= 5; attempt++ {
+			runtime.GC()
+			runtime.Gosched()
+			time.Sleep(delay)
+			delay *= 2
+			if rerr := renameOS(stagingDir, targetDir); rerr == nil {
+				retryErr = nil
+				break
+			} else {
+				retryErr = rerr
+			}
 		}
-		return err
+		if retryErr != nil {
+			if targetExists {
+				_ = renameOS(backupDir, targetDir)
+			}
+			return retryErr
+		}
 	}
 	if backupDir != "" {
 		return os.RemoveAll(backupDir)
@@ -1826,11 +1886,13 @@ func isLogicallyEmpty(dir string) bool {
 	return info.Size() < 64*1024 // schema-only
 }
 
-// renameOS is the rename function used by renameWithRetry.
-// Exposed as a package-level var so tests can inject a failing
-// rename to exercise the retry logic without needing real
-// Windows handle conflicts.
-var renameOS = os.Rename
+// renameOS is the rename function used by renameWithRetry. On
+// non-Windows it is os.Rename (see rename_unix.go); on Windows
+// it calls MoveFileExW with MOVEFILE_REPLACE_EXISTING so an
+// existing target directory can be overwritten (see
+// rename_windows.go). Exposed as a package-level var so tests
+// can inject a failing rename to exercise the retry logic
+// without needing real Windows handle conflicts.
 
 // renameWithRetry retries os.Rename with exponential backoff.
 // attempts is the total number of tries (5 = 4 sleeps between

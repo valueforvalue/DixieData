@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestHasImportSubcommand(t *testing.T) {
@@ -228,7 +230,7 @@ func TestParseImportArgs_TooManyFromBackup(t *testing.T) {
 // with a manifest.json entry and verifies the CLI dry-run
 // preview helper reads it correctly.
 func TestReadBackupManifestFromZip(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir := testtemp.New(t).Path()
 	zipPath := filepath.Join(tmpDir, "test.ddbak")
 
 	manifest := map[string]any{
@@ -281,7 +283,7 @@ func TestReadBackupManifestFromZip(t *testing.T) {
 }
 
 func TestReadBackupManifestFromZip_NotAZip(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir := testtemp.New(t).Path()
 	notZip := filepath.Join(tmpDir, "not-a-zip.txt")
 	if err := os.WriteFile(notZip, []byte("plain text"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
@@ -293,7 +295,7 @@ func TestReadBackupManifestFromZip_NotAZip(t *testing.T) {
 }
 
 func TestReadBackupManifestFromZip_NoManifest(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir := testtemp.New(t).Path()
 	zipPath := filepath.Join(tmpDir, "no-manifest.zip")
 
 	f, err := os.Create(zipPath)
@@ -322,7 +324,7 @@ func TestReadBackupManifestFromZip_NoManifest(t *testing.T) {
 }
 
 func TestReadSharedArchiveManifest_RejectsWrongKind(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir := testtemp.New(t).Path()
 	zipPath := filepath.Join(tmpDir, "test.ddshare")
 
 	manifest := map[string]any{
@@ -349,7 +351,7 @@ func TestReadSharedArchiveManifest_RejectsWrongKind(t *testing.T) {
 }
 
 func TestReadSharedArchiveManifest_AcceptsSharedKind(t *testing.T) {
-	tmpDir := t.TempDir()
+	tmpDir := testtemp.New(t).Path()
 	zipPath := filepath.Join(tmpDir, "test.ddshare")
 
 	manifest := map[string]any{

@@ -8,13 +8,15 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestRunSmokeAllPass boots a real App against a fresh temp dir
 // and asserts every smoke check passes. This is the integration
 // coverage for the smoke command itself.
 func TestRunSmokeAllPass(t *testing.T) {
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatalf("mkdir dataDir: %v", err)
 	}

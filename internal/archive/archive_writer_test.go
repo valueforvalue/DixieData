@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestWriteZipArchive_ReplacesExistingFileWithoutTempResidue(t *testing.T) {
-	outputDir := t.TempDir()
+	outputDir := testtemp.New(t).Path()
 	outputPath := filepath.Join(outputDir, "archive.zip")
 	if err := os.WriteFile(outputPath, []byte("old-data"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)

@@ -7,10 +7,11 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	_ "modernc.org/sqlite"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
-	baseDir := t.TempDir()
+	baseDir := testtemp.New(t).Path()
 	baseDB, err := db.Open(baseDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -37,8 +38,8 @@ func TestDistributedMergeFormatSupportsDivergentAuthorDatabases(t *testing.T) {
 		t.Fatalf("AddImage base: %v", err)
 	}
 
-	authorADir := t.TempDir()
-	authorBDir := t.TempDir()
+	authorADir := testtemp.New(t).Path()
+	authorBDir := testtemp.New(t).Path()
 	if err := baseDB.SnapshotTo(db.Path(authorADir)); err != nil {
 		t.Fatalf("SnapshotTo author A: %v", err)
 	}

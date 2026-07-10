@@ -11,6 +11,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestExportStaticArchive_IncludesArticles pins the slice-5.3
@@ -46,8 +47,8 @@ func TestExportStaticArchive_IncludesArticles(t *testing.T) {
 		t.Fatalf("AttachRef: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "static.zip")
-	if err := exportSvc.ExportStaticArchive(outPath, t.TempDir()); err != nil {
+	outPath := filepath.Join(testtemp.New(t).Path(), "static.zip")
+	if err := exportSvc.ExportStaticArchive(outPath, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("ExportStaticArchive: %v", err)
 	}
 	// The zip contains archive_data.js; extract the file

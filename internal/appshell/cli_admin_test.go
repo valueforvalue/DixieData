@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestHasAdminSubcommand(t *testing.T) {
@@ -484,7 +486,7 @@ func TestRunAdminMigrateDown_ManifestPrinted(t *testing.T) {
 // --- tailFile test (pure I/O) ---
 
 func TestTailFile_ReturnsLastNLines(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	path := filepath.Join(dir, "log.txt")
 	lines := []string{}
 	for i := 0; i < 10; i++ {
@@ -503,7 +505,7 @@ func TestTailFile_ReturnsLastNLines(t *testing.T) {
 }
 
 func TestTailFile_FewerThanN(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	path := filepath.Join(dir, "log.txt")
 	if err := os.WriteFile(path, []byte("only\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
@@ -518,7 +520,7 @@ func TestTailFile_FewerThanN(t *testing.T) {
 }
 
 func TestTailFile_Missing(t *testing.T) {
-	if _, err := tailFile(filepath.Join(t.TempDir(), "nope"), 10); err == nil {
+	if _, err := tailFile(filepath.Join(testtemp.New(t).Path(), "nope"), 10); err == nil {
 		t.Errorf("expected error for missing file")
 	}
 }

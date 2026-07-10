@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/db"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestGoogleHandlersRedirectToJobs is the regression test for the
@@ -44,7 +46,7 @@ func TestGoogleHandlersRedirectToJobs(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpDataDir := t.TempDir()
+			tmpDataDir := testtemp.New(t).Path()
 			database, err := db.Open(tmpDataDir)
 			if err != nil {
 				t.Fatalf("db.Open: %v", err)
