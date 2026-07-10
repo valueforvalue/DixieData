@@ -466,27 +466,6 @@ type AnalyticsSnapshot struct {
 	DuplicateAudit          DuplicateAuditSummary
 }
 
-// UnitCamaraderieGraph is the unit-connection graph the Camaraderie
-// tab renders: nodes (units) + edges (soldiers who served in both).
-type UnitCamaraderieGraph struct {
-	CentralPersonRecord PersonRecord
-	UnitLabel           string
-	RegimentLabel       string
-	CompanyLabel        string
-	SameUnit            []UnitCamaraderieConnection
-	SameCompanyVariant  []UnitCamaraderieConnection
-	SameRegiment        []UnitCamaraderieConnection
-}
-
-// UnitCamaraderieConnection is one edge in UnitCamaraderieGraph:
-// the two unit IDs + the soldiers who connect them.
-type UnitCamaraderieConnection struct {
-	Soldier      PersonRecord
-	Relation     string
-	Strength     int
-	StrengthText string
-}
-
 // ServiceTimeline is the per-soldier chronological service timeline
 // the Timeline tab renders: events (enlistment, transfer, wound,
 // discharge, death) sorted by date.
@@ -546,20 +525,6 @@ type ResearchLog struct {
 	Suggestions         []ResearchTaskSuggestion
 	OpenCount           int
 	ResolvedCount       int
-}
-
-// ResearchPack is the per-county/per-state research bundle the
-// Research Pack page renders: a list of Person Records scoped to
-// the pack's geography + the per-soldier task rollup.
-type ResearchPack struct {
-	AnchorPersonRecord   PersonRecord
-	Scope                string
-	PlaceLabel           string
-	Description          string
-	RelatedPersonRecords []PersonRecord
-	TopUnits             []AnalyticsCount
-	TopCemeteries        []AnalyticsCount
-	OpenReviewCount      int
 }
 
 // ResearchCollection is one named research collection the Research

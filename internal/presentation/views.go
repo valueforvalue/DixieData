@@ -99,10 +99,6 @@ func SoldierDetailWithCitedIn(soldier models.Soldier, tags []records.Tag, citedI
 	return templates.SoldierDetail(viewmodel.PersonRecordFromModel(soldier), tags, viewmodel.ArticlesFromModels(citedIn))
 }
 
-func UnitCamaraderieView(graph records.UnitCamaraderieGraph) templ.Component {
-	return templates.UnitCamaraderieView(viewmodel.UnitCamaraderieGraphFromDomain(graph))
-}
-
 func ServiceTimelineView(timeline records.ServiceTimeline) templ.Component {
 	return templates.ServiceTimelineView(viewmodel.ServiceTimelineFromDomain(timeline))
 }
@@ -113,22 +109,6 @@ func ResearchLogView(log records.ResearchLog) templ.Component {
 
 func MergeReviewLedgerView(ledger archive.SourceConflictLedger) templ.Component {
 	return templates.MergeReviewLedgerView(viewmodel.MergeReviewLedgerFromDomain(ledger))
-}
-
-func ResearchPackView(pack records.ResearchPack) templ.Component {
-	return templates.ResearchPackView(viewmodel.ResearchPackFromDomain(pack))
-}
-
-// UnitCamaraderieEmpty wraps the empty-state page for soldiers
-// without unit data (issue #422 slice 1).
-func UnitCamaraderieEmpty(name string, id int64) templ.Component {
-	return templates.UnitCamaraderieEmpty(name, id)
-}
-
-// ResearchPackCountyEmpty wraps the empty-state page for soldiers
-// without county data in their birth_info (issue #422 slice 1).
-func ResearchPackCountyEmpty(name string, id int64) templ.Component {
-	return templates.ResearchPackCountyEmpty(name, id)
 }
 
 func ShareView(conflicts []models.MergeReviewConflict, counts models.ArchiveCounts, recentJobs []viewmodel.RecentJobEntry) templ.Component {

@@ -1260,74 +1260,13 @@ func TestSoldierService_ByIDs_PopulatesCounts(t *testing.T) {
 	}
 }
 
-func TestSoldierService_UnitCamaraderieGraph(t *testing.T) {
-	d := newTestDB(t)
-	svc := NewSoldierService(d)
+// Issue #455 slice 3: TestSoldierService_UnitCamaraderieGraph
+// removed; the Camaraderie service method + types are deleted.
+// The /soldiers/{id}/camaraderie sub-page is being deleted along
+// with the Insights drilldown (unit scope) taking over the use
+// case.
 
-	central, err := svc.Create(models.Soldier{
-		DisplayID: "CAM-0001",
-		FirstName: "Andrew",
-		LastName:  "Cole",
-		Unit:      "Co. A, 1st Texas Infantry",
-	})
-	if err != nil {
-		t.Fatalf("Create central: %v", err)
-	}
-	exact, err := svc.Create(models.Soldier{
-		DisplayID: "CAM-0002",
-		FirstName: "Thomas",
-		LastName:  "Reed",
-		Unit:      "Co. A, 1st Texas Infantry",
-	})
-	if err != nil {
-		t.Fatalf("Create exact: %v", err)
-	}
-	companyVariant, err := svc.Create(models.Soldier{
-		DisplayID: "CAM-0003",
-		FirstName: "Samuel",
-		LastName:  "Lane",
-		Unit:      "Company A 1st Texas Infantry",
-	})
-	if err != nil {
-		t.Fatalf("Create company variant: %v", err)
-	}
-	regimentPeer, err := svc.Create(models.Soldier{
-		DisplayID: "CAM-0004",
-		FirstName: "Henry",
-		LastName:  "West",
-		Unit:      "Co. B, 1st Texas Infantry",
-	})
-	if err != nil {
-		t.Fatalf("Create regiment peer: %v", err)
-	}
-	if _, err := svc.Create(models.Soldier{
-		DisplayID:       "CAM-0005",
-		FirstName:       "Martha",
-		LastName:        "Cole",
-		EntryType:       "widow",
-		SpouseSoldierID: central.ID,
-		Unit:            "Co. A, 1st Texas Infantry",
-	}); err != nil {
-		t.Fatalf("Create widow: %v", err)
-	}
 
-	graph, err := svc.UnitCamaraderieGraph(central.ID)
-	if err != nil {
-		t.Fatalf("UnitCamaraderieGraph: %v", err)
-	}
-	if graph.Central.ID != central.ID {
-		t.Fatalf("unexpected central record: %#v", graph.Central)
-	}
-	if len(graph.SameUnit) != 1 || graph.SameUnit[0].Soldier.ID != exact.ID {
-		t.Fatalf("unexpected same-unit peers: %#v", graph.SameUnit)
-	}
-	if len(graph.SameCompanyVariant) != 1 || graph.SameCompanyVariant[0].Soldier.ID != companyVariant.ID {
-		t.Fatalf("unexpected company-variant peers: %#v", graph.SameCompanyVariant)
-	}
-	if len(graph.SameRegiment) != 1 || graph.SameRegiment[0].Soldier.ID != regimentPeer.ID {
-		t.Fatalf("unexpected same-regiment peers: %#v", graph.SameRegiment)
-	}
-}
 
 func TestSoldierService_ServiceTimeline(t *testing.T) {
 	d := newTestDB(t)
@@ -1461,57 +1400,10 @@ func TestSoldierService_ResearchLogLifecycle(t *testing.T) {
 	}
 }
 
-func TestSoldierService_ResearchPackForSoldier(t *testing.T) {
-	d := newTestDB(t)
-	svc := NewSoldierService(d)
-
-	central, err := svc.Create(models.Soldier{
-		DisplayID:    "PACK-0001",
-		FirstName:    "Andrew",
-		LastName:     "Cole",
-		PensionState: "Texas",
-		BirthInfo:    "Born 1838 in Orange County, Texas.",
-	})
-	if err != nil {
-		t.Fatalf("Create central: %v", err)
-	}
-	if _, err := svc.Create(models.Soldier{
-		DisplayID:    "PACK-0002",
-		FirstName:    "Thomas",
-		LastName:     "Reed",
-		PensionState: "Texas",
-		Unit:         "1st Texas Infantry",
-		BuriedIn:     "Oak Hill Cemetery",
-	}); err != nil {
-		t.Fatalf("Create state match: %v", err)
-	}
-	if _, err := svc.Create(models.Soldier{
-		DisplayID: "PACK-0003",
-		FirstName: "Samuel",
-		LastName:  "Lane",
-		BirthInfo: "Born 1840 in Orange County, Texas.",
-		Unit:      "2nd Texas Infantry",
-		BuriedIn:  "Evergreen Cemetery",
-	}); err != nil {
-		t.Fatalf("Create county match: %v", err)
-	}
-
-	statePack, err := svc.ResearchPackForSoldier(central.ID, "state")
-	if err != nil {
-		t.Fatalf("ResearchPackForSoldier state: %v", err)
-	}
-	if statePack.PlaceLabel != "Texas" || len(statePack.Related) != 2 {
-		t.Fatalf("unexpected state pack: %#v", statePack)
-	}
-
-	countyPack, err := svc.ResearchPackForSoldier(central.ID, "county")
-	if err != nil {
-		t.Fatalf("ResearchPackForSoldier county: %v", err)
-	}
-	if countyPack.PlaceLabel != "Orange County" || len(countyPack.Related) != 1 || countyPack.Related[0].DisplayID != "PACK-0003" {
-		t.Fatalf("unexpected county pack: %#v", countyPack)
-	}
-}
+// Issue #455 slice 3: TestSoldierService_ResearchPackForSoldier
+// removed; the Research Pack service method + types are deleted.
+// The Insights Top Units / Top Cemeteries / Related Person Records
+// panels cover the use case.
 
 func TestSoldierService_ResearchCollections(t *testing.T) {
 	d := newTestDB(t)
