@@ -270,6 +270,7 @@ func (a *App) setupRoutes() {
 	r.Get("/share/imports", a.handleShareImports)
 	r.Get("/share/sync", a.handleShareSync)
 	r.Get("/research-collections", a.handleResearchCollections)
+	r.Post("/research-collections", a.handleResearchCollections)
 	r.Get("/research-collections/*", a.handleResearchCollectionByID)
 	// Issue #378 slice 1: Research & Review Person picker landing
 	// + select/clear cookie actions. The /research route MUST
