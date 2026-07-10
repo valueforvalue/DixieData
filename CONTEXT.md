@@ -73,6 +73,8 @@ A user-curated grouping of archive material assembled inside a Local Archive for
 _Avoid_: Pack, folder
 
 **Research Pack**:
+*Deprecated after slim (issue #455, slices 1 + 3). The same Top Units / Top Cemeteries / Related Person Records data lives on Insights.*
+
 A prepared archive bundle organized around a defined scope such as a county or state.
 _Avoid_: Collection, export
 
@@ -81,6 +83,8 @@ The factual claim that a Soldier served in a particular unit.
 _Avoid_: Camaraderie
 
 **Unit Camaraderie Graph**:
+*Deprecated after slim (issue #455, slices 1 + 3). Use Insights drilldown scoped to unit instead.*
+
 An inferred relationship network between Soldiers based on evidence such as shared units, time overlap, or other signals.
 _Avoid_: Roster, unit membership
 

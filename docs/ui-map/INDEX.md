@@ -52,10 +52,11 @@ below but worth knowing:
 | 13 | Research Collections Hub | — | — | — | [wireframes/13-research-collections-hub.md](wireframes/13-research-collections-hub.md) |
 | 14 | Research Collection Detail | — | — | — | [wireframes/14-research-collection-detail.md](wireframes/14-research-collection-detail.md) |
 | 15 | Research Log | — | — | — | [wireframes/15-research-log.md](wireframes/15-research-log.md) |
-| 16 | Research Pack | — | — | — | [wireframes/16-research-pack.md](wireframes/16-research-pack.md) |
+| 16 | Research Pack | — | — | — | [DEPRECATED — moved to historical/wireframes-2026-07-10](../../historical/ui-map-wireframes/16-research-pack.md) |
 | 17 | Service Timeline | — | — | — | [wireframes/17-service-timeline.md](wireframes/17-service-timeline.md) |
-| 18 | Unit Camaraderie | — | — | — | [wireframes/18-unit-camaraderie.md](wireframes/18-unit-camaraderie.md) |
-| 19 | Merge Review Ledger | — | — | — | [wireframes/19-merge-review-ledger.md](wireframes/19-merge-review-ledger.md) |
+| 18 | Unit Camaraderie | — | — | — | [DEPRECATED — moved to historical/wireframes-2026-07-10](../../historical/ui-map-wireframes/18-unit-camaraderie.md) |
+| 19 | Merge Review Ledger | — | — | — | [DEPRECATED — moved to historical/wireframes-2026-07-10](../../historical/ui-map-wireframes/19-merge-review-ledger.md) |
+| 19a | Review Queue Resolved tab | `panel.review-queue.resolved` | — | — | [wireframes/19a-review-queue-resolved.md](wireframes/19a-review-queue-resolved.md) |
 | 20 | Jobs | `panel.job.status` | — | — | [wireframes/20-jobs.md](wireframes/20-jobs.md) |
 | 21 | Settings | `panel.settings.layout`, `panel.settings.initialize`, `panel.settings.updates`, `panel.settings.debug` | — | — | [wireframes/21-settings.md](wireframes/21-settings.md) |
 | 22 | Initial Setup | — | — | — | [wireframes/22-initial-setup.md](wireframes/22-initial-setup.md) |
