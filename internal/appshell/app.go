@@ -686,7 +686,8 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 			respondValidation(w, r, "Invalid person record id.", err)
 			return
 		}
-		if err := a.soldiers.AddPersonRecordToResearchCollection(collectionID, soldierID); err != nil {
+		added, err := a.soldiers.AddPersonRecordToResearchCollection(collectionID, soldierID)
+		if err != nil {
 			setToastHeaderWithType(w, "Record could not be added to the collection.", "error")
 			respondInternal(w, r, "Could not add the record to the research collection.", err)
 			return
@@ -695,7 +696,16 @@ func (a *App) handleResearchCollectionByID(w http.ResponseWriter, r *http.Reques
 		if fromID, err := parseOptionalInt64(r.FormValue("from"), "from"); err == nil && fromID > 0 {
 			redirectTo = fmt.Sprintf("/research-collections/%d?from=%d", collectionID, fromID)
 		}
-		setToastHeader(w, "Success: record added to collection.")
+		// Idempotent: already-in collection is a no-op, not an
+		// error. Use an info-style toast to signal "nothing
+		// changed" without alarming the user. Matches the
+		// "Success: record added to collection" tone for the
+		// fresh-add path.
+		if added {
+			setToastHeader(w, "Success: record added to collection.")
+		} else {
+			setToastHeaderWithType(w, "Already in this collection.", "info")
+		}
 		w.Header().Set("X-DixieData-Redirect", redirectTo)
 		fmt.Fprint(w, "Record added to collection.")
 		return

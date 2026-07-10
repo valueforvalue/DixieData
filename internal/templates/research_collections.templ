@@ -119,10 +119,17 @@ templ ResearchCollectionDetailView(detail viewmodel.ResearchCollectionDetail) {
 				if strings.TrimSpace(detail.Collection.Description) != "" {
 					<p class="mt-2 text-sm leading-6 text-slate-700">{ detail.Collection.Description }</p>
 				}
-				<div class="mt-4 flex flex-wrap gap-3">
+				<div class="mt-4 flex flex-wrap items-center gap-3">
 					<span class="rounded-full border border-research-border-soft bg-research-bg px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-research-text">{ fmt.Sprintf("%d person records", detail.Collection.ItemCount) }</span>
 					if detail.CurrentPersonRecord != nil && detail.Collection.ContainsCurrent {
 						<span class="rounded-full border border-sepia-500/[0.35] bg-[rgba(255,248,230,0.78)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">Current person record included</span>
+					}
+					if detail.CurrentPersonRecord != nil && !detail.Collection.ContainsCurrent {
+						<form action={ templ.SafeURL(routebuilder.ResearchCollectionAdd(detail.Collection.ID)) } data-dixie-submit="true" class="inline">
+							<input type="hidden" name="soldier_id" value={ fmt.Sprintf("%d", detail.CurrentPersonRecord.ID) }/>
+							<input type="hidden" name="from" value={ fmt.Sprintf("%d", detail.CurrentPersonRecord.ID) }/>
+							@components.Button("Add Current Person Record", components.ButtonSecondary, "", templ.Attributes{"type": "submit"})
+						</form>
 					}
 				</div>
 			</div>

@@ -1504,33 +1504,48 @@ func (s *SoldierService) CreateResearchCollection(name, description string) erro
 	return err
 }
 
-// AddSoldierToResearchCollection attaches a Soldier to a research collection.
-func (s *SoldierService) AddSoldierToResearchCollection(collectionID, soldierID int64) error {
+// AddSoldierToResearchCollection attaches a Soldier to a research
+// collection. Returns (added=true, err=nil) on a fresh add,
+// (added=false, err=nil) when the record was already in the
+// collection (idempotent re-add is a no-op, not an error), and
+// (added=false, err!=nil) on a real failure (soldier not found,
+// DB error, etc.). The handler uses `added` to pick the toast
+// copy: "Success: record added to collection" vs "Already in
+// collection". Treating the already-in state as an error used
+// to surface a red error toast on every double-click or stale
+// post-redirect scenario.
+func (s *SoldierService) AddSoldierToResearchCollection(collectionID, soldierID int64) (bool, error) {
 	if _, err := s.GetByID(soldierID); err != nil {
-		return err
+		return false, err
 	}
 	result, err := s.db.Conn().Exec(`
 		INSERT OR IGNORE INTO research_collection_items (collection_id, person_record_id, created_at)
 		VALUES (?, ?, ?)
 	`, collectionID, soldierID, currentSQLiteTimestamp())
 	if err != nil {
-		return err
-	}
-	if _, err := s.db.Conn().Exec(`UPDATE research_collections SET updated_at = ? WHERE id = ?`, currentSQLiteTimestamp(), collectionID); err != nil {
-		return err
+		return false, err
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return false, err
 	}
 	if affected == 0 {
-		return fmt.Errorf("record is already in that collection")
+		// Already in the collection - idempotent no-op. The
+		// updated_at bump below is still useful for "touched"
+		// semantics but is conditional on the insert having
+		// actually added a row. Skip the bump on the
+		// already-in path to avoid misleading the UI into
+		// thinking a real change happened.
+		return false, nil
 	}
-	return nil
+	if _, err := s.db.Conn().Exec(`UPDATE research_collections SET updated_at = ? WHERE id = ?`, currentSQLiteTimestamp(), collectionID); err != nil {
+		return true, err
+	}
+	return true, nil
 }
 
 // AddPersonRecordToResearchCollection is the glossary-name alias of AddSoldierToResearchCollection.
-func (s *SoldierService) AddPersonRecordToResearchCollection(collectionID, personRecordID int64) error {
+func (s *SoldierService) AddPersonRecordToResearchCollection(collectionID, personRecordID int64) (bool, error) {
 	return s.AddSoldierToResearchCollection(collectionID, personRecordID)
 }
 

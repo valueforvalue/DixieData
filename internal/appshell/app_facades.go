@@ -41,7 +41,7 @@ type personRecordsFacade interface {
 	ResearchPackForPersonRecord(personRecordID int64, scope string) (*records.ResearchPack, error)
 	ResearchCollectionsHub(currentPersonRecordID int64) (*records.ResearchCollectionHub, error)
 	CreateResearchCollection(name, description string) error
-	AddPersonRecordToResearchCollection(collectionID, personRecordID int64) error
+	AddPersonRecordToResearchCollection(collectionID, personRecordID int64) (bool, error)
 	ResearchCollectionDetail(collectionID, currentPersonRecordID int64) (*records.ResearchCollectionDetail, error)
 	ReviewQueue(page, pageSize int) ([]personRecord, int, error)
 	MarkReviewResolved(personRecordID int64) error
