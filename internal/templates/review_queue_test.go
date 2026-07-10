@@ -27,7 +27,7 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 			OtherPersonRecordID: 18,
 			OtherDisplayID:      "JCM87-00018",
 		}},
-	}}, viewmodel.ArchiveCounts{SoldierCount: 25, SpouseRecordCount: 3}, 1, 1, 50).Render(context.Background(), &buf)
+	}}, viewmodel.ArchiveCounts{SoldierCount: 25, SpouseRecordCount: 3}, 1, 1, 50, "open").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -51,6 +51,10 @@ func TestReviewQueueViewShowsFlaggedRecords(t *testing.T) {
 func TestReviewQueueViewUsesSharedSummaryFormatting(t *testing.T) {
 	var buf bytes.Buffer
 	err := ReviewQueueView([]viewmodel.ReviewQueueEntry{{
+		// Issue #455 slice 4: signature gained a final
+		// activeTab string; both existing tests below now pass
+		// "open" explicitly. Resolved-tab coverage lives in
+		// TestReviewQueueResolvedTabRenders below.
 		PersonRecord: viewmodel.Soldier{
 			ID:                   12,
 			DisplayID:            "JCM87-00012",
@@ -64,7 +68,7 @@ func TestReviewQueueViewUsesSharedSummaryFormatting(t *testing.T) {
 			NeedsReview:          true,
 			ReviewReason:         "Potential duplicate from JCM87 import",
 		},
-	}}, viewmodel.ArchiveCounts{SoldierCount: 25, SpouseRecordCount: 3}, 1, 1, 50).Render(context.Background(), &buf)
+	}}, viewmodel.ArchiveCounts{SoldierCount: 25, SpouseRecordCount: 3}, 1, 1, 50, "open").Render(context.Background(), &buf)
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}

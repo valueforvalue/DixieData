@@ -23,6 +23,17 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := parsePage(r.URL.Query().Get("page"))
+	// Issue #455 slice 4: ?tab=resolved switches the Review
+	// Queue render to the Resolved tab view, which today lists
+	// resolved conflict rows for the optional ?person=ID
+	// filter. The Open / Resolved tab strip + per-person
+	// deep-link from soldier_card both land here; query-param-
+	// driven so a refresh / bookmark survives.
+	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
+	if tab != "resolved" {
+		tab = "open"
+	}
+
 	soldiers, total, err := a.soldiers.ReviewQueue(page, 50)
 	if err != nil {
 		respondInternal(w, r, "Could not load the review queue.", err)
@@ -42,8 +53,11 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 		respondInternal(w, r, "Could not load archive counts.", err)
 		return
 	}
-	// Issue #384 / Slice 7: wrap Render.
-	if err := presentation.ReviewQueueView(soldiers, findings, domainCounts, page, total, 50).Render(r.Context(), w); err != nil {
+	// Issue #384 / Slice 7: wrap Render. The activeTab is
+	// passed so the tab strip in review_queue.templ:?? can
+	// highlight the right button + (in slice-4 follow-up) swap
+	// the list body when tab == "resolved".
+	if err := presentation.ReviewQueueView(soldiers, findings, domainCounts, page, total, 50, tab).Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the review queue.", err)
 	}
 }

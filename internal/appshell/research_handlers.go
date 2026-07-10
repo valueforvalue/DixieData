@@ -1,17 +1,21 @@
 // research_handlers.go holds the per-soldier research HTTP handlers:
-// service timeline, research log, research task create + resolve,
-// and conflict ledger. Extracted from app.go as step 9 of the
-// God-class reduction tracked in issue #42. Handlers stay on *App;
-// routes registered in routes.go. The handleResearchLog function
-// dispatches to handleResearchTaskCreate and handleResearchTaskResolve
-// based on URL parts.
+// service timeline, research log, and research task create + resolve.
+// Extracted from app.go as step 9 of the God-class reduction tracked
+// in issue #42. Handlers stay on *App; routes registered in routes.go.
+// The handleResearchLog function dispatches to handleResearchTaskCreate
+// and handleResearchTaskResolve based on URL parts.
 //
 // Issue #455 slice 3: handleUnitCamaraderie + handleResearchPack
 // deleted. Their data lives on Insights (Camaraderie's scope=unit
 // drilldown + Research Pack's Top Units / Top Cemeteries panels)
 // and the use cases route there from the soldier_card tile and the
-// R&R foldout. See slice 3 commit message for the full migration
-// list.
+// R&R foldout.
+//
+// Issue #455 slice 4: handleConflictLedger deleted. The
+// per-Soldier merge conflict ledger view now lives on the Review
+// Queue Resolved tab (issue #378 follow-up deferred — the merge
+// review_conflicts table stays for the pending + resolved audit
+// views; the per-Person sub-page is dropped).
 //
 // Issue #422 slice 1: empty-state pages replace 500 errors for
 // soldiers with missing data. Error dispatch normalized:
@@ -129,23 +133,16 @@ func (a *App) handleResearchTaskResolve(w http.ResponseWriter, r *http.Request, 
 }
 
 func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id int64) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	ledger, err := a.backup.ConflictLedger(id)
-	if err != nil {
-		// Issue #422: distinguish genuinely missing soldier (404)
-		// from database failures (500).
-		if errors.Is(err, sql.ErrNoRows) {
-			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
-			return
-		}
-		respondInternal(w, r, fmt.Sprintf("Could not build conflict ledger for record %d.", id), err)
-		return
-	}
-	// Issue #384 / Slice 4: wrap Render.
-	if err := presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w); err != nil {
-		respondErrorFragment(w, r, KindInternal, "Could not render the merge review ledger.", err)
-	}
+	// Issue #455 slice 4: per-Soldier conflict-ledger sub-page
+	// removed; same data surfaces on the Review Queue Resolved
+	// tab. The route registration in routes.go is gone and the
+	// dispatch branch in soldiers_handlers.go is removed; this
+	// stub remains so any stale URL returns 303→/review-queue
+	// instead of 404 (data lives, just on a different surface).
+	// Replaced in follow-up work with the Resolved tab global
+	// listing.
+	target := "/review-queue?tab=resolved"
+	w.Header().Set("Location", target)
+	w.Header().Set("X-DixieData-Redirect", target)
+	w.WriteHeader(http.StatusSeeOther)
 }

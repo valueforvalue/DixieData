@@ -127,8 +127,8 @@ func ResearchCollectionDetailView(detail records.ResearchCollectionDetail) templ
 	return templates.ResearchCollectionDetailView(viewmodel.ResearchCollectionDetailFromDomain(detail))
 }
 
-func ReviewQueueView(soldiers []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary, counts models.ArchiveCounts, page, total, pageSize int) templ.Component {
-	return templates.ReviewQueueView(viewmodel.ReviewQueueEntriesFromDomain(soldiers, findings), viewmodelCountsFromModels(counts), page, total, pageSize)
+func ReviewQueueView(soldiers []models.Soldier, findings map[int64][]records.DuplicateAuditFindingSummary, counts models.ArchiveCounts, page, total, pageSize int, activeTab string) templ.Component {
+	return templates.ReviewQueueView(viewmodel.ReviewQueueEntriesFromDomain(soldiers, findings), viewmodelCountsFromModels(counts), page, total, pageSize, activeTab)
 }
 
 func InsightsView(snapshot records.AnalyticsSnapshot, counts models.ArchiveCounts) templ.Component {

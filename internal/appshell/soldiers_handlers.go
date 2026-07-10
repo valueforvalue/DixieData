@@ -496,6 +496,9 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	// Issue #455 slice 3: Camaraderie + Research Pack sub-route
 	// dispatch branches removed (those handlers are deleted along
 	// with their templates + service methods + route lines).
+	// Issue #455 slice 4: per-soldier Conflict Ledger dispatch
+	// removed (handler now redirects to /review-queue?tab=resolved;
+	// the route is gone).
 
 	if len(parts) > 1 && parts[1] == "edit" {
 		a.handleEditSoldier(w, r, id)
@@ -507,10 +510,6 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) > 1 && parts[1] == "research-log" {
 		a.handleResearchLog(w, r, id, parts[1:])
-		return
-	}
-	if len(parts) > 1 && parts[1] == "conflict-ledger" {
-		a.handleConflictLedger(w, r, id)
 		return
 	}
 	if len(parts) > 2 && parts[1] == "pdf" && parts[2] == "no-images" {
