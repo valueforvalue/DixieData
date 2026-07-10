@@ -745,7 +745,7 @@ templ SoldierRecordsListFragment(soldierID int64, records []viewmodel.SourceReco
 // SoldierImagesListFragment (issue #391 Slice B.1) renders
 // the per-soldier Images panel as a fragment-only payload
 // (no <html>/<body>/Layout() shell) so htmx can swap it in
-// place via data-results-target="#panel.soldier.detail.images".
+// place via the data-results-target on the Delete form.
 // Mirrors EventImagesListFragment shape (event_panels.templ:93)
 // — empty-state + grid of cards with the same per-card
 // data-image-card / data-image-thumb-id / data-image-id
