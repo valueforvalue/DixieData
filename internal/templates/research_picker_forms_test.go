@@ -68,3 +68,60 @@ func TestResearchPickerFormsOptIntoDispatcher(t *testing.T) {
 		}
 	}
 }
+
+// TestResearchRecentFormsOptIntoDispatcher is the slice-3 follow-up
+// to TestResearchPickerFormsOptIntoDispatcher. The picker-page
+// regression above covers Continue + Change Person + the
+// per-search-result Open form (slice 2 commits 6a340fc). It does
+// NOT cover the recents-list Open form because the recents list
+// is empty on a fresh /research server render — localStorage
+// hydration is a JS-driven swap that calls /research/recent and
+// renders the ResearchPickerRecent fragment directly.
+//
+// Symptom: a user with prior localStorage recents (dixiedata.
+// research.recents) loads /research. The picker renders empty,
+// JS hydrates the recents ul from /research/recent, and every
+// recents Open button is a <form> without data-dixie-submit.
+// Clicking it does a native POST to /research/select, the
+// server returns 200 + X-DixieData-Redirect + empty body, and
+// the browser renders the empty 200 body as a blank white page
+// at /research/select.
+//
+// This test renders ResearchPickerRecent with two recent
+// persons, scans the rendered HTML for every <form method="post">
+// opening tag, and asserts each carries data-dixie-submit. It
+// fails loudly with the offending form index + the rendered tag
+// string so the regression is debuggable without re-running the
+// GUI. Catches the slice-3 omission of data-dixie-submit on the
+// recents-list form.
+func TestResearchRecentFormsOptIntoDispatcher(t *testing.T) {
+	alpha := viewmodel.PersonRecord{ID: 1, FirstName: "Test", LastName: "Alpha", DisplayID: "CSA-00001"}
+	bravo := viewmodel.PersonRecord{ID: 2, FirstName: "Test", LastName: "Bravo", DisplayID: "CSA-00002"}
+	view := viewmodel.ResearchPickerView{
+		RecentPersons: []viewmodel.PersonRecord{alpha, bravo},
+		NextAction:    "research-log",
+	}
+
+	var buf bytes.Buffer
+	if err := ResearchPickerRecent(view).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	html := buf.String()
+
+	formRe := regexp.MustCompile(`(?is)<form\b[^>]*method="post"[^>]*>`)
+	matches := formRe.FindAllString(html, -1)
+	if len(matches) != 2 {
+		t.Fatalf("expected exactly 2 <form method=\"post\"> tags in recents list (one per recent person); got %d.\nRendered HTML:\n%s",
+			len(matches), html)
+	}
+
+	bareRe := regexp.MustCompile(`data-dixie-submit(="[^"]*")?`)
+	for i, form := range matches {
+		if !bareRe.MatchString(form) {
+			t.Errorf("recents form #%d POSTs without data-dixie-submit — native submit will white-screen on /research/select.\n"+
+				"See issue #426 root cause (slice-3 follow-up: recents fragment missed in commit 6a340fc).\n"+
+				"Offending tag: %s",
+				i+1, strings.TrimSpace(form))
+		}
+	}
+}

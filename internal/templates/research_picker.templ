@@ -200,6 +200,24 @@ templ ResearchPickerSearchResults(view viewmodel.ResearchPickerView) {
 // (issue #378 slice 3, option C1). The full picker page embeds
 // this directly; the standalone /research/recent fragment endpoint
 // renders it for the JS-driven swap on localStorage hydration.
+//
+// Issue #426 follow-up: every <form method="post"> on the picker
+// MUST carry data-dixie-submit="true" so the dispatcher in
+// frontend/app.js (gated on [data-dixie-submit]) intercepts the
+// native submit, reads the X-DixieData-Redirect response header,
+// and calls window.location.assign. Without the attribute, the
+// browser POSTs natively, the server returns 200 + an empty
+// body + X-DixieData-Redirect, browsers ignore the custom header,
+// and the user sees a blank white page at /research/select.
+//
+// The Continue + Change Person + per-result Open forms are covered
+// by TestResearchPickerFormsOptIntoDispatcher (slice 2 regression
+// net, commit 6a340fc); this fragment was missed because it lives
+// in a separate templ and renders for the JS-driven localStorage
+// hydration path, not the picker-page server render. The companion
+// regression in TestResearchRecentFormsOptIntoDispatcher renders
+// this fragment directly and asserts every form carries the
+// attribute.
 templ ResearchPickerRecent(view viewmodel.ResearchPickerView) {
 	if len(view.RecentPersons) == 0 {
 		<p class="text-sm text-slate-500" data-research-recent-empty>No recent picks yet. Open a Person Record from a search result and it will appear here.</p>
@@ -211,6 +229,7 @@ templ ResearchPickerRecent(view viewmodel.ResearchPickerView) {
 						method="post"
 						action={ templ.SafeURL(routebuilder.ResearchSelect()) }
 						class="flex flex-wrap items-center justify-between gap-3"
+						data-dixie-submit="true"
 					>
 						<div>
 							<p class="text-base font-medium text-[color:var(--ink)]">{ person.FirstName } { person.LastName }</p>

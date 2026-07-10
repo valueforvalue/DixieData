@@ -391,6 +391,49 @@ async function main() {
         throw new Error(`expected localStorage head to be ${soldierA}; got ${JSON.stringify(stored)}`);
       }
     });
+
+    
+    
+    
+    
+    
+    await step(page, 'step-08 recents-open-button-dispatches-not-native-submit', async () => {
+      // Issue #426 follow-up: the recents-list Open button must carry
+      // data-dixie-submit so the JS dispatcher intercepts the submit,
+      // reads X-DixieData-Redirect, and calls window.location.assign.
+      // Without the attribute, the browser does a native POST to
+      // /research/select, the server returns 200 + an empty body +
+      // X-DixieData-Redirect, the browser ignores the custom header,
+      // and the user lands on a blank white /research/select page.
+      //
+      // We rely on step-07 leaving soldierA at the head of
+      // localStorage.dixiedata.research.recents (the soldier detail
+      // page's data-research-record-id push-to-head). Visit /research,
+      // wait for the JS-driven localStorage hydration to render the
+      // recents <ul>, then click the first recents Open button and
+      // assert the page navigated to /soldiers/{id}/... (NOT
+      // /research/select).
+      await page.goto(`${BASE}/research`, { waitUntil: 'domcontentloaded' });
+      const deadline = Date.now() + 5000;
+      let list = null;
+      while (Date.now() < deadline) {
+        list = await page.$('[data-research-recent-list]');
+        if (list) break;
+        await sleep(80);
+      }
+      if (!list) throw new Error('recents <ul> did not appear after localStorage hydration');
+      const form = await page.$('[data-research-recent-list] form[data-dixie-submit="true"]');
+      if (!form) {
+        throw new Error('recents <form> is missing data-dixie-submit="true" — native submit will white-screen');
+      }
+      await Promise.all([
+        page.waitForURL(/\/soldiers\/\d+\//, { timeout: 5000 }),
+        form.$eval('button[type="submit"]', (b) => b.click()),
+      ]);
+      if (!/\/soldiers\/\d+\/[a-z-]+/.test(page.url())) {
+        throw new Error(`expected page.url() to match /soldiers/{id}/<sub-page>; got ${page.url()}`);
+      }
+    });
   } catch (e) {
     // step() already recorded the failure; fall through to cleanup.
   } finally {
