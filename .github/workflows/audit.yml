@@ -86,6 +86,19 @@ jobs:
           echo "Server failed to start within 30s"
           exit 1
 
+      # Issue #456 follow-up: the Share top-nav foldout is one of
+      # the most prominent UI surfaces and was once blanked by a
+      # templ codegen bug (children block dropped on the floor).
+      # Gate the children-rendering invariant in CI via the
+      # Playwright probe that already encodes the contract — it
+      # asserts `panel.itemCount === 4` and the click-to-open +
+      # ARIA + navigation behaviors. The probe accepts BASE_URL
+      # so it reuses the dev server already running on :8080; no
+      # second server is spawned.
+      - name: Foldout regression probe (issue #456)
+        run: BASE_URL=http://127.0.0.1:8080 node audit/smoke_foldout_nav.mjs
+        timeout-minutes: 5
+
       - name: Run audit harness
         run: |
           mkdir -p audit/reports-ci

@@ -39,23 +39,43 @@
 //   9. On other pages (/calendar), the trigger does NOT
 //      have aria-current="page".
 
+// Issue #456 follow-up. The probe auto-spawns a dixiedata-web
+// instance for local dev runs. CI workflows (and any caller that
+// already has a dev server up) set BASE_URL to skip the spawn
+// and connect to the existing server. The behavior contract:
+//
+//   - BASE_URL set (CI mode): connect to BASE_URL, no spawn,
+//     WEB_BIN/SCRATCH/PORT are all optional. The probe still
+//     verifies the panel renders 4 items at $BASE_URL/<route>.
+//   - BASE_URL unset (local dev mode): spawn WEB_BIN on PORT
+//     against SCRATCH, wait for readiness, then run. This is
+//     the legacy default; nothing in the local dev flow changes.
+//
+// The Linux audit workflow (Ubuntu runner) was previously
+// broken under the auto-spawn path because WEB_BIN resolved to
+// the Windows .exe path. CI workflows now pass BASE_URL.
 const PORT = 9992;
 const SCRATCH = "C:/Development/DixieData/.scratch/webmode";
 const WEB_BIN = "C:/Development/DixieData/build/bin/dixiedata-web.exe";
+const BASE_URL = process.env.BASE_URL || "";
+
+const BASE = BASE_URL || `http://127.0.0.1:${PORT}`;
 
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 
-if (!existsSync(WEB_BIN)) { console.error("missing", WEB_BIN); process.exit(2); }
-if (!existsSync(SCRATCH)) { console.error("missing", SCRATCH); process.exit(2); }
+const OWN_SERVER = !BASE_URL;
+if (OWN_SERVER) {
+  if (!existsSync(WEB_BIN)) { console.error("missing", WEB_BIN); process.exit(2); }
+  if (!existsSync(SCRATCH)) { console.error("missing", SCRATCH); process.exit(2); }
 
-const server = spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"] });
-server.stderr.on("data", () => {});
+  spawn(WEB_BIN, ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", SCRATCH], { stdio: ["ignore", "pipe", "pipe"] }).stderr.on("data", () => {});
+}
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function ready() {
   for (let i = 0; i < 60; i++) {
-    try { const r = await fetch(`http://127.0.0.1:${PORT}/`); if (r.status >= 200 && r.status < 500) return; } catch {}
+    try { const r = await fetch(`${BASE}/`); if (r.status >= 200 && r.status < 500) return; } catch {}
     await wait(500);
   }
   throw new Error("server never came up");
@@ -82,7 +102,7 @@ try {
 
   // === Step 1: load /calendar (Share is NOT the active page here) ===
   console.log("Step 1: load /calendar + verify trigger ARIA contract");
-  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await wait(1000);
 
   const trigger = await page.evaluate(() => {
@@ -182,7 +202,7 @@ try {
 
   // === Step 7: aria-current=page on /share ===
   console.log("\nStep 7: aria-current=page on /share");
-  await page.goto(`http://127.0.0.1:${PORT}/share`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/share`, { waitUntil: "networkidle" });
   await wait(1000);
   const onShare = await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.getAttribute("aria-current"));
   record("aria-current-page-set-on-share", onShare === "page", { ariaCurrent: onShare });
@@ -199,7 +219,7 @@ try {
   // present in the DOM) on /calendar, and (b) the contrast
   // ratio is at least WCAG AA (4.5:1).
   console.log("\nStep 7.5: items visible + readable on /calendar (issue #283)");
-  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await wait(1000);
   await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
   await wait(500);
@@ -284,7 +304,7 @@ try {
   // dedicated /share/exports subpage. The 4-item menu
   // collapsed to 3 (Build is folded into Export).
   console.log("\nStep 8: menu items navigate to /share subpages (issue #284)");
-  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await wait(800);
   await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
   await wait(200);
@@ -301,7 +321,7 @@ try {
 
   // === Step 9: import menu item navigates to /share/imports subpage ===
   console.log("\nStep 9: import menu item navigates to /share/imports (issue #284)");
-  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await wait(800);
   await page.evaluate(() => document.querySelector("[data-foldout-trigger='layout.share.menu']")?.click());
   await wait(200);
@@ -321,7 +341,7 @@ try {
   // Archive" item (folded into Export per the locked
   // decision).
   console.log("\nStep 9.5: Build Share Archive button on /share/exports (issue #284)");
-  await page.goto(`http://127.0.0.1:${PORT}/share/exports`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/share/exports`, { waitUntil: "networkidle" });
   await wait(800);
   const buildAnchor = await page.evaluate(() => document.getElementById("build-share-archive") !== null);
   record("build-share-archive-anchor-on-exports-subpage", buildAnchor === true, { present: buildAnchor });
@@ -338,7 +358,7 @@ try {
   // non-`/share` page, click Share, assert the panel STAYS open
   // + items are visible.
   console.log("\nStep 9.5: first-click on /calendar opens + stays open (issue #283 followup)");
-  await page.goto(`http://127.0.0.1:${PORT}/calendar`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await wait(1000);
   // Use the real click path (page.locator) — the same path a
   // user would take. Synthetic dispatchEvent would bypass the
