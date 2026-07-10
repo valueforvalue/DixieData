@@ -20,7 +20,6 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
-	"github.com/valueforvalue/DixieData/internal/cookies"
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/debug"
 	"github.com/valueforvalue/DixieData/internal/records"
@@ -110,20 +109,11 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.dataDir = appdata.DefaultDir()
 
-	// Load (or generate) the HMAC key for the dd_person_ctx cookie
-	// (Research & Review picker, issue #378). Key file lives in the
-	// .dixiedata-cookies/ sibling directory (NEVER under dataDir)
-	// because .ddbak restore renames dataDir atomically and any
-	// file handle held inside it blocks the rename on Windows.
-	// Mirrors the .dixiedata-logs/ sibling-dir split used by the
-	// logging subsystem. EnsureKey is fail-soft: if generation
-	// fails, personCtxKey stays nil and picker handlers treat every
-	// request as "no context" — degraded but not broken.
-	if key, err := cookies.EnsureKey(appdata.CookiesRoot(a.dataDir)); err != nil {
-		fmt.Printf("warning: dd_person_ctx key bootstrap failed (picker will operate in no-context mode): %v\n", err)
-	} else {
-		a.personCtxKey = key
-	}
+	// Issue #455 slice 2: the dd_person_ctx cookie + its HMAC key
+	// are gone. The picker now treats the person context as a
+	// short-lived URL query param (?person=ID) instead of a
+	// 30-day-signed cookie. The .dixiedata-cookies/ sibling dir
+	// is no longer created here.
 
 	// One-time migration: move logs out of the data directory into a
 	// sibling .dixiedata-logs/ folder. Before the split, app logs

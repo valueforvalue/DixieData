@@ -8,11 +8,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/uiids"
 )
 
-func TestHandleResearchPickerRendersShellNoCookie(t *testing.T) {
-	app := newPickerApp(t)
+// Issue #455 slice 2: picker tests reanchored from cookie
+// context to ?person=ID query param. The picker is now purely a
+// search surface + Continue shortcut; the selected Person ID
+// rides in the URL of the redirect, not in a cookie.
+
+func TestHandleResearchPickerRendersShell(t *testing.T) {
+	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodGet, "/research", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
@@ -31,24 +37,41 @@ func TestHandleResearchPickerRendersShellNoCookie(t *testing.T) {
 	}
 }
 
-func TestHandleResearchPickerRendersContinueFromCookie(t *testing.T) {
-	app := newPickerApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/research", nil)
-	writePersonCtxCookie(t, req, app, 411)
+func TestHandleResearchPickerRendersContinueFromPersonQuery(t *testing.T) {
+	app := newStressApp(t)
+	// Seed the sentinel Person Record that newPickerApp used to
+	// seed (issue #378).
+	if _, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CSA-PICKER-411",
+		SyncID:    "picker-411",
+		FirstName: "Test",
+		LastName:  "PersonFourEleven",
+	}); err != nil {
+		t.Fatalf("seed person: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/research?person=1", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d; want 200", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "Continue") {
-		t.Fatalf("expected Continue shortcut in body")
+		t.Fatalf("expected Continue shortcut in body when ?person=ID matches a row")
 	}
 }
 
-func TestHandleResearchSelectWritesCookieAndRedirects(t *testing.T) {
-	app := newPickerApp(t)
+func TestHandleResearchSelectRedirectsWithoutSettingCookie(t *testing.T) {
+	app := newStressApp(t)
+	if _, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CSA-PICKER-411",
+		SyncID:    "picker-411",
+		FirstName: "Test",
+		LastName:  "PersonFourEleven",
+	}); err != nil {
+		t.Fatalf("seed person: %v", err)
+	}
 	form := url.Values{}
-	form.Set("person_id", "411")
+	form.Set("person_id", "1")
 	form.Set("next", "camaraderie")
 	req := httptest.NewRequest(http.MethodPost, "/research/select", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -57,23 +80,19 @@ func TestHandleResearchSelectWritesCookieAndRedirects(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d; want 200", rec.Code)
 	}
-	if got, want := rec.Header().Get("X-DixieData-Redirect"), "/soldiers/411/camaraderie"; got != want {
+	if got, want := rec.Header().Get("X-DixieData-Redirect"), "/soldiers/1/camaraderie"; got != want {
 		t.Fatalf("X-DixieData-Redirect = %q; want %q", got, want)
 	}
-	found := false
+	// Issue #455 slice 2: no dd_person_ctx cookie may be emitted.
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == "dd_person_ctx" {
-			found = true
-			break
+			t.Fatalf("picker must NOT emit dd_person_ctx cookie post-slice-2")
 		}
-	}
-	if !found {
-		t.Fatalf("dd_person_ctx cookie not emitted")
 	}
 }
 
 func TestHandleResearchSelectRejectsMissingPersonID(t *testing.T) {
-	app := newPickerApp(t)
+	app := newStressApp(t)
 	form := url.Values{}
 	form.Set("next", "camaraderie")
 	req := httptest.NewRequest(http.MethodPost, "/research/select", strings.NewReader(form.Encode()))
@@ -86,7 +105,7 @@ func TestHandleResearchSelectRejectsMissingPersonID(t *testing.T) {
 }
 
 func TestHandleResearchSelectRejectsBadNext(t *testing.T) {
-	app := newPickerApp(t)
+	app := newStressApp(t)
 	form := url.Values{}
 	form.Set("person_id", "1")
 	form.Set("next", "../../etc/passwd")
@@ -99,8 +118,8 @@ func TestHandleResearchSelectRejectsBadNext(t *testing.T) {
 	}
 }
 
-func TestHandleResearchClearEmitsMaxAgeMinusOne(t *testing.T) {
-	app := newPickerApp(t)
+func TestHandleResearchClearNoLongerEmitsCookie(t *testing.T) {
+	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodPost, "/research/clear", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
@@ -110,15 +129,17 @@ func TestHandleResearchClearEmitsMaxAgeMinusOne(t *testing.T) {
 	if got := rec.Header().Get("X-DixieData-Redirect"); got != "/research" {
 		t.Fatalf("X-DixieData-Redirect = %q; want /research", got)
 	}
+	// Issue #455 slice 2: no dd_person_ctx cookie at all (was a
+	// MaxAge=-1 clear cookie pre-slice-2).
 	for _, c := range rec.Result().Cookies() {
-		if c.Name == "dd_person_ctx" && c.MaxAge >= 0 {
-			t.Fatalf("dd_person_ctx cookie not cleared")
+		if c.Name == "dd_person_ctx" {
+			t.Fatalf("/research/clear must NOT emit dd_person_ctx cookie post-slice-2")
 		}
 	}
 }
 
 func TestRouteOrderResearchBeatsSoldiersWildcard(t *testing.T) {
-	app := newPickerApp(t)
+	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodGet, "/research", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
@@ -134,13 +155,8 @@ func TestRouteOrderResearchBeatsSoldiersWildcard(t *testing.T) {
 	}
 }
 
-// === Issue #378 slice 2 RED tests ===
-// The tests below prove slice-2 behavior before any slice-2 code
-// exists. They MUST fail until the slice-2 handler + guard + templ
-// changes land.
-
 func TestPickerSearchReturnsPartialFragment(t *testing.T) {
-	app := newPickerApp(t)
+	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodGet, "/research?q=Person&partial=1", nil)
 	req.Header.Set("HX-Request", "true")
 	rec := httptest.NewRecorder()
@@ -158,7 +174,7 @@ func TestPickerSearchReturnsPartialFragment(t *testing.T) {
 }
 
 func TestPickerForwardsNextFromQuery(t *testing.T) {
-	app := newPickerApp(t)
+	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodGet, "/research?next=timeline", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
@@ -166,60 +182,39 @@ func TestPickerForwardsNextFromQuery(t *testing.T) {
 		t.Fatalf("status = %d; want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	// The picker shell must echo the next value into hidden fields
-	// on every "Open"/"Continue" form so the post-redirect lands
-	// on the right sub-page.
 	if !strings.Contains(body, `name="next" value="timeline"`) {
 		t.Fatalf("picker did not forward ?next=timeline to its hidden fields")
 	}
 }
 
-func TestSubRouteRedirectsThroughPickerNoCookie(t *testing.T) {
-	app := newPickerApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/soldiers/411/timeline", nil)
-	rec := httptest.NewRecorder()
-	app.ServeHTTP(rec, req)
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status = %d; want 303 (redirect through picker)", rec.Code)
-	}
-	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "/research?next=timeline") {
-		t.Fatalf("Location = %q; want prefix /research?next=timeline", loc)
-	}
-}
-
-func TestSubRouteLoadsDirectWithCookie(t *testing.T) {
-	app := newPickerApp(t)
-	// Seed a Person Record and give the request a valid
-	// dd_person_ctx cookie pointing at it. The handleSoldierByID
-	// branch for /timeline should now load directly without
-	// redirecting through /research.
+// TestSubRouteLoadsDirectDeepLink (issue #455 slice 2) replaces
+// the old TestSubRouteRedirectsThroughPickerNoCookie +
+// TestSubRouteLoadsDirectWithCookie pair. After slice 2 the
+// picker is not a gate; soldier-scoped sub-pages load directly
+// without ANY cookie or query context (the request URL itself
+// carries the id).
+func TestSubRouteLoadsDirectDeepLink(t *testing.T) {
+	app := newStressApp(t)
 	seedTimelinePerson(t, app, 511)
 	req := httptest.NewRequest(http.MethodGet, "/soldiers/511/timeline", nil)
-	writePersonCtxCookie(t, req, app, 511)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d; want 200 (direct load with cookie)", rec.Code)
+		t.Fatalf("status = %d; want 200 (direct load, no picker gate)", rec.Code)
 	}
 	if loc := rec.Header().Get("Location"); strings.HasPrefix(loc, "/research?") {
-		t.Fatalf("Location = %q; picker redirect fired despite cookie present", loc)
+		t.Fatalf("Location = %q; picker redirect fired post-slice-2 (gate removed)", loc)
 	}
 }
 
 func TestPickerRejectsUnknownNextStillAfterForward(t *testing.T) {
-	app := newPickerApp(t)
-	// Forwarding a payload the picker allowed through (rendered as
-	// hidden fields) MUST still 400 at select time. The allowlist
-	// is the only gate; never trust URL flow.
+	app := newStressApp(t)
 	req := httptest.NewRequest(http.MethodGet, "/research?next=evil-payload", nil)
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("picker GET status = %d; want 200", rec.Code)
 	}
-	// Picker did not echo the unknown next into hidden fields
-	// (echo is allowlisted too, by design).
 	body := rec.Body.String()
 	if strings.Contains(body, `name="next" value="evil-payload"`) {
 		t.Fatalf("picker echoed unknown next; should fallback to default")
@@ -227,9 +222,17 @@ func TestPickerRejectsUnknownNextStillAfterForward(t *testing.T) {
 }
 
 func TestResearchSelectHonorsForwardedNext(t *testing.T) {
-	app := newPickerApp(t)
+	app := newStressApp(t)
+	if _, err := app.soldiers.Create(models.Soldier{
+		DisplayID: "CSA-PICKER-411",
+		SyncID:    "picker-411",
+		FirstName: "Test",
+		LastName:  "PersonFourEleven",
+	}); err != nil {
+		t.Fatalf("seed person: %v", err)
+	}
 	form := url.Values{}
-	form.Set("person_id", "411")
+	form.Set("person_id", "1")
 	form.Set("next", "timeline")
 	req := httptest.NewRequest(http.MethodPost, "/research/select", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -238,14 +241,15 @@ func TestResearchSelectHonorsForwardedNext(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d; want 200", rec.Code)
 	}
-	if got, want := rec.Header().Get("X-DixieData-Redirect"), "/soldiers/411/timeline"; got != want {
+	if got, want := rec.Header().Get("X-DixieData-Redirect"), "/soldiers/1/timeline"; got != want {
 		t.Fatalf("X-DixieData-Redirect = %q; want %q", got, want)
 	}
 }
 
 // seedTimelinePerson inserts a sentinel Person Record at the
 // supplied id so handleSoldierByID's timeline branch has a row
-// to render. Mirrors newPickerApp's sentinel pattern.
+// to render. Mirrors the newPickerApp sentinel pattern from
+// issue #378.
 func seedTimelinePerson(t *testing.T, app *App, id int64) {
 	t.Helper()
 	conn := app.database.Conn()
