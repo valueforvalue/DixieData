@@ -230,3 +230,99 @@ func TestFoldoutWithBadge_NilBadgeMatchesFoldout(t *testing.T) {
 		}
 	}
 }
+
+// TestFoldout_RendersChildren is the regression net for the
+// Share top-nav foldout rendering a blank panel (issue #456).
+//
+// In commit 8438e1f (issue #455 slice 1.5), Foldout was
+// rewritten as a one-line delegation to FoldoutWithBadge:
+//   templ Foldout(...) { @FoldoutWithBadge(..., nil) }
+// templ generate compiles that wrapper by capturing the
+// caller-supplied children into Var1, calling
+// templ.ClearChildren(ctx), then rendering FoldoutWithBadge.
+// The captured Var1 is never re-injected, so the inner
+// templ.GetChildren(ctx) returns nil and every <li>
+// menuitem the caller passes in the children block is
+// silently dropped. Result: the Share top-nav render becomes
+// `<ul id="layout.share.menu" ...></ul>` — open the panel and
+// it is empty.
+//
+// The pre-existing test surface (TestFoldout_ARIAContract,
+// TestFoldout_WithoutBadge_DoesNotEmitBadgeMarker,
+// TestFoldoutWithBadge_NilBadgeMatchesFoldout) calls
+// Foldout("Share", "layout.share.menu", nil) WITHOUT a
+// children block, so the bug is invisible to the unit
+// suite today. This test fails on the broken codegen and
+// passes once Foldout's body renders children inline (no
+// delegating wrapper).
+//
+// Locked invariants:
+//   - the first <li role="none"> inside the panel contains
+//     the first menuitem's <a role="menuitem"> with the
+//     expected href + label verbatim
+//   - the second <li> follows the first in order
+//   - both menuitems live INSIDE the <ul role="menu">
+//     panel, not anywhere else in the rendered HTML
+//   - the trigger button text is unaffected by the children
+//     block (no leak from the panel into the button)
+func TestFoldout_RendersChildren(t *testing.T) {
+	var buf bytes.Buffer
+	children := templ.Raw(
+		`<li role="none"><a href="/share/exports" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-export>Export</a></li>` +
+			`<li role="none"><a href="/share/imports" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-share-menu-import>Import</a></li>`,
+	)
+	err := Foldout("Share", "layout.share.menu", nil).Render(templ.WithChildren(context.Background(), children), &buf)
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	got := buf.String()
+
+	panelOpenIdx := strings.Index(got, "<ul")
+	if panelOpenIdx < 0 {
+		t.Fatalf("rendered foldout missing <ul> panel; got:\n%s", got)
+	}
+	panelOpenEnd := strings.Index(got[panelOpenIdx:], ">")
+	if panelOpenEnd < 0 {
+		t.Fatalf("rendered <ul> is malformed; got:\n%s", got)
+	}
+	panelCloseIdx := strings.LastIndex(got, "</ul>")
+	if panelCloseIdx < 0 || panelCloseIdx <= panelOpenIdx+panelOpenEnd {
+		t.Fatalf("rendered foldout missing </ul> close tag; got:\n%s", got)
+	}
+	panel := got[panelOpenIdx+panelOpenEnd+1 : panelCloseIdx]
+
+	// 1) Both menuitems land INSIDE the panel.
+	if !strings.Contains(panel, `data-share-menu-export`) {
+		t.Errorf("first menuitem (Export) missing inside <ul role=\"menu\"> panel; got panel:\n%s\nfull render:\n%s", panel, got)
+	}
+	if !strings.Contains(panel, `data-share-menu-import`) {
+		t.Errorf("second menuitem (Import) missing inside <ul role=\"menu\"> panel; got panel:\n%s\nfull render:\n%s", panel, got)
+	}
+	// 2) Hrefs are rendered verbatim.
+	if !strings.Contains(panel, `href="/share/exports"`) {
+		t.Errorf("first menuitem href not rendered; got panel:\n%s", panel)
+	}
+	if !strings.Contains(panel, `href="/share/imports"`) {
+		t.Errorf("second menuitem href not rendered; got panel:\n%s", panel)
+	}
+	// 3) Order is preserved — Export appears before Import.
+	exportIdx := strings.Index(panel, `data-share-menu-export`)
+	importIdx := strings.Index(panel, `data-share-menu-import`)
+	if exportIdx < 0 || importIdx < 0 || exportIdx > importIdx {
+		t.Errorf("menuitems out of order (Export must precede Import); export idx=%d import idx=%d panel:\n%s", exportIdx, importIdx, panel)
+	}
+	// 4) Items are wrapped in <li role="none">.
+	if !strings.Contains(panel, `<li role="none">`) {
+		t.Errorf("menuitems must be wrapped in <li role=\"none\"> per the WAI-ARIA menu pattern; got panel:\n%s", panel)
+	}
+	// 5) Menuitems must NOT leak into the trigger button.
+	btnOpenIdx := strings.Index(got, `<button`)
+	btnCloseIdx := strings.Index(got, `</button>`)
+	if btnOpenIdx < 0 || btnCloseIdx < 0 || btnCloseIdx <= btnOpenIdx {
+		t.Fatalf("rendered foldout missing <button> block; got:\n%s", got)
+	}
+	btn := got[btnOpenIdx : btnCloseIdx+len(`</button>`)]
+	if strings.Contains(btn, `data-share-menu-export`) || strings.Contains(btn, `data-share-menu-import`) {
+		t.Errorf("menuitems leaked into the trigger button; got:\n%s", btn)
+	}
+}
