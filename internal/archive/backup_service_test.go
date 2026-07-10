@@ -441,131 +441,6 @@ func openExistingTestDB(dataDir string) (*db.DB, error) {
 	return db.Open(dataDir)
 }
 
-func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
-	restoreDir := testtemp.New(t).Path()
-	backupPath := filepath.Join(testtemp.New(t).Path(), "legacy.zip")
-
-	file, err := os.Create(backupPath)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-	zipWriter := zip.NewWriter(file)
-
-	manifest := BackupManifest{
-		Format:    backupFormatName,
-		Version:   1,
-		CreatedAt: "2026-01-01T00:00:00Z",
-		DataFile:  "data/soldiers.json",
-		ImageRoot: "images/",
-		Soldiers:  2,
-		Records:   1,
-		Images:    1,
-	}
-	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
-		t.Fatalf("write manifest: %v", err)
-	}
-	soldiers := []models.Soldier{
-		{
-			ID:        11,
-			DisplayID: "PENSION-LEGACY",
-			FirstName: "Legacy",
-			LastName:  "Soldier",
-			Records:   []models.Record{{RecordType: "Roster", AppID: "APP-1", Details: "Legacy details"}},
-			Images:    []models.Image{{FileName: "portrait.png", FilePath: "images/pension-legacy/portrait.png", Caption: "Portrait"}},
-		},
-		{
-			ID:                12,
-			DisplayID:         "PENSION-LEGACY-LINK",
-			EntryType:         "linked_person",
-			SpouseSoldierID:   11,
-			RelationshipLabel: "Brother",
-			FirstName:         "Linked",
-			LastName:          "Person",
-		},
-	}
-	if err := writeBackupJSON(zipWriter, "data/soldiers.json", soldiers); err != nil {
-		t.Fatalf("write soldiers: %v", err)
-	}
-	imageEntry, err := zipWriter.Create("images/pension-legacy/portrait.png")
-	if err != nil {
-		t.Fatalf("Create image entry: %v", err)
-	}
-	if _, err := imageEntry.Write(pngFixture()); err != nil {
-		t.Fatalf("Write image entry: %v", err)
-	}
-	if err := zipWriter.Close(); err != nil {
-		t.Fatalf("Close zip: %v", err)
-	}
-	if err := file.Close(); err != nil {
-		t.Fatalf("Close file: %v", err)
-	}
-
-	restoreDB := newTestDB(t)
-	restoreSvc := NewSoldierService(restoreDB)
-	backupSvc := NewBackupService(restoreDB, restoreSvc)
-
-	manifestOut, err := backupSvc.Import(backupPath, restoreDir)
-	if err != nil {
-		t.Fatalf("Import: %v", err)
-	}
-	if manifestOut.Version != 1 {
-		t.Fatalf("expected legacy manifest version 1, got %d", manifestOut.Version)
-	}
-	reopened, err := openExistingTestDB(restoreDir)
-	if err != nil {
-		t.Fatalf("openExistingTestDB: %v", err)
-	}
-	defer reopened.Close()
-	reopenedSvc := NewSoldierService(reopened)
-	results, _, err := reopenedSvc.SearchPage("PENSION-LEGACY", 1, 10)
-	if err != nil {
-		t.Fatalf("SearchPage: %v", err)
-	}
-	var restoredSoldier *models.Soldier
-	for _, result := range results {
-		if result.DisplayID == "PENSION-LEGACY" {
-			restoredSoldier, err = reopenedSvc.GetByID(result.ID)
-			if err != nil {
-				t.Fatalf("GetByID restored soldier: %v", err)
-			}
-			break
-		}
-	}
-	if restoredSoldier == nil {
-		t.Fatalf("restored soldier missing from search results: %#v", results)
-	}
-	// Issue #377 slice 2: legacy JSON backup restore must stamp
-	// CreatedByImportPath = "restore_backup_archive" so the
-	// provenance footer can distinguish restored rows from
-	// rows created via the form.
-	if restoredSoldier.CreatedByImportPath != "restore_backup_archive" {
-		t.Errorf("restored CreatedByImportPath = %q, want %q", restoredSoldier.CreatedByImportPath, "restore_backup_archive")
-	}
-	linkedResults, _, err := reopenedSvc.SearchPage("PENSION-LEGACY-LINK", 1, 10)
-	if err != nil {
-		t.Fatalf("SearchPage linked: %v", err)
-	}
-	var linked *models.Soldier
-	for _, result := range linkedResults {
-		if result.DisplayID == "PENSION-LEGACY-LINK" {
-			linked, err = reopenedSvc.GetByID(result.ID)
-			if err != nil {
-				t.Fatalf("GetByID linked: %v", err)
-			}
-			break
-		}
-	}
-	if linked == nil {
-		t.Fatalf("restored person record missing from search results: %#v", linkedResults)
-	}
-	if linked.EntryType != "linked_person" || linked.RelationshipLabel != "Brother" {
-		t.Fatalf("restored person record missing relationship fields: %#v", linked)
-	}
-	if linked.SpouseDisplayID != "PENSION-LEGACY" || linked.SpouseName != "Legacy Soldier" {
-		t.Fatalf("restored person record missing soldier link: %#v", linked)
-	}
-}
-
 func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *testing.T) {
 	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
@@ -826,6 +701,73 @@ func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
 	}
 	if total != 1 || len(results) != 1 {
 		t.Fatalf("expected imported record, total=%d len=%d", total, len(results))
+	}
+}
+
+// TestBackupService_ImportRefusesLegacyV1JSONBackup (issue #450)
+// pins the v1 backup format removal. v1 JSON backups were the
+// pre-v54 SQLite-cutover shape (active late 2024 – mid 2025).
+// Current binaries have not produced v1 archives since the
+// SQLite cutover (issue #216). Importing a v1 archive now
+// returns a clear migration-path error: the user re-exports
+// from the source machine on a v54+ binary, producing a SQLite
+// .ddbak this binary can read. The helpful error is the
+// user-visible surface for the removed restoreLegacyJSONBackup
+// path.
+func TestBackupService_ImportRefusesLegacyV1JSONBackup(t *testing.T) {
+	backupPath := filepath.Join(testtemp.New(t).Path(), "legacy-v1.ddbak")
+	file, err := os.Create(backupPath)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zipWriter := zip.NewWriter(file)
+
+	manifest := BackupManifest{
+		Format:    backupFormatName,
+		Version:   1,
+		CreatedAt: "2025-06-01T00:00:00Z",
+		DataFile:  "data/soldiers.json",
+		ImageRoot: "images/",
+		Soldiers:  1,
+		Records:   0,
+		Images:    0,
+	}
+	if err := writeBackupJSON(zipWriter, "manifest.json", manifest); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	if err := writeBackupJSON(zipWriter, "data/soldiers.json", []models.Soldier{}); err != nil {
+		t.Fatalf("write soldiers: %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("close file: %v", err)
+	}
+
+	restoreDB := newTestDB(t)
+	restoreSvc := NewSoldierService(restoreDB)
+	backupSvc := NewBackupService(restoreDB, restoreSvc)
+	restoreDir := testtemp.New(t).Path()
+
+	_, err = backupSvc.Import(backupPath, restoreDir)
+	if err == nil {
+		t.Fatal("Import of a v1 backup should refuse with a migration-path error, got nil")
+	}
+	// The error must mention the format + the migration path.
+	// If a future refactor changes the error text, the test
+	// still passes as long as the substring "v1" and "v54" or
+	// "DixieData v54" appear — the user migration contract.
+	want := []string{"v1", "v54", "DixieData"}
+	for _, w := range want {
+		if !strings.Contains(err.Error(), w) {
+			t.Errorf("refusal error %q should mention %q so the user knows the migration path", err.Error(), w)
+		}
+	}
+	// The restore dir must NOT have been written: the refusal
+	// must happen before any DB extraction.
+	if _, statErr := os.Stat(filepath.Join(restoreDir, "dixiedata.db")); !os.IsNotExist(statErr) {
+		t.Errorf("refusal must not write a DB; stat err = %v", statErr)
 	}
 }
 

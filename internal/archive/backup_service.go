@@ -790,10 +790,6 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 	}()
 
 	switch contents.Manifest.DataFormat {
-	case "", "json":
-		if err := b.restoreLegacyJSONBackup(stagingDir, extractDir, contents.Soldiers); err != nil {
-			return BackupManifest{}, err
-		}
 	case "sqlite":
 		if err := restoreSnapshotBackup(stagingDir, extractDir, contents); err != nil {
 			return BackupManifest{}, err
@@ -802,7 +798,17 @@ func (b *BackupService) ImportWithLocalIdentity(backupPath, dataDir string, loca
 			return BackupManifest{}, err
 		}
 	default:
-		return BackupManifest{}, fmt.Errorf("unsupported backup data format %q", contents.Manifest.DataFormat)
+		// Issue #450: v1 JSON backup format removal. A v1
+		// manifest hits the readBackupContents gate first
+		// (case 1 in the version switch) and returns a
+		// helpful migration-path error before reaching
+		// here. This branch catches the defense-in-depth
+		// case: a future manifest version that declares
+		// DataFormat=json for a backup (shared archives use
+		// json, but those go through ImportSharedBackup, not
+		// this Import path). Reuse the same error message so
+		// the user sees one consistent migration path.
+		return BackupManifest{}, fmt.Errorf("v1 JSON backup format is no longer supported; please re-export from the source machine on a DixieData v54 or later to produce a SQLite .ddbak this version can restore")
 	}
 
 	if err := validateStagedBackup(stagingDir, contents.Manifest); err != nil {
@@ -1345,11 +1351,17 @@ func readBackupContents(reader *zip.Reader) (backupContents, error) {
 	}
 	switch manifest.Version {
 	case 1:
-		manifest.DataFormat = "json"
-		manifest.ArchiveKind = archiveKindBackup
-		if manifest.DataFile == "" {
-			manifest.DataFile = "data/soldiers.json"
-		}
+		// Issue #450: v1 JSON backup format was the pre-v54
+		// shape (active late 2024 – mid 2025). Current
+		// binaries have not produced v1 archives since the
+		// SQLite cutover (issue #216). Refuse with a clear
+		// migration path: the user re-exports from the source
+		// machine on a v54+ binary, producing a SQLite
+		// .ddbak this binary can read. The v1 JSON
+		// restoration code (restoreLegacyJSONBackup) is
+		// removed; this error is the single user-visible
+		// surface for the removed path.
+		return backupContents{}, fmt.Errorf("v1 JSON backup format is no longer supported (schema v%d, expected v%d+); please re-export from the source machine on a DixieData v54 or later to produce a SQLite .ddbak this version can restore", manifest.SchemaVersion, buildinfo.SchemaVersion)
 	case 2:
 		if strings.TrimSpace(manifest.ArchiveKind) == "" {
 			manifest.ArchiveKind = archiveKindBackup
@@ -1548,143 +1560,6 @@ func extractBackupFile(file *zip.File, destinationPath string) error {
 
 	_, err = io.Copy(target, source)
 	return err
-}
-
-func (b *BackupService) restoreLegacyJSONBackup(dataDir, extractedRoot string, soldiers []models.Soldier) error {
-	database, err := db.Open(dataDir)
-	if err != nil {
-		return err
-	}
-	// Issue #449 slice 2: wrap the close in a closure so the
-	// *DB.Close fires before restoreLegacyJSONBackup returns.
-	// The bare `defer Close()` form defers the call to a
-	// returned function value, which doesn't run until the
-	// enclosing frame is gone — too late for the stagingDir
-	// rename the caller (Import) issues immediately after.
-	defer func() { _ = database.Close() }()
-
-	soldierSvc := NewSoldierService(database)
-	restoredIDsByLegacyID := make(map[int64]int64, len(soldiers))
-	type legacyImageRestore struct {
-		targetID int64
-		images   []models.Image
-	}
-	pendingImages := make([]legacyImageRestore, 0, len(soldiers))
-	isPrimarySoldier := func(entryType string) bool {
-		normalized := strings.ToLower(strings.TrimSpace(entryType))
-		return normalized == "" || normalized == "soldier"
-	}
-
-	createLegacySoldier := func(soldier models.Soldier, linkedSoldierID int64) (*models.Soldier, error) {
-		// Issue #377 slice 2: stamp the import path so future
-		// "where did this row come from?" investigations can
-		// attribute the row to the legacy-JSON backup restore
-		// (pre-SQLite .ddbak archives). The service-layer default
-		// already covers empty values, but explicit stamping
-		// documents the intent at the call site and survives any
-		// future defaulting change.
-		created, err := soldierSvc.Create(models.Soldier{
-			DisplayID:             soldier.DisplayID,
-			EntryType:             soldier.EntryType,
-			SpouseSoldierID:       linkedSoldierID,
-			RelationshipLabel:     soldier.RelationshipLabel,
-			MaidenName:            soldier.MaidenName,
-			IsGenerated:           soldier.IsGenerated,
-			SyncID:                soldier.SyncID,
-			PensionID:             soldier.PensionID,
-			ApplicationID:         soldier.ApplicationID,
-			Prefix:                soldier.Prefix,
-			ShowPrefixBeforeName:  soldier.ShowPrefixBeforeName,
-			FirstName:             soldier.FirstName,
-			MiddleName:            soldier.MiddleName,
-			LastName:              soldier.LastName,
-			Suffix:                soldier.Suffix,
-			Rank:                  soldier.Rank,
-			RankIn:                soldier.RankIn,
-			RankOut:               soldier.RankOut,
-			Unit:                  soldier.Unit,
-			PensionState:          pensionstate.Normalize(soldier.PensionState),
-			ConfederateHomeStatus: confederatehomestatus.Normalize(soldier.ConfederateHomeStatus),
-			ConfederateHomeName:   soldier.ConfederateHomeName,
-			BirthDate:             soldier.BirthDate,
-			DeathDate:             soldier.DeathDate,
-			DeathYear:             soldier.DeathYear,
-			DeathMonth:            soldier.DeathMonth,
-			DeathDay:              soldier.DeathDay,
-			BirthInfo:             soldier.BirthInfo,
-			BuriedIn:              soldier.BuriedIn,
-			Notes:                 soldier.Notes,
-			AddedBy:               soldier.AddedBy,
-			LastEditedBy:          soldier.LastEditedBy,
-			LastEditedFields:      soldier.LastEditedFields,
-			LastEditedAt:          soldier.LastEditedAt,
-			CreatedAt:             soldier.CreatedAt,
-			UpdatedAt:             soldier.UpdatedAt,
-			Records:               soldier.Records,
-			CreatedByImportPath:   "restore_backup_archive",
-		})
-		if err != nil {
-			return nil, err
-		}
-		return created, nil
-	}
-
-	for _, soldier := range soldiers {
-		if !isPrimarySoldier(soldier.EntryType) {
-			continue
-		}
-		created, err := createLegacySoldier(soldier, 0)
-		if err != nil {
-			return err
-		}
-		if soldier.ID > 0 {
-			restoredIDsByLegacyID[soldier.ID] = created.ID
-		}
-		pendingImages = append(pendingImages, legacyImageRestore{targetID: created.ID, images: soldier.Images})
-		if _, err := database.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ? WHERE id = ?`,
-			soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, created.ID); err != nil {
-			return err
-		}
-	}
-
-	for _, soldier := range soldiers {
-		if isPrimarySoldier(soldier.EntryType) {
-			continue
-		}
-		linkedSoldierID := restoredIDsByLegacyID[soldier.SpouseSoldierID]
-		if soldier.SpouseSoldierID > 0 && linkedSoldierID == 0 {
-			return fmt.Errorf("legacy backup linked soldier %d not found for %s", soldier.SpouseSoldierID, strings.TrimSpace(soldier.DisplayID))
-		}
-		created, err := createLegacySoldier(soldier, linkedSoldierID)
-		if err != nil {
-			return err
-		}
-		if soldier.ID > 0 {
-			restoredIDsByLegacyID[soldier.ID] = created.ID
-		}
-		pendingImages = append(pendingImages, legacyImageRestore{targetID: created.ID, images: soldier.Images})
-		if _, err := database.Conn().Exec(`UPDATE soldiers SET added_by = ?, last_edited_by = ?, last_edited_fields = ?, last_edited_at = ?, created_at = ?, updated_at = ? WHERE id = ?`,
-			soldier.AddedBy, soldier.LastEditedBy, soldier.LastEditedFields, soldier.LastEditedAt, soldier.CreatedAt, soldier.UpdatedAt, created.ID); err != nil {
-			return err
-		}
-	}
-
-	for _, imageBatch := range pendingImages {
-		for _, image := range imageBatch.images {
-			sourcePath := filepath.Join(extractedRoot, filepath.FromSlash(normalizeBackupPath(image.FilePath)))
-			destinationPath := filepath.Join(dataDir, filepath.FromSlash(normalizeBackupPath(image.FilePath)))
-			if err := os.MkdirAll(filepath.Dir(destinationPath), 0o755); err != nil {
-				return err
-			}
-			if err := copyBackupFile(sourcePath, destinationPath); err != nil {
-				return err
-			}
-			if err := soldierSvc.AddImage(imageBatch.targetID, image.FileName, image.FilePath, image.Caption); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func restoreSnapshotBackup(dataDir, extractedRoot string, contents backupContents) error {
