@@ -417,6 +417,40 @@ type ReviewQueueEntry struct {
 	DuplicateFindings []DuplicateAuditFindingSummary
 }
 
+// ResolvedFindingEntry is one row in the Resolved tab of the
+// Review Queue: a duplicate-audit finding whose status flipped
+// to 'resolved'. Carries the two side-cached Person Record
+// display IDs so the page can render + link back without a
+// join. issue #461.
+type ResolvedFindingEntry struct {
+	ID             int64
+	LeftRecordID   int64
+	RightRecordID  int64
+	LeftDisplayID  string
+	RightDisplayID string
+	FindingType    string
+	Reason         string
+	ResolvedAt     string
+}
+
+// ResolvedConflictEntry is one row in the Resolved tab of the
+// Review Queue: a Local-vs-Incoming merge_review_conflicts row
+// whose resolution IS NOT NULL. The viewmodel only carries
+// the per-row scalar fields; the per-conflict side-by-side
+// detail stays scoped to the Person Record ledger page.
+// issue #461.
+type ResolvedConflictEntry struct {
+	ID                int64
+	SessionID         string
+	ConflictType      string
+	Reason            string
+	LocalRecordID     int64
+	LocalDisplayID    string
+	IncomingDisplayID string
+	Resolution        string
+	ResolvedAt        string
+}
+
 // DuplicateAuditComparisonField is one field-row in the per-pair
 // compare view: the field name + the Local value + the incoming
 // value + whether they match.

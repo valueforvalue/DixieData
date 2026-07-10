@@ -23,15 +23,45 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := parsePage(r.URL.Query().Get("page"))
-	// Issue #455 slice 4: ?tab=resolved switches the Review
-	// Queue render to the Resolved tab view, which today lists
-	// resolved conflict rows for the optional ?person=ID
-	// filter. The Open / Resolved tab strip + per-person
-	// deep-link from soldier_card both land here; query-param-
-	// driven so a refresh / bookmark survives.
+	// Issue #455 slice 4 + #461: ?tab=resolved now drives a
+	// distinct listing (resolved duplicate-audit findings +
+	// resolved merge-review conflicts) instead of a
+	// placeholder shell. The Open branch is unchanged.
 	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
 	if tab != "resolved" {
 		tab = "open"
+	}
+	// Issue #460 follow-up: SetLayoutHasOpenReview is now set
+	// in the per-request lifecycle wrapper (lifecycle.go) before
+	// the mux dispatches, so the red menuitem treatment is on
+	// for every page that has pending review items, not just
+	// /review-queue. This handler does not need to set it.
+
+	domainCounts, err := a.soldiers.ArchiveCounts()
+	if err != nil {
+		respondInternal(w, r, "Could not load archive counts.", err)
+		return
+	}
+	if tab == "resolved" {
+		// Issue #461: Resolved tab. Pagination is unified so the
+		// two streams (resolved findings + resolved conflicts)
+		// share a single page index. Each stream is queried at
+		// the same offset / pageSize; the templ totals pass
+		// through to the header.
+		findings, totalFindings, err := a.audit.ListResolvedFindings(page, 50)
+		if err != nil {
+			respondInternal(w, r, "Could not load resolved findings.", err)
+			return
+		}
+		conflicts, totalConflicts, err := a.backup.ListResolvedConflicts(page, 50)
+		if err != nil {
+			respondInternal(w, r, "Could not load resolved merge conflicts.", err)
+			return
+		}
+		if err := presentation.ResolvedReviewQueueView(findings, conflicts, domainCounts, page, totalFindings, totalConflicts, 50).Render(r.Context(), w); err != nil {
+			respondErrorFragment(w, r, KindInternal, "Could not render the resolved review queue.", err)
+		}
+		return
 	}
 
 	soldiers, total, err := a.soldiers.ReviewQueue(page, 50)
@@ -43,21 +73,16 @@ func (a *App) handleReviewQueue(w http.ResponseWriter, r *http.Request) {
 	for _, soldier := range soldiers {
 		soldierIDs = append(soldierIDs, soldier.ID)
 	}
-	findings, err := a.audit.FindingsForPersonRecords(soldierIDs)
+	reviewFindings, err := a.audit.FindingsForPersonRecords(soldierIDs)
 	if err != nil {
 		respondInternal(w, r, "Could not load review findings.", err)
-		return
-	}
-	domainCounts, err := a.soldiers.ArchiveCounts()
-	if err != nil {
-		respondInternal(w, r, "Could not load archive counts.", err)
 		return
 	}
 	// Issue #384 / Slice 7: wrap Render. The activeTab is
 	// passed so the tab strip in review_queue.templ:?? can
 	// highlight the right button + (in slice-4 follow-up) swap
 	// the list body when tab == "resolved".
-	if err := presentation.ReviewQueueView(soldiers, findings, domainCounts, page, total, 50, tab).Render(r.Context(), w); err != nil {
+	if err := presentation.ReviewQueueView(soldiers, reviewFindings, domainCounts, page, total, 50, tab).Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the review queue.", err)
 	}
 }

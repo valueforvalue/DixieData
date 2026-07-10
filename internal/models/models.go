@@ -458,9 +458,10 @@ type MergeReviewConflict struct {
 	ConflictType    string
 	Reason          string
 	LocalRecordID   int64
-	LocalDisplayID  string
+	LocalDisplayID   string
 	SourceDisplayID string
 	Resolution      string
+	ResolvedAt      string
 	CreatedAt       string
 	LocalSoldier    *Soldier
 	SourceSoldier   Soldier
