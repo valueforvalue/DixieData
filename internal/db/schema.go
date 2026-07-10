@@ -852,6 +852,37 @@ func ensureSoldierFTS(tx *sql.Tx) error {
 	return nil
 }
 
+// dropSoldierFTS is the inverse of ensureSoldierFTS (issue #459
+// companion). Mirrors the helpers in ensureSoldierFTS in
+// reverse order so a v_n→v_{n-1} downgrade loses the FTS5
+// virtual table + its 6 triggers without leaving dangling
+// references. Idempotent on archives that never had FTS5 (the
+// DROP TABLE / DROP TRIGGER statements are IF EXISTS).
+//
+// The schema_const's inline CREATE TABLE block in
+// `internal/db/schema.go::schema` does NOT define soldiers_fts
+// or any of its triggers for fresh installs — the FTS5 setup
+// runs in block-67's Up. So downgrading past block-67 leaves
+// the database in the v66 state (no FTS5) which the inline
+// schema already represents — consistent on both paths.
+func dropSoldierFTS(tx *sql.Tx) error {
+	statements := []string{
+		`DROP TRIGGER IF EXISTS soldiers_fts_ai`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_au`,
+		`DROP TRIGGER IF EXISTS soldiers_fts_ad`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_ai`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_au`,
+		`DROP TRIGGER IF EXISTS scratchpad_cache_ad`,
+		`DROP TABLE IF EXISTS soldiers_fts`,
+	}
+	for _, stmt := range statements {
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ensureArchiveMetaSeed (issue #183) backfills the three
 // archive_meta rows on legacy archives that predate v58. The
 // schema const's INSERT OR IGNORE handles fresh installs; this

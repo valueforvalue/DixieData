@@ -386,18 +386,27 @@ var migrations = []Migration{
 				return err
 			}
 
-			// FTS5 setup. The old block-14 handled this; with the
-			// v1-v53 chain collapsed, the soldiers_fts table +
-			// its 6 triggers need to be created here for v54
-			// archives. The CREATE VIRTUAL TABLE / CREATE TRIGGER
-			// statements are idempotent (the helper DROPs them
-			// first then re-creates) so fresh installs (where
-			// block-1's inline schema will eventually grow to
-			// include them) are also safe.
-			if err := ensureSoldierFTS(tx); err != nil {
-				return err
-			}
-
+			// FTS5 setup intentionally NOT called here. Issue
+			// #459: ensureSoldierFTS runs `DROP TABLE IF EXISTS
+			// soldiers_fts` + `CREATE VIRTUAL TABLE` + 6 `CREATE
+			// TRIGGER` statements, all inside this block-60 tx.
+			// The DROP TABLE acquires a RESERVED lock that
+			// conflicts with the modernc SQLite driver's
+			// connectionOpener-held SHARED lock on any other
+			// *sql.DB held by the same process (the production
+			// primary DB, or the test's localDB). On Windows
+			// the cross-DB SHARED/RESERVED lock collision
+			// surfaces as SQLITE_LOCKED (6) at restore-validate
+			// time and every .ddbak restore path breaks.
+			//
+			// Fix: ensureSoldierFTS moved to its own per-block
+			// commit entry (block-67 below). The block-60 tx
+			// commits first, releasing its RESERVED lock; then
+			// block-67's tx begins fresh, where the connectionOpener
+			// SHARED lock on the other DB is still present but
+			// block-60's RESERVED has cleared. The DROP TABLE in
+			// block-67 then proceeds without the cross-DB lock
+			// chain.
 			return nil
 		},
 		Down: refuseDown,
@@ -869,6 +878,46 @@ var migrations = []Migration{
 				}
 			}
 			return nil
+		},
+	},
+	// Block 67 (issue #459 companion) — ensureSoldierFTS as its
+	// own per-block-commit migration entry.
+	//
+	// Lives at the end of the slice so block-60's tx commits
+	// first, releasing its RESERVED lock, before block-67's tx
+	// begins. Inside its own tx, ensureSoldierFTS now runs
+	// DROP TABLE IF EXISTS soldiers_fts + CREATE VIRTUAL TABLE +
+	// 6 CREATE TRIGGER without colliding with the cross-DB
+	// SHARED lock the modernc SQLite driver's connectionOpener
+	// retains on the *sql.DB opened by the production primary
+	// DB (or the test's localDB). See issue #459 root-cause
+	// section for the full chain.
+	//
+	// Reversibility: the FTS5 virtual table + its 6 triggers
+	// are pure additions on top of the schema_const's inline
+	// v66 schema. dropSoldierFTS is the symmetric inverse.
+	// Idempotent on fresh v66 (the helpers drop their own
+	// artifacts before re-creating) so the block is safe to
+	// re-run on partially-upgraded archives.
+	//
+	// The schema const's inline CREATE TABLE block (block-1)
+	// does NOT define soldiers_fts — the FTS5 setup runs only
+	// via block-67. This keeps fresh-v66 and v54-v66-upgraded
+	// databases on a single upgrade path: both must run block-67
+	// to land in the v67 state with FTS5 enabled. v1-v53 archives
+	// pre-date the v52 doc discipline and are not expected in
+	// the wild — the applySchema runner short-circuits on
+	// version >= CurrentSchemaVersion, so the block-67 Up is
+	// never skipped.
+	{
+		ID:            "block-67-ensure-soldier-fts",
+		Reversibility: Reversible,
+		Reason: "Pure additive: 1 CREATE VIRTUAL TABLE + 6 CREATE TRIGGER on soldiers_fts + scratchpad_cache triggers; idempotent on the post-v66 schema. Inverse: dropSoldierFTS drops the virtual table + triggers. No soldier-row data is touched — only the FTS5 search index is rebuilt.",
+		Up: func(tx *sql.Tx) error {
+			return ensureSoldierFTS(tx)
+		},
+		Down: func(tx *sql.Tx) error {
+			return dropSoldierFTS(tx)
 		},
 	},
 }
