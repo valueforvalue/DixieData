@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/appdata"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestSaveScratchpadStoresCanonicalContent(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestSaveScratchpadStoresCanonicalContent(t *testing.T) {
 }
 
 func TestImportLegacyScratchpadFilesMigratesTextIntoSQLite(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	d, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

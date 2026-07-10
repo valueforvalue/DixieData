@@ -11,7 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/models"
+"github.com/valueforvalue/DixieData/internal/models"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestShareQueuePage (issue #193) asserts the
@@ -141,7 +143,7 @@ func TestExportSharedArchiveSubset_Roundtrip(t *testing.T) {
 	// Native SaveFileDialog is unavailable in the test harness;
 	// set the override so the handler reaches the export path.
 	app.saveFileDialogOverride = func(_ any) (string, error) {
-		return filepath.Join(t.TempDir(), "subset.ddshare"), nil
+		return filepath.Join(testtemp.New(t).Path(), "subset.ddshare"), nil
 	}
 	server := httptest.NewServer(app)
 	defer server.Close()

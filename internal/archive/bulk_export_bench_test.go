@@ -12,6 +12,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestFullDatabasePDFBaseline captures the wall-clock cost of the
@@ -80,7 +81,7 @@ func TestFullDatabasePDFBaseline(t *testing.T) {
 // sibling directory to confirm the per-record-output shape.
 func runBulkBenchOnce(t *testing.T, n int, measurePerRecord bool) map[string]any {
 	t.Helper()
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	d, err := openExistingTestDB(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -99,7 +100,7 @@ func runBulkBenchOnce(t *testing.T, n int, measurePerRecord bool) map[string]any
 
 	exportSvc := newTestExportServiceWithDataDir(t, d, soldierSvc, dataDir)
 
-	outDir := t.TempDir()
+	outDir := testtemp.New(t).Path()
 	outPath := filepath.Join(outDir, "bulk.pdf")
 
 	exportStart := time.Now()

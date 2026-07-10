@@ -7,13 +7,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestCheckFeedbackLogOpen_AllValid seeds a JSONL with only
 // valid lines and asserts the check returns nil. Mirrors the
 // real export path's success state.
 func TestCheckFeedbackLogOpen_AllValid(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	logsDir := filepath.Join(filepath.Dir(dataDir), ".dixiedata-logs")
 	if err := os.MkdirAll(logsDir, 0o755); err != nil {
 		t.Fatalf("mkdir logs dir: %v", err)
@@ -35,7 +37,7 @@ func TestCheckFeedbackLogOpen_AllValid(t *testing.T) {
 // corrupt line and asserts the check returns an error that
 // identifies the corrupt line.
 func TestCheckFeedbackLogOpen_CorruptLines(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	logsDir := filepath.Join(filepath.Dir(dataDir), ".dixiedata-logs")
 	if err := os.MkdirAll(logsDir, 0o755); err != nil {
 		t.Fatalf("mkdir logs dir: %v", err)
@@ -62,7 +64,7 @@ func TestCheckFeedbackLogOpen_CorruptLines(t *testing.T) {
 // TestCheckFeedbackLogOpen_MissingLog asserts the check passes
 // when there's no log file yet. (No log = nothing to corrupt.)
 func TestCheckFeedbackLogOpen_MissingLog(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	a := &App{dataDir: dataDir}
 	if err := checkFeedbackLogOpen(context.Background(), a); err != nil {
 		t.Errorf("missing log should pass, got: %v", err)
@@ -148,7 +150,7 @@ func TestIsParseError(t *testing.T) {
 // TestFixTruncateFeedbackLog proves the --fix mode actually
 // rewrites the log and preserves the good lines.
 func TestFixTruncateFeedbackLog(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	logsDir := filepath.Join(filepath.Dir(dataDir), ".dixiedata-logs")
 	if err := os.MkdirAll(logsDir, 0o755); err != nil {
 		t.Fatalf("mkdir logs dir: %v", err)

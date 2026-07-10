@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/jobs"
+"github.com/valueforvalue/DixieData/internal/jobs"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestHandleJobStatusUnknownJobReturns404(t *testing.T) {
@@ -102,7 +104,7 @@ func TestHandleJobCancelUnknownJobReturns404(t *testing.T) {
 
 func TestHandleJobArtifactStreamsResultFile(t *testing.T) {
 	app := newStressApp(t)
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	artifactPath := filepath.Join(dir, "export.zip")
 	if err := os.WriteFile(artifactPath, []byte("PK\x03\x04sample"), 0o644); err != nil {
 		t.Fatalf("seed artifact: %v", err)
@@ -214,7 +216,7 @@ func TestHandleJobArtifactInlineForViewableTypes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		app := newStressApp(t)
-		dir := t.TempDir()
+		dir := testtemp.New(t).Path()
 		path := filepath.Join(dir, "export"+tc.ext)
 		id := seedArtifactJob(t, app, "static_archive", path)
 
@@ -254,7 +256,7 @@ func TestHandleJobArtifactAttachmentForDownloadTypes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		app := newStressApp(t)
-		dir := t.TempDir()
+		dir := testtemp.New(t).Path()
 		path := filepath.Join(dir, "export"+tc.ext)
 		id := seedArtifactJob(t, app, "static_archive", path)
 

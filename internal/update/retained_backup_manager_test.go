@@ -6,10 +6,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestRetainedBackupManagerCreateAndRestoreDatabaseSnapshot(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRetainedBackupManager(dataDir)
 	manager.now = func() time.Time {
 		return time.Date(2026, time.May, 23, 6, 28, 8, 0, time.UTC)
@@ -54,7 +56,7 @@ func TestRetainedBackupManagerCreateAndRestoreDatabaseSnapshot(t *testing.T) {
 		t.Fatalf("listed = %#v", listed)
 	}
 
-	restorePath := filepath.Join(t.TempDir(), "restored.db")
+	restorePath := filepath.Join(testtemp.New(t).Path(), "restored.db")
 	restored, err := manager.RestoreDatabaseSnapshot(record.ID, restorePath)
 	if err != nil {
 		t.Fatalf("RestoreDatabaseSnapshot: %v", err)
@@ -72,7 +74,7 @@ func TestRetainedBackupManagerCreateAndRestoreDatabaseSnapshot(t *testing.T) {
 }
 
 func TestRetainedBackupManagerPrunesOlderBackupsByCount(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRetainedBackupManager(dataDir)
 	manager.policy.MaxBackups = 2
 
@@ -122,7 +124,7 @@ func TestRetainedBackupManagerPrunesOlderBackupsByCount(t *testing.T) {
 //   - be restorable via RestoreDatabaseSnapshot (the path is
 //     direction-agnostic)
 func TestRetainedBackupManagerDowngradeSnapshot(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRetainedBackupManager(dataDir)
 
 	record, err := manager.CreatePreSchemaDowngradeBackup(CreateRetainedBackupInput{
@@ -179,7 +181,7 @@ func TestRetainedBackupManagerDowngradeSnapshot(t *testing.T) {
 	}
 
 	// RestoreDatabaseSnapshot works (path is direction-agnostic).
-	restoredPath := filepath.Join(t.TempDir(), "restored.db")
+	restoredPath := filepath.Join(testtemp.New(t).Path(), "restored.db")
 	restored, err := manager.RestoreDatabaseSnapshot(record.ID, restoredPath)
 	if err != nil {
 		t.Fatalf("RestoreDatabaseSnapshot: %v", err)
@@ -201,7 +203,7 @@ func TestRetainedBackupManagerDowngradeSnapshot(t *testing.T) {
 // single index. The index sort is timestamp-only (newest first);
 // the direction field is the operator's discriminator.
 func TestRetainedBackupManagerMixedUpgradeAndDowngradeSnapshots(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRetainedBackupManager(dataDir)
 
 	// First: an upgrade snapshot.
@@ -268,7 +270,7 @@ func TestRetainedBackupRecordDirectionLabelDefaultsUpgrade(t *testing.T) {
 // happens before any disk write, so a typo never produces a
 // half-written record.
 func TestCreatePreSchemaChangeBackupRejectsUnknownDirection(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRetainedBackupManager(dataDir)
 	_, err := manager.CreatePreSchemaChangeBackup(CreateRetainedBackupInput{
 		SourceSchemaVersion: 20,

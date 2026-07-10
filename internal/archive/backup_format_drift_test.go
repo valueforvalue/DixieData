@@ -51,6 +51,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // writeManifestZip writes a minimal .ddbak / .ddshare zip
@@ -59,7 +60,7 @@ import (
 // real export.
 func writeManifestZip(t *testing.T, formatVersion string, archiveKind string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "stamp.ddbak")
+	path := filepath.Join(testtemp.New(t).Path(), "stamp.ddbak")
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -253,7 +254,7 @@ func TestReadBackupContentsInvokesDriftCheck(t *testing.T) {
 	// Major-bump manifest + valid data file path: the
 	// drift check must fire BEFORE the data-format / file
 	// checks, surfacing the typed error.
-	path := filepath.Join(t.TempDir(), "major-bump.ddbak")
+	path := filepath.Join(testtemp.New(t).Path(), "major-bump.ddbak")
 	f, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("Create: %v", err)

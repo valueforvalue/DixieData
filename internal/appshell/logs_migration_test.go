@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/appdata"
+"github.com/valueforvalue/DixieData/internal/appdata"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestMigrateLogsToSiblingDir is the regression test for the
@@ -26,7 +28,7 @@ import (
 //     stragglers are moved (no overwrite)
 //   - if neither old nor new exists, the helper returns 0 moved
 func TestMigrateLogsToSiblingDir(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	// The migration helper treats dataDir as the inner data folder
 	// (the one being renamed on restore). The parent is where
 	// .dixiedata-logs/ lives.
@@ -84,7 +86,7 @@ func TestMigrateLogsToSiblingDir(t *testing.T) {
 }
 
 func TestMigrateLogsToSiblingDir_FreshInstall(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	dataDir := filepath.Join(dir, ".dixiedata")
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatalf("mkdir dataDir: %v", err)
@@ -104,7 +106,7 @@ func TestMigrateLogsToSiblingDir_PartialMigration(t *testing.T) {
 	// Simulate a half-migrated state: old dir has one file, new
 	// dir already has a different one. The helper should move only
 	// the missing file from old to new without overwriting.
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	dataDir := filepath.Join(dir, ".dixiedata")
 	oldLogs := filepath.Join(dataDir, "logs")
 	newLogs := appdata.LogsRoot(dataDir)

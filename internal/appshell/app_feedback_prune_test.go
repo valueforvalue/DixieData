@@ -6,10 +6,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestPruneFeedbackLogKeepsRecentEntries(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	logPath := filepath.Join(dir, "logs", "feedback-log.jsonl")
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		t.Fatalf("mkdir logs: %v", err)
@@ -44,7 +46,7 @@ func TestPruneFeedbackLogKeepsRecentEntries(t *testing.T) {
 }
 
 func TestPruneFeedbackLogZeroDaysIsNoop(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	logPath := filepath.Join(dir, "logs", "feedback-log.jsonl")
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		t.Fatalf("mkdir logs: %v", err)
@@ -63,7 +65,7 @@ func TestPruneFeedbackLogZeroDaysIsNoop(t *testing.T) {
 }
 
 func TestPruneFeedbackLogMissingFileIsNoop(t *testing.T) {
-	pruneFeedbackLogAtPath(filepath.Join(t.TempDir(), "missing.jsonl"), 365)
+	pruneFeedbackLogAtPath(filepath.Join(testtemp.New(t).Path(), "missing.jsonl"), 365)
 }
 
 func entryLine(t time.Time, marker string) string {

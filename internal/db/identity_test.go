@@ -1,9 +1,13 @@
 package db
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
+)
 
 func TestBackfillEntryAuditIdentity(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -33,7 +37,7 @@ func TestBackfillEntryAuditIdentity(t *testing.T) {
 }
 
 func TestEntryAuditIdentityBackfillNeeded(t *testing.T) {
-	d, err := Open(t.TempDir())
+	d, err := Open(testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

@@ -3,10 +3,12 @@ package db
 import (
 	"database/sql"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestOpenMigratesShowPrefixBeforeNameToHiddenByDefault(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	legacyConn, err := sql.Open("sqlite", Path(dataDir))
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)

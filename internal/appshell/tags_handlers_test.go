@@ -14,8 +14,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/models"
+"github.com/valueforvalue/DixieData/internal/db"
 )
 
 var tagSeedCounter int64
@@ -24,7 +25,7 @@ var tagSeedCounter int64
 // DixieData..." screen doesn't intercept real responses.
 func newTagTestApp(t *testing.T) *App {
 	t.Helper()
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)

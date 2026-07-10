@@ -27,8 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/jobs"
+"github.com/valueforvalue/DixieData/internal/db"
 )
 
 // configureTestIdentity is defined in app_test.go (takes *App). Do NOT
@@ -40,7 +41,7 @@ import (
 // /jobs/{id} poll handler's reach. With the fix, the in-flight job
 // survives the reload and the poll handler can still Get() it.
 func TestReloadServicesPreservesInFlightJobs(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	database, err := db.Open(dir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -106,7 +107,7 @@ func TestReloadServicesPreservesInFlightJobs(t *testing.T) {
 // tests can exercise the /jobs/{id} routes without wiring the full
 // lifecycle.
 func TestReloadServicesAllocatesFreshRegistryWhenNil(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	database, err := db.Open(dir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)

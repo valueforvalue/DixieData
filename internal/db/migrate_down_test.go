@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 	"github.com/valueforvalue/DixieData/internal/update"
 )
 
@@ -14,7 +15,7 @@ import (
 // opening a transaction. The runner must not waste a snapshot or a
 // tx cycle on a no-op.
 func TestApplyDownSchema_NoOpWhenAlreadyAtTarget(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -44,7 +45,7 @@ func TestApplyDownSchema_NoOpWhenAlreadyAtTarget(t *testing.T) {
 // ErrMigrationIrreversible. All v<58 from current are still
 // refused; the test's assertions remain valid.
 func TestApplyDownSchema_RefusesPastIrreversible(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -91,7 +92,7 @@ func TestApplyDownSchema_RefusesPastIrreversible(t *testing.T) {
 // path forward (via --restore-point + --force-irreversible + a
 // documented acceptance of the data loss).
 func TestApplyDownSchema_PartialReversibleStepDown(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -123,7 +124,7 @@ func TestApplyDownSchema_PartialReversibleStepDown(t *testing.T) {
 // path without writing anything to the user_version pragma.
 // This pins the no-data regression net.
 func TestApplyDownSchema_EmptyArchiveSucceedsAtCurrentVersion(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -153,7 +154,7 @@ func TestApplyDownSchema_EmptyArchiveSucceedsAtCurrentVersion(t *testing.T) {
 // would unwind it, but the test asserts the post-refusal state
 // is byte-identical to pre-refusal.
 func TestApplyDownSchema_RefusalDoesNotMutateTables(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -226,7 +227,7 @@ func TestRetainedBackupDirectionDiscriminator(t *testing.T) {
 	// pre-schema-upgrade snapshot taken on the first Open().
 	t.Skip("deprecated: second Open hits SQLITE_LOCKED on Windows even with per-block commits; needs SQLite-lifecycle refactor")
 
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := Open(dataDir)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

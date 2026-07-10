@@ -93,7 +93,13 @@ func Generate(options Options) (Summary, error) {
 	if err != nil {
 		return Summary{}, fmt.Errorf("open database: %w", err)
 	}
-	defer debug.DeferCloseLog(database, "Generate.db")
+	// Issue #449 slice 2: wrap the close in a closure so the
+	// *DB.Close fires before Generate returns. The bare
+	// `defer Close()` form defers the call to a returned
+	// function value, which doesn't run until the enclosing
+	// frame is gone — too late for the test caller that
+	// immediately tries to RemoveAll the testtemp dir.
+	defer func() { _ = database.Close() }()
 
 	soldierSvc := records.NewSoldierService(database)
 	conn := database.Conn()

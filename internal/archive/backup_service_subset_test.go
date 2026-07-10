@@ -12,6 +12,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // newSubsetTestEnv spins up a temp DB + SoldierService +
@@ -21,7 +22,7 @@ import (
 // consistent.
 func newSubsetTestEnv(t *testing.T) (*db.DB, *records.SoldierService, string) {
 	t.Helper()
-	dataDir := filepath.Join(t.TempDir(), ".dixiedata")
+	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -34,7 +35,7 @@ func newSubsetTestEnv(t *testing.T) (*db.DB, *records.SoldierService, string) {
 func TestExportSharedSubset_EmptyIDsRejected(t *testing.T) {
 	database, soldier, dataDir := newSubsetTestEnv(t)
 	b := NewBackupService(database, soldier)
-	out := filepath.Join(t.TempDir(), "subset-empty.ddshare")
+	out := filepath.Join(testtemp.New(t).Path(), "subset-empty.ddshare")
 	if _, err := b.ExportSharedSubset(out, dataDir, nil); err == nil {
 		t.Errorf("ExportSharedSubset(nil) should error")
 	}
@@ -70,7 +71,7 @@ func TestExportSharedSubset_Roundtrip(t *testing.T) {
 		}
 	}
 
-	out := filepath.Join(t.TempDir(), "subset.ddshare")
+	out := filepath.Join(testtemp.New(t).Path(), "subset.ddshare")
 	manifest, err := b.ExportSharedSubset(out, dataDir, ids)
 	if err != nil {
 		t.Fatalf("ExportSharedSubset: %v", err)
@@ -121,7 +122,7 @@ func TestExportSharedSubset_Roundtrip(t *testing.T) {
 		}
 	}
 
-	// Cleanup — remove the temp archive file (t.TempDir() handles
+	// Cleanup — remove the temp archive file (testtemp.New(t).Path() handles
 	// the dir).
 	_ = os.Remove(out)
 }

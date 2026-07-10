@@ -22,6 +22,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestScanImplementedSubcommandsFixtureShape(t *testing.T) {
@@ -30,7 +32,7 @@ func TestScanImplementedSubcommandsFixtureShape(t *testing.T) {
 	// baz. The fixture mimics the real main.go dispatch style
 	// (appshell.Has{Verb}Subcommand + case "<verb>": inside the
 	// body).
-	root := t.TempDir()
+	root := testtemp.New(t).Path()
 	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte(`
 package main
 
@@ -105,7 +107,7 @@ func TestScanDocumentedSubcommandsFixtureShape(t *testing.T) {
 	// pick up `dixiedata <verb>` references at line start
 	// (including inside fenced code blocks; that's how the
 	// real cli-plan.md documents them).
-	docPath := filepath.Join(t.TempDir(), "cli-plan.md")
+	docPath := filepath.Join(testtemp.New(t).Path(), "cli-plan.md")
 	if err := os.WriteFile(docPath, []byte(
 `# CLI subcommand plan
 

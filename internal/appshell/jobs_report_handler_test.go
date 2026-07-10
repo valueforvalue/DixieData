@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/jobs"
+"github.com/valueforvalue/DixieData/internal/jobs"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestJobReportHandlerReturnsSummaryForFinishedJob is the
@@ -26,7 +28,7 @@ func TestJobReportHandlerReturnsSummaryForFinishedJob(t *testing.T) {
 	t.Cleanup(func() { _ = app.jobs.Shutdown(context.Background()) })
 	app.setupRoutes()
 
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	resultPath := filepath.Join(dir, "june-2026.ddbak")
 	if err := os.WriteFile(resultPath, []byte("ddbak placeholder"), 0o644); err != nil {
 		t.Fatalf("seed artifact: %v", err)

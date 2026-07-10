@@ -6,10 +6,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestRestorePointManagerCreateAndTrackLaunchState(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRestorePointManager(dataDir)
 	manager.now = func() time.Time {
 		return time.Date(2026, time.May, 31, 8, 15, 4, 0, time.UTC)
@@ -73,7 +75,7 @@ func TestRestorePointManagerCreateAndTrackLaunchState(t *testing.T) {
 }
 
 func TestRestorePointManagerPrunesOlderRestorePointsByCount(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	manager := NewRestorePointManager(dataDir)
 	manager.policy.MaxRestorePoints = 2
 
@@ -128,7 +130,7 @@ func TestRestorePointManagerPrunesOlderRestorePointsByCount(t *testing.T) {
 // Assert the restore point is still on disk AND the manager
 // can still List/Get it.
 func TestRestorePointManagerSiblingRootSurvivesDataDirRename(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	sibling := filepath.Join(filepath.Dir(dataDir), filepath.Base(dataDir)+"-restore-points")
 	manager := NewSiblingRestorePointManager(dataDir, sibling)
 	manager.now = func() time.Time {
@@ -209,7 +211,7 @@ func TestRestorePointManagerSiblingRootSurvivesDataDirRename(t *testing.T) {
 // contract by ensuring the sibling manager's List/Get work
 // and SaveLaunchState writes to the data-dir path.
 func TestRestorePointManagerSiblingRootListAndGet(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	sibling := filepath.Join(filepath.Dir(dataDir), filepath.Base(dataDir)+"-restore-points")
 	manager := NewSiblingRestorePointManager(dataDir, sibling)
 	manager.now = func() time.Time {

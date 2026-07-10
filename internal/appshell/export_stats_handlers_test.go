@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/jobs"
+"github.com/valueforvalue/DixieData/internal/jobs"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestEnqueueExportWithResultPopulatesJobStats pins down the
@@ -28,7 +30,7 @@ import (
 func TestEnqueueExportWithResultPopulatesJobStats(t *testing.T) {
 	app := newStressApp(t)
 
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	outPath := filepath.Join(dir, "stats-marker.txt")
 	if err := os.WriteFile(outPath, []byte("placeholder"), 0o644); err != nil {
 		t.Fatalf("seed path: %v", err)

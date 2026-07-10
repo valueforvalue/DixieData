@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 	"unsafe"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestHasDebugSubcommand(t *testing.T) {
@@ -118,7 +120,7 @@ func TestDebugKindString(t *testing.T) {
 // --- hx-attr walker tests (synthetic fixtures) ---
 
 func TestCollectTemplFiles(t *testing.T) {
-	root := t.TempDir()
+	root := testtemp.New(t).Path()
 	for _, p := range []string{
 		"a.templ",
 		"components/b.templ",
@@ -144,7 +146,7 @@ func TestCollectTemplFiles(t *testing.T) {
 }
 
 func TestCollectTemplFilesMissingRoot(t *testing.T) {
-	files, err := collectTemplFiles(filepath.Join(t.TempDir(), "no-such"))
+	files, err := collectTemplFiles(filepath.Join(testtemp.New(t).Path(), "no-such"))
 	if err != nil {
 		t.Fatalf("err = %v, want nil for missing root", err)
 	}
@@ -638,7 +640,7 @@ func closeJobsLogWriter(t *testing.T, a *App) {
 // where dataDir + repo root live in the same tree).
 func writeCombinedFixture(t *testing.T, routeLines []string, templFiles map[string]string) string {
 	t.Helper()
-	root := t.TempDir()
+	root := testtemp.New(t).Path()
 	// Internal/appshell/routes.go (AST-walked by collectRegisteredRoutes).
 	appshellDir := filepath.Join(root, "internal", "appshell")
 	if err := os.MkdirAll(appshellDir, 0o755); err != nil {
@@ -687,7 +689,7 @@ func (a *App) syntheticRoutes() {
 // (No .templ generation needed; we hand-write the content.)
 func writeSyntheticTemplTree(t *testing.T, files map[string]string) string {
 	t.Helper()
-	root := t.TempDir()
+	root := testtemp.New(t).Path()
 	tplDir := filepath.Join(root, "internal", "templates")
 	if err := os.MkdirAll(filepath.Join(tplDir, "components"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -753,7 +755,7 @@ func TestScanImplementedSubcommands_ShortBody(t *testing.T) {
 		},
 	}
 
-	root := t.TempDir()
+	root := testtemp.New(t).Path()
 	appshellDir := filepath.Join(root, "internal", "appshell")
 	if err := os.MkdirAll(appshellDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)

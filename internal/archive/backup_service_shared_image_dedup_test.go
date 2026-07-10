@@ -61,7 +61,7 @@ func TestBackupService_ImportSharedBackupImageDedup(t *testing.T) {
 		t.Fatalf("AddImage source: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "shared-images.ddshare")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "shared-images.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(backupPath, sourceDir); err != nil {
 		t.Fatalf("Export shared backup: %v", err)
 	}

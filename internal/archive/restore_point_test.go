@@ -7,6 +7,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestRestoreBackupArchiveRestoresLocalArchiveSnapshot(t *testing.T) {
@@ -17,7 +18,7 @@ func TestRestoreBackupArchiveRestoresLocalArchiveSnapshot(t *testing.T) {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	created, err := sourceSvc.Create(models.Soldier{
 		DisplayID: "DXD-00054",
 		FirstName: "James",
@@ -38,12 +39,12 @@ func TestRestoreBackupArchiveRestoresLocalArchiveSnapshot(t *testing.T) {
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "restore-point.ddbak")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "restore-point.ddbak")
 	if _, err := backupSvc.Export(backupPath, sourceDir); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if err := os.MkdirAll(filepath.Join(restoreDir, "images", "stale"), 0o755); err != nil {
 		t.Fatalf("MkdirAll(stale): %v", err)
 	}

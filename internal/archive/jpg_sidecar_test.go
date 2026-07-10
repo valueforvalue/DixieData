@@ -14,10 +14,11 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/buildinfo"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestWriteJPGFormatSidecarUnit(t *testing.T) {
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	jpgPath := filepath.Join(dir, "page1.jpg")
 	if err := os.WriteFile(jpgPath, []byte("fake jpg bytes"), 0o644); err != nil {
 		t.Fatalf("WriteFile jpg: %v", err)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/valueforvalue/DixieData/internal/db"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestGenerateStampsSeedProvenance is the RED-first regression
@@ -12,7 +13,7 @@ import (
 // row come from?" investigation can attribute the row to the
 // bulk seed importer without grepping the call graph.
 func TestGenerateStampsSeedProvenance(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 
 	summary, err := Generate(Options{
 		DataDir:  dataDir,

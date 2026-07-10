@@ -16,6 +16,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/records"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
@@ -26,7 +27,7 @@ func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
 		t.Fatalf("ConfigureUserIdentity: %v", err)
 	}
 
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	created, err := soldierSvc.Create(models.Soldier{
 		DisplayID: "PENSION-1",
 		FirstName: "Robert",
@@ -48,7 +49,7 @@ func TestBackupService_ExportCreatesManifestAndImages(t *testing.T) {
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "backup.zip")
+	outPath := filepath.Join(testtemp.New(t).Path(), "backup.zip")
 	manifest, err := backupSvc.Export(outPath, dataDir)
 	if err != nil {
 		t.Fatalf("Export: %v", err)
@@ -115,8 +116,8 @@ func TestBackupService_ExportSharedCreatesSharedManifest(t *testing.T) {
 		t.Fatalf("SetSystemConfig node_id: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "shared.ddshare")
-	manifest, err := backupSvc.ExportShared(outPath, t.TempDir())
+	outPath := filepath.Join(testtemp.New(t).Path(), "shared.ddshare")
+	manifest, err := backupSvc.ExportShared(outPath, testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -179,7 +180,7 @@ func TestBackupService_ExportSharedIncludesReferencedImagesOnly(t *testing.T) {
 	soldierSvc := NewSoldierService(d)
 	backupSvc := NewBackupService(d, soldierSvc)
 
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	created, err := soldierSvc.Create(models.Soldier{
 		DisplayID: "SHARED-1",
 		FirstName: "Shared",
@@ -208,7 +209,7 @@ func TestBackupService_ExportSharedIncludesReferencedImagesOnly(t *testing.T) {
 		t.Fatalf("WriteFile orphan: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	outPath := filepath.Join(testtemp.New(t).Path(), "shared.ddshare")
 	if _, err := backupSvc.ExportShared(outPath, dataDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -237,7 +238,7 @@ func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 	sourceSvc := NewSoldierService(sourceDB)
 	backupSvc := NewBackupService(sourceDB, sourceSvc)
 
-	sourceDataDir := t.TempDir()
+	sourceDataDir := testtemp.New(t).Path()
 	created, err := sourceSvc.Create(models.Soldier{
 		DisplayID: "PENSION-2",
 		FirstName: "Thomas",
@@ -260,12 +261,12 @@ func TestBackupService_ImportRestoresDataAndImages(t *testing.T) {
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "backup.zip")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "backup.zip")
 	if _, err := backupSvc.Export(backupPath, sourceDataDir); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	manifest, err := backupSvc.Import(backupPath, restoreDir)
 	if err != nil {
 		t.Fatalf("Import: %v", err)
@@ -322,7 +323,7 @@ func TestBackupService_ImportDestroysFilesInsideDataDir(t *testing.T) {
 	sourceSvc := NewSoldierService(sourceDB)
 	backupSvc := NewBackupService(sourceDB, sourceSvc)
 
-	sourceDataDir := t.TempDir()
+	sourceDataDir := testtemp.New(t).Path()
 	created, err := sourceSvc.Create(models.Soldier{
 		DisplayID: "PENSION-9",
 		FirstName: "Jane",
@@ -333,12 +334,12 @@ func TestBackupService_ImportDestroysFilesInsideDataDir(t *testing.T) {
 	}
 	_ = created
 
-	backupPath := filepath.Join(t.TempDir(), "backup.zip")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "backup.zip")
 	if _, err := backupSvc.Export(backupPath, sourceDataDir); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	// Plant a sidecar file inside the target data dir, mimicking
 	// what a pre-import restore-point manager would have written
 	// at <dataDir>/updates/restore-points/<id>/local-archive.ddbak.
@@ -368,7 +369,7 @@ func TestBackupService_ImportAllowsExtraImageFilesInSQLiteBackup(t *testing.T) {
 	sourceSvc := NewSoldierService(sourceDB)
 	backupSvc := NewBackupService(sourceDB, sourceSvc)
 
-	sourceDataDir := t.TempDir()
+	sourceDataDir := testtemp.New(t).Path()
 	created, err := sourceSvc.Create(models.Soldier{
 		DisplayID: "PENSION-EXTRA",
 		FirstName: "Extra",
@@ -397,12 +398,12 @@ func TestBackupService_ImportAllowsExtraImageFilesInSQLiteBackup(t *testing.T) {
 		t.Fatalf("WriteFile orphan image: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "backup-extra-images.zip")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "backup-extra-images.zip")
 	if _, err := backupSvc.Export(backupPath, sourceDataDir); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := backupSvc.Import(backupPath, restoreDir); err != nil {
 		t.Fatalf("Import: %v", err)
 	}
@@ -441,8 +442,8 @@ func openExistingTestDB(dataDir string) (*db.DB, error) {
 }
 
 func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
-	restoreDir := t.TempDir()
-	backupPath := filepath.Join(t.TempDir(), "legacy.zip")
+	restoreDir := testtemp.New(t).Path()
+	backupPath := filepath.Join(testtemp.New(t).Path(), "legacy.zip")
 
 	file, err := os.Create(backupPath)
 	if err != nil {
@@ -566,7 +567,7 @@ func TestBackupService_ImportLegacyJSONBackup(t *testing.T) {
 }
 
 func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *testing.T) {
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
 	if err != nil {
 		t.Fatalf("db.Open source: %v", err)
@@ -583,7 +584,7 @@ func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *tes
 	if err != nil {
 		t.Fatalf("Create source soldier: %v", err)
 	}
-	backupPath := filepath.Join(t.TempDir(), "current.ddbak")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "current.ddbak")
 	if _, err := sourceBackupSvc.Export(backupPath, sourceDir); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
@@ -598,7 +599,7 @@ func TestBackupService_ImportPreservesLocalIdentityForCurrentSQLiteBackup(t *tes
 		t.Fatalf("ConfigureUserIdentity local: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := localBackupSvc.Import(backupPath, restoreDir); err != nil {
 		t.Fatalf("Import: %v", err)
 	}
@@ -641,8 +642,8 @@ func TestBackupService_ImportLegacySQLiteKeepsHistoricalRecordsButUsesLocalIdent
 		t.Fatalf("ConfigureUserIdentity local: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "legacy-sqlite.ddbak")
-	legacyDBPath := filepath.Join(t.TempDir(), db.FileName)
+	backupPath := filepath.Join(testtemp.New(t).Path(), "legacy-sqlite.ddbak")
+	legacyDBPath := filepath.Join(testtemp.New(t).Path(), db.FileName)
 	createLegacySchemaV1DB(t, legacyDBPath)
 
 	file, err := os.Create(backupPath)
@@ -677,7 +678,7 @@ func TestBackupService_ImportLegacySQLiteKeepsHistoricalRecordsButUsesLocalIdent
 		t.Fatalf("close file: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := localBackupSvc.Import(backupPath, restoreDir); err != nil {
 		t.Fatalf("Import: %v", err)
 	}
@@ -744,14 +745,14 @@ func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
 		t.Fatalf("Create source soldier: %v", err)
 	}
 
-	sourceDataDir := t.TempDir()
-	currentBackupPath := filepath.Join(t.TempDir(), "current.ddbak")
+	sourceDataDir := testtemp.New(t).Path()
+	currentBackupPath := filepath.Join(testtemp.New(t).Path(), "current.ddbak")
 	manifest, err := sourceBackupSvc.Export(currentBackupPath, sourceDataDir)
 	if err != nil {
 		t.Fatalf("Export current backup: %v", err)
 	}
 
-	legacyV2Path := filepath.Join(t.TempDir(), "legacy-v2.ddbak")
+	legacyV2Path := filepath.Join(testtemp.New(t).Path(), "legacy-v2.ddbak")
 	file, err := os.Create(legacyV2Path)
 	if err != nil {
 		t.Fatalf("Create v2 backup: %v", err)
@@ -799,7 +800,7 @@ func TestBackupService_ImportFormatVersion2SQLiteBackup(t *testing.T) {
 		t.Fatalf("ConfigureUserIdentity local: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := localBackupSvc.Import(legacyV2Path, restoreDir); err != nil {
 		t.Fatalf("Import v2 backup: %v", err)
 	}
@@ -878,8 +879,8 @@ func TestBackupService_ExportSharedWithEvents(t *testing.T) {
 		t.Fatalf("AttachEventToPerson: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "shared.ddshare")
-	manifest, err := backupSvc.ExportShared(outPath, t.TempDir())
+	outPath := filepath.Join(testtemp.New(t).Path(), "shared.ddshare")
+	manifest, err := backupSvc.ExportShared(outPath, testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -990,8 +991,8 @@ func TestBackupService_ImportSharedBackupWithEvents(t *testing.T) {
 		t.Fatalf("AttachEventToPerson: %v", err)
 	}
 
-	zipPath := filepath.Join(t.TempDir(), "shared.ddshare")
-	if _, err := sourceBackup.ExportShared(zipPath, t.TempDir()); err != nil {
+	zipPath := filepath.Join(testtemp.New(t).Path(), "shared.ddshare")
+	if _, err := sourceBackup.ExportShared(zipPath, testtemp.New(t).Path()); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
 
@@ -1004,7 +1005,7 @@ func TestBackupService_ImportSharedBackupWithEvents(t *testing.T) {
 		t.Fatalf("ConfigureUserIdentity target: %v", err)
 	}
 
-	summary, err := targetBackup.ImportSharedBackup(zipPath, t.TempDir())
+	summary, err := targetBackup.ImportSharedBackup(zipPath, testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("ImportSharedBackup: %v", err)
 	}
@@ -1050,7 +1051,7 @@ func TestBackupService_ImportSharedBackupWithEvents(t *testing.T) {
 // the shared archive without spurious conflicts when the source
 // snapshot matches the target row.
 func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1068,7 +1069,7 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 		t.Fatalf("Create target soldier: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1096,7 +1097,7 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 		t.Fatalf("Create imported soldier: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "shared-backup.zip")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "shared-backup.zip")
 	if _, err := sourceBackupSvc.ExportShared(backupPath, sourceDir); err != nil {
 		t.Fatalf("Export shared backup: %v", err)
 	}
@@ -1156,7 +1157,7 @@ func TestBackupService_ImportSharedBackupMergesContents(t *testing.T) {
 }
 
 func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1168,7 +1169,7 @@ func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
 	targetSvc := NewSoldierService(targetDB)
 	targetBackupSvc := NewBackupService(targetDB, targetSvc)
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
 	if err != nil {
 		t.Fatalf("db.Open source: %v", err)
@@ -1182,7 +1183,7 @@ func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
 	if _, err := sourceSvc.Create(models.Soldier{FirstName: "Shared", LastName: "Soldier"}); err != nil {
 		t.Fatalf("Create source soldier: %v", err)
 	}
-	sharedPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "shared.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -1218,7 +1219,7 @@ func TestBackupService_ImportSharedBackupKeepsLocalIdentity(t *testing.T) {
 }
 
 func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1239,7 +1240,7 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 		t.Fatalf("Create target soldier: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1282,7 +1283,7 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 		t.Fatalf("AddImage source shared: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "shared-conflict.ddshare")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "shared-conflict.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(backupPath, sourceDir); err != nil {
 		t.Fatalf("Export shared backup: %v", err)
 	}
@@ -1351,7 +1352,7 @@ func TestBackupService_ImportSharedBackupStagesConflictAndResolvesShared(t *test
 // surface "Person records: N skipped" instead of an empty
 // summary card.
 func TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1375,7 +1376,7 @@ func TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates(t *test
 	// the same setup MergesContents uses; the difference is we
 	// re-import the same backup into the same target so every
 	// source row is content-equivalent to the local row.
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1402,7 +1403,7 @@ func TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates(t *test
 			src1.SyncID, src2.SyncID, target1.SyncID, target2.SyncID)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "shared-backup.zip")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "shared-backup.zip")
 	if _, err := sourceBackupSvc.ExportShared(backupPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -1426,7 +1427,7 @@ func TestBackupService_ImportSharedBackupReportsSkippedWhenAllDuplicates(t *test
 }
 
 func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1451,7 +1452,7 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 		t.Fatalf("seed local attribution: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1482,7 +1483,7 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 		t.Fatalf("seed shared attribution: %v", err)
 	}
 
-	sharedPath := filepath.Join(t.TempDir(), "collision.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "collision.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -1565,7 +1566,7 @@ func TestBackupService_ResolveDisplayIDCollisionKeepBoth(t *testing.T) {
 }
 
 func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1589,7 +1590,7 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 		t.Fatalf("Create local soldier: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1622,7 +1623,7 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 		t.Fatalf("seed shared attribution: %v", err)
 	}
 
-	sharedPath := filepath.Join(t.TempDir(), "human-duplicate.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "human-duplicate.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -1668,7 +1669,7 @@ func TestBackupService_ImportSharedBackupStagesHumanDuplicateConflict(t *testing
 }
 
 func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1692,7 +1693,7 @@ func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t 
 		t.Fatalf("Create local soldier: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1725,7 +1726,7 @@ func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t 
 		t.Fatalf("Create imported soldier: %v", err)
 	}
 
-	sharedPath := filepath.Join(t.TempDir(), "human-duplicate-alias.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "human-duplicate-alias.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -1758,7 +1759,7 @@ func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t 
 		t.Fatalf("expected one alias ledger row, got %d", aliasCount)
 	}
 
-	sharedPath2 := filepath.Join(t.TempDir(), "human-duplicate-alias-repeat.ddshare")
+	sharedPath2 := filepath.Join(testtemp.New(t).Path(), "human-duplicate-alias-repeat.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath2, sourceDir); err != nil {
 		t.Fatalf("ExportShared repeat: %v", err)
 	}
@@ -1779,7 +1780,7 @@ func TestBackupService_ImportSharedBackupRemembersHumanDuplicateAliasBySource(t 
 }
 
 func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1803,7 +1804,7 @@ func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T)
 	}
 
 	makeSharedArchive := func(tempName, nodeID string, forcedSyncID string) string {
-		sourceDir := t.TempDir()
+		sourceDir := testtemp.New(t).Path()
 		if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 			t.Fatalf("SnapshotTo %s: %v", nodeID, err)
 		}
@@ -1841,7 +1842,7 @@ func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T)
 		} else {
 			forcedSyncID = imported.SyncID
 		}
-		sharedPath := filepath.Join(t.TempDir(), tempName)
+		sharedPath := filepath.Join(testtemp.New(t).Path(), tempName)
 		if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 			t.Fatalf("ExportShared %s: %v", nodeID, err)
 		}
@@ -1886,7 +1887,7 @@ func TestBackupService_ImportSharedBackupAliasLedgerIsSourceScoped(t *testing.T)
 }
 
 func TestBackupService_ImportSharedBackupIgnoresMetadataOnlyDifferences(t *testing.T) {
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -1915,7 +1916,7 @@ func TestBackupService_ImportSharedBackupIgnoresMetadataOnlyDifferences(t *testi
 		t.Fatalf("seed local metadata: %v", err)
 	}
 
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	if err := targetDB.SnapshotTo(db.Path(sourceDir)); err != nil {
 		t.Fatalf("SnapshotTo source: %v", err)
 	}
@@ -1935,7 +1936,7 @@ func TestBackupService_ImportSharedBackupIgnoresMetadataOnlyDifferences(t *testi
 		t.Fatalf("seed shared metadata: %v", err)
 	}
 
-	sharedPath := filepath.Join(t.TempDir(), "metadata-only.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "metadata-only.ddshare")
 	if _, err := sourceBackupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -2028,7 +2029,7 @@ func TestBackupService_ConflictLedger(t *testing.T) {
 
 
 func TestBackupService_ImportSharedBackupRejectsBackupArchive(t *testing.T) {
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
 	if err != nil {
 		t.Fatalf("db.Open source: %v", err)
@@ -2041,12 +2042,12 @@ func TestBackupService_ImportSharedBackupRejectsBackupArchive(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	backupPath := filepath.Join(t.TempDir(), "backup.ddbak")
+	backupPath := filepath.Join(testtemp.New(t).Path(), "backup.ddbak")
 	if _, err := backupSvc.Export(backupPath, sourceDir); err != nil {
 		t.Fatalf("Export: %v", err)
 	}
 
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -2061,7 +2062,7 @@ func TestBackupService_ImportSharedBackupRejectsBackupArchive(t *testing.T) {
 }
 
 func TestBackupService_ImportSharedBackupRejectsMissingSQLiteImage(t *testing.T) {
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
 	if err != nil {
 		t.Fatalf("db.Open source: %v", err)
@@ -2078,12 +2079,12 @@ func TestBackupService_ImportSharedBackupRejectsMissingSQLiteImage(t *testing.T)
 		t.Fatalf("AddImage: %v", err)
 	}
 
-	sharedPath := filepath.Join(t.TempDir(), "missing-image.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "missing-image.ddshare")
 	if _, err := backupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
 
-	targetDir := t.TempDir()
+	targetDir := testtemp.New(t).Path()
 	targetDB, err := db.Open(targetDir)
 	if err != nil {
 		t.Fatalf("db.Open target: %v", err)
@@ -2098,7 +2099,7 @@ func TestBackupService_ImportSharedBackupRejectsMissingSQLiteImage(t *testing.T)
 }
 
 func TestBackupService_ImportRejectsSharedArchive(t *testing.T) {
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
 	if err != nil {
 		t.Fatalf("db.Open source: %v", err)
@@ -2111,12 +2112,12 @@ func TestBackupService_ImportRejectsSharedArchive(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	sharedPath := filepath.Join(t.TempDir(), "shared.ddshare")
+	sharedPath := filepath.Join(testtemp.New(t).Path(), "shared.ddshare")
 	if _, err := backupSvc.ExportShared(sharedPath, sourceDir); err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
 
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	if _, err := backupSvc.Import(sharedPath, restoreDir); err == nil || !strings.Contains(err.Error(), "backup archive") {
 		t.Fatalf("expected backup archive rejection, got %v", err)
 	}
@@ -2154,7 +2155,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// (1) Target doesn't exist — no rename needed, staging
 	// promoted directly. No backup dir created.
 	t.Run("target does not exist", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		staging := filepath.Join(parent, ".dixiedata-import-test")
 		if err := os.MkdirAll(staging, 0o755); err != nil {
@@ -2186,7 +2187,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// must NOT happen because the target is empty and there's
 	// nothing to back up.
 	t.Run("target exists without DB", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			t.Fatalf("MkdirAll target: %v", err)
@@ -2230,7 +2231,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// The first renameOS call (target → backup) must NOT happen
 	// because there's no real data to back up.
 	t.Run("target exists with empty DB", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			t.Fatalf("MkdirAll target: %v", err)
@@ -2274,7 +2275,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// (4) Target has a large DB → first rename succeeds,
 	// backup dir created.
 	t.Run("target exists with non-empty DB, first rename succeeds", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			t.Fatalf("MkdirAll target: %v", err)
@@ -2335,7 +2336,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// attempts fail, 3rd succeeds. Renames use real os.Rename
 	// for the 3rd call.
 	t.Run("transient failure recovers via retry", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			t.Fatalf("MkdirAll target: %v", err)
@@ -2373,7 +2374,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// (6) All retries fail → wrapped error returned with
 	// rename target named.
 	t.Run("all retries fail", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			t.Fatalf("MkdirAll target: %v", err)
@@ -2412,7 +2413,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// (7) Rollback — target rename succeeds, staging rename
 	// fails, target is restored from backup.
 	t.Run("rollback when staging rename fails", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		if err := os.MkdirAll(target, 0o755); err != nil {
 			t.Fatalf("MkdirAll target: %v", err)
@@ -2467,7 +2468,7 @@ func TestReplaceDataDir_HandlesEmptyAndLockedTargets(t *testing.T) {
 	// regardless. The test asserts the convention, which is
 	// what the production fix actually depends on.
 	t.Run("open file outside target dir is not under replaceDataDir's rename set", func(t *testing.T) {
-		parent := t.TempDir()
+		parent := testtemp.New(t).Path()
 		target := filepath.Join(parent, ".dixiedata")
 		logsDir := filepath.Join(parent, ".dixiedata-logs")
 		if err := os.MkdirAll(target, 0o755); err != nil {
@@ -2609,8 +2610,8 @@ func TestBackupService_ExportShared_IncludesArticles(t *testing.T) {
 		t.Fatalf("AttachRef: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "shared-articles.ddshare")
-	manifest, err := backupSvc.ExportShared(outPath, t.TempDir())
+	outPath := filepath.Join(testtemp.New(t).Path(), "shared-articles.ddshare")
+	manifest, err := backupSvc.ExportShared(outPath, testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("ExportShared: %v", err)
 	}
@@ -2682,8 +2683,8 @@ func TestBackupService_ExportBackup_IncludesArticlesCount(t *testing.T) {
 		t.Fatalf("AttachRef: %v", err)
 	}
 
-	outPath := filepath.Join(t.TempDir(), "backup-articles.ddbak")
-	manifest, err := backupSvc.Export(outPath, t.TempDir())
+	outPath := filepath.Join(testtemp.New(t).Path(), "backup-articles.ddbak")
+	manifest, err := backupSvc.Export(outPath, testtemp.New(t).Path())
 	if err != nil {
 		t.Fatalf("Export: %v", err)
 	}

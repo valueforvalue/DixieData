@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 type stubConfigStore struct {
@@ -93,7 +95,7 @@ func TestCompareVersions(t *testing.T) {
 }
 
 func TestNormalizeStageRootFindsSingleExecutable(t *testing.T) {
-	stageRoot := t.TempDir()
+	stageRoot := testtemp.New(t).Path()
 	appRoot := filepath.Join(stageRoot, "DixieData")
 	if err := os.MkdirAll(appRoot, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
@@ -113,7 +115,7 @@ func TestNormalizeStageRootFindsSingleExecutable(t *testing.T) {
 }
 
 func TestWriteApplyScriptPreservesOAuthDefaults(t *testing.T) {
-	scriptPath := filepath.Join(t.TempDir(), "apply-update.ps1")
+	scriptPath := filepath.Join(testtemp.New(t).Path(), "apply-update.ps1")
 	err := writeApplyScript(scriptPath, applyScriptOptions{
 		ProcessID:          123,
 		StageDir:           `C:\updates\stage`,
@@ -151,7 +153,7 @@ func TestWriteApplyScriptPreservesOAuthDefaults(t *testing.T) {
 
 func TestSettingsDisablesApplyForDevelopmentBuild(t *testing.T) {
 	store := &stubConfigStore{}
-	root := t.TempDir()
+	root := testtemp.New(t).Path()
 	buildBin := filepath.Join(root, "build", "bin")
 	if err := os.MkdirAll(buildBin, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
@@ -160,7 +162,7 @@ func TestSettingsDisablesApplyForDevelopmentBuild(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	service := NewService(store, t.TempDir(), nil)
+	service := NewService(store, testtemp.New(t).Path(), nil)
 	service.executablePath = func() (string, error) {
 		return filepath.Join(buildBin, "DixieData.exe"), nil
 	}
@@ -178,7 +180,7 @@ func TestSettingsDisablesApplyForDevelopmentBuild(t *testing.T) {
 }
 
 func TestWriteApplyScriptClearsLaunchStateOnFailure(t *testing.T) {
-	scriptPath := filepath.Join(t.TempDir(), "apply-update.ps1")
+	scriptPath := filepath.Join(testtemp.New(t).Path(), "apply-update.ps1")
 	err := writeApplyScript(scriptPath, applyScriptOptions{
 		ProcessID:          123,
 		StageDir:           `C:\updates\stage`,
@@ -211,7 +213,7 @@ func TestWriteApplyScriptClearsLaunchStateOnFailure(t *testing.T) {
 }
 
 func TestWriteRollbackScriptRestoresInstalledBuildAndClearsLaunchState(t *testing.T) {
-	scriptPath := filepath.Join(t.TempDir(), "rollback.ps1")
+	scriptPath := filepath.Join(testtemp.New(t).Path(), "rollback.ps1")
 	err := WriteRollbackScript(scriptPath, RollbackScriptOptions{
 		ProcessID:         456,
 		InstallDir:        `C:\Program Files\DixieData`,
@@ -240,7 +242,7 @@ func TestWriteRollbackScriptRestoresInstalledBuildAndClearsLaunchState(t *testin
 }
 
 func TestSnapshotInstalledBuildSkipsDataDir(t *testing.T) {
-	installDir := t.TempDir()
+	installDir := testtemp.New(t).Path()
 	dataDir := filepath.Join(installDir, ".dixiedata")
 	if err := os.MkdirAll(filepath.Join(dataDir, "updates"), 0o755); err != nil {
 		t.Fatalf("MkdirAll(dataDir): %v", err)
@@ -254,7 +256,7 @@ func TestSnapshotInstalledBuildSkipsDataDir(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dataDir, "updates", "should-not-copy.txt"), []byte("data"), 0o644); err != nil {
 		t.Fatalf("WriteFile(data): %v", err)
 	}
-	outputDir := filepath.Join(t.TempDir(), "installed-build")
+	outputDir := filepath.Join(testtemp.New(t).Path(), "installed-build")
 	if err := snapshotInstalledBuild(installDir, dataDir, outputDir); err != nil {
 		t.Fatalf("snapshotInstalledBuild: %v", err)
 	}

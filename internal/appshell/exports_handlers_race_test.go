@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/jobs"
+"github.com/valueforvalue/DixieData/internal/jobs"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestEnqueueExportChannelHandoffLandsResultPath is the
@@ -61,7 +63,7 @@ func TestEnqueueExportChannelHandoffLandsResultPath(t *testing.T) {
 			// Each goroutine picks a unique temp path so we can
 			// verify the worker wrote the SAME path to the SAME
 			// job ID it advertised.
-			path := filepath.Join(t.TempDir(), fmt.Sprintf("race-%02d.json", idx))
+			path := filepath.Join(testtemp.New(t).Path(), fmt.Sprintf("race-%02d.json", idx))
 			rec := httptest.NewRecorder()
 			app.enqueueExport("", "json_export", func(ctx context.Context, p *jobs.Progress) error {
 				// Worker body: no real export, just return.

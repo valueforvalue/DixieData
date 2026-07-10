@@ -10,6 +10,7 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/db"
 	"github.com/valueforvalue/DixieData/internal/models"
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestBackupService_ImportSeededArchiveRoundTrip is the feedback loop
@@ -39,7 +40,7 @@ func TestBackupService_ImportSeededArchiveRoundTrip(t *testing.T) {
 	// Need an open DB to construct a BackupService. Use a tempdir +
 	// fresh DB; we'll close it before invoking the import (which
 	// itself opens the staged DB).
-	sourceDir := t.TempDir()
+	sourceDir := testtemp.New(t).Path()
 	sourceDB, err := db.Open(sourceDir)
 	if err != nil {
 		t.Fatalf("db.Open fresh: %v", err)
@@ -66,7 +67,7 @@ func TestBackupService_ImportSeededArchiveRoundTrip(t *testing.T) {
 
 	// Now do the actual import. BackupService.ImportWithLocalIdentity
 	// takes a dataDir + identity + preserve flag.
-	restoreDir := t.TempDir()
+	restoreDir := testtemp.New(t).Path()
 	identity := models.UserIdentity{FirstName: "Test", LastName: "User"}
 	sourceDB.Close()
 

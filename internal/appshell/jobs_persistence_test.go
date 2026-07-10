@@ -6,21 +6,24 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/valueforvalue/DixieData/internal/jobs"
+"github.com/valueforvalue/DixieData/internal/jobs"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
-// testDataDir returns a t.TempDir() with the sibling .dixiedata-logs/
+// testDataDir returns a testtemp.New(t).Path() with the sibling .dixiedata-logs/
 // directory pre-created, matching the convention openJobsRegistry
 // expects. dataDir passed to openJobsRegistry resolves its log file
 // at <parent>/.dixiedata-logs/jobs.jsonl, so the parent must exist
 // and be writable.
 func testDataDir(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
+	dir := testtemp.New(t).Path()
 	if err := os.MkdirAll(filepath.Join(filepath.Dir(dir), ".dixiedata-logs"), 0o755); err != nil {
 		t.Fatalf("setup logs dir: %v", err)
 	}
@@ -40,7 +43,12 @@ func TestOpenJobsRegistryRehydratesFromExistingLog(t *testing.T) {
 	}
 
 	reg := openJobsRegistry(dir)
-	t.Cleanup(func() { reg.SetLogWriter(nil, nil) })
+	t.Cleanup(func() {
+		reg.SetLogWriter(nil, nil)
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(50 * time.Millisecond)
+	})
 
 	doneSnap, ok := reg.Get("done1")
 	if !ok {
@@ -62,7 +70,12 @@ func TestOpenJobsRegistryRehydratesFromExistingLog(t *testing.T) {
 func TestOpenJobsRegistryStartsEmptyWhenLogMissing(t *testing.T) {
 	dir := testDataDir(t)
 	reg := openJobsRegistry(dir)
-	t.Cleanup(func() { reg.SetLogWriter(nil, nil) })
+	t.Cleanup(func() {
+		reg.SetLogWriter(nil, nil)
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(50 * time.Millisecond)
+	})
 	if reg.Concurrency() < 1 {
 		t.Fatalf("registry concurrency = %d, want >= 1", reg.Concurrency())
 	}
@@ -75,7 +88,12 @@ func TestOpenJobsRegistryStartsEmptyWhenLogMissing(t *testing.T) {
 func TestOpenJobsRegistryWritesStateChangesBackToLog(t *testing.T) {
 	dir := testDataDir(t)
 	reg := openJobsRegistry(dir)
-	t.Cleanup(func() { reg.SetLogWriter(nil, nil) })
+	t.Cleanup(func() {
+		reg.SetLogWriter(nil, nil)
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(50 * time.Millisecond)
+	})
 
 	idCh := make(chan string, 1)
 	id := reg.Start("unit", func(ctx context.Context, p *jobs.Progress) error {
@@ -129,7 +147,12 @@ func TestMigrateLegacyJobsLogRenamesOldFile(t *testing.T) {
 	}
 
 	reg := openJobsRegistry(dir)
-	t.Cleanup(func() { reg.SetLogWriter(nil, nil) })
+	t.Cleanup(func() {
+		reg.SetLogWriter(nil, nil)
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(50 * time.Millisecond)
+	})
 
 	// Legacy file must be gone.
 	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
@@ -192,7 +215,12 @@ func TestOpenJobsRegistryLogPathOutsideDataDir(t *testing.T) {
 	// Run openJobsRegistry and confirm it doesn't put any file
 	// inside the data dir beyond the dir itself.
 	reg := openJobsRegistry(dir)
-	t.Cleanup(func() { reg.SetLogWriter(nil, nil) })
+	t.Cleanup(func() {
+		reg.SetLogWriter(nil, nil)
+		runtime.GC()
+		runtime.Gosched()
+		time.Sleep(50 * time.Millisecond)
+	})
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("read data dir: %v", err)

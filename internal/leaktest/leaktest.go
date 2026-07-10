@@ -43,6 +43,14 @@ func Run(m *testing.M) {
 		goleak.IgnoreTopFunction("net/http.(*http2ClientConn).readLoop"),
 		// runtime poller — not DixieData.
 		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"),
+		// modernc SQLite driver background goroutine. The
+		// driver keeps a connectionOpener alive for the
+		// lifetime of the *sql.DB; closing the *DB doesn't
+		// terminate it (the driver uses an internal pool).
+		// This is a known feature of the modernc driver, not
+		// a DixieData leak. Suppressing keeps the signal
+		// focused on DixieData code paths.
+		goleak.IgnoreTopFunction("database/sql.(*DB).connectionOpener"),
 	)
 	os.Exit(m.Run())
 }

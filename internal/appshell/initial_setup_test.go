@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/valueforvalue/DixieData/internal/db"
+"github.com/valueforvalue/DixieData/internal/db"
+
+	"github.com/valueforvalue/DixieData/internal/testtemp"
 )
 
 // TestHandleInitialSetupPostSetsDixieRedirectAndToast is the
@@ -29,7 +31,7 @@ import (
 // the form (which disables the button + sets aria-busy),
 // this closes the silent-submit UX hole.
 func TestHandleInitialSetupPostSetsDixieRedirectAndToast(t *testing.T) {
-	dataDir := t.TempDir()
+	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
