@@ -118,7 +118,7 @@ templ ResearchPickerView(view viewmodel.ResearchPickerView) {
 						data-research-query
 						hx-get={ templ.SafeURL(routebuilder.ResearchSearch()) }
 						hx-trigger="keyup changed delay:300ms, search"
-						hx-target={ "#" + uiids.PanelResearchPickerResults }
+						hx-target="[data-research-results]"
 						hx-swap="outerHTML"
 						hx-include="[name='next']"
 					/>
