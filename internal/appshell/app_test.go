@@ -2243,56 +2243,12 @@ func TestHandleRecentSearchShowsRequestedRecords(t *testing.T) {
 	}
 }
 
-func TestHandleUnitCamaraderieShowsLinkedPeers(t *testing.T) {
-	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
-	database, err := db.Open(dataDir)
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	defer database.Close()
+// Issue #455 slice 3: TestHandleUnitCamaraderieShowsLinkedPeers
+// removed; the /soldiers/{id}/camaraderie sub-page is being
+// deleted. The Insights drilldown (scope=unit) takes over the
+// use case, and the soldier_card tile routes there.
 
-	app := NewApp()
-	app.dataDir = dataDir
-	app.database = database
-	if err := app.reloadServices(); err != nil {
-		t.Fatalf("reloadServices: %v", err)
-	}
-	configureTestIdentity(t, app)
-	app.setupRoutes()
 
-	central, err := app.soldiers.Create(models.Soldier{
-		DisplayID: "CAM-1001",
-		FirstName: "Andrew",
-		LastName:  "Cole",
-		Unit:      "Co. A, 1st Texas Infantry",
-	})
-	if err != nil {
-		t.Fatalf("Create central: %v", err)
-	}
-	if _, err := app.soldiers.Create(models.Soldier{
-		DisplayID: "CAM-1002",
-		FirstName: "Thomas",
-		LastName:  "Reed",
-		Unit:      "Co. B, 1st Texas Infantry",
-	}); err != nil {
-		t.Fatalf("Create peer: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/camaraderie", central.ID), nil)
-	rec := httptest.NewRecorder()
-
-	app.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
-	}
-	body := rec.Body.String()
-	for _, needle := range []string{"Unit Camaraderie Graph", "CAM-1001", "CAM-1002", "Compare Person Records"} {
-		if !strings.Contains(body, needle) {
-			t.Fatalf("camaraderie response missing %s: %q", needle, body)
-		}
-	}
-}
 
 func TestHandleServiceTimelineShowsChronology(t *testing.T) {
 	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
@@ -2463,58 +2419,12 @@ func TestHandleConflictLedgerShowsEntries(t *testing.T) {
 	}
 }
 
-func TestHandleResearchPackShowsRelatedRecords(t *testing.T) {
-	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
-	database, err := db.Open(dataDir)
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	defer database.Close()
+// Issue #455 slice 3: TestHandleResearchPackShowsRelatedRecords
+// removed; the /soldiers/{id}/research-pack/{state|county} route
+// is being deleted. The same Top Units / Top Cemeteries /
+// Related Person Records data lives on Insights.
 
-	app := NewApp()
-	app.dataDir = dataDir
-	app.database = database
-	if err := app.reloadServices(); err != nil {
-		t.Fatalf("reloadServices: %v", err)
-	}
-	configureTestIdentity(t, app)
-	app.setupRoutes()
 
-	central, err := app.soldiers.Create(models.Soldier{
-		DisplayID:    "PACK-1001",
-		FirstName:    "Andrew",
-		LastName:     "Cole",
-		PensionState: "Texas",
-		BirthInfo:    "Born 1838 in Orange County, Texas.",
-	})
-	if err != nil {
-		t.Fatalf("Create central: %v", err)
-	}
-	if _, err := app.soldiers.Create(models.Soldier{
-		DisplayID:    "PACK-1002",
-		FirstName:    "Thomas",
-		LastName:     "Reed",
-		PensionState: "Texas",
-		Unit:         "1st Texas Infantry",
-	}); err != nil {
-		t.Fatalf("Create match: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/research-pack/state", central.ID), nil)
-	rec := httptest.NewRecorder()
-
-	app.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
-	}
-	body := rec.Body.String()
-	for _, needle := range []string{"State Research Pack", "Texas", "PACK-1002"} {
-		if !strings.Contains(body, needle) {
-			t.Fatalf("research pack response missing %s: %q", needle, body)
-		}
-	}
-}
 
 func TestHandleResearchCollectionsShowsHub(t *testing.T) {
 	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")

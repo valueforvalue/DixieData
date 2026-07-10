@@ -490,15 +490,12 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Issue #455 slice 2: picker-guard dropped. The picker used to
-	// 303 through /research?next=... when no dd_person_ctx cookie
-	// was set; that cookie machinery now lives in the picker's own
-	// search results (deep-links to /soldiers/{id}/timeline work
-	// without 303). Direct deep-links to soldier-scoped sub-pages
-	// are reachable without any cookie — the picker is a search
-	// surface, not a gate. The pickerContextPresent helper stays
-	// (it now always returns true) because the picker handler
-	// itself uses it to gate its own Continue shortcut read.
+	// Issue #455 slice 2: picker-guard dropped. Direct deep-links
+	// to soldier-scoped sub-pages are reachable without any cookie
+	// or query context (the request URL itself carries the id).
+	// Issue #455 slice 3: Camaraderie + Research Pack sub-route
+	// dispatch branches removed (those handlers are deleted along
+	// with their templates + service methods + route lines).
 
 	if len(parts) > 1 && parts[1] == "edit" {
 		a.handleEditSoldier(w, r, id)
@@ -514,14 +511,6 @@ func (a *App) handleSoldierByID(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(parts) > 1 && parts[1] == "conflict-ledger" {
 		a.handleConflictLedger(w, r, id)
-		return
-	}
-	if len(parts) > 2 && parts[1] == "research-pack" {
-		a.handleResearchPack(w, r, id, parts[2])
-		return
-	}
-	if len(parts) > 1 && parts[1] == "camaraderie" {
-		a.handleUnitCamaraderie(w, r, id)
 		return
 	}
 	if len(parts) > 2 && parts[1] == "pdf" && parts[2] == "no-images" {

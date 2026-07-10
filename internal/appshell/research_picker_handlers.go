@@ -48,7 +48,6 @@ import (
 
 	"github.com/valueforvalue/DixieData/internal/models"
 	"github.com/valueforvalue/DixieData/internal/presentation"
-	"github.com/valueforvalue/DixieData/internal/records"
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
@@ -88,10 +87,12 @@ func researchSubPathForAction(personID int64, action, geography string) string {
 // rest always work (Timeline / Research Log / Conflict Ledger
 // handle empty data gracefully; Research Pack falls through to
 // the state sub-screen which works because PensionState
-// normalizes to N/A).
+// normalizes to N/A). HasUnit check inlined post-slice-3
+// (records.HasUnitForCamaraderie helper was deleted along with
+// the Camaraderie page itself in issue #455 slice 3).
 func supportedPickerActions(soldier models.Soldier) []string {
 	var actions []string
-	if records.HasUnitForCamaraderie(soldier) {
+	if strings.TrimSpace(soldier.Unit) != "" {
 		actions = append(actions, "camaraderie")
 	}
 	actions = append(actions, "timeline", "research-log", "conflict-ledger", "research-pack")
@@ -149,7 +150,12 @@ func (a *App) handleResearchPicker(w http.ResponseWriter, r *http.Request) {
 			rec := viewmodel.PersonRecordFromModel(*soldier)
 			current = &rec
 			supportedActions = supportedPickerActions(*soldier)
-			hasCountyInBirth = records.HasCountyInBirth(*soldier)
+			// Issue #455 slice 3: HasCountyInBirth
+			// inlined to a simple regex-free
+			// substring check (the records helper
+			// was deleted along with its
+			// birthCountyStatePattern regex).
+			hasCountyInBirth = strings.Contains(strings.ToLower(soldier.BirthInfo), " county")
 		}
 	}
 

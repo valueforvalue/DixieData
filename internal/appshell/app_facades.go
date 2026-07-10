@@ -33,12 +33,10 @@ type personRecordsFacade interface {
 	Delete(id int64) error
 	RecoverDisplayID(id int64) (string, error)
 	MoveRecordWithinPerson(personID, recordID, position int64) error
-	UnitCamaraderieGraph(personRecordID int64) (*records.UnitCamaraderieGraph, error)
 	ServiceTimeline(personRecordID int64) (*records.ServiceTimeline, error)
 	ResearchLog(personRecordID int64) (*records.ResearchLog, error)
 	AddResearchTask(personRecordID int64, title, notes, evidenceType string) error
 	ResolveResearchTask(personRecordID, taskID int64) error
-	ResearchPackForPersonRecord(personRecordID int64, scope string) (*records.ResearchPack, error)
 	ResearchCollectionsHub(currentPersonRecordID int64) (*records.ResearchCollectionHub, error)
 	CreateResearchCollection(name, description string) error
 	AddPersonRecordToResearchCollection(collectionID, personRecordID int64) (bool, error)

@@ -1,16 +1,22 @@
 // research_handlers.go holds the per-soldier research HTTP handlers:
-// unit camaraderie, service timeline, research log, research task create +
-// resolve, conflict ledger, and research pack. Extracted from app.go
-// as step 9 of the God-class reduction tracked in issue #42. Handlers
-// stay on *App; routes registered in routes.go. The handleResearchLog
-// function dispatches to handleResearchTaskCreate and handleResearchTaskResolve
+// service timeline, research log, research task create + resolve,
+// and conflict ledger. Extracted from app.go as step 9 of the
+// God-class reduction tracked in issue #42. Handlers stay on *App;
+// routes registered in routes.go. The handleResearchLog function
+// dispatches to handleResearchTaskCreate and handleResearchTaskResolve
 // based on URL parts.
 //
+// Issue #455 slice 3: handleUnitCamaraderie + handleResearchPack
+// deleted. Their data lives on Insights (Camaraderie's scope=unit
+// drilldown + Research Pack's Top Units / Top Cemeteries panels)
+// and the use cases route there from the soldier_card tile and the
+// R&R foldout. See slice 3 commit message for the full migration
+// list.
+//
 // Issue #422 slice 1: empty-state pages replace 500 errors for
-// soldiers with missing data (no unit → camaraderie empty,
-// no birth_info county → research-pack empty). Error dispatch
-// normalized: sql.ErrNoRows → 404, validation errors → 400,
-// everything else → 500.
+// soldiers with missing data. Error dispatch normalized:
+// sql.ErrNoRows → 404, validation errors → 400, everything else
+// → 500.
 package appshell
 
 import (
@@ -22,40 +28,7 @@ import (
 	"strings"
 
 	"github.com/valueforvalue/DixieData/internal/presentation"
-	"github.com/valueforvalue/DixieData/internal/records"
 )
-
-func (a *App) handleUnitCamaraderie(w http.ResponseWriter, r *http.Request, id int64) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	graph, err := a.soldiers.UnitCamaraderieGraph(id)
-	if err != nil {
-		if errors.Is(err, records.ErrNoUnitInfo) {
-			soldier, ferr := a.soldiers.GetByID(id)
-			name := fmt.Sprintf("Person #%d", id)
-			if ferr == nil && soldier != nil {
-				name = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
-			}
-			// Issue #384 / Slice 4: wrap Render.
-			if err := presentation.UnitCamaraderieEmpty(name, id).Render(r.Context(), w); err != nil {
-				respondErrorFragment(w, r, KindInternal, "Could not render the unit camaraderie page.", err)
-			}
-			return
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			respondNotFound(w, r, fmt.Sprintf("Person record %d not found.", id), err)
-			return
-		}
-		respondInternal(w, r, "Could not build the unit camaraderie graph.", err)
-		return
-	}
-	// Issue #384 / Slice 4: wrap Render.
-	if err := presentation.UnitCamaraderieView(*graph).Render(r.Context(), w); err != nil {
-		respondErrorFragment(w, r, KindInternal, "Could not render the unit camaraderie graph.", err)
-	}
-}
 
 func (a *App) handleServiceTimeline(w http.ResponseWriter, r *http.Request, id int64) {
 	if r.Method != http.MethodGet {
@@ -174,39 +147,5 @@ func (a *App) handleConflictLedger(w http.ResponseWriter, r *http.Request, id in
 	// Issue #384 / Slice 4: wrap Render.
 	if err := presentation.MergeReviewLedgerView(*ledger).Render(r.Context(), w); err != nil {
 		respondErrorFragment(w, r, KindInternal, "Could not render the merge review ledger.", err)
-	}
-}
-
-func (a *App) handleResearchPack(w http.ResponseWriter, r *http.Request, id int64, scope string) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	pack, err := a.soldiers.ResearchPackForPersonRecord(id, scope)
-	if err != nil {
-		// Issue #422: when the soldier lacks the data the scope
-		// needs, render an empty-state page instead of 500.
-		if scope == "county" && errors.Is(err, records.ErrNoCountyPack) {
-			soldier, ferr := a.soldiers.GetByID(id)
-			name := fmt.Sprintf("Person #%d", id)
-			if ferr == nil && soldier != nil {
-				name = strings.TrimSpace(soldier.FirstName + " " + soldier.LastName)
-			}
-			// Issue #384 / Slice 4: wrap Render.
-			if err := presentation.ResearchPackCountyEmpty(name, id).Render(r.Context(), w); err != nil {
-				respondErrorFragment(w, r, KindInternal, "Could not render the research pack county page.", err)
-			}
-			return
-		}
-		if errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "not found") {
-			respondNotFound(w, r, fmt.Sprintf("Research pack for person record %d not found.", id), err)
-			return
-		}
-		respondInternal(w, r, "Could not build the research pack.", err)
-		return
-	}
-	// Issue #384 / Slice 4: wrap Render.
-	if err := presentation.ResearchPackView(*pack).Render(r.Context(), w); err != nil {
-		respondErrorFragment(w, r, KindInternal, "Could not render the research pack.", err)
 	}
 }

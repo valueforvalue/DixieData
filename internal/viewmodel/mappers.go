@@ -590,31 +590,6 @@ func AnalyticsSnapshotFromDomain(input records.AnalyticsSnapshot) AnalyticsSnaps
 	}
 }
 
-// UnitCamaraderieGraphFromDomain converts a domain-type value into its viewmodel projection.
-func UnitCamaraderieGraphFromDomain(input records.UnitCamaraderieGraph) UnitCamaraderieGraph {
-	mapConnections := func(values []records.UnitCamaraderieConnection) []UnitCamaraderieConnection {
-		items := make([]UnitCamaraderieConnection, 0, len(values))
-		for _, value := range values {
-			items = append(items, UnitCamaraderieConnection{
-				Soldier:      PersonRecordFromModel(value.Soldier),
-				Relation:     value.Relation,
-				Strength:     value.Strength,
-				StrengthText: value.StrengthText,
-			})
-		}
-		return items
-	}
-	return UnitCamaraderieGraph{
-		CentralPersonRecord: PersonRecordFromModel(input.Central),
-		UnitLabel:           input.UnitLabel,
-		RegimentLabel:       input.RegimentLabel,
-		CompanyLabel:        input.CompanyLabel,
-		SameUnit:            mapConnections(input.SameUnit),
-		SameCompanyVariant:  mapConnections(input.SameCompanyVariant),
-		SameRegiment:        mapConnections(input.SameRegiment),
-	}
-}
-
 // ServiceTimelineFromDomain converts a domain-type value into its viewmodel projection.
 func ServiceTimelineFromDomain(input records.ServiceTimeline) ServiceTimeline {
 	events := make([]TimelineEvent, 0, len(input.Events))
@@ -666,27 +641,6 @@ func ResearchLogFromDomain(input records.ResearchLog) ResearchLog {
 		Suggestions:         suggestions,
 		OpenCount:           input.OpenCount,
 		ResolvedCount:       input.ResolvedCount,
-	}
-}
-
-// ResearchPackFromDomain converts a domain-type value into its viewmodel projection.
-func ResearchPackFromDomain(input records.ResearchPack) ResearchPack {
-	mapCounts := func(values []records.AnalyticsCount) []AnalyticsCount {
-		items := make([]AnalyticsCount, 0, len(values))
-		for _, value := range values {
-			items = append(items, AnalyticsCountFromDomain(value))
-		}
-		return items
-	}
-	return ResearchPack{
-		AnchorPersonRecord:   PersonRecordFromModel(input.Central),
-		Scope:                input.Scope,
-		PlaceLabel:           input.PlaceLabel,
-		Description:          input.Description,
-		RelatedPersonRecords: PersonRecordsFromModels(input.Related),
-		TopUnits:             mapCounts(input.TopUnits),
-		TopCemeteries:        mapCounts(input.TopCemeteries),
-		OpenReviewCount:      input.OpenReviewCount,
 	}
 }
 

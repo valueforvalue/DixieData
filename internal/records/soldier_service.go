@@ -41,25 +41,6 @@ type SoldierService struct {
 	formSuggestions   *models.SoldierFormSuggestions
 }
 
-// UnitCamaraderieGraph returns the unit-connection graph for the Camaraderie tab: nodes (units) + edges (soldiers who served in both).
-type UnitCamaraderieGraph struct {
-	Central            models.Soldier
-	UnitLabel          string
-	RegimentLabel      string
-	CompanyLabel       string
-	SameUnit           []UnitCamaraderieConnection
-	SameCompanyVariant []UnitCamaraderieConnection
-	SameRegiment       []UnitCamaraderieConnection
-}
-
-// UnitCamaraderieConnection is a records-layer type used by the matching service.
-type UnitCamaraderieConnection struct {
-	Soldier      models.Soldier
-	Relation     string
-	Strength     int
-	StrengthText string
-}
-
 // ServiceTimeline returns the per-soldier chronological service timeline (enlistment, transfer, wound, discharge, death).
 type ServiceTimeline struct {
 	Central            models.Soldier
@@ -111,18 +92,6 @@ type ResearchLog struct {
 	Suggestions   []ResearchTaskSuggestion
 	OpenCount     int
 	ResolvedCount int
-}
-
-// ResearchPack is a records-layer type used by the matching service.
-type ResearchPack struct {
-	Central         models.Soldier
-	Scope           string
-	PlaceLabel      string
-	Description     string
-	Related         []models.Soldier
-	TopUnits        []AnalyticsCount
-	TopCemeteries   []AnalyticsCount
-	OpenReviewCount int
 }
 
 // ResearchCollection is a records-layer type used by the matching service.
@@ -1144,71 +1113,6 @@ func (s *SoldierService) RecentByIDs(ids []int64, limit int) ([]models.Soldier, 
 	return ordered, nil
 }
 
-// UnitCamaraderieGraph returns the unit-connection graph for the Camaraderie tab: nodes (units) + edges (soldiers who served in both).
-func (s *SoldierService) UnitCamaraderieGraph(soldierID int64) (*UnitCamaraderieGraph, error) {
-	central, err := s.GetByID(soldierID)
-	if err != nil {
-		return nil, err
-	}
-	if normalizeEntryType(central.EntryType) != "soldier" {
-		return nil, fmt.Errorf("unit camaraderie is available for soldier records only")
-	}
-	keys := deriveUnitGraphKeys(central.Unit)
-	if keys.normalizedUnit == "" {
-		return nil, fmt.Errorf("%w", ErrNoUnitInfo)
-	}
-
-	rows, err := s.db.Conn().Query(`
-		SELECT `+soldierListSelectColumns+`
-		FROM soldiers
-		WHERE id <> ?
-		  AND TRIM(COALESCE(unit, '')) <> ''
-		  AND (entry_type IS NULL OR TRIM(entry_type) = '' OR LOWER(TRIM(entry_type)) = 'soldier')
-		ORDER BY last_name, first_name
-	`, soldierID)
-	if err != nil {
-		return nil, err
-	}
-	defer debug.DeferCloseLog(rows, "UnitCamaraderieGraph.rows")
-
-	peers, err := scanListSoldiers(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	graph := &UnitCamaraderieGraph{
-		Central:       *central,
-		UnitLabel:     strings.TrimSpace(central.Unit),
-		RegimentLabel: keys.regimentLabel,
-		CompanyLabel:  keys.companyLabel,
-	}
-
-	for _, peer := range peers {
-		peerKeys := deriveUnitGraphKeys(peer.Unit)
-		switch {
-		case peerKeys.normalizedUnit == "":
-			continue
-		case peerKeys.normalizedUnit == keys.normalizedUnit:
-			graph.SameUnit = append(graph.SameUnit, newUnitCamaraderieConnection(peer, "Same recorded unit", 3))
-		case keys.regimentKey != "" && peerKeys.regimentKey == keys.regimentKey && keys.companyKey != "" && peerKeys.companyKey == keys.companyKey:
-			graph.SameCompanyVariant = append(graph.SameCompanyVariant, newUnitCamaraderieConnection(peer, "Same company letter in regiment variant", 2))
-		case keys.regimentKey != "" && peerKeys.regimentKey == keys.regimentKey:
-			graph.SameRegiment = append(graph.SameRegiment, newUnitCamaraderieConnection(peer, "Same regiment", 1))
-		}
-	}
-
-	sort.SliceStable(graph.SameUnit, func(i, j int) bool { return unitConnectionLess(graph.SameUnit[i], graph.SameUnit[j]) })
-	sort.SliceStable(graph.SameCompanyVariant, func(i, j int) bool {
-		return unitConnectionLess(graph.SameCompanyVariant[i], graph.SameCompanyVariant[j])
-	})
-	sort.SliceStable(graph.SameRegiment, func(i, j int) bool { return unitConnectionLess(graph.SameRegiment[i], graph.SameRegiment[j]) })
-
-	graph.SameUnit = limitUnitConnections(graph.SameUnit, 12)
-	graph.SameCompanyVariant = limitUnitConnections(graph.SameCompanyVariant, 12)
-	graph.SameRegiment = limitUnitConnections(graph.SameRegiment, 18)
-	return graph, nil
-}
-
 // ServiceTimeline returns the per-soldier chronological service timeline (enlistment, transfer, wound, discharge, death).
 func (s *SoldierService) ServiceTimeline(soldierID int64) (*ServiceTimeline, error) {
 	central, err := s.GetByID(soldierID)
@@ -1386,72 +1290,6 @@ func (s *SoldierService) ResolveResearchTask(soldierID, taskID int64) error {
 		return fmt.Errorf("research task not found")
 	}
 	return nil
-}
-
-// ResearchPackForSoldier returns the Research Pack for the given Soldier's geography (county/state scope).
-func (s *SoldierService) ResearchPackForSoldier(soldierID int64, scope string) (*ResearchPack, error) {
-	central, err := s.GetByID(soldierID)
-	if err != nil {
-		return nil, err
-	}
-	scope = strings.ToLower(strings.TrimSpace(scope))
-	label := ""
-	whereClause := ""
-	args := []interface{}{}
-	switch scope {
-	case "state":
-		label = researchPackStateLabel(*central)
-		if label == "" {
-			return nil, fmt.Errorf("this record does not have a state research pack yet")
-		}
-		whereClause = `(LOWER(TRIM(COALESCE(pension_state, ''))) = LOWER(?) OR LOWER(COALESCE(birth_info, '')) LIKE LOWER(?))`
-		args = []interface{}{label, "%" + label + "%"}
-	case "county":
-		label, _ = parseBirthCountyState(central.BirthInfo)
-		if label == "" {
-			return nil, fmt.Errorf("%w", ErrNoCountyPack)
-		}
-		whereClause = `LOWER(COALESCE(birth_info, '')) LIKE LOWER(?)`
-		args = []interface{}{"%" + label + "%"}
-	default:
-		return nil, fmt.Errorf("unknown research pack scope")
-	}
-
-	relatedRows, err := s.db.Conn().Query(
-		"SELECT "+soldierListSelectColumns+" FROM soldiers WHERE id <> ? AND "+whereClause+" ORDER BY last_name, first_name LIMIT 40",
-		append([]interface{}{soldierID}, args...)...,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer debug.DeferCloseLog(relatedRows, "ResearchPackForSoldier.relatedRows")
-	related, err := scanListSoldiers(relatedRows)
-	if err != nil {
-		return nil, err
-	}
-
-	pack := &ResearchPack{
-		Central:     *central,
-		Scope:       scope,
-		PlaceLabel:  label,
-		Related:     related,
-		Description: researchPackDescription(scope, label),
-	}
-	if pack.TopUnits, err = s.researchPackCounts(whereClause, args, "unit", 5); err != nil {
-		return nil, err
-	}
-	if pack.TopCemeteries, err = s.researchPackCounts(whereClause, args, "buried_in", 5); err != nil {
-		return nil, err
-	}
-	if err := s.db.Conn().QueryRow("SELECT COUNT(*) FROM soldiers WHERE "+whereClause+" AND needs_review = 1", args...).Scan(&pack.OpenReviewCount); err != nil {
-		return nil, err
-	}
-	return pack, nil
-}
-
-// ResearchPackForPersonRecord is the glossary-name alias of ResearchPackForSoldier.
-func (s *SoldierService) ResearchPackForPersonRecord(personRecordID int64, scope string) (*ResearchPack, error) {
-	return s.ResearchPackForSoldier(personRecordID, scope)
 }
 
 // ResearchCollectionsHub returns the full Research Collections Hub page payload.
@@ -1696,121 +1534,15 @@ func soldierSearchRank(soldier models.Soldier) string {
 	return ""
 }
 
-type unitGraphKeys struct {
-	normalizedUnit string
-	regimentKey    string
-	regimentLabel  string
-	companyKey     string
-	companyLabel   string
-}
-
 var (
-	companyLetterPattern     = regexp.MustCompile(`(?i)\b(?:company|co)\.?\s*([a-z])\b`)
-	companyPrefixPattern     = regexp.MustCompile(`(?i)^\s*(?:company|co)\.?\s*[a-z]\s*[, -]*`)
-	nonAlphaNumPattern       = regexp.MustCompile(`[^a-z0-9]+`)
 	slashTimelineDatePattern = regexp.MustCompile(`\b(\d{1,2})/(\d{1,2})/(\d{4})\b`)
-	birthCountyStatePattern  = regexp.MustCompile(`(?i)\b(?:in\s+)?([A-Za-z .'-]+ County),\s*([A-Za-z .'-]+)\b`)
-	birthStateTailPattern    = regexp.MustCompile(`(?i),\s*([A-Za-z .'-]+)\.?\s*$`)
 )
-
-// ErrNoUnitInfo is returned by UnitCamaraderieGraph when the soldier
-// has no unit information recorded. Handlers should render an
-// empty-state page (200), not a 500.
-var ErrNoUnitInfo = errors.New("this record does not have enough unit information for camaraderie analysis")
-
-// ErrNoCountyPack is returned by ResearchPackForSoldier when the
-// soldier has no birth_info with a county. Handlers should render
-// an empty-state page (200), not a 500.
-var ErrNoCountyPack = errors.New("this record does not have a county research pack yet")
 
 // ErrDisplayIDNotEmpty is returned by RecoverDisplayID when the
 // supplied soldier already has a display_id. The recovery
 // affordance is for blank-id rows only; a healthy row must not
 // be re-minted.
 var ErrDisplayIDNotEmpty = errors.New("this record already has a display_id")
-
-func deriveUnitGraphKeys(unit string) unitGraphKeys {
-	trimmed := strings.TrimSpace(unit)
-	if trimmed == "" {
-		return unitGraphKeys{}
-	}
-	keys := unitGraphKeys{
-		normalizedUnit: normalizeUnitGraphText(trimmed),
-		regimentLabel:  trimmed,
-	}
-	if key, label := extractUnitCompany(trimmed); key != "" {
-		keys.companyKey = key
-		keys.companyLabel = label
-	}
-	if idx := strings.Index(trimmed, ","); idx >= 0 {
-		keys.regimentLabel = strings.TrimSpace(trimmed[idx+1:])
-	} else if stripped := strings.TrimSpace(companyPrefixPattern.ReplaceAllString(trimmed, "")); stripped != "" {
-		keys.regimentLabel = stripped
-	}
-	if keys.regimentLabel == "" {
-		keys.regimentLabel = trimmed
-	}
-	keys.regimentKey = normalizeUnitGraphText(keys.regimentLabel)
-	return keys
-}
-
-func extractUnitCompany(unit string) (string, string) {
-	if match := companyLetterPattern.FindStringSubmatch(unit); len(match) > 1 {
-		key := strings.ToUpper(strings.TrimSpace(match[1]))
-		if key != "" {
-			return key, "Company " + key
-		}
-	}
-	fields := strings.Fields(normalizeUnitGraphText(unit))
-	if len(fields) >= 2 && (fields[0] == "co" || fields[0] == "company") && len(fields[1]) == 1 {
-		key := strings.ToUpper(fields[1])
-		return key, "Company " + key
-	}
-	return "", ""
-}
-
-func normalizeUnitGraphText(value string) string {
-	normalized := strings.ToLower(strings.TrimSpace(value))
-	normalized = nonAlphaNumPattern.ReplaceAllString(normalized, " ")
-	return strings.Join(strings.Fields(normalized), " ")
-}
-
-func newUnitCamaraderieConnection(soldier models.Soldier, relation string, strength int) UnitCamaraderieConnection {
-	return UnitCamaraderieConnection{
-		Soldier:      soldier,
-		Relation:     relation,
-		Strength:     strength,
-		StrengthText: unitConnectionStrengthText(strength),
-	}
-}
-
-func unitConnectionStrengthText(strength int) string {
-	switch strength {
-	case 3:
-		return "Strong"
-	case 2:
-		return "Medium"
-	default:
-		return "Broad"
-	}
-}
-
-func unitConnectionLess(left, right UnitCamaraderieConnection) bool {
-	if left.Strength != right.Strength {
-		return left.Strength > right.Strength
-	}
-	if strings.ToLower(strings.TrimSpace(left.Soldier.LastName)) != strings.ToLower(strings.TrimSpace(right.Soldier.LastName)) {
-		return strings.ToLower(strings.TrimSpace(left.Soldier.LastName)) < strings.ToLower(strings.TrimSpace(right.Soldier.LastName))
-	}
-	return strings.ToLower(strings.TrimSpace(left.Soldier.FirstName)) < strings.ToLower(strings.TrimSpace(right.Soldier.FirstName))
-}
-
-func limitUnitConnections(connections []UnitCamaraderieConnection, limit int) []UnitCamaraderieConnection {
-	if limit <= 0 || len(connections) <= limit {
-		return connections
-	}
-	return connections[:limit]
-}
 
 func soldierBirthTimelineDate(soldier models.Soldier) (dates.PartialDate, bool) {
 	if partial, err := dates.ParseCanonical(strings.TrimSpace(soldier.BirthDate)); err == nil && partial.HasAny() {
@@ -2046,86 +1778,6 @@ func isSoldierEntryType(value string) bool {
 
 func isPersonRecordEntryType(value string) bool {
 	return strings.ToLower(strings.TrimSpace(value)) == "linked_person"
-}
-
-func researchPackStateLabel(soldier models.Soldier) string {
-	if trimmed := strings.TrimSpace(soldier.PensionState); trimmed != "" {
-		return trimmed
-	}
-	_, state := parseBirthCountyState(soldier.BirthInfo)
-	return state
-}
-
-func parseBirthCountyState(value string) (string, string) {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return "", ""
-	}
-	if match := birthCountyStatePattern.FindStringSubmatch(trimmed); len(match) == 3 {
-		county := strings.TrimSpace(match[1])
-		if len(county) > 3 && strings.EqualFold(county[:3], "in ") {
-			county = strings.TrimSpace(county[3:])
-		}
-		return county, strings.Trim(strings.TrimSpace(match[2]), ". ")
-	}
-	if match := birthStateTailPattern.FindStringSubmatch(trimmed); len(match) == 2 {
-		return "", strings.Trim(strings.TrimSpace(match[1]), ". ")
-	}
-	return "", ""
-}
-
-// HasUnitForCamaraderie reports whether the soldier has unit
-// information recorded. Used by the picker (issue #422 slice 2)
-// to decide whether to surface the Camaraderie sub-page in the
-// Continue shortcut. Empty unit means the graph would render as
-// an empty state.
-func HasUnitForCamaraderie(soldier models.Soldier) bool {
-	return strings.TrimSpace(soldier.Unit) != ""
-}
-
-// HasCountyInBirth reports whether the soldier's birth_info
-// contains a county (the "County, State" pattern). Used by the
-// picker (issue #422 slice 2) to decide whether to surface the
-// Research Pack County sub-option in the picker sub-screen.
-// Empty or pattern-free birth_info means the county pack would
-// render as an empty state.
-func HasCountyInBirth(soldier models.Soldier) bool {
-	county, _ := parseBirthCountyState(soldier.BirthInfo)
-	return county != ""
-}
-
-func researchPackDescription(scope, label string) string {
-	switch scope {
-	case "county":
-		return fmt.Sprintf("Records tied to %s through birth-place context and related local evidence.", label)
-	default:
-		return fmt.Sprintf("Records tied to %s through pension filing or birth-place context.", label)
-	}
-}
-
-func (s *SoldierService) researchPackCounts(whereClause string, args []interface{}, field string, limit int) ([]AnalyticsCount, error) {
-	query := fmt.Sprintf(`
-		SELECT TRIM(%s) AS label, COUNT(*)
-		FROM soldiers
-		WHERE %s AND TRIM(COALESCE(%s, '')) <> ''
-		GROUP BY TRIM(%s)
-		ORDER BY COUNT(*) DESC, LOWER(TRIM(%s)) ASC
-		LIMIT ?
-	`, field, whereClause, field, field, field)
-	rows, err := s.db.Conn().Query(query, append(args, limit)...)
-	if err != nil {
-		return nil, err
-	}
-	defer debug.DeferCloseLog(rows, "researchPackCounts.rows")
-	counts := []AnalyticsCount{}
-	for rows.Next() {
-		var count AnalyticsCount
-		if err := rows.Scan(&count.Label, &count.Count); err != nil {
-			return nil, err
-		}
-		counts = append(counts, count)
-	}
-	return counts, rows.Err()
 }
 
 // ManualComparison computes the per-field comparison for the user-initiated pair compare.
