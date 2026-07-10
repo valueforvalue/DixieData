@@ -684,6 +684,13 @@ func columnExists(tx *sql.Tx, table, column string) (bool, error) {
 	// column is already inline) without erroring.
 	case "event_sources":
 		query = `PRAGMA table_info(event_sources)`
+	// v66 (block-66): research_collection_items columnExists allowlist
+	// for the soldier_id→person_record_id rename on this table. The
+	// v60 rename block missed this table (see internal/db/migrations.go
+	// block-66 comment for the archaeology); block-66 makes up for it
+	// and needs columnExists to support the table name.
+	case "research_collection_items":
+		query = `PRAGMA table_info(research_collection_items)`
 	default:
 		return false, fmt.Errorf("unsupported table for schema introspection: %s", table)
 	}
