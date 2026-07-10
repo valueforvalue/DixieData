@@ -12,7 +12,18 @@ const AppName = "DixieData"
 // plane ships with today. Bumped when migration files in
 // internal/db/ land. Independent from the app version string
 // (see CurrentUpdateFlowVersion below).
-const CurrentSchemaVersion = 66
+//
+// Issue #459: bumped 66 → 67 when ensureSoldierFTS split out of
+// block-60-v54-to-v60-jump into its own per-block-commit entry
+// (block-67-ensure-soldier-fts). The split unsticks the
+// connectionOpener-held SHARED lock collision that surfaced as
+// SQLITE_LOCKED (6) at every .ddbak restore path on Windows.
+// Fresh v66 archives already in the wild stay on v66 until
+// they re-open on a v67 binary; applySchema short-circuits on
+// version >= 67, so block-67's Up is no-op for fresh v66+. v54-
+// v66 archives land in the v67 state via block-60 (sets columns)
+// + block-67 (sets FTS5).
+const CurrentSchemaVersion = 67
 
 // CurrentUpdateFlowVersion is the update-flow-shape gate.
 // Bumped when the auto-update mechanism itself changes shape
