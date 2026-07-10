@@ -316,6 +316,77 @@ func (s *AuditService) ResolveFindingsForPersonRecord(personRecordID int64) erro
 	return s.ResolveFindingsForSoldier(personRecordID)
 }
 
+// ResolvedFindingSummary is one row in the Resolved tab of the
+// Review Queue: a duplicate-audit finding whose status flipped
+// to 'resolved' (via Compare-and-resolve, bulk-resolve, or
+// flag-clear). It carries the two Person Record IDs + their
+// cached Display IDs so the page can render + link back without
+// re-joining soldiers on every request.
+//
+// The viewmodel projection lives in
+// viewmodel/DuplicateAuditResolvedFindingFromDomain.
+type ResolvedFindingSummary struct {
+	ID             int64
+	LeftRecordID   int64
+	RightRecordID  int64
+	LeftDisplayID  string
+	RightDisplayID string
+	FindingType    string
+	Reason         string
+	ResolvedAt     string
+}
+
+// ListResolvedFindings returns the page of duplicate-audit
+// findings where status = 'resolved', newest first. Used by the
+// Review Queue Resolved tab (issue #461) to surface the per-
+// finding resolution history independent of the soldier's
+// current needs_review flag (which the audit_resolve flow
+// auto-clears). Joins soldiers only for the two cached
+// Display IDs so the per-row payload stays small.
+func (s *AuditService) ListResolvedFindings(page, pageSize int) ([]ResolvedFindingSummary, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	conn := s.db.Conn()
+	var total int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM duplicate_audit_findings WHERE status = 'resolved'`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	rows, err := conn.Query(`
+		SELECT
+			d.id,
+			d.left_record_id,
+			d.right_record_id,
+			COALESCE(l.display_id, ''),
+			COALESCE(r.display_id, ''),
+			d.finding_type,
+			d.reason,
+			COALESCE(d.resolved_at, '')
+		FROM duplicate_audit_findings d
+		LEFT JOIN soldiers l ON l.id = d.left_record_id
+		LEFT JOIN soldiers r ON r.id = d.right_record_id
+		WHERE d.status = 'resolved'
+		ORDER BY COALESCE(d.resolved_at, d.created_at) DESC, d.id DESC
+		LIMIT ? OFFSET ?`, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer debug.DeferCloseLog(rows, "ListResolvedFindings.rows")
+	items := make([]ResolvedFindingSummary, 0, pageSize)
+	for rows.Next() {
+		var row ResolvedFindingSummary
+		if err := rows.Scan(&row.ID, &row.LeftRecordID, &row.RightRecordID, &row.LeftDisplayID, &row.RightDisplayID, &row.FindingType, &row.Reason, &row.ResolvedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, row)
+	}
+	return items, total, rows.Err()
+}
+
 // FindingsForSoldiers returns the per-Soldier list of duplicate-audit findings.
 func (s *AuditService) FindingsForSoldiers(soldierIDs []int64) (map[int64][]DuplicateAuditFindingSummary, error) {
 	if len(soldierIDs) == 0 {

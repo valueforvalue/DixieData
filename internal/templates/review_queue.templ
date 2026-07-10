@@ -20,10 +20,9 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 				<h2 class="text-2xl gold font-bold">Review Queue</h2>
 				<p class="mt-2 text-sm text-slate-600">Records flagged for duplicate review or follow-up research appear here until they are resolved.</p>
 				// Issue #455 slice 4: Open / Resolved tab strip.
-				// The Resolved tab is a placeholder for now
-				// (the merge_review_conflicts data is shipped
-				// in a slice-4 follow-up; this commit plants
-				// the UI affordance + the query-param contract).
+				// The Resolved tab listing now lives in
+				// ResolvedReviewQueueView (issue #461); this
+				// header keeps only the tab strip + intro.
 				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-sepia-500/[0.35] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
 					if activeTab == "open" {
 						<a href="/review-queue" role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="open">Open</a>
@@ -36,12 +35,6 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="resolved">Resolved</a>
 					}
 				</div>
-				if activeTab == "resolved" {
-					<div role="tabpanel" class="mt-4 rounded-2xl border border-dashed border-sepia-500/[0.4] bg-sepia-500/[0.05] px-4 py-6 text-sm text-slate-600">
-						<p class="font-semibold text-[#22303d]">Resolved history</p>
-						<p class="mt-2">Resolved conflict rows from <code>merge_review_conflicts</code> will surface here, scoped by <code>?person=ID</code> when the deep-link from a Person Record arrives. The data is in place; the Resolved listing is the next slice-4 follow-up (the per-soldier sub-page is gone after <a href="https://github.com/valueforvalue/DixieData/issues/455" class="underline">issue #455</a>).</p>
-					</div>
-				}
 			</div>
 			<section class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				if len(entries) == 0 {
@@ -336,4 +329,139 @@ func bulkIgnoreConfirmMessage(pageCount int) string {
 		return "Mark the selected Person Record as resolved and remove it from the Review Queue? Person Records stay in your Local Archive."
 	}
 	return fmt.Sprintf("Mark up to %d selected Person Records as resolved and remove them from the Review Queue? Person Records stay in your Local Archive.", pageCount)
+}
+
+// ResolvedReviewQueueView renders the Resolved tab (issue #461).
+// Two streams: resolved duplicate-audit findings (between two
+// Person Records) + resolved merge-review conflicts (a shared-
+// import decision per row). Each row links back to the surviving
+// Person Record so the user can re-open the audit compare or
+// the per-person merge ledger. Bulk actions on Open don't apply
+// here — the resolution already happened.
+templ ResolvedReviewQueueView(findings []viewmodel.ResolvedFindingEntry, conflicts []viewmodel.ResolvedConflictEntry, counts viewmodel.ArchiveCounts, page, total, pageSize int) {
+	@Layout("Review Queue — Resolved") {
+		<div class="relative mx-auto max-w-5xl space-y-6">
+			if counts.TotalRecords() == 0 {
+				@partials.EmptyStateCard("review", counts)
+			}
+			<div>
+				<h2 class="text-2xl gold font-bold">Review Queue <span class="text-slate-400">/</span> Resolved</h2>
+				<p class="mt-2 text-sm text-slate-600">Resolution history: every duplicate-audit match and shared-import merge conflict you have settled, newest first.</p>
+				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-sepia-500/[0.35] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
+					<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="open">Open</a>
+					<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="resolved">Resolved</a>
+				</div>
+			</div>
+			<section class="relative card rounded-3xl p-5 sm:p-8 space-y-6">
+				if len(findings) == 0 && len(conflicts) == 0 {
+					<p class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 px-4 py-3 text-sm text-slate-600">No resolved entries yet. The audit runs + shared-import merges you finish will surface here.</p>
+				}
+				if len(findings) > 0 {
+					<div>
+						<h3 class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Duplicate-audit findings</h3>
+						<div class="mt-3 space-y-3">
+							for _, finding := range findings {
+								<div id={ fmt.Sprintf("review-queue-resolved-finding-%d", finding.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+									<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+										<div class="min-w-0">
+											<div class="flex flex-wrap items-center gap-2">
+												<span class="rounded-full border border-sepia-500/[0.45] bg-parchment-soft/[0.92] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ emptyDetail(finding.FindingType) }</span>
+												<span class="rounded-full border border-emerald-700/[0.45] bg-emerald-700/[0.12] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">Resolved</span>
+											</div>
+											<p class="mt-2 text-sm text-slate-700">{ emptyDetail(finding.Reason) }</p>
+											<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+												if finding.LeftRecordID > 0 {
+													<a href={ fmt.Sprintf("/soldiers/%d", finding.LeftRecordID) } class="pill-link">{ emptyDetail(finding.LeftDisplayID) }</a>
+												} else {
+													<span class="pill-link opacity-60">{ emptyDetail(finding.LeftDisplayID) }</span>
+												}
+												<span class="self-center text-slate-400">↔</span>
+												if finding.RightRecordID > 0 {
+													<a href={ fmt.Sprintf("/soldiers/%d", finding.RightRecordID) } class="pill-link">{ emptyDetail(finding.RightDisplayID) }</a>
+												} else {
+													<span class="pill-link opacity-60">{ emptyDetail(finding.RightDisplayID) }</span>
+												}
+											</div>
+										</div>
+										<div class="flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500 sm:items-end">
+											if strings.TrimSpace(finding.ResolvedAt) != "" {
+												<span>Resolved { formatAuditTimestamp(finding.ResolvedAt) }</span>
+											}
+											<a href={ fmt.Sprintf("/review-queue/compare/%d", finding.ID) } class="pill-link w-full sm:w-auto">View Compare</a>
+										</div>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+				}
+				if len(conflicts) > 0 {
+					<div>
+						<h3 class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Merge-review conflicts</h3>
+						<div class="mt-3 space-y-3">
+							for _, conflict := range conflicts {
+								<div id={ fmt.Sprintf("review-queue-resolved-conflict-%d", conflict.ID) } class="rounded-2xl border border-sepia-500/[0.35] bg-white/70 p-4">
+									<div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+										<div class="min-w-0">
+											<div class="flex flex-wrap items-center gap-2">
+												<span class="rounded-full border border-sepia-500/[0.45] bg-parchment-soft/[0.92] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8d7440]">{ emptyDetail(conflict.ConflictType) }</span>
+												<span class="rounded-full border border-emerald-700/[0.45] bg-emerald-700/[0.12] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">{ resolvedConflictResolutionLabel(conflict.Resolution) }</span>
+											</div>
+											<p class="mt-2 text-sm text-slate-700">{ emptyDetail(conflict.Reason) }</p>
+											<div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+												if conflict.LocalRecordID > 0 {
+													<a href={ fmt.Sprintf("/soldiers/%d", conflict.LocalRecordID) } class="pill-link">{ emptyDetail(conflict.LocalDisplayID) }</a>
+												} else {
+													<span class="pill-link opacity-60">{ emptyDetail(conflict.LocalDisplayID) }</span>
+												}
+												<span class="self-center text-slate-400">vs.</span>
+												<span class="pill-link opacity-80">{ emptyDetail(conflict.IncomingDisplayID) } (shared)</span>
+											</div>
+										</div>
+										<div class="flex flex-col gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500 sm:items-end">
+											if strings.TrimSpace(conflict.ResolvedAt) != "" {
+												<span>Resolved { formatAuditTimestamp(conflict.ResolvedAt) }</span>
+											}
+											if conflict.LocalRecordID > 0 {
+												<a href={ fmt.Sprintf("/soldiers/%d#ledger", conflict.LocalRecordID) } class="pill-link w-full sm:w-auto">View Ledger</a>
+											}
+										</div>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+				}
+				if total > pageSize {
+					<div class="flex flex-wrap items-center justify-between gap-3 pt-2 text-sm text-slate-600">
+						<span>Page { fmt.Sprintf("%d", page) } of { fmt.Sprintf("%d", (total+pageSize-1)/pageSize) }</span>
+						<div class="flex flex-wrap gap-2">
+							if page > 1 {
+								<a href={ fmt.Sprintf("/review-queue?tab=resolved&page=%d", page-1) } class="pill-link">Previous</a>
+							}
+							if page*pageSize < total {
+								<a href={ fmt.Sprintf("/review-queue?tab=resolved&page=%d", page+1) } class="pill-link">Next</a>
+							}
+						</div>
+					</div>
+				}
+			</section>
+		</div>
+	}
+}
+
+// resolvedConflictResolutionLabel translates the merge_review_conflicts.resolution
+// decision into the Resolved-tab pill text. Keeps the user-visible vocabulary
+// (keep-local / keep-shared / keep-both) tight instead of leaking enum values.
+func resolvedConflictResolutionLabel(resolution string) string {
+	switch strings.TrimSpace(resolution) {
+	case "keep-local":
+		return "Kept Local"
+	case "use-shared", "keep-shared":
+		return "Kept Shared"
+	case "keep-both":
+		return "Kept Both"
+	default:
+		return "Resolved"
+	}
 }

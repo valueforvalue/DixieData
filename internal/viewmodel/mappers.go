@@ -543,6 +543,48 @@ func ReviewQueueEntriesFromDomain(personRecords []models.Soldier, findings map[i
 	return entries
 }
 
+// ResolvedFindingEntriesFromDomain projects the records-layer
+// resolved-finding rows into viewmodel entries. issue #461.
+func ResolvedFindingEntriesFromDomain(items []records.ResolvedFindingSummary) []ResolvedFindingEntry {
+	entries := make([]ResolvedFindingEntry, 0, len(items))
+	for _, item := range items {
+		entries = append(entries, ResolvedFindingEntry{
+			ID:             item.ID,
+			LeftRecordID:   item.LeftRecordID,
+			RightRecordID:  item.RightRecordID,
+			LeftDisplayID:  item.LeftDisplayID,
+			RightDisplayID: item.RightDisplayID,
+			FindingType:    item.FindingType,
+			Reason:         item.Reason,
+			ResolvedAt:     item.ResolvedAt,
+		})
+	}
+	return entries
+}
+
+// ResolvedConflictEntriesFromDomain projects resolved merge
+// conflicts into the viewmodel shape. The mapper drops the
+// per-row local_data / source_data JSON (irrelevant for the
+// resolved-history listing; the per-person ledger keeps the
+// full snapshot for side-by-side rendering). issue #461.
+func ResolvedConflictEntriesFromDomain(items []models.MergeReviewConflict) []ResolvedConflictEntry {
+	entries := make([]ResolvedConflictEntry, 0, len(items))
+	for _, item := range items {
+		entries = append(entries, ResolvedConflictEntry{
+			ID:                item.ID,
+			SessionID:         item.SessionID,
+			ConflictType:      item.ConflictType,
+			Reason:            item.Reason,
+			LocalRecordID:     item.LocalRecordID,
+			LocalDisplayID:    item.LocalDisplayID,
+			IncomingDisplayID: item.SourceDisplayID,
+			Resolution:        item.Resolution,
+			ResolvedAt:        item.ResolvedAt,
+		})
+	}
+	return entries
+}
+
 // DuplicateAuditComparisonFromDomain converts a domain-type value into its viewmodel projection.
 func DuplicateAuditComparisonFromDomain(input records.DuplicateAuditComparison) DuplicateAuditComparison {
 	fields := make([]DuplicateAuditComparisonField, 0, len(input.Fields))

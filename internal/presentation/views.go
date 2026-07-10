@@ -131,6 +131,23 @@ func ReviewQueueView(soldiers []models.Soldier, findings map[int64][]records.Dup
 	return templates.ReviewQueueView(viewmodel.ReviewQueueEntriesFromDomain(soldiers, findings), viewmodelCountsFromModels(counts), page, total, pageSize, activeTab)
 }
 
+// ResolvedReviewQueueView renders the Resolved tab (issue
+// #461): a paginated history of resolved duplicate-audit
+// findings + resolved merge-review conflicts. Each row links
+// back to the Person Record so the user can re-open the
+// original audit compare or merge-replay if they want to
+// revisit a decision.
+func ResolvedReviewQueueView(findings []records.ResolvedFindingSummary, conflicts []models.MergeReviewConflict, counts models.ArchiveCounts, page, totalFindings, totalConflicts, pageSize int) templ.Component {
+	return templates.ResolvedReviewQueueView(
+		viewmodel.ResolvedFindingEntriesFromDomain(findings),
+		viewmodel.ResolvedConflictEntriesFromDomain(conflicts),
+		viewmodelCountsFromModels(counts),
+		page,
+		totalFindings+totalConflicts,
+		pageSize,
+	)
+}
+
 func InsightsView(snapshot records.AnalyticsSnapshot, counts models.ArchiveCounts) templ.Component {
 	return templates.InsightsView(viewmodel.AnalyticsSnapshotFromDomain(snapshot), viewmodelCountsFromModels(counts))
 }

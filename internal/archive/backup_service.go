@@ -2275,6 +2275,64 @@ func (b *BackupService) mergeSharedSoldiers(sessionID, archivePath string, sourc
 	return summary, nil
 }
 
+// ListResolvedConflicts returns the paginated slice of resolved
+// Local-vs-Incoming merge conflicts (resolution IS NOT NULL),
+// newest first. Used by the Review Queue Resolved tab
+// (issue #461) alongside the duplicate-audit resolved findings.
+// The list is intentionally compact — the per-conflict side-by-
+// side comparison lives on the per-Person Record ledger, so this
+// row payload skips the local_data / source_data JSON snapshot.
+func (b *BackupService) ListResolvedConflicts(page, pageSize int) ([]models.MergeReviewConflict, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 50
+	}
+	conn := b.db.Conn()
+	var total int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM merge_review_conflicts WHERE COALESCE(resolution, '') != ''`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	rows, err := conn.Query(`
+		SELECT id, session_id, conflict_type, reason, COALESCE(local_record_id, 0), COALESCE(local_display_id, ''), source_display_id, COALESCE(resolution, ''), COALESCE(resolved_at, ''), COALESCE(local_data, ''), source_data
+		FROM merge_review_conflicts
+		WHERE COALESCE(resolution, '') != ''
+		ORDER BY COALESCE(resolved_at, created_at) DESC, id DESC
+		LIMIT ? OFFSET ?`, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer debug.DeferCloseLog(rows, "ListResolvedConflicts.rows")
+
+	conflicts := make([]models.MergeReviewConflict, 0, pageSize)
+	for rows.Next() {
+		var (
+			conflict   models.MergeReviewConflict
+			localJSON  sql.NullString
+			sourceJSON string
+		)
+		if err := rows.Scan(&conflict.ID, &conflict.SessionID, &conflict.ConflictType, &conflict.Reason, &conflict.LocalRecordID, &conflict.LocalDisplayID, &conflict.SourceDisplayID, &conflict.Resolution, &conflict.ResolvedAt, &localJSON, &sourceJSON); err != nil {
+			return nil, 0, err
+		}
+		if strings.TrimSpace(localJSON.String) != "" {
+			localSnapshot, err := unmarshalMergeReviewSnapshot(localJSON.String)
+			if err != nil {
+				return nil, 0, err
+			}
+			conflict.LocalSoldier = &localSnapshot.Soldier
+		}
+		sourceSnapshot, err := unmarshalMergeReviewSnapshot(sourceJSON)
+		if err != nil {
+			return nil, 0, err
+		}
+		conflict.SourceSoldier = sourceSnapshot.Soldier
+		conflicts = append(conflicts, conflict)
+	}
+	return conflicts, total, rows.Err()
+}
+
 // PendingMergeConflicts returns the open Local-vs-Incoming merge
 // conflicts the user has not yet resolved. Surfaced on the Merge
 // Review Ledger page.
