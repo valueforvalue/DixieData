@@ -19,6 +19,7 @@
 package main
 
 import (
+	"github.com/valueforvalue/DixieData/tools/lintrules/baretempl"
 	"github.com/valueforvalue/DixieData/tools/lintrules/deferclose"
 	"golang.org/x/tools/go/analysis/unitchecker"
 )
@@ -26,6 +27,6 @@ import (
 func main() {
 	unitchecker.Main(
 		deferclose.Analyzer,
-		// baretempl.Analyzer — added in slice 2 (issue #438).
+		baretempl.Analyzer,
 	)
 }
