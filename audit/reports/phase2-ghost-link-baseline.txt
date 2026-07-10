@@ -1,0 +1,18 @@
+=== Ghost link color contrast (delta for the visual-change commit) ===
+
+AFTER  ink-slate #666870 on sepia gradient (calendar / entry form surfaces):
+  top (lightest)  #d7d2c9 -> 3.69:1  [AA-large only]
+  mid             #c9c2b5 -> 3.14:1  [AA-large only]
+  bottom (darkest) #b9b1a3 -> 2.61:1  [FAIL]
+
+BEFORE ink-mid   #324253 on sepia gradient:
+  top (lightest)  #d7d2c9 -> 6.84:1  [AA]
+  mid             #c9c2b5 -> 5.82:1  [AA]
+  bottom (darkest) #b9b1a3 -> 4.84:1  [AA]
+
+WCAG thresholds: AA normal text >= 4.5:1; AA large text >= 3:1; AAA >= 7:1
+
+Net delta:
+  top: -3.15:1
+  mid: -2.68:1
+  bottom: -2.23:1

@@ -132,6 +132,21 @@ audit/reports/ui-diff/*.png
 .bug-hunter/
 audit/manual-walk-report.json
 
+# Consensus Hunter skill working directory
+.consensus-hunter/
+
+# pi scratch (transient diagnostic / listing scripts run by pi agents)
+.pi/scratch/
+
+# rpiv scratch (transient content for skill workflows)
+.rpiv/scratch/
+
+# Build-time debug + server stdout logs (regenerated each run)
+build/*.log
+
+# Audit scratch outputs (smoke .tmp files; phase reports are local-only)
+audit/smoke_*.mjs.tmp
+
 # Python REPL scratch (per docs/agents/repl.md). The `repl` skill is a
 # scratch tool for deterministic investigation — Python scripts are
 # NEVER part of the Go build and NEVER imported by Go code. Scratch
