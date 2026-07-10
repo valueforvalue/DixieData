@@ -6,9 +6,10 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import { resolveWebTestBin, resolveProbeDataDir } from "./_lib/paths.mjs";
 
 const PORT = 9877;
-const DATA_DIR = "C:/Users/value/dixie-setup-data";
+const DATA_DIR = resolveProbeDataDir("setup-stacking");
 
 mkdirSync(DATA_DIR, { recursive: true });
 // Wipe any previous run so we land in setup-required state.
@@ -17,7 +18,7 @@ rmSync(DATA_DIR, { recursive: true, force: true });
 mkdirSync(DATA_DIR, { recursive: true });
 
 const server = spawn(
-  "C:/Users/value/dixiedata-web-test.exe",
+  resolveWebTestBin(),
   ["-addr", `127.0.0.1:${PORT}`],
   { env: { ...process.env, DIXIEDATA_DATA_DIR: DATA_DIR }, stdio: ["ignore", "pipe", "pipe"] },
 );

@@ -108,12 +108,19 @@ function walkGo(dir) {
       out.push(...walkGo(full));
     } else if (e.endsWith(".go") && !e.endsWith("_test.go")) {
       out.push(full);
+    } else if (e.endsWith("_test.go")) {
+      // Issue #448 slice 2: also walk *_test.go files, but
+      // surface findings as warnings (not failures). Tests may
+      // legitimately exercise OLD column names against a v54
+      // fixture DB, but drift should still be visible.
+      testFiles.push(full);
     }
   }
   return out;
 }
 
 const files = [];
+const testFiles = [];
 for (const d of PROD_DIRS) {
   files.push(...walkGo(d));
 }
@@ -165,6 +172,48 @@ test(`no production code references renamed columns (checked ${renames.length} r
       .map((o) => `    ${o.file}:${o.line}  ${o.table}.${o.from} (rename → ${o.to})\n      ${o.text}`)
       .join("\n");
     throw new Error(`Found ${offenders.length} leftover references to renamed columns:\n${lines}`);
+  }
+});
+
+// Issue #448 slice 2: scan *_test.go files for renamed-column
+// references and emit a warn-level finding (NOT a failure).
+// Tests may legitimately exercise OLD column names against a v54
+// fixture DB, but drift should still be visible to reviewers.
+const testOffenders = [];
+for (const r of renames) {
+  const sqlKw = "(SELECT|INSERT|UPDATE|DELETE|FROM|JOIN|WHERE|ON|ORDER|GROUP|VALUES|SET|REFERENCES|INTO)";
+  const re = new RegExp(
+    `\\b${r.table}\\b[\\s\\S]{0,300}\\b${r.from}\\b|\\b${r.from}\\b[\\s\\S]{0,100}\\b${r.table}\\b[\\s\\S]{0,50}${sqlKw}\\b`,
+    "i"
+  );
+  for (const f of testFiles) {
+    const src = readFileSync(f, "utf8");
+    const lines = src.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.trim().startsWith("//") || line.trim().startsWith("*")) {
+        continue;
+      }
+      if (re.test(line)) {
+        testOffenders.push({
+          file: f.replace(ROOT + "\\", "").replace(ROOT + "/", ""),
+          line: i + 1,
+          table: r.table,
+          from: r.from,
+          to: r.to,
+          text: line.trim().slice(0, 120),
+        });
+      }
+    }
+  }
+}
+
+test(`warn: test files reference renamed columns (checked ${testFiles.length} *_test.go files)`, () => {
+  if (testOffenders.length > 0) {
+    const lines = testOffenders
+      .map((o) => `    ${o.file}:${o.line}  ${o.table}.${o.from} (rename → ${o.to})\n      ${o.text}`)
+      .join("\n");
+    console.warn(`WARN: ${testOffenders.length} *_test.go files reference renamed columns (review for drift):\n${lines}`);
   }
 });
 
