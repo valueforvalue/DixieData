@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -396,7 +397,15 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 					<summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Advanced Research &amp; Review</p>
-							<p class="mt-1 text-sm text-slate-500">Collections, packs, ledgers, timelines, and review actions stay tucked away until you need them.</p>
+							// Issue #455 slice 1: intro copy
+							// trimmed to match the slim
+							// 3-sub-page set (Timeline /
+							// Research Log / Research
+							// Collections). The older copy
+							// advertised surfaces that were
+							// slated for removal in slices
+							// 3 + 4.
+							<p class="mt-1 text-sm text-slate-500">Timelines, research logs, and named collections stay tucked away until you need them.</p>
 						</div>
 						<span class="rounded-full border border-sepia-500/[0.55] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#22303d]">Expand</span>
 					</summary>
@@ -408,12 +417,23 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 									@LinkedText(s.Notes, "mt-3 text-sm text-slate-700 leading-6")
 								</div>
 							}
+							// Issue #455 slice 1: Camaraderie
+							// tile repurposed — the dedicated
+							// sub-page is being deleted in
+							// slice 3, so the tile now routes
+							// to /insights/drilldown?scope=unit
+							// (which already lists every
+							// person record sharing the same
+							// unit). soldierHasCamaraderie
+							// predicate is unchanged: tile
+							// only renders when there's a
+							// non-empty unit to drill into.
 							if soldierHasCamaraderie(s) {
 								<div class="rounded-2xl border border-research-border bg-research-bg/80 p-4">
 									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Unit Camaraderie</p>
-									<p class="mt-2 text-sm text-slate-700">Trace nearby service connections from this person record to the same unit, regiment family, and company variants without losing your place in the local archive.</p>
+									<p class="mt-2 text-sm text-slate-700">Open this person's recorded unit on Insights to browse all person records sharing it.</p>
 									<div class="mt-4 flex flex-wrap gap-3">
-										<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/camaraderie", s.ID)) } class="secondary-button">Open Unit Graph</a>
+										<a href={ templ.SafeURL(fmt.Sprintf("/insights/drilldown?scope=unit&value=%s", url.QueryEscape(s.Unit))) } class="secondary-button">Open Unit on Insights</a>
 									</div>
 								</div>
 							}
@@ -433,27 +453,13 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-log", s.ID)) } class="secondary-button">Open Research Log</a>
 								</div>
 							</div>
-							<div class="rounded-2xl border border-research-border bg-research-bg/80 p-4">
-								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-research-accent">Merge Review Ledger</p>
-								<p class="mt-2 text-sm text-slate-700">Review shared-import conflicts tied to this person record, including which fields differed and how each disagreement was resolved.</p>
-								<div class="mt-4 flex flex-wrap gap-3">
-									<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/conflict-ledger", s.ID)) } class="secondary-button">Open Merge Review Ledger</a>
-								</div>
-							</div>
-							if soldierHasResearchPack(s) {
-								<div class="rounded-2xl border border-[#d8c08d] bg-[rgba(255,248,230,0.78)] p-4">
-									<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8d7440]">Research Packs</p>
-									<p class="mt-2 text-sm text-slate-700">Jump into a pre-built county or state cohort using the place clues already attached to this person record.</p>
-									<div class="mt-4 flex flex-wrap gap-3">
-										if soldierStateResearchPackLabel(s) != "" {
-											<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-pack/state", s.ID)) } class="secondary-button">Open State Pack</a>
-										}
-										if soldierCountyResearchPackLabel(s) != "" {
-											<a href={ templ.SafeURL(fmt.Sprintf("/soldiers/%d/research-pack/county", s.ID)) } class="secondary-button">Open County Pack</a>
-										}
-									</div>
-								</div>
-							}
+							// Issue #455 slice 1: Research
+							// Packs tile removed (the
+							// dedicated sub-page is being
+							// deleted in slice 3 — the same
+							// Top Units / Top Cemeteries /
+							// Related Person Records panels
+							// already live on Insights).
 							<div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Research Collections</p>
 								<p class="mt-2 text-sm text-slate-700">Save this person record into named projects so related people, cemetery sweeps, and unresolved cases can be revisited as a group.</p>
@@ -461,6 +467,16 @@ templ SoldierDetail(s viewmodel.PersonRecord, tags []records.Tag, citedIn []view
 									<a href={ templ.SafeURL(fmt.Sprintf("/research-collections?from=%d", s.ID)) } class="secondary-button">Manage Collections</a>
 								</div>
 							</div>
+							// Issue #455 slice 1: Merge Review
+							// Ledger tile removed (the
+							// dedicated sub-page is being
+							// deleted in slice 4 — same data
+							// surfaces as the Resolved tab
+							// on Review Queue). The Review
+							// Queue tile below is unchanged
+							// (it's the live review-state
+							// surface, not the historical
+							// ledger).
 							<div class="rounded-2xl border border-review-red/[0.35] bg-review-red/[0.08] p-4 lg:col-span-2">
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f2c26]">Review Queue</p>
 								if s.NeedsReview {

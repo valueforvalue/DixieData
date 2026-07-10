@@ -618,10 +618,14 @@ func TestSoldierDetailShowsUnitCamaraderieAction(t *testing.T) {
 	}
 
 	content := buf.String()
+	// Issue #455 slice 1: Camaraderie tile now routes to
+	// Insights drilldown scoped to the unit (the dedicated
+	// Camaraderie sub-page is being deleted in slice 3).
 	for _, needle := range []string{
 		"Unit Camaraderie",
-		"/soldiers/18/camaraderie",
-		"Open Unit Graph",
+		"/insights/drilldown",
+		"scope=unit",
+		"Open Unit on Insights",
 	} {
 		if !strings.Contains(content, needle) {
 			t.Fatalf("soldier detail missing %s", needle)
@@ -683,7 +687,12 @@ func TestSoldierDetailShowsResearchLogAction(t *testing.T) {
 	}
 }
 
-func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
+// Issue #455 slice 1: Merge Review Ledger tile removed from
+// soldier_card (the dedicated sub-page is being deleted in
+// slice 4 — same data surfaces on the Review Queue Resolved
+// tab). Replaced with TestSoldierDetailDoesNotShowConflictLedgerTile
+// below to pin the deletion.
+func TestSoldierDetailDoesNotShowConflictLedgerTile(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
 		ID:        21,
@@ -696,18 +705,21 @@ func TestSoldierDetailShowsConflictLedgerAction(t *testing.T) {
 	}
 
 	content := buf.String()
-	for _, needle := range []string{
-		"Merge Review Ledger",
-		"/soldiers/21/conflict-ledger",
-		"Open Merge Review Ledger",
-	} {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("soldier detail missing %s", needle)
-		}
+	if strings.Contains(content, "/soldiers/21/conflict-ledger") {
+		t.Fatalf("soldier detail still shows Merge Review Ledger tile after #455 slice 1 slim")
+	}
+	if strings.Contains(content, "Open Merge Review Ledger") {
+		t.Fatalf("soldier detail still shows Open Merge Review Ledger button after #455 slice 1 slim")
 	}
 }
 
-func TestSoldierDetailShowsResearchPackActions(t *testing.T) {
+// Issue #455 slice 1: Research Packs tile removed from
+// soldier_card (the dedicated sub-page is being deleted in
+// slice 3 — same Top Units / Top Cemeteries / Related Person
+// Records panels already live on Insights). Replaced with
+// TestSoldierDetailDoesNotShowResearchPacksTile below to pin
+// the deletion.
+func TestSoldierDetailDoesNotShowResearchPacksTile(t *testing.T) {
 	var buf bytes.Buffer
 	err := SoldierDetail(viewmodel.Soldier{
 		ID:           22,
@@ -722,16 +734,11 @@ func TestSoldierDetailShowsResearchPackActions(t *testing.T) {
 	}
 
 	content := buf.String()
-	for _, needle := range []string{
-		"Research Packs",
-		"/soldiers/22/research-pack/state",
-		"/soldiers/22/research-pack/county",
-		"Open State Pack",
-		"Open County Pack",
-	} {
-		if !strings.Contains(content, needle) {
-			t.Fatalf("soldier detail missing %s", needle)
-		}
+	if strings.Contains(content, "/soldiers/22/research-pack/state") || strings.Contains(content, "/soldiers/22/research-pack/county") {
+		t.Fatalf("soldier detail still shows Research Packs tile after #455 slice 1 slim")
+	}
+	if strings.Contains(content, "Open State Pack") || strings.Contains(content, "Open County Pack") {
+		t.Fatalf("soldier detail still shows Research Packs buttons after #455 slice 1 slim")
 	}
 }
 
@@ -779,9 +786,12 @@ func TestSoldierDetailGroupsAdvancedToolsUnderAccordion(t *testing.T) {
 	}
 
 	content := buf.String()
+	// Issue #455 slice 1: intro copy trimmed to match the slim
+	// 3-sub-page set (Timeline / Research Log / Research
+	// Collections).
 	for _, needle := range []string{
 		"Advanced Research &amp; Review",
-		"Collections, packs, ledgers, timelines, and review actions stay tucked away until you need them.",
+		"Timelines, research logs, and named collections stay tucked away until you need them.",
 		"Review Queue",
 		"Research Log",
 	} {
