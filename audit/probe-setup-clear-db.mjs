@@ -4,15 +4,16 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync } from "node:fs";
+import { resolveWebTestBin, resolveProbeDataDir } from "./_lib/paths.mjs";
 
 const PORT = 9879;
-const DATA_DIR = "C:/Users/value/dixie-setup-flow2";
+const DATA_DIR = resolveProbeDataDir("setup-clear-db");
 
 rmSync(DATA_DIR, { recursive: true, force: true });
 mkdirSync(DATA_DIR, { recursive: true });
 
 const server = spawn(
-  "C:/Users/value/dixiedata-web-test.exe",
+  resolveWebTestBin(),
   ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", DATA_DIR],
   {
     env: { ...process.env, DIXIEDATA_DEBUG: "1" },
@@ -88,7 +89,7 @@ try {
   }
   // Restart
   const newServer = spawn(
-    "C:/Users/value/dixiedata-web-test.exe",
+    resolveWebTestBin(),
     ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", DATA_DIR],
     { env: { ...process.env, DIXIEDATA_DEBUG: "1" }, stdio: ["ignore", "pipe", "pipe"] },
   );

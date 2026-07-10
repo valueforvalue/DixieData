@@ -18,18 +18,19 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import { resolveWebTestBin, resolveProbeDataDir } from "./_lib/paths.mjs";
 
 // Fresh /tmp scratch dir per run. The binary migrates a clean
 // DB on first boot; reusing stale scratch dirs under the user's
 // home dir trips the "no such column: images.soldier_id"
 // migration path. /tmp gives a clean slate.
 const PORT = 9878;
-const DATA_DIR = `C:/Users/value/AppData/Local/Temp/dixie-cursor-jitter-${Date.now()}`;
+const DATA_DIR = resolveProbeDataDir("cursor-jitter");
 
 mkdirSync(DATA_DIR, { recursive: true });
 
 const server = spawn(
-  "C:/Users/value/dixiedata-web-test.exe",
+  resolveWebTestBin(),
   ["-addr", `127.0.0.1:${PORT}`, "-scratch-dir", DATA_DIR],
   { stdio: ["pipe", "pipe", "pipe"] },
 );

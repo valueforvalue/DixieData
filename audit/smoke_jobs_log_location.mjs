@@ -27,9 +27,10 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, existsSync, readdirSync } from "node:fs";
 import { renameSync } from "node:fs";
+import os from "node:os";
 
 const PORT = 9921;
-const SCRATCH = process.env.SCRATCH_DIR || "C:/Users/value/dixie-jobs-loglocation";
+const SCRATCH = process.env.SCRATCH_DIR || `${os.tmpdir()}/dixie-jobs-loglocation-${process.pid}`;
 const LOGS_PARENT = SCRATCH.substring(0, SCRATCH.lastIndexOf("/"));
 const WEB_BIN = process.env.WEB_BIN || "C:/Development/DixieData/build/bin/dixiedata-web.exe";
 

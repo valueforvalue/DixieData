@@ -11,7 +11,9 @@ the Added / Changed / Fixed / Removed lists stay scannable.
 
 ## [Unreleased]
 
-### Fixed
+### Maintenance
+
+- **test audit: parameterize hardcoded C:/Users/value paths + extend migration-columns tripwire to *_test.go (issue #448)**. Two slices ship together: (1) four audit probes (`probe-setup-stacking.mjs`, `probe-cursor-jitter.mjs`, `probe-setup-clear-db.mjs`, `smoke_jobs_log_location.mjs`) previously hardcoded the original author's Windows user path for both the data dir and the web-test binary path, making them CI-broken. New `audit/_lib/paths.mjs` exposes `resolveWebTestBin()`, `resolveWebBin()`, `resolveProbeDataDir(probeName)` with env-var overrides (`DIXIE_WEB_TEST_BIN`, `DIXIE_WEB_BIN`, `DIXIE_PROBE_DATA_DIR`) plus PATH discovery and conventional `build/bin/` defaults; probes now import from `./_lib/paths.mjs` and pass-through `SCRATCH_DIR`/`WEB_BIN` env vars. (2) `audit/smoke_migration_columns.mjs` now also walks `*_test.go` files and emits a `WARN`-level finding (not a fail) when a renamed column is referenced in test code. Tests may legitimately exercise OLD column names against a v54 fixture DB, but drift should still be visible to reviewers. The production-code check stays as a hard fail.
 
 - **fix(picker): hx-target selector with dot-separated ID is malformed CSS (issue #453)**. The Research picker live-search input used `hx-target="#panel.research.picker.results"` — htmx 2.0.10 parses this as a CSS selector via `querySelectorAll`, where `.` characters are class selectors, so `#panel.research.picker.results` means "id=panel AND class=research AND class=picker AND class=results" which matches no element. The swap silently failed and users saw no live-search results. Fixed by switching to `hx-target="[data-research-results]"` — the target `<div>` already carries `data-research-results`. This is the only `hx-target` site in the codebase that used a dot-separated uiid constant.
 

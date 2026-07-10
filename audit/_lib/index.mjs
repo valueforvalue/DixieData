@@ -7,3 +7,4 @@
 
 export { registerCleanup, runWithCleanup } from './cleanup.mjs';
 export { setFileChooserFixture } from './filechooser.mjs';
+export { resolveWebTestBin, resolveWebBin, resolveProbeDataDir } from './paths.mjs';
