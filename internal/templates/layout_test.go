@@ -39,20 +39,25 @@ func TestLayoutUsesLocalBootstrapScript(t *testing.T) {
 	}
 	// Issue #462: chrome polish — em dash between DixieData and
 	// codename in (a) the <title> bar, (b) the top-shell brand pill,
-	// (c) the footer boundary between AppLabel and ReleaseLabel.
+	// (c) the footer boundary between AppLabel and the codename.
 	// The mid-dot `·` separators elsewhere in the footer stay.
+	// Follow-up: the footer uses buildinfo.Codename() (the
+	// codename-only helper) so the boundary reads "DixieData v1.1.1
+	// — First Manassas" instead of the doubled "DixieData v1.1.1
+	// — DixieData First Manassas" that the original ReleaseLabel()
+	// call produced.
 	if !strings.Contains(content, " — DixieData</title>") {
 		t.Fatalf("layout <title> should use an em dash before DixieData (issue #462)")
 	}
 	if !strings.Contains(content, "DixieData — ") && !strings.Contains(content, `DixieData &#x2014;`) && !strings.Contains(content, `DixieData —`) {
 		t.Fatalf("layout top-shell brand should pair \"DixieData\" with the codename via an em dash (issue #462)")
 	}
-	expectedFooterBoundary := buildinfo.AppLabel() + " — " + buildinfo.ReleaseLabel()
+	expectedFooterBoundary := buildinfo.AppLabel() + " — " + buildinfo.Codename()
 	if !strings.Contains(content, expectedFooterBoundary) {
-		t.Fatalf("layout footer should swap the · between AppLabel and ReleaseLabel to an em dash (issue #462); expected substring %q in:\n%s", expectedFooterBoundary, content)
+		t.Fatalf("layout footer should swap the · between AppLabel and Codename to an em dash (issue #462 follow-up); expected substring %q in:\n%s", expectedFooterBoundary, content)
 	}
-	if !strings.Contains(content, buildinfo.ReleaseLabel()+" · Schema v") {
-		t.Fatalf("layout footer should keep the · separator between ReleaseLabel and Schema (issue #462 scope boundary)")
+	if !strings.Contains(content, buildinfo.Codename()+" · Schema v") {
+		t.Fatalf("layout footer should keep the · separator between Codename and Schema (issue #462 scope boundary)")
 	}
 	if !strings.Contains(content, `data-build-identity="`) || !strings.Contains(content, buildinfo.BuildIdentity()) {
 		t.Fatalf("layout should surface build identity")
