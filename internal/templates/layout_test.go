@@ -253,10 +253,16 @@ func TestLayoutReviewCountBadgeTargetsItself(t *testing.T) {
 	}
 
 	// (b) Badge wrapper must declare an explicit hx-target.
-	const openTag = `<span data-layout-review-count hx-get="`
+	// Issue #455 slice 1.5: the badge span moved from the
+	// top-nav <a href="/review-queue"> pill to the R&R
+	// foldout trigger button. The wire shape (span class +
+	// hx-get + hx-trigger + hx-target + hx-swap) is
+	// byte-identical; the htmx-target discipline applies
+	// anywhere the span appears.
+	const openTag = `<span data-layout-research-review-count hx-get="`
 	idx := strings.Index(content, openTag)
 	if idx < 0 {
-		t.Fatalf("layout should render the review-count badge wrapper %q", openTag)
+		t.Fatalf("layout should render the research-foldout review-count badge wrapper %q", openTag)
 	}
 	closeIdx := strings.Index(content[idx:], `></span>`)
 	if closeIdx < 0 {
@@ -268,5 +274,16 @@ func TestLayoutReviewCountBadgeTargetsItself(t *testing.T) {
 	}
 	if !strings.Contains(wrapperTag, `hx-swap="innerHTML"`) {
 		t.Fatalf("review-count badge wrapper must declare hx-swap=\"innerHTML\"; got wrapper:\n%s", wrapperTag)
+	}
+
+	// Issue #455 slice 1.5: the OLD top-nav Review Queue pill
+	// (the <a href="/review-queue"> that used to live at the
+	// top of the nav) is gone — Review Queue moves into the
+	// R&R foldout as the top menu item, and its live-count
+	// badge moves onto the foldout trigger. Pin both moves:
+	// the pill <a href> + the old `data-layout-review-count`
+	// marker must NOT be present anywhere on the page.
+	if strings.Contains(content, `data-layout-review-count `) || strings.Contains(content, `data-layout-review-count"`) {
+		t.Fatalf("layout should NOT emit the old top-nav data-layout-review-count marker anymore; relocated to data-layout-research-review-count on the R&R foldout trigger")
 	}
 }

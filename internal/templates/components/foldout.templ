@@ -32,6 +32,26 @@ package components
 // is required by the ARIA menu pattern (the menu role is on
 // the <ul>, not the <li>s).
 templ Foldout(triggerLabel string, menuID string, triggerAttrs templ.Attributes) {
+	@FoldoutWithBadge(triggerLabel, menuID, triggerAttrs, nil)
+}
+
+// FoldoutWithBadge is the issue #455 slice 1.5 variant of Foldout
+// that lets the caller pass an extra templ.Component to render
+// inside the trigger button between the label and the ▾ chevron.
+// When badge is nil the trigger renders exactly like Foldout, so
+// the Share foldout (and any other non-badged consumer) keeps its
+// current shape untouched. The badge block's wrapping div carries
+// the htmx attributes that drive the live-count poll — the R&R
+// foldout polls /layout/review-count via data-layout-research-review-count
+// and htmx swaps the count span in place. The polled span stays
+// inside the button so it's announced with the trigger label and
+// stays visible when the panel is collapsed.
+//
+// The badge content lives in its own div (instead of a bare span)
+// so the JS-side aria-label sync has a stable element to mutate
+// without disturbing the wrapping button attributes. See
+// layout.templ:134 for the R&R call site.
+templ FoldoutWithBadge(triggerLabel string, menuID string, triggerAttrs templ.Attributes, badge templ.Component) {
 	<div class="foldout relative">
 		<button
 			type="button"
@@ -40,9 +60,15 @@ templ Foldout(triggerLabel string, menuID string, triggerAttrs templ.Attributes)
 			aria-expanded="false"
 			aria-controls={ menuID }
 			data-foldout-trigger={ menuID }
+			if badge != nil {
+				data-foldout-has-badge="1"
+			}
 			{ foldoutAttrsExcludingClass(triggerAttrs)... }
 		>
 			{ triggerLabel }
+			if badge != nil {
+				@badge
+			}
 			<span aria-hidden="true" class="text-xs">▾</span>
 		</button>
 		<ul
