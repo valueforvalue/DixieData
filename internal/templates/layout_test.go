@@ -287,3 +287,53 @@ func TestLayoutReviewCountBadgeTargetsItself(t *testing.T) {
 		t.Fatalf("layout should NOT emit the old top-nav data-layout-review-count marker anymore; relocated to data-layout-research-review-count on the R&R foldout trigger")
 	}
 }
+
+// TestLayoutReviewMenuItemEchoesOpenCountFlag verifies issue
+// #460: when a handler flips the per-render
+// SetLayoutHasOpenReview(true), the "Open Review Queue"
+// menuitem inside the Research & Review foldout gains the
+// data-research-review-has-count attribute (CSS hook for the
+// red border + tint). Default state keeps the menuitem in its
+// neutral pill-link shape.
+func TestLayoutReviewMenuItemEchoesOpenCountFlag(t *testing.T) {
+	t.Run("default state carries no flag", func(t *testing.T) {
+		if currentLayoutHasOpenReview {
+			t.Fatalf("currentLayoutHasOpenReview should default to false")
+		}
+		var buf bytes.Buffer
+		if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+			t.Fatalf("Render: %v", err)
+		}
+		content := buf.String()
+		if !strings.Contains(content, `data-research-menu-review-queue`) {
+			t.Fatalf("layout should render the Open Review Queue menuitem")
+		}
+		if strings.Contains(content, "data-research-review-has-count") {
+			t.Fatalf("default state should NOT carry data-research-review-has-count:\n%s", content)
+		}
+	})
+
+	t.Run("open count sets the flag on the menuitem", func(t *testing.T) {
+		SetLayoutHasOpenReview(true)
+		defer ClearLayoutHasOpenReview()
+		var buf bytes.Buffer
+		if err := Layout("Test").Render(context.Background(), &buf); err != nil {
+			t.Fatalf("Render: %v", err)
+		}
+		content := buf.String()
+		if !strings.Contains(content, "data-research-review-has-count") {
+			t.Fatalf("expected data-research-review-has-count on the menuitem:\n%s", content)
+		}
+		if !strings.Contains(content, "border-review-red/60") {
+			t.Fatalf("expected red border classes on the menuitem:\n%s", content)
+		}
+	})
+
+	t.Run("clear resets state for the next render", func(t *testing.T) {
+		SetLayoutHasOpenReview(true)
+		ClearLayoutHasOpenReview()
+		if currentLayoutHasOpenReview {
+			t.Fatalf("ClearLayoutHasOpenReview should reset state")
+		}
+	})
+}

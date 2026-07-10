@@ -144,7 +144,11 @@ templ Layout(title string, omitJobsOverlay ...bool) {
 					// the canonical wire shape).
 					@components.FoldoutWithBadge("Research & Review", uiids.LayoutResearchMenu, nil, templ.Raw(`<span data-layout-research-review-count hx-get="`+routebuilder.LayoutReviewCount()+`" hx-trigger="load, every 30s" hx-swap="innerHTML" hx-target="this" hx-ext="none"></span>`)) {
 						<li role="none">
-							<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a>
+							if layoutHasOpenReview() {
+								<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full border border-review-red/60 text-[#fbe1de] hover:bg-review-red/[0.18]" data-research-menu-review-queue data-research-review-has-count>Open Review Queue</a>
+							} else {
+								<a href="/review-queue" role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-review-queue>Open Review Queue</a>
+							}
 						</li>
 						<li role="none">
 							<a href={ templ.SafeURL(routebuilder.ResearchPicker() + "?next=timeline") } role="menuitem" class="foldout-menuitem pill-link justify-start w-full" data-research-menu-timeline>Open Timeline</a>
