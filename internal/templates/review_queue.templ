@@ -10,7 +10,7 @@ import (
 	"github.com/valueforvalue/DixieData/internal/viewmodel"
 )
 
-templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.ArchiveCounts, page, total, pageSize int) {
+templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.ArchiveCounts, page, total, pageSize int, activeTab string) {
 	@Layout("Review Queue") {
 		<div class="relative mx-auto max-w-5xl space-y-6">
 			if counts.TotalRecords() == 0 {
@@ -19,6 +19,29 @@ templ ReviewQueueView(entries []viewmodel.ReviewQueueEntry, counts viewmodel.Arc
 			<div>
 				<h2 class="text-2xl gold font-bold">Review Queue</h2>
 				<p class="mt-2 text-sm text-slate-600">Records flagged for duplicate review or follow-up research appear here until they are resolved.</p>
+				// Issue #455 slice 4: Open / Resolved tab strip.
+				// The Resolved tab is a placeholder for now
+				// (the merge_review_conflicts data is shipped
+				// in a slice-4 follow-up; this commit plants
+				// the UI affordance + the query-param contract).
+				<div class="mt-4 inline-flex overflow-hidden rounded-full border border-sepia-500/[0.35] bg-white/70 text-sm font-semibold text-slate-700" role="tablist" aria-label="Review Queue tabs">
+					if activeTab == "open" {
+						<a href="/review-queue" role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="open">Open</a>
+					} else {
+						<a href="/review-queue" role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="open">Open</a>
+					}
+					if activeTab == "resolved" {
+						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="true" class="bg-sepia-500/[0.18] px-4 py-2 text-[#22303d]" data-review-queue-tab="resolved">Resolved</a>
+					} else {
+						<a href={ templ.SafeURL("/review-queue?tab=resolved") } role="tab" aria-selected="false" class="px-4 py-2 text-slate-700 hover:bg-sepia-500/[0.08]" data-review-queue-tab="resolved">Resolved</a>
+					}
+				</div>
+				if activeTab == "resolved" {
+					<div role="tabpanel" class="mt-4 rounded-2xl border border-dashed border-sepia-500/[0.4] bg-sepia-500/[0.05] px-4 py-6 text-sm text-slate-600">
+						<p class="font-semibold text-[#22303d]">Resolved history</p>
+						<p class="mt-2">Resolved conflict rows from <code>merge_review_conflicts</code> will surface here, scoped by <code>?person=ID</code> when the deep-link from a Person Record arrives. The data is in place; the Resolved listing is the next slice-4 follow-up (the per-soldier sub-page is gone after <a href="https://github.com/valueforvalue/DixieData/issues/455" class="underline">issue #455</a>).</p>
+					</div>
+				}
 			</div>
 			<section class="relative card rounded-3xl p-5 sm:p-8 space-y-4">
 				if len(entries) == 0 {

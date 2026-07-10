@@ -3,7 +3,6 @@ package appshell
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -2344,80 +2343,13 @@ func TestHandleResearchLogShowsTasks(t *testing.T) {
 	}
 }
 
-func TestHandleConflictLedgerShowsEntries(t *testing.T) {
-	dataDir := filepath.Join(testtemp.New(t).Path(), ".dixiedata")
-	database, err := db.Open(dataDir)
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	defer database.Close()
+// Issue #455 slice 4: TestHandleConflictLedgerShowsEntries
+// removed; the /soldiers/{id}/conflict-ledger sub-page is
+// being deleted. The same merge_review_conflicts data
+// surfaces on the Review Queue Resolved tab (slice-4
+// follow-up work) or in bulk on /review-queue?tab=resolved.
 
-	app := NewApp()
-	app.dataDir = dataDir
-	app.database = database
-	if err := app.reloadServices(); err != nil {
-		t.Fatalf("reloadServices: %v", err)
-	}
-	configureTestIdentity(t, app)
-	app.setupRoutes()
 
-	created, err := app.soldiers.Create(models.Soldier{
-		DisplayID: "LED-1001",
-		FirstName: "Andrew",
-		LastName:  "Cole",
-		Unit:      "1st Texas Infantry",
-		PensionID: "P-1",
-	})
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	localJSONBytes, err := json.Marshal(map[string]any{"soldier": models.Soldier{
-		DisplayID: "LED-1001",
-		FirstName: "Andrew",
-		LastName:  "Cole",
-		Unit:      "1st Texas Infantry",
-		PensionID: "P-1",
-	}})
-	if err != nil {
-		t.Fatalf("Marshal local: %v", err)
-	}
-	sourceJSONBytes, err := json.Marshal(map[string]any{"soldier": models.Soldier{
-		DisplayID: "SRC-1001",
-		FirstName: "Andrew",
-		LastName:  "Cole",
-		Unit:      "2nd Texas Infantry",
-		PensionID: "P-9",
-	}})
-	if err != nil {
-		t.Fatalf("Marshal source: %v", err)
-	}
-
-	if _, err := database.Conn().Exec(`INSERT INTO merge_review_sessions (id, archive_path, source_root, status, updated_at) VALUES ('session-app-ledger', 'ledger.ddshare', 'C:\\source', 'open', CURRENT_TIMESTAMP)`); err != nil {
-		t.Fatalf("insert session: %v", err)
-	}
-	if _, err := database.Conn().Exec(`
-		INSERT INTO merge_review_conflicts (session_id, conflict_type, reason, soldier_sync_id, local_record_id, local_display_id, source_display_id, local_data, source_data, resolution, resolved_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-	`, "session-app-ledger", "soldier-update", "Shared archive changed unit and pension ID.", created.SyncID, created.ID, created.DisplayID, "SRC-1001", string(localJSONBytes), string(sourceJSONBytes), "keep-local"); err != nil {
-		t.Fatalf("insert conflict: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/soldiers/%d/conflict-ledger", created.ID), nil)
-	rec := httptest.NewRecorder()
-
-	app.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status=%d want %d", rec.Code, http.StatusOK)
-	}
-	body := rec.Body.String()
-	for _, needle := range []string{"Merge Review Ledger", "SRC-1001", "pension ID"} {
-		if !strings.Contains(body, needle) {
-			t.Fatalf("conflict ledger response missing %s: %q", needle, body)
-		}
-	}
-}
 
 // Issue #455 slice 3: TestHandleResearchPackShowsRelatedRecords
 // removed; the /soldiers/{id}/research-pack/{state|county} route
