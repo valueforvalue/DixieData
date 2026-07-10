@@ -602,20 +602,24 @@ A separate browsing view with paging, sortable columns, and a built-in **compare
 
 ## 20.2 Per-Person Record research views
 
-Every Person Record detail page (`/soldiers/{id}`) exposes three research views accessible from the record header:
+Every Person Record detail page (`/soldiers/{id}`) exposes two research views accessible from the **Advanced Research & Review** accordion:
 
-- **Unit Camaraderie** (`/soldiers/{id}/camaraderie`) — list of soldiers who served in the same unit, with shared service dates. Helps find candidates for cross-references and spouse links.
 - **Service Timeline** (`/soldiers/{id}/timeline`) — chronological list of dated events (enlistment, muster, transfer, discharge, pension application). Pulls from structured fields plus any dated notes.
-- **Conflict Ledger** (`/soldiers/{id}/conflict-ledger`) — items currently flagged for review against this Person Record (merge conflicts, suspected duplicates, low-confidence scraped data).
+- **Research Log** (`/soldiers/{id}/research-log`) — append-only task list scoped to a Person Record. Create tasks, resolve them, and the log survives across sessions.
+- **Open Unit on Insights** (button) — when the Person Record has a unit, this button routes to `/insights/drilldown?scope=unit&value={unit}` which lists every other Person Record sharing the same recorded unit. Replaces the pre-#455 Unit Camaraderie sub-page.
+
+The Review Queue form tile (flag/resolve) and the Research Collections tile (named grouping) also live inside the **Advanced Research & Review** accordion on the same record page.
+
+The Person context for these sub-pages rides in the URL query as `?person={id}` (issue #455 slice 2). Deep-links like `/soldiers/{id}/timeline` load directly without any cookie or picker round-trip — bookmarks survive reloads.
 
 ## 20.3 Research collections
 
 `/research-collections` lets you group related Person Records into named collections (a regiment, a family, an investigation). Each collection has its own page at `/research-collections/{id}` showing its Person Records and any collection-level notes. Useful for tracking multi-arc investigations.
 
-## 20.4 Research log + research pack
+## 20.4 Research log only (Research Pack merged into Insights)
 
 - **Research Log** (`/soldiers/{id}/research-log`) — append-only task list scoped to a Person Record. Create tasks (`Research Task Create`), resolve tasks (`Research Task Resolve`), and the log survives across sessions.
-- **Research Pack** (`/soldiers/{id}/research-pack/{state|county}`) — a pre-formatted PDF/HTML bundle (state-level or county-level) you can take into a library or archive. It includes the Person Record fields plus the relevant Source Record excerpts and conflict ledger items.
+- The pre-#455 Research Pack sub-page (`/soldiers/{id}/research-pack/{state|county}`) is gone; the same Top Units / Top Cemeteries / Related Person Records data lives on **Insights** (`/insights`) under the Military Representation, Burial Analytics, and Person Record Type Snapshot panels. Use **Open Unit on Insights** from the Person Record detail page to filter the drilldown by unit.
 
 ## 20.5 Recent searches
 
@@ -704,9 +708,9 @@ These are not pages — they return immediately and trigger desktop-side behavio
 | Preview a memorial JSON import | Share Archive → Memorial JSON Import |
 | Run duplicate scan | Insights (`/insights`) |
 | Duplicate drilldown | Insights Drilldown (`/insights/drilldown`) |
-| Per-Person Record research | `/soldiers/{id}/{camaraderie,timeline,conflict-ledger}` |
+| Per-Person Record research (post-#455 slim) | `/soldiers/{id}/{timeline,research-log}` |
 | Research collections | `/research-collections` |
-| Research log / research pack | `/soldiers/{id}/{research-log,research-pack/{state,county}}` |
+| Search + recents (post-#455 picker) | `/research?person={id}` |
 | Calendar + anniversaries | Calendar (`/calendar`) |
 | Per-month anniversary PDF | Calendar month footer |
 | Clean orphaned files | Settings → Image Maintenance |

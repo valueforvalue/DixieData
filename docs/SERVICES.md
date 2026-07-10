@@ -528,24 +528,26 @@ None open.
 
 ## 16 · Research Pack
 
-**Status**: 🟢 stable
+**Status**: 🔴 **deprecated after slim (issue #455, slice 3, 2026-07-10)**. The dedicated `/soldiers/{id}/research-pack/{state|county}` sub-page, `handleResearchPack` handler, `ResearchPackForPersonRecord` facade method, `ResearchPackForSoldier` service method, and the `research_pack.templ` + `research_empty_states.templ` templates are all **deleted**. The same Top Units / Top Cemeteries / Related Person Records data lives on **Insights** (panels: Military Representation, Burial Analytics, Person Record Type Snapshot). The County/State scope pattern is a noted but accepted loss — there is no longer a dedicated county-cohort view; the use case is solvable via Insights drilldown scoped to `unit={state}` if needed. Glossary entry has the same deprecation marker.
 
 | Field | Value |
 |---|---|
-| **Purpose** | Prepared archive bundle organized around a defined scope (county or state). |
-| **Trigger / Outcome** | User opens `/research-pack` or clicks `/soldiers/{id}/research-pack/{state|county}` → pack view renders via HTMX swap. |
-| **Inputs / Outputs** | In: scope (county / state). Out: scoped bundle view. |
-| **Happy path** | (1) User picks scope. (2) Pack view renders. (3) Reviews included material. (4) Exports pack. |
-| **Failure modes** | (a) Empty scope → `EmptyStateCard`. (b) Fragment endpoint → axe misfires (carve-out). |
-| **DOM roots** | (no panel ID registered). |
-| **Backend it calls** | `app.handleResearchPack`. |
-| **Cross-refs** | [wireframe](ui-map/wireframes/16-research-pack.md), [routes](ui-map/routes.md#research). |
+| **Purpose** | (no longer applicable — Insights covers the use case) |
+| **Trigger / Outcome** | (no longer applicable) |
+| **Inputs / Outputs** | (no longer applicable) |
+| **Happy path** | (no longer applicable) |
+| **Failure modes** | (no longer applicable) |
+| **DOM roots** | (no panel ID registered — `PanelResearchPack` retired) |
+| **Backend it calls** | `app.handleResearchPack` — **deleted** (now returns 404 from the chi catch-all dispatch; soldier_card tile route was `/soldiers/{id}/research-pack/state` and `/soldiers/{id}/research-pack/county`) |
+| **Cross-refs** | [wireframe archive](historical/ui-map-wireframes/16-research-pack.md), [glossary deprecation](CONTEXT.md#research-collection) |
 
 ### Bugs
 
 | status | severity | summary | issue# | fix-commit | audit-ref |
-|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|
 | wontfix | low | Axe reports false positives on HTMX fragment | — | — | r2 carve-out |
+| wontfix | low | County scope empty-state inconsistent with State scope | — | — | r2 carve-out |
+| **closed** | — | Sub-page removed; data moved to Insights | #455 | `2ae9dc7` (slice 3) | — |
 
 ### Improvement log
 
@@ -581,52 +583,48 @@ None open. Audit notes: "read-only, clean".
 
 ## 18 · Unit Camaraderie
 
-**Status**: 🟢 stable
+**Status**: 🔴 **deprecated after slim (issue #455, slice 3, 2026-07-10)**. The dedicated `/soldiers/{id}/camaraderie` sub-page, `handleUnitCamaraderie` handler, `UnitCamaraderieGraph` facade method, `UnitCamaraderieGraph` service method (plus its tier-ranking helpers and the `deriveUnitGraphKeys` regex cluster), the `camaraderie.templ` template, and the soldier_card Camaraderie tile are all **deleted**. The use case moves to **Insights drilldown scoped to `unit={unit}`** (the existing `/insights/drilldown?scope=unit&value={unit}` page lists every other Person Record sharing the recorded unit — no need to filter through Insights; the soldier_card **Open Unit on Insights** button routes there directly when `soldierHasCamaraderie(s)` is true). The 3-tier ranking (exact / company variant / regiment) that Camaraderie added on top of Insights is a noted but accepted loss — a future Insights drilldown enhancement could reintroduce ranking if telemetry demands. Glossary entry has the same deprecation marker.
 
 | Field | Value |
 |---|---|
-| **Purpose** | Inferred relationship network between Soldiers based on shared units / time overlap. |
-| **Trigger / Outcome** | User clicks Camaraderie from Soldier Detail → `/soldiers/{id}/camaraderie` swaps in. |
-| **Inputs / Outputs** | In: `id`. Out: graph view of related Soldiers. |
-| **Happy path** | (1) User lands. (2) Reviews nodes. (3) Clicks node → other Soldier's detail. |
-| **Failure modes** | (a) No shared units → empty state. |
-| **DOM roots** | (no panel ID registered). |
-| **Backend it calls** | `app.handleSoldierCamaraderie`. |
-| **Cross-refs** | [wireframe](ui-map/wireframes/18-unit-camaraderie.md), [routes](ui-map/routes.md#soldiers--search--browse). |
+| **Purpose** | (no longer applicable — Insights drilldown covers the use case) |
+| **Trigger / Outcome** | soldier_card **Open Unit on Insights** button → `/insights/drilldown?scope=unit&value={unit}` (where `{unit}` is URL-escaped) |
+| **Inputs / Outputs** | In: `unit` string. Out: flat list of Person Records sharing the unit (not 3-tier ranked) |
+| **Happy path** | (1) User on `/soldiers/{id}` (with `s.Unit != ""`). (2) Expands **Advanced Research & Review**. (3) Clicks **Open Unit on Insights**. (4) Sees flat list of unit-sharing records; clicks one → `/soldiers/{other-id}`. |
+| **Failure modes** | (a) Empty `s.Unit` → soldierHasCamaraderie gate hides the tile entirely. |
+| **DOM roots** | Insights drilldown page (`/insights/drilldown?scope=unit&value={unit}`) — no dedicated `panel.soldier.camaraderie`. |
+| **Backend it calls** | `app.handleInsightsDrilldown` (existing). |
+| **Cross-refs** | [wireframe archive](historical/ui-map-wireframes/18-unit-camaraderie.md), [glossary deprecation](CONTEXT.md#unit-camaraderie-graph), [issue #455 slice 1 soldier_card tile edit](https://github.com/valueforvalue/DixieData/issues/455). |
 
 ### Bugs
 
-None open.
-
-### Improvement log
-
-- **2026-06-29**: Add a panel ID (`panel.soldier.camaraderie`).
-- **2026-06-29**: Graph layout could show weight (number of shared units) on edges.
+| status | severity | summary | issue# | fix-commit | audit-ref |
+|---|---|---|---|---|---|
+| **closed** | — | Sub-page removed; use case moved to Insights drilldown | #455 | `2ae9dc7` (slice 3) | — |
 
 ---
 
 ## 19 · Merge Review Ledger
 
-**Status**: 🟢 stable
+**Status**: 🔴 **per-Person sub-page deprecated after slim (issue #455, slice 4, 2026-07-10)**. The dedicated `/soldiers/{id}/conflict-ledger` sub-page, the dispatch branch in `soldiers_handlers.go`, and the soldier_card Ledger tile are all **deleted**. The `handleConflictLedger` handler is now a 303→`/review-queue?tab=resolved` stub (Location + X-DixieData-Redirect both set per the redirect-contract). The data (`merge_review_conflicts` rows) is alive — the **Review Queue Resolved tab** at `/review-queue?tab=resolved` ships the tab-strip + query-param contract in slice 4; the content listing (`ResolvedConflicts(page, pageSize, personID)` audit-facade query + the result-table render) is a slice-4 follow-up. The active `merge_review_conflicts` table backs both the Open (Conflict Ledger is the audit log of resolved conflicts; Compare is the live resolution UI) and the Resolved (pending follow-up) tabs of the Review Queue.
 
 | Field | Value |
 |---|---|
-| **Purpose** | Workflow for resolving conflicts during Shared Archive import. |
-| **Trigger / Outcome** | User opens `/soldiers/{id}/conflict-ledger` → ledger of Local vs Incoming decisions. |
-| **Inputs / Outputs** | In: `id`. Out: ledger of merge decisions + status. |
-| **Happy path** | (1) User reviews ledger. (2) Picks Local or Incoming per row. (3) Submits → merge applied. |
-| **Failure modes** | (a) No conflicts → empty state. |
-| **DOM roots** | (no panel ID registered). |
-| **Backend it calls** | `app.handleSoldierConflictLedger`, `app.handleMergeApply`. |
-| **Cross-refs** | [wireframe](ui-map/wireframes/19-merge-review-ledger.md), [routes](ui-map/routes.md#soldiers--search--browse). |
+| **Purpose** | (per-Person sub-page removed; Review Queue Resolved tab in flight) |
+| **Trigger / Outcome** | `/review-queue?tab=resolved[&person={id}]` (slice-4 stub live; content render is follow-up) |
+| **Inputs / Outputs** | In: optional `person`. Out: placeholder panel today, resolved conflict rows when the audit-facade query lands. |
+| **Happy path** | (1) Open Review Queue. (2) Click **Resolved** tab. (3) See resolved conflict rows for the current selection (or all when no person filter). |
+| **Failure modes** | (a) Stale URL `/soldiers/{id}/conflict-ledger` → 303→/review-queue?tab=resolved. (b) No resolved conflicts → empty state (follow-up). |
+| **DOM roots** | `panel.review-queue.resolved` (registered in issue #455 slice 4 follow-up; today the body uses a dashed-border placeholder panel). |
+| **Backend it calls** | `app.handleReviewQueue` (gains `?tab=resolved[&person={id}]` parser in slice 4) — stub of `app.handleConflictLedger` still emits 303. |
+| **Cross-refs** | [wireframe archive](historical/ui-map-wireframes/19-merge-review-ledger.md), [glossary entry](CONTEXT.md#merge-review), [issue #455 slice 4 commit `95070ee`](https://github.com/valueforvalue/DixieData/issues/455), [issue #455 slice 4 follow-up tracking comment](https://github.com/valueforvalue/DixieData/issues/455). |
 
 ### Bugs
 
-None open.
-
-### Improvement log
-
-- **2026-06-29**: Add a panel ID (`panel.soldier.conflict-ledger`).
+| status | severity | summary | issue# | fix-commit | audit-ref |
+|---|---|---|---|---|---|
+| **closed** | — | Per-Person sub-page removed; data migrates to Review Queue Resolved tab | #455 | `95070ee` (slice 4) | — |
+| open | medium | Resolved-tab content listing render pending (audit facade `ResolvedConflicts` + result table); placeholder body ships today | #455 slice-4 follow-up | — | — |
 
 ---
 
