@@ -616,8 +616,24 @@ func (a *App) handleResearchCollections(w http.ResponseWriter, r *http.Request) 
 			respondValidation(w, r, "Invalid from id.", err)
 			return
 		}
+		// Stale "?from=<id>" (soldier deleted, bookmark, merged archive) must
+		// not 500 the whole hub. SoldierService.ResearchCollectionsHub returns
+		// the GetByID error verbatim when the soldier is missing, so we try
+		// the hub with fromID, and on a sql.ErrNoRows-style missing-row
+		// failure we fall back to fromID=0 (no current context) instead of
+		// returning 500 "Could not load research collections." (issue #452 follow-up).
 		hub, err := a.soldiers.ResearchCollectionsHub(fromID)
-		if err != nil {
+		if err != nil && fromID > 0 {
+			if _, lookupErr := a.soldiers.GetByID(fromID); lookupErr != nil && errors.Is(lookupErr, sql.ErrNoRows) {
+				if hub, err = a.soldiers.ResearchCollectionsHub(0); err != nil {
+					respondInternal(w, r, "Could not load research collections.", err)
+					return
+				}
+			} else {
+				respondInternal(w, r, "Could not load research collections.", err)
+				return
+			}
+		} else if err != nil {
 			respondInternal(w, r, "Could not load research collections.", err)
 			return
 		}

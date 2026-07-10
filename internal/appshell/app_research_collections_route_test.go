@@ -1,6 +1,7 @@
 package appshell
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -56,8 +57,7 @@ func TestHandleResearchCollections_POSTCreatesCollection(t *testing.T) {
 }
 
 // Plus the GET case stays healthy after the route change.
-func TestHandleResearchCollections_GETStillRenders(t *testing.T) {
-	dataDir := testtemp.New(t).Path()
+func TestHandleResearchCollections_GETStillRenders(t *testing.T) {	dataDir := testtemp.New(t).Path()
 	database, err := db.Open(dataDir)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -79,5 +79,42 @@ func TestHandleResearchCollections_GETStillRenders(t *testing.T) {
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET status=%d body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+// Regression net for the follow-up on issue #452: a stale "?from=<id>" that
+// no longer points at an existing soldier (deleted row, merged archive, old
+// bookmark) must NOT 500 the whole hub. The handler should fall back to
+// fromID=0 (no current context) and render the hub as if the user landed
+// there directly from top-nav.
+func TestHandleResearchCollections_GETStaleFromIDFallsBackToHub(t *testing.T) {
+	dataDir := testtemp.New(t).Path()
+	database, err := db.Open(dataDir)
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	app := NewApp()
+	app.dataDir = dataDir
+	app.database = database
+	if err := app.reloadServices(); err != nil {
+		t.Fatalf("reloadServices: %v", err)
+	}
+	configureTestIdentity(t, app)
+	app.setupRoutes()
+
+	// Stale `?from=<nonexistent-id>` — was 500 with "Could not load research
+	// collections." before fix; now must be 200 with the hub rendered.
+	staleID := int64(999999)
+	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/research-collections?from=%d", staleID), nil)
+	rec := httptest.NewRecorder()
+	app.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stale from=%d returned status=%d body=%q; expected 200 with hub fallback", staleID, rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "panel.research-collections.hub") {
+		t.Fatalf("expected hub panel in body; got %q", rec.Body.String())
 	}
 }
