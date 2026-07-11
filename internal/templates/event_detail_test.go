@@ -77,7 +77,7 @@ func sliceBody(body, panelTitle string) string {
 func TestEventDetailLinkedPersonsPanelEditCTAPins(t *testing.T) {
 	var buf bytes.Buffer
 	err := EventDetail(
-		viewmodel.PersonRecord{ID: 519, DisplayID: "EVT-00519", Kind: "Battle"},
+		viewmodel.EventRecord{PersonRecord: viewmodel.PersonRecord{ID: 519, DisplayID: "EVT-00519"}, Kind: "Battle"},
 		nil, // no linked Persons
 	).Render(context.Background(), &buf)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestEventDetailLinkedPersonsPanelEditCTAPins(t *testing.T) {
 func TestEventDetailTagsPanelEditCTAPins(t *testing.T) {
 	var buf bytes.Buffer
 	err := EventDetail(
-		viewmodel.PersonRecord{ID: 519, DisplayID: "EVT-00519", Kind: "Battle"},
+		viewmodel.EventRecord{PersonRecord: viewmodel.PersonRecord{ID: 519, DisplayID: "EVT-00519"}, Kind: "Battle"},
 		nil,
 	).Render(context.Background(), &buf)
 	if err != nil {
@@ -190,7 +190,7 @@ func TestEventDetailEditEventCTACountPinsAcrossPopulatedAndEmpty(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			err := EventDetail(
-				viewmodel.PersonRecord{ID: 519, DisplayID: "EVT-00519"},
+				viewmodel.EventRecord{PersonRecord: viewmodel.PersonRecord{ID: 519, DisplayID: "EVT-00519"}},
 				tc.linked,
 			).Render(context.Background(), &buf)
 			if err != nil {

@@ -37,10 +37,12 @@ func TestEventFormFragmentRendersSourceRecordsSection(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := EventFormFragment(viewmodel.PersonRecord{
-				ID:        tc.eventID,
-				DisplayID: "EVT-00519",
-				Kind:      "Battle",
+			err := EventFormFragment(viewmodel.EventRecord{
+				PersonRecord: viewmodel.PersonRecord{
+					ID:        tc.eventID,
+					DisplayID: "EVT-00519",
+				},
+				Kind: "Battle",
 			}, tc.isEdit, "").Render(context.Background(), &buf)
 			if err != nil {
 				t.Fatalf("Render: %v", err)
@@ -113,10 +115,12 @@ func TestEventFormFragmentRendersLinkedPersonsSection(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := EventFormFragment(viewmodel.PersonRecord{
-				ID:        tc.eventID,
-				DisplayID: "EVT-00519",
-				Kind:      "Battle",
+			err := EventFormFragment(viewmodel.EventRecord{
+				PersonRecord: viewmodel.PersonRecord{
+					ID:        tc.eventID,
+					DisplayID: "EVT-00519",
+				},
+				Kind: "Battle",
 			}, tc.isEdit, "").Render(context.Background(), &buf)
 			if err != nil {
 				t.Fatalf("Render: %v", err)
@@ -177,10 +181,12 @@ func TestEventFormFragmentRendersTagsSection(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			err := EventFormFragment(viewmodel.PersonRecord{
-				ID:        tc.eventID,
-				DisplayID: "EVT-00519",
-				Kind:      "Battle",
+			err := EventFormFragment(viewmodel.EventRecord{
+				PersonRecord: viewmodel.PersonRecord{
+					ID:        tc.eventID,
+					DisplayID: "EVT-00519",
+				},
+				Kind: "Battle",
 			}, tc.isEdit, "").Render(context.Background(), &buf)
 			if err != nil {
 				t.Fatalf("Render: %v", err)
@@ -232,3 +238,4 @@ func TestEventFormFragmentRendersTagsSection(t *testing.T) {
 		})
 	}
 }
+
