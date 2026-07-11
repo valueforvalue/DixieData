@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/valueforvalue/DixieData/internal/presentation"
-	"github.com/valueforvalue/DixieData/internal/update"
 )
 
 func (a *App) handleUpdateSource(w http.ResponseWriter, r *http.Request) {
@@ -102,5 +101,3 @@ func (a *App) handleApplyLatestUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 }
-
-var _ updaterFacade = (*update.Service)(nil)
